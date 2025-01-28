@@ -224,3 +224,17 @@
             index (read-parts index)
             index (read-table index)]
     (read-answer-lists index)))
+
+(defn property-name-from-index [index]
+  (condp = index
+    :time-index "TIME_ASPCT"
+    :scale-index "SCALE_TYP"
+    :method-index "METHOD_TYP"
+    (-> index name (str/split #"-") first str/upper-case)))
+
+(defn property-name-from-key [key]
+  (condp = key
+    :time "TIME_ASPCT"
+    :scale "SCALE_TYP"
+    :method "METHOD_TYP"
+    (-> key name str/upper-case)))

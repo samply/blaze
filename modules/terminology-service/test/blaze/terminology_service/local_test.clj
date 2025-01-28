@@ -148,6 +148,22 @@
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}))
 
+(def complete-config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
+    :enable-bcp-13 true
+    :enable-ucum true
+    :loinc (ig/ref ::loinc)
+    :sct (ig/ref ::cs/sct)}
+   :blaze.test/fixed-clock {}
+   :blaze.test/incrementing-rng-fn {}
+   ::loinc {}
+   ::cs/sct {:release-path (path "sct-release")}))
+
 (defn- uuid-urn? [s]
   (some? (re-matches #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" s)))
 
@@ -364,8 +380,7 @@
                                "url" #fhir/uri"url-194718"
                                "code" #fhir/code"code-083955")
           ::anom/category := ::anom/not-found
-          ::anom/message := "The code system `url-194718` was not found."
-          :t := 0))
+          ::anom/message := "The code system `url-194718` was not found."))
 
       (testing "url and version"
         (given-failed-future (code-system-validate-code ts
@@ -373,8 +388,7 @@
                                "code" #fhir/code"code-083955"
                                "version" #fhir/string"version-144244")
           ::anom/category := ::anom/not-found
-          ::anom/message := "The code system `url-144258|version-144244` was not found."
-          :t := 0)))
+          ::anom/message := "The code system `url-144258|version-144244` was not found.")))
 
     (testing "with non-complete code system"
       (doseq [content ["not-present" "example" "supplement"]]
@@ -943,7 +957,15 @@
   (ts/expand-value-set ts (apply u/parameters nvs)))
 
 (deftest expand-value-set-fails-test
-  (with-system [{ts ::ts/local} config]
+  (with-system-data [{ts ::ts/local} complete-config]
+    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+             :url #fhir/uri"system-182822"
+             :content #fhir/code"complete"
+             :concept
+             [{:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code"code-182832"
+               :display #fhir/string"display-182717"}]}]]]
+
     (testing "no parameters"
       (given-failed-future (expand-value-set ts)
         ::anom/category := ::anom/incorrect
@@ -985,16 +1007,159 @@
         (given-failed-future (expand-value-set ts
                                "url" #fhir/uri"url-194718")
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-194718` was not found."
-          :t := 0))
+          ::anom/message := "The value set `url-194718` was not found."))
 
       (testing "url and version"
         (given-failed-future (expand-value-set ts
                                "url" #fhir/uri"url-144258"
                                "valueSetVersion" #fhir/string"version-144244")
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-144258|version-144244` was not found."
-          :t := 0))))
+          ::anom/message := "The value set `url-144258|version-144244` was not found.")))
+
+    (testing "unsupported filter operator"
+      (doseq [system ["system-182822" "urn:ietf:bcp:13"
+                      "http://unitsofmeasure.org" "http://loinc.org"
+                      "http://snomed.info/sct"]]
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system (type/uri system)
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-160019"
+                 :op #fhir/code"op-unsupported-160011"
+                 :value #fhir/string"value-160032"}]}]}})
+          ::anom/category := ::anom/unsupported
+          ::anom/message := (format "Error while expanding the provided value set. Unsupported filter operator `op-unsupported-160011` in code system `%s`." system))))
+
+    (testing "missing filter property"
+      (doseq [[system op]
+              [["system-182822" "is-a"]
+               ["system-182822" "descendent-of"]
+               ["system-182822" "exists"]
+               ["system-182822" "="]
+               ["system-182822" "regex"]
+               ["http://loinc.org" "="]
+               ["http://loinc.org" "regex"]
+               ["http://snomed.info/sct" "is-a"]
+               ["http://snomed.info/sct" "descendent-of"]
+               ["http://snomed.info/sct" "="]]]
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system (type/uri system)
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :op (type/code op)
+                 :value #fhir/string"value-162629"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Error while expanding the provided value set. Missing %s filter property in code system `%s`." op system))))
+
+    (testing "unsupported filter property"
+      (doseq [[system op]
+              [["system-182822" "is-a"]
+               ["system-182822" "descendent-of"]
+               ["http://loinc.org" "="]
+               ["http://loinc.org" "regex"]
+               ["http://snomed.info/sct" "is-a"]
+               ["http://snomed.info/sct" "descendent-of"]
+               ["http://snomed.info/sct" "="]]]
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system (type/uri system)
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-163943"
+                 :op (type/code op)}]}]}})
+          ::anom/category := ::anom/unsupported
+          ::anom/message := (format "Error while expanding the provided value set. Unsupported %s filter property `property-163943` in code system `%s`." op system))))
+
+    (testing "missing filter value"
+      (doseq [[system op property]
+              [["system-182822" "is-a" "concept"]
+               ["system-182822" "descendent-of" "concept"]
+               ["system-182822" "exists" "property-arbitrary-161647"]
+               ["system-182822" "=" "property-arbitrary-161647"]
+               ["system-182822" "regex" "property-arbitrary-161647"]
+               ["http://loinc.org" "=" "COMPONENT"]
+               ["http://loinc.org" "=" "PROPERTY"]
+               ["http://loinc.org" "=" "TIME_ASPCT"]
+               ["http://loinc.org" "=" "SYSTEM"]
+               ["http://loinc.org" "=" "SCALE_TYP"]
+               ["http://loinc.org" "=" "METHOD_TYP"]
+               ["http://loinc.org" "=" "CLASS"]
+               ["http://loinc.org" "=" "STATUS"]
+               ["http://loinc.org" "=" "CLASSTYPE"]
+               ["http://loinc.org" "=" "ORDER_OBS"]
+               ["http://loinc.org" "regex" "COMPONENT"]
+               ["http://loinc.org" "regex" "PROPERTY"]
+               ["http://loinc.org" "regex" "TIME_ASPCT"]
+               ["http://loinc.org" "regex" "SYSTEM"]
+               ["http://loinc.org" "regex" "SCALE_TYP"]
+               ["http://loinc.org" "regex" "METHOD_TYP"]
+               ["http://loinc.org" "regex" "CLASS"]
+               ["http://loinc.org" "regex" "ORDER_OBS"]
+               ["http://snomed.info/sct" "is-a" "concept"]
+               ["http://snomed.info/sct" "descendent-of" "concept"]
+               ["http://snomed.info/sct" "=" "parent"]]]
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system (type/uri system)
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property (type/code property)
+                 :op (type/code op)}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Error while expanding the provided value set. Missing %s %s filter value in code system `%s`." property op system))))
+
+    (testing "invalid filter value"
+      (doseq [[system op property msg]
+              [["system-182822" "exists" "property-arbitrary-161647" "Should be one of `true` or `false`."]
+               ["system-182822" "regex" "property-arbitrary-161647" "Should be a valid regex pattern."]
+               ["http://loinc.org" "=" "STATUS"]
+               ["http://loinc.org" "=" "CLASSTYPE"]
+               ["http://loinc.org" "=" "ORDER_OBS"]
+               ["http://snomed.info/sct" "is-a" "concept"]
+               ["http://snomed.info/sct" "descendent-of" "concept"]
+               ["http://snomed.info/sct" "=" "parent"]]]
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system (type/uri system)
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property (type/code property)
+                 :op (type/code op)
+                 :value #fhir/string"value-invalid-[-174601"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format (cond-> "Error while expanding the provided value set. Invalid %s %s filter value `value-invalid-[-174601` in code system `%s`." msg (str " " msg)) property op system)))))
 
   (testing "empty include"
     (with-system-data [{ts ::ts/local} config]
@@ -2247,33 +2412,6 @@
         [:expansion :contains 0 :code] := #fhir/code"code-180828"
         [:expansion :contains 0 #(contains? % :display)] := false))))
 
-(deftest expand-value-set-include-filter-test
-  (testing "unknown filter operator"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-160118"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"system-182822"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"property-160019"
-                    :op #fhir/code"op-unknown-160011"
-                    :value #fhir/string"value-160032"}]}]}}]]]
-
-      (given-failed-future (expand-value-set ts "url" #fhir/uri"value-set-160118")
-        ::anom/category := ::anom/unsupported
-        ::anom/message := "Error while expanding the value set `value-set-160118`. Unsupported filter operator `op-unknown-160011` in code system `system-182822`."))))
-
 (deftest expand-value-set-include-filter-is-a-test
   (testing "with a single concept"
     (with-system-data [{ts ::ts/local} config]
@@ -2653,53 +2791,6 @@
         [:expansion :contains 1 :display] := #fhir/string"display-192313"))))
 
 (deftest expand-value-set-include-filter-exists-test
-  (testing "fails"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]]]
-
-      (testing "with missing property"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-182905"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"system-182822"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :op #fhir/code"exists"
-                 :value #fhir/string"true"}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-182905`. Missing exists filter property in code system `system-182822`."))
-
-      (testing "with invalid value"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-182905"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"system-182822"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :property #fhir/code"property-160622"
-                 :op #fhir/code"exists"
-                 :value #fhir/string"invalid-162128"}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-182905`. The filter value should be one of `true` or `false` but was `invalid-162128`."))))
-
   (testing "with a single concept"
     (testing "without a property"
       (testing "that shouldn't exist"
@@ -2822,52 +2913,6 @@
             [:expansion :contains 0 :display] := #fhir/string"display-182717"))))))
 
 (deftest expand-value-set-include-filter-equals-test
-  (testing "fails"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]]]
-
-      (testing "with missing property"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-171904"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"system-182822"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :op #fhir/code"="
-                 :value #fhir/string"value-161324"}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing equals filter property in code system `system-182822`."))
-
-      (testing "with missing value"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-171904"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"system-182822"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :property #fhir/code"property-175506"
-                 :op #fhir/code"="}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing equals filter value in code system `system-182822`."))))
-
   (with-system-data [{ts ::ts/local} config]
     [[[:put {:fhir/type :fhir/CodeSystem :id "0"
              :url #fhir/uri"system-182822"
@@ -2918,71 +2963,6 @@
       [:expansion :contains 0 :display] := #fhir/string"display-175659")))
 
 (deftest expand-value-set-include-filter-regex-test
-  (testing "fails"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]]]
-
-      (testing "with missing property"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-171904"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"system-182822"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :op #fhir/code"regex"
-                 :value #fhir/string"value-161324"}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing regex filter property in code system `system-182822`."))
-
-      (testing "with missing value"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-171904"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"system-182822"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :property #fhir/code"property-175506"
-                 :op #fhir/code"regex"}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing regex filter value in code system `system-182822`."))
-
-      (testing "with invalid value"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-171904"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"system-182822"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :property #fhir/code"property-175506"
-                 :op #fhir/code"regex"
-                 :value #fhir/string"["}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-171904`. Invalid regex pattern `[` in code system `system-182822`."))))
-
   (testing "code"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -3295,105 +3275,7 @@
             [:expansion :contains 0 :code] := #fhir/code"26465-5"
             [:expansion :contains 0 :display] := #fhir/string"Leukocytes [#/volume] in Cerebral spinal fluid"))))))
 
-(deftest expand-value-set-loinc-include-filter-test
-  (testing "unknown filter operator"
-    (with-system-data [{ts ::ts/local} loinc-config]
-      [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-162333"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"http://loinc.org"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"property-162318"
-                    :op #fhir/code"op-unknown-162321"
-                    :value #fhir/string"value-162324"}]}]}}]]]
-
-      (given-failed-future (expand-value-set ts "url" #fhir/uri"value-set-162333")
-        ::anom/category := ::anom/unsupported
-        ::anom/message := "Error while expanding the value set `value-set-162333`. Unsupported filter operator `op-unknown-162321` in code system `http://loinc.org`."))))
-
 (deftest expand-value-set-loinc-include-filter-equals-test
-  (testing "fails"
-    (with-system [{ts ::ts/local} loinc-config]
-      (testing "with missing property"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-162603"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"http://loinc.org"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :op #fhir/code"="
-                 :value #fhir/string"value-162629"}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-162603`. Missing = filter property in code system `http://loinc.org`."))
-
-      (testing "with unsupported property"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-163943"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"http://loinc.org"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :property #fhir/code"property-163943"
-                 :op #fhir/code"="}]}]}})
-          ::anom/category := ::anom/unsupported
-          ::anom/message := "Error while expanding the value set `value-set-163943`. Unsupported = filter property `property-163943` in code system `http://loinc.org`."))
-
-      (testing "with missing value"
-        (doseq [property ["COMPONENT" "PROPERTY" "TIME_ASPCT" "SYSTEM" "SCALE_TYP"
-                          "METHOD_TYP" "CLASS" "STATUS" "CLASSTYPE" "ORDER_OBS"]]
-          (given-failed-future
-           (expand-value-set ts
-             "valueSet"
-             {:fhir/type :fhir/ValueSet
-              :url #fhir/uri"value-set-162730"
-              :compose
-              {:fhir/type :fhir.ValueSet/compose
-               :include
-               [{:fhir/type :fhir.ValueSet.compose/include
-                 :system #fhir/uri"http://loinc.org"
-                 :filter
-                 [{:fhir/type :fhir.ValueSet.compose.include/filter
-                   :property (type/code property)
-                   :op #fhir/code"="}]}]}})
-            ::anom/category := ::anom/incorrect
-            ::anom/message := (format "Error while expanding the value set `value-set-162730`. Missing %s = filter value in code system `http://loinc.org`." property))))
-
-      (testing "with invalid value"
-        (doseq [property ["STATUS" "CLASSTYPE" "ORDER_OBS"]]
-          (given-failed-future
-           (expand-value-set ts
-             "valueSet"
-             {:fhir/type :fhir/ValueSet
-              :url #fhir/uri"value-set-162730"
-              :compose
-              {:fhir/type :fhir.ValueSet/compose
-               :include
-               [{:fhir/type :fhir.ValueSet.compose/include
-                 :system #fhir/uri"http://loinc.org"
-                 :filter
-                 [{:fhir/type :fhir.ValueSet.compose.include/filter
-                   :property (type/code property)
-                   :op #fhir/code"="
-                   :value #fhir/string"value-165531"}]}]}})
-            ::anom/category := ::anom/incorrect
-            ::anom/message := (format "Error while expanding the value set `value-set-162730`. Invalid %s = filter value `value-165531` in code system `http://loinc.org`." property))))))
-
   (testing "COMPONENT"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP14449-0" "lp14449-0" "Hemoglobin" "hemoglobin" "HEMOGLOBIN"]]
@@ -3625,64 +3507,6 @@
           [:expansion :contains (concept "18868-0") 0 :display] := #fhir/string"Aztreonam [Susceptibility]")))))
 
 (deftest expand-value-set-loinc-include-filter-regex-test
-  (testing "fails"
-    (with-system [{ts ::ts/local} loinc-config]
-      (testing "with missing property"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-162603"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"http://loinc.org"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :op #fhir/code"regex"
-                 :value #fhir/string"value-162629"}]}]}})
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Error while expanding the value set `value-set-162603`. Missing regex filter property in code system `http://loinc.org`."))
-
-      (testing "with unsupported property"
-        (given-failed-future
-         (expand-value-set ts
-           "valueSet"
-           {:fhir/type :fhir/ValueSet
-            :url #fhir/uri"value-set-163943"
-            :compose
-            {:fhir/type :fhir.ValueSet/compose
-             :include
-             [{:fhir/type :fhir.ValueSet.compose/include
-               :system #fhir/uri"http://loinc.org"
-               :filter
-               [{:fhir/type :fhir.ValueSet.compose.include/filter
-                 :property #fhir/code"property-163943"
-                 :op #fhir/code"regex"}]}]}})
-          ::anom/category := ::anom/unsupported
-          ::anom/message := "Error while expanding the value set `value-set-163943`. Unsupported regex filter property `property-163943` in code system `http://loinc.org`."))
-
-      (testing "with missing value"
-        (doseq [property ["COMPONENT" "PROPERTY" "TIME_ASPCT" "SYSTEM"
-                          "SCALE_TYP" "METHOD_TYP" "CLASS" "ORDER_OBS"]]
-          (given-failed-future
-           (expand-value-set ts
-             "valueSet"
-             {:fhir/type :fhir/ValueSet
-              :url #fhir/uri"value-set-162730"
-              :compose
-              {:fhir/type :fhir.ValueSet/compose
-               :include
-               [{:fhir/type :fhir.ValueSet.compose/include
-                 :system #fhir/uri"http://loinc.org"
-                 :filter
-                 [{:fhir/type :fhir.ValueSet.compose.include/filter
-                   :property (type/code property)
-                   :op #fhir/code"regex"}]}]}})
-            ::anom/category := ::anom/incorrect
-            ::anom/message := (format "Error while expanding the value set `value-set-162730`. Missing %s regex filter value in code system `http://loinc.org`." property))))))
-
   (testing "COMPONENT =~ Hemoglobin|Amprenavir"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Hemoglobin|Amprenavir" "hemoglobin|amprenavir" "HEMOGLOBIN|AMPRENAVIR"]]
@@ -4140,26 +3964,6 @@
           [:expansion :contains 0 :designation 0 :use :display] := #fhir/string"Synonym"
           [:expansion :contains 0 :designation 0 :value] := #fhir/string"Blood specimen with anticoagulant")))))
 
-(deftest expand-value-set-sct-include-filter-test
-  (testing "unknown filter operator"
-    (with-system-data [{ts ::ts/local} sct-config]
-      [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-120544"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"http://snomed.info/sct"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"property-160019"
-                    :op #fhir/code"op-unknown-120524"
-                    :value #fhir/string"value-160032"}]}]}}]]]
-
-      (given-failed-future (expand-value-set ts "url" #fhir/uri"value-set-120544")
-        ::anom/category := ::anom/unsupported
-        ::anom/message := "Error while expanding the value set `value-set-120544`. Unsupported filter operator `op-unknown-120524` in code system `http://snomed.info/sct`."))))
-
 (deftest expand-value-set-sct-include-filter-is-a-test
   (testing "with a single is-a filter"
     (with-system-data [{ts ::ts/local} sct-config]
@@ -4325,6 +4129,28 @@
                     "activeOnly" #fhir/boolean true)
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 0))))))
+
+(deftest expand-value-set-sct-include-filter-equals-test
+  (testing "parent"
+    (with-system [{ts ::ts/local} sct-config]
+      (doseq [value ["119297000"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://snomed.info/sct"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"parent"
+                        :op #fhir/code"="
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 20
+          [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")))))
 
 (deftest expand-value-set-ucum-include-all-test
   (testing "including all of UCUM is not possible"
@@ -4618,7 +4444,15 @@
   (ts/value-set-validate-code ts (apply u/parameters nvs)))
 
 (deftest value-set-validate-code-fails-test
-  (with-system [{ts ::ts/local} config]
+  (with-system-data [{ts ::ts/local} complete-config]
+    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+             :url #fhir/uri"system-182822"
+             :content #fhir/code"complete"
+             :concept
+             [{:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code"code-182832"
+               :display #fhir/string"display-182717"}]}]]]
+
     (testing "no parameters"
       (given-failed-future (value-set-validate-code ts)
         ::anom/category := ::anom/incorrect
@@ -4694,8 +4528,7 @@
                                "code" #fhir/code"code-083955"
                                "inferSystem" #fhir/boolean true)
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-194718` was not found."
-          :t := 0))
+          ::anom/message := "The value set `url-194718` was not found."))
 
       (testing "url and version"
         (given-failed-future (value-set-validate-code ts
@@ -4704,8 +4537,176 @@
                                "code" #fhir/code"code-083955"
                                "inferSystem" #fhir/boolean true)
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-144258|version-144244` was not found."
-          :t := 0))))
+          ::anom/message := "The value set `url-144258|version-144244` was not found.")))
+
+    (testing "unsupported filter operator"
+      (doseq [[system code]
+              [["system-182822" "code-182832"]
+               ["urn:ietf:bcp:13" "text/plain"]
+               ["http://unitsofmeasure.org" "s"]
+               ["http://loinc.org" "26465-5"]
+               ["http://snomed.info/sct" "441510007"]]]
+        (given @(value-set-validate-code ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system (type/uri system)
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"property-160019"
+                        :op #fhir/code"op-unsupported-120524"
+                        :value #fhir/string"value-160032"}]}]}}
+                  "code" (type/code code)
+                  "system" (type/uri system))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := (type/string (format "Unable to check whether the code is in the provided value set because the value set was invalid. Unsupported filter operator `op-unsupported-120524` in code system `%s`." system))
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := (type/uri system))))
+
+    (testing "missing filter property"
+      (doseq [[system code op]
+              [["system-182822" "code-182832" "is-a"]
+               ["system-182822" "code-182832" "descendent-of"]
+               ["system-182822" "code-182832" "exists"]
+               ["system-182822" "code-182832" "="]
+               ["system-182822" "code-182832" "regex"]
+               ["http://loinc.org" "26465-5" "="]
+               ["http://loinc.org" "26465-5" "regex"]
+               ["http://snomed.info/sct" "441510007" "is-a"]
+               ["http://snomed.info/sct" "441510007" "descendent-of"]
+               ["http://snomed.info/sct" "441510007" "="]]]
+        (given @(value-set-validate-code ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system (type/uri system)
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :op (type/code op)
+                        :value #fhir/string"value-173753"}]}]}}
+                  "code" (type/code code)
+                  "system" (type/uri system))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := (type/string (format "Unable to check whether the code is in the provided value set because the value set was invalid. Missing %s filter property in code system `%s`." op system))
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := (type/uri system))))
+
+    (testing "unsupported filter property"
+      (doseq [[system code op]
+              [["system-182822" "code-182832" "is-a"]
+               ["system-182822" "code-182832" "descendent-of"]
+               ["http://loinc.org" "26465-5" "="]
+               ["http://loinc.org" "26465-5" "regex"]
+               ["http://snomed.info/sct" "441510007" "is-a"]
+               ["http://snomed.info/sct" "441510007" "descendent-of"]
+               ["http://snomed.info/sct" "441510007" "="]]]
+        (given @(value-set-validate-code ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system (type/uri system)
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"property-unsupported-174016"
+                        :op (type/code op)
+                        :value #fhir/string"value-173753"}]}]}}
+                  "code" (type/code code)
+                  "system" (type/uri system))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := (type/string (format "Unable to check whether the code is in the provided value set because the value set was invalid. Unsupported %s filter property `property-unsupported-174016` in code system `%s`." op system))
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := (type/uri system))))
+
+    (testing "missing filter value"
+      (doseq [[system code op property]
+              [["system-182822" "code-182832" "is-a" "concept"]
+               ["system-182822" "code-182832" "descendent-of" "concept"]
+               ["system-182822" "code-182832" "exists" "property-arbitrary-161647"]
+               ["system-182822" "code-182832" "=" "property-arbitrary-161647"]
+               ["system-182822" "code-182832" "regex" "property-arbitrary-161647"]
+               ["http://loinc.org" "26465-5" "=" "COMPONENT"]
+               ["http://loinc.org" "26465-5" "=" "PROPERTY"]
+               ["http://loinc.org" "26465-5" "=" "TIME_ASPCT"]
+               ["http://loinc.org" "26465-5" "=" "SYSTEM"]
+               ["http://loinc.org" "26465-5" "=" "SCALE_TYP"]
+               ["http://loinc.org" "26465-5" "=" "METHOD_TYP"]
+               ["http://loinc.org" "26465-5" "=" "CLASS"]
+               ["http://loinc.org" "26465-5" "=" "STATUS"]
+               ["http://loinc.org" "26465-5" "=" "CLASSTYPE"]
+               ["http://loinc.org" "26465-5" "=" "ORDER_OBS"]
+               ["http://loinc.org" "26465-5" "=" "LIST"]
+               ["http://loinc.org" "26465-5" "regex" "COMPONENT"]
+               ["http://loinc.org" "26465-5" "regex" "PROPERTY"]
+               ["http://loinc.org" "26465-5" "regex" "TIME_ASPCT"]
+               ["http://loinc.org" "26465-5" "regex" "SYSTEM"]
+               ["http://loinc.org" "26465-5" "regex" "SCALE_TYP"]
+               ["http://loinc.org" "26465-5" "regex" "METHOD_TYP"]
+               ["http://loinc.org" "26465-5" "regex" "CLASS"]
+               ["http://snomed.info/sct" "441510007" "is-a" "concept"]
+               ["http://snomed.info/sct" "441510007" "descendent-of" "concept"]
+               ["http://snomed.info/sct" "441510007" "=" "parent"]]]
+        (given @(value-set-validate-code ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system (type/uri system)
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property (type/code property)
+                        :op (type/code op)}]}]}}
+                  "code" (type/code code)
+                  "system" (type/uri system))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := (type/string (format "Unable to check whether the code is in the provided value set because the value set was invalid. Missing %s %s filter value in code system `%s`." property op system))
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := (type/uri system))))
+
+    (testing "invalid filter value"
+      (doseq [[system code op property msg]
+              [["system-182822" "code-182832" "exists" "property-arbitrary-161647" "Should be one of `true` or `false`."]
+               ["system-182822" "code-182832" "regex" "property-arbitrary-161647" "Should be a valid regex pattern."]
+               ["http://loinc.org" "26465-5" "=" "STATUS"]
+               ["http://loinc.org" "26465-5" "=" "CLASSTYPE"]
+               ["http://loinc.org" "26465-5" "=" "ORDER_OBS"]
+               ["http://snomed.info/sct" "441510007" "is-a" "concept"]
+               ["http://snomed.info/sct" "441510007" "descendent-of" "concept"]
+               ["http://snomed.info/sct" "441510007" "=" "parent"]]]
+        (given @(value-set-validate-code ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system (type/uri system)
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property (type/code property)
+                        :op (type/code op)
+                        :value #fhir/string"value-invalid-[-174601"}]}]}}
+                  "code" (type/code code)
+                  "system" (type/uri system))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := (type/string (format (cond-> "Unable to check whether the code is in the provided value set because the value set was invalid. Invalid %s %s filter value `value-invalid-[-174601` in code system `%s`." msg (str " " msg)) property op system))
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := (type/uri system)))))
 
   (testing "supplement not found"
     (with-system-data [{ts ::ts/local} config]
@@ -4919,39 +4920,6 @@
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"code-180828"
         [(parameter "system") 0 :value] := #fhir/uri"system-180814"))))
-
-(deftest value-set-validate-code-include-filter-test
-  (testing "unknown filter operator"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-105710"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"system-182822"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"property-160019"
-                    :op #fhir/code"op-unknown-120524"
-                    :value #fhir/string"value-160032"}]}]}}]]]
-
-      (given @(value-set-validate-code ts
-                "url" #fhir/uri"value-set-105710"
-                "code" #fhir/code"code-182832"
-                "system" #fhir/uri"system-182822")
-        :fhir/type := :fhir/Parameters
-        [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-105710` because the value set was invalid. Unsupported filter operator `op-unknown-120524` in code system `system-182822`."
-        [(parameter "code") 0 :value] := #fhir/code"code-182832"
-        [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))
 
 (deftest value-set-validate-code-include-filter-is-a-test
   (testing "with a single concept"
@@ -5349,57 +5317,6 @@
         [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))
 
 (deftest value-set-validate-code-include-filter-exists-test
-  (testing "fails"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]]]
-
-      (testing "with missing property"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-182905"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"system-182822"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :op #fhir/code"exists"
-                        :value #fhir/string"true"}]}]}}
-                  "code" #fhir/code"code-182832"
-                  "system" #fhir/uri"system-182822")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-182905` because the value set was invalid. Missing exists filter property in code system `system-182822`."))
-
-      (testing "with invalid value"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-182905"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"system-182822"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code"property-160622"
-                        :op #fhir/code"exists"
-                        :value #fhir/string"invalid-162128"}]}]}}
-                  "code" #fhir/code"code-182832"
-                  "system" #fhir/uri"system-182822")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-182905` because the value set was invalid. The filter value should be one of `true` or `false` but was `invalid-162128`."))))
-
   (testing "with a single concept"
     (testing "without a property"
       (testing "that shouldn't exist"
@@ -5538,54 +5455,6 @@
             [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))))
 
 (deftest value-set-validate-code-include-filter-equals-test
-  (testing "fails"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]]]
-
-      (testing "with missing property"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"system-182822"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :op #fhir/code"="
-                        :value #fhir/string"value-161324"}]}]}}
-                  "code" #fhir/code"code-182832"
-                  "system" #fhir/uri"system-182822")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the provided value set because the value set was invalid. Missing equals filter property in code system `system-182822`."))
-
-      (testing "with missing value"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"system-182822"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code"property-175506"
-                        :op #fhir/code"="}]}]}}
-                  "code" #fhir/code"code-182832"
-                  "system" #fhir/uri"system-182822")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the provided value set because the value set was invalid. Missing equals filter value in code system `system-182822`."))))
-
   (with-system-data [{ts ::ts/local} config]
     [[[:put {:fhir/type :fhir/CodeSystem :id "0"
              :url #fhir/uri"system-182822"
@@ -5638,77 +5507,6 @@
       [(parameter "system") 0 :value] := #fhir/uri"system-182822")))
 
 (deftest value-set-validate-code-include-filter-regex-test
-  (testing "fails"
-    (with-system-data [{ts ::ts/local} config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-182822"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-182832"
-                 :display #fhir/string"display-182717"}]}]]]
-
-      (testing "with missing property"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-171904"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"system-182822"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :op #fhir/code"regex"
-                        :value #fhir/string"value-161324"}]}]}}
-                  "code" #fhir/code"code-182832"
-                  "system" #fhir/uri"system-182822")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-171904` because the value set was invalid. Missing regex filter property in code system `system-182822`."))
-
-      (testing "with missing value"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-171904"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"system-182822"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code"property-175506"
-                        :op #fhir/code"regex"}]}]}}
-                  "code" #fhir/code"code-182832"
-                  "system" #fhir/uri"system-182822")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-171904` because the value set was invalid. Missing regex filter value in code system `system-182822`."))
-
-      (testing "with invalid value"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-171904"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"system-182822"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code"property-175506"
-                        :op #fhir/code"regex"
-                        :value #fhir/string"["}]}]}}
-                  "code" #fhir/code"code-182832"
-                  "system" #fhir/uri"system-182822")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-171904` because the value set was invalid. Invalid regex pattern `[` in code system `system-182822`."))))
-
   (testing "code"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -6085,120 +5883,7 @@
             [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"The code `1009-0` is valid but is not active."
             [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"code"]))))))
 
-(deftest value-set-validate-code-loinc-include-filter-test
-  (testing "unknown filter operator"
-    (with-system-data [{ts ::ts/local} loinc-config]
-      [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-105710"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"http://loinc.org"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"property-160019"
-                    :op #fhir/code"op-unknown-120524"
-                    :value #fhir/string"value-160032"}]}]}}]]]
-
-      (given @(value-set-validate-code ts
-                "url" #fhir/uri"value-set-105710"
-                "code" #fhir/code"26465-5"
-                "system" #fhir/uri"http://loinc.org")
-        :fhir/type := :fhir/Parameters
-        [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-105710` because the value set was invalid. Unsupported filter operator `op-unknown-120524` in code system `http://loinc.org`."
-        [(parameter "code") 0 :value] := #fhir/code"26465-5"
-        [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"))))
-
 (deftest value-set-validate-code-loinc-include-filter-equals-test
-  (testing "fails"
-    (with-system [{ts ::ts/local} loinc-config]
-      (testing "with missing property"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-162603"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :op #fhir/code"="
-                        :value #fhir/string"value-162629"}]}]}}
-                  "code" #fhir/code"26465-5"
-                  "system" #fhir/uri"http://loinc.org")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-162603` because the value set was invalid. Missing = filter property in code system `http://loinc.org`."))
-
-      (testing "with unsupported property"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-163943"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code"property-163943"
-                        :op #fhir/code"="}]}]}}
-                  "code" #fhir/code"26465-5"
-                  "system" #fhir/uri"http://loinc.org")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-163943` because the value set was invalid. Unsupported = filter property `property-163943` in code system `http://loinc.org`."))
-
-      (testing "with missing value"
-        (doseq [property ["COMPONENT" "PROPERTY" "TIME_ASPCT" "SYSTEM" "SCALE_TYP"
-                          "METHOD_TYP" "CLASS" "STATUS" "CLASSTYPE" "ORDER_OBS"
-                          "LIST"]]
-          (given @(value-set-validate-code ts
-                    "valueSet"
-                    {:fhir/type :fhir/ValueSet
-                     :url #fhir/uri"value-set-162730"
-                     :compose
-                     {:fhir/type :fhir.ValueSet/compose
-                      :include
-                      [{:fhir/type :fhir.ValueSet.compose/include
-                        :system #fhir/uri"http://loinc.org"
-                        :filter
-                        [{:fhir/type :fhir.ValueSet.compose.include/filter
-                          :property (type/code property)
-                          :op #fhir/code"="}]}]}}
-                    "code" #fhir/code"26465-5"
-                    "system" #fhir/uri"http://loinc.org")
-            :fhir/type := :fhir/Parameters
-            [(parameter "result") 0 :value] := #fhir/boolean false
-            [(parameter "message") 0 :value] := (type/string (format "Unable to check whether the code is in the value set `value-set-162730` because the value set was invalid. Missing %s = filter value in code system `http://loinc.org`." property)))))
-
-      (testing "with invalid value"
-        (doseq [property ["STATUS" "CLASSTYPE" "ORDER_OBS"]]
-          (given @(value-set-validate-code ts
-                    "valueSet"
-                    {:fhir/type :fhir/ValueSet
-                     :url #fhir/uri"value-set-162730"
-                     :compose
-                     {:fhir/type :fhir.ValueSet/compose
-                      :include
-                      [{:fhir/type :fhir.ValueSet.compose/include
-                        :system #fhir/uri"http://loinc.org"
-                        :filter
-                        [{:fhir/type :fhir.ValueSet.compose.include/filter
-                          :property (type/code property)
-                          :op #fhir/code"="
-                          :value #fhir/string"value-165531"}]}]}}
-                    "code" #fhir/code"26465-5"
-                    "system" #fhir/uri"http://loinc.org")
-            :fhir/type := :fhir/Parameters
-            [(parameter "result") 0 :value] := #fhir/boolean false
-            [(parameter "message") 0 :value] := (type/string (format "Unable to check whether the code is in the value set `value-set-162730` because the value set was invalid. Invalid %s = filter value `value-165531` in code system `http://loinc.org`." property)))))))
-
   (testing "COMPONENT"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP14449-0" "lp14449-0" "HEMOGLOBIN" "hemoglobin"]]
@@ -6498,76 +6183,6 @@
         [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"))))
 
 (deftest value-set-validate-code-loinc-include-filter-regex-test
-  (testing "fails"
-    (with-system [{ts ::ts/local} loinc-config]
-      (testing "with missing property"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-162603"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :op #fhir/code"regex"
-                        :value #fhir/string"value-162629"}]}]}}
-                  "code" #fhir/code"26465-5"
-                  "system" #fhir/uri"http://loinc.org")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-162603` because the value set was invalid. Missing regex filter property in code system `http://loinc.org`."
-          [(parameter "code") 0 :value] := #fhir/code"26465-5"
-          [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"))
-
-      (testing "with unsupported property"
-        (given @(value-set-validate-code ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :url #fhir/uri"value-set-163943"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code"property-163943"
-                        :op #fhir/code"regex"}]}]}}
-                  "code" #fhir/code"26465-5"
-                  "system" #fhir/uri"http://loinc.org")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-163943` because the value set was invalid. Unsupported regex filter property `property-163943` in code system `http://loinc.org`."
-          [(parameter "code") 0 :value] := #fhir/code"26465-5"
-          [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"))
-
-      (testing "with missing value"
-        (doseq [property ["COMPONENT" "PROPERTY" "TIME_ASPCT" "SYSTEM"
-                          "SCALE_TYP" "METHOD_TYP" "CLASS"]]
-          (given @(value-set-validate-code ts
-                    "valueSet"
-                    {:fhir/type :fhir/ValueSet
-                     :url #fhir/uri"value-set-162730"
-                     :compose
-                     {:fhir/type :fhir.ValueSet/compose
-                      :include
-                      [{:fhir/type :fhir.ValueSet.compose/include
-                        :system #fhir/uri"http://loinc.org"
-                        :filter
-                        [{:fhir/type :fhir.ValueSet.compose.include/filter
-                          :property (type/code property)
-                          :op #fhir/code"regex"}]}]}}
-                    "code" #fhir/code"26465-5"
-                    "system" #fhir/uri"http://loinc.org")
-            :fhir/type := :fhir/Parameters
-            [(parameter "result") 0 :value] := #fhir/boolean false
-            [(parameter "message") 0 :value] := (type/string (format "Unable to check whether the code is in the value set `value-set-162730` because the value set was invalid. Missing %s regex filter value in code system `http://loinc.org`." property))
-            [(parameter "code") 0 :value] := #fhir/code"26465-5"
-            [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org")))))
-
   (testing "COMPONENT =~ Hemoglobin|Amprenavir"
     (doseq [value ["Hemoglobin|Amprenavir" "hemoglobin|amprenavir" "HEMOGLOBIN|AMPRENAVIR"]]
       (with-system-data [{ts ::ts/local} loinc-config]
@@ -7191,32 +6806,6 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))))
 
-(deftest value-set-validate-code-sct-include-filter-test
-  (testing "unknown filter operator"
-    (with-system-data [{ts ::ts/local} sct-config]
-      [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-105710"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"http://snomed.info/sct"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"property-160019"
-                    :op #fhir/code"op-unknown-120524"
-                    :value #fhir/string"value-160032"}]}]}}]]]
-
-      (given @(value-set-validate-code ts
-                "url" #fhir/uri"value-set-105710"
-                "code" #fhir/code"441510007"
-                "system" #fhir/uri"http://snomed.info/sct")
-        :fhir/type := :fhir/Parameters
-        [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-105710` because the value set was invalid. Unsupported filter operator `op-unknown-120524` in code system `http://snomed.info/sct`."
-        [(parameter "code") 0 :value] := #fhir/code"441510007"
-        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"))))
-
 (deftest value-set-validate-code-sct-include-filter-is-a-test
   (with-system-data [{ts ::ts/local} sct-config]
     [[[:put {:fhir/type :fhir/ValueSet :id "0"
@@ -7317,6 +6906,18 @@
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 
+    (testing "grand child code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"57921000052103"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"57921000052103"
+        [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
     (testing "parent code is not included"
       (given @(value-set-validate-code ts
                 "url" #fhir/uri"value-set-113851"
@@ -7333,6 +6934,85 @@
         [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
         [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
         [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))))
+
+(deftest value-set-validate-code-sct-include-filter-equals-test
+  (testing "parent"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-113851"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"parent"
+                    :op #fhir/code"="
+                    :value #fhir/string"441510007"}]}]}}]]]
+
+      (testing "direct code is not included"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"441510007"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))
+
+      (testing "child code"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"445295009"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"445295009"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+      (testing "grand child code is not included"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"57921000052103"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#57921000052103` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"57921000052103"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#57921000052103` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))
+
+      (testing "parent code is not included"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"119297000"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"119297000"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))))
 
 (defn- load-resource [test name]
   (fhir-spec/conform-json (fhir-spec/parse-json (slurp (io/resource (format "tx-ecosystem/%s/%s.json" test name))))))

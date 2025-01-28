@@ -13,8 +13,8 @@
            (and (= property (type/value code))
                 (= search-value (type/value value))))
          properties))
-      (ba/incorrect (format "Missing equals filter value in code system `%s`." (type/value url))))
-    (ba/incorrect (format "Missing equals filter property in code system `%s`." (type/value url)))))
+      (ba/incorrect (format "Missing %s = filter value in code system `%s`." property (type/value url))))
+    (ba/incorrect (format "Missing = filter property in code system `%s`." (type/value url)))))
 
 (defmethod core/filter-concepts :=
   [{{:keys [concepts]} :default/graph :as code-system} filter]

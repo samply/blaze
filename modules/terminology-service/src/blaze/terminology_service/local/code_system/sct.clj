@@ -8,6 +8,10 @@
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.sct.context :as context :refer [core-version-prefix url]]
+   [blaze.terminology-service.local.code-system.sct.filter.core :as filter]
+   [blaze.terminology-service.local.code-system.sct.filter.descendent-of]
+   [blaze.terminology-service.local.code-system.sct.filter.equals]
+   [blaze.terminology-service.local.code-system.sct.filter.is-a]
    [blaze.terminology-service.local.code-system.sct.spec]
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]
    [blaze.terminology-service.local.code-system.sct.util :as sct-u]
@@ -109,29 +113,9 @@
     ((if active-only active-concept-xf concept-xf) code-system params))
    concepts))
 
-(defmulti expand-filter
-  {:arglists '([code-system filter])}
-  (fn [_ {:keys [op]}] (-> op type/value keyword)))
-
-(defmethod expand-filter :is-a
-  [{{:keys [child-index]} :sct/context :sct/keys [module-id version]}
-   {:keys [value]}]
-  (context/transitive-neighbors-including child-index module-id version
-                                          (parse-sctid (type/value value))))
-
-(defmethod expand-filter :descendent-of
-  [{{:keys [child-index]} :sct/context :sct/keys [module-id version]}
-   {:keys [value]}]
-  (context/transitive-neighbors child-index module-id version
-                                (parse-sctid (type/value value))))
-
-(defmethod expand-filter :default
-  [_ {:keys [op]}]
-  (ba/unsupported (format "Unsupported filter operator `%s` in code system `%s`." (type/value op) url)))
-
 (defmethod c/expand-filter :sct
   [code-system filter {:keys [active-only] :as params}]
-  (when-ok [codes (expand-filter code-system filter)]
+  (when-ok [codes (filter/expand-filter code-system filter)]
     (into
      #{}
      ((if active-only active-concept-xf concept-xf) code-system params)
@@ -145,35 +129,10 @@
       (cond-> (build-concept code-system code {:include-version true :include-designations true})
         (not active) (assoc :inactive #fhir/boolean true)))))
 
-(defmulti find-filter
-  {:arglists '([code-system filter code])}
-  (fn [_ {:keys [op]} _] (-> op type/value keyword)))
-
-(defmethod find-filter :is-a
-  [{{:keys [child-index]} :sct/context :sct/keys [module-id version]}
-   {:keys [value]} code]
-  (if-let [start-code (parse-sctid (type/value value))]
-    (or (= code start-code)
-        (context/find-transitive-neighbor child-index module-id version
-                                          start-code code))
-    (ba/incorrect "Invalid Snomed CT code in value set filter.")))
-
-(defmethod find-filter :descendent-of
-  [{{:keys [child-index]} :sct/context :sct/keys [module-id version]}
-   {:keys [value]} code]
-  (if-let [start-code (parse-sctid (type/value value))]
-    (context/find-transitive-neighbor child-index module-id version start-code
-                                      code)
-    (ba/incorrect "Invalid Snomed CT code in value set filter.")))
-
-(defmethod find-filter :default
-  [_ {:keys [op]} _]
-  (ba/unsupported (format "Unsupported filter operator `%s` in code system `%s`." (type/value op) url)))
-
 (defmethod c/find-filter :sct
   [code-system filter {{:keys [code]} :clause}]
   (when-let [code (parse-sctid code)]
-    (when-ok [found (find-filter code-system filter code)]
+    (when-ok [found (filter/satisfies-filter code-system filter code)]
       (when found
         (build-concept code-system code {:include-version true :include-designations true})))))
 
