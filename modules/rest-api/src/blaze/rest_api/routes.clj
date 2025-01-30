@@ -35,6 +35,10 @@
   {:name :auth-guard
    :wrap auth-guard/wrap-auth-guard})
 
+(def ^:private wrap-binary-data
+  {:name :binary-data
+   :wrap resource/wrap-binary-data})
+
 (def ^:private wrap-resource
   {:name :resource
    :wrap resource/wrap-resource})
@@ -111,7 +115,9 @@
                                    :blaze.rest-api.interaction/handler)})
          (contains? interactions :create)
          (assoc :post {:interaction "create"
-                       :middleware [wrap-resource]
+                       :middleware (if (= name "Binary")
+                                     [wrap-binary-data]
+                                     [wrap-resource])
                        :handler (-> interactions :create
                                     :blaze.rest-api.interaction/handler)})
          (contains? interactions :conditional-delete-type)
@@ -179,7 +185,9 @@
                                       :blaze.rest-api.interaction/handler)})
             (contains? interactions :update)
             (assoc :put {:interaction "update"
-                         :middleware [wrap-resource]
+                         :middleware (if (= name "Binary")
+                                       [wrap-binary-data]
+                                       [wrap-resource])
                          :handler (-> interactions :update
                                       :blaze.rest-api.interaction/handler)})
             (contains? interactions :delete)
