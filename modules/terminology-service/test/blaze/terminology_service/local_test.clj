@@ -5680,7 +5680,63 @@
             [(parameter "result") 0 :value] := #fhir/boolean false
             [(parameter "message") 0 :value] := #fhir/string"The provided code `system-182822#code-182832` was not found in the value set `value-set-182905`."
             [(parameter "code") 0 :value] := #fhir/code"code-182832"
-            [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))))
+            [(parameter "system") 0 :value] := #fhir/uri"system-182822")))))
+
+  (testing "with one exclusion"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-182822"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-182832"
+                 :display #fhir/string"display-182717"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-191445"
+                 :display #fhir/string"display-191448"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem.concept/property
+                   :code #fhir/code"parent"
+                   :value #fhir/code"code-182832"}]}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-182905"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-182822"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"concept"
+                    :op #fhir/code"is-a"
+                    :value #fhir/string"code-182832"}]}]
+                :exclude
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-182822"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"child"
+                    :op #fhir/code"exists"
+                    :value #fhir/string"true"}]}]}}]]]
+
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-182905"
+                "code" #fhir/code"code-191445"
+                "system" #fhir/uri"system-182822")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code-191445"
+        [(parameter "system") 0 :value] := #fhir/uri"system-182822")
+
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-182905"
+                "code" #fhir/code"code-182832"
+                "system" #fhir/uri"system-182822")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `system-182822#code-182832` was not found in the value set `value-set-182905`."
+        [(parameter "code") 0 :value] := #fhir/code"code-182832"
+        [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))
 
 (deftest value-set-validate-code-bcp-13-include-all-test
   (with-system-data [{ts ::ts/local} loinc-config]
