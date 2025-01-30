@@ -1,8 +1,7 @@
 # Operation \$expand on ValueSet
 
 > [!CAUTION]
-> The operation \$expand on ValueSet is currently **beta**. Only the basic functionality, described here, is
-> implemented.
+> The operation \$expand on ValueSet is currently **beta**. Only the parameters, described here, are implemented.
 
 The \$expand operation can be used to expand all codes of a ValueSet.
 
@@ -23,7 +22,10 @@ GET [base]/ValueSet/[id]/$expand
 | includeDefinition | 0..1        | boolean   | Controls whether the value set definition is included or excluded in value set expansions. Defaults to false.                                                                                 | 
 | activeOnly        | 0..1        | boolean   | Controls whether inactive concepts are included or excluded in value set expansions. Defaults to true.                                                                                        | 
 | excludeNested     | 0..1        | boolean   | Controls whether or not the value set expansion may nest codes or not (i.e. ValueSet.expansion.contains.contains).                                                                            | 
+| displayLanguage   | 0..1        | code      | Specifies the language to be used for description in the expansions i.e. the language to be used for ValueSet.expansion.contains.display.                                                     | 
+| property          | 0..*        | code      | A request to return a particular property in the expansion.                                                                                                                                   | 
 | system-version    | 0..*        | canonical | Specifies a version to use for a system, if the value set does not specify which one to use. The format is the same as a canonical URL: \[system\]\|\[version\] - e.g. http://loinc.org\|2.56 | 
+| tx-resource       | 0..*        | code      | Used by the Java validator.                                                                                                                                                                   |
 
 The official documentation can be found [here][1].
 
