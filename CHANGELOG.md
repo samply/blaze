@@ -6,7 +6,7 @@
 
 * Implement Direct Download of Binary Content at the Binary Endpoint ([#2108](https://github.com/samply/blaze/issues/2108))
 * Implement Parameter _total in FHIR Search ([#2226](https://github.com/samply/blaze/issues/2226)) ([docs](https://github.com/samply/blaze/blob/5efaa3a21ed4005ab7bfa876c58ebb31110a6829/docs/api.md?plain=1#L110))
-* Create Operation $compact ([#208](https://github.com/samply/blaze/issues/208)) ([docs](https://github.com/samply/blaze/blob/main/docs/api/operation-compact.md))
+* Create Operation $compact ([#208](https://github.com/samply/blaze/issues/208)) ([docs](https://github.com/samply/blaze/blob/main/docs/api/operation/compact.md))
   
 ### Bugfixes
 
@@ -34,8 +34,8 @@ The full changelog can be found [here](https://github.com/samply/blaze/milestone
 
 ### Enhancements (alpha)
 
-* Implement the delete-history Command ([#1382](https://github.com/samply/blaze/issues/1382)) ([docs](https://github.com/samply/blaze/blob/main/docs/api.md#delete-history))
-* Implement Operation $purge on Patient ([#1298](https://github.com/samply/blaze/issues/1298)) ([docs](https://github.com/samply/blaze/blob/main/docs/api/operation-patient-purge.md))
+* Implement the delete-history Command ([#1382](https://github.com/samply/blaze/issues/1382)) ([docs](https://github.com/samply/blaze/blob/main/docs/api/interaction/delete-history.md))
+* Implement Operation $purge on Patient ([#1298](https://github.com/samply/blaze/issues/1298)) ([docs](https://github.com/samply/blaze/blob/main/docs/api/operation/patient-purge.md))
 
 The full changelog can be found [here](https://github.com/samply/blaze/milestone/99?closed=1).
 

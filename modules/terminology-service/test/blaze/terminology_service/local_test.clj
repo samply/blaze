@@ -1114,6 +1114,7 @@
                ["http://loinc.org" "regex" "SCALE_TYP"]
                ["http://loinc.org" "regex" "METHOD_TYP"]
                ["http://loinc.org" "regex" "CLASS"]
+               ["http://loinc.org" "regex" "STATUS"]
                ["http://loinc.org" "regex" "ORDER_OBS"]
                ["http://snomed.info/sct" "is-a" "concept"]
                ["http://snomed.info/sct" "descendent-of" "concept"]
@@ -3276,7 +3277,7 @@
             [:expansion :contains 0 :display] := #fhir/string"Leukocytes [#/volume] in Cerebral spinal fluid"))))))
 
 (deftest expand-value-set-loinc-include-filter-equals-test
-  (testing "COMPONENT"
+  (testing "COMPONENT = LP14449-0/Hemoglobin"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP14449-0" "lp14449-0" "Hemoglobin" "hemoglobin" "HEMOGLOBIN"]]
         (given @(expand-value-set ts
@@ -3297,7 +3298,7 @@
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "718-7") 0 :display] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "PROPERTY"
+  (testing "PROPERTY = LP6870-2/Susc"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP6870-2" "lp6870-2" "Susc" "susc" "SUSC"]]
         (given @(expand-value-set ts
@@ -3318,9 +3319,9 @@
           [:expansion :contains (concept "18868-0") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "18868-0") 0 :display] := #fhir/string"Aztreonam [Susceptibility]"))))
 
-  (testing "TIME_ASPCT"
+  (testing "TIME_ASPCT = LP6960-1/Pt"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP6960-1" "lp6960-1" "PT" "pt"]]
+      (doseq [value ["LP6960-1" "lp6960-1" "Pt" "pt" "PT"]]
         (given @(expand-value-set ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -3339,7 +3340,7 @@
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "718-7") 0 :display] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "SYSTEM"
+  (testing "SYSTEM = LP7057-5/Bld"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP7057-5" "lp7057-5" "Bld" "bld" "BLD"]]
         (given @(expand-value-set ts
@@ -3360,9 +3361,9 @@
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "718-7") 0 :display] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "SCALE_TYP"
+  (testing "SCALE_TYP = LP7753-9/Qn"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP7753-9" "lp7753-9" "Qn" "qn" "Qn"]]
+      (doseq [value ["LP7753-9" "lp7753-9" "Qn" "qn" "QN"]]
         (given @(expand-value-set ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -3381,7 +3382,7 @@
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "718-7") 0 :display] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "METHOD_TYP"
+  (testing "METHOD_TYP = LP28723-2/Genotyping"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP28723-2" "lp28723-2" "Genotyping" "genotyping" "GENOTYPING"]]
         (given @(expand-value-set ts
@@ -3402,9 +3403,9 @@
           [:expansion :contains (concept "100983-6") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "100983-6") 0 :display] := #fhir/string"HIV reverse transcriptase failed codons [Identifier] by Genotype method"))))
 
-  (testing "CLASS"
+  (testing "CLASS = LP7789-3/Cyto"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP7789-3" "lp7789-3" "CYTO" "cyto"]]
+      (doseq [value ["LP7789-3" "lp7789-3" "Cyto" "cyto" "CYTO"]]
         (given @(expand-value-set ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -3421,10 +3422,11 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10 % 100)
           [:expansion :contains (concept "50971-1") 0 :system] := #fhir/uri"http://loinc.org"
-          [:expansion :contains (concept "50971-1") 0 :display] := #fhir/string"Cytology report of Bronchial brush Cyto stain")))
+          [:expansion :contains (concept "50971-1") 0 :display] := #fhir/string"Cytology report of Bronchial brush Cyto stain"))))
 
+  (testing "CLASS = LP94892-4/Laborders"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP94892-4" "lp94892-4" "LABORDERS" "laborders"]]
+      (doseq [value ["LP94892-4" "lp94892-4" "Laborders" "laborders" "LABORDERS"]]
         (given @(expand-value-set ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -3442,6 +3444,46 @@
           [:expansion :contains count] :? #(< 10 % 100)
           [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "82773-3") 0 :display] := #fhir/string"Lab result time reported"))))
+
+  (testing "STATUS = ACTIVE"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["ACTIVE" "active"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"STATUS"
+                        :op #fhir/code"="
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] :? (partial < 100)
+          [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains (concept "82773-3") 0 :display] := #fhir/string"Lab result time reported"))))
+
+  (testing "STATUS = TRIAL"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["TRIAL" "trial"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"STATUS"
+                        :op #fhir/code"="
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] :? (partial < 100)))))
 
   (testing "STATUS = DISCOURAGED"
     (with-system [{ts ::ts/local} loinc-config]
@@ -3464,28 +3506,108 @@
           [:expansion :contains (concept "69349-9") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "69349-9") 0 :display] := #fhir/string"Presence of pressure ulcers - acute [CARE]"))))
 
-  (testing "CLASSTYPE = 4 (Claims attachments)"
-    (with-system-data [{ts ::ts/local} loinc-config]
-      [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-162809"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"http://loinc.org"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"CLASSTYPE"
-                    :op #fhir/code"="
-                    :value #fhir/string"3"}]}]}}]]]
+  (testing "STATUS = DEPRECATED"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["DEPRECATED" "deprecated"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"STATUS"
+                        :op #fhir/code"="
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] :? (partial < 100)
+          [:expansion :contains (concept "29491-8") 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains (concept "29491-8") 0 :display] := #fhir/string"Deprecated Special attachment request modifier codes"))))
 
-      (given @(expand-value-set ts "url" #fhir/uri"value-set-162809")
+  (testing "CLASSTYPE = 1 (Laboratory class)"
+    (with-system [{ts ::ts/local} loinc-config]
+      (given @(expand-value-set ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://loinc.org"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code"CLASSTYPE"
+                      :op #fhir/code"="
+                      :value #fhir/string"1"}]}]}})
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? (partial < 100)
+        [:expansion :contains (concept "3694-7") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "3694-7") 0 :display] := #fhir/string"Indomethacin [Mass/volume] in Serum or Plasma")))
+
+  (testing "CLASSTYPE = 2 (Clinical class)"
+    (with-system [{ts ::ts/local} loinc-config]
+      (given @(expand-value-set ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://loinc.org"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code"CLASSTYPE"
+                      :op #fhir/code"="
+                      :value #fhir/string"2"}]}]}})
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? (partial < 100)
+        [:expansion :contains (concept "71735-5") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "71735-5") 0 :display] := #fhir/string"Personnel Credentials")))
+
+  (testing "CLASSTYPE = 3 (Claims attachments)"
+    (with-system [{ts ::ts/local} loinc-config]
+      (given @(expand-value-set ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://loinc.org"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code"CLASSTYPE"
+                      :op #fhir/code"="
+                      :value #fhir/string"3"}]}]}})
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "39215-9") 0 :system] := #fhir/uri"http://loinc.org"
         [:expansion :contains (concept "39215-9") 0 :display] := #fhir/string"Vision screen finding recency CPHS")))
 
-  (testing "ORDER_OBS"
+  (testing "CLASSTYPE = 4 (Surveys)"
+    (with-system [{ts ::ts/local} loinc-config]
+      (given @(expand-value-set ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://loinc.org"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code"CLASSTYPE"
+                      :op #fhir/code"="
+                      :value #fhir/string"4"}]}]}})
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? (partial < 100)
+        [:expansion :contains (concept "28234-3") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "28234-3") 0 :display] := #fhir/string"Unilateral neglect [CCC]")))
+
+  (testing "ORDER_OBS = Observation"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Observation" "observation" "OBSERVATION"]]
         (given @(expand-value-set ts
@@ -3504,7 +3626,70 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "18868-0") 0 :system] := #fhir/uri"http://loinc.org"
-          [:expansion :contains (concept "18868-0") 0 :display] := #fhir/string"Aztreonam [Susceptibility]")))))
+          [:expansion :contains (concept "18868-0") 0 :display] := #fhir/string"Aztreonam [Susceptibility]"))))
+
+  (testing "ORDER_OBS = Order"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["Order" "order" "ORDER"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"ORDER_OBS"
+                        :op #fhir/code"="
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] :? (partial < 100)
+          [:expansion :contains (concept "98207-4") 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains (concept "98207-4") 0 :display] := #fhir/string"Borrelia burgdorferi IgG and IgM panel - Cerebral spinal fluid by Immunoassay"))))
+
+  (testing "ORDER_OBS = Both"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["Both" "both" "BOTH"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"ORDER_OBS"
+                        :op #fhir/code"="
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] :? (partial < 100)
+          [:expansion :contains (concept "13356-1") 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains (concept "13356-1") 0 :display] := #fhir/string"Fat [Presence] in Body fluid"))))
+
+  (testing "ORDER_OBS = Subset"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["Subset" "subset" "SUBSET"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"ORDER_OBS"
+                        :op #fhir/code"="
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] :? (partial < 100)
+          [:expansion :contains (concept "100197-3") 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains (concept "100197-3") 0 :display] := #fhir/string"Exercise activity and pain severity panel")))))
 
 (deftest expand-value-set-loinc-include-filter-regex-test
   (testing "COMPONENT =~ Hemoglobin|Amprenavir"
@@ -3645,9 +3830,32 @@
           [:expansion :contains (concept "48577-1") 0 :system] := #fhir/uri"http://loinc.org"
           [:expansion :contains (concept "48577-1") 0 :display] := #fhir/string"Deprecated HFE gene c.845G>A [Presence] in Blood or Tissue by Molecular genetics method"))))
 
-  (testing "CLASS =~ CYTO|LABORDERS"
+  (testing "STATUS =~ ACTIVE|DISCOURAGED"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["CYTO|LABORDERS" "cyto|laborders"]]
+      (doseq [value ["ACTIVE|DISCOURAGED" "active|discouraged"]]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"STATUS"
+                        :op #fhir/code"regex"
+                        :value (type/string value)}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] :? #(< 100 % 100000)
+          [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains (concept "82773-3") 0 :display] := #fhir/string"Lab result time reported"
+          [:expansion :contains (concept "69349-9") 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains (concept "69349-9") 0 :display] := #fhir/string"Presence of pressure ulcers - acute [CARE]"))))
+
+  (testing "CLASS =~ Cyto|Laborders"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["Cyto|Laborders" "cyto|laborders" "CYTO|LABORDERS"]]
         (given @(expand-value-set ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -3670,7 +3878,7 @@
 
   (testing "ORDER_OBS =~ Order|Both"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["Order|Both" "ORDER|BOTH" "order|both"]]
+      (doseq [value ["Order|Both" "order|both" "ORDER|BOTH"]]
         (given @(expand-value-set ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -3749,7 +3957,7 @@
         ::anom/message := "The value set `http://loinc.org/vs/unknown-210800` was not found."))))
 
 (deftest expand-value-set-sct-include-all-test
-  (testing "including all of Snomed CT is too costly"
+  (testing "including all of SNOMED CT is too costly"
     (with-system-data [{ts ::ts/local} sct-config]
       [[[:put {:fhir/type :fhir/ValueSet :id "0"
                :url #fhir/uri"system-182137"
@@ -3761,7 +3969,7 @@
 
       (given-failed-future (expand-value-set ts "url" #fhir/uri"system-182137")
         ::anom/category := ::anom/conflict
-        ::anom/message := "Error while expanding the value set `system-182137`. Expanding all Snomed CT concepts is too costly."
+        ::anom/message := "Error while expanding the value set `system-182137`. Expanding all SNOMED CT concepts is too costly."
         :fhir/issue "too-costly"))))
 
 (deftest expand-value-set-sct-include-concept-test
@@ -5940,9 +6148,9 @@
             [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"code"]))))))
 
 (deftest value-set-validate-code-loinc-include-filter-equals-test
-  (testing "COMPONENT"
+  (testing "COMPONENT = LP14449-0/Hemoglobin"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP14449-0" "lp14449-0" "HEMOGLOBIN" "hemoglobin"]]
+      (doseq [value ["LP14449-0" "lp14449-0" "Hemoglobin" "hemoglobin" "HEMOGLOBIN"]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -5964,7 +6172,7 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "PROPERTY"
+  (testing "PROPERTY = LP6870-2/Susc"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP6870-2" "lp6870-2" "Susc" "susc" "SUSC"]]
         (given @(value-set-validate-code ts
@@ -5988,9 +6196,9 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Aztreonam [Susceptibility]"))))
 
-  (testing "TIME_ASPCT"
+  (testing "TIME_ASPCT = LP6960-1/Pt"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP6960-1" "lp6960-1" "PT" "pt"]]
+      (doseq [value ["LP6960-1" "lp6960-1" "Pt" "pt" "PT"]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -6012,9 +6220,9 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "SYSTEM"
+  (testing "SYSTEM = LP7057-5/Bld"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP7057-5" "lp7057-5" "BLD" "bld"]]
+      (doseq [value ["LP7057-5" "lp7057-5" "Bld" "bld" "BLD"]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -6036,9 +6244,9 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "SCALE_TYP"
+  (testing "SCALE_TYP = LP7753-9/Qn"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP7753-9" "lp7753-9" "QN" "qn"]]
+      (doseq [value ["LP7753-9" "lp7753-9" "Qn" "qn" "QN"]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -6060,7 +6268,7 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Hemoglobin [Mass/volume] in Blood"))))
 
-  (testing "METHOD_TYP"
+  (testing "METHOD_TYP = LP28723-2/Genotyping"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP28723-2" "lp28723-2" "Genotyping" "genotyping" "GENOTYPING"]]
         (given @(value-set-validate-code ts
@@ -6084,9 +6292,9 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"HIV reverse transcriptase failed codons [Identifier] by Genotype method"))))
 
-  (testing "CLASS"
+  (testing "CLASS = LP7789-3/Cyto"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["LP7789-3" "lp7789-3" "CYTO" "cyto"]]
+      (doseq [value ["LP7789-3" "lp7789-3" "Cyto" "cyto" "CYTO"]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -6106,9 +6314,11 @@
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code"50971-1"
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
-          [(parameter "display") 0 :value] := #fhir/string"Cytology report of Bronchial brush Cyto stain"))
+          [(parameter "display") 0 :value] := #fhir/string"Cytology report of Bronchial brush Cyto stain"))))
 
-      (doseq [value ["LP94892-4" "lp94892-4" "LABORDERS" "laborders"]]
+  (testing "CLASS = LP94892-4/Laborders"
+    (with-system [{ts ::ts/local} loinc-config]
+      (doseq [value ["LP94892-4" "lp94892-4" "Laborders" "laborders" "LABORDERS"]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -6130,7 +6340,7 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Lab result time reported"))))
 
-  (testing "STATUS"
+  (testing "STATUS = DISCOURAGED"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["DISCOURAGED" "discouraged"]]
         (given @(value-set-validate-code ts
@@ -6155,22 +6365,20 @@
           [(parameter "display") 0 :value] := #fhir/string"Presence of pressure ulcers - acute [CARE]"))))
 
   (testing "CLASSTYPE = 3 (Claims attachments)"
-    (with-system-data [{ts ::ts/local} loinc-config]
-      [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-162809"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"http://loinc.org"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"CLASSTYPE"
-                    :op #fhir/code"="
-                    :value #fhir/string"3"}]}]}}]]]
-
+    (with-system [{ts ::ts/local} loinc-config]
       (given @(value-set-validate-code ts
-                "url" #fhir/uri"value-set-162809"
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://loinc.org"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code"CLASSTYPE"
+                      :op #fhir/code"="
+                      :value #fhir/string"3"}]}]}}
                 "code" #fhir/code"39215-9"
                 "system" #fhir/uri"http://loinc.org")
         :fhir/type := :fhir/Parameters
@@ -6179,9 +6387,9 @@
         [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
         [(parameter "display") 0 :value] := #fhir/string"Vision screen finding recency CPHS")))
 
-  (testing "ORDER_OBS"
+  (testing "ORDER_OBS = Observation"
     (with-system [{ts ::ts/local} loinc-config]
-      (doseq [value ["Observation" "OBSERVATION" "observation"]]
+      (doseq [value ["Observation" "observation" "OBSERVATION"]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -6455,8 +6663,8 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Deprecated HFE gene c.845G>A [Presence] in Blood or Tissue by Molecular genetics method"))))
 
-  (testing "CLASS =~ CYTO|LABORDERS"
-    (doseq [value ["CYTO|LABORDERS" "cyto|laborders"]]
+  (testing "CLASS =~ Cyto|Laborders"
+    (doseq [value ["Cyto|Laborders" "CYTO|LABORDERS" "cyto|laborders"]]
       (with-system-data [{ts ::ts/local} loinc-config]
         [[[:put {:fhir/type :fhir/ValueSet :id "0"
                  :url #fhir/uri"value-set-183437"

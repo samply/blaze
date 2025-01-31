@@ -8,31 +8,25 @@
 (defn- case-insensitive-pattern [value]
   (re-pattern (str "(?i)" value)))
 
+(defn- matches
+  "should be a full match
+  see: https://chat.fhir.org/#narrow/channel/179202-terminology/topic/ValueSet.20.60regex.60.20op"
+  [f value]
+  (filter #(re-matches (case-insensitive-pattern value) (f %))))
+
 (defn- expand-filter-regex [{:loinc/keys [context]} index value]
   (if (nil? value)
     (ba/incorrect (format "Missing %s regex filter value in code system `%s`."
                           (context/property-name-from-index index) url))
     (let [index (index context)]
-      (into
-       []
-       (comp
-        ;; should be a full match
-        ;; see https://chat.fhir.org/#narrow/channel/179202-terminology/topic/ValueSet.20.60regex.60.20op
-        (filter #(re-matches (case-insensitive-pattern value) %))
-        (mapcat index))
-       (keys index)))))
+      (into [] (comp (matches identity value) (mapcat index)) (keys index)))))
 
-(defn- expand-filter-regex-order-obs [{{:keys [order-obs-index]} :loinc/context} value]
+(defn- expand-filter-regex-keyword [{:loinc/keys [context]} index value]
   (if (nil? value)
-    (ba/incorrect (format "Missing ORDER_OBS regex filter value in code system `%s`." url))
-    (into
-     []
-     (comp
-      ;; should be a full match
-      ;; see https://chat.fhir.org/#narrow/channel/179202-terminology/topic/ValueSet.20.60regex.60.20op
-      (filter #(re-matches (case-insensitive-pattern value) (name %)))
-      (mapcat order-obs-index))
-     (keys order-obs-index))))
+    (ba/incorrect (format "Missing %s regex filter value in code system `%s`."
+                          (context/property-name-from-index index) url))
+    (let [index (index context)]
+      (into [] (comp (matches name value) (mapcat index)) (keys index)))))
 
 (defmethod core/expand-filter :regex
   [code-system {:keys [property value]}]
@@ -44,7 +38,8 @@
     "SCALE_TYP" (expand-filter-regex code-system :scale-index (type/value value))
     "METHOD_TYP" (expand-filter-regex code-system :method-index (type/value value))
     "CLASS" (expand-filter-regex code-system :class-index (type/value value))
-    "ORDER_OBS" (expand-filter-regex-order-obs code-system (type/value value))
+    "STATUS" (expand-filter-regex-keyword code-system :status-index (type/value value))
+    "ORDER_OBS" (expand-filter-regex-keyword code-system :order-obs-index (type/value value))
     nil (ba/incorrect (format "Missing regex filter property in code system `%s`." url))
     (ba/unsupported (format "Unsupported regex filter property `%s` in code system `%s`." (type/value property) url))))
 

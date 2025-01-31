@@ -1437,7 +1437,7 @@
     :blaze.terminology-service.local.code-system/loinc {}}}
 
   {:key :terminology-sct
-   :name "Snomed CT Terminology"
+   :name "SNOMED CT Terminology"
    :toggle "ENABLE_TERMINOLOGY_SNOMED_CT"
    :config
    {:blaze.terminology-service/local

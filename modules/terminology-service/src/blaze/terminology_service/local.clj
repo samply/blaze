@@ -199,7 +199,7 @@
     sct (assoc :sct/context sct)))
 
 (defn- ensure-code-systems
-  "Ensures that all code systems of internal terminologies like Snomed CT are
+  "Ensures that all code systems of internal terminologies like SNOMED CT are
   present in the database node."
   [{:keys [enable-bcp-13 enable-ucum] :as config}
    {loinc-context :loinc/context

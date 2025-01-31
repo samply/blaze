@@ -1,10 +1,11 @@
-# Blaze
+<img src="docs/blaze-logo.svg" alt="Blaze" height="48">
 
 [![Build](https://github.com/samply/blaze/actions/workflows/build.yml/badge.svg)](https://github.com/samply/blaze/actions/workflows/build.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/samply/blaze/badge)](https://scorecard.dev/viewer/?uri=github.com/samply/blaze)
 [![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
 [![Code Coverage](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
 [![Latest Release](https://img.shields.io/github/v/release/samply/blaze?color=1874a7)][5]
+[![Docs](https://img.shields.io/badge/Docs-blue.svg)](https://samply.github.io/blaze)
 
 A FHIR® Store with internal, fast CQL Evaluation Engine
 
@@ -22,42 +23,9 @@ Blaze is widely used in the [Medical Informatics Initiative](https://www.medizin
 
 Latest release: [v0.31.0][5]
 
-## Quick Start
-
-In order to run Blaze just execute the following:
-
-### Docker
-
-```sh
-docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:latest
-```
-
-Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
-
-Please refer to [Deployment](docs/deployment/README.md) for the full documentation.
-
 ## Documentation
 
-* [Deployment](docs/deployment/README.md)
-* [FHIR RESTful API](docs/api.md)
-* [Frontend (Web UI)](docs/frontend.md)
-* [Importing Data](docs/importing-data.md)
-* [Sync Data](docs/data-sync.md)
-* [Conformance](docs/conformance.md)
-* [Performance](docs/performance.md)
-* [Monitoring](docs/monitoring.md)
-* [Tuning Guide](docs/tuning-guide.md)
-* [Tooling](docs/tooling.md)
-* [CQL Queries](docs/cql-queries.md)
-* [Terminology Service](docs/terminology-service.md)
-* [Authentication](docs/authentication.md)
-* [Architecture](docs/architecture.md)
-* [Implementation](docs/implementation/README.md)
-
-## Development
-
-Pull requests are welcome. Please consider the [development](DEVELOPMENT.md) documentation before creating one.
+Documentation can be found [here](https://samply.github.io/blaze).
 
 ## YourKit Profiler
 
@@ -67,7 +35,7 @@ The developers of Blaze uses the YourKit profiler to optimize performance. YourK
 
 ## License
 
-Copyright 2019 - 2024 The Samply Community
+Copyright 2019 - 2025 The Samply Community
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 

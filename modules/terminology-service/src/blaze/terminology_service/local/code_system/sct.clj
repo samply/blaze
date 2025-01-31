@@ -60,7 +60,7 @@
 (defmethod c/expand-complete :sct
   [_ _]
   (ba/conflict
-   "Expanding all Snomed CT concepts is too costly."
+   "Expanding all SNOMED CT concepts is too costly."
    :fhir/issue "too-costly"))
 
 (defn- synonym-designation [synonym]
@@ -141,15 +141,15 @@
 
 (defmethod ig/init-key ::cs/sct
   [_ {:keys [release-path]}]
-  (log/info "Start reading Snomed CT release files...")
+  (log/info "Start reading SNOMED CT release files...")
   (let [start (System/nanoTime)
         context (ba/throw-when (context/build release-path))]
-    (log/info "Successfully read Snomed CT release files in"
+    (log/info "Successfully read SNOMED CT release files in"
               (format "%.1f" (u/duration-s start)) "seconds")
     context))
 
 (defn ensure-code-systems
-  "Ensures that all Snomed CT code systems are present in the database node."
+  "Ensures that all SNOMED CT code systems are present in the database node."
   {:arglists '([context sct-context])}
   [{:keys [node] :as context} {:keys [code-systems]}]
   (-> (cs-u/code-system-versions (d/db node) url)
@@ -157,6 +157,6 @@
        (fn [existing-versions]
          (let [tx-ops (cs-u/tx-ops context existing-versions code-systems)]
            (if (seq tx-ops)
-             (do (log/debug "Create" (count tx-ops) "new Snomed CT CodeSystem resources...")
+             (do (log/debug "Create" (count tx-ops) "new SNOMED CT CodeSystem resources...")
                  (d/transact node tx-ops))
              (ac/completed-future nil)))))))

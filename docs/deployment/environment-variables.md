@@ -115,11 +115,11 @@ More information about distributed deployment are available [here](distributed-b
 | CQL_EXPR_CACHE_THREADS                  | 4                          | v0.28   | —      | The maximum number of parallel Bloom filter calculations for the CQL expression cache.                      |
 | ALLOW_MULTIPLE_DELETE                   | false                      | v0.30   | —      | Allow deleting multiple resources using [Conditional Delete](../api.md#conditional-delete).                 |
 | ENABLE_INTERACTION_DELETE_HISTORY       | -                          | v0.30.1 | —      | Enable the [Delete History](../api.md#delete-history) interaction.                                          |
-| ENABLE_OPERATION_PATIENT_PURGE          | -                          | v0.30.1 | —      | Enable the [Operation \$purge on Patient](../api/operation-patient-purge.md).                               |
+| ENABLE_OPERATION_PATIENT_PURGE          | -                          | v0.30.1 | —      | Enable the [Operation \$purge on Patient](../api/operation/patient-purge.md).                               |
 | ENABLE_TERMINOLOGY_SERVICE              | -                          | v0.31   | —      | Enable the [Terminology Service](../terminology-service.md).                                                |
 | ENABLE_TERMINOLOGY_LOINC                | -                          | v0.32   | —      | Enable LOINC for the Terminology Service. LOINC doesn't need release files.                                 |
-| ENABLE_TERMINOLOGY_SNOMED_CT            | -                          | v0.31   | —      | Enable Snomed CT for the Terminology Service.                                                               |
-| SNOMED_CT_RELEASE_PATH                  | -                          | v0.31   | —      | Path of an official Snomed CT release.                                                                      |
+| ENABLE_TERMINOLOGY_SNOMED_CT            | -                          | v0.31   | —      | Enable SNOMED CT for the Terminology Service.                                                               |
+| SNOMED_CT_RELEASE_PATH                  | -                          | v0.31   | —      | Path of an official SNOMED CT release.                                                                      |
 
 ¹ Deprecated
 
