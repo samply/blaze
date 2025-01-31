@@ -102,7 +102,7 @@ define InInitialPopulation:
 
 are compiled to Blaze expressions:
 
-```edn
+```clojure
 (or
  (or
   (or

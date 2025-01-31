@@ -57,7 +57,7 @@ Blaze will be configured through environment variables which are documented [her
 
 A Docker Compose file looks like this:
 
-```text
+```yaml
 services:
   blaze:
     image: "samply/blaze:latest"
@@ -77,7 +77,7 @@ Per default, Blaze supports FHIR Search on all FHIR R4 search parameters. Howeve
 
 ### Example Config
 
-```text
+```yaml
 services:
   blaze:
     image: "samply/blaze:latest"

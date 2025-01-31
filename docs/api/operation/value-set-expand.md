@@ -1,4 +1,4 @@
-# Operation \$expand on ValueSet
+# Operation \$expand on ValueSet <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="unreleased"/>
 
 > [!CAUTION]
 > The operation \$expand on ValueSet is currently **beta**. Only the parameters, described here, are implemented.

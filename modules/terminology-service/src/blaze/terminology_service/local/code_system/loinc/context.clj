@@ -230,7 +230,7 @@
     :time-index "TIME_ASPCT"
     :scale-index "SCALE_TYP"
     :method-index "METHOD_TYP"
-    (-> index name (str/split #"-") first str/upper-case)))
+    (->> (-> index name (str/split #"-") butlast) (str/join "_") str/upper-case)))
 
 (defn property-name-from-key [key]
   (condp = key

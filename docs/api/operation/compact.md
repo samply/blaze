@@ -1,7 +1,4 @@
-# Operation \$compact
-
-> [!NOTE]
-> The system level \$compact operation is only activated if the [Admin API](./admin.md) is activated.
+# Operation \$compact <Badge type="info" text="Feature: ADMIN_API"/> <Badge type="warning" text="v0.31.0"/>
 
 The system level \$compact operation is used to compact column families of RocksDB databases. RockDB compaction is done automatically but in certain situations manual compaction can be useful.
 

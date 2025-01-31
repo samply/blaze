@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/../scripts/util.sh"
 
-# Doesn't need Snomed CT
+# Doesn't need SNOMED CT
 java -jar validator_cli.jar -version 4.0.1 -level error \
   -output-style csv -output result.csv \
   -tx http://localhost:8080/fhir \

@@ -15,7 +15,7 @@
   (testing "invalid"
     (given (u/module-version "http://snomed.info/sct/900000000000207008/version")
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Incorrectly formatted Snomed CT version `http://snomed.info/sct/900000000000207008/version`."))
+      ::anom/message := "Incorrectly formatted SNOMED CT version `http://snomed.info/sct/900000000000207008/version`."))
 
   (testing "valid"
     (is (= (u/module-version "http://snomed.info/sct/900000000000207008/version/20220228")

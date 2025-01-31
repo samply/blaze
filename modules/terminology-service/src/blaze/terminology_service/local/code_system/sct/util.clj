@@ -9,4 +9,4 @@
 (defn module-version [version]
   (if-let [[_ module version] (re-find #"http\:\/\/snomed\.info\/sct\/(\d+)\/version\/(\d{8})" version)]
     [(parse-sctid module) (parse-sctid version)]
-    (ba/incorrect (format "Incorrectly formatted Snomed CT version `%s`." version))))
+    (ba/incorrect (format "Incorrectly formatted SNOMED CT version `%s`." version))))

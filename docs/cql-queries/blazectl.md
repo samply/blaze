@@ -1,4 +1,4 @@
-# Evaluate a CQL Measure using the Command Line and Blazectl
+# CQL Queries with blazectl
 
 This section describes how to evaluate a CQL measure using the command line only.
 

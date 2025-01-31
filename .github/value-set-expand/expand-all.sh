@@ -37,7 +37,7 @@ for url in $(blazectl --server "$BASE" download ValueSet -q "_elements=url&_coun
   elif [ "$url" == "http://hl7.org/fhir/ValueSet/observation-codes" ]; then
     continue
   elif echo "$url" | grep -q -E "^http://hl7\.org/fhir/ValueSet/(questionnaire-answers|condition-predecessor|sequence-species|condition-cause|dataelement-sdcobjectclass)$"; then
-    # Expanding all Snomed CT concepts is too costly
+    # Expanding all SNOMED CT concepts is too costly
     continue
   elif echo "$url" | grep -q -E "^http://hl7\.org/fhir/ValueSet/(texture-code|supplement-type|consistency-type|entformula-type)$"; then
     # unsupported SCT US Edition
