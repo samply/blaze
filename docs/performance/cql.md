@@ -8,17 +8,15 @@ For the CQL queries analyzed here, the relative performance of query evaluation 
 
 The following systems with rising resources were used for performance evaluation:
 
-| System | Provider | CPU         | Cores |     RAM |  SSD | Heap Mem ¹ | Block Cache ² | Resource Cache ³ |
-|--------|----------|-------------|------:|--------:|-----:|-----------:|--------------:|-----------------:|
-| LEA25  | on-prem  | EPYC 7543P  |     4 |  32 GiB | 2 TB |      8 GiB |         8 GiB |            2.5 M | 
-| LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB | 2 TB |     16 GiB |        16 GiB |              5 M | 
-| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 2 TB |     32 GiB |        32 GiB |             10 M | 
-| LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB | 2 TB |     64 GiB |        64 GiB |             20 M | 
-| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 2 TB |     24 GiB |        24 GiB |             10 M | 
+| System | Provider | CPU         | Cores |     RAM |  SSD |
+|--------|----------|-------------|------:|--------:|-----:|
+| LEA25  | on-prem  | EPYC 7543P  |     4 |  32 GiB | 2 TB | 
+| LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB | 2 TB | 
+| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 2 TB | 
+| LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB | 2 TB | 
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 2 TB | 
 
-¹ Size of the Java Heap (`JAVA_TOOL_OPTIONS`)
-² Size of the block cache (`DB_BLOCK_CACHE_SIZE`)
-³ Size of the resource cache (`DB_RESOURCE_CACHE_SIZE`)
+All systems were configured according the [Tuning Guide](../tuning-guide.md).
 
 All systems have in common that the heap mem and the block cache both use 1/4 of the total available memory each. So the Blaze process itself will only use about half the system memory available. The rest of the system memory will be used as file system cache. 
 
@@ -26,11 +24,11 @@ All systems have in common that the heap mem and the block cache both use 1/4 of
 
 The following datasets were used:
 
-| Dataset | History  | # Pat. ¹ | # Res. ² | # Obs. ³ | SSD Size |
-|---------|----------|---------:|---------:|---------:|---------:|
-| 100k    | 10 years |    100 k |    104 M |     59 M |  202 GiB |
-| 100k-fh | full     |    100 k |    317 M |    191 M |  323 GiB |
-| 1M      | 10 years |      1 M |   1044 M |    593 M | 1045 GiB |
+| Dataset | History  | # Pat. ¹ | # Res. ² | # Obs. ³ | Size on SSD |
+|---------|----------|---------:|---------:|---------:|------------:|
+| 100k    | 10 years |    100 k |    104 M |     59 M |     202 GiB |
+| 100k-fh | full     |    100 k |    317 M |    191 M |     323 GiB |
+| 1M      | 10 years |      1 M |   1044 M |    593 M |    1045 GiB |
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
 

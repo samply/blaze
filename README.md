@@ -1,4 +1,4 @@
-<img src="docs/blaze-logo.svg" alt="Blaze" height="48">
+<img src="docs/public/blaze-logo.svg" alt="Blaze" height="48">
 
 [![Build](https://github.com/samply/blaze/actions/workflows/build.yml/badge.svg)](https://github.com/samply/blaze/actions/workflows/build.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/samply/blaze/badge)](https://scorecard.dev/viewer/?uri=github.com/samply/blaze)

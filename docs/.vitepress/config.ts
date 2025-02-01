@@ -54,6 +54,7 @@ export default defineConfig({
                         items: [
                             {
                                 text: 'Instance Level',
+                                collapsed: true,
                                 items: [
                                     {text: 'Read', link: '/api/interaction/read'},
                                     {text: 'Versioned Read', link: '/api/interaction/vread'},
@@ -65,6 +66,7 @@ export default defineConfig({
                             },
                             {
                                 text: 'Type Level',
+                                collapsed: true,
                                 items: [
                                     {text: 'Create', link: '/api/interaction/create'},
                                     {text: 'Search', link: '/api/interaction/search-type'},
@@ -73,6 +75,7 @@ export default defineConfig({
                             },
                             {
                                 text: 'System Level',
+                                collapsed: true,
                                 items: [
                                     {text: 'Capabilities', link: '/api/interaction/capabilities'},
                                     {text: 'Transaction', link: '/api/interaction/transaction'},
@@ -88,24 +91,28 @@ export default defineConfig({
                         items: [
                             {
                                 text: 'System',
+                                collapsed: true,
                                 items: [
                                     {text: '$compact', link: '/api/operation/compact'},
                                 ],
                             },
                             {
                                 text: 'CodeSystem',
+                                collapsed: true,
                                 items: [
                                     {text: '$validate-code', link: '/api/operation/code-system-validate-code'},
                                 ],
                             },
                             {
                                 text: 'Measure',
+                                collapsed: true,
                                 items: [
                                     {text: '$evaluate-measure', link: '/api/operation/measure-evaluate-measure'},
                                 ],
                             },
                             {
                                 text: 'Patient',
+                                collapsed: true,
                                 items: [
                                     {text: '$everything', link: '/api/operation/patient-everything'},
                                     {text: '$purge', link: '/api/operation/patient-purge'},
@@ -113,6 +120,7 @@ export default defineConfig({
                             },
                             {
                                 text: 'ValueSet',
+                                collapsed: true,
                                 items: [
                                     {text: '$expand', link: '/api/operation/value-set-expand'},
                                     {text: '$validate-code', link: '/api/operation/value-set-validate-code'},
@@ -171,6 +179,7 @@ export default defineConfig({
                             {text: 'CQL', link: '/performance/cql'},
                             {text: 'FHIR Search', link: '/performance/fhir-search'},
                             {text: 'Import', link: '/performance/import'},
+                            {text: 'Load Testing', link: '/performance/load-testing'},
                         ]
                     },
                     {text: 'Architecture', link: '/architecture'},
