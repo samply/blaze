@@ -35,6 +35,8 @@ services:
     image: "samply/blaze:latest"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx8g"
+      DB_BLOCK_CACHE_SIZE: "2048"
+      DB_RESOURCE_CACHE_SIZE: "100000"
       ENABLE_TERMINOLOGY_SERVICE: true
       ENABLE_TERMINOLOGY_LOINC: true
       ENABLE_TERMINOLOGY_SNOMED_CT: true

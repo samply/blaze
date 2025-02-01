@@ -2,18 +2,29 @@
 
 ## Systems
 
-The following systems with rising resources were used for performance evaluation:
+The following systems were used for performance evaluation:
 
-| System | Provider | CPU         | Cores |     RAM |  SSD | Heap Mem ¹ | Block Cache ² | Resource Cache ³ |
-|--------|----------|-------------|------:|--------:|-----:|-----------:|--------------:|-----------------:|
-| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 2 TB |     24 GiB |        24 GiB |              5 M |
+| System | Provider | CPU         | Cores |     RAM |  SSD |
+|--------|----------|-------------|------:|--------:|-----:|
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB |
+
+All systems were configured according the [Tuning Guide](../tuning-guide.md).
+
+## Datasets
+
+The following datasets were used:
+
+| Dataset | History  | # Pat. ¹ | # Res. ² | # Obs. ³ | Size on SSD |
+|---------|----------|---------:|---------:|---------:|------------:|
+| 1M      | 10 years |      1 M |   1044 M |    593 M |    1045 GiB |
+
+¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
 
 ## Methods
 
-The load testing tool [k6][1] is used to create load from another host in the same network as the test system. The test system starts with an empty database.
+The load testing tool [k6][1] is used to create load from another host in the same network as the test system.
 
 ## Single Patient Reads
-
 
 ### Results
 
