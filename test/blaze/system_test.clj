@@ -27,7 +27,7 @@
    [blaze.system :as system]
    [blaze.system-spec]
    [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service.local]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
@@ -225,12 +225,14 @@
    ::ts/local
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}
    ::page-store {}
-   :blaze.test/page-id-cipher {}))
+   :blaze.test/page-id-cipher {}
+   ::ts-local/graph-cache {}))
 
 (defmethod ig/init-key ::auth-backend
   [_ _]

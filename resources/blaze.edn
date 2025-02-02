@@ -1421,8 +1421,16 @@
     {:node #blaze/ref :blaze.db.main/node
      :clock #blaze/ref :blaze/clock
      :rng-fn #blaze/ref :blaze/rng-fn
+     :graph-cache #blaze/ref :blaze.terminology-service.local/graph-cache
      :enable-bcp-13 true
      :enable-ucum true}
+
+    :blaze.terminology-service.local/graph-cache
+    {:num-concepts #blaze/cfg ["TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE" nat-int? 100000]}
+
+    :blaze/cache-collector
+    {:caches
+     {"terminology-service-graph-cache" #blaze/ref :blaze.terminology-service.local/graph-cache}}
 
     :blaze.rest-api/capabilities-handler
     {:terminology-service #blaze/ref :blaze.terminology-service/local}}}

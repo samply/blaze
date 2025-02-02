@@ -7,7 +7,8 @@ Load tests use [k6][1].
 You need to [install k6][2].
 
 ```sh
-export ACCESS_TOKEN = ...
+export BASE="http://localhost:8080/fhir"
+export ACCESS_TOKEN=...
 make run-patient-everything
 make report
 ```

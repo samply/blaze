@@ -14,7 +14,7 @@
    [blaze.rest-api.capabilities-handler]
    [blaze.rest-api.routes-spec]
    [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service.local]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu :refer [given-thrown]]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
@@ -148,9 +148,11 @@
    ::ts/local
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
    :blaze.test/fixed-rng-fn {}
-   :blaze.test/page-id-cipher {}))
+   :blaze.test/page-id-cipher {}
+   ::ts-local/graph-cache {}))
 
 (defmethod ig/init-key ::empty-structure-definition-repo
   [_ _]

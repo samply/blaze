@@ -9,7 +9,7 @@
    [blaze.rest-api.header-spec]
    [blaze.rest-api.spec]
    [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service.local]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -384,8 +384,10 @@
        ::ts/local
        {:node (ig/ref :blaze.db/node)
         :clock (ig/ref :blaze.test/fixed-clock)
-        :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-       :blaze.test/fixed-rng-fn {})))
+        :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+        :graph-cache (ig/ref ::ts-local/graph-cache)}
+       :blaze.test/fixed-rng-fn {}
+       ::ts-local/graph-cache {})))
 
 (deftest terminology-test
   (testing "with no code system"

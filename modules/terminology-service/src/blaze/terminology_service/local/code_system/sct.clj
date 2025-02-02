@@ -72,8 +72,9 @@
 
 (defn- assoc-designations
   [concept {{:keys [synonym-index]} :sct/context :sct/keys [version]} code]
-  (when-let [synonyms (context/find-description synonym-index code version)]
-    (assoc concept :designation (mapv synonym-designation synonyms))))
+  (let [synonyms (context/find-description synonym-index code version)]
+    (cond-> concept
+      synonyms (assoc :designation (mapv synonym-designation synonyms)))))
 
 (defn- build-concept
   [{{:keys [fully-specified-name-index]} :sct/context
