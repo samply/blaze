@@ -16,9 +16,7 @@ export const options = {
 	]
 };
 
-const base = 'https://blaze.srv.local/fhir';
-//const base = 'http://localhost:8080/fhir';
-//const base = 'http://blaze-test-host:8080/fhir';
+const base = __ENV.BASE;
 const accessToken = __ENV.ACCESS_TOKEN;
 
 const commonHeaders = {

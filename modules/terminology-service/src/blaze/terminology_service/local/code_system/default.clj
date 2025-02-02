@@ -14,7 +14,11 @@
    [blaze.terminology-service.local.code-system.filter.regex]
    [blaze.terminology-service.local.graph :as graph]
    [blaze.terminology-service.local.priority :as priority]
-   [clojure.string :as str]))
+   [clojure.string :as str])
+  (:import
+   [com.github.benmanes.caffeine.cache Cache]))
+
+(set! *warn-on-reflection* true)
 
 (defn- clauses [url version]
   (cond-> [["url" url]] version (conj ["version" version])))
@@ -31,14 +35,19 @@
     (format "The code system `%s|%s` was not found." url version)
     (format "The code system `%s` was not found." url)))
 
+(defn- get-graph
+  [cache {:keys [id] {version :versionId} :meta :as code-system}]
+  (let [key (str id (type/value version))]
+    (.get ^Cache cache key (fn [_] (graph/build-graph (:concept code-system))))))
+
 (defmethod c/find :default
-  [{:keys [db] ::cs/keys [required-content]
+  [{:keys [db] ::cs/keys [required-content graph-cache]
     :or {required-content #{"complete" "fragment"}}}
    url & [version]]
   (do-sync [code-systems (d/pull-many db (d/type-query db "CodeSystem" (clauses url version)))]
-    (if-let [{:keys [content] concepts :concept :as code-system} (first (priority/sort-by-priority code-systems))]
+    (if-let [{:keys [content] :as code-system} (first (priority/sort-by-priority code-systems))]
       (if (required-content (type/value content))
-        (assoc code-system :default/graph (graph/build-graph concepts))
+        (assoc code-system :default/graph (get-graph graph-cache code-system))
         (code-system-not-required-content-anom code-system required-content))
       (ba/not-found (not-found-msg url version)))))
 

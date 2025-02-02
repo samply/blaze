@@ -10,7 +10,7 @@
    [blaze.path :refer [path]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service-spec]
-   [blaze.terminology-service.local]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system-spec]
    [blaze.terminology-service.local.code-system.loinc.spec]
@@ -49,7 +49,8 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
 
   (testing "invalid node"
     (given-thrown (ig/init {::ts/local {:node ::invalid}})
@@ -57,9 +58,10 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :via] := [:blaze.db/node]
-      [:cause-data ::s/problems 2 :pred] := `node?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))
+      [:cause-data ::s/problems 3 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 3 :pred] := `node?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid clock"
     (given-thrown (ig/init {::ts/local {:clock ::invalid}})
@@ -67,9 +69,10 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :via] := [:blaze/clock]
-      [:cause-data ::s/problems 2 :pred] := `time/clock?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))
+      [:cause-data ::s/problems 3 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 3 :pred] := `time/clock?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid rng-fn"
     (given-thrown (ig/init {::ts/local {:rng-fn ::invalid}})
@@ -77,9 +80,10 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :via] := [:blaze/rng-fn]
-      [:cause-data ::s/problems 2 :pred] := `fn?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))
+      [:cause-data ::s/problems 3 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 3 :pred] := `fn?
+      [:cause-data ::s/problems 3 :val] := ::invalid)))
 
 (def config
   (assoc
@@ -87,9 +91,11 @@
    ::ts/local
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
    :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}))
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
 
 (def bcp-13-config
   (assoc
@@ -98,9 +104,11 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)
     :enable-bcp-13 true}
    :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}))
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
 
 ;; put LOINC data into an opaque function, so that it can't be introspected
 ;; by dev tooling, because it's just large
@@ -120,9 +128,11 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)
     :loinc (ig/ref ::loinc)}
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}
    ::loinc {}))
 
 (def sct-config
@@ -132,9 +142,11 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)
     :sct (ig/ref ::cs/sct)}
    :blaze.test/fixed-clock {}
    :blaze.test/incrementing-rng-fn {}
+   ::ts-local/graph-cache {}
    ::cs/sct {:release-path (path "sct-release")}))
 
 (def ucum-config
@@ -144,9 +156,11 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)
     :enable-ucum true}
    :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}))
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
 
 (def complete-config
   (assoc
@@ -155,12 +169,14 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)
     :enable-bcp-13 true
     :enable-ucum true
     :loinc (ig/ref ::loinc)
     :sct (ig/ref ::cs/sct)}
    :blaze.test/fixed-clock {}
    :blaze.test/incrementing-rng-fn {}
+   ::ts-local/graph-cache {}
    ::loinc {}
    ::cs/sct {:release-path (path "sct-release")}))
 
@@ -4194,18 +4210,28 @@
         (given @(apply expand-value-set ts request)
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 3
-          [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains 0 #(contains? % :inactive)] := false
-          [:expansion :contains 0 :code] := #fhir/code"445295009"
-          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
-          [:expansion :contains 1 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains 1 #(contains? % :inactive)] := false
-          [:expansion :contains 1 :code] := #fhir/code"57921000052103"
-          [:expansion :contains 1 :display] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
-          [:expansion :contains 2 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains 2 #(contains? % :inactive)] := false
-          [:expansion :contains 2 :code] := #fhir/code"441510007"
-          [:expansion :contains 2 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
+          [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false
+          [:expansion :contains (concept "57921000052103") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "57921000052103") 0 :display] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "57921000052103") 0 #(contains? % :inactive)] := false
+          [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [:expansion :contains (concept "441510007") 0 #(contains? % :inactive)] := false))
+
+      (testing "with older version before 57921000052103 was introduced"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"value-set-152706"
+                  "system-version" #fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/20220131")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 2
+          [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false
+          [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [:expansion :contains (concept "441510007") 0 #(contains? % :inactive)] := false)))
 
     (testing "with many children"
       (with-system-data [{ts ::ts/local} sct-config]
@@ -4280,14 +4306,22 @@
         (given @(apply expand-value-set ts request)
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 2
-          [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains 0 #(contains? % :inactive)] := false
-          [:expansion :contains 0 :code] := #fhir/code"445295009"
-          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
-          [:expansion :contains 1 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains 1 #(contains? % :inactive)] := false
-          [:expansion :contains 1 :code] := #fhir/code"57921000052103"
-          [:expansion :contains 1 :display] := #fhir/string"Whole blood specimen with edetic acid (specimen)")))
+          [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false
+          [:expansion :contains (concept "57921000052103") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "57921000052103") 0 :display] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "57921000052103") 0 #(contains? % :inactive)] := false))
+
+      (testing "with older version before 57921000052103 was introduced"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"value-set-152706"
+                  "system-version" #fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/20220131")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
+          [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false)))
 
     (testing "with many children"
       (with-system-data [{ts ::ts/local} sct-config]
@@ -7071,6 +7105,7 @@
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))))
 
 (deftest value-set-validate-code-sct-include-filter-is-a-test
+  (log/set-min-level! :info)
   (with-system-data [{ts ::ts/local} sct-config]
     [[[:put {:fhir/type :fhir/ValueSet :id "0"
              :url #fhir/uri"value-set-113851"
@@ -7108,6 +7143,36 @@
         [(parameter "display") 0 :value] := #fhir/string"Blood specimen with edetic acid (specimen)"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+    (testing "grand child code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"57921000052103"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"57921000052103"
+        [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")
+
+      (testing "with older version before 57921000052103 was introduced"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"57921000052103"
+                  "system" #fhir/uri"http://snomed.info/sct"
+                  "systemVersion" #fhir/string"http://snomed.info/sct/900000000000207008/version/20220131")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#57921000052103` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"57921000052103"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20220131"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#57921000052103` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))
 
     (testing "parent code is not included"
       (given @(value-set-validate-code ts
@@ -7180,7 +7245,25 @@
         [(parameter "code") 0 :value] := #fhir/code"57921000052103"
         [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
-        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")
+
+      (testing "with older version before 57921000052103 was introduced"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"57921000052103"
+                  "system" #fhir/uri"http://snomed.info/sct"
+                  "systemVersion" #fhir/string"http://snomed.info/sct/900000000000207008/version/20220131")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#57921000052103` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"57921000052103"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20220131"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#57921000052103` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))
 
     (testing "parent code is not included"
       (given @(value-set-validate-code ts

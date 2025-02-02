@@ -19,9 +19,17 @@ LOINC data is build into the Blaze image. Because LOINC support needs additional
 
 Because SNOMED CT has to be licensed, Blaze doesn't contain the SNOMED CT code system by default. However, by setting the environment variable `ENABLE_TERMINOLOGY_SNOMED_CT` to `true` and `SNOMED_CT_RELEASE_PATH` to a path of an official SNOMED CT release, Blaze will be able to offer terminology services on SNOMED CT. The release files are read into memory on each start of Blaze. So the release path has to be always available.
 
+## Graph Cache
+
+For normal stored code systems, a graph will be build before operations like $validate-code are executed. Building those graph is quite expensive. I order to prevent Blaze to build a graph each time an operation is executed, a graph cache is used. The environment variable `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` allows to set the number of concepts, the graph cache should hold. The default is 100,000.
+
 ## Memory Requirements
 
 Because both the LOINC and SNOMED CT data used for terminology operations is currently hold completely in memory, at least 8 GiB of Java Heap memory is required. The Java Heap memory can be set by setting `JAVA_TOOL_OPTIONS` to `-Xmx8g`.
+
+## Performance
+
+Performance data can be found in the [Performance – Terminology Service](performance/terminology-service.md) section.
 
 ## Example Deployment
 
@@ -36,7 +44,6 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx8g"
       DB_BLOCK_CACHE_SIZE: "2048"
-      DB_RESOURCE_CACHE_SIZE: "100000"
       ENABLE_TERMINOLOGY_SERVICE: true
       ENABLE_TERMINOLOGY_LOINC: true
       ENABLE_TERMINOLOGY_SNOMED_CT: true

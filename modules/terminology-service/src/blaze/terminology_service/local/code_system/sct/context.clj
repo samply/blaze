@@ -118,16 +118,38 @@
   (when-let [versions (get description-index concept-id)]
     (some-> (first (subseq versions >= version)) val (get true))))
 
+(defn build-parent-index
+  "module -> concept -> sorted map of version info
+
+  sorted map of version info:
+   * keyed by effective-time
+   * values are maps of added and removed children
+
+  example:
+  {module-a {concept-a {effective-time-2 {true (child-a) false (child-b)}
+                        effective-time-1 {true (child-b)}}}"
+  [lines]
+  (-> ^Stream lines
+      (.map relationship-line)
+      (.filter #(= is-a (:type-id %)))
+      (.reduce
+       {}
+       (fn [index {:keys [module-id destination-id effective-time active source-id]}]
+         (update-in index [module-id source-id]
+                    update-time-map effective-time
+                    update (= 1 active) (fnil conj []) destination-id))
+       (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
+
 (defn build-child-index
   "module -> concept -> sorted map of version info
 
   sorted map of version info:
-   * keyed by days-since-epoch (higher days come first)
+   * keyed by effective-time
    * values are maps of added and removed children
 
   example:
-  {module-a {concept-a {days-1 {true (child-a) false (child-b)}
-                        days-2 {true (child-b)}}}"
+  {module-a {concept-a {effective-time-2 {true (child-a) false (child-b)}
+                        effective-time-1 {true (child-b)}}}"
   [lines]
   (-> ^Stream lines
       (.map relationship-line)
@@ -285,6 +307,7 @@
     {:code-systems code-systems
      :current-int-system (find-current-int-system code-systems)
      :concept-index (stream-file build-concept-index concept-file)
+     :parent-index (stream-file build-parent-index relationship-file)
      :child-index (stream-file build-child-index relationship-file)
      :fully-specified-name-index fully-specified-name-index
      :synonym-index synonym-index}))

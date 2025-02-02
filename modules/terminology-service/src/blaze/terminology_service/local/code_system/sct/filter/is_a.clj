@@ -25,13 +25,13 @@
     (ba/unsupported (format "Unsupported is-a filter property `%s` in code system `%s`." (type/value property) url))))
 
 (defn- satisfies-filter
-  [{{:keys [child-index]} :sct/context :sct/keys [module-id version]} value code]
+  [{{:keys [parent-index]} :sct/context :sct/keys [module-id version]} value code]
   (if (nil? value)
     (ba/incorrect (format "Missing concept is-a filter value in code system `%s`." url))
     (if-let [start-code (parse-sctid value)]
       (or (= code start-code)
-          (context/find-transitive-neighbor child-index module-id version
-                                            start-code code))
+          (context/find-transitive-neighbor parent-index module-id version
+                                            code start-code))
       (ba/incorrect (format "Invalid concept is-a filter value `%s` in code system `%s`." value url)))))
 
 (defmethod core/satisfies-filter :is-a

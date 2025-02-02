@@ -25,6 +25,7 @@
    [muuntaja.parse :as parse]
    [taoensso.timbre :as log])
   (:import
+   [com.github.benmanes.caffeine.cache Caffeine]
    [com.google.common.base CaseFormat]
    [java.lang AutoCloseable]))
 
@@ -193,8 +194,8 @@
        (.close ^AutoCloseable db)
        res))))
 
-(defn- context [{:keys [clock loinc sct]}]
-  (cond-> {:clock clock}
+(defn- context [{:keys [clock graph-cache loinc sct]}]
+  (cond-> {:clock clock ::cs/graph-cache graph-cache}
     loinc (assoc :loinc/context loinc)
     sct (assoc :sct/context sct)))
 
@@ -328,7 +329,7 @@
           ac/completed-future)))))
 
 (defmethod m/pre-init-spec ::ts/local [_]
-  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn ::graph-cache]
           :opt-un [::enable-bcp-13 ::enable-ucum ::loinc ::sct]))
 
 (defmethod ig/init-key ::ts/local
@@ -338,5 +339,17 @@
     (ensure-code-systems config context)
     (load-all-code-systems node)
     (terminology-service node context)))
+
+(defmethod m/pre-init-spec ::graph-cache [_]
+  (s/keys :opt-un [::num-concepts]))
+
+(defmethod ig/init-key ::graph-cache
+  [_ {:keys [num-concepts] :or {num-concepts 100000}}]
+  (log/info "Init local terminology server graph cache with a size of" num-concepts "concepts")
+  (-> (Caffeine/newBuilder)
+      (.maximumWeight num-concepts)
+      (.weigher (fn [_ {:keys [concepts]}] (count concepts)))
+      (.recordStats)
+      (.build)))
 
 (derive ::ts/local :blaze/terminology-service)
