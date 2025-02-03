@@ -13,7 +13,6 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
-   [blaze.db.node.patient-last-change-index-spec]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.tx-indexer :as-alias tx-indexer]
    [blaze.db.node.version :as version]
