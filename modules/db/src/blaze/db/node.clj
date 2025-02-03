@@ -16,7 +16,6 @@
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv]
-   [blaze.db.node.patient-last-change-index :as node-plc]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer.spec]
@@ -494,40 +493,19 @@
     (fn sync-standalone [^Node node]
       (ac/completed-future (db/db node (:t @(.-state node)))))))
 
-(defn- index-patient-last-change-index!
-  [{:keys [kv-store] :as node} current-t {:keys [t] :as tx-data}]
-  (log/trace "Build PatientLastChange index with t =" t)
-  (when-ok [entries (node-plc/index-entries node tx-data)]
-    (store-tx-entries! kv-store entries))
-  (vreset! current-t t))
-
-(defn- poll-and-index-patient-last-change-index!
-  [node queue current-t poll-timeout]
-  (run! (partial index-patient-last-change-index! node current-t)
-        (poll-tx-queue! queue poll-timeout)))
+(defn- initial-plc-index-entries [{:keys [state] :as node}]
+  (into
+   [(plc/state-index-entry {:type :current})]
+   (map (fn [{:keys [id]}] (plc/index-entry (codec/id-byte-string id) (:t @state))))
+   (d/type-list (d/db node) "Patient")))
 
 (defn build-patient-last-change-index
-  [key {:keys [tx-log kv-store run? state poll-timeout] :as node}]
-  (let [{:keys [type t]} (plc/state kv-store)]
+  [key {:keys [kv-store] :as node}]
+  (let [{:keys [type]} (plc/state kv-store)]
     (when (identical? :building type)
-      (let [start-t (inc t)
-            end-t (:t @state)
-            current-t (volatile! start-t)]
-        (log/info "Building PatientLastChange index of" (node-util/component-name key "node") "starting at t =" start-t)
-        (with-open [queue (tx-log/new-queue tx-log start-t)]
-          (while (and @run? (< @current-t end-t))
-            (try
-              (poll-and-index-patient-last-change-index! node queue current-t poll-timeout)
-              (catch Exception e
-                (log/error (format "Error while building the PatientLastChange index of %s."
-                                   (node-util/component-name key "node")) e)))))
-        (if (>= @current-t end-t)
-          (do
-            (store-tx-entries! kv-store [(plc/state-index-entry {:type :current})])
-            (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))
-          (log/info (format "Partially build PatientLastChange index of %s up to t ="
-                            (node-util/component-name key "node")) @current-t
-                    "at a goal of t =" end-t "Will continue at next start."))))))
+      (log/info "Building PatientLastChange index of" (node-util/component-name key "node"))
+      (store-tx-entries! kv-store (initial-plc-index-entries node))
+      (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))))
 
 (defmethod m/pre-init-spec :blaze.db/node [_]
   (s/keys

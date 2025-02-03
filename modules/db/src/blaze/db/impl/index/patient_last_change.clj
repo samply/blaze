@@ -45,7 +45,7 @@
         (bb/put-long! t)
         bb/array)))
 
-(defn decode-state [bytes]
+(defn- decode-state [bytes]
   (let [buf (bb/wrap bytes)]
     (if (zero? (bb/get-byte! buf))
       {:type :current}

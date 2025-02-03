@@ -2077,6 +2077,9 @@ jobs:
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
+    - name: Docker Logs
+      run: docker logs blaze
+
     - name: Ensure that the State of PatientLastChange Index is Current
       run: .github/scripts/check-patient-last-change-index-state.sh current
 
