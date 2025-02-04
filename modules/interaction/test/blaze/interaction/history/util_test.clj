@@ -1,11 +1,14 @@
 (ns blaze.interaction.history.util-test
   (:require
-   [blaze.fhir.spec.type]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.interaction.history.util-spec]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit])
   (:import
@@ -136,3 +139,44 @@
       [:response :status] := "204"
       [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"2\"")))
+
+(def ^:private config
+  {::context
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :blaze/base-url ""
+    :reitit.core/match (reitit/map->Match {})}
+   :blaze.test/fixed-clock {}
+   :blaze.test/fixed-rng-fn {}})
+
+(defmethod ig/init-key ::context [_ context] context)
+
+(deftest build-bundle-test
+  (testing "total"
+    (testing "minimum allowed FHIR unsignedInt value"
+      (let [min-int 0]
+        (with-system [{::keys [context]} config]
+          (given (history-util/build-bundle context min-int {})
+            [:total type/value] := min-int))))
+
+    (testing "maximum allowed FHIR unsignedInt value"
+      (let [max-int (dec (bit-shift-left 1 31))]
+        (with-system [{::keys [context]} config]
+          (given (history-util/build-bundle context max-int {})
+            [:total type/value] := max-int))))
+
+    (testing "one above the maximum allowed FHIR unsignedInt value"
+      (let [overflowed-int (bit-shift-left 1 31)]
+        (with-system [{::keys [context]} config]
+          (given (history-util/build-bundle context overflowed-int {})
+            [:total type/value] := nil
+            [:total :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
+            [:total :extension 0 :value] := (type/string (str overflowed-int))))))
+
+    (testing "values of a trillion are possible"
+      (let [trillion-int 1000000000000]
+        (with-system [{::keys [context]} config]
+          (given (history-util/build-bundle context trillion-int {})
+            [:total type/value] := nil
+            [:total :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
+            [:total :extension 0 :value] := (type/string (str trillion-int))))))))

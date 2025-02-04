@@ -3,6 +3,7 @@
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.util :as u]
    [reitit.core :as reitit])
@@ -107,3 +108,19 @@
      :lastModified (-> resource meta :blaze.db/tx :blaze.db.tx/instant)}}
     (-> resource meta :blaze.db/op #{:delete} not)
     (assoc :resource resource)))
+
+(defn- total-value [total]
+  (type/unsignedInt
+   (if (< total (bit-shift-left 1 31))
+     total
+     {:extension
+      [(type/map->Extension
+        {:url "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
+         :value (type/string (str total))})]})))
+
+(defn build-bundle [context total query-params]
+  {:fhir/type :fhir/Bundle
+   :id (handler-util/luid context)
+   :type #fhir/code"history"
+   :total (total-value total)
+   :link [(self-link context query-params)]})

@@ -6,9 +6,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
-   [blaze.handler.util :as handler-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.module :as m]
    [blaze.page-id-cipher.spec]
@@ -44,13 +42,10 @@
          (fn [paged-versions]
            (ring/response
             (cond->
-             {:fhir/type :fhir/Bundle
-              :id (handler-util/luid context)
-              :type #fhir/code"history"
-              :total (type/->UnsignedInt total)
-              :link [(history-util/self-link context query-params)]
+             (assoc
+              (history-util/build-bundle context total query-params)
               :entry
-              (mapv (partial history-util/build-entry context) paged-versions)}
+              (mapv (partial history-util/build-entry context) paged-versions))
 
               (< page-size (count paged-version-handles))
               (update :link conj-vec (next-link (peek paged-version-handles))))))))))
