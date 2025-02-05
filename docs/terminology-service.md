@@ -3,7 +3,24 @@
 > [!CAUTION]
 > The terminology service is currently **beta**. Only the basic functionality, described here, is implemented.
 
-The terminology service is an optional feature that has to be enabled by setting `ENABLE_TERMINOLOGY_SERVICE` to `true`.
+> [!NOTE]
+> The terminology service is an optional feature that has to be enabled by setting `ENABLE_TERMINOLOGY_SERVICE` to `true`.
+
+## Supported Code Systems
+
+### FHIR Code Systems
+
+[FHIR CodeSystem](terminology-service/fhir.md) resources stored in Blaze with `content` of either `complete` or `fragment` are supported. 
+
+### External Code Systems
+
+Currently the external code systems shown in the following table are supported.
+
+| Name                                          | Version(s)            | Notes                             |
+|-----------------------------------------------|-----------------------|-----------------------------------|
+| [LOINC](terminology-service/loinc.md)         | 2.78                  | has to be enabled                 |
+| [SNOMED CT](terminology-service/snomed-ct.md) | all versions provided | release files have to be provided |
+| [UCUM](terminology-service/ucum.md)           | 2013.10.21            | enabled by default                |
 
 ## Operations
 
@@ -11,17 +28,9 @@ The terminology service is an optional feature that has to be enabled by setting
 * [ValueSet $expand](api/operation/value-set-expand.md)
 * [ValueSet $validate-code](api/operation/value-set-validate-code.md)
 
-## Enable LOINC
-
-LOINC data is build into the Blaze image. Because LOINC support needs additional memory, it has to be enabled by setting the environment variable `ENABLE_TERMINOLOGY_LOINC` to `true`.
-
-## Enable SNOMED CT
-
-Because SNOMED CT has to be licensed, Blaze doesn't contain the SNOMED CT code system by default. However, by setting the environment variable `ENABLE_TERMINOLOGY_SNOMED_CT` to `true` and `SNOMED_CT_RELEASE_PATH` to a path of an official SNOMED CT release, Blaze will be able to offer terminology services on SNOMED CT. The release files are read into memory on each start of Blaze. So the release path has to be always available.
-
 ## Graph Cache
 
-For normal stored code systems, a graph will be build before operations like $validate-code are executed. Building those graph is quite expensive. I order to prevent Blaze to build a graph each time an operation is executed, a graph cache is used. The environment variable `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` allows to set the number of concepts, the graph cache should hold. The default is 100,000.
+For stored FHIR code systems, a graph will be build before operations like $validate-code are executed. Building those graph is quite expensive. I order to prevent Blaze to build a graph each time an operation is executed, a graph cache is used. The environment variable `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` allows to set the number of concepts, the graph cache should hold. The default is 100,000.
 
 ## Memory Requirements
 

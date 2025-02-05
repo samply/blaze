@@ -4375,7 +4375,27 @@
 (deftest expand-value-set-sct-include-filter-equals-test
   (testing "parent"
     (with-system [{ts ::ts/local} sct-config]
-      (doseq [value ["119297000"]]
+      (given @(expand-value-set ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://snomed.info/sct"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code"parent"
+                      :op #fhir/code"="
+                      :value (type/string "119297000")}]}]}})
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 20
+        [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
+        [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
+
+  (testing "child"
+    (testing "with one parent"
+      (with-system [{ts ::ts/local} sct-config]
         (given @(expand-value-set ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -4386,13 +4406,35 @@
                       :system #fhir/uri"http://snomed.info/sct"
                       :filter
                       [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code"parent"
+                        :property #fhir/code"child"
                         :op #fhir/code"="
-                        :value (type/string value)}]}]}})
+                        :value (type/string "441510007")}]}]}})
           :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 20
-          [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")))))
+          [:expansion :contains count] := 1
+          [:expansion :contains (concept "119297000") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "119297000") 0 :display] := #fhir/string"Blood specimen (specimen)")))
+
+    (testing "with two parents"
+      (with-system [{ts ::ts/local} sct-config]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://snomed.info/sct"
+                      :filter
+                      [{:fhir/type :fhir.ValueSet.compose.include/filter
+                        :property #fhir/code"child"
+                        :op #fhir/code"="
+                        :value (type/string "878861003")}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 2
+          [:expansion :contains (concept "309051001") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "309051001") 0 :display] := #fhir/string"Body fluid specimen (specimen)"
+          [:expansion :contains (concept "446131002") 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains (concept "446131002") 0 :display] := #fhir/string"Blood specimen obtained for blood culture (specimen)")))))
 
 (deftest expand-value-set-ucum-include-all-test
   (testing "including all of UCUM is not possible"
@@ -4898,7 +4940,8 @@
                ["http://loinc.org" "26465-5" "regex" "CLASS"]
                ["http://snomed.info/sct" "441510007" "is-a" "concept"]
                ["http://snomed.info/sct" "441510007" "descendent-of" "concept"]
-               ["http://snomed.info/sct" "441510007" "=" "parent"]]]
+               ["http://snomed.info/sct" "441510007" "=" "parent"]
+               ["http://snomed.info/sct" "441510007" "=" "child"]]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -4928,7 +4971,8 @@
                ["http://loinc.org" "26465-5" "=" "ORDER_OBS"]
                ["http://snomed.info/sct" "441510007" "is-a" "concept"]
                ["http://snomed.info/sct" "441510007" "descendent-of" "concept"]
-               ["http://snomed.info/sct" "441510007" "=" "parent"]]]
+               ["http://snomed.info/sct" "441510007" "=" "parent"]
+               ["http://snomed.info/sct" "441510007" "=" "child"]]]
         (given @(value-set-validate-code ts
                   "valueSet"
                   {:fhir/type :fhir/ValueSet
@@ -7359,6 +7403,84 @@
           [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
           [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
           [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))))
+
+  (testing "child"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-113851"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"child"
+                    :op #fhir/code"="
+                    :value #fhir/string"441510007"}]}]}}]]]
+
+      (testing "direct code is not included"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"441510007"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))
+
+      (testing "parent code"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"119297000"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"119297000"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen (specimen)"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+      (testing "grand parent code is not included"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"123038009"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#123038009` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"123038009"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#123038009` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))
+
+      (testing "child code is not included"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"445295009"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#445295009` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"445295009"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#445295009` was not found in the value set `value-set-113851`."
           [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))))
 
 (defn- load-resource [test name]
