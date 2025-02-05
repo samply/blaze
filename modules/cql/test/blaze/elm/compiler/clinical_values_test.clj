@@ -5,6 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.elm.code-spec]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.clinical-values]
@@ -17,10 +18,14 @@
    [blaze.elm.literal-spec]
    [blaze.elm.quantity :refer [quantity]]
    [blaze.elm.ratio :refer [ratio]]
-   [blaze.test-util :refer [satisfies-prop]]
+   [blaze.elm.value-set :as value-set]
+   [blaze.terminology-service]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.protocols :as p]
+   [blaze.test-util :refer [given-thrown satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
@@ -386,3 +391,68 @@
 
     (testing "form"
       (has-form expr '(ratio (quantity 3M "m") (quantity 1M "s"))))))
+
+;; 3.12. ValueSetRef
+;;
+;; The ValueSetRef expression allows a previously defined named value set to be
+;; referenced within an expression. Conceptually, referencing a value set
+;; returns the expansion set for the value set as a list of codes.
+;;
+;; The preserve attribute is trial-use in CQL 1.5.2 and was introduced to allow
+;; engines to determine whether or not to expand a ValueSetRef (the 1.4
+;; behavior), ensuring that 1.5 engines can run 1.4 ELM.
+(def ^:private not-found-terminology-service
+  (reify p/TerminologyService
+    (-expand-value-set [_ {:keys [url]}]
+      (ac/completed-future
+       (ba/not-found
+        (format "The value set with URL `%s` was not found." url))))))
+
+(def ^:private expansion-terminology-service
+  (reify p/TerminologyService
+    (-expand-value-set [_ _]
+      (ac/completed-future
+       {:fhir/type :fhir/ValueSet
+        :expansion
+        {:fhir/type :fhir.ValueSet/expansion
+         :contains
+         [{:fhir/type :fhir.ValueSet.expansion/contains
+           :system #fhir/uri"system-102931"
+           :code #fhir/code"code-102402"}
+          {:fhir/type :fhir.ValueSet.expansion/contains
+           :system #fhir/uri"system-102938"
+           :code #fhir/code"code-102420"}]}}))))
+
+(deftest compile-value-set-ref-test
+  (testing "with terminology service returning not-found anomaly"
+    (let [context
+          {:library
+           {:valueSets
+            {:def
+             [{:name "value-set-def-135520"
+               :id "value-set-135750"}]}}
+           :terminology-service not-found-terminology-service}]
+
+      (testing "compile"
+        (given-thrown (c/compile context #elm/value-set-ref "value-set-def-135520")
+          ::anom/category := ::anom/not-found
+          ::anom/message := "The value set with URL `value-set-135750` was not found."))))
+
+  (testing "with terminology service returning a value set with two expansions"
+    (let [context
+          {:library
+           {:valueSets
+            {:def
+             [{:name "value-set-def-135520"
+               :id "value-set-135750"}]}}
+           :terminology-service expansion-terminology-service}
+          expr (c/compile context #elm/value-set-ref "value-set-def-135520")]
+
+      (testing "eval"
+        (is (= (core/-eval expr {} nil nil)
+               #{(value-set/->Code "system-102931" "code-102402")
+                 (value-set/->Code "system-102938" "code-102420")})))
+
+      (testing "form"
+        (has-form expr
+          '(value-set "value-set-135750"))))))

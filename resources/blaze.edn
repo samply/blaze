@@ -222,6 +222,7 @@
   ;;
   :blaze.fhir.operation.evaluate-measure/handler
   {:node #blaze/ref :blaze.db.main/node
+   :terminology-service #blaze/ref :blaze/terminology-service
    :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
