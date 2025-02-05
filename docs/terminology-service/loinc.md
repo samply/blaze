@@ -1,14 +1,13 @@
 # LOINC <Badge type="info" text="Feature: TERMINOLOGY_LOINC"/> <Badge type="warning" text="unreleased"/>
 
+> [!NOTE]
+> LOINC data is build into the Blaze image. Because LOINC support needs additional memory, it has to be enabled by setting the environment variable `ENABLE_TERMINOLOGY_LOINC` to `true`.
+
 Blaze supports the [LOINC](https://loinc.org) terminology in version 2.78.
 
 ## Copyright
 
 This material contains content from [LOINC](http://loinc.org). LOINC is copyright © 1995-2020, Regenstrief Institute, Inc. and the Logical Observation Identifiers Names and Codes (LOINC) Committee and is available at no cost under the license at http://loinc.org/license icon. LOINC® is a registered United States trademark of Regenstrief Institute, Inc.
-
-## FHIR Documentation
-
-[Using LOINC with FHIR](https://terminology.hl7.org/LOINC.html)
 
 ## Filters
 
@@ -33,3 +32,7 @@ The following implicit value sets are supported.
 | Name         | Example                      |
 |--------------|------------------------------|
 | Answer Lists | http://loinc.org/vs/LL4049-4 |
+
+## Resources
+
+[Using LOINC with FHIR](https://terminology.hl7.org/LOINC.html)

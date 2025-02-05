@@ -142,6 +142,7 @@ export default defineConfig({
 				text: 'Terminology Service',
 				items: [
 					{ text: 'Overview', link: '/terminology-service' },
+					{ text: 'FHIR', link: '/terminology-service/fhir' },
 					{ text: 'LOINC', link: '/terminology-service/loinc' },
 					{ text: 'SNOMED CT', link: '/terminology-service/snomed-ct' },
 					{ text: 'UCUM', link: '/terminology-service/ucum' }
