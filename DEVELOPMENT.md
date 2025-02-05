@@ -87,12 +87,13 @@ Documentation: [Environment Variables](docs/deployment/environment-variables.md)
 
 1. Create a release branch named `release-v<version>`, e.g., `release-v0.29.0`.
 2. Update all occurrences of the old version (e.g., `0.28.0`) to the new version (e.g., `0.29.0`).
-3. Update the `CHANGELOG.md` based on the milestone.
-4. Create a commit with the title `Release v<version>`.
-5. Create a PR from the release branch to `main`.
-6. Merge the PR.
-7. Create and push a tag named `v<version>`, e.g., `v0.13.1`, on `main` at the merge commit.
-8. Copy the release notes from the `CHANGELOG.md` into the GitHub release.
+3. Update `unreleased` badges in the documentation.
+4. Update the `CHANGELOG.md` based on the milestone.
+5. Create a commit with the title `Release v<version>`.
+6. Create a PR from the release branch to `main`.
+7. Merge the PR.
+8. Create and push a tag named `v<version>`, e.g., `v0.13.1`, on `main` at the merge commit.
+9. Copy the release notes from the `CHANGELOG.md` into the GitHub release.
 
 ## Code Conventions
 

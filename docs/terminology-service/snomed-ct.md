@@ -1,4 +1,4 @@
-# SNOMED CT <Badge type="info" text="Feature: TERMINOLOGY_SNOMED_CT"/> <Badge type="warning" text="unreleased"/>
+# SNOMED CT <Badge type="info" text="Feature: TERMINOLOGY_SNOMED_CT"/> <Badge type="warning" text="v0.32.0"/>
 
 > [!NOTE]
 > Because SNOMED CT has to be licensed, Blaze doesn't contain the SNOMED CT code system by default. However, by setting the environment variable `ENABLE_TERMINOLOGY_SNOMED_CT` to `true` and `SNOMED_CT_RELEASE_PATH` to a path of an official SNOMED CT release, Blaze will be able to offer terminology services on SNOMED CT. The release files are read into memory on each start of Blaze. So the release path has to be always available.

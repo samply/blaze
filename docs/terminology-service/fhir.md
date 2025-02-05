@@ -1,4 +1,4 @@
-# FHIR Code Systems <Badge type="warning" text="unreleased"/>
+# FHIR Code Systems <Badge type="warning" text="v0.32.0"/>
 
 Blaze supports all FHIR CodeSystem resources stored in Blaze with `content` of either `complete` or `fragment`.
 

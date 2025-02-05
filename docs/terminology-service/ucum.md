@@ -1,4 +1,4 @@
-# UCUM <Badge type="warning" text="unreleased"/>
+# UCUM <Badge type="warning" text="v0.32.0"/>
 
 Blaze supports the [UCUM](http://unitsofmeasure.org/) terminology.
 

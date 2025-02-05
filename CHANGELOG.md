@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.32.0
+
+### New Features
+
+* First Preview of Terminology Services ([#2377](https://github.com/samply/blaze/issues/2377))
+
+### Bugfixes
+
+* Fix Issues with Rebuilding the PatientLastChange Index ([#2372](https://github.com/samply/blaze/issues/2372))
+* Fix Negative Total Values in History Bundles Generated ([#2357](https://github.com/samply/blaze/issues/2357))
+
+### Documentation
+
+The generated documentation (https://samply.github.io/blaze/) was improved considerably and is now preferred over using direct Markdown files from the repository. 
+
+## UI
+
+* Add Logo and Lexend Font to UI ([#2323](https://github.com/samply/blaze/pull/2323))
+
 ## v0.31.0
 
 ### Enhancements

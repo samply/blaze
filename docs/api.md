@@ -36,9 +36,9 @@ The following Operations are implemented:
 * [Measure $evaluate-measure](api/operation/measure-evaluate-measure.md)
 * [Patient $everything](api/operation/patient-everything.md) <Badge type="warning" text="v0.22.0"/>
 * [Patient $purge](api/operation/patient-purge.md) <Badge type="warning" text="v0.30.1"/>
-* [CodeSystem $validate-code](api/operation/code-system-validate-code.md) <Badge type="warning" text="unreleased"/>
-* [ValueSet $expand](api/operation/value-set-expand.md) <Badge type="warning" text="unreleased"/>
-* [ValueSet $validate-code](api/operation/value-set-validate-code.md) <Badge type="warning" text="unreleased"/>
+* [CodeSystem $validate-code](api/operation/code-system-validate-code.md) <Badge type="warning" text="v0.32.0"/>
+* [ValueSet $expand](api/operation/value-set-expand.md) <Badge type="warning" text="v0.32.0"/>
+* [ValueSet $validate-code](api/operation/value-set-validate-code.md) <Badge type="warning" text="v0.32.0"/>
 
 ## Asynchronous Requests
 

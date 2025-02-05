@@ -1,4 +1,4 @@
-# Operation \$validate-code on ValueSet <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="unreleased"/>
+# Operation \$validate-code on ValueSet <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="v0.32.0"/>
 
 > [!CAUTION]
 > The operation \$validate-code on ValueSet is currently **beta**. Only the parameters, described here, are implemented.
