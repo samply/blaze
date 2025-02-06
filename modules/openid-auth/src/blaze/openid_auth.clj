@@ -1,5 +1,6 @@
 (ns blaze.openid-auth
   (:require
+   [blaze.anomaly :refer [if-ok]]
    [blaze.http-client.spec]
    [blaze.module :as m]
    [blaze.openid-auth.impl :as impl]
@@ -7,6 +8,7 @@
    [blaze.scheduler :as sched]
    [blaze.scheduler.spec]
    [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
    [taoensso.timbre :as log])
@@ -18,17 +20,15 @@
 (defn- schedule [{:keys [scheduler http-client provider-url]} public-key-state]
   (sched/schedule-at-fixed-rate
    scheduler
-   #(try
+   #(do
       (log/debug "Fetch public key from" provider-url "...")
-      (let [^PublicKey public-key (impl/fetch-public-key http-client provider-url)]
-        (reset! public-key-state public-key)
-        (log/debug "Done fetching public key from" provider-url
-                   (str "algorithm=" (.getAlgorithm public-key))
-                   (str "format=" (.getFormat public-key))))
-      (catch Exception e
-        (log/error (format "Error while fetching public key from %s:"
-                           provider-url)
-                   (ex-message e) (pr-str (ex-data e)))))
+      (if-ok [^PublicKey public-key (impl/fetch-public-key http-client provider-url)]
+        (do (reset! public-key-state public-key)
+            (log/debug "Done fetching public key from" provider-url
+                       (str "algorithm=" (.getAlgorithm public-key))
+                       (str "format=" (.getFormat public-key))))
+        (fn [{::anom/keys [message]}]
+          (log/error (format "Error while fetching public key from %s: %s" provider-url message)))))
    (time/seconds 1) (time/seconds 60)))
 
 (defmethod m/pre-init-spec :blaze.openid-auth/backend [_]

@@ -1,5 +1,6 @@
 (ns blaze.openid-auth-test
   (:require
+   [blaze.http-client]
    [blaze.http-client.spec :refer [http-client?]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.openid-auth :as openid-auth]
