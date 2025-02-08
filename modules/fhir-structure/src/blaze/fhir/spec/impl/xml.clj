@@ -17,7 +17,8 @@
   {:arglists '([regex element])}
   [regex {{:keys [value] :as attrs} :attrs content :content}]
   (or (and (string? value) (.matches (re-matcher regex value)))
-      (or (some? (:id attrs)) (seq content))))
+      (some? (:id attrs))
+      (seq content)))
 
 (defn set-extension-tag [element]
   (some-> element (update :content (partial map #(assoc % :tag ::f/extension)))))

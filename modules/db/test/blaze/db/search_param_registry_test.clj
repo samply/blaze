@@ -4,7 +4,6 @@
    [blaze.db.search-param-registry-spec]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.type]
-   [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -47,7 +46,7 @@
     (given-thrown (ig/init {:blaze.db/search-param-registry {:structure-definition-repo ::invalid}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid extra-bundle-file"

@@ -1,7 +1,6 @@
 (ns blaze.rest-api.metadata-handler-test
   (:require
    [blaze.fhir.structure-definition-repo-spec]
-   [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.rest-api.metadata-handler]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -34,7 +33,7 @@
     (given-thrown (ig/init {:blaze.rest-api/metadata-handler {:structure-definition-repo ::invalid}})
       :key := :blaze.rest-api/metadata-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config

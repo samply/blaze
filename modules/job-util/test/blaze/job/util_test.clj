@@ -4,7 +4,6 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.structure-definition-repo]
    [blaze.job.util :as job-util]
    [blaze.job.util-spec]
    [blaze.module.test-util :as mtu :refer [given-failed-future]]
@@ -12,7 +11,6 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -20,10 +18,6 @@
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
-
-(def structure-definition-repo
-  (:blaze.fhir/structure-definition-repo
-   (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 (defn- codeable-concept [system code]
   (type/codeable-concept

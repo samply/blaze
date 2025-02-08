@@ -3,7 +3,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.totals]
    [blaze.fhir.structure-definition-repo-spec]
-   [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -36,14 +36,14 @@
     (given-thrown (ig/init {:blaze.fhir.operation/totals {:structure-definition-repo ::invalid}})
       :key := :blaze.fhir.operation/totals
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config
-  (assoc api-stub/mem-node-config
-         :blaze.fhir.operation/totals
-         {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-         :blaze.fhir/structure-definition-repo {}))
+  (assoc
+   api-stub/mem-node-config
+   :blaze.fhir.operation/totals
+   {:structure-definition-repo structure-definition-repo}))
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]

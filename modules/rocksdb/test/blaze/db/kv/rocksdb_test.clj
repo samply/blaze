@@ -125,7 +125,6 @@
       :key := ::rocksdb/table-reader-collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [::metrics/stores]
-      [:cause-data ::s/problems 0 :pred] := `map?
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn- new-temp-dir! []

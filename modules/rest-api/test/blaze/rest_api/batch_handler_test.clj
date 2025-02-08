@@ -1,7 +1,6 @@
 (ns blaze.rest-api.batch-handler-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.handler.util :as handler-util]
    [blaze.module.test-util :refer [with-system]]
@@ -56,7 +55,7 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-patterns))
-      [:cause-data ::s/problems 2 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 2 :via] := [:blaze.fhir/structure-definition-repo]
       [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid capabilities-handler"
