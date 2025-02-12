@@ -8,7 +8,10 @@ export default defineConfig({
 	lastUpdated: true,
 
 	themeConfig: {
-		logo: '/blaze-logo.svg',
+		logo: {
+			light: '/blaze-logo.svg',
+			dark: '/blaze-logo-bright.svg'
+		},
 		siteTitle: false,
 
 		outline: false,
