@@ -6,14 +6,18 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.library-spec]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as ts]
+   [blaze.terminology-service.local]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
@@ -22,9 +26,9 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(defn- compile-library [node cql]
+(defn- compile-library [{:blaze.db/keys [node] ::ts/keys [local]} cql]
   (when-ok [library (cql-translator/translate cql)]
-    (library/compile-library node library {})))
+    (library/compile-library {:node node :terminology-service local} library {})))
 
 (def empty-library
   "library Retrieve
@@ -152,8 +156,9 @@
      :criteria (cql-expression "Age")}]})
 
 (defn- context
-  [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor]} library]
-  (let [{:keys [expression-defs function-defs]} (compile-library node library)]
+  [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor] :as system}
+   library]
+  (let [{:keys [expression-defs function-defs]} (compile-library system library)]
     (cond->
      {:db (d/db node)
       :now (time/offset-date-time fixed-clock)
@@ -164,8 +169,12 @@
       (assoc :function-defs function-defs))))
 
 (def ^:private config
-  (assoc mem-node-config
-         :blaze.test/executor {}))
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+   :blaze.test/executor {}))
 
 (deftest reduce-op-test
   (testing "one component"
