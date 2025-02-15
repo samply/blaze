@@ -1095,6 +1095,9 @@ jobs:
     - name: Patient Purge
       run: .github/scripts/patient-purge.sh
 
+    - name: Chaining on DocumentReference
+      run: .github/scripts/chaining-document-reference.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}

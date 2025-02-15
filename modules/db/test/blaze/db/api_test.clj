@@ -5893,7 +5893,52 @@
           [4 :fhir/type] := :fhir/Observation
           [4 :id] := "4"
           [5 :fhir/type] := :fhir/Observation
-          [5 :id] := "5")))))
+          [5 :id] := "5"))))
+
+  (testing "DocumentReference"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/DocumentReference :id "111430"
+               :identifier [#fhir/Identifier
+                             {:system #fhir/uri"system-111302"
+                              :value #fhir/string"value-111304"}]}]
+        [:put {:fhir/type :fhir/DocumentReference :id "105551"
+               :identifier [#fhir/Identifier
+                             {:system #fhir/uri"system-111302"
+                              :value #fhir/string"value-111304"}]
+               :author [#fhir/Reference{:reference "Organization/105545"}]}]
+        [:put {:fhir/type :fhir/DocumentReference :id "111917"
+               :identifier [#fhir/Identifier
+                             {:system #fhir/uri"system-111302"
+                              :value #fhir/string"value-111304"}]
+               :author [#fhir/Reference{:reference "Organization/111026"}]}]
+        [:put {:fhir/type :fhir/DocumentReference :id "111020"
+               :author [#fhir/Reference{:reference "Organization/111026"}]}]
+        [:put {:fhir/type :fhir/DocumentReference :id "111206"
+               :author [#fhir/Reference{:reference "Patient/111115"}]}]
+        [:put {:fhir/type :fhir/Patient :id "111115"
+               :identifier [#fhir/Identifier
+                             {:system #fhir/uri"system-105539"
+                              :value #fhir/string"value-105542"}]}]
+        [:put {:fhir/type :fhir/Organization :id "105545"
+               :identifier [#fhir/Identifier
+                             {:system #fhir/uri"system-105539"
+                              :value #fhir/string"value-105542"}]}]
+        [:put {:fhir/type :fhir/Organization :id "111026"
+               :identifier [#fhir/Identifier
+                             {:system #fhir/uri"system-105539"
+                              :value #fhir/string"value-111043"}]}]]]
+
+      (given (pull-type-query node "DocumentReference" [["author:Organization.identifier" "system-105539|value-105542"]])
+        count := 1
+        [0 :fhir/type] := :fhir/DocumentReference
+        [0 :id] := "105551")
+
+      (testing "as second clause"
+        (given (pull-type-query node "DocumentReference" [["identifier" "system-111302|value-111304"]
+                                                          ["author:Organization.identifier" "system-105539|value-105542"]])
+          count := 1
+          [0 :fhir/type] := :fhir/DocumentReference
+          [0 :id] := "105551")))))
 
 (defn- patient-w-identifier [i]
   {:fhir/type :fhir/Patient :id (str i)
