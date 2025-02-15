@@ -1760,9 +1760,9 @@
   (testing "Patient identifier search"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :identifier [#fhir/Identifier{:value "0"}]}]
+               :identifier [#fhir/Identifier{:value #fhir/string"0"}]}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :identifier [#fhir/Identifier{:value "1"}]}]]]
+               :identifier [#fhir/Identifier{:value #fhir/string"1"}]}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1925,7 +1925,7 @@
                   {:identifier
                    #fhir/Identifier
                     {:system #fhir/uri"system-122917"
-                     :value "value-122931"}}}]}]
+                     :value #fhir/string"value-122931"}}}]}]
         [:put {:fhir/type :fhir/List :id "id-143814"
                :entry
                [{:fhir/type :fhir.List/entry
@@ -1934,7 +1934,7 @@
                   {:identifier
                    #fhir/Identifier
                     {:system #fhir/uri"system-122917"
-                     :value "value-143818"}}}]}]]]
+                     :value #fhir/string"value-143818"}}}]}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}

@@ -153,7 +153,7 @@
                     :telecom
                     [{:fhir/type :fhir/ContactPoint
                       :use #fhir/code"home"
-                      :value "foo"}]})
+                      :value #fhir/string"foo"}]})
         identity := [true]))
 
     (testing "with two telecoms"
@@ -165,10 +165,10 @@
                     :telecom
                     [{:fhir/type :fhir/ContactPoint
                       :use #fhir/code"home"
-                      :value "foo"}
+                      :value #fhir/string"foo"}
                      {:fhir/type :fhir/ContactPoint
                       :use #fhir/code"work"
-                      :value "bar"}]})
+                      :value #fhir/string"bar"}]})
         ::anom/category := ::anom/incorrect
         ::anom/message := "unable to evaluate `[{:fhir/type :fhir/ContactPoint, :use #fhir/code\"home\", :value \"foo\"} {:fhir/type :fhir/ContactPoint, :use #fhir/code\"work\", :value \"bar\"}]` as singleton"))))
 
@@ -247,7 +247,7 @@
              :telecom
              [{:fhir/type :fhir/ContactPoint
                :use #fhir/code"home"
-               :value "value-170758"}]})
+               :value #fhir/string"value-170758"}]})
       [0 :use] := #fhir/code"home"
       [0 :value] := "value-170758"))
 
@@ -259,10 +259,10 @@
              :telecom
              [{:fhir/type :fhir/ContactPoint
                :use #fhir/code"home"
-               :value "value-170758"}
+               :value #fhir/string"value-170758"}
               {:fhir/type :fhir/ContactPoint
                :use #fhir/code"home"
-               :value "value-145928"}]})
+               :value #fhir/string"value-145928"}]})
       [0 :use] := #fhir/code"home"
       [0 :value] := "value-170758"
       [1 :use] := #fhir/code"home"
@@ -276,7 +276,7 @@
              :telecom
              [{:fhir/type :fhir/ContactPoint
                :use #fhir/code"home"
-               :value "value-170758"}]})
+               :value #fhir/string"value-170758"}]})
       count := 0))
 
   (testing "returns empty collection on empty criteria result"
@@ -287,7 +287,7 @@
              :telecom
              [{:fhir/type :fhir/ContactPoint
                :use #fhir/code"home"
-               :value "value-170758"}]})
+               :value #fhir/string"value-170758"}]})
       count := 0))
 
   (testing "returns empty collection on empty input"
@@ -314,7 +314,7 @@
              :telecom
              [{:fhir/type :fhir/ContactPoint
                :use #fhir/code"home"
-               :value "value-170758"}]})
+               :value #fhir/string"value-170758"}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "non-boolean result `#fhir/code\"home\"` of type `:fhir/code` while evaluating where function criteria")))
 
@@ -479,8 +479,8 @@
             "Patient.identifier is string"
             {:fhir/type :fhir/Patient :id "id-162953"
              :identifier
-             [#fhir/Identifier{:value "value-163922"}
-              #fhir/Identifier{:value "value-163928"}]})
+             [#fhir/Identifier{:value #fhir/string"value-163922"}
+              #fhir/Identifier{:value #fhir/string"value-163928"}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "is type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
 
@@ -514,11 +514,11 @@
             "Patient.identifier as Identifier"
             {:fhir/type :fhir/Patient :id "id-162953"
              :identifier
-             [#fhir/Identifier{:value "value-163922"}
-              #fhir/Identifier{:value "value-163928"}]})
+             [#fhir/Identifier{:value #fhir/string"value-163922"}
+              #fhir/Identifier{:value #fhir/string"value-163928"}]})
       count := 2
-      [0] := #fhir/Identifier{:value "value-163922"}
-      [1] := #fhir/Identifier{:value "value-163928"})))
+      [0] := #fhir/Identifier{:value #fhir/string"value-163922"}
+      [1] := #fhir/Identifier{:value #fhir/string"value-163928"})))
 
 ;; 6.3.4 as(type : type specifier)
 (deftest as-function-test
@@ -550,11 +550,11 @@
             "Patient.identifier.as(Identifier)"
             {:fhir/type :fhir/Patient :id "id-162953"
              :identifier
-             [#fhir/Identifier{:value "value-163922"}
-              #fhir/Identifier{:value "value-163928"}]})
+             [#fhir/Identifier{:value #fhir/string"value-163922"}
+              #fhir/Identifier{:value #fhir/string"value-163928"}]})
       count := 2
-      [0] := #fhir/Identifier{:value "value-163922"}
-      [1] := #fhir/Identifier{:value "value-163928"})))
+      [0] := #fhir/Identifier{:value #fhir/string"value-163922"}
+      [1] := #fhir/Identifier{:value #fhir/string"value-163928"})))
 
 ;; 6.5. Boolean logic
 
@@ -576,11 +576,11 @@
     (given (eval
             "Patient.extension().value"
             {:fhir/type :fhir/Patient :id "foo"
-             :extension [#fhir/Extension{:url "url-145553" :value "value-145600"}]})
+             :extension [#fhir/Extension{:url "url-145553" :value #fhir/string"value-145600"}]})
       count := 0))
 
   (given (eval
           "Patient.extension('url-145553').value"
           {:fhir/type :fhir/Patient :id "foo"
-           :extension [#fhir/Extension{:url "url-145553" :value "value-145600"}]})
+           :extension [#fhir/Extension{:url "url-145553" :value #fhir/string"value-145600"}]})
     identity := ["value-145600"]))

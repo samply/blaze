@@ -29,7 +29,7 @@
           {:fhir/type :fhir/Task
            :identifier
            [#fhir/Identifier{:system #fhir/uri"https://samply.github.io/blaze/fhir/sid/JobNumber"
-                             :value "174731"}]})
+                             :value #fhir/string"174731"}]})
          "174731")))
 
 (deftest code-value-test
@@ -72,7 +72,7 @@
            :input
            [{:fhir/type :fhir.Task/input
              :type (codeable-concept "foo" "other")
-             :value "other"}
+             :value #fhir/string"other"}
             {:fhir/type :fhir.Task/input
              :type (codeable-concept "foo" "bar")
              :value #fhir/code"baz"}]}

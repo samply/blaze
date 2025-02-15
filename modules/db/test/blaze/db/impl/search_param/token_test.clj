@@ -313,7 +313,7 @@
              :identifier
              [#fhir/Identifier
                {:system #fhir/uri"system-123000"
-                :value "value-123005"}]}
+                :value #fhir/string"value-123005"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -373,7 +373,7 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-               {:value "value-140132"}]}
+               {:value #fhir/string"value-140132"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries

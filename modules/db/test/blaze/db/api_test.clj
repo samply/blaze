@@ -274,7 +274,7 @@
   (testing "on non-matching Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :identifier [#fhir/Identifier{:value "094808"}]}]]]
+               :identifier [#fhir/Identifier{:value #fhir/string"094808"}]}]]]
 
       (let [db @(d/transact node [[:create
                                    {:fhir/type :fhir/Patient :id "1"}
@@ -289,7 +289,7 @@
   (testing "on matching Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :identifier [#fhir/Identifier{:value "111033"}]}]]]
+               :identifier [#fhir/Identifier{:value #fhir/string"111033"}]}]]]
 
       (let [db @(d/transact node [[:create
                                    {:fhir/type :fhir/Patient :id "1"}
@@ -317,7 +317,7 @@
   (testing "on deleting the matching Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :identifier [#fhir/Identifier{:value "153229"}]}]]]
+               :identifier [#fhir/Identifier{:value #fhir/string"153229"}]}]]]
 
       (testing "causes a transaction abort with conflict"
         (given-failed-future
@@ -609,9 +609,9 @@
   (testing "one matching patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :identifier [#fhir/Identifier{:value "181205"}]}]
+                  :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
         [:create {:fhir/type :fhir/Patient :id "1"
-                  :identifier [#fhir/Identifier{:value "164453"}]}]]]
+                  :identifier [#fhir/Identifier{:value #fhir/string"164453"}]}]]]
 
       (let [db @(d/transact node [[:conditional-delete "Patient"
                                    [["identifier" "181205"]]]])]
@@ -628,7 +628,7 @@
   (testing "no match"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :identifier [#fhir/Identifier{:value "181205"}]}]]]
+                  :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]]]
 
       (let [db @(d/transact node [[:conditional-delete "Patient"
                                    [["identifier" "foo"]]]])]
@@ -642,7 +642,7 @@
       (with-system-data [{:blaze.db/keys [node]} config]
         [(vec (for [id ["0" "1"]]
                 [:create {:fhir/type :fhir/Patient :id id
-                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+                          :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]))]
 
         (testing "with query"
           (given-failed-future (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
@@ -661,9 +661,9 @@
         (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
           [(vec (for [id ["0" "1"]]
                   [:create {:fhir/type :fhir/Patient :id id
-                            :identifier [#fhir/Identifier{:value "181205"}]}]))
+                            :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]))
            [[:create {:fhir/type :fhir/Patient :id "2"
-                      :identifier [#fhir/Identifier{:value "164453"}]}]]]
+                      :identifier [#fhir/Identifier{:value #fhir/string"164453"}]}]]]
 
           (let [db @(d/transact node [[:conditional-delete "Patient"
                                        [["identifier" "181205"]]]])]
@@ -693,7 +693,7 @@
   (testing "patient with an observation referencing it"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :identifier [#fhir/Identifier{:value "181205"}]}]
+                  :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
         [:create {:fhir/type :fhir/Observation :id "0"
                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
@@ -718,7 +718,7 @@
     (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
       (vec (for [id ["0" "1"]]
              [[:create {:fhir/type :fhir/Patient :id id
-                        :identifier [#fhir/Identifier{:value "181205"}]}]
+                        :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
               [:create {:fhir/type :fhir/Observation :id id
                         :subject (type/map->Reference {:reference (str "Patient/" id)})}]]))
 
@@ -745,7 +745,7 @@
   (testing "on updating the matching Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :identifier [#fhir/Identifier{:value "140151"}]}]]]
+               :identifier [#fhir/Identifier{:value #fhir/string"140151"}]}]]]
 
       (testing "causes a transaction abort with conflict"
         (given-failed-future
@@ -770,7 +770,7 @@
       (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
         [(vec (for [id (range 10000)]
                 [:create {:fhir/type :fhir/Patient :id (str id)
-                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+                          :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]))]
 
         (let [db @(d/transact node [[:conditional-delete "Patient"
                                      [["identifier" "181205"]]]])]
@@ -791,7 +791,7 @@
       (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
         [(vec (for [id (range 10001)]
                 [:create {:fhir/type :fhir/Patient :id (str id)
-                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+                          :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]))]
 
         (given-failed-future (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
           ::anom/category := ::anom/conflict
@@ -802,7 +802,7 @@
       (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
         [(vec (for [id (range 10001)]
                 [:create {:fhir/type :fhir/Patient :id (str id)
-                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+                          :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]))]
 
         (given-failed-future (d/transact node [[:conditional-delete "Patient"]])
           ::anom/category := ::anom/conflict
@@ -2291,7 +2291,7 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "id-0"
                :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-145024"]}
-               :identifier [#fhir/Identifier{:value "0"}]
+               :identifier [#fhir/Identifier{:value #fhir/string"0"}]
                :active false
                :gender #fhir/code"male"
                :birthDate #fhir/date"2020-02-08"
@@ -2308,10 +2308,10 @@
                :telecom
                [{:fhir/type :fhir/ContactPoint
                  :system #fhir/code"email"
-                 :value "foo@bar.baz"}
+                 :value #fhir/string"foo@bar.baz"}
                 {:fhir/type :fhir/ContactPoint
                  :system #fhir/code"phone"
-                 :value "0815"}]}]
+                 :value #fhir/string"0815"}]}]
         [:put {:fhir/type :fhir/Patient :id "id-2"
                :active false
                :gender #fhir/code"female"
@@ -5002,7 +5002,7 @@
                     {:identifier
                      #fhir/Identifier
                       {:system #fhir/uri"system-122917"
-                       :value "value-122931"}}}]}]
+                       :value #fhir/string"value-122931"}}}]}]
           [:put {:fhir/type :fhir/List
                  :id "id-143814"
                  :entry
