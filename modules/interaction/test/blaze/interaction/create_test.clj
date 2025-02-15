@@ -334,7 +334,7 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"
                    :identifier
-                   [#fhir/Identifier{:value "094808"}]}]]]
+                   [#fhir/Identifier{:value #fhir/string"094808"}]}]]]
 
           (let [{:keys [status]}
                 @(handler
@@ -349,7 +349,7 @@
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :identifier
-                 [#fhir/Identifier{:value "095156"}]}]]]
+                 [#fhir/Identifier{:value #fhir/string"095156"}]}]]]
 
         (let [{:keys [status body]}
               @(handler

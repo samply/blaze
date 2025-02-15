@@ -139,7 +139,7 @@
     (testing "with search params"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value "181205"}]}]
+                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         (let [{:keys [status body]}
@@ -199,7 +199,7 @@
     (testing "deleting one Patient"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value "181205"}]}]
+                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         (let [{:keys [status body]}
@@ -219,9 +219,9 @@
     (testing "deleting two Patients"
       (with-handler-allow-multiple [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value "181205"}]}]
+                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
           [:put {:fhir/type :fhir/Patient :id "1"
-                 :identifier [#fhir/Identifier{:value "181205"}]}]]]
+                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]]]
 
         (let [{:keys [status body]}
               @(handler

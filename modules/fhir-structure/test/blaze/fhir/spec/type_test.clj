@@ -66,7 +66,7 @@
   #fhir/Extension{:url "url-130945" :value #fhir/code"value-130953"})
 
 (def ^:private not-internable-extension
-  #fhir/Extension{:url "url-205325" :value "value-205336"})
+  #fhir/Extension{:url "url-205325" :value #fhir/string"value-205336"})
 
 (deftest nil-test
   (testing "all FhirType methods can be called on nil"
@@ -301,8 +301,8 @@
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
-        (type/string {:extension [internable-extension] :value "174230"})
-        (type/string {:extension [internable-extension] :value "174230"}))
+        (type/string {:extension [internable-extension] :value #fhir/string"174230"})
+        (type/string {:extension [internable-extension] :value #fhir/string"174230"}))
 
       (are [x y] (interned? x y)
         (type/string {:extension [internable-extension]})

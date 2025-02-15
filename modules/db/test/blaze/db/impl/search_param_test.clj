@@ -195,7 +195,7 @@
                            {:identifier
                             #fhir/Identifier
                              {:system #fhir/uri"system-122917"
-                              :value "value-122931"}}}]}
+                              :value #fhir/string"value-122931"}}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
