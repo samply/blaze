@@ -1,8 +1,12 @@
+---
+aside: false
+---
+
 # Tuning Guide
 
 ## Recommended System Sizes
 
-The following table lists the recommended system sizes depending on the number of patients under the assumption that each patient has about 1000 resources. 
+The following table lists the recommended system sizes depending on the number of patients assuming each patient has about 1000 resources. The total memory size (RAM) should be reserved for a single Blaze instance. If a virtual machine is used, no other processes that need non-trivial amounts of memory should run besides Blaze.  
 
 | # Patients | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache | CQL Cache |
 |-----------:|------:|--------:|-------:|---------:|------------:|---------------:|----------:|
@@ -12,6 +16,8 @@ The following table lists the recommended system sizes depending on the number o
 |      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |            5 M |   512 MiB | 
 |        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |           10 M |     1 GiB | 
 |      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |           20 M |     1 GiB | 
+
+As a general rule of thumb, 1/4 of the available memory should be assigned to the heap memory, 1/4 to the block cache, and 1/2 to the Linux page cache, which is used to cache RocksDB database file access. The resource cache is configured by the number of resources instead of the amount of memory. The resource numbers given assume a certain resource size taken from [Synthea][1] resources. For fine-tuning that number, the Metric `JVM Memory Used by Pool` should be used. 
 
 ### Configuration
 
@@ -59,3 +65,5 @@ If you have only spinning disks available, a bigger OS page cache can help. Othe
 Blaze maintains indexes for FHIR search parameters and CQL evaluation. The indexing process can be executed in parallel if transactions contain more than one resource. Transaction containing only one resource and direct REST interactions like create, update or delete don't benefit from parallel indexing.
 
 Depending on your system, indexing can be I/O or CPU bound. Performance tests show, that at least 20 CPU cores can be utilized for resource indexing.
+
+[1]: <https://github.com/synthetichealth/synthea>

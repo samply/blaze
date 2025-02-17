@@ -14,8 +14,6 @@ export default defineConfig({
 		},
 		siteTitle: false,
 
-		outline: false,
-
 		editLink: {
 			pattern: 'https://github.com/samply/blaze/edit/master/docs/:path',
 			text: 'Edit this page on GitHub'
@@ -28,6 +26,14 @@ export default defineConfig({
 		footer: {
 			message: 'Released under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>',
 			copyright: 'Copyright 2019 - 2025 The Samply Community • Circuit icons created by <a href="https://www.flaticon.com/free-icons/circuit" title="circuit icons">Eucalyp - Flaticon</a>'
+		},
+
+		search: {
+			provider: 'local'
+		},
+
+		outline: {
+			level: [2, 3]
 		},
 
 		nav: [

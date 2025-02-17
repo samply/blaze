@@ -1,4 +1,4 @@
-# Delete History <Badge type="info" text="Feature: INTERACTION_DELETE_HISTORY"/> <Badge type="warning" text="v0.30.1"/>
+# Delete History <Badge type="info" text="Feature: INTERACTION_DELETE_HISTORY"/> <Badge type="warning" text="Since 0.30.1"/>
 
 > [!CAUTION]
 > The delete history interaction is currently **alpha** and has to be enabled explicitly by setting the env var `ENABLE_INTERACTION_DELETE_HISTORY` to true. Please don't use it in production. Please be aware that the database might not be able to migrate to a newer version of Blaze if the operation was used.

@@ -35,5 +35,26 @@ The special search parameter `_sort` supports the values `_id`, `_lastUpdated` a
 
 The search-type interaction supports paging which is described in depth in the separate [paging sessions](../../api.md#paging-sessions) section.
 
+## Patient Search Optimization
+
+Searches including both token parameters and patient references are optimized. For Blaze to detect such a query, the search value of the token parameter has to use the syntax `[system]|[code]`, and the reference has to be an unambiguous patient reference. The following search parameter URLs are possible:
+
+### Patient Param
+
+Here the [`patient`][3] search param, available for multiple resource types, ensures that references have to be patient references.
+
+```
+[base]/[type]?[token-param]=[system]|[code]&patient=[id]
+``` 
+
+### Subject Param with Patient Reference
+
+Here the `Patient/` prefix in the reference ensures that the `id` is a patient ID.
+
+```
+[base]/[type]?[token-param]=[system]|[code]&[reference-param]=Patient/[id]
+```
+
 [1]: <https://semver.org>
 [2]: <https://en.wikipedia.org/wiki/Coordinated_Universal_Time>
+[3]: <https://hl7.org/fhir/R4/searchparameter-registry.html#clinical-patient>
