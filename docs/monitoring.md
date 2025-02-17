@@ -28,7 +28,7 @@ scrape_configs:
 
 ## Import the Blaze Dashboard
 
-In order to import the Blaze dashboard into your Grafana instance, please copy the contents of [blaze.json](monitoring/blaze.json) and paste it into the import dialog on the Import dashboard site:
+In order to import the Blaze dashboard into your Grafana instance, please copy the contents of [blaze.json][3] and paste it into the import dialog on the Import dashboard site:
 
 ![](monitoring/import-dashboard-1.png)
 
@@ -50,3 +50,4 @@ The Prometheus [Node Exporter](https://github.com/prometheus/node_exporter) shou
 
 [1]: <https://prometheus.io>
 [2]: <https://grafana.com>
+[3]: <https://github.com/samply/blaze/blob/main/docs/monitoring/blaze.json>

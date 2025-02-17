@@ -1,4 +1,4 @@
-# Operation \$purge on Patient <Badge type="info" text="Feature: OPERATION_PATIENT_PURGE"/> <Badge type="warning" text="v0.30.1"/>
+# Operation \$purge on Patient <Badge type="info" text="Feature: OPERATION_PATIENT_PURGE"/> <Badge type="warning" text="Since 0.30.1"/>
 
 > [!CAUTION]
 > The operation \$purge on patient is currently **alpha** and has to be enabled explicitly by setting the env var `ENABLE_OPERATION_PATIENT_PURGE` to true. Please don't use it in production. Please be aware that the database might not be able to migrate to a newer version of Blaze if the operation was used.
