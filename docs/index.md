@@ -11,7 +11,7 @@ hero:
     link: /api
   - theme: brand
     text: Get Started
-    link: /deployment/README
+    link: /deployment
   - theme: alt
     text: View on GitHub
     link: https://github.com/samply/blaze
@@ -32,5 +32,5 @@ features:
 - title: Easy to Run
   icon: 🎂
   details: Blaze can be started with a single command, no further configuration required  
-  link: /deployment/README
+  link: /deployment
 ---

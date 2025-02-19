@@ -1,4 +1,4 @@
-# Operation \$validate-code on CodeSystem <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="Since 0.32.0"/>
+# Operation \$validate-code on CodeSystem <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="Since 0.32"/>
 
 > [!CAUTION]
 > The operation \$validate-code on CodeSystem is currently **beta**. Only the parameters, described here, are implemented.

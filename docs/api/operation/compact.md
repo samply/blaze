@@ -1,4 +1,4 @@
-# Operation \$compact <Badge type="info" text="Feature: ADMIN_API"/> <Badge type="warning" text="Since 0.31.0"/>
+# Operation \$compact <Badge type="info" text="Feature: ADMIN_API"/> <Badge type="warning" text="Since 0.31"/>
 
 The system level \$compact operation is used to compact column families of RocksDB databases. RockDB compaction is done automatically but in certain situations manual compaction can be useful.
 

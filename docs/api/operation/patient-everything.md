@@ -1,4 +1,4 @@
-# Operation Patient Everything <Badge type="warning" text="Since 0.22.0"/>
+# Operation Patient Everything <Badge type="warning" text="Since 0.22"/>
 
 The official documentation can be found [here][1].
 

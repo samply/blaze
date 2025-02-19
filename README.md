@@ -27,6 +27,14 @@ Latest release: [v0.32.0][5]
 
 Documentation can be found [here](https://samply.github.io/blaze).
 
+## Quick Start
+
+Blaze can be started with a single command using docker:
+
+```sh
+docker run -d --name blaze -p 8080:8080 samply/blaze:latest
+```
+
 ## YourKit Profiler
 
 ![YourKit logo](https://www.yourkit.com/images/yklogo.png)

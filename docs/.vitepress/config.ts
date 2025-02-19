@@ -169,8 +169,8 @@ export default defineConfig({
 			},
 			{
 				text: 'Deployment',
-				link: '/deployment/README',
 				items: [
+					{ text: 'Overview', link: '/deployment' },
 					{ text: 'Full Standalone', link: '/deployment/full-standalone' },
 					{ text: 'Standalone Backend Only', link: '/deployment/standalone-backend' },
 					{ text: 'Distributed Backend Only', link: '/deployment/distributed-backend' },
