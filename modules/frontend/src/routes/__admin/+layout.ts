@@ -5,8 +5,9 @@ import { error, type NumericRange } from '@sveltejs/kit';
 
 export interface Setting {
 	name: string;
-	value: string | number;
-	defaultValue: string | number;
+	value?: string | number;
+	masked?: boolean;
+	defaultValue?: string | number;
 }
 
 export interface Feature {

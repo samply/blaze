@@ -100,7 +100,21 @@
        {:settings
         [{:name "PROXY_HOST"
           :value "default"
-          :default-value "default"}]}})))
+          :default-value "default"}]}}))
+
+  (testing "Passwords are masked"
+    (are [name]
+         (let [config {:a (system/->Cfg name (s/spec string?) nil)}]
+           (= {:a "secret" :blaze/admin-api {:settings [{:name name :masked true}]}}
+              (system/resolve-config config {name "secret"})))
+      "PASSWORD"
+      "FOO_PASSWORD"
+      "PASSWORD_FOO"
+      "FOO_PASSWORD_BAR"
+      "PASS"
+      "FOO_PASS"
+      "PASS_FOO"
+      "FOO_PASS_BAR")))
 
 (deftest merge-features-test
   (testing "vector"

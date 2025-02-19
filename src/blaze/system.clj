@@ -99,6 +99,16 @@
       default
       v)))
 
+(defn- secret? [env-var]
+  (str/includes? (str/lower-case env-var) "pass"))
+
+(defn- setting [{:keys [env-var default]} value]
+  (cond->
+   (if (secret? env-var)
+     {:masked true}
+     {:value value :default-value default})
+    (some? default) (assoc :default-value default)))
+
 (defn resolve-config
   "Resolves config entries to their actual values with the help of an
   environment."
@@ -109,7 +119,7 @@
            (if (instance? Cfg x)
              (when-some [value (get-blank env (:env-var x) (:default x))]
                (let [value (coerce (:spec x) value)]
-                 (vswap! settings assoc (:env-var x) {:value value :default-value (:default x)})
+                 (vswap! settings assoc (:env-var x) (setting x value))
                  value))
              x))
          config)

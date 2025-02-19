@@ -485,7 +485,41 @@
           [:body "settings" 0 "name"] := "SERVER_PORT"
           [:body "settings" 0 "value"] := 8081
           [:body "settings" 0 "defaultValue"] := 8080
-          [:body "features" count] := 0))))
+          [:body "features" count] := 0)))
+
+    (testing "without default value"
+      (with-handler [handler]
+        (assoc-in (config (new-temp-dir!))
+                  [:blaze/admin-api :settings]
+                  [{:name "SERVER_PORT"
+                    :value 8081}])
+        []
+        (testing "success"
+          (given @(handler
+                   {:request-method :get
+                    :uri "/fhir/__admin"})
+            :status := 200
+            [:body "settings" count] := 1
+            [:body "settings" 0 "name"] := "SERVER_PORT"
+            [:body "settings" 0 "value"] := 8081
+            [:body "features" count] := 0))))
+
+    (testing "with masked value"
+      (with-handler [handler]
+        (assoc-in (config (new-temp-dir!))
+                  [:blaze/admin-api :settings]
+                  [{:name "SERVER_PORT"
+                    :masked true}])
+        []
+        (testing "success"
+          (given @(handler
+                   {:request-method :get
+                    :uri "/fhir/__admin"})
+            :status := 200
+            [:body "settings" count] := 1
+            [:body "settings" 0 "name"] := "SERVER_PORT"
+            [:body "settings" 0 "masked"] := true
+            [:body "features" count] := 0)))))
 
   (testing "with one feature"
     (with-handler [handler]
