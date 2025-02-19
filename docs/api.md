@@ -31,14 +31,14 @@ Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`.
 
 The following Operations are implemented:
 
-* [$compact](api/operation/compact.md) <Badge type="warning" text="Since 0.31.0"/>
+* [$compact](api/operation/compact.md) <Badge type="warning" text="Since 0.31"/>
 * [$graphql](http://hl7.org/fhir/resource-operation-graphql.html)
 * [Measure $evaluate-measure](api/operation/measure-evaluate-measure.md)
-* [Patient $everything](api/operation/patient-everything.md) <Badge type="warning" text="Since 0.22.0"/>
+* [Patient $everything](api/operation/patient-everything.md) <Badge type="warning" text="Since 0.22"/>
 * [Patient $purge](api/operation/patient-purge.md) <Badge type="warning" text="Since 0.30.1"/>
-* [CodeSystem $validate-code](api/operation/code-system-validate-code.md) <Badge type="warning" text="Since 0.32.0"/>
-* [ValueSet $expand](api/operation/value-set-expand.md) <Badge type="warning" text="Since 0.32.0"/>
-* [ValueSet $validate-code](api/operation/value-set-validate-code.md) <Badge type="warning" text="Since 0.32.0"/>
+* [CodeSystem $validate-code](api/operation/code-system-validate-code.md) <Badge type="warning" text="Since 0.32"/>
+* [ValueSet $expand](api/operation/value-set-expand.md) <Badge type="warning" text="Since 0.32"/>
+* [ValueSet $validate-code](api/operation/value-set-validate-code.md) <Badge type="warning" text="Since 0.32"/>
 
 ## Asynchronous Requests
 

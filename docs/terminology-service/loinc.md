@@ -1,4 +1,4 @@
-# LOINC <Badge type="info" text="Feature: TERMINOLOGY_LOINC"/> <Badge type="warning" text="Since 0.32.0"/>
+# LOINC <Badge type="info" text="Feature: TERMINOLOGY_LOINC"/> <Badge type="warning" text="Since 0.32"/>
 
 > [!NOTE]
 > LOINC data is build into the Blaze image. Because LOINC support needs additional memory, it has to be enabled by setting the environment variable `ENABLE_TERMINOLOGY_LOINC` to `true`.

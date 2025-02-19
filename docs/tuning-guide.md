@@ -21,7 +21,7 @@ As a general rule of thumb, 1/4 of the available memory should be assigned to th
 
 ### Configuration
 
-The list of all environment variables can be found in the [Environment Variables Section](deployment/environment-variables.md) under [Deployment](deployment/README.md). The variables important here are:
+The list of all environment variables can be found in the [Environment Variables Section](deployment/environment-variables.md) under [Deployment](deployment.md). The variables important here are:
 
 | Name                   | Use for        | Default | Description                                               |
 |:-----------------------|----------------|:--------|:----------------------------------------------------------|

@@ -1,4 +1,4 @@
-# Terminology Service <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="Since 0.32.0"/>
+# Terminology Service <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="Since 0.32"/>
 
 > [!CAUTION]
 > The terminology service is currently **beta**. Only the basic functionality, described here, is implemented.
