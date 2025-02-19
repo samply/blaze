@@ -28,13 +28,17 @@
   (s/coll-of ::admin-api/setting))
 
 (s/def ::admin-api/setting
-  (s/keys :req-un [::setting/name ::setting/value ::setting/default-value]))
+  (s/keys :req-un [::setting/name]
+          :opt-un [::setting/value ::setting/masked ::setting/default-value]))
 
 (s/def ::setting/name
   string?)
 
 (s/def ::setting/value
   any?)
+
+(s/def ::setting/masked
+  boolean?)
 
 (s/def ::setting/default-value
   any?)
