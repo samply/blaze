@@ -91,8 +91,8 @@
 (defn- encode-response-binary [{:keys [body] :as response}]
   (cond-> response body generate-binary))
 
-(defn- format-key [format]
-  (condp = format
+(defn- accept-header-key [accept-header]
+  (condp = accept-header
     "application/fhir+json" :fhir+json
     "application/fhir+xml" :fhir+xml
     "application/json" :json
@@ -102,6 +102,22 @@
     "*/*" :fhir+json
     "application/*" :fhir+json
     "text/*" :text-json
+    "json" :json
+    "xml" :xml
+    nil))
+
+(defn- format-key [format]
+  ;; Corresponds to https://hl7.org/fhir/R4B/http.html#parameters
+  (condp = format
+    "application/fhir+json" :fhir+json
+    "application/fhir+xml" :fhir+xml
+    "application/json" :fhir+json
+    "application/xml" :fhir+xml
+    "text/json" :fhir+json
+    "text/xml" :fhir+xml
+    "*/*" :fhir+json
+    "application/*" :fhir+json
+    "text/*" :fhir+json
     "json" :fhir+json
     "xml" :fhir+xml
     nil))
@@ -110,7 +126,7 @@
   [{{:strs [accept]} :headers {format "_format"} :query-params}]
   (or (some-> format format-key)
       (if-let [accept (parse-accept accept)]
-        (some format-key accept)
+        (some accept-header-key accept)
         :fhir+json)))
 
 (defn handle-response [opts request response]
