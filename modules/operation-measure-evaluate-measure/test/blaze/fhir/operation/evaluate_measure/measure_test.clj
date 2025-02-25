@@ -937,6 +937,8 @@
 
   (testing-query "q60-medication" 2)
 
+  (testing-query "q61-encounter-class" 2)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
@@ -1199,4 +1201,4 @@
 
 (comment
   (log/set-min-level! :debug)
-  (evaluate "q60-medication"))
+  (evaluate "q61-encounter-class"))

@@ -5,8 +5,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "0",
-        "birthDate": "2020"
+        "id": "0"
       },
       "request": {
         "method": "PUT",
@@ -26,8 +25,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "2",
-        "birthDate": "2019"
+        "id": "2"
       },
       "request": {
         "method": "PUT",
@@ -37,8 +35,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "3",
-        "birthDate": "2018"
+        "id": "3"
       },
       "request": {
         "method": "PUT",
@@ -47,81 +44,14 @@
     },
     {
       "resource": {
-        "resourceType": "Patient",
-        "id": "4",
-        "birthDate": "2000"
-      },
-      "request": {
-        "method": "PUT",
-        "url": "Patient/4"
-      }
-    },
-    {
-      "resource": {
-        "resourceType": "Condition",
-        "id": "0",
-        "code": {
-          "coding": [
-            {
-              "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
-              "code": "E10.0-"
-            }
-          ]
-        },
-        "subject": {
-          "reference": "Patient/0"
-        },
-        "encounter": {
-          "reference": "Encounter/0"
-        }
-      },
-      "request": {
-        "method": "PUT",
-        "url": "Condition/0"
-      }
-    },
-    {
-      "resource": {
-        "resourceType": "Condition",
-        "id": "3",
-        "code": {
-          "coding": [
-            {
-              "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
-              "code": "E10.11"
-            }
-          ]
-        },
-        "subject": {
-          "reference": "Patient/3"
-        },
-        "encounter": {
-          "reference": "Encounter/3"
-        }
-      },
-      "request": {
-        "method": "PUT",
-        "url": "Condition/3"
-      }
-    },
-    {
-      "resource": {
         "resourceType": "Encounter",
         "id": "0",
-        "type": {
-          "coding": [
-            {
-              "system": "http://fhir.de/CodeSystem/kontaktart-de",
-              "code": "normalstationaer"
-            }
-          ]
+        "class": {
+          "system": "system-120749",
+          "code": "code-120753"
         },
         "subject": {
           "reference": "Patient/0"
-        },
-        "period": {
-          "start": "2021-04-01",
-          "end": "2021-04-11"
         }
       },
       "request": {
@@ -133,20 +63,12 @@
       "resource": {
         "resourceType": "Encounter",
         "id": "1",
-        "type": {
-          "coding": [
-            {
-              "system": "http://fhir.de/CodeSystem/kontaktart-de",
-              "code": "normalstationaer"
-            }
-          ]
+        "class": {
+          "system": "system-120749",
+          "code": "code-120826"
         },
         "subject": {
           "reference": "Patient/1"
-        },
-        "period": {
-          "start": "2022-04-01",
-          "end": "2022-04-11"
         }
       },
       "request": {
@@ -157,21 +79,27 @@
     {
       "resource": {
         "resourceType": "Encounter",
-        "id": "3",
-        "type": {
-          "coding": [
-            {
-              "system": "http://fhir.de/CodeSystem/kontaktart-de",
-              "code": "normalstationaer"
-            }
-          ]
+        "id": "2",
+        "class": {
+          "system": "system-120749",
+          "code": "code-120753",
+          "version": "version-120852"
         },
         "subject": {
+          "reference": "Patient/2"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "3",
+        "subject": {
           "reference": "Patient/3"
-        },
-        "period": {
-          "start": "2021-07-21",
-          "end": "2021-08-10"
         }
       },
       "request": {
