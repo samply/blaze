@@ -76,16 +76,15 @@
     (log/debug (create-bloom-filter-msg expression db))
     (calc-bloom-filter db identity expression)))
 
+(defn- recreate-bloom-filter-msg [expr-form t db]
+  (format "Recreate Bloom filter for expression `%s` last created at t = %d evaluating it for %d patients."
+          expr-form t (d/type-total db "Patient")))
+
 (defn recreate
   {:arglists '([node old-bloom-filter expression])}
   [node {::keys [t expr-form] :as old-bloom-filter} expression]
   (let [db (d/db node)]
-    (log/debug "Recreate Bloom filter for expression"
-               expr-form
-               "last created at t =" t
-               "evaluating it for"
-               (d/type-total db "Patient")
-               "Patient resources")
+    (log/debug (recreate-bloom-filter-msg expr-form t db))
     (calc-bloom-filter
      db
      (filter (partial might-contain? old-bloom-filter))
