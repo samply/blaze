@@ -26,6 +26,9 @@
 (s/def ::rest-api/transaction-handler
   fn?)
 
+(s/def ::rest-api/transaction-handler-active?
+  boolean?)
+
 (s/def ::rest-api/history-system-handler
   fn?)
 
