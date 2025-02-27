@@ -137,79 +137,93 @@
      structure-definition-repo
      search-system-handler
      transaction-handler-active?
-     history-system-handler]
+     history-system-handler
+     operations]
     :as config}]
-  {:fhir/type :fhir/CapabilityStatement
-   :status #fhir/code"active"
-   :experimental false
-   :publisher "The Samply Community"
-   :copyright copyright
-   :kind #fhir/code"instance"
-   :date (type/dateTime release-date)
-   :software
-   {:name "Blaze"
-    :version version
-    :releaseDate (type/dateTime release-date)}
-   :implementation
-   {:description "Blaze"}
-   :fhirVersion #fhir/code"4.0.1"
-   :format
-   [#fhir/code"application/fhir+json"
-    #fhir/code"application/fhir+xml"]
-   :rest
-   [{:mode #fhir/code"server"
-     :resource
-     (into
-      []
-      (keep (partial capability-resource config))
-      (sdr/resources structure-definition-repo))
-     :interaction
-     (cond-> []
-       (some? search-system-handler)
-       (conj {:code #fhir/code"search-system"})
-       (some? transaction-handler-active?)
-       (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
-       (some? history-system-handler)
-       (conj {:code #fhir/code"history-system"}))
-     :searchParam
-     [{:name "_id"
-       :type "token"
-       :definition "http://hl7.org/fhir/SearchParameter/Resource-id"}
-      {:name "_lastUpdated"
-       :type "date"
-       :definition "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"}
-      {:name "_profile"
-       :type "uri"
-       :definition "http://hl7.org/fhir/SearchParameter/Resource-profile"}
-      {:name "_security"
-       :type "token"
-       :definition "http://hl7.org/fhir/SearchParameter/Resource-security"}
-      {:name "_source"
-       :type "uri"
-       :definition "http://hl7.org/fhir/SearchParameter/Resource-source"}
-      {:name "_tag"
-       :type "token"
-       :definition "http://hl7.org/fhir/SearchParameter/Resource-tag"}
-      {:name "_list"
-       :type "special"}
-      {:name "_has"
-       :type "special"}
-      {:name "_include"
-       :type "special"}
-      {:name "_revinclude"
-       :type "special"}
-      {:name "_count"
-       :type "number"
-       :documentation "The number of resources returned per page"}
-      {:name "_elements"
-       :type "special"}
-      {:name "_sort"
-       :type "special"
-       :documentation "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
-      {:name "_summary"
-       :type "token"
-       :documentation "Only `count` is supported at the moment."}]
-     :compartment ["http://hl7.org/fhir/CompartmentDefinition/patient"]}]})
+  (let [operations (into
+                    []
+                    (keep
+                     (fn [{:blaze.rest-api.operation/keys
+                           [code def-uri system-handler documentation]}]
+                       (when system-handler
+                         (cond-> {:name code
+                                  :definition (type/canonical def-uri)}
+                           documentation
+                           (assoc :documentation (type/->Markdown documentation))))))
+                    operations)]
+    {:fhir/type :fhir/CapabilityStatement
+     :status #fhir/code"active"
+     :experimental false
+     :publisher "The Samply Community"
+     :copyright copyright
+     :kind #fhir/code"instance"
+     :date (type/dateTime release-date)
+     :software
+     {:name "Blaze"
+      :version version
+      :releaseDate (type/dateTime release-date)}
+     :implementation
+     {:description "Blaze"}
+     :fhirVersion #fhir/code"4.0.1"
+     :format
+     [#fhir/code"application/fhir+json"
+      #fhir/code"application/fhir+xml"]
+     :rest
+     [(cond->
+       {:mode #fhir/code"server"
+        :resource
+        (into
+         []
+         (keep (partial capability-resource config))
+         (sdr/resources structure-definition-repo))
+        :interaction
+        (cond-> []
+          (some? search-system-handler)
+          (conj {:code #fhir/code"search-system"})
+          (some? transaction-handler-active?)
+          (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
+          (some? history-system-handler)
+          (conj {:code #fhir/code"history-system"}))
+        :searchParam
+        [{:name "_id"
+          :type "token"
+          :definition "http://hl7.org/fhir/SearchParameter/Resource-id"}
+         {:name "_lastUpdated"
+          :type "date"
+          :definition "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"}
+         {:name "_profile"
+          :type "uri"
+          :definition "http://hl7.org/fhir/SearchParameter/Resource-profile"}
+         {:name "_security"
+          :type "token"
+          :definition "http://hl7.org/fhir/SearchParameter/Resource-security"}
+         {:name "_source"
+          :type "uri"
+          :definition "http://hl7.org/fhir/SearchParameter/Resource-source"}
+         {:name "_tag"
+          :type "token"
+          :definition "http://hl7.org/fhir/SearchParameter/Resource-tag"}
+         {:name "_list"
+          :type "special"}
+         {:name "_has"
+          :type "special"}
+         {:name "_include"
+          :type "special"}
+         {:name "_revinclude"
+          :type "special"}
+         {:name "_count"
+          :type "number"
+          :documentation "The number of resources returned per page"}
+         {:name "_elements"
+          :type "special"}
+         {:name "_sort"
+          :type "special"
+          :documentation "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
+         {:name "_summary"
+          :type "token"
+          :documentation "Only `count` is supported at the moment."}]
+        :compartment ["http://hl7.org/fhir/CompartmentDefinition/patient"]}
+        (seq operations) (assoc :operation operations))]}))
 
 (defn- build-terminology-capabilities-base
   [{:keys [version release-date]}]
@@ -280,11 +294,11 @@
     :blaze.db/search-param-registry]
    :opt-un
    [:blaze/context-path
-    ::search-system-handler
-    ::transaction-handler-active?
-    ::history-system-handler
-    ::resource-patterns
-    ::operations
+    ::rest-api/search-system-handler
+    ::rest-api/transaction-handler-active?
+    ::rest-api/history-system-handler
+    ::rest-api/resource-patterns
+    ::rest-api/operations
     :blaze.db/enforce-referential-integrity
     :blaze.db/allow-multiple-delete
     :blaze/terminology-service]))

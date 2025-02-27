@@ -213,7 +213,7 @@
 
 (def ^:private minimal-search-system-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :search-system-handler]
-            ::search-system))
+            (fn [_])))
 
 (deftest minimal-search-system-config-test
   (with-handler [handler minimal-search-system-config]
@@ -228,7 +228,7 @@
 
 (def ^:private minimal-history-system-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :history-system-handler]
-            ::history-system))
+            (fn [_])))
 
 (deftest minimal-history-system-config-test
   (with-handler [handler minimal-history-system-config]
@@ -319,7 +319,7 @@
       [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :documentation]
       := #fhir/markdown"Decimal values are truncated at two digits after the decimal point.")))
 
-(def ^:private one-operation-config
+(def ^:private one-type-operation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
           :resource-patterns
           [#:blaze.rest-api.resource-pattern
@@ -337,8 +337,8 @@
              :type-handler (fn [_])
              :instance-handler (fn [_])}]))
 
-(deftest one-operation-test
-  (with-handler [handler one-operation-config]
+(deftest one-type-operation-test
+  (with-handler [handler one-type-operation-config]
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :resource 0 :type] := #fhir/code"Measure"
@@ -346,7 +346,7 @@
       [:rest 0 :resource 0 :operation 0 :definition] :=
       #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))
 
-(def ^:private one-operation-documentation-config
+(def ^:private one-type-operation-documentation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
           :resource-patterns
           [#:blaze.rest-api.resource-pattern
@@ -365,8 +365,8 @@
              :instance-handler (fn [_])
              :documentation "documentation-161800"}]))
 
-(deftest one-operation-documentation-test
-  (with-handler [handler one-operation-documentation-config]
+(deftest one-type-operation-documentation-test
+  (with-handler [handler one-type-operation-documentation-config]
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :resource 0 :type] := #fhir/code"Measure"
@@ -374,6 +374,62 @@
       [:rest 0 :resource 0 :operation 0 :definition] :=
       #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))
+
+(def ^:private one-system-operation-config
+  (update minimal-config ::rest-api/capabilities-handler assoc
+          :operations
+          [#:blaze.rest-api.operation
+            {:code "totals"
+             :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+             :affects-state false
+             :resource-types ["Resource"]
+             :system-handler (fn [_])}
+           #:blaze.rest-api.operation
+            {:code "evaluate-measure"
+             :def-uri
+             "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+             :resource-types ["Measure"]
+             :type-handler (fn [_])
+             :instance-handler (fn [_])
+             :documentation "documentation-161800"}]))
+
+(deftest one-system-operation-test
+  (with-handler [handler one-system-operation-config]
+    (given (:body @(handler {}))
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :operation count] := 1
+      [:rest 0 :operation 0 :name] := "totals"
+      [:rest 0 :operation 0 :definition] :=
+      #fhir/canonical"https://samply.github.io/blaze/fhir/OperationDefinition/totals")))
+
+(def ^:private one-system-operation-documentation-config
+  (update minimal-config ::rest-api/capabilities-handler assoc
+          :operations
+          [#:blaze.rest-api.operation
+            {:code "totals"
+             :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+             :affects-state false
+             :resource-types ["Resource"]
+             :system-handler (fn [_])
+             :documentation "documentation-141700"}
+           #:blaze.rest-api.operation
+            {:code "evaluate-measure"
+             :def-uri
+             "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+             :resource-types ["Measure"]
+             :type-handler (fn [_])
+             :instance-handler (fn [_])
+             :documentation "documentation-161800"}]))
+
+(deftest one-system-operation-documentation-test
+  (with-handler [handler one-system-operation-documentation-config]
+    (given (:body @(handler {}))
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :operation count] := 1
+      [:rest 0 :operation 0 :name] := "totals"
+      [:rest 0 :operation 0 :definition] :=
+      #fhir/canonical"https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+      [:rest 0 :operation 0 :documentation] := #fhir/markdown"documentation-141700")))
 
 (def ^:private terminology-service-config
   (-> minimal-config
