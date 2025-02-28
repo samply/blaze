@@ -939,6 +939,8 @@
 
   (testing-query "q61-encounter-class" 2)
 
+  (testing-query "q62-consent" 4)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
@@ -1201,4 +1203,4 @@
 
 (comment
   (log/set-min-level! :debug)
-  (evaluate "q61-encounter-class"))
+  (evaluate "q62-consent"))
