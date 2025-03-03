@@ -10,6 +10,10 @@ Because Blaze keeps a history of all resource versions, the version of the resou
 
 By default Blaze enforces referential integrity while deleting resources. So resources that are referred by other resources can't be deleted without deleting the other resources first. That behaviour can be changed by setting the [environment variable](../../deployment/environment-variables.md) `ENFORCE_REFERENTIAL_INTEGRITY` to `false`.
 
+## Read-Only Resources
+
+Some resources like base FHIR StructureDefinition resources are read-only and can't be deleted. That resources contain a tag with the system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl` and code `read-only`.
+
 ## Conditional Delete
 
 The conditional delete operation allows to delete all resources matching certain criteria. The same search parameter as in the search type interaction can be used. The search is always strict, so it will fail on any unknown search parameter.

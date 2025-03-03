@@ -319,13 +319,20 @@
 
 ;; ---- Common Matcher Functions ----------------------------------------------
 
+(defn matches? [db matcher resource-handle]
+  (transduce
+   (p/-matcher-transducer db matcher)
+   (fn ([r] r) ([_ _] true))
+   false
+   [resource-handle]))
+
 (defn matcher-transducer
   "Returns a transducer of `matcher` which operates on `db`."
   [db matcher]
   (p/-matcher-transducer db matcher))
 
 (defn matcher-clauses
-  "Returns a transducer of `matcher` which operates on `db`."
+  "Returns the clauses of `matcher`."
   [matcher]
   (p/-matcher-clauses matcher))
 

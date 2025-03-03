@@ -156,6 +156,11 @@
 
 ;; ---- Common Matcher Functions ----------------------------------------------
 
+(s/fdef d/matches?
+  :args (s/cat :db :blaze.db/db :matcher :blaze.db/matcher
+               :resource-handle :blaze.db/resource-handle)
+  :ret boolean?)
+
 (s/fdef d/matcher-transducer
   :args (s/cat :db :blaze.db/db :matcher :blaze.db/matcher)
   :ret fn?)
