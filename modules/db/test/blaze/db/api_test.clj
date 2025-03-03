@@ -341,6 +341,11 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Conditional create of a Patient with query `foo=bar` failed. Cause: The search-param with code `foo` and type `Patient` was not found."))))
 
+(def ^:private read-only-tag
+  #fhir/Coding
+   {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+    :code #fhir/code"read-only"})
+
 (deftest transact-put-test
   (testing "one Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -498,7 +503,18 @@
         [:meta :versionId] := #fhir/id"1"
         [:entry 0 :item :reference] := "Observation/0"
         [:entry 1 :item :reference] := "Observation/1"
-        [meta :blaze.db/op] := :put))))
+        [meta :blaze.db/op] := :put)))
+
+  (testing "read-only resources can't be updated"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"
+                  :meta (type/map->Meta {:tag [read-only-tag]})}]]]
+
+      (given-failed-future (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                                    :meta (type/map->Meta {:tag [read-only-tag]})
+                                                    :gender #fhir/code"female"}]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't update the read-only resource `Patient/0`."))))
 
 (deftest transact-delete-test
   (testing "on empty database"
@@ -603,7 +619,16 @@
           :num-changes := 2)
         (given (d/resource-handle db "Observation" "0")
           :op := :create
-          :num-changes := 1)))))
+          :num-changes := 1))))
+
+  (testing "read-only resources are not deletable"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"
+                  :meta (type/map->Meta {:tag [read-only-tag]})}]]]
+
+      (given-failed-future (d/transact node [[:delete "Patient" "0"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the read-only resource `Patient/0`."))))
 
 (deftest transact-conditional-delete-test
   (testing "one matching patient"

@@ -134,6 +134,12 @@
 (defn- precondition-version-failed-anomaly [type id if-none-match]
   (ba/conflict (precondition-version-failed-msg type id if-none-match) :http/status 412))
 
+(defn- compile-read-only-matcher [db type]
+  (d/compile-type-matcher db type [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]]))
+
+(defn- read-only? [db type resource-handle]
+  (d/matches? db (compile-read-only-matcher db type) resource-handle))
+
 (defmethod verify "put"
   [db-before t res
    {:keys [type id hash if-match if-none-match refs] :as tx-cmd}]
@@ -141,7 +147,8 @@
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-put")]
     (let [tid (codec/tid type)
           if-match (u/to-seq if-match)
-          {:keys [num-changes op] :or {num-changes 0} old-t :t old-hash :hash}
+          {:keys [num-changes op] :or {num-changes 0} old-t :t old-hash :hash
+           :as old-resource-handle}
           (d/resource-handle db-before type id)]
       (cond
         (and if-match (not (some #{old-t} if-match)))
@@ -156,6 +163,9 @@
         ;; identical update, we will do nothing
         (= old-hash hash)
         res
+
+        (some->> old-resource-handle (read-only? db-before type))
+        (throw-anom (ba/conflict (format "Can't update the read-only resource `%s/%s`." type id)))
 
         :else
         (cond->
@@ -205,13 +215,18 @@
           {:keys [num-changes op] :or {num-changes 0} :as old-resource-handle}
           (d/resource-handle db-before type id)
           refs (some->> old-resource-handle (patient-refs db-before type))]
-      (if (identical? :delete op)
-        res
+      (cond
+        (identical? :delete op) res
+
+        (some->> old-resource-handle (read-only? db-before type))
+        (throw-anom (ba/conflict (format "Can't delete the read-only resource `%s/%s`." type id)))
+
+        :else
         (cond->
          (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete refs))
              (update :del-resources conj [type id])
              (update-in [:stats tid :num-changes] inc-0))
-          op
+          old-resource-handle
           (update-in [:stats tid :total] dec-0))))))
 
 (def ^:private ^:const ^long delete-history-max 100000)
