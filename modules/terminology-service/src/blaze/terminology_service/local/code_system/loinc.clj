@@ -89,7 +89,7 @@
 
 (defn ensure-code-systems
   "Ensures that all LOINC code systems are present in the database node."
-  {:arglists '([context sct-context])}
+  {:arglists '([context loinc-context])}
   [{:keys [node] :as context} {:keys [code-systems]}]
   (-> (cs-u/code-system-versions (d/db node) url)
       (ac/then-compose

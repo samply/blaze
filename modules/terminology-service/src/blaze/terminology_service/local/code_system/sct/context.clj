@@ -256,6 +256,12 @@
       (.map
        (fn [{:keys [module-id source-effective-time]}]
          {:fhir/type :fhir/CodeSystem
+          :meta
+          #fhir/Meta
+           {:tag
+            [#fhir/Coding
+              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+               :code #fhir/code"read-only"}]}
           :url (type/uri url)
           :version (type/string (version-url module-id source-effective-time))
           :title (type/string (find-description fully-specified-name-index module-id source-effective-time))
