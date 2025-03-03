@@ -1,5 +1,6 @@
 (ns blaze.terminology-service.local-test
   (:require
+   [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.db.node :refer [node?]]
    [blaze.fhir.spec :as fhir-spec]
@@ -179,6 +180,58 @@
    ::ts-local/graph-cache {}
    ::loinc {}
    ::cs/sct {:release-path (path "sct-release")}))
+
+(deftest init-bcp-13-test
+  (with-system [{:blaze.db/keys [node]} bcp-13-config]
+    (testing "the BCP-13 code system is available"
+      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+        count := 1
+        [0 :id] := "AAAAAAAAAAAAAAAA"
+        [0 :url] := #fhir/uri"urn:ietf:bcp:13"))
+
+    (testing "can't delete the BCP-13 code system"
+      (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAAA"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAAA`."))))
+
+(deftest init-loinc-test
+  (with-system [{:blaze.db/keys [node]} loinc-config]
+    (testing "the LOINC code system is available"
+      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+        count := 1
+        [0 :id] := "AAAAAAAAAAAAAAAA"
+        [0 :url] := #fhir/uri"http://loinc.org"))
+
+    (testing "can't delete the LOINC code system"
+      (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAAA"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAAA`."))))
+
+(deftest init-sct-test
+  (with-system [{:blaze.db/keys [node]} sct-config]
+    (testing "SNOMED CT code systems are available"
+      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+        count := 82
+        [0 :id] := "AAAAAAAAAAAAAAA2"
+        [0 :url] := #fhir/uri"http://snomed.info/sct"))
+
+    (testing "can't delete the first SNOMED CT code system"
+      (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAA2"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAA2`."))))
+
+(deftest init-ucum-test
+  (with-system [{:blaze.db/keys [node]} ucum-config]
+    (testing "the UCUM code system is available"
+      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+        count := 1
+        [0 :id] := "AAAAAAAAAAAAAAAA"
+        [0 :url] := #fhir/uri"http://unitsofmeasure.org"))
+
+    (testing "can't delete the UCUM code system"
+      (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAAA"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAAA`."))))
 
 (defn- uuid-urn? [s]
   (some? (re-matches #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" s)))

@@ -1394,6 +1394,15 @@ jobs:
     - name: Check Terminology Capabilities
       run: .github/scripts/check-terminology-capabilities.sh
 
+    - name: Check that the BCP-13 Code System is read-only
+      run: .github/scripts/check-code-system-read-only.sh "urn:ietf:bcp:13"
+
+    - name: Check that the LOINC Code System is read-only
+      run: .github/scripts/check-code-system-read-only.sh "http://loinc.org"
+
+    - name: Check that the UCUM Code System is read-only
+      run: .github/scripts/check-code-system-read-only.sh "http://unitsofmeasure.org"
+
     - name: Check Simple Expand
       run: .github/terminology-tests/simple-expand.sh
 

@@ -19,6 +19,12 @@
 
 (defn- code-system []
   {:fhir/type :fhir/CodeSystem
+   :meta
+   #fhir/Meta
+    {:tag
+     [#fhir/Coding
+       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+        :code #fhir/code"read-only"}]}
    :url (type/uri url)
    :version (type/string version)
    :name #fhir/string"LOINC"
