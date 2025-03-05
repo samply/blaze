@@ -1,11 +1,11 @@
-import type { StructureDefinition } from 'fhir/r4';
+import type { Bundle, StructureDefinition } from 'fhir/r4';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 const structureDefinitionStore = new Map<string, Promise<StructureDefinition>>();
 
 function structureDefinitionUrl(type: string) {
-	return `${base}/__metadata/StructureDefinition?url=http://hl7.org/fhir/StructureDefinition/${type}`;
+	return `${base}/StructureDefinition?url=http://hl7.org/fhir/StructureDefinition/${type}`;
 }
 
 async function loadStructureDefinition(fetch: typeof window.fetch, type: string) {
@@ -20,7 +20,17 @@ async function loadStructureDefinition(fetch: typeof window.fetch, type: string)
 		);
 	}
 
-	return (await res.json()) as StructureDefinition;
+	const bundle = (await res.json()) as Bundle;
+
+	if (bundle.entry === undefined) {
+		error(404, `expected one bundle entry but found none`);
+	}
+
+	if (bundle.entry?.length != 1) {
+		error(404, `expected one bundle entry but found ${bundle.entry?.length}`);
+	}
+
+	return bundle.entry[0].resource as StructureDefinition;
 }
 
 export async function fetchStructureDefinition(

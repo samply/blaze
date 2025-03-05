@@ -1,6 +1,7 @@
 (ns blaze.rest-api-test
   (:require
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.db.impl.search-param]
    [blaze.fhir.spec :as fhir-spec]
@@ -8,7 +9,7 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.job-scheduler]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.rest-api :as rest-api]
    [blaze.rest-api.capabilities-handler]
@@ -20,6 +21,7 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as-alias reitit]
@@ -160,6 +162,18 @@
     (-primitive-types [_] [])
     (-complex-types [_] [])
     (-resources [_] [])))
+
+(deftest structure-definition-test
+  (testing "StructureDefinition resources are created"
+    (with-system [{:blaze.db/keys [node]} config]
+      (is (< 100 (d/type-total (d/db node) "StructureDefinition")))))
+
+  (testing "can't delete the Patient StructureDefinition"
+    (with-system [{:blaze.db/keys [node]} config]
+      (let [[{:keys [id]}] (vec (d/type-query (d/db node) "StructureDefinition" [["url" "http://hl7.org/fhir/StructureDefinition/Patient"]]))]
+        (given-failed-future (d/transact node [[:delete "StructureDefinition" id]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := (format "Can't delete the read-only resource `StructureDefinition/%s`." id))))))
 
 (deftest format-override-test
   (testing "XML"

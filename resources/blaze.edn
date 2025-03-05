@@ -1283,11 +1283,7 @@
    :toggle "ENABLE_ADMIN_API"
    :config
    {:blaze/rest-api
-    {:metadata-handler #blaze/ref :blaze.rest-api/metadata-handler
-     :admin-handler #blaze/ref :blaze/admin-api}
-
-    :blaze.rest-api/metadata-handler
-    {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+    {:admin-handler #blaze/ref :blaze/admin-api}
 
     :blaze.fhir.operation/compact
     {:clock #blaze/ref :blaze/clock

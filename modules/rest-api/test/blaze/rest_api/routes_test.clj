@@ -161,7 +161,6 @@
       :resource-types ["Patient"]
       :instance-handler (handler ::purge)}]
    :capabilities-handler (handler ::capabilities)
-   :metadata-handler (handler ::metadata)
    :admin-handler (handler ::admin)
    :node ::node
    :db-sync-timeout 1000})
@@ -273,7 +272,6 @@
         "/Measure/0/$evaluate-measure" :get ::evaluate-measure-instance
         "/Measure/0/$evaluate-measure" :post ::evaluate-measure-instance
         "/Measure/0" :get ::read
-        "/__metadata/StructureDefinition" :get ::metadata
         "/__admin" :get ::admin
         "/__admin/more" :get ::admin))))
 

@@ -28,6 +28,7 @@ EXPECTED_TOTALS="$(cat <<END
 "PractitionerRole",195
 "Procedure",307
 "Provenance",8
+"StructureDefinition",185
 "SupplyDelivery",571
 END
 )"

@@ -447,8 +447,8 @@ jobs:
     - name: Prometheus Metrics
       run: .github/scripts/test-cql-expr-cache-metrics.sh
 
-    - name: Check Total-Number of Resources are 92114
-      run: .github/scripts/check-total-number-of-resources.sh 92114
+    - name: Check Total-Number of Resources are 92299
+      run: .github/scripts/check-total-number-of-resources.sh 92299
 
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh q1 56
@@ -643,11 +643,14 @@ jobs:
     - name: Check Referential Integrity Enforced
       run: .github/scripts/check-referential-integrity-enforced.sh
 
+    - name: Check that the Patient StructureDefinition is read-only
+      run: .github/scripts/check-resource-read-only.sh StructureDefinition "http://hl7.org/fhir/StructureDefinition/Patient"
+
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
 
-    - name: Check Total-Number of Resources are 92114
-      run: .github/scripts/check-total-number-of-resources.sh 92114
+    - name: Check Total-Number of Resources are 92299
+      run: .github/scripts/check-total-number-of-resources.sh 92299
 
     - name: Check Resource Totals
       run: .github/scripts/check-resource-totals.sh
@@ -1167,8 +1170,8 @@ jobs:
     - name: Compact All Column Families
       run: .github/scripts/compact-all.sh
 
-    - name: Check Total-Number of Resources are 1099594
-      run: .github/scripts/check-total-number-of-resources.sh 1099594
+    - name: Check Total-Number of Resources are 1099779
+      run: .github/scripts/check-total-number-of-resources.sh 1099779
 
     - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
       run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 13
@@ -1226,8 +1229,8 @@ jobs:
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
 
-    - name: Check Total-Number of Resources are 92114
-      run: .github/scripts/check-total-number-of-resources.sh 92114
+    - name: Check Total-Number of Resources are 92299
+      run: .github/scripts/check-total-number-of-resources.sh 92299
 
     - name: Patient Purge all
       run: .github/scripts/patient-purge-all.sh
@@ -1395,13 +1398,13 @@ jobs:
       run: .github/scripts/check-terminology-capabilities.sh
 
     - name: Check that the BCP-13 Code System is read-only
-      run: .github/scripts/check-code-system-read-only.sh "urn:ietf:bcp:13"
+      run: .github/scripts/check-resource-read-only.sh CodeSystem "urn:ietf:bcp:13"
 
     - name: Check that the LOINC Code System is read-only
-      run: .github/scripts/check-code-system-read-only.sh "http://loinc.org"
+      run: .github/scripts/check-resource-read-only.sh CodeSystem "http://loinc.org"
 
     - name: Check that the UCUM Code System is read-only
-      run: .github/scripts/check-code-system-read-only.sh "http://unitsofmeasure.org"
+      run: .github/scripts/check-resource-read-only.sh CodeSystem "http://unitsofmeasure.org"
 
     - name: Check Simple Expand
       run: .github/terminology-tests/simple-expand.sh
@@ -1447,8 +1450,8 @@ jobs:
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload -c1 .github/test-data/etl
 
-    - name: Check Total-Number of Resources are 5
-      run: .github/scripts/check-total-number-of-resources.sh 5
+    - name: Check Total-Number of Resources are 190
+      run: .github/scripts/check-total-number-of-resources.sh 190
 
     - name: Check Referential Integrity Not Enforced For Delete
       run: .github/scripts/check-referential-integrity-for-delete.sh 204

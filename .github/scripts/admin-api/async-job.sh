@@ -38,7 +38,7 @@ input_expr() {
   echo ".input[] | select(.type.coding[] | select(.system == \"$PARAMETER_URI\" and .code == \"$1\"))"
 }
 
-test "t" "$(echo "$JOB" | jq -r "$(input_expr "t") | .valueUnsignedInt")" "0"
+test "t" "$(echo "$JOB" | jq -r "$(input_expr "t") | .valueUnsignedInt")" "1"
 
 OUTPUT_URI="https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobOutput"
 
