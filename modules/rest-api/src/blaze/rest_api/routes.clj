@@ -343,7 +343,6 @@
      async-status-handler
      async-status-cancel-handler
      capabilities-handler
-     metadata-handler
      admin-handler
      page-id-cipher]
     :or {context-path ""}
@@ -430,11 +429,6 @@
         :handler async-status-handler}
        :delete
        {:handler async-status-cancel-handler}}])
-    metadata-handler
-    (conj
-     ["/__metadata/StructureDefinition"
-      {:get {:handler metadata-handler}
-       :response-type :json}])
     admin-handler
     (conj
      ["/__admin{*more}"

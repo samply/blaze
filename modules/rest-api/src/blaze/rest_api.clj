@@ -13,6 +13,7 @@
    [blaze.rest-api.middleware.metrics :as metrics]
    [blaze.rest-api.routes :as routes]
    [blaze.rest-api.spec]
+   [blaze.rest-api.structure-definitions :as structure-definitions]
    [blaze.spec]
    [buddy.auth.middleware :refer [wrap-authentication]]
    [clojure.spec.alpha :as s]
@@ -92,7 +93,6 @@
     ::history-system-handler
     ::resource-patterns
     ::operations
-    ::metadata-handler
     ::admin-handler
     :blaze.db/enforce-referential-integrity]))
 
@@ -100,6 +100,7 @@
   [_ {:keys [base-url context-path db-sync-timeout] :as config}]
   (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path)
             "and a database sync timeout of" db-sync-timeout "ms")
+  @(structure-definitions/ensure-structure-definitions config)
   (handler config))
 
 (reg-collector ::requests-total

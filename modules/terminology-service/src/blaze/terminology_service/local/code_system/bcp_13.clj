@@ -10,6 +10,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]
    [blaze.terminology-service.local.code-system.core :as c]
+   [blaze.terminology-service.local.code-system.util :as cs-u]
    [clojure.string :as str]
    [taoensso.timbre :as log]))
 
@@ -81,7 +82,7 @@
 
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create BCP-13 code system...")
-  (d/transact node [[:create (assoc code-system :id (luid context))]]))
+  (d/transact node [(cs-u/tx-op code-system (luid context))]))
 
 (defn ensure-code-system
   "Ensures that the BCP-13 code system is present in the database node."

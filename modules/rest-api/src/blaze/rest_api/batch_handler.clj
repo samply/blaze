@@ -21,7 +21,6 @@
     ::transaction-handler
     ::history-system-handler
     ::operations
-    ::metadata-handler
     ::admin-handler
     :blaze.db/enforce-referential-integrity]))
 

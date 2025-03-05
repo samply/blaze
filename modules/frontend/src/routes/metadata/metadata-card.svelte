@@ -78,7 +78,7 @@
 					>
 					<td class="py-2 text-sm text-gray-900">
 						<a
-							href="{base}/__metadata/StructureDefinition?url={resource.profile}&_format=json"
+							href="{base}/StructureDefinition?url={resource.profile}&_format=json"
 							download="{resource.type}.json"><Download /></a
 						>
 					</td>

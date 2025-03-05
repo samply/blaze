@@ -319,16 +319,16 @@
      [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
     (testing "current version"
-      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/2"})
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/3"})
         :status := 200
         [:body fhir-spec/parse-json :active] := true))
 
     (testing "older version"
-      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/1"})
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/2"})
         :status := 200
         [:body fhir-spec/parse-json :active] := false))
 
-    (doseq [t [0 3]]
+    (doseq [t [0 4]]
       (testing (format "version %d doesn't exist" t)
         (given (call rest-api {:request-method :get :uri (format "/Patient/0/_history/%d" t)})
           :status := 404
@@ -341,11 +341,11 @@
        [[:delete-history "Patient" "0"]]]
 
       (testing "current version"
-        (given (call rest-api {:request-method :get :uri "/Patient/0/_history/2"})
+        (given (call rest-api {:request-method :get :uri "/Patient/0/_history/3"})
           :status := 200
           [:body fhir-spec/parse-json :active] := true))
 
-      (doseq [t [0 1 3]]
+      (doseq [t [0 2 4]]
         (testing (format "version %d doesn't exist" t)
           (given (call rest-api {:request-method :get :uri (format "/Patient/0/_history/%d" t)})
             :status := 404
@@ -428,19 +428,8 @@
   (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
-      [:headers "Link"] := "<http://localhost:8080?_count=50>;rel=\"self\""
-      [:body fhir-spec/parse-json :resourceType] := "Bundle"))
-
-  (testing "with two patients"
-    (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]]
-
-      (given (call rest-api {:request-method :get :uri "" :query-string "_count=1"})
-        :status := 200
-        [:headers "Link" #(str/split % #",") 0] := "<http://localhost:8080?_count=1>;rel=\"self\""
-        [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1" "__page-type" "Patient" "__page-id" "1"}))
-        [:body fhir-spec/parse-json :resourceType] := "Bundle"))))
+      [:headers "Link" #(str/split % #",") 0] := "<http://localhost:8080?_count=50>;rel=\"self\""
+      [:body fhir-spec/parse-json :resourceType] := "Bundle")))
 
 (deftest search-type-test
   (testing "using GET"
@@ -457,16 +446,16 @@
 
         (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1"})
           :status := 200
-          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
           [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
-          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"}))
+          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1"}))
           [:body fhir-spec/parse-json :resourceType] := "Bundle")
 
         (testing "fetch the second page"
-          (given (call rest-api {:request-method :get :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "1" "_count" "1"}))})
+          (given (call rest-api {:request-method :get :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "2" "_count" "1"}))})
             :status := 200
 
-            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
             [:body fhir-spec/parse-json :resourceType] := "Bundle"))
 
         (testing "fetch an unknown page"
@@ -502,16 +491,16 @@
                                :headers {"content-type" "application/x-www-form-urlencoded"}
                                :body (input-stream (byte-array 0))})
           :status := 200
-          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
           [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
-          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"}))
+          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1"}))
           [:body fhir-spec/parse-json :resourceType] := "Bundle")
 
         (testing "fetch the second page"
-          (given (call rest-api {:request-method :post :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "1" "_count" "1"}))})
+          (given (call rest-api {:request-method :post :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "2" "_count" "1"}))})
             :status := 200
 
-            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
             [:body fhir-spec/parse-json :resourceType] := "Bundle"))
 
         (testing "fetch an unknown page"

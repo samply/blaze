@@ -15,13 +15,17 @@
 (defn- luid-generator [{:keys [clock rng-fn]}]
   (luid/generator clock (rng-fn)))
 
+(defn tx-op [{:keys [url] :as code-system} id]
+  [:create (assoc code-system :id id)
+   [["url" (type/value url)]]])
+
 (defn tx-ops [context existing-versions code-systems]
   (transduce
    (remove (comp existing-versions type/value :version))
    (fn
      ([{:keys [tx-ops]}] tx-ops)
      ([{:keys [luid-generator] :as ret} code-system]
-      (-> (update ret :tx-ops conj [:create (assoc code-system :id (luid/head luid-generator))])
+      (-> (update ret :tx-ops conj (tx-op code-system (luid/head luid-generator)))
           (update :luid-generator luid/next))))
    {:tx-ops []
     :luid-generator (luid-generator context)}

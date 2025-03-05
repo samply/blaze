@@ -43,7 +43,7 @@ test('History Page', async ({page}) => {
     await page.getByRole('link', {name: 'History', exact: true}).click();
 
     await expect(page).toHaveTitle("History - Blaze");
-    await expect(page.getByText('Total: 92,114')).toBeVisible();
+    await expect(page.getByText('Total: 92,299')).toBeVisible();
 });
 
 test('Metadata Page', async ({page}) => {
@@ -208,8 +208,8 @@ test.describe('Admin', () => {
             await expect(page.getByText('Search Param URL ' + searchParamUrl)).toBeVisible();
 
             // may appear later
-            await expect(page.getByText('Total Resources 92.1 k')).toBeVisible({timeout: 30000});
-            await expect(page.getByText('Resources Processed 92.1 k')).toBeVisible({timeout: 50000});
+            await expect(page.getByText('Total Resources 92.3 k')).toBeVisible({timeout: 30000});
+            await expect(page.getByText('Resources Processed 92.3 k')).toBeVisible({timeout: 50000});
             await expect(page.getByText('Processing Duration')).toBeVisible({timeout: 50000});
             await expect(page.getByText('Status completed')).toBeVisible({timeout: 50000});
         });
