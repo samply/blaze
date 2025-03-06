@@ -68,7 +68,7 @@
   {:mvn/version "1.12.0"}
 
   org.clojure/tools.reader
-  {:mvn/version "1.5.0"}
+  {:mvn/version "1.5.1"}
 
   org.slf4j/slf4j-nop
   {:mvn/version "2.0.17"}}
