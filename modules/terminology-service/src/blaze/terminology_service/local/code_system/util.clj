@@ -15,9 +15,10 @@
 (defn- luid-generator [{:keys [clock rng-fn]}]
   (luid/generator clock (rng-fn)))
 
-(defn tx-op [{:keys [url] :as code-system} id]
+(defn tx-op [{:keys [url version] :as code-system} id]
   [:create (assoc code-system :id id)
-   [["url" (type/value url)]]])
+   [["url" (type/value url)]
+    ["version" (type/value version)]]])
 
 (defn tx-ops [context existing-versions code-systems]
   (transduce

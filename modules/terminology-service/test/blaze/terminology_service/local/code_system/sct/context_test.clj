@@ -24,28 +24,62 @@
          {900000000000207008 {106004 {20240301 false
                                       20020131 true}}})))
 
+(deftest build-module-dependency-index-test
+  (is (= (context/build-module-dependency-index
+          (.stream
+           ["6d6d2700-658a-b414-33b5-2c1d24f3cf8a\t20231115\t1\t11000274103\t900000000000534007\t900000000000207008\t20231115\t20231001"
+            "6d6d2700-658a-b414-33b5-2c1d24f3cf8a\t20240115\t1\t11000274103\t900000000000534007\t900000000000207008\t20240115\t20240101"
+            "b3f5eb17-831f-11ee-bd1c-38f3ab70978c\t20231115\t1\t11000274103\t900000000000534007\t900000000000012004\t20231115\t20231001"
+            "1244116f-fdb5-5645-afcc-5281288409da\t20020131\t1\t900000000000207008\t900000000000534007\t900000000000012004\t20020131\t20020131"]))
+         {11000274103 {20231115 [[900000000000207008 20231001]
+                                 [900000000000012004 20231001]]
+                       20240115 [[900000000000207008 20240101]]}
+          900000000000207008 {20020131 [[900000000000012004 20020131]]}})))
+
 (defn- time-map [& kvs]
   (apply sorted-map-by > kvs))
 
 (deftest find-concept-test
-  (let [index {900000000000207008 {106004 (time-map
-                                           20240301 false
-                                           20020131 true)}}]
+  (let [module-dependency-index {11000274103 {20231115 [[900000000000207008 20231001]
+                                                        [900000000000012004 20231001]]
+                                              20240415 [[900000000000207008 20240401]]}}
+        concept-index {900000000000207008 {106004
+                                           (time-map
+                                            20240301 false
+                                            20020131 true)}
+                       900000000000012004 {900000000000012004
+                                           (time-map 20020131 true)}}
+        find-concept (partial context/find-concept module-dependency-index concept-index)]
 
-    (testing "concept did not exist at this time"
-      (is (nil? (context/find-concept index 900000000000207008 20020130 106004))))
+    (testing "from core module"
+      (testing "concept did not exist at this time"
+        (is (nil? (find-concept 900000000000207008 20020130 106004))))
 
-    (testing "concept just became active"
-      (is (true? (context/find-concept index 900000000000207008 20020131 106004))))
+      (testing "concept just became active"
+        (is (true? (find-concept 900000000000207008 20020131 106004))))
 
-    (testing "concept is still active"
-      (is (true? (context/find-concept index 900000000000207008 20240229 106004))))
+      (testing "concept is still active"
+        (is (true? (find-concept 900000000000207008 20240229 106004))))
 
-    (testing "concept just became inactive"
-      (is (false? (context/find-concept index 900000000000207008 20240301 106004))))
+      (testing "concept just became inactive"
+        (is (false? (find-concept 900000000000207008 20240301 106004))))
 
-    (testing "concept is still inactive"
-      (is (false? (context/find-concept index 900000000000207008 20241216 106004))))))
+      (testing "concept is still inactive"
+        (is (false? (find-concept 900000000000207008 20241216 106004)))))
+
+    (testing "from Germany National Extension module"
+      (testing "non-existing concept"
+        (is (nil? (find-concept 11000274103 20240415 38945723498756))))
+
+      (testing "concept from core module"
+        (testing "is active"
+          (is (true? (find-concept 11000274103 20231115 106004))))
+
+        (testing "is inactive"
+          (is (false? (find-concept 11000274103 20240415 106004)))))
+
+      (testing "concept from model component module"
+        (is (true? (find-concept 11000274103 20231115 900000000000012004)))))))
 
 (deftest build-parent-index-test
   (is (= (context/build-parent-index
@@ -152,57 +186,66 @@
             "1145019\t20040731\t0\t900000000000207008\t127858008\ten\t900000000000003001\tEctopic female breast (body structure)\t900000000000020002"
             "2461362011\t20040731\t1\t900000000000207008\t127858008\ten\t900000000000003001\tEctopic female breast (morphologic abnormality)\t900000000000020002"
             "2461362011\t20170731\t1\t900000000000207008\t127858008\ten\t900000000000003001\tEctopic female breast (morphologic abnormality)\t900000000000448009"]))
-         {127858008 {20170731 {true "Ectopic female breast (morphologic abnormality)"}
-                     20040731 {false "Ectopic female breast (body structure)"
-                               true "Ectopic female breast (morphologic abnormality)"}
-                     20020131 {true "Ectopic female breast (body structure)"}}})))
+         {900000000000207008
+          {127858008
+           {20170731 {true "Ectopic female breast (morphologic abnormality)"}
+            20040731 {false "Ectopic female breast (body structure)"
+                      true "Ectopic female breast (morphologic abnormality)"}
+            20020131 {true "Ectopic female breast (body structure)"}}}})))
 
 (deftest build-synonym-index-test
   (is (= (context/build-synonym-index
           (.stream
            ["1778924019\t20030731\t1\t900000000000207008\t399537006\ten\t900000000000013009\tClinical TNM stage grouping\t900000000000020002"
             "1786868015\t20030731\t1\t900000000000207008\t399537006\ten\t900000000000013009\tcTNM stage grouping\t900000000000017005"]))
-         {399537006 {20030731 {true ["Clinical TNM stage grouping"
-                                     "cTNM stage grouping"]}}})))
+         {900000000000207008
+          {399537006
+           {20030731
+            {true [["en" "Clinical TNM stage grouping"] ["en" "cTNM stage grouping"]]}}}})))
 
-(deftest find-description-test
-  (testing "one value"
-    (let [index {127858008 (time-map
-                            20170731 {false "Ectopic female breast (morphologic abnormality)"}
-                            20040731 {false "Ectopic female breast (body structure)"
-                                      true "Ectopic female breast (morphologic abnormality)"}
-                            20020131 {true "Ectopic female breast (body structure)"})}]
+(deftest find-fully-specified-name-test
+  (let [index {900000000000207008
+               {127858008
+                (time-map
+                 20170731 {false "Ectopic female breast (morphologic abnormality)"}
+                 20040731 {false "Ectopic female breast (body structure)"
+                           true "Ectopic female breast (morphologic abnormality)"}
+                 20020131 {true "Ectopic female breast (body structure)"})}}
+        find-fully-specified-name (partial context/find-fully-specified-name {} index)]
 
-      (testing "description did not exist at this time"
-        (is (nil? (context/find-description index 127858008 20020130))))
+    (testing "description did not exist at this time"
+      (is (nil? (find-fully-specified-name 900000000000207008 20020130 127858008))))
 
-      (testing "description just became active"
-        (is (= "Ectopic female breast (body structure)" (context/find-description index 127858008 20020131))))
+    (testing "description just became active"
+      (is (= "Ectopic female breast (body structure)" (find-fully-specified-name 900000000000207008 20020131 127858008))))
 
-      (testing "description is still the first variant"
-        (is (= "Ectopic female breast (body structure)" (context/find-description index 127858008 20040730))))
+    (testing "description is still the first variant"
+      (is (= "Ectopic female breast (body structure)" (find-fully-specified-name 900000000000207008 20040730 127858008))))
 
-      (testing "description changed"
-        (is (= "Ectopic female breast (morphologic abnormality)" (context/find-description index 127858008 20040731))))
+    (testing "description changed"
+      (is (= "Ectopic female breast (morphologic abnormality)" (find-fully-specified-name 900000000000207008 20040731 127858008))))
 
-      (testing "description is still the second variant"
-        (is (= "Ectopic female breast (morphologic abnormality)" (context/find-description index 127858008 20170730))))
+    (testing "description is still the second variant"
+      (is (= "Ectopic female breast (morphologic abnormality)" (find-fully-specified-name 900000000000207008 20170730 127858008))))
 
-      (testing "description just became inactive"
-        (is (nil? (context/find-description index 127858008 20170731))))))
+    (testing "description just became inactive"
+      (is (nil? (find-fully-specified-name 900000000000207008 20170731 127858008))))))
 
-  (testing "multiple values"
-    ;; TODO: use real history
-    (let [index {399537006 (time-map
-                            20030731 {true ["Clinical TNM stage grouping"
-                                            "cTNM stage grouping"]})}]
+(deftest find-synonyms-test
+  ;; TODO: use real history
+  (let [index {900000000000207008
+               {399537006
+                (time-map
+                 20030731 {true [["en" "Clinical TNM stage grouping"]
+                                 ["en" "cTNM stage grouping"]]})}}
+        find-synonyms (partial context/find-synonyms {} index)]
 
-      (testing "description did not exist at this time"
-        (is (nil? (context/find-description index 399537006 20030730))))
+    (testing "description did not exist at this time"
+      (is (empty? (find-synonyms 900000000000207008 20030730 399537006))))
 
-      (testing "description just became active"
-        (is (= ["Clinical TNM stage grouping"
-                "cTNM stage grouping"] (context/find-description index 399537006 20030731)))))))
+    (testing "description just became active"
+      (is (= [["en" "Clinical TNM stage grouping"]
+              ["en" "cTNM stage grouping"]] (find-synonyms 900000000000207008 20030731 399537006))))))
 
 (deftest build-test
   (testing "wrong path"
@@ -212,7 +255,7 @@
 
   (testing "correct path"
     (given (context/build (path "sct-release"))
-      [:code-systems count] := 82
+      [:code-systems count] := 136
       [:code-systems 0 :fhir/type] := :fhir/CodeSystem
       [:code-systems 0 :url] := #fhir/uri"http://snomed.info/sct"
       [:code-systems 0 :version] := #fhir/string"http://snomed.info/sct/11000274103/version/20231115"
@@ -248,12 +291,12 @@
       [:code-systems 3 :title] := #fhir/string"Germany National Extension module (core metadata concept)"
       [:code-systems 3 :date] := #fhir/dateTime"2024-07-11"
 
-      [:code-systems 4 :version] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20020131"
-      [:code-systems 4 :title] := #fhir/string"SNOMED CT core module (core metadata concept)"
-      [:code-systems 4 :date] := #fhir/dateTime"2002-01-31"
+      [:code-systems 4 :version] := #fhir/string"http://snomed.info/sct/449080006/version/20130731"
+      [:code-systems 4 :title] := #fhir/string"SNOMED CT to ICD-10 rule-based mapping module (core metadata concept)"
+      [:code-systems 4 :date] := #fhir/dateTime"2013-07-31"
 
-      [:code-systems 5 :version] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20020731"
-      [:code-systems 5 :title] := #fhir/string"SNOMED CT core module (core metadata concept)"
-      [:code-systems 5 :date] := #fhir/dateTime"2002-07-31"
+      [:code-systems 5 :version] := #fhir/string"http://snomed.info/sct/449080006/version/20140131"
+      [:code-systems 5 :title] := #fhir/string"SNOMED CT to ICD-10 rule-based mapping module (core metadata concept)"
+      [:code-systems 5 :date] := #fhir/dateTime"2014-01-31"
 
       [:current-int-system :date] := #fhir/dateTime"2024-10-01")))

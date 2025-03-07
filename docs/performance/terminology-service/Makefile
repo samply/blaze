@@ -1,10 +1,10 @@
-data/value-set-validate-code-snomed-ct-diagnoses.csv:
+data/value-set-validate-code-snomed-ct-diagnoses.csv: value-set-validate-code.js
 	TEST_NAME="snomed-ct-diagnoses" VALUE_SET="https://www.medizininformatik-initiative.de/fhir/core/modul-diagnose/ValueSet/diagnoses-sct" k6 run value-set-validate-code.js
 
-plots/value-set-validate-code-snomed-ct-diagnoses.png:
+plots/value-set-validate-code-snomed-ct-diagnoses.png: data/value-set-validate-code-snomed-ct-diagnoses.csv value-set-validate-code-snomed-ct-diagnoses.gnuplot
 	gnuplot value-set-validate-code-snomed-ct-diagnoses.gnuplot
 
-data/value-set-validate-code-snomed-ct-body-site.csv:
+data/value-set-validate-code-snomed-ct-body-site.csv: value-set-validate-code.js
 	TEST_NAME="snomed-ct-body-site" VALUE_SET="http://hl7.org/fhir/ValueSet/body-site" k6 run value-set-validate-code.js
 
 plots/value-set-validate-code-snomed-ct-body-site.png: data/value-set-validate-code-snomed-ct-body-site.csv value-set-validate-code-snomed-ct-body-site.gnuplot
@@ -16,10 +16,10 @@ data/value-set-validate-code-laboratory-observation.csv: value-set-validate-code
 plots/value-set-validate-code-laboratory-observation.png: data/value-set-validate-code-laboratory-observation.csv value-set-validate-code-laboratory-observation.gnuplot
 	gnuplot value-set-validate-code-laboratory-observation.gnuplot
 
-data/value-set-validate-code-icd-10-gm.csv:
+data/value-set-validate-code-icd-10-gm.csv: value-set-validate-code.js
 	TEST_NAME="icd-10-gm" VALUE_SET="http://fhir.de/ValueSet/bfarm/icd-10-gm" k6 run value-set-validate-code.js
 
-plots/value-set-validate-code-icd-10-gm.png:
+plots/value-set-validate-code-icd-10-gm.png: data/value-set-validate-code-icd-10-gm.csv value-set-validate-code-icd-10-gm.gnuplot
 	gnuplot value-set-validate-code-icd-10-gm.gnuplot
 
 data/value-set-validate-code-alpha-id.csv: value-set-validate-code.js
@@ -28,8 +28,12 @@ data/value-set-validate-code-alpha-id.csv: value-set-validate-code.js
 plots/value-set-validate-code-alpha-id.png: data/value-set-validate-code-alpha-id.csv value-set-validate-code-alpha-id.gnuplot
 	gnuplot value-set-validate-code-alpha-id.gnuplot
 
-data/value-set-validate-code-atc.csv:
+data/value-set-validate-code-atc.csv: value-set-validate-code.js
 	TEST_NAME="atc" VALUE_SET="http://fhir.de/ValueSet/bfarm/atc" k6 run value-set-validate-code.js
 
-plots/value-set-validate-code-atc.png:
+plots/value-set-validate-code-atc.png: data/value-set-validate-code-atc.csv value-set-validate-code-atc.gnuplot
 	gnuplot value-set-validate-code-atc.gnuplot
+
+all: plots/value-set-validate-code-snomed-ct-diagnoses.png plots/value-set-validate-code-snomed-ct-body-site.png plots/value-set-validate-code-laboratory-observation.png plots/value-set-validate-code-icd-10-gm.png plots/value-set-validate-code-alpha-id.png plots/value-set-validate-code-atc.png
+
+.PHONY: all
