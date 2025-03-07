@@ -9,9 +9,19 @@
    [cognitect.anomalies :as anom]))
 
 (s/fdef context/find-concept
-  :args (s/cat :concept-index map? :module-id :sct/id :version :sct/time
-               :concept-id :sct/id)
+  :args (s/cat :module-dependency-index map? :concept-index map?
+               :module-id :sct/id :version :sct/time :concept-id :sct/id)
   :ret (s/nilable boolean?))
+
+(s/fdef context/find-fully-specified-name
+  :args (s/cat :module-dependency-index map? :description-index map?
+               :module-id :sct/id :version :sct/time :concept-id :sct/id)
+  :ret (s/nilable string?))
+
+(s/fdef context/find-synonyms
+  :args (s/cat :module-dependency-index map? :description-index map?
+               :module-id :sct/id :version :sct/time :concept-id :sct/id)
+  :ret (s/coll-of (s/tuple string? string?)))
 
 (s/fdef context/neighbors
   :args (s/cat :index map? :module-id :sct/id :version :sct/time

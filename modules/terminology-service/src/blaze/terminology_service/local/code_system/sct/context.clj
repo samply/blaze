@@ -19,7 +19,6 @@
 (def ^:private ^:const ^long is-a 116680003)
 (def ^:private ^:const ^long model-component-module 900000000000012004)
 (def ^:private ^:const ^long core-module 900000000000207008)
-(def ^:private ^:const ^long german-module 11000274103)
 
 (def ^:const ^String url "http://snomed.info/sct")
 (def ^:const ^String core-version-prefix (str url "/" core-module))
@@ -100,9 +99,9 @@
       (.filter #(= fully-specified-name (:type-id %)))
       (.reduce
        {}
-       (fn [index {:keys [concept-id effective-time active term]}]
-         (update index concept-id update-time-map effective-time assoc (= 1 active) term))
-       (partial merge-with (partial merge-with merge)))))
+       (fn [index {:keys [module-id concept-id effective-time active term]}]
+         (update-in index [module-id concept-id] update-time-map effective-time assoc (= 1 active) term))
+       (partial merge-with (partial merge-with (partial merge-with merge))))))
 
 (defn build-synonym-index [lines]
   (-> ^Stream lines
@@ -110,13 +109,9 @@
       (.filter #(= synonym (:type-id %)))
       (.reduce
        {}
-       (fn [index {:keys [concept-id effective-time active term]}]
-         (update index concept-id update-time-map effective-time update (= 1 active) (fnil conj []) term))
-       (partial merge-with (partial merge-with (partial merge-with into))))))
-
-(defn find-description [description-index concept-id version]
-  (when-let [versions (get description-index concept-id)]
-    (some-> (first (subseq versions >= version)) val (get true))))
+       (fn [index {:keys [module-id concept-id effective-time active language-code term]}]
+         (update-in index [module-id concept-id] update-time-map effective-time update (= 1 active) (fnil conj []) [language-code term]))
+       (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
 (defn build-parent-index
   "module -> concept -> sorted map of version info
@@ -229,32 +224,83 @@
          (update-in index [module-id id] assoc-time-map effective-time (= 1 active)))
        (partial merge-with (partial merge-with merge)))))
 
+(defn- find-concept* [concept-index module-id version concept-id]
+  (when-let [versions (get-in concept-index [module-id concept-id])]
+    (some-> (first (subseq versions >= version)) val)))
+
+(defn find-multi-module [module-dependency-index index f module-id version concept-id]
+  (if-some [res (f index module-id version concept-id)]
+    res
+    (loop [[[module-id version] & more] (get-in module-dependency-index [module-id version])]
+      (when module-id
+        (if-some [res (f index module-id version concept-id)]
+          res
+          (recur more))))))
+
 (defn find-concept
   "Searches a concept in a module of a certain version.
 
   Returns `true` if the concept is active, `false` if it is inactive and `nil`
   if it doesn't exist."
-  [concept-index module-id version concept-id]
-  (when-let [versions (get-in concept-index [module-id concept-id])]
-    (some-> (first (subseq versions >= version)) val)))
+  [module-dependency-index concept-index module-id version concept-id]
+  (find-multi-module module-dependency-index concept-index find-concept*
+                     module-id version concept-id))
+
+(defn find-fully-specified-name* [description-index module-id version concept-id]
+  (when-let [versions (get-in description-index [module-id concept-id])]
+    (some-> (first (subseq versions >= version)) val (get true))))
+
+(defn find-fully-specified-name
+  "Returns the fully specified name of a concept in a module of a certain
+  version."
+  [module-dependency-index fully-specified-name-index module-id version concept-id]
+  (find-multi-module module-dependency-index fully-specified-name-index
+                     find-fully-specified-name* module-id version concept-id))
+
+(defn find-synonym* [description-index module-id version concept-id]
+  (when-let [versions (get-in description-index [module-id concept-id])]
+    (some-> (first (subseq versions >= version)) val (get true))))
+
+(defn find-synonyms
+  "Returns the synonyms of a concept in a module of a certain version.
+
+  A synonym is a tuple of language code and term."
+  [module-dependency-index synonym-index module-id version concept-id]
+  (into
+   (or (find-synonym* synonym-index module-id version concept-id) [])
+   (mapcat
+    (fn [[module-id version]]
+      (find-synonym* synonym-index module-id version concept-id)))
+   (get-in module-dependency-index [module-id version])))
+
+(defn build-module-dependency-index
+  "source-module -> source-version -> target-module -> target-version"
+  [lines]
+  (-> ^Stream lines
+      (.map module-dependency-refset-line)
+      (.filter #(= 1 (:active %)))
+      (.reduce
+       {}
+       (fn [index
+            {:keys [module-id source-effective-time
+                    referenced-component-id target-effective-time]}]
+         (update-in index [module-id source-effective-time] (fnil conj [])
+                    [referenced-component-id target-effective-time]))
+       (partial merge-with (partial merge-with into)))))
 
 (defn- version-url [module-id date]
   (format "%s/%s/version/%s" url module-id date))
 
 (defn- build-code-systems
-  "Generates a list of CodeSystem resources based on the module dependency
-  refset file in `path`.
-
-  Here only the international (900000000000207008) and the German (11000274103)
-  edition."
-  [fully-specified-name-index lines]
+  "Generates a list of CodeSystem resources based on the `lines` of the module
+  dependency refset file."
+  [module-dependency-index fully-specified-name-index lines]
   (-> ^Stream lines
       (.map module-dependency-refset-line)
       (.filter #(= 1 (:active %)))
       (.filter #(= model-component-module (:referenced-component-id %)))
-      (.filter #(contains? #{core-module german-module} (:module-id %)))
       (.map
-       (fn [{:keys [module-id source-effective-time]}]
+       (fn [{:keys [effective-time module-id]}]
          {:fhir/type :fhir/CodeSystem
           :meta
           #fhir/Meta
@@ -263,11 +309,14 @@
               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
                :code #fhir/code"read-only"}]}
           :url (type/uri url)
-          :version (type/string (version-url module-id source-effective-time))
-          :title (type/string (find-description fully-specified-name-index module-id source-effective-time))
+          :version (type/string (version-url module-id effective-time))
+          :title (type/string (find-fully-specified-name module-dependency-index
+                                                         fully-specified-name-index
+                                                         module-id effective-time
+                                                         module-id))
           :status #fhir/code"active"
           :experimental #fhir/boolean false
-          :date (type/dateTime (str (LocalDate/parse (str source-effective-time) DateTimeFormatter/BASIC_ISO_DATE)))
+          :date (type/dateTime (str (LocalDate/parse (str effective-time) DateTimeFormatter/BASIC_ISO_DATE)))
           :caseSensitive #fhir/boolean true
           :hierarchyMeaning #fhir/code"is-a"
           :versionNeeded #fhir/boolean false
@@ -307,11 +356,13 @@
             concept-file (find-file term-path "sct2_Concept_Full")
             relationship-file (find-file term-path "sct2_Relationship_Full")
             description-file (find-file term-path "sct2_Description_Full")
+            module-dependency-index (stream-file build-module-dependency-index module-dependency-file)
             fully-specified-name-index (stream-file build-fully-specified-name-index description-file)
             synonym-index (stream-file build-synonym-index description-file)
-            code-systems (stream-file (partial build-code-systems fully-specified-name-index) module-dependency-file)]
+            code-systems (stream-file (partial build-code-systems module-dependency-index fully-specified-name-index) module-dependency-file)]
     {:code-systems code-systems
      :current-int-system (find-current-int-system code-systems)
+     :module-dependency-index module-dependency-index
      :concept-index (stream-file build-concept-index concept-file)
      :parent-index (stream-file build-parent-index relationship-file)
      :child-index (stream-file build-child-index relationship-file)
