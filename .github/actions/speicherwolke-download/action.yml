@@ -1,0 +1,27 @@
+name: "Download File from Speicherwolke with Caching"
+
+inputs:
+  token:
+    required: true
+  filename:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4
+      with:
+        key: ${{ inputs.filename }}
+        path: ${{ inputs.filename }}
+
+    - shell: bash
+      env:
+        TOKEN: ${{ inputs.token }}
+        FILENAME: ${{ inputs.filename }}
+      run: |
+        if [ -f "$FILENAME" ]; then
+          echo "File $FILENAME was loaded from cache."
+        else
+          echo "Downloading $FILENAME..."
+          wget -q https://speicherwolke.uni-leipzig.de/index.php/s/$TOKEN/download/$FILENAME
+        fi

@@ -1156,7 +1156,10 @@ jobs:
       run: .github/scripts/check-referential-integrity-enforced.sh
 
     - name: Download Synthea Test Data
-      run: wget https://speicherwolke.uni-leipzig.de/index.php/s/kDsa2ifeMFdqK35/download/synthea-1000.tar
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: kDsa2ifeMFdqK35
+        filename: synthea-1000.tar
 
     - name: Create Synthea Test Data Dir
       run: mkdir test-data-synthea-1000
@@ -1330,8 +1333,17 @@ jobs:
     - name: Load Blaze Image
       run: docker load --input /tmp/blaze.tar
 
+    - name: Download SNOMED CT Release
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: ${{ secrets.SCT_DOWNLOAD_TOKEN }}
+        filename: SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+
+    - name: Unzip SNOMED CT Release
+      run: unzip SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z:/app/sct-release blaze:latest
 
     - name: Install All KDS Terminology Resources
       run: make -C .github/value-set-expand install
@@ -1342,6 +1354,9 @@ jobs:
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
+    - name: Docker Logs
+      run: docker logs blaze
+
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement-terminology-service.sh
 
@@ -1351,7 +1366,7 @@ jobs:
     - name: Check Terminology Capabilities
       run: .github/scripts/check-terminology-capabilities.sh
 
-    - name: Validate Medication Resources
+    - name: Validate Resources
       run: .github/validation/validate.sh
 
   terminology-tests:

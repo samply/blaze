@@ -3,7 +3,6 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/../scripts/util.sh"
 
-# Doesn't need SNOMED CT
 java -jar validator_cli.jar -version 4.0.1 -level error \
   -output-style csv -output result.csv \
   -tx http://localhost:8080/fhir \
@@ -14,6 +13,7 @@ java -jar validator_cli.jar -version 4.0.1 -level error \
   -ig de.medizininformatikinitiative.kerndatensatz.prozedur#2025.0.0 \
   -ig de.medizininformatikinitiative.kerndatensatz.diagnose#2025.0.0 \
   -ig de.medizininformatikinitiative.kerndatensatz.fall#2025.0.0 \
+  -ig de.medizininformatikinitiative.kerndatensatz.icu#2025.0.2 \
   -ig de.medizininformatikinitiative.kerndatensatz.biobank#2025.0.4 \
   -ig de.medizininformatikinitiative.kerndatensatz.consent#2025.0.1 \
   -ig de.medizininformatikinitiative.kerndatensatz.molgen#2025.0.0 \
@@ -21,27 +21,31 @@ java -jar validator_cli.jar -version 4.0.1 -level error \
   -ig de.medizininformatikinitiative.kerndatensatz.mikrobiologie#2025.0.1 \
   -ig de.medizininformatikinitiative.kerndatensatz.onkologie#2025.0.3 \
   -ig de.medizininformatikinitiative.kerndatensatz.bildgebung#2025.0.0 \
+  -ig de.medizininformatikinitiative.kerndatensatz.studie#2025.0.0 \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Condition-mii-exa-test-data-patient-1-diagnose-2.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Condition-mii-exa-test-data-patient-1-patho-problem-list-item-1.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Condition-mii-exa-test-data-patient-1-patho-problem-list-item-2.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Condition-mii-exa-test-data-patient-1-todesursache-1.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Condition-mii-exa-test-data-patient-2-todesursache-1.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Condition-mii-exa-test-data-patient-4-diagnose-1.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Device-mii-exa-test-data-device-roche-cobas-c303.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Device-mii-exa-test-data-device-roche-cobas-e402.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Device-mii-exa-test-data-device-roche-cobas.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Device-mii-exa-test-data-molgen-device-sequencer.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Device-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/DeviceMetric-mii-exa-test-data-patient-1-ecmo-eingestellte-parameter.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/DeviceMetric-mii-exa-test-data-patient-1-ecmo-gemessene-parameter.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/DiagnosticReport-mii-exa-test-data-patient-1-labreport-1.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/DiagnosticReport-mii-exa-test-data-patient-1-mibi-befund-1.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/DiagnosticReport-mii-exa-test-data-patient-4-molgen-befundbericht-1.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Encounter-mii-exa-test-data-patient-1-encounter-1.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Encounter-mii-exa-test-data-patient-1-encounter-2.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/ImagingStudy-mii-exa-test-data-patient-1-patho-imagingstudy-1.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/List-mii-exa-test-data-patient-1-list-aufnahmemedikation.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/List-mii-exa-test-data-patient-1-list-stat-aufenthalt.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/List-mii-exa-test-data-patient-1-patho-active-problems-list.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/List-mii-exa-test-data-patient-1-patho-history-of-present-illness.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Media-mii-exa-test-data-patient-1-patho-attached-image-2.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Media-mii-exa-test-data-patient-1-patho-attached-image.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/MedicationRequest-mii-exa-test-data-patient-1-medrequest-1.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/MedicationRequest-mii-exa-test-data-patient-1-medrequest-2.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/MedicationRequest-mii-exa-test-data-patient-3-medrequest-1.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/MedicationStatement-mii-exa-test-data-patient-3-medstatement-1.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/EvidenceVariable-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Group-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/ImagingStudy-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/List-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Media-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/MedicationAdministration-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/MedicationRequest-*.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/MedicationStatement-*.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-labobs-6.json" \
+  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-diagnostic-conclusion-2.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-diagnostic-conclusion-3.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-diagnostic-conclusion-grouper.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-macro-grouper-a.json" \
