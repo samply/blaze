@@ -911,7 +911,19 @@
           [(parameter "code") 0 :value] := #fhir/code"441510007"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value type/value] := output-version
-          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"))
+
+      (testing "fully specified name display"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://snomed.info/sct"
+                  "code" #fhir/code"441510007"
+                  "display" #fhir/string"Blood specimen with anticoagulant (specimen)")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"))
 
       (testing "synonym display"
         (given @(code-system-validate-code ts
@@ -923,7 +935,7 @@
           [(parameter "code") 0 :value] := #fhir/code"441510007"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)")
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant")
 
         (testing "Germany module"
           (given @(code-system-validate-code ts
@@ -936,7 +948,21 @@
             [(parameter "code") 0 :value] := #fhir/code"440500007"
             [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
             [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/11000274103/version/20241115"
-            [(parameter "display") 0 :value] := #fhir/string"Dried blood spot specimen (specimen)")))
+            [(parameter "display") 0 :value] := #fhir/string"Dried blood spot specimen")
+
+          (testing "displayLanguage = de"
+            (given @(code-system-validate-code ts
+                      "url" #fhir/uri"http://snomed.info/sct"
+                      "code" #fhir/code"440500007"
+                      "version" #fhir/string"http://snomed.info/sct/11000274103"
+                      "display" #fhir/string"Trockenblutkarte"
+                      "displayLanguage" #fhir/code"de")
+              :fhir/type := :fhir/Parameters
+              [(parameter "result") 0 :value] := #fhir/boolean true
+              [(parameter "code") 0 :value] := #fhir/code"440500007"
+              [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+              [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/11000274103/version/20241115"
+              [(parameter "display") 0 :value] := #fhir/string"Trockenblutkarte"))))
 
       (testing "wrong display"
         (given @(code-system-validate-code ts
@@ -945,15 +971,15 @@
                   "display" #fhir/string"wrong")
           :fhir/type := :fhir/Parameters
           [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := #fhir/string"Invalid display `wrong` for code `http://snomed.info/sct#441510007`. A valid display is `Blood specimen with anticoagulant (specimen)`."
+          [(parameter "message") 0 :value] := #fhir/string"Invalid display `wrong` for code `http://snomed.info/sct#441510007`. A valid display is `Blood specimen with anticoagulant`."
           [(parameter "code") 0 :value] := #fhir/code"441510007"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
           [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
           [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
           [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
-          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `wrong` for code `http://snomed.info/sct#441510007`. A valid display is `Blood specimen with anticoagulant (specimen)`."
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `wrong` for code `http://snomed.info/sct#441510007`. A valid display is `Blood specimen with anticoagulant`."
           [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"])
 
         (testing "Germany display in core module"
@@ -963,15 +989,15 @@
                     "display" #fhir/string"Trockenblutkarte")
             :fhir/type := :fhir/Parameters
             [(parameter "result") 0 :value] := #fhir/boolean false
-            [(parameter "message") 0 :value] := #fhir/string"Invalid display `Trockenblutkarte` for code `http://snomed.info/sct#440500007`. A valid display is `Dried blood spot specimen (specimen)`."
+            [(parameter "message") 0 :value] := #fhir/string"Invalid display `Trockenblutkarte` for code `http://snomed.info/sct#440500007`. A valid display is `Dried blood spot specimen`."
             [(parameter "code") 0 :value] := #fhir/code"440500007"
             [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
             [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-            [(parameter "display") 0 :value] := #fhir/string"Dried blood spot specimen (specimen)"
+            [(parameter "display") 0 :value] := #fhir/string"Dried blood spot specimen"
             [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
             [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
             [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
-            [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Trockenblutkarte` for code `http://snomed.info/sct#440500007`. A valid display is `Dried blood spot specimen (specimen)`."
+            [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Trockenblutkarte` for code `http://snomed.info/sct#440500007`. A valid display is `Dried blood spot specimen`."
             [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"])))
 
       (testing "inactive"
@@ -983,7 +1009,7 @@
           [(parameter "code") 0 :value] := #fhir/code"860958002"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-          [(parameter "display") 0 :value] := #fhir/string"Temperature of blood (observable entity)"
+          [(parameter "display") 0 :value] := #fhir/string"Temperature of blood"
           [(parameter "inactive") 0 :value] := #fhir/boolean true)))
 
     (testing "non-existing code"
@@ -1004,7 +1030,7 @@
         [(parameter "code") 0 :value] := #fhir/code"441510007"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"))
 
     (testing "non-existing coding"
       (given @(code-system-validate-code ts
@@ -1227,7 +1253,8 @@
                ["http://loinc.org" "regex" "ORDER_OBS"]
                ["http://snomed.info/sct" "is-a" "concept"]
                ["http://snomed.info/sct" "descendent-of" "concept"]
-               ["http://snomed.info/sct" "=" "parent"]]]
+               ["http://snomed.info/sct" "=" "parent"]
+               ["http://snomed.info/sct" "=" "child"]]]
         (given-failed-future
          (expand-value-set ts
            "valueSet"
@@ -1253,7 +1280,8 @@
                ["http://loinc.org" "=" "ORDER_OBS"]
                ["http://snomed.info/sct" "is-a" "concept"]
                ["http://snomed.info/sct" "descendent-of" "concept"]
-               ["http://snomed.info/sct" "=" "parent"]]]
+               ["http://snomed.info/sct" "=" "parent"]
+               ["http://snomed.info/sct" "=" "child"]]]
         (given-failed-future
          (expand-value-set ts
            "valueSet"
@@ -4101,7 +4129,7 @@
         [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
         [:expansion :contains 0 #(contains? % :inactive)] := false
         [:expansion :contains 0 :code] := #fhir/code"441510007"
-        [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant"
         [:expansion :contains 0 #(contains? % :designation)] := false))
 
     (testing "with inactive concepts"
@@ -4124,11 +4152,11 @@
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
           [:expansion :contains 0 :inactive] := #fhir/boolean true
           [:expansion :contains 0 :code] := #fhir/code"860958002"
-          [:expansion :contains 0 :display] := #fhir/string"Temperature of blood (observable entity)"
+          [:expansion :contains 0 :display] := #fhir/string"Temperature of blood"
           [:expansion :contains 1 :system] := #fhir/uri"http://snomed.info/sct"
           [:expansion :contains 1 #(contains? % :inactive)] := false
           [:expansion :contains 1 :code] := #fhir/code"441510007"
-          [:expansion :contains 1 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")
+          [:expansion :contains 1 :display] := #fhir/string"Blood specimen with anticoagulant")
 
         (testing "value set including only active"
           (given @(expand-value-set ts
@@ -4150,7 +4178,7 @@
             [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
             [:expansion :contains 0 #(contains? % :inactive)] := false
             [:expansion :contains 0 :code] := #fhir/code"441510007"
-            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant"))
 
         (testing "activeOnly param"
           (given @(expand-value-set ts
@@ -4172,7 +4200,7 @@
             [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
             [:expansion :contains 0 #(contains? % :inactive)] := false
             [:expansion :contains 0 :code] := #fhir/code"441510007"
-            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))))
+            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant"))))
 
     (testing "with version (module)"
       (with-system-data [{ts ::ts/local} sct-config]
@@ -4194,7 +4222,7 @@
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
           [:expansion :contains 0 #(contains? % :inactive)] := false
           [:expansion :contains 0 :code] := #fhir/code"441510007"
-          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant"))
 
       (testing "Germany module"
         (with-system-data [{ts ::ts/local} sct-config]
@@ -4216,7 +4244,31 @@
             [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
             [:expansion :contains 0 #(contains? % :inactive)] := false
             [:expansion :contains 0 :code] := #fhir/code"441510007"
-            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))))
+            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant"))
+
+        (testing "with displayLanguage = de"
+          (with-system-data [{ts ::ts/local} sct-config]
+            [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                     :url #fhir/uri"system-152116"
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"http://snomed.info/sct"
+                        :version #fhir/string"http://snomed.info/sct/11000274103"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"441510007"}]}]}}]]]
+
+            (given @(expand-value-set ts
+                      "url" #fhir/uri"system-152116"
+                      "displayLanguage" #fhir/code"de")
+              :fhir/type := :fhir/ValueSet
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
+              [:expansion :contains 0 #(contains? % :inactive)] := false
+              [:expansion :contains 0 :code] := #fhir/code"441510007"
+              [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant")))))
 
     (testing "with version"
       (with-system-data [{ts ::ts/local} sct-config]
@@ -4238,7 +4290,7 @@
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
           [:expansion :contains 0 #(contains? % :inactive)] := false
           [:expansion :contains 0 :code] := #fhir/code"441510007"
-          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant"))
 
       (testing "non-existing version"
         (with-system [{ts ::ts/local} sct-config]
@@ -4278,13 +4330,18 @@
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
           [:expansion :contains 0 #(contains? % :inactive)] := false
           [:expansion :contains 0 :code] := #fhir/code"441510007"
-          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
-          [:expansion :contains 0 :designation count] := 1
+          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant"
+          [:expansion :contains 0 :designation count] := 2
           [:expansion :contains 0 :designation 0 :language] := #fhir/code"en"
           [:expansion :contains 0 :designation 0 :use :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains 0 :designation 0 :use :code] := #fhir/code"900000000000013009"
-          [:expansion :contains 0 :designation 0 :use :display] := #fhir/string"Synonym"
-          [:expansion :contains 0 :designation 0 :value] := #fhir/string"Blood specimen with anticoagulant"))
+          [:expansion :contains 0 :designation 0 :use :code] := #fhir/code"900000000000003001"
+          [:expansion :contains 0 :designation 0 :use :display] := #fhir/string"Fully specified name"
+          [:expansion :contains 0 :designation 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [:expansion :contains 0 :designation 1 :language] := #fhir/code"en"
+          [:expansion :contains 0 :designation 1 :use :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains 0 :designation 1 :use :code] := #fhir/code"900000000000013009"
+          [:expansion :contains 0 :designation 1 :use :display] := #fhir/string"Synonym"
+          [:expansion :contains 0 :designation 1 :value] := #fhir/string"Blood specimen with anticoagulant"))
 
       (testing "Germany module"
         (with-system-data [{ts ::ts/local} sct-config]
@@ -4308,28 +4365,33 @@
             [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
             [:expansion :contains 0 #(contains? % :inactive)] := false
             [:expansion :contains 0 :code] := #fhir/code"440500007"
-            [:expansion :contains 0 :display] := #fhir/string"Dried blood spot specimen (specimen)"
-            [:expansion :contains 0 :designation count] := 4
-            [:expansion :contains 0 :designation 0 :language] := #fhir/code"de"
+            [:expansion :contains 0 :display] := #fhir/string"Dried blood spot specimen"
+            [:expansion :contains 0 :designation count] := 5
+            [:expansion :contains 0 :designation 0 :language] := #fhir/code"en"
             [:expansion :contains 0 :designation 0 :use :system] := #fhir/uri"http://snomed.info/sct"
-            [:expansion :contains 0 :designation 0 :use :code] := #fhir/code"900000000000013009"
-            [:expansion :contains 0 :designation 0 :use :display] := #fhir/string"Synonym"
-            [:expansion :contains 0 :designation 0 :value] := #fhir/string"Trockenblutkarte"
+            [:expansion :contains 0 :designation 0 :use :code] := #fhir/code"900000000000003001"
+            [:expansion :contains 0 :designation 0 :use :display] := #fhir/string"Fully specified name"
+            [:expansion :contains 0 :designation 0 :value] := #fhir/string"Dried blood spot specimen (specimen)"
             [:expansion :contains 0 :designation 1 :language] := #fhir/code"de"
             [:expansion :contains 0 :designation 1 :use :system] := #fhir/uri"http://snomed.info/sct"
             [:expansion :contains 0 :designation 1 :use :code] := #fhir/code"900000000000013009"
             [:expansion :contains 0 :designation 1 :use :display] := #fhir/string"Synonym"
-            [:expansion :contains 0 :designation 1 :value] := #fhir/string"Dried Blood Spot Sample"
-            [:expansion :contains 0 :designation 2 :language] := #fhir/code"en"
+            [:expansion :contains 0 :designation 1 :value] := #fhir/string"Trockenblutkarte"
+            [:expansion :contains 0 :designation 2 :language] := #fhir/code"de"
             [:expansion :contains 0 :designation 2 :use :system] := #fhir/uri"http://snomed.info/sct"
             [:expansion :contains 0 :designation 2 :use :code] := #fhir/code"900000000000013009"
             [:expansion :contains 0 :designation 2 :use :display] := #fhir/string"Synonym"
-            [:expansion :contains 0 :designation 2 :value] := #fhir/string"Blood spot specimen"
+            [:expansion :contains 0 :designation 2 :value] := #fhir/string"Dried Blood Spot Sample"
             [:expansion :contains 0 :designation 3 :language] := #fhir/code"en"
             [:expansion :contains 0 :designation 3 :use :system] := #fhir/uri"http://snomed.info/sct"
             [:expansion :contains 0 :designation 3 :use :code] := #fhir/code"900000000000013009"
             [:expansion :contains 0 :designation 3 :use :display] := #fhir/string"Synonym"
-            [:expansion :contains 0 :designation 3 :value] := #fhir/string"Dried blood spot specimen"))))))
+            [:expansion :contains 0 :designation 3 :value] := #fhir/string"Blood spot specimen"
+            [:expansion :contains 0 :designation 4 :language] := #fhir/code"en"
+            [:expansion :contains 0 :designation 4 :use :system] := #fhir/uri"http://snomed.info/sct"
+            [:expansion :contains 0 :designation 4 :use :code] := #fhir/code"900000000000013009"
+            [:expansion :contains 0 :designation 4 :use :display] := #fhir/string"Synonym"
+            [:expansion :contains 0 :designation 4 :value] := #fhir/string"Dried blood spot specimen"))))))
 
 (deftest expand-value-set-sct-include-filter-is-a-test
   (testing "with a single is-a filter"
@@ -4349,18 +4411,20 @@
 
       (doseq [request [["url" #fhir/uri"value-set-152706"]
                        ["url" #fhir/uri"value-set-152706"
-                        "system-version" #fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008"]]]
+                        "system-version" #fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008"]
+                       ["url" #fhir/uri"value-set-152706"
+                        "system-version" #fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/11000274103"]]]
         (given @(apply expand-value-set ts request)
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 3
           [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with EDTA"
           [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false
           [:expansion :contains (concept "57921000052103") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "57921000052103") 0 :display] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "57921000052103") 0 :display] := #fhir/string"Whole blood specimen with edetic acid"
           [:expansion :contains (concept "57921000052103") 0 #(contains? % :inactive)] := false
           [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant"
           [:expansion :contains (concept "441510007") 0 #(contains? % :inactive)] := false))
 
       (testing "with older version before 57921000052103 was introduced"
@@ -4370,10 +4434,10 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 2
           [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with EDTA"
           [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false
           [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant"
           [:expansion :contains (concept "441510007") 0 #(contains? % :inactive)] := false)))
 
     (testing "with many children"
@@ -4394,8 +4458,8 @@
         (given @(expand-value-set ts "url" #fhir/uri"value-set-152902")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1812
-          [:expansion :contains 0 :code] := #fhir/code"396807009"
-          [:expansion :contains 1 :code] := #fhir/code"433881000124103")))
+          [:expansion :contains (concept "396807009") 0 :display] := #fhir/string"Specimen from pancreas obtained by pancreaticoduodenectomy, total pancreatectomy"
+          [:expansion :contains (concept "433881000124103") 0 :display] := #fhir/string"Combined specimen from swab of anterior nares and throat")))
 
     (testing "with inactive concepts"
       (with-system-data [{ts ::ts/local} sct-config]
@@ -4418,7 +4482,7 @@
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
           [:expansion :contains 0 :inactive] := #fhir/boolean true
           [:expansion :contains 0 :code] := #fhir/code"860958002"
-          [:expansion :contains 0 :display] := #fhir/string"Temperature of blood (observable entity)")
+          [:expansion :contains 0 :display] := #fhir/string"Temperature of blood")
 
         (testing "active only"
           (given @(expand-value-set ts
@@ -4450,10 +4514,10 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 2
           [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with EDTA"
           [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false
           [:expansion :contains (concept "57921000052103") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "57921000052103") 0 :display] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "57921000052103") 0 :display] := #fhir/string"Whole blood specimen with edetic acid"
           [:expansion :contains (concept "57921000052103") 0 #(contains? % :inactive)] := false))
 
       (testing "with older version before 57921000052103 was introduced"
@@ -4463,7 +4527,7 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains (concept "445295009") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [:expansion :contains (concept "445295009") 0 :display] := #fhir/string"Blood specimen with EDTA"
           [:expansion :contains (concept "445295009") 0 #(contains? % :inactive)] := false)))
 
     (testing "with many children"
@@ -4484,8 +4548,8 @@
         (given @(expand-value-set ts "url" #fhir/uri"value-set-152706")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1811
-          [:expansion :contains 0 :code] := #fhir/code"396807009"
-          [:expansion :contains 1 :code] := #fhir/code"433881000124103")))
+          [:expansion :contains (concept "396807009") 0 :display] := #fhir/string"Specimen from pancreas obtained by pancreaticoduodenectomy, total pancreatectomy"
+          [:expansion :contains (concept "433881000124103") 0 :display] := #fhir/string"Combined specimen from swab of anterior nares and throat")))
 
     (testing "with inactive concepts"
       (with-system-data [{ts ::ts/local} sct-config]
@@ -4506,7 +4570,7 @@
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
           [:expansion :contains 0 :inactive] := #fhir/boolean true
           [:expansion :contains 0 :code] := #fhir/code"860958002"
-          [:expansion :contains 0 :display] := #fhir/string"Temperature of blood (observable entity)")
+          [:expansion :contains 0 :display] := #fhir/string"Temperature of blood")
 
         (testing "active only"
           (given @(expand-value-set ts
@@ -4534,7 +4598,7 @@
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 20
         [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri"http://snomed.info/sct"
-        [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
+        [:expansion :contains (concept "441510007") 0 :display] := #fhir/string"Blood specimen with anticoagulant")))
 
   (testing "child"
     (testing "with one parent"
@@ -4555,7 +4619,7 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains (concept "119297000") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "119297000") 0 :display] := #fhir/string"Blood specimen (specimen)")))
+          [:expansion :contains (concept "119297000") 0 :display] := #fhir/string"Blood specimen")))
 
     (testing "with two parents"
       (with-system [{ts ::ts/local} sct-config]
@@ -4575,9 +4639,9 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 2
           [:expansion :contains (concept "309051001") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "309051001") 0 :display] := #fhir/string"Body fluid specimen (specimen)"
+          [:expansion :contains (concept "309051001") 0 :display] := #fhir/string"Body fluid specimen"
           [:expansion :contains (concept "446131002") 0 :system] := #fhir/uri"http://snomed.info/sct"
-          [:expansion :contains (concept "446131002") 0 :display] := #fhir/string"Blood specimen obtained for blood culture (specimen)")))))
+          [:expansion :contains (concept "446131002") 0 :display] := #fhir/string"Blood specimen obtained for blood culture")))))
 
 (deftest expand-value-set-ucum-include-all-test
   (testing "including all of UCUM is not possible"
@@ -7019,7 +7083,7 @@
       :fhir/type := :fhir/Parameters
       [(parameter "result") 0 :value] := #fhir/boolean true
       [(parameter "code") 0 :value] := #fhir/code"441510007"
-      [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+      [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
       [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
       [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 
@@ -7055,7 +7119,7 @@
           :fhir/type := :fhir/Parameters
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code"441510007"
-          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 
@@ -7122,7 +7186,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"441510007"
-        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))
 
@@ -7144,7 +7208,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"860958002"
-        [(parameter "display") 0 :value] := #fhir/string"Temperature of blood (observable entity)"
+        [(parameter "display") 0 :value] := #fhir/string"Temperature of blood"
         [(parameter "inactive") 0 :value] := #fhir/boolean true
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")
@@ -7169,7 +7233,7 @@
             [(parameter "result") 0 :value] := #fhir/boolean false
             [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#860958002` was not found in the provided value set.",
             [(parameter "code") 0 :value] := #fhir/code"860958002"
-            [(parameter "display") 0 :value] := #fhir/string"Temperature of blood (observable entity)"
+            [(parameter "display") 0 :value] := #fhir/string"Temperature of blood"
             [(parameter "inactive") 0 :value] := #fhir/boolean true
             [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
             [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
@@ -7205,7 +7269,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"441510007"
-        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))
 
@@ -7230,7 +7294,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"441510007"
-        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20231201"))
 
@@ -7287,12 +7351,11 @@
           :fhir/type := :fhir/Parameters
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code"441510007"
-          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))))
 
 (deftest value-set-validate-code-sct-include-filter-is-a-test
-  (log/set-min-level! :info)
   (with-system-data [{ts ::ts/local} sct-config]
     [[[:put {:fhir/type :fhir/ValueSet :id "0"
              :url #fhir/uri"value-set-113851"
@@ -7315,7 +7378,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"441510007"
-        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 
@@ -7327,7 +7390,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"445295009"
-        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with edetic acid (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with EDTA"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 
@@ -7339,7 +7402,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"57921000052103"
-        [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")
 
@@ -7376,7 +7439,76 @@
         [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
         [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
         [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
-        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))))
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))
+
+  (testing "Germany module"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-113851"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :version #fhir/string"http://snomed.info/sct/11000274103"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"concept"
+                    :op #fhir/code"is-a"
+                    :value #fhir/string"441510007"}]}]}}]]]
+
+      (testing "direct code"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"441510007"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/11000274103/version/20241115"))
+
+      (testing "child code"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"445295009"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"445295009"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with EDTA"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/11000274103/version/20241115"))
+
+      (testing "grand child code"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"57921000052103"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"57921000052103"
+          [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/11000274103/version/20241115"))
+
+      (testing "parent code is not included"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-113851"
+                  "code" #fhir/code"119297000"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+          [(parameter "code") 0 :value] := #fhir/code"119297000"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/11000274103/version/20241115"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))))
 
 (deftest value-set-validate-code-sct-include-filter-descendent-of-test
   (with-system-data [{ts ::ts/local} sct-config]
@@ -7418,7 +7550,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"445295009"
-        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with edetic acid (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with EDTA"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 
@@ -7430,7 +7562,7 @@
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean true
         [(parameter "code") 0 :value] := #fhir/code"57921000052103"
-        [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid (specimen)"
+        [(parameter "display") 0 :value] := #fhir/string"Whole blood specimen with edetic acid"
         [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
         [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")
 
@@ -7510,7 +7642,7 @@
           :fhir/type := :fhir/Parameters
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code"445295009"
-          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with edetic acid (specimen)"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with EDTA"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 
@@ -7588,7 +7720,7 @@
           :fhir/type := :fhir/Parameters
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code"119297000"
-          [(parameter "display") 0 :value] := #fhir/string"Blood specimen (specimen)"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen"
           [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
           [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
 

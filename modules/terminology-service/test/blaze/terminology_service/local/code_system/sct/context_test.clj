@@ -6,10 +6,12 @@
    [blaze.terminology-service.local.code-system.sct.context :as context]
    [blaze.terminology-service.local.code-system.sct.context-spec]
    [blaze.test-util :as tu]
+   [clojure.java.io :as io]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
-   [juxt.iota :refer [given]]))
+   [juxt.iota :refer [given]])
+  (:import [java.nio.file Path]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -107,49 +109,51 @@
   (testing "one neighbor"
     (let [index {900000000000207008 {102272007 (time-map
                                                 20090731 {false [100000000]}
-                                                20020131 {true [100000000]})}}]
+                                                20020131 {true [100000000]})}}
+          neighbors (partial context/neighbors {} index)]
 
       (testing "neighbor did not exist at this time"
-        (is (= #{} (context/neighbors index 900000000000207008 20020130 102272007))))
+        (is (= #{} (neighbors 900000000000207008 20020130 102272007))))
 
       (testing "neighbor just became active"
-        (is (= #{100000000} (context/neighbors index 900000000000207008 20020131 102272007))))
+        (is (= #{100000000} (neighbors 900000000000207008 20020131 102272007))))
 
       (testing "neighbor is still active"
-        (is (= #{100000000} (context/neighbors index 900000000000207008 20090730 102272007))))
+        (is (= #{100000000} (neighbors 900000000000207008 20090730 102272007))))
 
       (testing "neighbor just became inactive"
-        (is (= #{} (context/neighbors index 900000000000207008 20090731 102272007))))
+        (is (= #{} (neighbors 900000000000207008 20090731 102272007))))
 
       (testing "neighbor is still inactive"
-        (is (= #{} (context/neighbors index 900000000000207008 20241216 102272007))))))
+        (is (= #{} (neighbors 900000000000207008 20241216 102272007))))))
 
   (testing "two neighbors"
     (let [index {900000000000207008 {102272007 (time-map
                                                 20090731 {false [100001001]}
                                                 20030531 {false [100000000] true [100001001]}
-                                                20020131 {true [100000000]})}}]
+                                                20020131 {true [100000000]})}}
+          neighbors (partial context/neighbors {} index)]
 
       (testing "neighbor 100000000 did not exist at this time"
-        (is (= #{} (context/neighbors index 900000000000207008 20020130 102272007))))
+        (is (= #{} (neighbors 900000000000207008 20020130 102272007))))
 
       (testing "neighbor 100000000 just became active"
-        (is (= #{100000000} (context/neighbors index 900000000000207008 20020131 102272007))))
+        (is (= #{100000000} (neighbors 900000000000207008 20020131 102272007))))
 
       (testing "neighbor 100000000 is still active"
-        (is (= #{100000000} (context/neighbors index 900000000000207008 20030530 102272007))))
+        (is (= #{100000000} (neighbors 900000000000207008 20030530 102272007))))
 
       (testing "neighbor 100001001 just became active"
-        (is (= #{100001001} (context/neighbors index 900000000000207008 20030531 102272007))))
+        (is (= #{100001001} (neighbors 900000000000207008 20030531 102272007))))
 
       (testing "neighbor 100001001 is still active"
-        (is (= #{100001001} (context/neighbors index 900000000000207008 20090730 102272007))))
+        (is (= #{100001001} (neighbors 900000000000207008 20090730 102272007))))
 
       (testing "neighbor 100001001 just became inactive"
-        (is (= #{} (context/neighbors index 900000000000207008 20090731 102272007))))
+        (is (= #{} (neighbors 900000000000207008 20090731 102272007))))
 
       (testing "neighbor is still inactive"
-        (is (= #{} (context/neighbors index 900000000000207008 20241216 102272007)))))))
+        (is (= #{} (neighbors 900000000000207008 20241216 102272007)))))))
 
 (deftest transitive-neighbors-test
   (let [index {900000000000207008 {102272007 (time-map
@@ -157,8 +161,9 @@
                                               20020131 {true [100000000]})
                                    100000000 (time-map
                                               20090731 {false [100001001]}
-                                              20020131 {true [100001001]})}}]
-    (is (= #{100000000 100001001} (context/transitive-neighbors index 900000000000207008 20020131 102272007)))))
+                                              20020131 {true [100001001]})}}
+        transitive-neighbors (partial context/transitive-neighbors {} index)]
+    (is (= #{100000000 100001001} (transitive-neighbors 900000000000207008 20020131 102272007)))))
 
 (deftest transitive-neighbors-including-test
   (let [index {900000000000207008 {102272007 (time-map
@@ -166,8 +171,9 @@
                                               20020131 {true [100000000]})
                                    100000000 (time-map
                                               20090731 {false [100001001]}
-                                              20020131 {true [100001001]})}}]
-    (is (= #{100000000 100001001 102272007} (context/transitive-neighbors-including index 900000000000207008 20020131 102272007)))))
+                                              20020131 {true [100001001]})}}
+        transitive-neighbors-including (partial context/transitive-neighbors-including {} index)]
+    (is (= #{100000000 100001001 102272007} (transitive-neighbors-including 900000000000207008 20020131 102272007)))))
 
 (deftest find-transitive-neighbor-test
   (let [index {900000000000207008 {102272007 (time-map
@@ -175,8 +181,9 @@
                                               20020131 {true [100000000]})
                                    100000000 (time-map
                                               20090731 {false [100001001]}
-                                              20020131 {true [100001001]})}}]
-    (are [concept-id] (true? (context/find-transitive-neighbor index 900000000000207008 20020131 102272007 concept-id))
+                                              20020131 {true [100001001]})}}
+        find-transitive-neighbor (partial context/find-transitive-neighbor {} index)]
+    (are [concept-id] (true? (find-transitive-neighbor 900000000000207008 20020131 102272007 concept-id))
       100000000 100001001)))
 
 (deftest build-fully-specified-name-index-test
@@ -193,15 +200,115 @@
                       true "Ectopic female breast (morphologic abnormality)"}
             20020131 {true "Ectopic female breast (body structure)"}}}})))
 
+(defn- resource-path [name]
+  (Path/of (.toURI (io/resource name))))
+
+(defn read-synonym-index [concept-id]
+  (context/stream-file
+   context/build-synonym-index
+   (resource-path (format "sct_%d/sct2_Description_Full_GermanyEdition_20241115.txt" concept-id))))
+
 (deftest build-synonym-index-test
   (is (= (context/build-synonym-index
+          #_(context/build-acceptability-index
+             (.stream
+              ["89967345-b4d5-5b0e-9e36-d76fc2aeef98\t20090131\t1\t900000000000207008\t900000000000508004\t2792601011\t900000000000548007"
+               "89967345-b4d5-5b0e-9e36-d76fc2aeef98\t20180131\t1\t900000000000207008\t900000000000508004\t2792601011\t900000000000549004"
+               "d857eb70-d7db-5fd8-9671-c38fbcc26790\t20090131\t1\t900000000000207008\t900000000000509007\t2792601011\t900000000000548007"
+               "d857eb70-d7db-5fd8-9671-c38fbcc26790\t20180131\t1\t900000000000207008\t900000000000509007\t2792601011\t900000000000549004"
+               "e0add9c1-13dc-470a-86f8-cdfe6ec7da88\t20180131\t1\t900000000000207008\t900000000000509007\t3533707010\t900000000000548007"
+               "6e2d2ba3-eac0-4c4e-b97a-cb81273adc84\t20180131\t1\t900000000000207008\t900000000000508004\t3533707010\t900000000000548007"
+               "7879ca96-40ff-b93d-ea8f-826402e5690f\t20241115\t1\t11000274103\t31000274107\t771861000274114\t900000000000548007"
+               "2cd6d999-c60a-ea0b-e741-4c8af71f2ac1\t20241115\t1\t11000274103\t31000274107\t810131000274113\t900000000000549004"]))
           (.stream
-           ["1778924019\t20030731\t1\t900000000000207008\t399537006\ten\t900000000000013009\tClinical TNM stage grouping\t900000000000020002"
-            "1786868015\t20030731\t1\t900000000000207008\t399537006\ten\t900000000000013009\tcTNM stage grouping\t900000000000017005"]))
+           ["2792601011\t20090131\t1\t900000000000207008\t440500007\ten\t900000000000013009\tBlood spot specimen\t900000000000017005"
+            "2792601011\t20180131\t1\t900000000000207008\t440500007\ten\t900000000000013009\tBlood spot specimen\t900000000000448009"
+            "3533707010\t20180131\t1\t900000000000207008\t440500007\ten\t900000000000013009\tDried blood spot specimen\t900000000000448009"
+            "771861000274114\t20241115\t1\t11000274103\t440500007\tde\t900000000000013009\tTrockenblutkarte\t900000000000017005"
+            "810131000274113\t20241115\t1\t11000274103\t440500007\tde\t900000000000013009\tDried Blood Spot Sample\t900000000000017005"]))
          {900000000000207008
-          {399537006
-           {20030731
-            {true [["en" "Clinical TNM stage grouping"] ["en" "cTNM stage grouping"]]}}}})))
+          {440500007
+           {20090131
+            {true [[2792601011 ["en" "Blood spot specimen"]]]}
+            20180131
+            {true [[2792601011 ["en" "Blood spot specimen"]]
+                   [3533707010 ["en" "Dried blood spot specimen"]]]}}}
+          11000274103
+          {440500007
+           {20241115
+            {true [[771861000274114 ["de" "Trockenblutkarte"]]
+                   [810131000274113 ["de" "Dried Blood Spot Sample"]]]}}}}))
+
+  (is (= (context/build-synonym-index
+          #_(context/build-acceptability-index
+             (.stream
+              ["802cf339-8434-55dc-9ef8-5bc697b47fb3\t20100731\t1\t900000000000207008\t900000000000509007\t2871550018\t900000000000548007"
+               "8b032d8a-ccd1-5112-a1c7-045b9a6ca32c\t20100731\t1\t900000000000207008\t900000000000508004\t2871550018\t900000000000548007"
+               "a16db196-8f99-5a58-b325-6fd8ffd25f9f\t20100731\t1\t900000000000207008\t900000000000508004\t2871551019\t900000000000549004"
+               "eae505f4-49a7-5afc-9a39-3f93acffeca7\t20100731\t1\t900000000000207008\t900000000000509007\t2871551019\t900000000000549004"
+               "6931b37d-9868-5b10-befc-26cdd5abd306\t20100731\t1\t900000000000207008\t900000000000508004\t2871552014\t900000000000549004"
+               "6eb8a64a-cba1-5168-b179-a2485fa7aef7\t20100731\t1\t900000000000207008\t900000000000509007\t2871552014\t900000000000549004"]))
+          (.stream
+           ["2871550018\t20100731\t1\t900000000000207008\t445295009\ten\t900000000000013009\tBlood specimen with EDTA\t900000000000020002"
+            "2871551019\t20100731\t1\t900000000000207008\t445295009\ten\t900000000000013009\tBlood specimen with edetic acid\t900000000000020002"
+            "2871551019\t20170731\t1\t900000000000207008\t445295009\ten\t900000000000013009\tBlood specimen with edetic acid\t900000000000448009"
+            "2871552014\t20100731\t1\t900000000000207008\t445295009\ten\t900000000000013009\tBlood specimen with ethylenediamine tetraacetic acid\t900000000000020002"
+            "2871552014\t20170731\t1\t900000000000207008\t445295009\ten\t900000000000013009\tBlood specimen with ethylenediamine tetraacetic acid\t900000000000448009"]))
+         {900000000000207008
+          {445295009
+           {20100731
+            {true [[2871550018 ["en" "Blood specimen with EDTA"]]
+                   [2871551019 ["en" "Blood specimen with edetic acid"]]
+                   [2871552014 ["en" "Blood specimen with ethylenediamine tetraacetic acid"]]]}
+            20170731
+            {true [[2871551019 ["en" "Blood specimen with edetic acid"]]
+                   [2871552014 ["en" "Blood specimen with ethylenediamine tetraacetic acid"]]]}}}}))
+
+  (is (= (read-synonym-index 73212002)
+         {900000000000207008
+          {73212002
+           {20020131
+            {true [[121591019 ["en" "Iodipamide"]]
+                   [502373013 ["en" "Adipiodone"]]]}
+            20020731
+            {true [[1236493018 ["en" "Adipiodone"]]
+                   [1237058014 ["en" "Iodipamide"]]]}
+            20030731
+            {false [[502373013 ["en" "Adipiodone"]]
+                    [1237058014 ["en" "Iodipamide"]]]}
+            20040131
+            {false [[121591019 ["en" "Iodipamide"]]
+                    [1236493018 ["en" "Adipiodone"]]]
+             true [[2154314016 ["en" "Adipiodone"]]
+                   [2155335011 ["en" "Iodipamide"]]]}
+            20170731
+            {true [[2154314016 ["en" "Adipiodone"]]
+                   [2155335011 ["en" "Iodipamide"]]]}
+            20180131
+            {false [[2154314016 ["en" "Adipiodone"]]]
+             true [[3522511019 ["en" "Product containing iodipamide"]]]}
+            20180731
+            {false [[2155335011 ["en" "Iodipamide"]]]
+             true [[3669346012 ["en" "Iodipamide product"]]]}
+            20190131
+            {false [[3522511019 ["en" "Product containing iodipamide"]]
+                    [3669346012 ["en" "Iodipamide product"]]]
+             true [[3715325011 ["en" "Iodipamide-containing product"]]]}}}}))
+
+  (is (= (read-synonym-index 309051001)
+         {900000000000207008
+          {309051001
+           {20020131
+            {true [[452384015 ["en" "Body fluid sample"]]]}
+            20040731
+            {true [[2476472013 ["en" "Body fluid specimen"]]]}
+            20170731
+            {true [[452384015 ["en" "Body fluid sample"]]
+                   [2476472013 ["en" "Body fluid specimen"]]]}}}
+          11000274103
+          {309051001
+           {20241115
+            {true [[800431000274118 ["de" "Körperflüssigkeitsprobe"]]]}}}})))
 
 (deftest find-fully-specified-name-test
   (let [index {900000000000207008
@@ -232,20 +339,109 @@
       (is (nil? (find-fully-specified-name 900000000000207008 20170731 127858008))))))
 
 (deftest find-synonyms-test
-  ;; TODO: use real history
-  (let [index {900000000000207008
-               {399537006
+  (let [module-dependency-index {11000274103 {20241115 [[900000000000207008 20241001]]}}
+        index {900000000000207008
+               {440500007
                 (time-map
-                 20030731 {true [["en" "Clinical TNM stage grouping"]
-                                 ["en" "cTNM stage grouping"]]})}}
+                 20090131
+                 {true [[2792601011 ["en" "Blood spot specimen"]]]}
+                 20180131
+                 {true [[2792601011 ["en" "Blood spot specimen"]]
+                        [3533707010 ["en" "Dried blood spot specimen"]]]})}
+               11000274103
+               {440500007
+                (time-map
+                 20241115
+                 {true [[771861000274114 ["de" "Trockenblutkarte"]]
+                        [810131000274113 ["de" "Dried Blood Spot Sample"]]]})}}
+        find-synonyms (partial context/find-synonyms module-dependency-index index)]
+
+    (testing "synonyms did not exist at this time"
+      (is (empty? (find-synonyms 900000000000207008 20080731 440500007))))
+
+    (testing "one synonym became active"
+      (is (= [[2792601011 ["en" "Blood spot specimen"]]]
+             (find-synonyms 900000000000207008 20090131 440500007))))
+
+    (testing "a second synonym became active"
+      (is (= [[2792601011 ["en" "Blood spot specimen"]]
+              [3533707010 ["en" "Dried blood spot specimen"]]]
+             (find-synonyms 900000000000207008 20180131 440500007))))
+
+    (testing "Germany concept has also the international synonyms"
+      (is (= [[771861000274114 ["de" "Trockenblutkarte"]]
+              [810131000274113 ["de" "Dried Blood Spot Sample"]]
+              [2792601011 ["en" "Blood spot specimen"]]
+              [3533707010 ["en" "Dried blood spot specimen"]]]
+             (find-synonyms 11000274103 20241115 440500007)))))
+
+  (let [index {900000000000207008
+               {445295009
+                (time-map
+                 20100731
+                 {true [[2871550018 ["en" "Blood specimen with EDTA"]]
+                        [2871551019 ["en" "Blood specimen with edetic acid"]]
+                        [2871552014 ["en" "Blood specimen with ethylenediamine tetraacetic acid"]]]}
+                 20170731
+                 {true [[2871551019 ["en" "Blood specimen with edetic acid"]]
+                        [2871552014 ["en" "Blood specimen with ethylenediamine tetraacetic acid"]]]})}}
         find-synonyms (partial context/find-synonyms {} index)]
 
-    (testing "description did not exist at this time"
-      (is (empty? (find-synonyms 900000000000207008 20030730 399537006))))
+    (testing "one synonym became active"
+      (is (= [[2871550018 ["en" "Blood specimen with EDTA"]]
+              [2871551019 ["en" "Blood specimen with edetic acid"]]
+              [2871552014 ["en" "Blood specimen with ethylenediamine tetraacetic acid"]]]
+             (find-synonyms 900000000000207008 20100731 445295009))))
 
-    (testing "description just became active"
-      (is (= [["en" "Clinical TNM stage grouping"]
-              ["en" "cTNM stage grouping"]] (find-synonyms 900000000000207008 20030731 399537006))))))
+    (testing "the first synonym is still active"
+      (is (= [[2871550018 ["en" "Blood specimen with EDTA"]]
+              [2871551019 ["en" "Blood specimen with edetic acid"]]
+              [2871552014 ["en" "Blood specimen with ethylenediamine tetraacetic acid"]]]
+             (find-synonyms 900000000000207008 20170731 445295009)))))
+
+  (let [index (read-synonym-index 73212002)
+        find-synonyms (partial context/find-synonyms {} index)]
+
+    (testing "20020131"
+      (is (= [[121591019 ["en" "Iodipamide"]]
+              [502373013 ["en" "Adipiodone"]]]
+             (find-synonyms 900000000000207008 20020131 73212002))))
+
+    (testing "20020731"
+      (is (= [[121591019 ["en" "Iodipamide"]]
+              [502373013 ["en" "Adipiodone"]]
+              [1236493018 ["en" "Adipiodone"]]
+              [1237058014 ["en" "Iodipamide"]]]
+             (find-synonyms 900000000000207008 20020731 73212002))))
+
+    (testing "20030731"
+      (is (= [[121591019 ["en" "Iodipamide"]]
+              [1236493018 ["en" "Adipiodone"]]]
+             (find-synonyms 900000000000207008 20030731 73212002))))
+
+    (testing "20040131"
+      (is (= [[2154314016 ["en" "Adipiodone"]]
+              [2155335011 ["en" "Iodipamide"]]]
+             (find-synonyms 900000000000207008 20040131 73212002))))
+
+    (testing "20170731"
+      (is (= [[2154314016 ["en" "Adipiodone"]]
+              [2155335011 ["en" "Iodipamide"]]]
+             (find-synonyms 900000000000207008 20170731 73212002))))
+
+    (testing "20180131"
+      (is (= [[2155335011 ["en" "Iodipamide"]]
+              [3522511019 ["en" "Product containing iodipamide"]]]
+             (find-synonyms 900000000000207008 20180131 73212002))))
+
+    (testing "20180731"
+      (is (= [[3522511019 ["en" "Product containing iodipamide"]]
+              [3669346012 ["en" "Iodipamide product"]]]
+             (find-synonyms 900000000000207008 20180731 73212002))))
+
+    (testing "20190131"
+      (is (= [[3715325011 ["en" "Iodipamide-containing product"]]]
+             (find-synonyms 900000000000207008 20190131 73212002))))))
 
 (deftest build-test
   (testing "wrong path"

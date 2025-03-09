@@ -21,8 +21,8 @@ set y2tics
 set grid
 
 set xrange [0:85]
-set yrange [0:65000]
-set y2range [0:6.5]
+set yrange [0:50000]
+set y2range [0:10]
 
 # Plot the data
 plot 'data/value-set-validate-code-snomed-ct-body-site.csv' using 1:2 with linespoints pt 7 title 'Requests/s' axes x1y1, \

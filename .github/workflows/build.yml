@@ -1275,8 +1275,17 @@ jobs:
     - name: Load Blaze Image
       run: docker load --input /tmp/blaze.tar
 
+    - name: Download SNOMED CT Release
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: ${{ secrets.SCT_DOWNLOAD_TOKEN }}
+        filename: SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+
+    - name: Unzip SNOMED CT Release
+      run: unzip SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z:/app/sct-release blaze:latest
 
     - name: Install All KDS Terminology Resources
       run: make -C .github/value-set-expand install
@@ -1298,6 +1307,12 @@ jobs:
 
     - name: Expand KDS Terminology Resources
       run: .github/value-set-expand/expand.sh
+
+    - name: Expand KDS SNOMED CT Terminology Resources
+      run: .github/value-set-expand/expand-sct.sh
+
+    - name: Expand Most KDS Terminology Resources
+      run: .github/value-set-expand/expand-most.sh
 
   integration-test-validation:
     needs: build

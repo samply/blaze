@@ -87,6 +87,15 @@
 (declare module-dependency-refset-line)
 (defparseline ModuleDependencyRefsetLine [UUID long long long long long long long])
 
+;; https://confluence.ihtsdotools.org/display/DOCRELFMT/5.2.2.1+Language+Reference+Set
+(defrecord LanguageRefsetLine
+           [^UUID id ^long effective-time ^long active ^long module-id
+            ^long refset-id ^long referenced-component-id
+            ^long acceptability-id])
+
+(declare language-refset-line)
+(defparseline LanguageRefsetLine [UUID long long long long long long])
+
 (def ^:private assoc-time-map
   (fnil assoc (sorted-map-by >)))
 
@@ -109,8 +118,8 @@
       (.filter #(= synonym (:type-id %)))
       (.reduce
        {}
-       (fn [index {:keys [module-id concept-id effective-time active language-code term]}]
-         (update-in index [module-id concept-id] update-time-map effective-time update (= 1 active) (fnil conj []) [language-code term]))
+       (fn [index {:keys [id module-id concept-id effective-time active language-code term]}]
+         (update-in index [module-id concept-id] update-time-map effective-time update (= 1 active) (fnil conj []) [id [language-code term]]))
        (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
 (defn build-parent-index
@@ -157,28 +166,37 @@
                     update (= 1 active) (fnil conj []) source-id))
        (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
-(defn neighbors
-  "Returns a set of neighbors (parents or children depending on `index`) of
-  concept in a module of a certain version."
-  [index module-id version code]
-  (when-let [versions (get-in index [module-id code])]
+(defn- neighbors* [index module-id version concept-id]
+  (when-let [versions (get-in index [module-id concept-id])]
     (reduce
      (fn [parents {added true removed false}]
        (reduce conj (reduce disj parents removed) added))
      #{}
      (vals (rsubseq versions >= version)))))
 
+(defn neighbors
+  "Returns a set of neighbors (parents or children depending on `index`) of
+  concept in a module of a certain version."
+  [module-dependency-index index module-id version concept-id]
+  (into
+   (or (neighbors* index module-id version concept-id) #{})
+   (mapcat
+    (fn [[module-id version]]
+      (neighbors* index module-id version concept-id)))
+   (get-in module-dependency-index [module-id version])))
+
 (defn transitive-neighbors
   "Returns a set of transitive neighbors (parents or children depending on
   `index`) of concept excluding itself in a module of a certain version."
-  [index module-id version concept-id]
+  [module-dependency-index index module-id version concept-id]
   (loop [to-visit #{concept-id}
          visited #{}
          result #{}]
     (if (empty? to-visit)
       result
       (let [current (first to-visit)
-            neighbors (neighbors index module-id version current)]
+            neighbors (neighbors module-dependency-index index module-id version
+                                 current)]
         (recur (into (disj to-visit current) (remove visited) neighbors)
                (conj visited current)
                (into result neighbors))))))
@@ -186,14 +204,15 @@
 (defn transitive-neighbors-including
   "Returns a set of transitive neighbors (parents or children depending on
   `index`) of concept including itself in a module of a certain version."
-  [index module-id version concept-id]
+  [module-dependency-index index module-id version concept-id]
   (loop [to-visit #{concept-id}
          visited #{}
          result #{concept-id}]
     (if (empty? to-visit)
       result
       (let [current (first to-visit)
-            neighbors (neighbors index module-id version current)]
+            neighbors (neighbors module-dependency-index index module-id version
+                                 current)]
         (recur (into (disj to-visit current) (remove visited) neighbors)
                (conj visited current)
                (into result neighbors))))))
@@ -202,12 +221,13 @@
   "Returns true if concept is in the set of transitive neighbors (parents or
   children depending on `index`) of start-concept in a module of a certain
   version."
-  [index module-id version start-concept-id concept-id]
+  [module-dependency-index index module-id version start-concept-id concept-id]
   (loop [to-visit #{start-concept-id}
          visited #{}]
     (when (seq to-visit)
       (let [current (first to-visit)
-            neighbors (neighbors index module-id version current)]
+            neighbors (neighbors module-dependency-index index module-id version
+                                 current)]
         (if (contains? neighbors concept-id)
           true
           (recur (into (disj to-visit current) (remove visited) neighbors)
@@ -257,9 +277,20 @@
   (find-multi-module module-dependency-index fully-specified-name-index
                      find-fully-specified-name* module-id version concept-id))
 
-(defn find-synonym* [description-index module-id version concept-id]
+(defn- assoc-tuple [m [k v]]
+  (assoc m k v))
+
+(defn- dissoc-tuple [m [k]]
+  (dissoc m k))
+
+(defn- find-synonyms* [description-index module-id version concept-id]
   (when-let [versions (get-in description-index [module-id concept-id])]
-    (some-> (first (subseq versions >= version)) val (get true))))
+    (vec
+     (reduce
+      (fn [result {added true removed false}]
+        (reduce assoc-tuple (reduce dissoc-tuple result removed) added))
+      {}
+      (vals (rsubseq versions >= version))))))
 
 (defn find-synonyms
   "Returns the synonyms of a concept in a module of a certain version.
@@ -267,11 +298,15 @@
   A synonym is a tuple of language code and term."
   [module-dependency-index synonym-index module-id version concept-id]
   (into
-   (or (find-synonym* synonym-index module-id version concept-id) [])
+   (or (find-synonyms* synonym-index module-id version concept-id) [])
    (mapcat
     (fn [[module-id version]]
-      (find-synonym* synonym-index module-id version concept-id)))
+      (find-synonyms* synonym-index module-id version concept-id)))
    (get-in module-dependency-index [module-id version])))
+
+(defn find-acceptability [acceptability-index version id]
+  (when-let [versions (get acceptability-index id)]
+    (some-> (first (subseq versions >= version)) val)))
 
 (defn build-module-dependency-index
   "source-module -> source-version -> target-module -> target-version"
@@ -287,6 +322,25 @@
          (update-in index [module-id source-effective-time] (fnil conj [])
                     [referenced-component-id target-effective-time]))
        (partial merge-with (partial merge-with into)))))
+
+(defn- acceptability [acceptability-id]
+  (case acceptability-id
+    900000000000548007 :preferred
+    900000000000549004 :acceptable))
+
+(defn build-acceptability-index
+  "referenced-component-id -> effective-time -> acceptability-id"
+  [lines]
+  (-> ^Stream lines
+      (.map language-refset-line)
+      (.filter #(= 1 (:active %)))
+      (.reduce
+       {}
+       (fn [index
+            {:keys [referenced-component-id effective-time acceptability-id]}]
+         (update index referenced-component-id assoc-time-map effective-time
+                 (acceptability acceptability-id)))
+       (partial merge-with merge))))
 
 (defn- version-url [module-id date]
   (format "%s/%s/version/%s" url module-id date))
@@ -340,7 +394,7 @@
     (or (first stream)
         (ba/not-found (format "Can't find a file starting with `%s` in `%s`." prefix path)))))
 
-(defn- stream-file [f path & args]
+(defn stream-file [f path & args]
   (with-open [lines (-> (Files/lines ^Path path) (.skip 1) (.parallel))]
     (apply f lines args)))
 
@@ -350,7 +404,9 @@
 (defn build [release-path]
   (when-ok [full-path (find-file release-path "Full")
             refset-path (find-file full-path "Refset")
+            language-path (find-file refset-path "Language")
             metadata-path (find-file refset-path "Metadata")
+            language-file (find-file language-path "der2_cRefset_LanguageFull")
             module-dependency-file (find-file metadata-path "der2_ssRefset_ModuleDependencyFull")
             term-path (find-file full-path "Terminology")
             concept-file (find-file term-path "sct2_Concept_Full")
@@ -367,4 +423,5 @@
      :parent-index (stream-file build-parent-index relationship-file)
      :child-index (stream-file build-child-index relationship-file)
      :fully-specified-name-index fully-specified-name-index
-     :synonym-index synonym-index}))
+     :synonym-index synonym-index
+     :acceptability-index (stream-file build-acceptability-index language-file)}))
