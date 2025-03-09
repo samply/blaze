@@ -8,33 +8,50 @@
    [blaze.terminology-service.local.code-system.sct.filter.core :as core]
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]))
 
+(def ^:private missing-concept-filter-value-msg
+  (format "Missing concept descendent-of filter value in code system `%s`." url))
+
+(defn- invalid-value-msg [value]
+  (format "Invalid concept descendent-of filter value `%s` in code system `%s`."
+          value url))
+
 (defn- expand-filter
-  [{{:keys [child-index]} :sct/context :sct/keys [module-id version]} value]
+  [{{:keys [module-dependency-index child-index]} :sct/context
+    :sct/keys [module-id version]} value]
   (if (nil? value)
-    (ba/incorrect (format "Missing concept descendent-of filter value in code system `%s`." url))
+    (ba/incorrect missing-concept-filter-value-msg)
     (if-let [code (parse-sctid value)]
-      (context/transitive-neighbors child-index module-id version code)
-      (ba/incorrect (format "Invalid concept descendent-of filter value `%s` in code system `%s`." value url)))))
+      (context/transitive-neighbors module-dependency-index child-index
+                                    module-id version code)
+      (ba/incorrect (invalid-value-msg value)))))
+
+(def ^:private missing-property-msg
+  (format "Missing descendent-of filter property in code system `%s`." url))
+
+(defn- unsupported-property-msg [property]
+  (format "Unsupported descendent-of filter property `%s` in code system `%s`."
+          (type/value property) url))
 
 (defmethod core/expand-filter :descendent-of
   [code-system {:keys [property value]}]
   (condp = (type/value property)
     "concept" (expand-filter code-system (type/value value))
-    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." (type/value property) url))))
+    nil (ba/incorrect missing-property-msg)
+    (ba/unsupported (unsupported-property-msg property))))
 
 (defn- satisfies-filter
-  [{{:keys [parent-index]} :sct/context :sct/keys [module-id version]} value code]
+  [{{:keys [module-dependency-index parent-index]} :sct/context
+    :sct/keys [module-id version]} value code]
   (if (nil? value)
-    (ba/incorrect (format "Missing concept descendent-of filter value in code system `%s`." url))
+    (ba/incorrect missing-concept-filter-value-msg)
     (if-let [start-code (parse-sctid value)]
-      (context/find-transitive-neighbor parent-index module-id version
-                                        code start-code)
-      (ba/incorrect (format "Invalid concept descendent-of filter value `%s` in code system `%s`." value url)))))
+      (context/find-transitive-neighbor module-dependency-index parent-index
+                                        module-id version code start-code)
+      (ba/incorrect (invalid-value-msg value)))))
 
 (defmethod core/satisfies-filter :descendent-of
   [code-system {:keys [property value]} code]
   (condp = (type/value property)
     "concept" (satisfies-filter code-system (type/value value) code)
-    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." (type/value property) url))))
+    nil (ba/incorrect missing-property-msg)
+    (ba/unsupported (unsupported-property-msg property))))

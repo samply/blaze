@@ -21,8 +21,8 @@ set y2tics
 set grid
 
 set xrange [0:85]
-set yrange [0:65000]
-set y2range [0:6.5]
+set yrange [0:60000]
+set y2range [0:6]
 
 # Plot the data
 plot 'data/value-set-validate-code-icd-10-gm.csv' using 1:2 with linespoints pt 7 title 'Requests/s' axes x1y1, \

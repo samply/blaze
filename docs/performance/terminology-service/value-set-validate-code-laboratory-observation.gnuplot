@@ -21,8 +21,8 @@ set y2tics
 set grid
 
 set xrange [0:85]
-set yrange [0:75000]
-set y2range [0:7.5]
+set yrange [0:70000]
+set y2range [0:7]
 
 # Plot the data
 plot 'data/value-set-validate-code-laboratory-observation.csv' using 1:2 with linespoints pt 7 title 'Requests/s' axes x1y1, \

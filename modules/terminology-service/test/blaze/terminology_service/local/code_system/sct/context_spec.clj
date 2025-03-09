@@ -21,21 +21,25 @@
 (s/fdef context/find-synonyms
   :args (s/cat :module-dependency-index map? :description-index map?
                :module-id :sct/id :version :sct/time :concept-id :sct/id)
-  :ret (s/coll-of (s/tuple string? string?)))
+  :ret (s/coll-of (s/tuple :sct/id (s/tuple string? string?))))
+
+(s/fdef context/find-acceptability
+  :args (s/cat :acceptability-index map? :version :sct/time :id :sct/id)
+  :ret (s/nilable #{:preferred :acceptable}))
 
 (s/fdef context/neighbors
-  :args (s/cat :index map? :module-id :sct/id :version :sct/time
-               :concept-id :sct/id)
+  :args (s/cat :module-dependency-index map? :index map?
+               :module-id :sct/id :version :sct/time :concept-id :sct/id)
   :ret (s/coll-of :sct/id :kind set?))
 
 (s/fdef context/transitive-neighbors
-  :args (s/cat :index map? :module-id :sct/id :version :sct/time
-               :concept-id :sct/id)
+  :args (s/cat :module-dependency-index map? :index map?
+               :module-id :sct/id :version :sct/time :concept-id :sct/id)
   :ret (s/coll-of :sct/id :kind set?))
 
 (s/fdef context/transitive-neighbors-including
-  :args (s/cat :index map? :module-id :sct/id :version :sct/time
-               :concept-id :sct/id)
+  :args (s/cat :module-dependency-index map? :index map?
+               :module-id :sct/id :version :sct/time :concept-id :sct/id)
   :ret (s/coll-of :sct/id :kind set?))
 
 (s/fdef context/build
