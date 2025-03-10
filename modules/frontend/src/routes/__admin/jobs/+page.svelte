@@ -1,15 +1,11 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import { base } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import TaskRow from './task-row.svelte';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 
 	// reload page data every 10 seconds if at least one of the jobs is still in progress
 	$effect(() => {
@@ -41,7 +37,7 @@
 	</div>
 
 	<ul role="list" class="divide-y divide-gray-100 mt-4">
-		{#each data.all as job}
+		{#each data.all as job (job.id)}
 			<TaskRow {job} />
 		{/each}
 	</ul>

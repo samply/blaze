@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import { page } from '$app/state';
 
@@ -9,11 +9,7 @@
 	import BreadcrumbEntryVersion from '$lib/breadcrumb/version.svelte';
 	import ResourceCard from '$lib/resource/resource-card.svelte';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>

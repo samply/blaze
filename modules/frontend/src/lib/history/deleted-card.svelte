@@ -17,7 +17,7 @@
 			<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
 				{request.url}
 			</h3>
-			<MethodBadge method={'DELETE'} />
+			<MethodBadge method="DELETE" />
 		</div>
 		<p class="mt-1 max-w-2xl text-sm text-gray-500">
 			Last Updated&nbsp;<DateTime value={lastModified} />

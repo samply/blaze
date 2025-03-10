@@ -12,6 +12,15 @@ export function sortByProperty<T>(propName: keyof T) {
 	};
 }
 
+export function sortByProperty2<T>(propName1: keyof T, propName2: keyof T) {
+	const sort1 = sortByProperty(propName1);
+	const sort2 = sortByProperty(propName2);
+	return function (a: T, b: T) {
+		const by1 = sort1(a, b);
+		return by1 == 0 ? sort2(a, b) : by1;
+	};
+}
+
 export function joinStrings(
 	separator: string,
 	...values: (string | undefined)[]
