@@ -43,7 +43,7 @@ test('History Page', async ({page}) => {
     await page.getByRole('link', {name: 'History', exact: true}).click();
 
     await expect(page).toHaveTitle("History - Blaze");
-    await expect(page.getByText('Total: 92,299')).toBeVisible();
+    await expect(page.getByText('Total: 92,300')).toBeVisible();
 });
 
 test('Metadata Page', async ({page}) => {
@@ -56,7 +56,22 @@ test('Metadata Page', async ({page}) => {
     await expect(page.getByRole('heading', {name: 'Blaze'})).toBeVisible();
     await expect(page.getByRole('link', {name: 'Account'})).toBeVisible();
     await expect(page.getByRole('link', {name: 'ActivityDefinition'})).toBeVisible();
+    await expect(page.getByRole('link', {name: 'Encounter'})).toBeVisible();
 
+    await page.getByRole('link', {name: 'Encounter'}).click();
+
+    await expect(page).toHaveTitle("Encounter - Metadata - Blaze");
+    await expect(page.getByRole('heading', {name: 'Encounter'})).toBeVisible();
+    await expect(page.getByRole('link', {name: 'Resources'})).toBeVisible();
+    await expect(page.getByText('Supported Profiles', {exact : true})).toBeVisible();
+    await expect(page.getByRole('link', {name: 'KontaktGesundheitseinrichtung'})).toBeVisible();
+    await expect(page.getByText('Search Parameters')).toBeVisible();
+    await expect(page.getByText('(date) – date')).toBeVisible();
+
+    await page.getByRole('link', {name: 'Resources'}).click();
+
+    await expect(page).toHaveTitle("Encounter - Blaze");
+    await expect(page.getByText('Total: 4,769')).toBeVisible();
 });
 
 test.describe('Admin', () => {
@@ -233,7 +248,16 @@ test('Patients Page', async ({page}) => {
     await page.getByRole('link', {name: 'Patient'}).click();
 
     await expect(page).toHaveTitle("Patient - Blaze");
+    await expect(page.getByTitle('Patient History')).toBeVisible();
+    await expect(page.getByTitle('Patient Metadata')).toBeVisible();
     await expect(page.getByText('Total: 120')).toBeVisible();
+
+    await page.getByTitle('Patient Metadata').click();
+    await expect(page).toHaveTitle("Patient - Metadata - Blaze");
+    await expect(page.getByRole('heading', {name: 'Patient'})).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveTitle("Patient - Blaze");
 
     // Go to next page
     await page.getByRole('link', {name: 'Next'}).first().click();

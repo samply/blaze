@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import ColumnFamilyTable from './column-family-table.svelte';
 	import { toTitleCase } from '$lib/util.js';
@@ -7,11 +7,7 @@
 	import Stats from './stats.svelte';
 	import { page } from '$app/state';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>

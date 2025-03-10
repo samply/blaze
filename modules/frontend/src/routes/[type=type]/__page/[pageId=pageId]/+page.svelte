@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -17,11 +17,7 @@
 	import NoResultsCard from '../../no-results-card.svelte';
 	import ErrorCard from '$lib/error-card.svelte';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 
 	let duration = $state(0);
 
