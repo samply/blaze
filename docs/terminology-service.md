@@ -36,6 +36,10 @@ For stored FHIR code systems, a graph will be build before operations like $vali
 
 Because both the LOINC and SNOMED CT data used for terminology operations is currently hold completely in memory, at least 8 GiB of Java Heap memory is required. The Java Heap memory can be set by setting `JAVA_TOOL_OPTIONS` to `-Xmx8g`.
 
+## Validation
+
+The terminology service is designed to work together with the [FHIR Validator][1]. More on that in the [Terminology Service – Validation](terminology-service/validation.md) section.
+
 ## Performance
 
 Performance data can be found in the [Performance – Terminology Service](performance/terminology-service.md) section.
@@ -65,3 +69,5 @@ services:
 volumes:
   blaze-data:
 ```
+
+[1]: <https://confluence.hl7.org/spaces/FHIR/pages/35718580/Using+the+FHIR+Validator>
