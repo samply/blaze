@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.33.0
+
+### Enhancements
+
+* Support Custom Profiles ([#979](https://github.com/samply/blaze/issues/979))
+* Implement Direct Upload and Download of Binary Content at the Binary Endpoint ([#2009](https://github.com/samply/blaze/issues/2009))
+* Terminology Service SCT Multi-Module Support ([#2448](https://github.com/samply/blaze/issues/2448))
+* Include System Operations in the Capability Statement ([#1788](https://github.com/samply/blaze/issues/1788))
+* Improve Error Message while Fetching the Public Key ([#2379](https://github.com/samply/blaze/issues/2379))
+
+### Bugfixes
+
+* Mask Settings containing Secrets in Admin API ([#2403](https://github.com/samply/blaze/issues/2403))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/104?closed=1).
+
 ## v0.32.0
 
 ### New Features
@@ -18,6 +34,8 @@ The generated documentation (https://samply.github.io/blaze/) was improved consi
 ## UI
 
 * Add Logo and Lexend Font to UI ([#2323](https://github.com/samply/blaze/pull/2323))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/103?closed=1).
 
 ## v0.31.0
 

@@ -39,7 +39,7 @@ export default defineConfig({
 		nav: [
 			{ text: 'Home', link: '/' },
 			{
-				text: 'v0.32.0',
+				text: 'v0.33.0',
 				items: [
 					{
 						text: 'Changelog',
@@ -154,7 +154,8 @@ export default defineConfig({
 					{ text: 'FHIR', link: '/terminology-service/fhir' },
 					{ text: 'LOINC', link: '/terminology-service/loinc' },
 					{ text: 'SNOMED CT', link: '/terminology-service/snomed-ct' },
-					{ text: 'UCUM', link: '/terminology-service/ucum' }
+					{ text: 'UCUM', link: '/terminology-service/ucum' },
+					{ text: 'Validation', link: '/terminology-service/validation' }
 				]
 			},
 			{

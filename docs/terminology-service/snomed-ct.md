@@ -3,7 +3,7 @@
 > [!NOTE]
 > Because SNOMED CT has to be licensed, Blaze doesn't contain the SNOMED CT code system by default. However, by setting the environment variable `ENABLE_TERMINOLOGY_SNOMED_CT` to `true` and `SNOMED_CT_RELEASE_PATH` to a path of an official SNOMED CT release, Blaze will be able to offer terminology services on SNOMED CT. The release files are read into memory on each start of Blaze. So the release path has to be always available.
 
-Blaze supports the [SNOMED CT](https://www.snomed.org) terminology in the versions provided in the release files.
+Blaze supports the [SNOMED CT](https://www.snomed.org) terminology in the modules and versions provided in the release files. Only one set of release files (edition) can be loaded. In case the modules contain descriptions from different languages, all that languages are supported.
 
 ## Copyright
 
@@ -16,6 +16,14 @@ This documentation includes content from SNOMED Clinical Terms® (SNOMED CT®) i
 | concept  | is-a, descendent-of | SNOMED CT code |
 | parent   | =                   | SNOMED CT code |
 | child    | =                   | SNOMED CT code |
+
+## Display
+
+The display contains the preferred term of the language requested with `en` being the default language.
+
+## Designations
+
+Designations contain the fully specified name and all synonyms in all languages. 
 
 ## Resources
 
