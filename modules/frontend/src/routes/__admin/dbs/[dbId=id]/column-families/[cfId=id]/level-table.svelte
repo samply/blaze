@@ -25,7 +25,7 @@
 		</tr>
 	{/snippet}
 
-	{#each levels as level}
+	{#each levels as level (level.level)}
 		<LevelRow {...level} />
 	{/each}
 </Table>

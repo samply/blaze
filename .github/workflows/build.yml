@@ -1105,6 +1105,18 @@ jobs:
     - name: Chaining on DocumentReference
       run: .github/scripts/chaining-document-reference.sh
 
+    - name: Download Modul Person
+      run: wget --content-disposition https://packages.simplifier.net/de.medizininformatikinitiative.kerndatensatz.person/2025.0.0
+
+    - name: Unpack Modul Person
+      run: tar xzf de.medizininformatikinitiative.kerndatensatz.person-2025.0.0.tgz
+
+    - name: Upload StructureDefinition Person
+      run: .github/scripts/upload-profile.sh package/StructureDefinition-mii-pr-person-patient.json
+
+    - name: Check Capability Statement Supported Profiles
+      run: .github/scripts/check-capability-statement-supported-profiles.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}

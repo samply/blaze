@@ -17,23 +17,22 @@
 	import Table from '$lib/tailwind/table/table.svelte';
 
 	interface Props {
-		resource: FhirObject;
+		capabilityStatement: CapabilityStatement;
+		capabilityStatementObject: FhirObject;
 	}
 
-	let { resource }: Props = $props();
-
-	let capabilityStatement = $derived(resource.object as CapabilityStatement);
+	let { capabilityStatement, capabilityStatementObject }: Props = $props();
 </script>
 
 <div class="overflow-hidden">
 	<div class="border-b border-gray-200">
-		<nav class="-mb-px flex space-x-8" aria-label="Tabs">
+		<nav class="-mb-px flex space-x-8 sm:px-6" aria-label="Tabs">
 			<TabItem name="default" label="Interactions" />
 			<TabItem name="json" label="Json" />
 		</nav>
 	</div>
 	{#if isTabActive(page.url, 'default')}
-		<Table clazz="mt-4">
+		<Table clazz="mt-4 sm:px-6">
 			{#snippet caption()}
 				<div>
 					<h1 class="text-base font-semibold leading-6 text-gray-900">
@@ -74,7 +73,9 @@
 			{#each capabilityStatement.rest?.at(0)?.resource || [] as resource (resource.type)}
 				<tr>
 					<td class="whitespace-nowrap py-2 pl-4 text-sm sm:pl-0 text-gray-900"
-						><a href="{base}/{resource.type}" class="hover:text-gray-500">{resource.type}</a></td
+						><a href="{base}/metadata/{resource.type}" class="hover:text-gray-500"
+							>{resource.type}</a
+						></td
 					>
 					<td class="py-2 text-sm text-gray-900">
 						<a
@@ -137,7 +138,8 @@
 			{/each}
 		</Table>
 	{:else}
-		<pre class="flex overflow-auto text-sm"><code class="p-4"><Object object={resource} /></code
+		<pre class="flex overflow-auto text-sm"><code class="p-4"
+				><Object object={capabilityStatementObject} /></code
 			></pre>
 	{/if}
 </div>

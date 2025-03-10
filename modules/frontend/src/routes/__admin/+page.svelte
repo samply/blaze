@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import Table from '$lib/tailwind/table/table.svelte';
 	import SettingRow from './setting-row.svelte';
 	import FeatureRow from './feature-row.svelte';
 
-	let { data }: { data: PageData } = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>

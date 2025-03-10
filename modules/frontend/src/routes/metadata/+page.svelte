@@ -1,13 +1,9 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import MetadataCard from './metadata-card.svelte';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -15,5 +11,8 @@
 </svelte:head>
 
 <main class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-	<MetadataCard resource={data.capabilityStatement} />
+	<MetadataCard
+		capabilityStatement={data.capabilityStatement}
+		capabilityStatementObject={data.capabilityStatementObject}
+	/>
 </main>

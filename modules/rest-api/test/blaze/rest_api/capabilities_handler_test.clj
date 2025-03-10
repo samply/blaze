@@ -1,8 +1,12 @@
 (ns blaze.rest-api.capabilities-handler-test
   (:require
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
    [blaze.db.impl.search-param]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.capabilities-handler]
@@ -99,9 +103,10 @@
 
 (defmacro with-handler [[handler-binding config] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{handler# ::rest-api/capabilities-handler} ~config]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# ::rest-api/capabilities-handler} ~config]
        ~txs
-       (let [~handler-binding handler#]
+       (let [~handler-binding (-> handler# (wrap-db node# 100))]
          ~@body))))
 
 (def ^:private minimal-config
@@ -250,6 +255,11 @@
                 #:blaze.rest-api.interaction
                  {:handler (fn [_])}}}]))
 
+(defn- patient-profile [structure-definition-repo]
+  (->> (sdr/resources structure-definition-repo)
+       (some #(when (#{"Patient"} (:name %)) %))
+       (fhir-spec/conform-json)))
+
 (deftest patient-read-interaction-test
   (with-handler [handler patient-read-interaction-config]
     (given (:body @(handler {}))
@@ -294,7 +304,46 @@
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :resource 0 :type] := #fhir/code"Patient"
         [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-        [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"multiple"))))
+        [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"multiple")))
+
+  (testing "with custom profiles"
+    (with-handler [handler patient-read-interaction-config]
+      [[[:create (patient-profile structure-definition-repo)]
+        [:create {:fhir/type :fhir/StructureDefinition :id "id-085034"
+                  :url #fhir/uri"url-084829"
+                  :type #fhir/uri"Patient"
+                  :derivation #fhir/code"constraint"}]]]
+
+      (given (:body @(handler {}))
+        :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :resource 0 :type] := #fhir/code"Patient"
+        [:rest 0 :resource 0 :profile] := #fhir/canonical"http://hl7.org/fhir/StructureDefinition/Patient"
+        [:rest 0 :resource 0 :supportedProfile count] := 1
+        [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical"url-084829")
+
+      (testing "filtering by _elements=software doesn't load supported profiles"
+        (with-redefs [d/type-query (fn [_ _ _] (throw (Exception.)))]
+          (given (:body @(handler {:query-params {"_elements" "software"}}))
+            :fhir/type := :fhir/CapabilityStatement
+            [:software :name] := "Blaze")))
+
+      (testing "filtering by _elements=software,rest loads supported profiles"
+        (given (:body @(handler {:query-params {"_elements" "software,rest"}}))
+          :fhir/type := :fhir/CapabilityStatement
+          [:rest 0 :resource 0 :supportedProfile count] := 1)))
+
+    (testing "profile with version"
+      (with-handler [handler patient-read-interaction-config]
+        [[[:create {:fhir/type :fhir/StructureDefinition :id "id-085034"
+                    :url #fhir/uri"url-084829"
+                    :version #fhir/string"version-093738"
+                    :type #fhir/uri"Patient"
+                    :derivation #fhir/code"constraint"}]]]
+
+        (given (:body @(handler {}))
+          :fhir/type := :fhir/CapabilityStatement
+          [:rest 0 :resource 0 :supportedProfile count] := 1
+          [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical"url-084829|version-093738")))))
 
 (def ^:private observation-read-interaction-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :resource-patterns]

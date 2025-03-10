@@ -368,7 +368,8 @@
                      :handler transaction-handler}))]
     ["/metadata"
      {:interaction "capabilities"
-      :get capabilities-handler}]
+      :get {:middleware [[wrap-db node db-sync-timeout]]
+            :handler capabilities-handler}}]
     ["/_history"
      (cond-> {:name :history}
        (some? history-system-handler)

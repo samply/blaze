@@ -1,14 +1,10 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import Table from '$lib/tailwind/table/table.svelte';
 	import ResourceRow from '$lib/resource-row.svelte';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -40,7 +36,7 @@
 			</tr>
 		{/snippet}
 
-		{#each data.resourceTypeTotals as resourceTypeTotal}
+		{#each data.resourceTypeTotals as resourceTypeTotal (resourceTypeTotal.name)}
 			<ResourceRow {...resourceTypeTotal} />
 		{/each}
 	</Table>
