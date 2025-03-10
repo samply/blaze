@@ -1,6 +1,7 @@
 (ns blaze.rest-api.capabilities-handler
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.api :as d]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec.type :as type]
@@ -42,73 +43,74 @@
           (filter
            #(some #{name} (:blaze.rest-api.operation/resource-types %))
            operations)]
-      (cond-> {:type (type/code name)
-               :profile (type/canonical url)
-               :interaction
-               (reduce
-                (fn [res code]
-                  (if-let
-                   [{:blaze.rest-api.interaction/keys [doc]} (get interactions code)]
-                    (conj
-                     res
-                     (cond-> {:code (type/code (clojure.core/name code))}
-                       doc (assoc :documentation (type/->Markdown doc))))
-                    res))
-                []
-                [:read
-                 :vread
-                 :update
-                 :delete
-                 :history-instance
-                 :history-type
-                 :create
-                 :search-type])
-               :versioning #fhir/code"versioned-update"
-               :readHistory true
-               :updateCreate true
-               :conditionalCreate true
-               :conditionalRead #fhir/code"not-supported"
-               :conditionalUpdate false
-               :conditionalDelete
-               (if allow-multiple-delete
-                 #fhir/code"multiple"
-                 #fhir/code"single")
-               :referencePolicy
-               (cond-> [#fhir/code"literal"
-                        #fhir/code"local"]
-                 enforce-referential-integrity (conj #fhir/code"enforced"))
-               :searchInclude
-               (into
-                []
-                (comp
-                 (filter (comp #{"reference"} :type))
-                 (mapcat
-                  (fn [{:keys [code target]}]
-                    (cons
-                     (str name ":" code)
-                     (for [target target]
-                       (str name ":" code ":" target))))))
-                (sr/list-by-type search-param-registry name))
-               :searchRevInclude
-               (into
-                []
-                (mapcat
-                 (fn [{:keys [base code]}]
-                   (map #(str % ":" code) base)))
-                (sr/list-by-target-type search-param-registry name))
-               :searchParam
-               (into
-                []
-                (comp
-                 (remove (comp #{"_id" "_lastUpdated" "_profile" "_security" "_source" "_tag" "_list" "_has"} :name))
-                 (map
-                  (fn [{:keys [name url type]}]
-                    (cond-> {:name name :type (type/code type)}
-                      url
-                      (assoc :definition (type/canonical url))
-                      (= "quantity" type)
-                      (assoc :documentation quantity-documentation)))))
-                (sr/list-by-type search-param-registry name))}
+      (cond->
+       {:type (type/code name)
+        :profile (type/canonical url)
+        :interaction
+        (reduce
+         (fn [res code]
+           (if-let
+            [{:blaze.rest-api.interaction/keys [doc]} (get interactions code)]
+             (conj
+              res
+              (cond-> {:code (type/code (clojure.core/name code))}
+                doc (assoc :documentation (type/->Markdown doc))))
+             res))
+         []
+         [:read
+          :vread
+          :update
+          :delete
+          :history-instance
+          :history-type
+          :create
+          :search-type])
+        :versioning #fhir/code"versioned-update"
+        :readHistory true
+        :updateCreate true
+        :conditionalCreate true
+        :conditionalRead #fhir/code"not-supported"
+        :conditionalUpdate false
+        :conditionalDelete
+        (if allow-multiple-delete
+          #fhir/code"multiple"
+          #fhir/code"single")
+        :referencePolicy
+        (cond-> [#fhir/code"literal"
+                 #fhir/code"local"]
+          enforce-referential-integrity (conj #fhir/code"enforced"))
+        :searchInclude
+        (into
+         []
+         (comp
+          (filter (comp #{"reference"} :type))
+          (mapcat
+           (fn [{:keys [code target]}]
+             (cons
+              (str name ":" code)
+              (for [target target]
+                (str name ":" code ":" target))))))
+         (sr/list-by-type search-param-registry name))
+        :searchRevInclude
+        (into
+         []
+         (mapcat
+          (fn [{:keys [base code]}]
+            (map #(str % ":" code) base)))
+         (sr/list-by-target-type search-param-registry name))
+        :searchParam
+        (into
+         []
+         (comp
+          (remove (comp #{"_id" "_lastUpdated" "_profile" "_security" "_source" "_tag" "_list" "_has"} :name))
+          (map
+           (fn [{:keys [name url type]}]
+             (cond-> {:name name :type (type/code type)}
+               url
+               (assoc :definition (type/canonical url))
+               (= "quantity" type)
+               (assoc :documentation quantity-documentation)))))
+         (sr/list-by-type search-param-registry name))}
 
         (seq operations)
         (assoc
@@ -250,13 +252,44 @@
    :terminology-capabilities-base (build-terminology-capabilities-base config)
    :terminology-service terminology-service})
 
+(defn- assoc-implementation-url [capability-statement-base context-path base-url]
+  (assoc-in capability-statement-base [:implementation :url]
+            (type/->Url (str base-url context-path))))
+
+(defn- profile-canonical [{:keys [url version]}]
+  (let [version (type/value version)]
+    (type/canonical (cond-> (type/value url) version (str "|" version)))))
+
+(defn- supported-profiles-query [db type]
+  (d/type-query db "StructureDefinition" [["type" type] ["derivation" "constraint"]]))
+
+(defn- supported-profiles [db type]
+  (do-sync [profiles (d/pull-many db (supported-profiles-query db type))]
+    (mapv profile-canonical profiles)))
+
+(defn- assoc-supported-profiles** [db {:keys [type] :as resource}]
+  (do-sync [supported-profiles (supported-profiles db (type/value type))]
+    (cond-> resource
+      (seq supported-profiles) (assoc :supportedProfile supported-profiles))))
+
+(defn- assoc-supported-profiles* [db resources]
+  (let [futures (mapv (partial assoc-supported-profiles** db) resources)]
+    (do-sync [_ (ac/all-of futures)]
+      (mapv ac/join futures))))
+
+(defn- assoc-supported-profiles [{[{:keys [resource]}] :rest :as capability-statement-base} db]
+  (do-sync [resource (assoc-supported-profiles* db resource)]
+    (assoc-in capability-statement-base [:rest 0 :resource] resource)))
+
 (defn- final-capability-statement
-  [{:keys [context-path capability-statement-base]} base-url elements]
-  (cond-> (assoc-in
-           capability-statement-base
-           [:implementation :url]
-           (type/->Url (str base-url context-path)))
-    (seq elements) (select-keys (conj elements :fhir/type))))
+  [{:keys [capability-statement-base context-path]} db base-url elements]
+  (let [cs (assoc-implementation-url capability-statement-base context-path base-url)]
+    (if (seq elements)
+      (if (some #{:rest} elements)
+        (do-sync [cs (assoc-supported-profiles cs db)]
+          (select-keys cs (conj elements :fhir/type)))
+        (ac/completed-future (select-keys cs (conj elements :fhir/type))))
+      (assoc-supported-profiles cs db))))
 
 (defn- final-terminology-capabilities
   [{:keys [context-path terminology-service terminology-capabilities-base]}
@@ -269,11 +302,10 @@
       (type/->Url (str base-url context-path)))
       code-systems (assoc :codeSystem code-systems))))
 
-(defn- final-capabilities [context base-url mode elements]
+(defn- final-capabilities [context db base-url mode elements]
   (if (= "terminology" mode)
     (final-terminology-capabilities context base-url)
-    (ac/completed-future
-     (final-capability-statement context base-url elements))))
+    (final-capability-statement context db base-url elements)))
 
 (defn- tag [capabilities]
   (Integer/toHexString (hash capabilities)))
@@ -309,8 +341,8 @@
         mode (if (:terminology-service context)
                #(get % "mode")
                (constantly nil))]
-    (fn [{:keys [query-params headers] :blaze/keys [base-url]}]
+    (fn [{:keys [query-params headers] :blaze/keys [db base-url]}]
       (let [elements (fhir-util/elements query-params)
             mode (mode query-params)]
-        (do-sync [capabilities (final-capabilities context base-url mode elements)]
+        (do-sync [capabilities (final-capabilities context db base-url mode elements)]
           (response headers capabilities))))))

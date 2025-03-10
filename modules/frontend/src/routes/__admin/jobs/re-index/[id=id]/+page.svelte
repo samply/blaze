@@ -1,19 +1,15 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import { invalidateAll } from '$app/navigation';
 	import Status from '$lib/jobs/re-index/status.svelte';
 	import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';
 	import DateTime from '$lib/values/date-time.svelte';
-	import Row from '$lib/tailwind/description/left-aligned/row.svelte';
+	import Row from '$lib/tailwind/description/left-aligned/row-3-2.svelte';
 	import prettyNum from '$lib/pretty-num';
 	import humanizeDuration from 'humanize-duration';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 
 	// reload page data every 5 seconds if the job is still in progress
 	$effect(() => {

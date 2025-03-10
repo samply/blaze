@@ -29,5 +29,11 @@ export default ts.config(
 	},
 	{
 		ignores: ['build/', '.svelte-kit/', 'dist/']
+	},
+	{
+		rules: {
+			'svelte/no-useless-mustaches': 'warn',
+			'svelte/require-each-key': 'warn'
+		}
 	}
 );

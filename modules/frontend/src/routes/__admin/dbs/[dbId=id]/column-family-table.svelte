@@ -35,7 +35,7 @@
 		</tr>
 	{/snippet}
 
-	{#each columnFamilies as columnFamily}
+	{#each columnFamilies as columnFamily (columnFamily.name)}
 		<ColumnFamilyRow {...columnFamily} />
 	{/each}
 </Table>

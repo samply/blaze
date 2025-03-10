@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import { page } from '$app/state';
 
@@ -10,11 +10,7 @@
 
 	import EntryCard from '$lib/history/entry-card.svelte';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>

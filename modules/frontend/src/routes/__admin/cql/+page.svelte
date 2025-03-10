@@ -1,8 +1,10 @@
 <script lang="ts">
+	import type { PageProps } from './$types';
+
 	import Table from '$lib/tailwind/table/table.svelte';
 	import BloomFilterRow from './bloom-filter-row.svelte';
 
-	let { data } = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -43,7 +45,7 @@
 			</tr>
 		{/snippet}
 
-		{#each data.bloomFilters as bloomFilter}
+		{#each data.bloomFilters as bloomFilter (bloomFilter.hash)}
 			<BloomFilterRow {bloomFilter} />
 		{/each}
 	</Table>

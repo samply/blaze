@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { PageProps } from './$types';
 
 	import SimpleStats from '$lib/tailwind/stats/simple.svelte';
 	import LevelsCard from './level-table.svelte';
@@ -10,11 +10,7 @@
 	import { pascalCase } from 'change-case';
 	import prettyBytes from 'pretty-bytes';
 
-	interface Props {
-		data: PageData;
-	}
-
-	let { data }: Props = $props();
+	let { data }: PageProps = $props();
 </script>
 
 <svelte:head>
