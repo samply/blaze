@@ -580,8 +580,8 @@
         parameter \"Measurement Period\" Interval<Date> default Interval[@2020-01-01, @2020-12-31]")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library default-opts)
-          [:parameter-default-values "Measurement Period" :start] := #system/date"2020-01-01"
-          [:parameter-default-values "Measurement Period" :end] := #system/date"2020-12-31"))))
+          [:parameter-default-values "Measurement Period" :low] := #system/date"2020-01-01"
+          [:parameter-default-values "Measurement Period" :high] := #system/date"2020-12-31"))))
 
   (testing "with invalid parameter default"
     (let [library (t/translate "library Test
@@ -1076,4 +1076,42 @@
             (testing "the whole expression will be optimized to false"
               (given (library/optimize (d/db node) expression-defs)
                 ["InInitialPopulation" :context] := "Patient"
-                ["InInitialPopulation" expr-form] := false))))))))
+                ["InInitialPopulation" expr-form] := false)))))))
+
+  (testing "FHIR Period and overlaps"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem snomed: 'http://snomed.info/sct'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists
+            from [Procedure: Code '431182000' from snomed] P
+            where P.performed overlaps Interval[@2020-02-01, @2020-06-01]")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(exists
+              (eduction-query
+               (filter
+                (fn
+                  [P]
+                  (overlaps
+                   (call
+                    "ToInterval"
+                    (as
+                     fhir/Period
+                     (:performed
+                      P)))
+                   (interval
+                    #system/date-time"2020-02-01"
+                    #system/date-time"2020-06-01"))))
+               (retrieve
+                "Procedure"
+                [["code"
+                  "http://snomed.info/sct|431182000"]])))))))))

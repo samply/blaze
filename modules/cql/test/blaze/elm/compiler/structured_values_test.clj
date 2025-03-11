@@ -437,6 +437,17 @@
           #elm/source-property [#elm/quantity [42 "m"] "unit"]
           "m")))
 
+    (testing "Interval"
+      (testing "low"
+        (are [elm result] (= result (c/compile {} elm))
+          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2"] "low"]
+          1))
+
+      (testing "high"
+        (are [elm result] (= result (c/compile {} elm))
+          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2"] "high"]
+          2)))
+
     (testing "nil"
       (are [elm result] (= result (c/compile {} elm))
         #elm/source-property [{:type "Null"} "value"]
