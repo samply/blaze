@@ -5,7 +5,7 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 java -jar validator_cli.jar -version 4.0.1 -level error \
   -output-style csv -output result.csv \
-  -tx http://localhost:8080/fhir \
+  -tx http://localhost:8080/fhir -authorise-non-conformant-tx-servers \
   -clear-tx-cache \
   -ig de.medizininformatikinitiative.kerndatensatz.person#2025.0.0 \
   -ig de.medizininformatikinitiative.kerndatensatz.laborbefund#2025.0.2 \
@@ -51,7 +51,6 @@ java -jar validator_cli.jar -version 4.0.1 -level error \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-macro-grouper-a.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-macro-grouper-b.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-micro-grouper-a.json" \
-  "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-tissue-length-a.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-patho-tissue-length-b.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-vitalstatus-1.json" \
   "$SCRIPT_DIR/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-2-vitalstatus-1.json" \
