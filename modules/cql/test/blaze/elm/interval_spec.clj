@@ -11,4 +11,4 @@
   (or (int? x) (decimal? x) (temporal? x) (quantity? x)))
 
 (s/fdef interval/interval
-  :args (s/cat :start (s/nilable point?) :end (s/nilable point?)))
+  :args (s/cat :low (s/nilable point?) :high (s/nilable point?)))

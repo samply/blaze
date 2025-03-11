@@ -106,13 +106,13 @@
 ;; 19.4. Collapse
 (defbinop collapse [source _]
   (when source
-    (let [source (sort-by :start (remove nil? source))]
+    (let [source (sort-by :low (remove nil? source))]
       (reverse
        (reduce
         (fn [r right]
           (let [[left & others] r]
-            (if (p/greater-or-equal (:end left) (p/predecessor (:start right)))
-              (cons (interval (:start left) (:end right)) others)
+            (if (p/greater-or-equal (:high left) (p/predecessor (:low right)))
+              (cons (interval (:low left) (:high right)) others)
               (cons right r))))
         (cond-> (list) (first source) (conj (first source)))
         (rest source))))))
@@ -124,13 +124,13 @@
   (p/contains list-or-interval x precision))
 
 ;; 19.6. End
-(defunop end [{:keys [end]}]
-  end)
+(defunop end [{:keys [high]}]
+  high)
 
 ;; 19.7. Ends
 (defbinopp ends [x y _]
-  (and (p/greater-or-equal (:start x) (:start y))
-       (p/equal (:end x) (:end y))))
+  (and (p/greater-or-equal (:low x) (:low y))
+       (p/equal (:high x) (:high y))))
 
 ;; 19.10. Except
 (defbinop except [x y]
@@ -163,16 +163,16 @@
 
 ;; 19.17. MeetsBefore
 (defbinopp meets-before [x y _]
-  (p/equal (:end x) (p/predecessor (:start y))))
+  (p/equal (:high x) (p/predecessor (:low y))))
 
 ;; 19.18. MeetsAfter
 (defbinopp meets-after [x y _]
-  (p/equal (:start x) (p/successor (:end y))))
+  (p/equal (:low x) (p/successor (:high y))))
 
 ;; 19.20. Overlaps
 (defbinopp overlaps [x y _]
-  (and (p/greater-or-equal (:end x) (:start y))
-       (p/less-or-equal (:start x) (:end y))))
+  (and (p/greater-or-equal (:high x) (:low y))
+       (p/less-or-equal (:low x) (:high y))))
 
 ;; 19.21. OverlapsBefore
 (defmethod core/compile* :elm.compiler.type/overlaps-before
@@ -187,8 +187,8 @@
 ;; 19.23. PointFrom
 (defunop point-from [interval {{:keys [locator]} :operand :as expression}]
   (when interval
-    (if (p/equal (:start interval) (:end interval))
-      (:start interval)
+    (if (p/equal (:low interval) (:high interval))
+      (:low interval)
       (throw (ex-info (core/append-locator "Invalid non-unit interval in `PointFrom` expression at" locator)
                       {:expression expression})))))
 
@@ -211,18 +211,18 @@
   (throw (Exception. "Unsupported ProperIncludedIn expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.29. Start
-(defunop start [{:keys [start]}]
-  start)
+(defunop start [{:keys [low]}]
+  low)
 
 ;; 19.30. Starts
 (defbinopp starts [x y _]
-  (and (p/equal (:start x) (:start y))
-       (p/less-or-equal (:end x) (:end y))))
+  (and (p/equal (:low x) (:low y))
+       (p/less-or-equal (:high x) (:high y))))
 
 ;; 19.31. Union
 (defbinop union [a b]
   (p/union a b))
 
 ;; 19.32. Width
-(defunop width [{:keys [start end]}]
-  (p/subtract end start))
+(defunop width [{:keys [low high]}]
+  (p/subtract high low))
