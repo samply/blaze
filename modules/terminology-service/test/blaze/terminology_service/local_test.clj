@@ -5138,6 +5138,7 @@
                ["http://loinc.org" "26465-5" "=" "CLASSTYPE"]
                ["http://loinc.org" "26465-5" "=" "ORDER_OBS"]
                ["http://loinc.org" "26465-5" "=" "LIST"]
+               ["http://loinc.org" "26465-5" "=" "answer-list"]
                ["http://loinc.org" "26465-5" "regex" "COMPONENT"]
                ["http://loinc.org" "26465-5" "regex" "PROPERTY"]
                ["http://loinc.org" "26465-5" "regex" "TIME_ASPCT"]
@@ -6696,40 +6697,41 @@
           [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
           [(parameter "display") 0 :value] := #fhir/string"Aztreonam [Susceptibility]"))))
 
-  (testing "LIST = LL4049-4"
-    (with-system-data [{ts ::ts/local} loinc-config]
-      [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-162809"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"http://loinc.org"
-                  :filter
-                  [{:fhir/type :fhir.ValueSet.compose.include/filter
-                    :property #fhir/code"LIST"
-                    :op #fhir/code"="
-                    :value #fhir/string"LL4049-4"}]}]}}]]]
+  (testing "LIST/answer-list = LL4049-4"
+    (doseq [property-name ["LIST" "answer-list"]]
+      (with-system-data [{ts ::ts/local} loinc-config]
+        [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"value-set-162809"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://loinc.org"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property (type/code property-name)
+                      :op #fhir/code"="
+                      :value #fhir/string"LL4049-4"}]}]}}]]]
 
-      (given @(value-set-validate-code ts
-                "url" #fhir/uri"value-set-162809"
-                "code" #fhir/code"LA26421-0"
-                "system" #fhir/uri"http://loinc.org")
-        :fhir/type := :fhir/Parameters
-        [(parameter "result") 0 :value] := #fhir/boolean true
-        [(parameter "code") 0 :value] := #fhir/code"LA26421-0"
-        [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
-        [(parameter "display") 0 :value] := #fhir/string"Consider alternative medication")
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-162809"
+                  "code" #fhir/code"LA26421-0"
+                  "system" #fhir/uri"http://loinc.org")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"LA26421-0"
+          [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
+          [(parameter "display") 0 :value] := #fhir/string"Consider alternative medication")
 
-      (given @(value-set-validate-code ts
-                "url" #fhir/uri"value-set-162809"
-                "code" #fhir/code"LA26426-9"
-                "system" #fhir/uri"http://loinc.org")
-        :fhir/type := :fhir/Parameters
-        [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://loinc.org#LA26426-9` was not found in the value set `value-set-162809`."
-        [(parameter "code") 0 :value] := #fhir/code"LA26426-9"
-        [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"))))
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-162809"
+                  "code" #fhir/code"LA26426-9"
+                  "system" #fhir/uri"http://loinc.org")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"The provided code `http://loinc.org#LA26426-9` was not found in the value set `value-set-162809`."
+          [(parameter "code") 0 :value] := #fhir/code"LA26426-9"
+          [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org")))))
 
 (deftest value-set-validate-code-loinc-include-filter-regex-test
   (testing "COMPONENT =~ Hemoglobin|Amprenavir"

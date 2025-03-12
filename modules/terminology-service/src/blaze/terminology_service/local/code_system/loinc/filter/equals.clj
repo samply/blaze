@@ -88,6 +88,12 @@
     (when (= value (:list properties))
       concept)))
 
+(defn- satisfies-filter-answer-list [value {:loinc/keys [properties] :as concept}]
+  (if (nil? value)
+    (ba/incorrect (format "Missing answer-list = filter value in code system `%s`." url))
+    (when (= value (:list properties))
+      concept)))
+
 (defmethod core/satisfies-filter :=
   [_ {:keys [property value]} concept]
   (condp = (type/value property)
@@ -102,5 +108,6 @@
     "CLASSTYPE" (satisfies-filter-class-type (type/value value) concept)
     "ORDER_OBS" (satisfies-filter-order-obs (type/value value) concept)
     "LIST" (satisfies-filter-list (type/value value) concept)
+    "answer-list" (satisfies-filter-answer-list (type/value value) concept)
     nil (ba/incorrect (format "Missing = filter property in code system `%s`." url))
     (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." (type/value property) url))))

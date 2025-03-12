@@ -11,19 +11,22 @@ This material contains content from [LOINC](http://loinc.org). LOINC is copyrigh
 
 ## Filters
 
-| Property   | Operators | Values                                                                        |
-|------------|-----------|-------------------------------------------------------------------------------|
-| COMPONENT  | =, regex  | Part code / Part term                                                         |
-| PROPERTY   | =, regex  | Part code / Part term                                                         |
-| TIME_ASPCT | =, regex  | Part code / Part term                                                         |
-| SYSTEM     | =, regex  | Part code / Part term                                                         |
-| SCALE_TYP  | =, regex  | Part code / Part term                                                         |
-| METHOD_TYP | =, regex  | Part code / Part term                                                         |
-| CLASS      | =, regex  | Part code / Part term                                                         |
-| STATUS     | =, regex  | ACTIVE, TRIAL, DISCOURAGED, DEPRECATED                                        |
-| CLASSTYPE  | =         | 1 (Laboratory class), 2 (Clinical class), 3 (Claims attachments), 4 (Surveys) |
-| ORDER_OBS  | =, regex  | Order, Observation, Both, Subset                                              |
-| LIST       | =         | Answer list code                                                              |
+| Property    | Operators | Values                                                                        |
+|-------------|-----------|-------------------------------------------------------------------------------|
+| COMPONENT   | =, regex  | Part code / Part term                                                         |
+| PROPERTY    | =, regex  | Part code / Part term                                                         |
+| TIME_ASPCT  | =, regex  | Part code / Part term                                                         |
+| SYSTEM      | =, regex  | Part code / Part term                                                         |
+| SCALE_TYP   | =, regex  | Part code / Part term                                                         |
+| METHOD_TYP  | =, regex  | Part code / Part term                                                         |
+| CLASS       | =, regex  | Part code / Part term                                                         |
+| STATUS      | =, regex  | ACTIVE, TRIAL, DISCOURAGED, DEPRECATED                                        |
+| CLASSTYPE   | =         | 1 (Laboratory class), 2 (Clinical class), 3 (Claims attachments), 4 (Surveys) |
+| ORDER_OBS   | =, regex  | Order, Observation, Both, Subset                                              |
+| LIST        | =         | Answer list code <Badge type="danger" text="Deprecated"/>                     |
+| answer-list | =         | Answer list code                                                              |
+
+The official list of LOINC properties can be found [here](https://loinc.org/property/).
 
 ## Implicit Value Sets
 
