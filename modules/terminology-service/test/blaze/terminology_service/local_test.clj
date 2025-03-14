@@ -690,7 +690,74 @@
                                     :code #fhir/code"code-153948"}]})
             :fhir/type := :fhir/Parameters
             [(parameter "result") 0 :value] := #fhir/boolean false
-            [(parameter "message") 0 :value] := #fhir/string"Unknown code `code-153948` was not found in the code system `system-115910|version-203456`.")))))
+            [(parameter "message") 0 :value] := #fhir/string"Unknown code `code-153948` was not found in the code system `system-115910|version-203456`."))))
+
+    (testing "multiple code-systems with the same url"
+      (testing "the code-system with the higher version number is used"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-120349"
+                   :version #fhir/string"1.1.0"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-120333"}]}]
+            [:put {:fhir/type :fhir/CodeSystem :id "1"
+                   :url #fhir/uri"system-120349"
+                   :version #fhir/string"1.0.0"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-120413"}]}]]]
+
+          (given @(code-system-validate-code ts
+                    "url" #fhir/uri"system-120349"
+                    "code" #fhir/code"code-120333")
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean true
+            [(parameter "code") 0 :value] := #fhir/code"code-120333"
+            [(parameter "system") 0 :value] := #fhir/uri"system-120349")
+
+          (given @(code-system-validate-code ts
+                    "url" #fhir/uri"system-120349"
+                    "code" #fhir/code"code-120413")
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean false
+            [(parameter "code") 0 :value] := #fhir/code"code-120413"
+            [(parameter "system") 0 :value] := #fhir/uri"system-120349")))
+
+      (testing "the active code-system is used"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-120349"
+                   :status #fhir/code"active"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-120333"}]}]
+            [:put {:fhir/type :fhir/CodeSystem :id "1"
+                   :url #fhir/uri"system-120349"
+                   :status #fhir/code"draft"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-120413"}]}]]]
+
+          (given @(code-system-validate-code ts
+                    "url" #fhir/uri"system-120349"
+                    "code" #fhir/code"code-120333")
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean true
+            [(parameter "code") 0 :value] := #fhir/code"code-120333"
+            [(parameter "system") 0 :value] := #fhir/uri"system-120349")
+
+          (given @(code-system-validate-code ts
+                    "url" #fhir/uri"system-120349"
+                    "code" #fhir/code"code-120413")
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean false
+            [(parameter "code") 0 :value] := #fhir/code"code-120413"
+            [(parameter "system") 0 :value] := #fhir/uri"system-120349")))))
 
   (testing "with code-system"
     (with-system [{ts ::ts/local} config]
@@ -1967,7 +2034,86 @@
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
             [:expansion :contains 0 :code] := #fhir/code"code-163444"
-            [:expansion :contains 0 #(contains? % :display)] := false)))))
+            [:expansion :contains 0 #(contains? % :display)] := false))))
+
+    (testing "multiple value-sets with the same url"
+      (testing "the value-set with the higher version number is used"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-115910"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-163444"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-132726"}]}]
+            [:put {:fhir/type :fhir/ValueSet :id "0"
+                   :url #fhir/uri"value-set-132706"
+                   :version #fhir/string"1.1.0"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"code-163444"}]}]}}]
+            [:put {:fhir/type :fhir/ValueSet :id "1"
+                   :url #fhir/uri"value-set-132706"
+                   :version #fhir/string"1.0.0"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"code-132726"}]}]}}]]]
+
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-132706")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+            [:expansion :contains 0 :code] := #fhir/code"code-163444")))
+
+      (testing "the active value-set is used"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-115910"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-163444"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-132726"}]}]
+            [:put {:fhir/type :fhir/ValueSet :id "0"
+                   :url #fhir/uri"value-set-132706"
+                   :status #fhir/code"active"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"code-163444"}]}]}}]
+            [:put {:fhir/type :fhir/ValueSet :id "1"
+                   :url #fhir/uri"value-set-132706"
+                   :status #fhir/code"draft"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"code-132726"}]}]}}]]]
+
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-132706")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+            [:expansion :contains 0 :code] := #fhir/code"code-163444")))))
 
   (testing "with two code systems"
     (testing "with one code each"

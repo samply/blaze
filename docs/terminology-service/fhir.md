@@ -4,6 +4,8 @@ Blaze supports all FHIR CodeSystem resources stored in Blaze with `content` of e
 
 ## Filters
 
+The following filters are supported.
+
 | Property | Operators           | Values     |
 |----------|---------------------|------------|
 | concept  | is-a, descendent-of | code       |
@@ -16,3 +18,7 @@ Blaze supports all FHIR CodeSystem resources stored in Blaze with `content` of e
 | *any*    | exists              | true/false |
 | *any*    | =                   | *any*      |
 | *any*    | regex               | *regex*    |
+
+## Resolution of CodeSystem Resources
+
+More on resolution of terminology resources can be found [here](resource-resolution.md).

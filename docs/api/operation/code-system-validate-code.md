@@ -24,6 +24,10 @@ GET [base]/CodeSystem/[id]/$validate-code
 | displayLanguage | 0..1        | code            | Specifies the language to be used for description when validating the display property.         |
 | tx-resource     | 0..*        | code            | Used by the Java validator.                                                                     |
 
+## Resolution of CodeSystem Resources
+
+More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
+
 The official documentation can be found [here][1].
 
 [1]: <http://hl7.org/fhir/R4/codesystem-operation-validate-code.html>

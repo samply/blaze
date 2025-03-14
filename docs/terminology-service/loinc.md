@@ -11,6 +11,8 @@ This material contains content from [LOINC](http://loinc.org). LOINC is copyrigh
 
 ## Filters
 
+The following filters are supported.
+
 | Property    | Operators | Values                                                                        |
 |-------------|-----------|-------------------------------------------------------------------------------|
 | COMPONENT   | =, regex  | Part code / Part term                                                         |

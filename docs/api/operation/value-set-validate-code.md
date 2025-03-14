@@ -26,6 +26,10 @@ GET [base]/ValueSet/[id]/$validate-code
 | inferSystem     | 0..1        | boolean         | If true, the terminology server is required to infer the system from evaluation of the value set definition. The inferSystem parameter is only to be used with the code parameter, and not with the coding nor codeableConcept parameters. |
 | tx-resource     | 0..*        | code            | Used by the Java validator.                                                                                                                                                                                                                |
 
+## Resolution of ValueSet and CodeSystem Resources
+
+More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
+
 The official documentation can be found [here][1].
 
 [1]: <http://hl7.org/fhir/R4/valueset-operation-validate-code.html>
