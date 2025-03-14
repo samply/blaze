@@ -11,6 +11,8 @@ This documentation includes content from SNOMED Clinical Terms® (SNOMED CT®) i
 
 ## Filters
 
+The following filters are supported.
+
 | Property | Operators           | Values         |
 |----------|---------------------|----------------|
 | concept  | is-a, descendent-of | SNOMED CT code |

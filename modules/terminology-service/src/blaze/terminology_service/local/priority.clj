@@ -8,8 +8,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- t [code-system]
-  (:blaze.db/t (:blaze.db/tx (meta code-system))))
+(defn- t [resource]
+  (:blaze.db/t (:blaze.db/tx (meta resource))))
 
 (def ^:private priority-cmp
   (-> (Comparator/comparing #(-> % :status type/value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
@@ -18,5 +18,11 @@
       (.thenComparing #(% :id) (Comparator/naturalOrder))
       (.reversed)))
 
-(defn sort-by-priority [resources]
+(defn sort-by-priority
+  "Sorts `resources` by:
+   * status
+   * version
+   * t
+   * id"
+  [resources]
   (sort priority-cmp resources))

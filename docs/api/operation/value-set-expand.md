@@ -27,6 +27,10 @@ GET [base]/ValueSet/[id]/$expand
 | system-version    | 0..*        | canonical | Specifies a version to use for a system, if the value set does not specify which one to use. The format is the same as a canonical URL: \[system\]\|\[version\] - e.g. http://loinc.org\|2.56 | 
 | tx-resource       | 0..*        | code      | Used by the Java validator.                                                                                                                                                                   |
 
+## Resolution of ValueSet and CodeSystem Resources
+
+More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
+
 The official documentation can be found [here][1].
 
 [1]: <http://hl7.org/fhir/R4/valueset-operation-expand.html>
