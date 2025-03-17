@@ -19,13 +19,13 @@
   :ret bytes?)
 
 (s/fdef rao/type-list
-  :args (s/cat :context (s/keys :req-un [::kv/snapshot :blaze.db/t])
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef rao/system-list
-  :args (s/cat :context (s/keys :req-un [::kv/snapshot :blaze.db/t])
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :start (s/? (s/cat :start-tid :blaze.db/tid
                                   :start-id :blaze.db/id-byte-string)))
   :ret (cs/coll-of :blaze.db/resource-handle))
@@ -57,3 +57,12 @@
                :id-extractor (s/? fn?)
                :matcher (s/? fn?))
   :ret fn?)
+
+(s/fdef rao/prune
+  :args (s/cat :snapshot ::kv/snapshot
+               :n pos-int?
+               :t :blaze.db/t
+               :start (s/? (s/cat :start-tid :blaze.db/tid
+                                  :start-id :blaze.db/id-byte-string
+                                  :start-t :blaze.db/t)))
+  :ret (s/coll-of ::kv/delete-entry :kind vector?))
