@@ -1,5 +1,52 @@
 # Development Guide for Blaze
 
+## Development Environment
+
+### OS
+
+It is best to use a Unix-like (*Nix) OS for Blaze development because the whole workflow depends on tools that are not as easily installed on Windows (like `GNU Make` etc.). If, for some reason, you have to use Windows, it is recommended that you install WSL i.e. [Windows Subsystem for Linux](https://en.wikipedia.org/wiki/Windows_Subsystem_for_Linux). Please check the article [How to install Linux on Windows with WSL](https://learn.microsoft.com/en-us/windows/wsl/install), if you are new to WSL.
+
+#### WSL
+
+The default Linux distribution (on WSL) is Ubuntu (though it can be changed). If you are familiar with Ubuntu commands on how to install additional packages using `sudo apt-get` or `sudo apt` commands, then the same commands work in WSL too.
+
+### VCS (Git)
+
+#### Line Endings
+
+Since Windows and Linux / macOS handle line endings differently, it's better to follow a consistent line ending approach. Windows uses a combination of a carriage return and a line feed (CR+LF) characters to represent a new line, whereas, Linux / macOS use a single line feed (LF) character to represent a new line. Please check the article [How to verify the line ending configuration in a Git repository](https://labex.io/questions/how-to-verify-the-line-ending-configuration-in-a-git-repository-12650) to configure the correct line endings. Otherwise, everytime you try to commit a file, you'll see unnecessary differences in line endings. 
+
+**Note**: In IntelliJ Idea, you'll notice either LF (which is **correct**) or CRLF (for Windows, which is _incorrect_) in the status bar (which shows the Line Separator for the current file).
+
+#### Globally ignoring certain files
+
+It is best to globally ignore certain files from Git e.g. IDE specific files or directories. Hence, please create a `~/.gitignore` file with the following contents -
+
+```gitignore
+.calva
+.idea
+.vscode
+
+*.iml
+```
+
+### Java/JVM
+
+As per Clojure's [Java compatibility](https://clojure.org/releases/downloads#_java_compatibility) guide, Clojure is compiled to Java 8 compatible bytecode, so installing Java 8 is also fine. However, the [current stable release version](https://clojure.org/releases/downloads#stable) (which is 1.12.0, as of this writing) supports LTS Java versions 8, 11, 17 & 21, so preferably, install the latest version of any of the open-source JDKs, such as [OpenJDK](https://openjdk.org/) or [Eclipse Temurin](https://adoptium.net/).
+
+### IDE
+
+Although any Clojure-aware IDE (Emacs, [IntelliJ Idea](https://www.jetbrains.com/idea/) with [Cursive](https://cursive-ide.com/) plugin, [VS Code](https://code.visualstudio.com/) with [Calva](https://calva.io/) plugin, Vim, VSCodium...) is fine, _please make sure_ that **you know how to run module level REPLs** using your favorite IDE. If you are not sure of this, then it's best to default to using IntelliJ Idea. You may refer [Installing IntelliJ IDEA on Ubuntu](https://medium.com/@ahsanilyasabbasi/installing-intellij-idea-on-ubuntu-71237d41bc12) if you have any doubts.
+
+### Other Required tools
+
+The latest LTS/stable releases of:
+* [nodejs](https://nodejs.org/en)
+* GNU Make
+* [Clojure, with CLI tools](https://clojure.org/guides/install_clojure)
+* clj-kondo
+* cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "`[`<latest-stable-release>`](https://github.com/weavejester/cljfmt/releases/latest)`"}' :as cljfmt`
+
 ## Building Blaze
 
 Blaze is built as a single Docker image, along with a separate frontend image.
@@ -13,19 +60,7 @@ The most reliable way to build Blaze is through GitHub CI. When you create a pul
 
 Blaze is written in Clojure, a modern LISP for the JVM.
 
-#### Required tools
-
-The latest LTS/stable releases of:
-* a Clojure-aware IDE (Emacs, IntelliJ IDEA with Cursive plugin, Vim, VSCodium...)
-* Java
-* nodejs
-* GNU Make
-* [Clojure, with CLI tools](https://clojure.org/guides/install_clojure)
-* clj-kondo
-* cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "`[`<latest-stable-release>`](https://github.com/weavejester/cljfmt/releases/latest)`"}' :as cljfmt`
-
 #### Steps
-
 
 1. Create FHIR profiles:
 
