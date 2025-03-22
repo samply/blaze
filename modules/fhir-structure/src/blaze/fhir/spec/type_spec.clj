@@ -26,8 +26,16 @@
   :args (s/cat :value (s/alt :value int? :extended map?))
   :ret (s/or :value type/integer? :invalid s2/invalid?))
 
+(s/fdef type/long
+  :args (s/cat :value (s/alt :value int? :extended map?))
+  :ret (s/or :value type/integer? :invalid s2/invalid?))
+
 (s/fdef type/string
   :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/string? :invalid s2/invalid?))
+
+(s/fdef type/decimal
+  :args (s/cat :value (s/alt :integer-value int? :decimal-value decimal? :extended map?))
   :ret (s/or :value type/string? :invalid s2/invalid?))
 
 (s/fdef type/uri
@@ -47,15 +55,15 @@
   :ret (s/or :value type/instant? :invalid s2/invalid?))
 
 (s/fdef type/date
-  :args (s/cat :value (s/alt :value string? :extended map?))
+  :args (s/cat :value (s/alt :string-value string? :system-value system/date? :extended map?))
   :ret (s/or :value type/date? :invalid s2/invalid?))
 
 (s/fdef type/dateTime
-  :args (s/cat :value (s/alt :value string? :extended map?))
+  :args (s/cat :value (s/alt :string-value string? :system-value system/date-time? :extended map?))
   :ret (s/or :value type/dateTime? :invalid s2/invalid?))
 
 (s/fdef type/time
-  :args (s/cat :value (s/alt :value string? :extended map?))
+  :args (s/cat :value (s/alt :string-value string? :system-value system/time? :extended map?))
   :ret (s/or :value type/time? :invalid s2/invalid?))
 
 (s/fdef type/code

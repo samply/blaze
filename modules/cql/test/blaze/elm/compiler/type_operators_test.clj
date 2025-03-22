@@ -920,7 +920,6 @@
 
       (are [x] (false? (eval (compile elm/string x)))
         "aaaa"
-        "12:54"
         "24:54:00"
         "23:60:00"
         "14-30-00.0"))
@@ -1885,11 +1884,11 @@
   (let [eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
       (are [x res] (= res (eval (ctu/compile-unop elm/to-time elm/string x)))
+        "12:54" (system/time 12 54 0)
         "12:54:30" (system/time 12 54 30)
         "12:54:30.010" (system/time 12 54 30 10)
 
         "aaaa" nil
-        "12:54" nil
         "24:54:00" nil
         "23:60:00" nil
         "14-30-00.0" nil))

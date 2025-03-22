@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.interaction.conditional-delete-type]
@@ -104,9 +105,9 @@
 
   (testing "Passwords are masked"
     (are [name]
-         (let [config {:a (system/->Cfg name (s/spec string?) nil)}]
-           (= {:a "secret" :blaze/admin-api {:settings [{:name name :masked true}]}}
-              (system/resolve-config config {name "secret"})))
+      (let [config {:a (system/->Cfg name (s/spec string?) nil)}]
+        (= {:a "secret" :blaze/admin-api {:settings [{:name name :masked true}]}}
+           (system/resolve-config config {name "secret"})))
       "PASSWORD"
       "FOO_PASSWORD"
       "PASSWORD_FOO"
@@ -137,6 +138,7 @@
    mem-node-config
    :blaze/rest-api
    {:base-url "http://localhost:8080"
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)
     :structure-definition-repo structure-definition-repo
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
@@ -151,8 +153,8 @@
     :resource-patterns (ig/ref ::rest-api/resource-patterns)
     :compartments
     [#:blaze.rest-api.compartment
-      {:code "Patient"
-       :search-handler (ig/ref :blaze.interaction/search-compartment)}]
+            {:code "Patient"
+             :search-handler (ig/ref :blaze.interaction/search-compartment)}]
     :job-scheduler (ig/ref :blaze/job-scheduler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -217,25 +219,25 @@
    {:default
     {:read
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/read)}
+             {:handler (ig/ref :blaze.interaction/read)}
      :vread
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/vread)}
+             {:handler (ig/ref :blaze.interaction/vread)}
      :delete
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/delete)}
+             {:handler (ig/ref :blaze.interaction/delete)}
      :delete-history
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/delete-history)}
+             {:handler (ig/ref :blaze.interaction/delete-history)}
      :conditional-delete-type
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
+             {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
      :search-type
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/search-type)}
+             {:handler (ig/ref :blaze.interaction/search-type)}
      :history-type
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction.history/type)}}}
+             {:handler (ig/ref :blaze.interaction.history/type)}}}
    ::ts/local
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
@@ -246,7 +248,9 @@
    :blaze.test/fixed-rng-fn {}
    ::page-store {}
    :blaze.test/page-id-cipher {}
-   ::ts-local/graph-cache {}))
+   ::ts-local/graph-cache {}
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defmethod ig/init-key ::auth-backend
   [_ _]

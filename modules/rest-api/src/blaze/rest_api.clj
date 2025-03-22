@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.spec]
+   [blaze.fhir.parsing-context.spec]
    [blaze.handler.fhir.util.spec]
    [blaze.handler.util :as handler-util]
    [blaze.job-scheduler.spec]
@@ -74,6 +75,7 @@
   (s/keys
    :req-un
    [:blaze/base-url
+    :blaze.fhir/parsing-context
     :blaze.fhir/structure-definition-repo
     :blaze.db/node
     ::admin-node

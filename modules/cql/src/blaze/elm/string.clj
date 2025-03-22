@@ -72,5 +72,4 @@
 (extend-protocol p/ToTime
   String
   (to-time [s _]
-    (-> (system/parse-time s)
-        (ba/exceptionally (constantly nil)))))
+    (ba/ignore (system/parse-time s))))

@@ -33,6 +33,10 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(s/fdef system/parse-date
+  :args (s/cat :s string?)
+  :ret (s/or :date system/date? :anomaly ::anom/anomaly))
+
 (s/fdef system/date
   :args (s/cat :year int? :month (s/? int?) :day (s/? int?))
   :ret system/date?)
@@ -45,8 +49,7 @@
 
 (s/fdef system/parse-date-time
   :args (s/cat :s string?)
-  :ret (s/or :date-time system/date-time?
-             :anomaly ::anom/anomaly))
+  :ret (s/or :date-time system/date-time? :anomaly ::anom/anomaly))
 
 (s/fdef system/date-time-lower-bound
   :args (s/cat :date-time (s/nilable :system/date-or-date-time))

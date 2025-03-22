@@ -100,8 +100,8 @@
                                 "periodEnd" "2021"}})]
 
         (given params
-          [:period 0] := #fhir/date"2020"
-          [:period 1] := #fhir/date"2021")))
+          [:period 0] := #system/date"2020"
+          [:period 1] := #system/date"2021")))
 
     (testing "with resource"
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
@@ -112,8 +112,8 @@
                 "periodEnd" #fhir/date"2021")})]
 
         (given params
-          [:period 0] := #fhir/date"2020"
-          [:period 1] := #fhir/date"2021"))))
+          [:period 0] := #system/date"2020"
+          [:period 1] := #system/date"2021"))))
 
   (testing "measure"
     (testing "invalid (only POST)"
