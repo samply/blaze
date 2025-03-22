@@ -1,5 +1,6 @@
 (ns blaze.db.node.util
   (:require
+   [blaze.db.impl.index.resource-handle :as rh]
    [clojure.string :as str]))
 
 (defn name-part [[_ key]]
@@ -14,3 +15,6 @@
   (cond->> suffix
     (vector? key)
     (str (name-part key) "-")))
+
+(defn rs-key [resource-handle variant]
+  [(rh/type resource-handle) (rh/hash resource-handle) variant])

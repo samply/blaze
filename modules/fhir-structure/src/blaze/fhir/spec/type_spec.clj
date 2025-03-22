@@ -51,7 +51,7 @@
   :ret (s/or :value type/canonical? :invalid s2/invalid?))
 
 (s/fdef type/instant
-  :args (s/cat :value (s/alt :value string? :extended map?))
+  :args (s/cat :value (s/alt :string-value string? :system-value system/date-time? :extended map?))
   :ret (s/or :value type/instant? :invalid s2/invalid?))
 
 (s/fdef type/date

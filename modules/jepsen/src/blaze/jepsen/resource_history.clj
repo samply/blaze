@@ -75,7 +75,9 @@
     (info "Open client on node" node)
     (update this :context assoc
             :base-uri (str "http://" node "/fhir")
-            :http-client (hc/build-http-client {:connect-timeout 10000})))
+            :http-client (hc/build-http-client {:connect-timeout 10000})
+            :parsing-context (:blaze.fhir/parsing-context u/system)
+            :writing-context (:blaze.fhir/writing-context u/system)))
 
   (setup! [this _test]
     this)

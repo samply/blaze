@@ -52,7 +52,68 @@
       :fhir/type := :fhir/OperationOutcome
       [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
       [:issue 0 :severity] := #fhir/code"error"
-      [:issue 0 :code] := #fhir/code"exception")))
+      [:issue 0 :code] := #fhir/code"exception"))
+
+  (testing "single issue"
+    (given (handler-util/operation-outcome
+            {::anom/category ::anom/fault
+             :fhir/issue "too-costly"})
+      :fhir/type := :fhir/OperationOutcome
+      [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+      [:issue 0 :severity] := #fhir/code"error"
+      [:issue 0 :code] := #fhir/code"too-costly")
+
+    (testing "with detail code"
+      (given (handler-util/operation-outcome
+              {::anom/category ::anom/fault
+               :fhir/issue "structure"
+               :fhir/operation-outcome "MSG_JSON_OBJECT"})
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"structure"
+        [:issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_JSON_OBJECT"))
+
+    (testing "with single expression"
+      (given (handler-util/operation-outcome
+              {::anom/category ::anom/fault
+               :fhir/issue "invalid"
+               :fhir.issue/expression "expr-082940"})
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"invalid"
+        [:issue 0 :expression] := ["expr-082940"]))
+
+    (testing "with multiple expressions"
+      (given (handler-util/operation-outcome
+              {::anom/category ::anom/fault
+               :fhir/issue "invalid"
+               :fhir.issue/expression ["expr-082940" "expr-083056"]})
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"invalid"
+        [:issue 0 :expression] := ["expr-082940" "expr-083056"])))
+
+  (testing "multiple issues"
+    (given (handler-util/operation-outcome
+            {::anom/category ::anom/fault
+             :fhir/issues
+             [{:fhir.issues/code "invariant"
+               :fhir.issues/diagnostics "diagnostics-083243"
+               :fhir.issues/expression "expr-082940"}
+              {:fhir.issues/expression ["expr-082940" "expr-083056"]}]})
+      :fhir/type := :fhir/OperationOutcome
+      [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+      [:issue 0 :severity] := #fhir/code"error"
+      [:issue 0 :code] := #fhir/code"invariant"
+      [:issue 0 :expression] := ["expr-082940"]
+      [:issue 1 :fhir/type] := :fhir.OperationOutcome/issue
+      [:issue 1 :severity] := #fhir/code"error"
+      [:issue 1 :code] := #fhir/code"exception"
+      [:issue 1 :expression] := ["expr-082940" "expr-083056"])))
 
 (deftest error-response-test
   (testing "fault anomaly"

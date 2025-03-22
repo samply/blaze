@@ -4,7 +4,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.expand]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.util :as u]
+   [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
@@ -123,7 +123,7 @@
         (testing "POST"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters
+                           :body (fu/parameters
                                   (type/string param) (type/string "foo"))})]
 
             (is (= 400 status))
@@ -167,7 +167,7 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler {:request-method :post
-                         :body (u/parameters
+                         :body (fu/parameters
                                 #fhir/string"count" #fhir/integer -1)})]
 
           (is (= 400 status))
@@ -196,7 +196,7 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler {:request-method :post
-                         :body (u/parameters
+                         :body (fu/parameters
                                 #fhir/string"offset" #fhir/integer 1)})]
 
           (is (= 400 status))
@@ -258,7 +258,7 @@
         (let [{:keys [status]}
               @(handler {:request-method :post
                          :path-params {:id "id-152952"}
-                         :body (u/parameters
+                         :body (fu/parameters
                                 #fhir/string"foo" #fhir/string"bar")})]
 
           (is (= 200 status))))))
@@ -365,7 +365,7 @@
 
         (let [{:keys [status body]}
               @(handler {:request-method :post
-                         :body (u/parameters
+                         :body (fu/parameters
                                 "valueSet"
                                 {:fhir/type :fhir/ValueSet
                                  :compose
@@ -386,7 +386,7 @@
         (testing "and count = 0"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters
+                           :body (fu/parameters
                                   "valueSet"
                                   {:fhir/type :fhir/ValueSet
                                    :compose
@@ -407,7 +407,7 @@
         (testing "and offset = 0"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters
+                           :body (fu/parameters
                                   "valueSet"
                                   {:fhir/type :fhir/ValueSet
                                    :compose
@@ -428,7 +428,7 @@
         (testing "including the definition"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters
+                           :body (fu/parameters
                                   "valueSet"
                                   {:fhir/type :fhir/ValueSet
                                    :compose
@@ -451,7 +451,7 @@
         (testing "and system-version"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters
+                           :body (fu/parameters
                                   "valueSet"
                                   {:fhir/type :fhir/ValueSet
                                    :compose
@@ -648,7 +648,7 @@
     (with-handler [handler]
       (let [{:keys [status body]}
             @(handler {:request-method :post
-                       :body (u/parameters
+                       :body (fu/parameters
                               "url" #fhir/uri"value-set-110445"
                               "tx-resource"
                               {:fhir/type :fhir/CodeSystem

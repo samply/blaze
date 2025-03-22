@@ -11,8 +11,10 @@
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
    [blaze.elm.expression.spec]
+   [blaze.fhir.parsing-context.spec]
    [blaze.fhir.response.create :as create-response]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.writing-context.spec]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
@@ -41,7 +43,6 @@
    [ca.uhn.fhir.validation FhirValidator]
    [com.google.common.base CaseFormat]
    [java.io File]
-   [java.nio.charset StandardCharsets]
    [java.nio.file Files]
    [org.hl7.fhir.common.hapi.validation.support
     CommonCodeSystemsTerminologyService
@@ -159,16 +160,17 @@
 
 (defn- wrap-fhir-output
   "Middleware to output FHIR resources in JSON or XML."
-  [handler]
+  [handler writing-context]
   (fn [request]
     (do-sync [response (handler request)]
-      (fhir-output/handle-response {} request response))))
+      (fhir-output/handle-response writing-context {} request response))))
 
 (def ^:private wrap-output
   {:name :output
    :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
               (condp = response-type
-                :json (wrap-json-output opts)
+                :json (fn [handler _writing-context]
+                        ((wrap-json-output opts) handler))
                 :fhir wrap-fhir-output))})
 
 (def ^:private wrap-db
@@ -202,23 +204,21 @@
         :details #fhir/CodeableConcept
                   {:text "No allowed profile found."}}]})))
 
-(defn- unform-json [resource]
-  (String. ^bytes (fhir-spec/unform-json resource) StandardCharsets/UTF_8))
-
-(defn- validate [^FhirValidator validator resource]
-  (-> (.validateWithResult validator ^String (unform-json resource))
-      (.toOperationOutcome)
-      (datafy/datafy)))
+(defn- validate [^FhirValidator validator writing-context resource]
+  (->> ^String (fhir-spec/write-json-as-string writing-context resource)
+       (.validateWithResult validator)
+       (.toOperationOutcome)
+       (datafy/datafy)))
 
 (defn- error-issues [outcome]
   (update outcome :issue (partial filterv (comp #{#fhir/code"error"} :severity))))
 
 (def ^:private wrap-validate-job
   {:name :wrap-validate-job
-   :wrap (fn [handler validator]
+   :wrap (fn [handler validator writing-context]
            (fn [{:keys [body] :as request}]
              (if-ok [body (check-profile body)]
-               (let [outcome (error-issues (validate validator body))]
+               (let [outcome (error-issues (validate validator writing-context body))]
                  (if (seq (:issue outcome))
                    (ac/completed-future (ring/bad-request outcome))
                    (handler request)))
@@ -237,17 +237,18 @@
   (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
 
 (defn- router
-  [{:keys [context-path admin-node validator db-sync-timeout dbs
-           create-job-handler read-job-handler history-job-handler
-           search-type-job-handler pause-job-handler resume-job-handler
-           cancel-job-handler cql-cache-stats-handler cql-bloom-filters-handler]
+  [{:keys [context-path admin-node validator parsing-context writing-context
+           db-sync-timeout dbs create-job-handler read-job-handler
+           history-job-handler search-type-job-handler pause-job-handler
+           resume-job-handler cancel-job-handler cql-cache-stats-handler
+           cql-bloom-filters-handler]
     :or {context-path ""
          db-sync-timeout 10000}
     :as context}]
   (reitit.ring/router
    [""
     {:openapi {:id :admin-api}
-     :middleware [wrap-output openapi/openapi-feature]
+     :middleware [[wrap-output writing-context] openapi/openapi-feature]
      :response-type :json
      :response-type.json/opts {:encode-key-fn (comp camel name)}}
     [""
@@ -398,7 +399,8 @@
        {:middleware [[wrap-db admin-node db-sync-timeout]]
         :handler search-type-job-handler}
        :post
-       {:middleware [wrap-resource [wrap-validate-job validator]]
+       {:middleware [[wrap-resource parsing-context "Task"]
+                     [wrap-validate-job validator writing-context]]
         :handler create-job-handler}}]
      ["/{id}"
       [""
@@ -548,22 +550,23 @@
           (ac/completed-future)))))
 
 (defmethod m/pre-init-spec :blaze/admin-api [_]
-  (s/keys :req-un [:blaze/context-path ::admin-node :blaze/job-scheduler
+  (s/keys :req-un [:blaze/context-path ::admin-node :blaze.fhir/parsing-context
+                   :blaze.fhir/writing-context :blaze/job-scheduler
                    ::read-job-handler ::history-job-handler
                    ::search-type-job-handler ::settings ::features]
           :opt [::dbs ::expr/cache ::db-sync-timeout]))
 
 (defmethod ig/init-key :blaze/admin-api
-  [_ {:keys [job-scheduler] :as context}]
+  [_ {:keys [job-scheduler] :as config}]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
-   (router (assoc context :validator (create-validator)
+   (router (assoc config :validator (create-validator)
                   :create-job-handler (create-job-handler job-scheduler)
                   :pause-job-handler (job-action-handler job-scheduler js/pause-job)
                   :resume-job-handler (job-action-handler job-scheduler js/resume-job)
                   :cancel-job-handler (job-action-handler job-scheduler js/cancel-job)
-                  :cql-cache-stats-handler (cql-cache-stats-handler context)
-                  :cql-bloom-filters-handler (cql-bloom-filters-handler context)))
+                  :cql-cache-stats-handler (cql-cache-stats-handler config)
+                  :cql-bloom-filters-handler (cql-bloom-filters-handler config)))
    ((wrap-json-output {})
     (fn [{:keys [uri]}]
       (-> (ring/not-found {"uri" uri})

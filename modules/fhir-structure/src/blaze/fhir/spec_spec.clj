@@ -1,8 +1,10 @@
 (ns blaze.fhir.spec-spec
   (:require
    [blaze.anomaly-spec]
+   [blaze.fhir.parsing-context.spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.spec]
+   [blaze.fhir.writing-context.spec]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
@@ -18,28 +20,33 @@
   :args (s/cat :spec any?)
   :ret boolean?)
 
+(s/fdef fhir-spec/primitive-val?
+  :args (s/cat :spec any?)
+  :ret boolean?)
+
 (s/fdef fhir-spec/parse-json
-  :args (s/cat :source some?)
-  :ret (s/or :data some? :anomaly ::anom/anomaly))
-
-(s/fdef fhir-spec/conform-json
-  :args (s/cat :x any?)
+  :args (s/cat :context :blaze.fhir/parsing-context :type (s/? string?)
+               :source some?)
   :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
-
-(s/fdef fhir-spec/unform-json
-  :args (s/cat :resource any?)
-  :ret bytes?)
 
 (s/fdef fhir-spec/parse-cbor
-  :args (s/cat :source some?)
-  :ret (s/or :data some? :anomaly ::anom/anomaly))
-
-(s/fdef fhir-spec/conform-cbor
-  :args (s/cat :x any? :variant (s/? :blaze.resource/variant))
+  :args (s/cat :context :blaze.fhir/parsing-context :type string?
+               :source bytes? :variant (s/? :blaze.resource/variant))
   :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
 
-(s/fdef fhir-spec/unform-cbor
-  :args (s/cat :resource any?)
+(s/fdef fhir-spec/write-json
+  :args (s/cat :context :blaze.fhir/writing-context :out some? :value any?))
+
+(s/fdef fhir-spec/write-json-as-bytes
+  :args (s/cat :context :blaze.fhir/writing-context :value any?)
+  :ret bytes?)
+
+(s/fdef fhir-spec/write-json-as-string
+  :args (s/cat :context :blaze.fhir/writing-context :value any?)
+  :ret string?)
+
+(s/fdef fhir-spec/write-cbor
+  :args (s/cat :context :blaze.fhir/writing-context :resource any?)
   :ret bytes?)
 
 (s/fdef fhir-spec/conform-xml

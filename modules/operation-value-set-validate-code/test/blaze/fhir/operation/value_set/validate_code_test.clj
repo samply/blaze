@@ -4,7 +4,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.validate-code]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.util :as u]
+   [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
@@ -121,7 +121,7 @@
         (testing "POST"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters param "foo")})]
+                           :body (fu/parameters param "foo")})]
 
             (is (= 400 status))
 
@@ -224,7 +224,7 @@
               @(handler
                 {:request-method :post
                  :path-params {:id "id-152952"}
-                 :body (u/parameters
+                 :body (fu/parameters
                         "coding" #fhir/Coding{:system #fhir/uri"system-115910"
                                               :code #fhir/code"code-115927"})})]
 
@@ -247,7 +247,7 @@
                 @(handler
                   {:request-method :post
                    :path-params {:id "id-152952"}
-                   :body (u/parameters
+                   :body (fu/parameters
                           "coding" #fhir/Coding{:system #fhir/uri"system-115910"
                                                 :code #fhir/code"code-115927"}
                           "foo" #fhir/string"bar")})]
@@ -330,7 +330,7 @@
             (testing "displayLanguage from Parameters resource"
               (let [{:keys [status body]}
                     @(handler {:request-method :post
-                               :body (u/parameters
+                               :body (fu/parameters
                                       "url" #fhir/uri"value-set-163309"
                                       "system" #fhir/uri"system-115910"
                                       "code" #fhir/code"code-115927"
@@ -364,7 +364,7 @@
                 (let [{:keys [status body]}
                       @(handler {:request-method :post
                                  :headers {"accept-language" "en"}
-                                 :body (u/parameters
+                                 :body (fu/parameters
                                         "url" #fhir/uri"value-set-163309"
                                         "system" #fhir/uri"system-115910"
                                         "code" #fhir/code"code-115927"
@@ -393,7 +393,7 @@
       (testing "and coding"
         (let [{:keys [status body]}
               @(handler {:request-method :post
-                         :body (u/parameters
+                         :body (fu/parameters
                                 "url" #fhir/uri"value-set-163309"
                                 "coding" #fhir/Coding{:system #fhir/uri"system-115910"
                                                       :code #fhir/code"code-115927"})})]
@@ -414,7 +414,7 @@
             (let [{:keys [status body]}
                   @(handler
                     {:request-method :post
-                     :body (u/parameters
+                     :body (fu/parameters
                             "url" #fhir/uri"value-set-163309"
                             "coding" #fhir/Coding{:system #fhir/uri"system-115910"
                                                   :code #fhir/code"code-115927"}
@@ -489,7 +489,7 @@
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters
+                           :body (fu/parameters
                                   "valueSet"
                                   {:fhir/type :fhir/ValueSet
                                    :compose
@@ -519,7 +519,7 @@
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body (u/parameters
+                           :body (fu/parameters
                                   "valueSet"
                                   {:fhir/type :fhir/ValueSet
                                    :compose
@@ -541,7 +541,7 @@
     (with-handler [handler]
       (let [{:keys [status body]}
             @(handler {:request-method :post
-                       :body (u/parameters
+                       :body (fu/parameters
                               "url" #fhir/uri"value-set-110445"
                               "system" #fhir/uri"system-115910"
                               "code" #fhir/uri"code-115927"

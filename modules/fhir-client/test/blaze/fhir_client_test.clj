@@ -2,13 +2,16 @@
   (:require
    [blaze.fhir-client :as fhir-client]
    [blaze.fhir-client-spec]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type]
-   [blaze.fhir.test-util]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [jsonista.core :as j]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
@@ -22,44 +25,55 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private system
+  (ig/init
+   {:blaze.fhir/parsing-context
+    {:structure-definition-repo structure-definition-repo}
+    :blaze.fhir/writing-context
+    {:structure-definition-repo structure-definition-repo}}))
+
+(defn- opts []
+  {:http-client (HttpClientMock.)
+   :parsing-context (:blaze.fhir/parsing-context system)
+   :writing-context (:blaze.fhir/writing-context system)})
+
 (deftest metadata-test
-  (let [http-client (HttpClientMock.)]
+  (let [{:keys [http-client] :as opts} (opts)]
 
     (-> (.onGet http-client "http://localhost:8080/fhir/metadata")
         (.doReturn (j/write-value-as-string {:resourceType "CapabilityStatement"}))
         (.withHeader "content-type" "application/fhir+json"))
 
-    (given @(fhir-client/metadata "http://localhost:8080/fhir"
-                                  {:http-client http-client})
+    (given @(fhir-client/metadata "http://localhost:8080/fhir" opts)
       :fhir/type := :fhir/CapabilityStatement)))
 
 (deftest read-test
   (testing "success"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                {:http-client http-client})
+                                opts)
         :fhir/type := :fhir/Patient
         :id := "0")))
 
   (testing "with application/json Content-Type"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/json"))
 
       (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                {:http-client http-client})
+                                opts)
         :fhir/type := :fhir/Patient
         :id := "0")))
 
   (testing "not-found"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn
@@ -73,13 +87,13 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                             {:http-client http-client})
+                                             opts)
         ::anom/category := ::anom/not-found
         [:fhir/issues 0 :severity] := #fhir/code"error"
         [:fhir/issues 0 :code] := #fhir/code"not-found")))
 
   (testing "Invalid JSON response"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn "{")
@@ -87,52 +101,52 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                             {:http-client http-client})
+                                             opts)
         ::anom/category := ::anom/fault
         ::anom/message :# "Unexpected end-of-input:(.|\\s)*")))
 
   (testing "Server Error without JSON response"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturnStatus 500))
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                             {:http-client http-client})
+                                             opts)
         ::anom/category := ::anom/fault)))
 
   (testing "Service Unavailable without JSON response"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn 503 "Service Unavailable"))
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                             {:http-client http-client})
+                                             opts)
         ::anom/category := ::anom/unavailable)))
 
   (testing "Gateway timeout without JSON response (external load-balancer)"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn 504 "Gateway Timeout"))
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                             {:http-client http-client})
+                                             opts)
         ::anom/category := ::anom/busy)))
 
   (testing "Zero Response Code"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturnStatus 0))
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                             {:http-client http-client})
+                                             opts)
         ::anom/category := ::anom/fault
         ::anom/message := "Unexpected response status 0."))))
 
@@ -143,7 +157,7 @@
 
 (deftest create-test
   (testing "return location header value"
-    (let [http-client (HttpClientMock.)
+    (let [{:keys [http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient}]
 
       (-> (.onPost http-client "http://localhost:8080/fhir/Patient")
@@ -151,12 +165,12 @@
           (.withHeader "location" "http://localhost:8080/fhir/Patient/0"))
 
       (is (= @(fhir-client/create "http://localhost:8080/fhir" resource
-                                  {:http-client http-client})
+                                  opts)
              "http://localhost:8080/fhir/Patient/0")))))
 
 (deftest update-test
   (testing "without meta versionId"
-    (let [http-client (HttpClientMock.)
+    (let [{:keys [http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient :id "0"}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
@@ -165,12 +179,12 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/update "http://localhost:8080/fhir" resource
-                                  {:http-client http-client})
+                                  opts)
         :fhir/type := :fhir/Patient
         :id := "0")))
 
   (testing "with meta versionId"
-    (let [http-client (HttpClientMock.)
+    (let [{:keys [http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient :id "0"
                     :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
 
@@ -180,12 +194,12 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/update "http://localhost:8080/fhir" resource
-                                  {:http-client http-client})
+                                  opts)
         :fhir/type := :fhir/Patient
         :id := "0")))
 
   (testing "stale update"
-    (let [http-client (HttpClientMock.)
+    (let [{:keys [http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient :id "0"
                     :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
 
@@ -201,43 +215,43 @@
 
       (given-failed-future (fhir-client/update "http://localhost:8080/fhir"
                                                resource
-                                               {:http-client http-client})
+                                               opts)
         ::anom/category := ::anom/conflict
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
 
 (deftest delete-test
   (testing "204 No Content"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturnStatus 204))
 
       (is (nil? @(fhir-client/delete "http://localhost:8080/fhir" "Patient" "0"
-                                     {:http-client http-client})))))
+                                     opts)))))
 
   (testing "200 with OperationOutcome"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn (j/write-value-as-string {:resourceType "OperationOutcome"}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/delete "http://localhost:8080/fhir" "Patient" "0"
-                                  {:http-client http-client})
+                                  opts)
         :fhir/type := :fhir/OperationOutcome))))
 
 (deftest delete-history-test
-  (let [http-client (HttpClientMock.)]
+  (let [{:keys [http-client] :as opts} (opts)]
 
     (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/0/_history")
         (.doReturnStatus 204))
 
     (is (nil? @(fhir-client/delete-history "http://localhost:8080/fhir"
                                            "Patient" "0"
-                                           {:http-client http-client})))))
+                                           opts)))))
 
 (deftest transact-test
-  (let [http-client (HttpClientMock.)
+  (let [{:keys [http-client] :as opts} (opts)
         bundle {:fhir/type :fhir/Bundle
                 :type #fhir/code"transaction"
                 :entry
@@ -254,12 +268,12 @@
         (.withHeader "content-type" "application/fhir+json"))
 
     (given @(fhir-client/transact "http://localhost:8080/fhir" bundle
-                                  {:http-client http-client})
+                                  opts)
       :fhir/type := :fhir/Bundle)))
 
 (deftest execute-type-get-test
   (testing "success"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/administrative-gender")
           (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
@@ -267,15 +281,13 @@
 
       (given @(fhir-client/execute-type-get
                "http://localhost:8080/fhir" "ValueSet" "expand"
-               {:http-client http-client
-                :query-params
-                {:url "http://hl7.org/fhir/ValueSet/administrative-gender"}})
+               (assoc opts :query-params {:url "http://hl7.org/fhir/ValueSet/administrative-gender"}))
         :fhir/type := :fhir/ValueSet
         :id := "0"))))
 
 (deftest search-type-test
   (testing "one bundle with one patient"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
@@ -286,13 +298,13 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
-                                       {:http-client http-client})
+                                       opts)
         count := 1
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0")))
 
   (testing "one bundle with two patients"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
@@ -304,7 +316,7 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
-                                       {:http-client http-client})
+                                       opts)
         count := 2
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
@@ -312,7 +324,7 @@
         [1 :id] := "1")))
 
   (testing "two bundles with two patients"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
@@ -334,7 +346,7 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
-                                       {:http-client http-client})
+                                       opts)
         count := 2
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
@@ -342,7 +354,7 @@
         [1 :id] := "1")))
 
   (testing "with query params"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient?birthdate=2020")
           (.doReturn
@@ -353,26 +365,25 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
-                                       {:http-client http-client
-                                        :query-params {:birthdate "2020"}})
+                                       (assoc opts :query-params {:birthdate "2020"}))
         count := 1
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0")))
 
   (testing "Server Error without JSON response"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturnStatus 500))
 
       (given-failed-future (fhir-client/search-type "http://localhost:8080/fhir"
                                                     "Patient"
-                                                    {:http-client http-client})
+                                                    opts)
         ::anom/category := ::anom/fault))))
 
 (deftest search-system-test
   (testing "one bundle with one patient"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
@@ -383,13 +394,13 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
-                                         {:http-client http-client})
+                                         opts)
         count := 1
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0")))
 
   (testing "one bundle with two patients"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
@@ -401,7 +412,7 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
-                                         {:http-client http-client})
+                                         opts)
         count := 2
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
@@ -409,7 +420,7 @@
         [1 :id] := "1")))
 
   (testing "two bundles with two patients"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
@@ -431,7 +442,7 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
-                                         {:http-client http-client})
+                                         opts)
         count := 2
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
@@ -439,7 +450,7 @@
         [1 :id] := "1")))
 
   (testing "with query params"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir?_id=0")
           (.doReturn
@@ -450,25 +461,24 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
-                                         {:http-client http-client
-                                          :query-params {"_id" "0"}})
+                                         (assoc opts :query-params {"_id" "0"}))
         count := 1
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0")))
 
   (testing "Server Error without JSON response"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturnStatus 500))
 
       (given-failed-future (fhir-client/search-system "http://localhost:8080/fhir"
-                                                      {:http-client http-client})
+                                                      opts)
         ::anom/category := ::anom/fault))))
 
 (deftest history-instance-test
   (testing "one bundle with one patient"
-    (let [http-client (HttpClientMock.)]
+    (let [{:keys [http-client] :as opts} (opts)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0/_history")
           (.doReturn
@@ -480,7 +490,7 @@
 
       (given @(fhir-client/history-instance "http://localhost:8080/fhir"
                                             "Patient" "0"
-                                            {:http-client http-client})
+                                            opts)
         count := 1
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"))))
@@ -489,12 +499,12 @@
 
 (deftest spit-test
   (testing "success"
-    (let [http-client (HttpClientMock.)
+    (let [{:keys [http-client writing-context] :as opts} (opts)
           publisher (fhir-client/search-type-publisher
                      "http://localhost:8080/fhir" "Patient"
-                     {:http-client http-client})
+                     opts)
           processor (fhir-client/resource-processor)
-          future (fhir-client/spit temp-dir processor)]
+          future (fhir-client/spit writing-context temp-dir processor)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
@@ -509,12 +519,12 @@
       (is (= ["Patient-0.json"] (map #(str (.getFileName ^Path %)) @future)))))
 
   (testing "Server Error without JSON response"
-    (let [http-client (HttpClientMock.)
+    (let [{:keys [http-client writing-context] :as opts} (opts)
           publisher (fhir-client/search-type-publisher
                      "http://localhost:8080/fhir" "Patient"
-                     {:http-client http-client})
+                     opts)
           processor (fhir-client/resource-processor)
-          future (fhir-client/spit temp-dir processor)]
+          future (fhir-client/spit writing-context temp-dir processor)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturnStatus 500))

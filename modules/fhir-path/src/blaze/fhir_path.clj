@@ -87,10 +87,7 @@
     item
     (case [(fhir-spec/fhir-type item) type]
       [:fhir/integer :fhir/decimal]
-      (BigDecimal/valueOf (long item))
-
-      [:fhir/date :fhir/dateTime]
-      (fhir-spec/to-date-time item))))
+      (BigDecimal/valueOf (long item)))))
 
 (defn- convert-fhir-primitive
   "Converts `x` to a system type if it is a primitive FHIR type.

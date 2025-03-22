@@ -13,8 +13,8 @@
    [blaze.db.node :as node :refer [node?]]
    [blaze.db.resource-store :as rs]
    [blaze.fhir.response.create-spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as fu]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.interaction.update]
    [blaze.test-util :as tu :refer [given-thrown satisfies-prop]]
@@ -167,7 +167,7 @@
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
                  :body {:fhir/type :fhir/Patient :id "0"
-                        :meta (type/map->Meta {:tag [fhir-spec/subsetted]})}})]
+                        :meta (type/map->Meta {:tag [fu/subsetted]})}})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -312,7 +312,7 @@
               [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
 
   (testing "missing resource content"
-    (with-redefs [rs/get (fn [_ _ _] (ac/completed-future nil))]
+    (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler

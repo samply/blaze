@@ -7,8 +7,8 @@
   (:import
    [java.lang AutoCloseable]))
 
-(st/instrument)
 (set! *warn-on-reflection* true)
+(st/instrument)
 
 (test/use-fixtures :each tu/fixture)
 

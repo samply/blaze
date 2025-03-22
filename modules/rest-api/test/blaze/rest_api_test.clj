@@ -4,13 +4,15 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.db.impl.search-param]
-   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.structure-definition-repo.protocols :as sdrp]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.job-scheduler]
    [blaze.metrics.spec]
+   [blaze.middleware.fhir.output-spec]
    [blaze.module.test-util :refer [given-failed-future with-system]]
-   [blaze.module.test-util.ring :refer [call]]
+   [blaze.module.test-util.ring :as tu-r]
    [blaze.rest-api :as rest-api]
    [blaze.rest-api.capabilities-handler]
    [blaze.rest-api.routes-spec]
@@ -26,11 +28,13 @@
    [juxt.iota :refer [given]]
    [reitit.core :as-alias reitit]
    [reitit.ring]
+   [ring.core.protocols :as rp]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayInputStream]))
+   [java.io ByteArrayOutputStream]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 
@@ -64,16 +68,18 @@
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
-      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
-      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout)))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
+      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
+      [:cause-data ::s/problems 11 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
+      [:cause-data ::s/problems 12 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout)))))
 
 (deftest requests-total-collector-init-test
   (with-system [{collector ::rest-api/requests-total} {::rest-api/requests-total {}}]
@@ -107,6 +113,8 @@
    mem-node-config
    :blaze/rest-api
    {:base-url "http://localhost:8080"
+    :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
+    :writing-context (ig/ref :blaze.fhir/writing-context)
     :structure-definition-repo structure-definition-repo
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
@@ -154,7 +162,15 @@
     :graph-cache (ig/ref ::ts-local/graph-cache)}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}
-   ::ts-local/graph-cache {}))
+   ::ts-local/graph-cache {}
+   :blaze.test/json-parser
+   {:parsing-context (ig/ref :blaze.fhir.parsing-context/default)}
+   :blaze.test/json-writer
+   {:writing-context (ig/ref :blaze.fhir/writing-context)}
+   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
+   {:structure-definition-repo structure-definition-repo}
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defmethod ig/init-key ::empty-structure-definition-repo
   [_ _]
@@ -162,6 +178,19 @@
     (-primitive-types [_] [])
     (-complex-types [_] [])
     (-resources [_] [])))
+
+(defn- read-value [body]
+  (when body
+    (let [out (ByteArrayOutputStream.)]
+      (rp/write-body-to-stream body nil out)
+      (.toByteArray out))))
+
+(defn- wrap-read-value [handler]
+  (fn [request respond raise]
+    (handler request #(respond (update % :body read-value)) raise)))
+
+(defn- call [handler request]
+  (tu-r/call (wrap-read-value handler) request))
 
 (deftest structure-definition-test
   (testing "StructureDefinition resources are created"
@@ -184,19 +213,19 @@
 
 (deftest base-url-test
   (testing "metadata"
-    (with-system [{:blaze/keys [rest-api]} config]
+    (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
       (given (call rest-api {:request-method :get :uri "/metadata"})
         :status := 200
-        [:body fhir-spec/parse-json :implementation :url] := "http://localhost:8080"))
+        [:body json-parser :implementation :url] := #fhir/url"http://localhost:8080"))
 
     (testing "with X-Forwarded-Host header"
-      (with-system [{:blaze/keys [rest-api]} config]
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
         (given (call rest-api
                      {:request-method :get
                       :uri "/metadata"
                       :headers {"x-forwarded-host" "blaze.de"}})
           :status := 200
-          [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de")))))
+          [:body json-parser :implementation :url] := #fhir/url"http://blaze.de")))))
 
 (deftest options-cors-test
   (with-system [{:blaze/keys [rest-api]} config]
@@ -206,12 +235,12 @@
       [:headers "Access-Control-Allow-Methods"] := "GET,OPTIONS")))
 
 (deftest not-found-test
-  (with-system [{:blaze/keys [rest-api]} config]
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
     (let [{:keys [status body]} (call rest-api {:request-method :get :uri "/foo"})]
 
       (is (= 404 status))
 
-      (given (fhir-spec/conform-json (fhir-spec/parse-json body))
+      (given (json-parser body)
         :fhir/type := :fhir/OperationOutcome
         [:issue 0 :severity] := #fhir/code"error"
         [:issue 0 :code] := #fhir/code"not-found")))
@@ -224,10 +253,10 @@
         :body := nil))))
 
 (deftest method-not-allowed-test
-  (with-system [{:blaze/keys [rest-api]} config]
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
     (given (call rest-api {:request-method :put :uri "/metadata"})
       :status := 405
-      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))
+      [:body json-parser :fhir/type] := :fhir/OperationOutcome))
 
   (testing "with text/html accept header"
     (with-system [{:blaze/keys [rest-api]} config]
@@ -237,24 +266,24 @@
         :body := nil)))
 
   (testing "Patient instance POST is not allowed"
-    (with-system [{:blaze/keys [rest-api]} config]
+    (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
       (let [{:keys [status body]} (call rest-api {:request-method :post :uri "/Patient/0"})]
 
         (is (= 405 status))
 
-        (given (fhir-spec/conform-json (fhir-spec/parse-json body))
+        (given (json-parser body)
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"processing"
           [:issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."))))
 
   (testing "Patient instance PUT is not allowed"
-    (with-system [{:blaze/keys [rest-api]} config]
+    (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
       (let [{:keys [status body]} (call rest-api {:request-method :put :uri "/Patient/0"})]
 
         (is (= 405 status))
 
-        (given (fhir-spec/conform-json (fhir-spec/parse-json body))
+        (given (json-parser body)
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"processing"
@@ -267,17 +296,11 @@
       :status := 406
       :body := nil)))
 
-(defn input-stream
-  ([]
-   (ByteArrayInputStream. (byte-array 0)))
-  ([resource]
-   (ByteArrayInputStream. (fhir-spec/unform-json resource))))
-
 (deftest batch-test
-  (with-system [{:blaze/keys [rest-api]} config]
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-writer]} config]
     (given (call rest-api {:request-method :post :uri ""
                            :headers {"content-type" "application/fhir+json"}
-                           :body (input-stream {:fhir/type :fhir/Bundle})})
+                           :body (json-writer {:fhir/type :fhir/Bundle})})
       :status := 200)))
 
 (deftest search-type-test
@@ -285,37 +308,37 @@
     (with-system [{:blaze/keys [rest-api]} config]
       (given (call rest-api {:request-method :post :uri "/Patient/_search"
                              :headers {"content-type" "application/x-www-form-urlencoded"}
-                             :body (input-stream)})
+                             :body (byte-array 0)})
         :status := 200))
 
     (testing "without Content-Type header"
-      (with-system [{:blaze/keys [rest-api]} config]
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
         (let [request {:request-method :post :uri "/Patient/_search"
-                       :body (input-stream)}
+                       :body (byte-array 0)}
               {:keys [status body]} (call rest-api request)]
 
           (is (= 415 status))
 
-          (given (fhir-spec/parse-json body)
-            :resourceType := "OperationOutcome"
-            [:issue 0 :severity] := "error"
-            [:issue 0 :code] := "invalid"
-            [:issue 0 :diagnostics] := "Missing Content-Type header. Please use `application/x-www-form-urlencoded`."))))
+          (given (json-parser body)
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := #fhir/string"Missing Content-Type header. Please use `application/x-www-form-urlencoded`."))))
 
     (testing "with unsupported media-type"
-      (with-system [{:blaze/keys [rest-api]} config]
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
         (let [request {:request-method :post :uri "/Patient/_search"
                        :headers {"content-type" "application/fhir+json"}
-                       :body (input-stream)}
+                       :body (byte-array 0)}
               {:keys [status body]} (call rest-api request)]
 
           (is (= 415 status))
 
-          (given (fhir-spec/parse-json body)
-            :resourceType := "OperationOutcome"
-            [:issue 0 :severity] := "error"
-            [:issue 0 :code] := "invalid"
-            [:issue 0 :diagnostics] := "Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))))
+          (given (json-parser body)
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := #fhir/string"Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))))
 
 (deftest conditional-delete-type-test
   (with-system [{:blaze/keys [rest-api]} config]

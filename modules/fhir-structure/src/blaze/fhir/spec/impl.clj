@@ -3,7 +3,6 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.fhir.spec.impl.intern :as intern]
    [blaze.fhir.spec.impl.specs :as specs]
-   [blaze.fhir.spec.impl.util :as u]
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
@@ -65,15 +64,13 @@
 
 (defn id-string-spec [modifier]
   (case modifier
-    (:json nil) `(s/and string? ~id-matcher-form)
-    :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~id-matcher-form)
-    :cbor `any?))
+    nil `(s/and string? ~id-matcher-form)
+    :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~id-matcher-form)))
 
 (defn uri-string-spec [modifier]
   (case modifier
-    (:json nil :xmlAttr) `(s/and string? ~uri-matcher-form)
-    :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~uri-matcher-form)
-    :cbor `(s/conformer intern-string)))
+    (nil :xmlAttr) `(s/and string? ~uri-matcher-form)
+    :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~uri-matcher-form)))
 
 (defn- string-spec [modifier type]
   (case (find-fhir-type type)
@@ -131,7 +128,7 @@
 
 (defn- choice-spec-def [modifier path path-parts code min max]
   (cond-> (choice-spec-def* modifier path code min max)
-    (identical? :json modifier)
+    (identical? :xml modifier)
     (assoc :choice-group (keyword (last path-parts)))))
 
 (defn- system-spec-defs [{:keys [path min max representation] [type] :type}]
@@ -140,11 +137,6 @@
       :min min
       :max max
       :spec-form (system-type->spec-form nil type)}
-     {:key (path-parts->key' "fhir.json" (split-path path))
-      :modifier :json
-      :min min
-      :max max
-      :spec-form (system-type->spec-form :json type)}
      (cond->
       {:key (path-parts->key' "fhir.xml" (split-path path))
        :modifier :xml
@@ -152,51 +144,22 @@
        :max max
        :spec-form (system-type->spec-form (if rep :xmlAttr :xml) type)}
        rep
-       (assoc :representation rep))
-     {:key (path-parts->key' "fhir.cbor" (split-path path))
-      :modifier :cbor
-      :min min
-      :max max
-      :spec-form (system-type->spec-form :cbor type)}]))
+       (assoc :representation rep))]))
 
-(defn- primitive-spec-defs [{:keys [path min max representation] [type] :type}]
-  (let [rep (some-> representation first keyword)]
-    [{:key (path-parts->key' "fhir" (split-path path))
-      :min min
-      :max max
-      :spec-form (keyword "fhir" (:code type))}
-     {:key (path-parts->key' "fhir.json" (split-path path))
-      :modifier :json
-      :min min
-      :max max
-      :spec-form
-      (case path
-        ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-        `(specs/json-regex-primitive #"[\r\n\t\u0020-\uFFFF]+" type/intern-string)
-        (keyword "fhir.json" (:code type)))}
-     (cond->
-      {:key (path-parts->key' "fhir.xml" (split-path path))
-       :modifier :xml
-       :min min
-       :max max
-        ;; it's a bit of an hack to use the JSON spec here, but it works for
-        ;; string based values in XML attributes
-       :spec-form
-       (case path
-         ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-         (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->InternedString)
-         (keyword (if rep "fhir.json" "fhir.xml") (:code type)))}
-       rep
-       (assoc :representation rep))
-     {:key (path-parts->key' "fhir.cbor" (split-path path))
-      :modifier :cbor
-      :min min
-      :max max
-      :spec-form
-      (case path
-        ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-        `(specs/cbor-primitive type/intern-string)
-        (keyword "fhir.cbor" (:code type)))}]))
+(defn- primitive-spec-defs [{:keys [path min max] [type] :type}]
+  [{:key (path-parts->key' "fhir" (split-path path))
+    :min min
+    :max max
+    :spec-form (keyword "fhir" (:code type))}
+   {:key (path-parts->key' "fhir.xml" (split-path path))
+    :modifier :xml
+    :min min
+    :max max
+    :spec-form
+    (case path
+      ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
+      (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->InternedString)
+      (keyword "fhir.xml" (:code type)))}])
 
 (defn elem-def->spec-def
   "Takes an element definition and returns a coll of spec definitions."
@@ -211,9 +174,7 @@
          :spec-form (choice-spec-form path types)}]
        (mapcat
         (fn [{:keys [code]}]
-          [(choice-spec-def :json path path-parts code min max)
-           (choice-spec-def :xml path path-parts code min max)
-           (choice-spec-def :cbor path path-parts code min max)]))
+          [(choice-spec-def :xml path path-parts code min max)]))
        types))
     type
     (if (str/starts-with? (:code type) "http://hl7.org/fhirpath/System")
@@ -224,21 +185,11 @@
       :min min
       :max max
       :spec-form (path-parts->key' "fhir" (split-path (subs contentReference 1)))}
-     {:key (path-parts->key' "fhir.json" (split-path path))
-      :modifier :json
-      :min min
-      :max max
-      :spec-form (path-parts->key' "fhir.json" (split-path (subs contentReference 1)))}
      {:key (path-parts->key' "fhir.xml" (split-path path))
       :modifier :xml
       :min min
       :max max
-      :spec-form (path-parts->key' "fhir.xml" (split-path (subs contentReference 1)))}
-     {:key (path-parts->key' "fhir.cbor" (split-path path))
-      :modifier :cbor
-      :min min
-      :max max
-      :spec-form (path-parts->key' "fhir.cbor" (split-path (subs contentReference 1)))}]))
+      :spec-form (path-parts->key' "fhir.xml" (split-path (subs contentReference 1)))}]))
 
 (defn- spec-key [prefix parent-path-parts path-part]
   (keyword (str/join "." (cons prefix parent-path-parts)) path-part))
@@ -276,7 +227,7 @@
           [(keyword (name key))
            (if (= "1" max)
              key
-             (if (#{:json :xml} modifier)
+             (if (= :xml modifier)
                `(s/and
                  (s/conformer ensure-coll identity)
                  (s/coll-of ~key))
@@ -322,18 +273,6 @@
        :fhir.Bundle.entry/search
        (record-spec-form "BundleEntrySearch" child-spec-defs)
        `(s/and ~(type-check-form key) ~(schema-spec-form nil child-spec-defs)))}))
-
-(defn- type-annotating-conformer-form [key]
-  `(s/conformer
-    (fn [~'m] (assoc ~'m :fhir/type ~key))
-    (fn [~'m] (dissoc ~'m :fhir/type))))
-
-(defn- resource-type-annotating-conformer-form [type]
-  `(s/conformer
-    (fn [~'m]
-      (-> (assoc ~'m :fhir/type ~(keyword "fhir" type))
-          (dissoc :resourceType)))
-    (fn [~'m] (-> (dissoc ~'m :fhir/type) (assoc :resourceType ~type)))))
 
 (defn remove-choice-type
   "Removes the type suffix from the first key of a choice typed data element.
@@ -382,64 +321,6 @@
     (remove (comp nil? first))
     (map remap-choice-conformer-form))
    (group-by :choice-group child-spec-defs)))
-
-(defn- json-type-conformer-form [kind parent-path-parts path-part]
-  (if (= "resource" kind)
-    (resource-type-annotating-conformer-form path-part)
-    (type-annotating-conformer-form (spec-key "fhir" parent-path-parts path-part))))
-
-(defn- key-map [child-spec-defs]
-  (into
-   {}
-   (comp
-    (remove (comp nil? first))
-    (mapcat
-     (fn [[internal-key child-spec-defs]]
-       (mapv (comp #(vector % internal-key) keyword name :key) child-spec-defs))))
-   (group-by :choice-group child-spec-defs)))
-
-(defn- json-object-spec-form [create-fn child-spec-defs]
-  `(specs/json-object
-    ~(symbol "blaze.fhir.spec.type" create-fn)
-    ~(into
-      {}
-      (comp
-       (filter :key)
-       (filter #(= :json (:modifier %)))
-       (map
-        (fn [{:keys [key max]}]
-          [(keyword (name key)) (if (= "1" max) key `(s/coll-of ~key))])))
-      child-spec-defs)
-    ~(key-map child-spec-defs)))
-
-(defn- json-schema-spec-def [kind parent-path-parts path-part elem-def child-spec-defs]
-  (let [key (spec-key "fhir.json" parent-path-parts path-part)]
-    {:key key
-     :min (:min elem-def)
-     :max (:max elem-def)
-     :modifier :json
-     :spec-form
-     (case key
-       (:fhir.json/Extension
-        :fhir.json/Coding
-        :fhir.json/CodeableConcept
-        :fhir.json/Meta
-        :fhir.json/Attachment
-        :fhir.json/Quantity
-        :fhir.json/Ratio
-        :fhir.json/Period
-        :fhir.json/Identifier
-        :fhir.json/HumanName
-        :fhir.json/Address
-        :fhir.json/Reference)
-       (json-object-spec-form (su/pascal->kebab path-part) child-spec-defs)
-       :fhir.json.Bundle.entry/search
-       (json-object-spec-form "bundle-entry-search" child-spec-defs)
-       (conj (seq (remap-choice-conformer-forms child-spec-defs))
-             (json-type-conformer-form kind parent-path-parts path-part)
-             (schema-spec-form :json child-spec-defs)
-             `(s/conformer u/update-extended-primitives identity)
-             `s/and))}))
 
 (defn- append-child [old element]
   (cond
@@ -564,50 +445,6 @@
        (xml-schema-spec-form kind (spec-key "fhir" parent-path-parts path-part)
                              child-spec-defs))}))
 
-(defn- cbor-object-spec-form [create-fn child-spec-defs]
-  `(specs/json-object
-    ~(symbol "blaze.fhir.spec.type" create-fn)
-    ~(into
-      {}
-      (comp
-       (filter :key)
-       (filter #(= :cbor (:modifier %)))
-       (map
-        (fn [{:keys [key max]}]
-          [(keyword (name key)) (if (= "1" max) key `(s/coll-of ~key))])))
-      child-spec-defs)
-    ~(key-map child-spec-defs)))
-
-(defn- cbor-schema-spec-def
-  [kind parent-path-parts path-part elem-def child-spec-defs]
-  (let [key (spec-key "fhir.cbor" parent-path-parts path-part)]
-    {:key key
-     :min (:min elem-def)
-     :max (:max elem-def)
-     :modifier :cbor
-     :spec-form
-     (case key
-       (:fhir.cbor/Extension
-        :fhir.cbor/Coding
-        :fhir.cbor/CodeableConcept
-        :fhir.cbor/Meta
-        :fhir.cbor/Attachment
-        :fhir.cbor/Quantity
-        :fhir.cbor/Ratio
-        :fhir.cbor/Period
-        :fhir.cbor/Identifier
-        :fhir.cbor/HumanName
-        :fhir.cbor/Address
-        :fhir.cbor/Reference)
-       (cbor-object-spec-form (su/pascal->kebab path-part) child-spec-defs)
-       :fhir.cbor.Bundle.entry/search
-       (cbor-object-spec-form "bundle-entry-search" child-spec-defs)
-       (conj (seq (remap-choice-conformer-forms child-spec-defs))
-             (json-type-conformer-form kind parent-path-parts path-part)
-             (schema-spec-form :cbor child-spec-defs)
-             `(s/conformer u/update-extended-primitives identity)
-             `s/and))}))
-
 (defn- build-spec-defs [kind parent-path-parts indexed-elem-defs]
   (into
    []
@@ -621,9 +458,7 @@
                child-spec-defs (build-spec-defs "backbone-element" (conj parent-path-parts path-part) coll-or-elem-def)]
            [child-spec-defs
             (internal-schema-spec-def parent-path-parts path-part elem-def child-spec-defs)
-            (json-schema-spec-def kind parent-path-parts path-part elem-def child-spec-defs)
-            (xml-schema-spec-def kind parent-path-parts path-part elem-def child-spec-defs)
-            (cbor-schema-spec-def kind parent-path-parts path-part elem-def child-spec-defs)])))))
+            (xml-schema-spec-def kind parent-path-parts path-part elem-def child-spec-defs)])))))
    indexed-elem-defs))
 
 (defn index-by-path* [elem-defs]
@@ -648,7 +483,7 @@
 (defn struct-def->spec-def [{:keys [kind] {elem-defs :element} :snapshot}]
   (flatten (build-spec-defs kind [] (index-by-path elem-defs))))
 
-(defn- internal-spec-form [name]
+(defn- internal-pred [name]
   (case name
     "boolean" `type/boolean?
     "integer" `type/integer?
@@ -675,34 +510,6 @@
 (defn- value-type [element]
   (some #(when (str/ends-with? (:path %) "value") (first (:type %))) element))
 
-(defn decimal-or-int? [x]
-  (or (decimal? x) (int? x)))
-
-(defn- json-spec-form [name {:keys [element]}]
-  (let [pattern (type-regex (value-type element))]
-    (case name
-      "boolean" `(specs/json-pred-primitive boolean? type/boolean)
-      "integer" `(specs/json-pred-primitive int? type/integer)
-      "string" `(specs/json-regex-primitive #"[\r\n\t\u0020-\uFFFF]+" type/string)
-      "decimal" `(specs/json-pred-primitive decimal-or-int? type/decimal)
-      "uri" `(specs/json-regex-primitive #"[\u0021-\uFFFF]*" type/uri)
-      "url" `(specs/json-regex-primitive #"[\u0021-\uFFFF]*" type/url)
-      "canonical" `(specs/json-regex-primitive #"[\u0021-\uFFFF]*" type/canonical)
-      "base64Binary" `(specs/json-regex-primitive ~pattern type/base64Binary)
-      "instant" `(specs/json-regex-primitive ~pattern type/instant)
-      "date" `(specs/json-regex-primitive ~pattern type/date)
-      "dateTime" `(specs/json-regex-primitive ~pattern type/dateTime)
-      "time" `(specs/json-regex-primitive ~pattern type/time)
-      "code" `(specs/json-regex-primitive #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" type/code)
-      "oid" `(specs/json-regex-primitive ~pattern type/oid)
-      "id" `(specs/json-regex-primitive ~pattern type/id)
-      "markdown" `(specs/json-regex-primitive #"[\r\n\t\u0020-\uFFFF]+" type/markdown)
-      "unsignedInt" `(specs/json-pred-primitive int? type/unsignedInt)
-      "positiveInt" `(specs/json-pred-primitive int? type/positiveInt)
-      "uuid" `(specs/json-regex-primitive ~pattern type/uuid)
-      "xhtml" `(s/and string? (s/conformer type/->Xhtml identity))
-      (throw (ex-info (format "Unknown primitive type `%s`." name) {})))))
-
 (defn- xml-spec-form [name {:keys [element]}]
   (let [pattern (type-regex (value-type element))
         constructor (str "xml->" (su/capital name))]
@@ -716,38 +523,12 @@
       "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
       (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" constructor)))))
 
-(defn- cbor-spec-form [name _]
-  (case name
-    "boolean" `(specs/cbor-primitive type/boolean)
-    "integer" `(specs/cbor-primitive type/integer)
-    "string" `(specs/cbor-primitive type/string)
-    "decimal" `(specs/cbor-primitive type/decimal)
-    "uri" `(specs/cbor-primitive type/uri)
-    "url" `(specs/cbor-primitive type/url)
-    "canonical" `(specs/cbor-primitive type/canonical)
-    "base64Binary" `(specs/cbor-primitive type/base64Binary)
-    "instant" `(specs/cbor-primitive type/instant)
-    "date" `(specs/cbor-primitive type/date)
-    "dateTime" `(specs/cbor-primitive type/dateTime)
-    "time" `(specs/cbor-primitive type/time)
-    "code" `(specs/cbor-primitive type/code)
-    "oid" `(specs/cbor-primitive type/oid)
-    "id" `(specs/cbor-primitive type/id)
-    "markdown" `(specs/cbor-primitive type/markdown)
-    "unsignedInt" `(specs/cbor-primitive type/unsignedInt)
-    "positiveInt" `(specs/cbor-primitive type/positiveInt)
-    "uuid" `(specs/cbor-primitive type/uuid)
-    "xhtml" `(s/conformer type/->Xhtml identity)
-    (throw (ex-info (format "Unknown primitive type `%s`." name) {}))))
-
 (defn primitive-type->spec-defs
-  "Converts a primitive type structure definition into spec defs for JSON and
+  "Converts a primitive type structure definition into spec defs for XML and
    internal representation."
   [{:keys [name snapshot]}]
-  [{:key (keyword "fhir" name) :spec-form (internal-spec-form name)}
-   {:key (keyword "fhir.json" name) :spec-form (json-spec-form name snapshot)}
-   {:key (keyword "fhir.xml" name) :spec-form (xml-spec-form name snapshot)}
-   {:key (keyword "fhir.cbor" name) :spec-form (cbor-spec-form name snapshot)}])
+  [{:key (keyword "fhir" name) :spec-form (internal-pred name)}
+   {:key (keyword "fhir.xml" name) :spec-form (xml-spec-form name snapshot)}])
 
 (defn- resolve-spec [spec-form]
   (if (keyword? spec-form) spec-form (s/resolve-spec spec-form)))
@@ -759,25 +540,6 @@
    (fn [{:keys [key spec-form]}]
      (s/register key (resolve-spec spec-form)))
    spec-defs))
-
-;; Resource Spec
-(defmulti json-resource (constantly :default))
-
-(defmethod json-resource :default [{json-type :resourceType :fhir/keys [type]}]
-  (when-let [type (or json-type (some-> type name))]
-    (keyword "fhir.json" type)))
-
-(s/def :fhir.json/Resource
-  (s/multi-spec json-resource (fn [value tag] (assoc value :resourceType tag))))
-
-(defn conform-cbor-resource [{type :resourceType :as resource}]
-  (s/conform (keyword "fhir.cbor" type) resource))
-
-(defn unform-cbor-resource [{:fhir/keys [type] :as resource}]
-  (s/unform (keyword "fhir.cbor" (name type)) resource))
-
-(s/def :fhir.cbor/Resource
-  (s/conformer conform-cbor-resource unform-cbor-resource))
 
 (defmulti xml-resource (constantly :default))
 
@@ -803,5 +565,5 @@
 (s/def :fhir/Resource
   (s/multi-spec resource :fhir/type))
 
-;; should be 32784
+;; should be 15992
 (comment (count (keys (s/registry))))

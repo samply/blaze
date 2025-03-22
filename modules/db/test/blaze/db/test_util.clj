@@ -10,15 +10,25 @@
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [with-system]]
    [integrant.core :as ig]
    [java-time.api :as time]))
 
-(defonce search-param-registry
-  (-> (ig/init {:blaze.db/search-param-registry
-                {:structure-definition-repo structure-definition-repo}})
-      :blaze.db/search-param-registry))
+(def ^:private root-system
+  "Root part of the system initialized for performance reasons."
+  (ig/init
+   {:blaze.db/search-param-registry
+    {:structure-definition-repo structure-definition-repo}
+    :blaze.fhir/parsing-context
+    {:structure-definition-repo structure-definition-repo
+     :fail-on-unknown-property false
+     :include-summary-only true
+     :use-regex false}
+    :blaze.fhir/writing-context
+    {:structure-definition-repo structure-definition-repo}}))
 
 (def config
   {:blaze.db/node
@@ -28,7 +38,7 @@
     :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-indexer (ig/ref ::node/resource-indexer)
-    :search-param-registry search-param-registry
+    :search-param-registry (:blaze.db/search-param-registry root-system)
     :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
@@ -66,6 +76,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :parsing-context (:blaze.fhir/parsing-context root-system)
+    :writing-context (:blaze.fhir/writing-context root-system)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -76,7 +88,7 @@
    ::node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry search-param-registry
+    :search-param-registry (:blaze.db/search-param-registry root-system)
     :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
 
    :blaze.db.node.resource-indexer/executor {}

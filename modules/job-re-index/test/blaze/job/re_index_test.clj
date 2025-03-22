@@ -14,7 +14,9 @@
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
    [blaze.job.re-index]
    [blaze.job.test-util :as jtu]
@@ -176,6 +178,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
+    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -184,6 +188,15 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}
+
+   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
+   {:structure-definition-repo structure-definition-repo
+    :fail-on-unknown-property false
+    :include-summary-only true
+    :use-regex false}
+
+   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}
 
    :blaze/scheduler {}

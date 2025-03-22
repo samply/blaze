@@ -57,11 +57,11 @@
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
   (reify
     rs/ResourceStore
-    (-get [_ hash variant]
-      (-> (rs/get resource-store hash variant)
+    (-get [_ key]
+      (-> (rs/get resource-store key)
           (ac/then-apply-async identity delayed-executor)))
-    (-multi-get [_ hashes variant]
-      (-> (rs/multi-get resource-store hashes variant)
+    (-multi-get [_ keys]
+      (-> (rs/multi-get resource-store keys)
           (ac/then-apply-async identity delayed-executor)))
     (-put [_ entries]
       (-> (rs/put! resource-store entries)
@@ -2314,7 +2314,7 @@
 
   (testing "Patient with random name"
     (satisfies-prop 100
-      (prop/for-all [name gen/string]
+      (prop/for-all [name fg/string-value]
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put {:fhir/type :fhir/Patient :id "0"
                    :active true
@@ -6943,10 +6943,16 @@
   (let [store (atom {})]
     (reify
       rs/ResourceStore
-      (-get [_ hash _]
-        (ac/completed-future (get @store hash)))
-      (-multi-get [_ hashes _]
-        (ac/completed-future (select-keys @store hashes)))
+      (-get [_ key]
+        (ac/completed-future (get @store (second key))))
+      (-multi-get [_ keys]
+        (ac/completed-future
+         (into
+          {}
+          (keep
+           (fn [[_type hash :as key]]
+             (some->> (get @store hash) (vector key))))
+          keys)))
       (-put [_ entries]
         (swap! store merge (select-keys entries hashes-to-store))
         (ac/completed-future nil)))))

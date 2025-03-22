@@ -5,8 +5,8 @@
    [blaze.db.node :refer [node?]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util]
-   [blaze.fhir.util :as u]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.util :as fu]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.path :refer [path]]
    [blaze.terminology-service :as ts]
@@ -262,8 +262,10 @@
 
           (given @(ts/code-systems ts)
             count := 1
+            [0 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
             [0 :uri] := #fhir/canonical"system-192435"
             [0 :version count] := 1
+            [0 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
             [0 :version 0 :code] := nil
             [0 :version 0 :isDefault] := #fhir/boolean true))))
 
@@ -276,8 +278,10 @@
 
         (given @(ts/code-systems ts)
           [count] := 1
+          [0 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
           [0 :uri] := #fhir/canonical"system-192435"
           [0 :version count] := 1
+          [0 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
           [0 :version 0 :code] := #fhir/string"version-121451"
           [0 :version 0 :isDefault] := #fhir/boolean true)))
 
@@ -294,10 +298,13 @@
 
         (given @(ts/code-systems ts)
           [count] := 1
+          [0 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
           [0 :uri] := #fhir/canonical"system-192435"
           [0 :version count] := 2
+          [0 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
           [0 :version 0 :code] := #fhir/string"1.10.0"
           [0 :version 0 :isDefault] := #fhir/boolean true
+          [0 :version 1 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
           [0 :version 1 :code] := #fhir/string"1.2.0"
           [0 :version 1 :isDefault] := #fhir/boolean false))
 
@@ -316,10 +323,13 @@
 
           (given @(ts/code-systems ts)
             [count] := 1
+            [0 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
             [0 :uri] := #fhir/canonical"system-192435"
             [0 :version count] := 2
+            [0 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
             [0 :version 0 :code] := #fhir/string"1.2.0"
             [0 :version 0 :isDefault] := #fhir/boolean true
+            [0 :version 1 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
             [0 :version 1 :code] := #fhir/string"1.10.0"
             [0 :version 1 :isDefault] := #fhir/boolean false)))))
 
@@ -335,12 +345,16 @@
 
         (given @(ts/code-systems ts)
           count := 2
+          [0 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
           [0 :uri] := #fhir/canonical"system-192435"
           [0 :version count] := 1
+          [0 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
           [0 :version 0 :code] := nil
           [0 :version 0 :isDefault] := #fhir/boolean true
+          [1 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
           [1 :uri] := #fhir/canonical"system-174248"
           [1 :version count] := 1
+          [1 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
           [1 :version 0 :code] := nil
           [1 :version 0 :isDefault] := #fhir/boolean true))))
 
@@ -353,7 +367,7 @@
       (is (empty? @(ts/code-systems ts))))))
 
 (defn- code-system-validate-code [ts & nvs]
-  (ts/code-system-validate-code ts (apply u/parameters nvs)))
+  (ts/code-system-validate-code ts (apply fu/parameters nvs)))
 
 (deftest code-system-validate-code-fails-test
   (with-system [{ts ::ts/local} config]
@@ -1158,7 +1172,7 @@
           [(parameter "message") 0 :value] := #fhir/string"Unknown code `non-existing` was not found in the code system `http://unitsofmeasure.org|2013.10.21`.")))))
 
 (defn- expand-value-set [ts & nvs]
-  (ts/expand-value-set ts (apply u/parameters nvs)))
+  (ts/expand-value-set ts (apply fu/parameters nvs)))
 
 (deftest expand-value-set-fails-test
   (with-system-data [{ts ::ts/local} complete-config]
@@ -5080,7 +5094,7 @@
         [:expansion (parameter "excludeNested") 0 :value] := #fhir/boolean true))))
 
 (defn- value-set-validate-code [ts & nvs]
-  (ts/value-set-validate-code ts (apply u/parameters nvs)))
+  (ts/value-set-validate-code ts (apply fu/parameters nvs)))
 
 (deftest value-set-validate-code-fails-test
   (with-system-data [{ts ::ts/local} complete-config]
@@ -8114,8 +8128,14 @@
           [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#445295009` was not found in the value set `value-set-113851`."
           [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))))
 
+(def ^:private parsing-context
+  (:blaze.fhir/parsing-context
+   (ig/init
+    {:blaze.fhir/parsing-context
+     {:structure-definition-repo structure-definition-repo}})))
+
 (defn- load-resource [test name]
-  (fhir-spec/conform-json (fhir-spec/parse-json (slurp (io/resource (format "tx-ecosystem/%s/%s.json" test name))))))
+  (fhir-spec/parse-json parsing-context (slurp (io/resource (format "tx-ecosystem/%s/%s.json" test name)))))
 
 (deftest tx-ecosystem-validation-tests
   (with-system-data [{ts ::ts/local} config]

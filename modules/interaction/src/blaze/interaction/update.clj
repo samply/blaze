@@ -8,7 +8,7 @@
    [blaze.db.api :as d]
    [blaze.fhir.response.create :as response]
    [blaze.fhir.spec.type :as type]
-   [blaze.handler.fhir.util :as fhir-util]
+   [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
    [blaze.module :as m]
@@ -51,7 +51,7 @@
      :fhir/issue "invariant"
      :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH")
 
-    (->> body :meta :tag (some fhir-util/subsetted?))
+    (->> body :meta :tag (some fu/subsetted?))
     (ba/incorrect
      "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
      :fhir/issue "processing")))

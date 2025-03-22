@@ -28,6 +28,10 @@
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.db/tid)
 
+(s/fdef rh/type
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :fhir.resource/type)
+
 (s/fdef rh/id
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.resource/id)

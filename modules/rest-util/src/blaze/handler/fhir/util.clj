@@ -9,6 +9,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
@@ -461,13 +462,6 @@
     (format "Bundle.entry[%d].resource.id" idx)]
    :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"))
 
-(defn subsetted?
-  "Checks whether `coding` is a SUBSETTED coding."
-  {:arglists '([coding])}
-  [{:keys [system code]}]
-  (and (= #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
-       (= #fhir/code"SUBSETTED" code)))
-
 (defn validate-entry
   "Validates that bundle `entry` can be used in a transaction or batch.
 
@@ -512,7 +506,7 @@
       (and (= "POST" method) (= :operation kind) (not= "Parameters" (-> resource :fhir/type name)))
       (type-mismatch-anom resource url idx)
 
-      (and (#{"POST" "PUT"} method) (->> resource :meta :tag (some subsetted?)))
+      (and (#{"POST" "PUT"} method) (->> resource :meta :tag (some fu/subsetted?)))
       (subsetted-anom idx)
 
       (and (= "PUT" method) (nil? id))

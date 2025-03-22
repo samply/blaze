@@ -27,5 +27,5 @@ RESULT=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$BASE")
 test "resource type" "$(echo "$RESULT" | jq -r .resourceType)" "OperationOutcome"
 test "severity" "$(echo "$RESULT" | jq -r '.issue[0].severity')" "error"
 test "code" "$(echo "$RESULT" | jq -r '.issue[0].code')" "invariant"
-test "diagnostics" "$(echo "$RESULT" | jq -r '.issue[0].diagnostics')" 'Error on value `null`. Expected type is `Resource`.'
-test "expression" "$(echo "$RESULT" | jq -r '.issue[0].expression[0]')" "entry[0].resource"
+test "diagnostics" "$(echo "$RESULT" | jq -r '.issue[0].diagnostics')" "Error on value null. Expected type is \`Resource\`."
+test "expression" "$(echo "$RESULT" | jq -r '.issue[0].expression[0]')" "Bundle.entry[0].resource"

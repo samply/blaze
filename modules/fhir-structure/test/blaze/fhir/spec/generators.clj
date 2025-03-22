@@ -149,8 +149,8 @@
 (defn- primitive-gen [constructor value-gen]
   (fn
     [& {:keys [id extension value]
-        :or {id (gen/return nil)
-             extension (extensions)
+        :or {id (often-nil id-value)
+             extension (often-nil (extensions))
              value (nilable value-gen)}}]
     (->> (gen/tuple id extension value)
          (to-map [:id :extension :value])
@@ -198,12 +198,24 @@
 (def id
   (primitive-gen type/id id-value))
 
+(def oid
+  (primitive-gen type/oid oid-value))
+
+(def markdown
+  (primitive-gen type/markdown markdown-value))
+
 (def unsignedInt
   (primitive-gen type/unsignedInt unsignedInt-value))
 
+(def positiveInt
+  (primitive-gen type/positiveInt positiveInt-value))
+
+(def uuid
+  (primitive-gen type/uuid uuid-value))
+
 (defn attachment
   [& {:keys [id extension contentType language data url size hash title creation]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (gen/return nil)
            contentType (rare-nil (code))
            language (nilable (code))
@@ -221,7 +233,7 @@
 
 (defn extension
   [& {:keys [id extension value]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (gen/return nil)
            value (gen/return nil)}}]
   (->> (gen/tuple id extension uri-value value)
@@ -230,7 +242,7 @@
 
 (defn coding
   [& {:keys [id extension system version code display user-selected]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            system (rare-nil (uri))
            version (often-nil (string))
@@ -243,7 +255,7 @@
 
 (defn codeable-concept
   [& {:keys [id extension coding text]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            coding (gen/vector (coding))
            text (often-nil (string))}}]
@@ -253,7 +265,7 @@
 
 (defn quantity
   [& {:keys [id extension value comparator unit system code]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            value (rare-nil (decimal))
            comparator (often-nil (code))
@@ -268,7 +280,7 @@
 
 (defn ratio
   [& {:keys [id extension numerator denominator]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            numerator (nilable (quantity))
            denominator (nilable (quantity))}}]
@@ -280,7 +292,7 @@
 
 (defn period
   [& {:keys [id extension start end]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            start (nilable (dateTime))
            end (nilable (dateTime))}}]
@@ -298,7 +310,7 @@
 
 (defn identifier
   [& {:keys [id extension use type system value period assigner]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            use (rare-nil (code))
            type (nilable (codeable-concept))
@@ -312,7 +324,7 @@
 
 (defn human-name
   [& {:keys [id extension use text family given prefix suffix period]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            use (rare-nil (code))
            text (often-nil (string))
@@ -328,7 +340,7 @@
 (defn address
   [& {:keys [id extension use type text line city district state postalCode
              country period]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            use (rare-nil (code))
            type (rare-nil (code))
@@ -356,7 +368,7 @@
 
 (defn reference
   [& {:keys [id extension reference type identifier display]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            reference (rare-nil (string))
            type (often-nil (uri))
@@ -368,7 +380,7 @@
 
 (defn meta
   [& {:keys [id extension versionId lastUpdated source profile security tag]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            versionId (rare-nil (blaze.fhir.spec.generators/id))
            lastUpdated (rare-nil (instant))
@@ -383,7 +395,7 @@
 
 (defn bundle-entry-search
   [& {:keys [id extension mode score]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            mode (rare-nil (code))
            score (often-nil (decimal))}}]
@@ -395,11 +407,13 @@
   (gen/fmap #(assoc % :fhir/type fhir-type) gen))
 
 (defn bundle-entry
-  [& {:keys [id extension resource]
-      :or {id (gen/return nil)
-           extension (extensions)}}]
-  (->> (gen/tuple id extension resource)
-       (to-map [:id :extension :resource])
+  [& {:keys [id extension fullUrl resource]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           fullUrl (uri)
+           resource (gen/return nil)}}]
+  (->> (gen/tuple id extension fullUrl resource)
+       (to-map [:id :extension :fullUrl :resource])
        (fhir-type :fhir.Bundle/entry)))
 
 (defn- kebab->pascal [s]
@@ -413,6 +427,12 @@
        (->> (gen/tuple ~@field-syms)
             (to-map [~@(map keyword field-syms)])
             (fhir-type ~(keyword "fhir" (kebab->pascal (str type))))))))
+
+(def-resource-gen bundle
+  [id id-value
+   identifier (identifier)
+   type (rare-nil (code))
+   entry (gen/vector (bundle-entry))])
 
 (def-resource-gen patient
   [id id-value
@@ -535,3 +555,20 @@
    status (rare-nil (code))
    experimental (nilable (boolean))
    compose (value-set-compose)])
+
+(defn- task-value []
+  (gen/one-of [(quantity) (codeable-concept) (string) (boolean) (integer)
+               #_(range) #_(ratio) #_(sampled-data) (time) (dateTime) (period)]))
+
+(defn- task-input
+  [& {:keys [type value]
+      :or {type (codeable-concept)
+           value (task-value)}}]
+  (->> (gen/tuple type value)
+       (to-map [:type :value])
+       (fhir-type :fhir.Task/input)))
+
+(def-resource-gen task
+  [identifier (gen/vector (identifier))
+   status (rare-nil (code))
+   input (gen/vector (task-input))])

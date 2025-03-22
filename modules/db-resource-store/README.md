@@ -17,6 +17,7 @@ An implementation using the Key Value Store protocols can be found in the `blaze
 ```clojure
 :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
+    :parsing-context #blaze/ref :blaze.fhir/parsing-context
     :executor #blaze/ref :blaze.db.resource-store.kv/executor}
 
 :blaze.db.resource-store.kv/executor {}

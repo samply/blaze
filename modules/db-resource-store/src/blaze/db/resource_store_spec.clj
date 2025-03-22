@@ -8,15 +8,11 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef rs/get
-  :args (s/cat :store :blaze.db/resource-store
-               :hash :blaze.resource/hash
-               :variant :blaze.resource/variant)
+  :args (s/cat :store :blaze.db/resource-store :key ::rs/key)
   :ret ac/completable-future?)
 
 (s/fdef rs/multi-get
-  :args (s/cat :store :blaze.db/resource-store
-               :hashes (s/coll-of :blaze.resource/hash)
-               :variant :blaze.resource/variant)
+  :args (s/cat :store :blaze.db/resource-store :keys (s/coll-of ::rs/key))
   :ret ac/completable-future?)
 
 (s/fdef rs/put!

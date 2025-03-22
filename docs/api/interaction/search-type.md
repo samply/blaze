@@ -7,17 +7,17 @@ POST [base]/[type]/_search
 
 ## Search Result Parameters
 
-| Name             | Description                                                                                                                                    |
-|------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `_sort`          | see Sorting                                                                                                                                    |
-| `_count`         | the default page size is 50 and the maximum page size is 10.000                                                                                |
-| `_include`       | supported, except the wildcard `*`                                                                                                             |
-| `_revinclude`    | supported, except the wildcard `*`                                                                                                             |
-| `_summary`       | `true`, `data`, `count` and `false` is supported for CodeSystem and ValueSet resources while `count` is supported for all other resource types |
-| `_total`         | `accurate` is supported                                                                                                                        |
-| `_elements`      | fully supported                                                                                                                                |
-| `_contained`     | not supported                                                                                                                                  |
-| `_containedType` | not supported                                                                                                                                  |
+| Name             | Description                                                     |
+|------------------|-----------------------------------------------------------------|
+| `_sort`          | see Sorting                                                     |
+| `_count`         | the default page size is 50 and the maximum page size is 10.000 |
+| `_include`       | supported, except the wildcard `*`                              |
+| `_revinclude`    | supported, except the wildcard `*`                              |
+| `_summary`       | `true`, `data`, `count` and `false` is supported                |
+| `_total`         | `accurate` is supported                                         |
+| `_elements`      | fully supported                                                 |
+| `_contained`     | not supported                                                   |
+| `_containedType` | not supported                                                   |
 
 ## _profile
 

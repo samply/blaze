@@ -40,4 +40,9 @@
   (testing "asQuotedUTF8"
     (satisfies-prop 100
       (prop/for-all [value gen/string-ascii]
-        (= value (String. (.asQuotedUTF8 (json/field-name value)) StandardCharsets/UTF_8))))))
+        (= value (String. (.asQuotedUTF8 (json/field-name value)) StandardCharsets/UTF_8)))))
+
+  (testing "toString"
+    (satisfies-prop 100
+      (prop/for-all [value gen/string-ascii]
+        (= value (str (json/field-name value)))))))

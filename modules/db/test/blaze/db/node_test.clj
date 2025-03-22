@@ -50,9 +50,9 @@
 (defmethod ig/init-key ::resource-store-failing-on-get [_ _]
   (reify
     rs/ResourceStore
-    (-get [_ _ _]
+    (-get [_ _]
       (ac/completed-future {::anom/category ::anom/fault}))
-    (-multi-get [_ _ _]
+    (-multi-get [_ _]
       (ac/completed-future {::anom/category ::anom/fault}))
     (-put [_ _]
       (ac/completed-future nil))))
@@ -73,10 +73,10 @@
 (defmethod ig/init-key ::resource-store-slow-on-put [_ {:keys [resource-store]}]
   (reify
     rs/ResourceStore
-    (-get [_ hash variant]
-      (rs/get resource-store hash variant))
-    (-multi-get [_ hashes variant]
-      (rs/multi-get resource-store hashes variant))
+    (-get [_ key]
+      (rs/get resource-store key))
+    (-multi-get [_ keys]
+      (rs/multi-get resource-store keys))
     (-put [_ entries]
       (-> (rs/put! resource-store entries)
           (ac/then-apply-async identity delayed-executor)))))

@@ -2,7 +2,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.util :as u]
+   [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]
    [cognitect.anomalies :as anom]))
 
@@ -75,7 +75,7 @@
   {:arglists '([concept params])}
   [{:keys [code system version inactive] :as concept}
    {{:keys [origin] :as clause} :clause}]
-  (u/parameters
+  (fu/parameters
    "result" #fhir/boolean true
    "code" code
    "system" system
@@ -97,7 +97,7 @@
   [{::anom/keys [message]
     :keys [code system version display inactive issues result-override]}
    {{:keys [origin] :as clause} :clause}]
-  (u/parameters
+  (fu/parameters
    "result" (type/boolean (or result-override false))
    "message" (type/string message)
    "code" (some-> code type/code)

@@ -2,10 +2,12 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.spec]
+   [blaze.fhir.parsing-context.spec]
+   [blaze.fhir.writing-context.spec]
    [blaze.handler.fhir.util.spec]
    [blaze.handler.util :as handler-util]
    [blaze.job-scheduler.spec]
-   [blaze.middleware.fhir.output :as output]
+   [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.rest-api.middleware.cors :as cors]
@@ -58,12 +60,12 @@
 
 (defn- handler
   "Whole app Ring handler."
-  [{:keys [job-scheduler auth-backends] :as config}]
+  [{:keys [job-scheduler writing-context auth-backends] :as config}]
   (-> (reitit.ring/ring-handler
        (router config)
        (reitit.ring/routes
         (reitit.ring/redirect-trailing-slash-handler {:method :strip})
-        (output/wrap-output handler-util/default-handler {:accept-all? true}))
+        (fhir-output/wrap-output handler-util/default-handler writing-context {:accept-all? true}))
        {:middleware
         (cond-> [wrap-cors [wrap-job-scheduler job-scheduler]]
           (seq auth-backends)
@@ -74,6 +76,8 @@
   (s/keys
    :req-un
    [:blaze/base-url
+    :blaze.fhir/parsing-context
+    :blaze.fhir/writing-context
     :blaze.fhir/structure-definition-repo
     :blaze.db/node
     ::admin-node
@@ -113,7 +117,7 @@
   resource/parse-duration-seconds)
 
 (reg-collector ::generate-duration-seconds
-  output/generate-duration-seconds)
+  fhir-output/generate-duration-seconds)
 
 (defmethod ig/init-key :blaze.rest-api/resource-patterns
   [_ patterns]

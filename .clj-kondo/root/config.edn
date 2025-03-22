@@ -74,11 +74,13 @@
     blaze.fhir.spec.references fsr
     blaze.fhir.spec.type type
     blaze.fhir.structure-definition-repo sdr
+    blaze.fhir.util fu
     blaze.handler.fhir.util fhir-util
     blaze.job-scheduler js
     blaze.job.async-interaction job-async
     blaze.job.compact job-compact
     blaze.middleware.fhir.db db
+    blaze.middleware.fhir.output fhir-output
     blaze.rest-api.header header
     blaze.scheduler sched
     blaze.terminology-service ts

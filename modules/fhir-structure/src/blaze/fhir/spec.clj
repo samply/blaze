@@ -1,135 +1,87 @@
 (ns blaze.fhir.spec
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba]
    [blaze.fhir.hash.spec]
    [blaze.fhir.spec.impl :as impl]
+   [blaze.fhir.spec.resource :as res]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.util :refer [conj-vec]]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [cognitect.anomalies :as anom]
-   [jsonista.core :as j])
+   [cognitect.anomalies :as anom])
   (:import
-   [com.fasterxml.jackson.core JsonFactory StreamReadConstraints]
-   [com.fasterxml.jackson.databind DeserializationFeature ObjectMapper]
-   [com.fasterxml.jackson.dataformat.cbor CBORFactory]
+   [java.io ByteArrayOutputStream StringWriter]
    [java.util.regex Pattern]))
 
 (set! *warn-on-reflection* true)
 
+(defn parse-json
+  "Parses a complex value from JSON `source`.
+
+  For resources, the two-arity version can be used. In this case the
+  `resourceType` JSON property is used to determine the `type`.
+
+  For complex types, the `type` has to be given.
+
+  Returns an anomaly in case of errors."
+  ([context source]
+   (ba/try-all ::anom/incorrect (res/parse-json context source)))
+  ([context type source]
+   (ba/try-all ::anom/incorrect (res/parse-json context type source))))
+
+(defn parse-cbor
+  "Parses a complex value of `type` from `source`.
+
+  Returns an anomaly in case of errors."
+  ([context type source]
+   (parse-cbor context type source :complete))
+  ([context type source variant]
+   (ba/try-all ::anom/incorrect (res/parse-cbor context type variant source))))
+
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
 
-(def ^:private stream-read-constraints
-  (-> (StreamReadConstraints/builder)
-      (.maxStringLength Integer/MAX_VALUE)
-      (.build)))
-
-(def ^:private json-factory
-  (-> (JsonFactory/builder)
-      (.streamReadConstraints stream-read-constraints)
-      (.build)))
-
-(def ^:private json-object-mapper
-  (doto (ObjectMapper. json-factory)
-    (.registerModule type/fhir-module)
-    (.enable DeserializationFeature/USE_BIG_DECIMAL_FOR_FLOATS)
-    (.enable DeserializationFeature/FAIL_ON_TRAILING_TOKENS)))
-
-(defn parse-json
-  "Parses a JSON representation of a resource in `source` into an intermediate
-  representation which can be conformed using `conform-json`.
-
-  Possible `source` types are byte array, File, URL, String, Reader and
-  InputStream.
-
-  Reads the stream until its end, tailing on any trailing tokens.
-
-  Returns an anomaly on parse errors."
-  [source]
-  (ba/try-all ::anom/incorrect (j/read-value source json-object-mapper)))
-
-(def ^:private cbor-factory
-  (-> (CBORFactory/builder)
-      (.streamReadConstraints stream-read-constraints)
-      (.build)))
-
-(def ^:private cbor-object-mapper
-  (doto (ObjectMapper. cbor-factory)
-    (.registerModule type/fhir-module)))
-
-(defn parse-cbor
-  "Parses a CBOR representation of a resource in `source` into an intermediate
-  representation which can be conformed using `conform-cbor`.
-
-  Possible `source` types are byte array, File, URL, String, Reader and
-  InputStream.
-
-  Returns an anomaly on parse errors."
-  [source]
-  (ba/try-all ::anom/incorrect (j/read-value source cbor-object-mapper)))
-
-(defn conform-cbor*
-  [{type :resourceType :as x}]
-  (or
-   (when type
-     (when-let [spec (s2/get-spec (keyword "fhir.cbor" type))]
-       (let [resource (s2/conform spec x)]
-         (when-not (s2/invalid? resource)
-           resource))))
-   (ba/incorrect "Invalid intermediate representation of a resource." :x x)))
-
-(def subsetted
-  #fhir/Coding
-   {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-    :code #fhir/code"SUBSETTED"})
-
-(defn- select-summary* [resource & keys]
-  (-> (apply dissoc resource keys)
-      (update :meta (fnil update #fhir/Meta{}) :tag conj-vec subsetted)))
-
-(defn- select-summary [{:fhir/keys [type] :as resource}]
-  (cond-> resource
-    (= :fhir/CodeSystem type)
-    (select-summary* :description :purpose :copyright :concept)
-
-    (= :fhir/ValueSet type)
-    (select-summary* :description :purpose :copyright :compose :expansion)))
-
-(defn conform-cbor
-  "Returns the internal representation of `x` parsed from CBOR.
-
-  Returns an anomaly if `x` isn't a valid intermediate representation of a
-  resource."
-  ([x]
-   (conform-cbor x :complete))
-  ([x variant]
-   (when-ok [resource (conform-cbor* x)]
-     (cond-> resource (= :summary variant) select-summary))))
-
-(defn- transform-type-key [type-key modifier]
-  (let [ns (namespace type-key)
-        ns-parts (cons (str "fhir." modifier) (rest (str/split ns #"\.")))]
-    (keyword (str/join "." ns-parts) (name type-key))))
-
-(defn unform-json
-  "Returns the JSON representation of `x` as byte array."
+(defn fhir-type
+  "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
+  `x` has no FHIR type."
   [x]
-  (let [key (transform-type-key (type/type x) "json")]
-    (if-let [spec (s2/get-spec key)]
-      (j/write-value-as-bytes (s2/unform spec x) json-object-mapper)
-      (throw (ex-info (format "Missing spec: %s" key) {:key key :x x})))))
+  (type/type x))
 
-(defn unform-cbor
-  "Returns the CBOR representation of `resource`."
-  [resource]
-  (let [key (transform-type-key (type/type resource) "cbor")]
-    (if-let [spec (s2/get-spec key)]
-      (j/write-value-as-bytes (s2/unform spec resource) cbor-object-mapper)
-      (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
+(defn primitive?
+  "Primitive FHIR type like `id`."
+  [spec]
+  (and (keyword? spec)
+       (= "fhir" (namespace spec))
+       (Character/isLowerCase ^char (first (name spec)))))
+
+(defn primitive-val?
+  "Returns true if `x` is a primitive FHIR value."
+  [x]
+  (primitive? (fhir-type x)))
+
+(defn write-json
+  [context out value]
+  (res/write-json context out value))
+
+(defn write-json-as-bytes
+  [context value]
+  (let [out (ByteArrayOutputStream.)]
+    (write-json context out value)
+    (.toByteArray out)))
+
+(defn write-json-as-string
+  [context value]
+  (let [writer (StringWriter.)]
+    (write-json context writer value)
+    (.toString writer)))
+
+(defn write-cbor
+  [context x]
+  (let [out (ByteArrayOutputStream.)]
+    (res/write-cbor context out x)
+    (.toByteArray out)))
 
 (defn unform-xml
   "Returns the XML representation of `resource`."
@@ -138,15 +90,6 @@
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
-
-(defn fhir-type
-  "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
-  `x` has no FHIR type."
-  [x]
-  (type/type x))
-
-(defn to-date-time [x]
-  (type/-to-date-time x))
 
 (defn- fhir-path-data
   "Given a vector `path` and some `data` structure containing maps and vectors,
@@ -225,32 +168,6 @@
     (:resourceType resource)
     (assoc :fhir.issues/expression (fhir-path in resource))))
 
-(defn explain-data-json
-  "Given a resource, which includes :resourceType key, returns nil
-  if the resource is conform to the spec :fhir.json/<resourceType>,
-  else a map with at least the keys :fhir/issues who's value is a collection of
-  issue-maps to build a OperationsOutcome and ::problems whose value is a
-  collection of problem-maps, where problem-map has at least :path :pred and
-  :val keys describing the predicate and the value that failed at that path."
-  {:arglists '([resource])}
-  ([{type :resourceType :as resource}]
-   (if type
-     (if-let [spec (s2/get-spec (keyword "fhir.json" type))]
-       (when-let [error (s2/explain-data spec resource)]
-         (assoc
-          error
-          :fhir/issues
-          (mapv #(generate-issue resource %) (::s/problems error))))
-       {:fhir/issues
-        [{:fhir.issues/severity "error"
-          :fhir.issues/code "value"
-          :fhir.issues/diagnostics (format "Unknown resource type `%s`." type)}]})
-     {:fhir/issues
-      [{:fhir.issues/severity "error"
-        :fhir.issues/code "value"
-        :fhir.issues/diagnostics
-        "Given resource does not contain a `resourceType` property."}]})))
-
 (defn explain-data-xml
   "Given a resource as XML element, returns nil
   if the resource is conform to the spec :fhir.xml/<tag>,
@@ -275,38 +192,6 @@
       [{:fhir.issues/severity "error"
         :fhir.issues/code "value"
         :fhir.issues/diagnostics (format "Invalid resource element `%s`." resource)}]})))
-
-(defn primitive?
-  "Primitive FHIR type like `id`."
-  [spec]
-  (and (keyword? spec)
-       (= "fhir" (namespace spec))
-       (Character/isLowerCase ^char (first (name spec)))))
-
-(defn primitive-val?
-  "Returns true if `x` is a primitive FHIR value."
-  [x]
-  (when-let [fhir-type (fhir-type x)]
-    (and (= "fhir" (namespace fhir-type))
-         (Character/isLowerCase ^char (first (name fhir-type))))))
-
-(defn conform-json
-  "Returns the internal representation of `x` parsed from JSON.
-
-  Returns an anomaly if `x` isn't a valid intermediate representation of a
-  resource."
-  {:arglists '([x])}
-  [{type :resourceType :as x}]
-  (or
-   (when type
-     (when-let [spec (s2/get-spec (keyword "fhir.json" type))]
-       (let [resource (s2/conform spec x)]
-         (when-not (s2/invalid? resource)
-           resource))))
-   (ba/incorrect
-    "Invalid JSON representation of a resource."
-    :x x
-    :fhir/issues (:fhir/issues (explain-data-json x)))))
 
 (defn conform-xml
   "Returns the internal representation of `x` parsed from XML.

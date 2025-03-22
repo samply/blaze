@@ -652,7 +652,7 @@
                   [:resource :id] := "1")))))
 
         (testing "missing resource contents"
-          (with-redefs [rs/multi-get (fn [_ _ _] (ac/completed-future {}))]
+          (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
             (let [{:keys [status body]} @(handler request)]
 
               (is (= 500 status))

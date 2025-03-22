@@ -63,6 +63,9 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_sum
 | LEA58  | 1M      | 8310-5  |  1.1 M |     0.60 |  0.011 |   0.51 |
 | LEA58  | 1M      | 55758-7 | 10.1 M |     5.17 |  0.077 |   0.50 |
 | LEA58  | 1M      | 72514-3 | 27.3 M |    13.77 |  0.244 |   0.50 |
+| A5N46  | 1M      | 8310-5  |  1.1 M |     0.28 |  0.017 |   0.24 |
+| A5N46  | 1M      | 55758-7 | 10.1 M |     2.63 |  0.035 |   0.25 |
+| A5N46  | 1M      | 72514-3 | 27.3 M |     6.92 |  0.469 |   0.25 |
 
 ¹ time in seconds per 1 million resources
 
@@ -94,7 +97,10 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | LEA47  | 1M      | 72514-3 | 27.3 M |   673.10 |  3.072 | 24.61 ² |
 | LEA58  | 1M      | 8310-5  |  1.1 M |    18.95 |  0.075 |   16.34 |         
 | LEA58  | 1M      | 55758-7 | 10.1 M |   160.31 |  0.976 |   15.80 |         
-| LEA58  | 1M      | 72514-3 | 27.3 M |   498.38 |  9.773 | 18.22 ² |         
+| LEA58  | 1M      | 72514-3 | 27.3 M |   498.38 |  9.773 | 18.22 ² |
+| A5N46  | 1M      | 8310-5  |  1.1 M |    13.28 |  0.086 |   11.46 |         
+| A5N46  | 1M      | 55758-7 | 10.1 M |   179.60 |  1.974 | 17.71 ² |        
+| A5N46  | 1M      | 72514-3 | 27.3 M |   480.36 |  1.992 | 17.56 ² |         
 
 ¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
 
@@ -128,7 +134,10 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | LEA47  | 1M      | 72514-3 | 27.3 M |   437.43 |  3.461 | 15.99 ² |
 | LEA58  | 1M      | 8310-5  |  1.1 M |    12.28 |  0.351 |   10.59 |          
 | LEA58  | 1M      | 55758-7 | 10.1 M |   103.67 |  1.057 |   10.22 |          
-| LEA58  | 1M      | 72514-3 | 27.3 M |   309.76 |  1.580 | 11.32 ² |          
+| LEA58  | 1M      | 72514-3 | 27.3 M |   309.76 |  1.580 | 11.32 ² |
+| A5N46  | 1M      | 8310-5  |  1.1 M |     7.97 |  0.101 |    6.87 |          
+| A5N46  | 1M      | 55758-7 | 10.1 M |   131.73 |  0.494 | 12.99 ² |          
+| A5N46  | 1M      | 72514-3 | 27.3 M |   335.79 |  0.764 | 12.28 ² |          
 
 ¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
 

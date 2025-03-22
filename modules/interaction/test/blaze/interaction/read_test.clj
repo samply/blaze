@@ -102,7 +102,7 @@
           [:issue 0 :diagnostics] := "Resource `Patient/0` was deleted."))))
 
   (testing "returns Internal Server Error on missing resource content"
-    (with-redefs [rs/get (fn [_ _ _] (ac/completed-future nil))]
+    (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
