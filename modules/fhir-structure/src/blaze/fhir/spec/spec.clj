@@ -6,6 +6,9 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
+(s/def :fhir/parsing-context
+  map?)
+
 (s/def :fhir.resource/type
   (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
 

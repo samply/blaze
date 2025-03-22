@@ -49,13 +49,12 @@
   (ba/throw-when (anomaly e)))
 
 (defmethod hm/coerce-response-body :fhir
-  [_ {:keys [body content-type] :as resp}]
+  [{:keys [parsing-context]} {:keys [body content-type] :as resp}]
   (let [charset (or (-> resp :content-type-params :charset) "UTF-8")]
     (if (json? content-type)
       (ba/throw-when
        (with-open [r (io/reader body :encoding charset)]
-         (when-ok [x (fhir-spec/parse-json r)
-                   resource (fhir-spec/conform-json x)]
+         (when-ok [resource (fhir-spec/parse-conform-json parsing-context r)]
            (assoc resp :body resource))))
       resp)))
 

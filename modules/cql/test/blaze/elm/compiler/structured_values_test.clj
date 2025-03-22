@@ -205,7 +205,7 @@
           (testing "eval"
             (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
               #fhir/date"2023-05-07" #system/date"2023-05-07"
-              #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+              #fhir/date{:id "foo" :value #system/date"2023-05-07"} #system/date"2023-05-07"
               #fhir/date{:id "foo"} nil
               #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
 
@@ -344,7 +344,7 @@
         (testing "eval"
           (are [birth-date res] (= res (core/-eval expr {:expression-defs {"Patient" {:expression (source birth-date)}}} nil nil))
             #fhir/date"2023-05-07" #system/date"2023-05-07"
-            #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+            #fhir/date{:id "foo" :value #system/date"2023-05-07"} #system/date"2023-05-07"
             #fhir/date{:id "foo"} nil
             #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
 

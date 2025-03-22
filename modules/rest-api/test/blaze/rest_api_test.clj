@@ -4,6 +4,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.db.impl.search-param]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.structure-definition-repo.protocols :as sdrp]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -64,16 +65,17 @@
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
-      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
-      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout)))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
+      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
+      [:cause-data ::s/problems 11 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout)))))
 
 (deftest requests-total-collector-init-test
   (with-system [{collector ::rest-api/requests-total} {::rest-api/requests-total {}}]
@@ -107,6 +109,7 @@
    mem-node-config
    :blaze/rest-api
    {:base-url "http://localhost:8080"
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)
     :structure-definition-repo structure-definition-repo
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
@@ -154,7 +157,9 @@
     :graph-cache (ig/ref ::ts-local/graph-cache)}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}
-   ::ts-local/graph-cache {}))
+   ::ts-local/graph-cache {}
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defmethod ig/init-key ::empty-structure-definition-repo
   [_ _]

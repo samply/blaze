@@ -3,16 +3,18 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.resource :refer [wrap-binary-data wrap-resource]]
    [blaze.middleware.fhir.resource-spec]
+   [blaze.fhir.parsing-context]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [integrant.core :as ig]
    [jsonista.core :as j]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
@@ -27,6 +29,12 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private parsing-context
+  (:blaze.fhir/parsing-context
+   (ig/init
+    {:blaze.fhir/parsing-context
+     {:structure-definition-repo structure-definition-repo}})))
+
 (defn- wrap-error [handler]
   (fn [request]
     (-> (handler request)
@@ -35,13 +43,13 @@
 (def ^:private resource-body-handler
   "A handler which just returns the :body from a non-binary resource request."
   (-> (comp ac/completed-future :body)
-      wrap-resource
+      (wrap-resource parsing-context)
       wrap-error))
 
 (def ^:private binary-resource-body-handler
   "A handler which just returns the :body from a binary resource request."
   (-> (comp ac/completed-future :body)
-      wrap-binary-data
+      (wrap-binary-data parsing-context)
       wrap-error))
 
 (defn- string-input-stream
@@ -78,7 +86,7 @@
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "No content to map due to end-of-input\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1]"))
+      [:body :issue 0 :diagnostics] := "Invalid JSON representation of a resource. End of input at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]"))
 
   (testing "body with invalid JSON"
     (given @(resource-body-handler

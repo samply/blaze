@@ -4,6 +4,9 @@
   (-type [_])
   (-interned [_])
   (-value [_])
+  (-assoc-id [_ id])
+  (-assoc-extension [_ extension])
+  (-assoc-value [_ value])
   (-has-primary-content [value]
     "Returns true if there is primary JSON content available.")
   (-serialize-json [value generator]

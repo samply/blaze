@@ -26,6 +26,10 @@
   :args (s/cat :x any?)
   :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
 
+(s/fdef fhir-spec/parse-conform-json
+  :args (s/cat :context map? :type (s/? string?) :source some?)
+  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
+
 (s/fdef fhir-spec/unform-json
   :args (s/cat :resource any?)
   :ret bytes?)
