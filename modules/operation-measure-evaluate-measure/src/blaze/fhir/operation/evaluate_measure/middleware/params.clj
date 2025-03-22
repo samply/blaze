@@ -44,7 +44,7 @@
 
 (defn- get-param-value-from-resource [body name]
   (when (identical? :fhir/Parameters (fhir-spec/fhir-type body))
-    (some #(when (= name (:name %)) (:value %)) (:parameter body))))
+    (some #(when (= name (:name %)) (type/value (:value %))) (:parameter body))))
 
 (defn- get-param-value* [{:keys [params body]} name coercer]
   (or (some->> (get params name) (coercer name))

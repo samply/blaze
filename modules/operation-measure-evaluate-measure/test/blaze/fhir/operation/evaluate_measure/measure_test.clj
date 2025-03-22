@@ -599,8 +599,8 @@
             :measure := #fhir/canonical"measure-155437"
             [:subject :reference] := "Patient/0"
             :date := #system/date-time "1970-01-01T00:00Z"
-            :period := #fhir/Period{:start #system/date-time "2000"
-                                    :end #system/date-time "2020"}
+            :period := #fhir/Period{:start #fhir/dateTime"2000"
+                                    :end #fhir/dateTime"2020"}
             [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
             [:group 0 :population 0 :count] := count))))
 
@@ -640,8 +640,8 @@
               :measure := #fhir/canonical"measure-155502"
               [:subject :reference] := "Patient/0"
               :date := #system/date-time "1970-01-01T00:00Z"
-              :period := #fhir/Period{:start #system/date-time "2000"
-                                      :end #system/date-time "2020"}
+              :period := #fhir/Period{:start #fhir/dateTime"2000"
+                                      :end #fhir/dateTime"2020"}
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := count
               [:group 0 :stratifier 0 :code 0 :text] := "gender"
