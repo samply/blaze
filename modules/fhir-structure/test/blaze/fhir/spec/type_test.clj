@@ -80,6 +80,9 @@
     (testing "value"
       (is (nil? (type/value nil))))
 
+    (testing "assoc value"
+      (is (nil? (type/assoc-value nil "foo"))))
+
     (testing "to-json"
       (is (= "null" (gen-json-string nil))))
 
@@ -136,6 +139,12 @@
     (are [x] (true? (type/value x))
       #fhir/boolean true
       #fhir/boolean{:id "foo" :value true}))
+
+  (testing "assoc value"
+    (is (= #fhir/boolean false (type/assoc-value #fhir/boolean true false)))
+
+    (testing "invalid"
+      (is (s2/invalid? (st/with-instrument-disabled (type/assoc-value #fhir/boolean true "a"))))))
 
   (testing "to-json"
     (are [b s] (= s (gen-json-string b))
@@ -216,6 +225,12 @@
       #fhir/integer 1
       #fhir/integer{:id "foo" :value 1}))
 
+  (testing "assoc value"
+    (is (= #fhir/integer 2 (type/assoc-value #fhir/integer 1 2)))
+
+    (testing "invalid"
+      (is (s2/invalid? (st/with-instrument-disabled (type/assoc-value #fhir/integer 1 "a"))))))
+
   (testing "to-json"
     (is (= "1" (gen-json-string #fhir/integer 1))))
 
@@ -274,6 +289,12 @@
       #fhir/long 1
       #fhir/long{:id "foo" :value 1}))
 
+  (testing "assoc value"
+    (is (= #fhir/long 2 (type/assoc-value #fhir/long 1 2)))
+
+    (testing "invalid"
+      (is (s2/invalid? (st/with-instrument-disabled (type/assoc-value #fhir/long 1 "a"))))))
+
   (testing "to-json"
     (is (= "1" (gen-json-string #fhir/long 1))))
 
@@ -326,6 +347,9 @@
     (are [x] (= "175227" (type/value x))
       #fhir/string"175227"
       #fhir/string{:value "175227"}))
+
+  (testing "assoc value"
+    (is (= #fhir/string"bar" (type/assoc-value #fhir/string"foo" "bar"))))
 
   (testing "to-json"
     (is (= "\"105406\"" (gen-json-string #fhir/string"105406"))))
@@ -380,6 +404,12 @@
     (are [x] (= 1M (type/value x))
       #fhir/decimal 1M
       #fhir/decimal{:id "foo" :value 1M}))
+
+  (testing "assoc value"
+    (is (= #fhir/decimal 2M (type/assoc-value #fhir/decimal 1M 2M)))
+
+    (testing "invalid"
+      (is (s2/invalid? (st/with-instrument-disabled (type/assoc-value #fhir/decimal 1M "a"))))))
 
   (testing "to-json"
     (are [decimal json] (= json (gen-json-string decimal))
@@ -439,6 +469,9 @@
     (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
       #fhir/uri"105614"
       #fhir/uri{:id "foo" :value "105614"}))
+
+  (testing "assoc value"
+    (is (= #fhir/uri"bar" (type/assoc-value #fhir/uri"foo" "bar"))))
 
   (testing "lookup"
     (testing "other keys are not found"
@@ -533,6 +566,9 @@
       #fhir/url"105614"
       #fhir/url{:id "foo" :value "105614"}))
 
+  (testing "assoc value"
+    (is (= #fhir/url"bar" (type/assoc-value #fhir/url"foo" "bar"))))
+
   (testing "lookup"
     (testing "other keys are not found"
       (is (= ::not-found (::other-key #fhir/url"foo" ::not-found)))))
@@ -617,6 +653,9 @@
     (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
       #fhir/canonical"105614"
       #fhir/canonical{:id "foo" :value "105614"}))
+
+  (testing "assoc value"
+    (is (= #fhir/canonical"bar" (type/assoc-value #fhir/canonical"foo" "bar"))))
 
   (testing "lookup"
     (testing "other keys are not found"
@@ -719,6 +758,9 @@
       #fhir/base64Binary"MTA1NjE0Cg=="
       #fhir/base64Binary{:id "foo" :value "MTA1NjE0Cg=="}))
 
+  (testing "assoc value"
+    (is (= #fhir/base64Binary"bar" (type/assoc-value #fhir/base64Binary"foo" "bar"))))
+
   (testing "lookup"
     (testing "other keys are not found"
       (is (= ::not-found (::other-key #fhir/base64Binary"foo" ::not-found)))))
@@ -814,6 +856,12 @@
       #fhir/instant"1970-01-01T00:00:00Z"
       #fhir/instant{:id "foo" :value "1970-01-01T00:00:00Z"}))
 
+  (testing "assoc value"
+    (is (= #fhir/instant"1970-01-02T00:00:00Z" (type/assoc-value #fhir/instant"2020-01-01T00:00:00+02:00" "1970-01-02T00:00:00Z")))
+
+    (testing "invalid"
+      (is (s2/invalid? (type/assoc-value #fhir/instant"2020-01-01T00:00:00+02:00" "a")))))
+
   (testing "to-json"
     (are [instant json] (= json (gen-json-string instant))
       #fhir/instant"2020-01-01T00:00:00+02:00" "\"2020-01-01T00:00:00+02:00\""
@@ -907,10 +955,45 @@
           (type/date {:extension [internable-extension]})
           (type/date {:extension [internable-extension]}))))
 
+    (testing "assoc id"
+      (testing "non-extended"
+        (is (= (type/assoc-id #fhir/date"2020" "id-111030")
+               #fhir/date{:id "id-111030" :value #system/date"2020"})))
+
+      (testing "already extended"
+        (is (= (type/assoc-id #fhir/date{:id "foo"} "bar")
+               #fhir/date{:id "bar"}))
+        (is (= (type/assoc-id #fhir/date{:extension #fhir/Extension{:url "foo"}} "id-111902")
+               #fhir/date{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+
+    (testing "assoc extension"
+      (testing "non-extended"
+        (is (= (type/assoc-extension #fhir/date"2020" #fhir/Extension{:url "foo"})
+               #fhir/date{:extension #fhir/Extension{:url "foo"} :value #system/date"2020"})))
+
+      (testing "already extended"
+        (is (= (type/assoc-extension #fhir/date{:id "id-111953"} #fhir/Extension{:url "foo"})
+               #fhir/date{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
+        (is (= (type/assoc-extension #fhir/date{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
+               #fhir/date{:extension #fhir/Extension{:url "bar"}}))))
+
     (testing "value"
       (are [x] (= #system/date"2020" (type/value x) (:value x) (:value x ::foo))
         #fhir/date"2020"
         #fhir/date{:id "foo" :value #system/date"2020"}))
+
+    (testing "assoc value"
+      (testing "non-extended"
+        (is (= (type/assoc-value #fhir/date"2020" #system/date"2022")
+               #fhir/date"2022"))
+        (is (= (type/assoc-value #fhir/date"2020" #system/date"2022-03")
+               #fhir/date"2022-03"))
+        (is (= (type/assoc-value #fhir/date"2020" #system/date"2022-03-16")
+               #fhir/date"2022-03-16")))
+
+      (testing "already extended"
+        (is (= (type/assoc-value #fhir/date{:id "foo"} #system/date"2020")
+               #fhir/date{:id "foo" :value #system/date"2020"}))))
 
     (testing "lookup"
       (testing "other keys are not found"
@@ -974,6 +1057,19 @@
         #fhir/date"2020-01"
         #fhir/date{:id "foo" :value "2020-01"}))
 
+    (testing "assoc value"
+      (testing "non-extended"
+        (is (= (type/assoc-value #fhir/date"2020-01" #system/date"2022")
+               #fhir/date"2022"))
+        (is (= (type/assoc-value #fhir/date"2020-01" #system/date"2022-03")
+               #fhir/date"2022-03"))
+        (is (= (type/assoc-value #fhir/date"2020-01" #system/date"2022-03-16")
+               #fhir/date"2022-03-16")))
+
+      (testing "already extended"
+        (is (= (type/assoc-value #fhir/date{:id "foo"} #system/date"2020-01")
+               #fhir/date{:id "foo" :value #system/date"2020-01"}))))
+
     (testing "lookup"
       (testing "other keys are not found"
         (is (= ::not-found (::other-key #fhir/date"1970-01" ::not-found)))))
@@ -1032,6 +1128,19 @@
       (are [x] (= #system/date"2020-01-02" (type/value x) (:value x) (:value x ::foo))
         #fhir/date"2020-01-02"
         #fhir/date{:id "foo" :value "2020-01-02"}))
+
+    (testing "assoc value"
+      (testing "non-extended"
+        (is (= (type/assoc-value #fhir/date"2022-05-23" #system/date"2022")
+               #fhir/date"2022"))
+        (is (= (type/assoc-value #fhir/date"2022-05-23" #system/date"2022-03")
+               #fhir/date"2022-03"))
+        (is (= (type/assoc-value #fhir/date"2022-05-23" #system/date"2022-03-16")
+               #fhir/date"2022-03-16")))
+
+      (testing "already extended"
+        (is (= (type/assoc-value #fhir/date{:id "foo"} #system/date"2022-05-23")
+               #fhir/date{:id "foo" :value #system/date"2022-05-23"}))))
 
     (testing "lookup"
       (testing "other keys are not found"
@@ -1125,6 +1234,19 @@
         #fhir/dateTime"2020"
         #fhir/dateTime{:id "foo" :value #system/date-time"2020"}))
 
+    (testing "assoc value"
+      (testing "non-extended"
+        (is (= (type/assoc-value #fhir/dateTime"2021" #system/date-time"2022")
+               #fhir/dateTime"2022"))
+        (is (= (type/assoc-value #fhir/dateTime"2021" #system/date-time"2022-03")
+               #fhir/dateTime"2022-03"))
+        (is (= (type/assoc-value #fhir/dateTime"2021" #system/date-time"2022-03-16")
+               #fhir/dateTime"2022-03-16")))
+
+      (testing "already extended"
+        (is (= (type/assoc-value #fhir/dateTime{:id "foo"} #system/date-time"2020")
+               #fhir/dateTime{:id "foo" :value #system/date-time"2020"}))))
+
     (testing "lookup"
       (testing "other keys are not found"
         (is (= ::not-found (::other-key #fhir/dateTime"1970" ::not-found)))))
@@ -1185,6 +1307,19 @@
         #fhir/dateTime"2020-01"
         #fhir/dateTime{:id "foo" :value #system/date-time"2020-01"}))
 
+    (testing "assoc value"
+      (testing "non-extended"
+        (is (= (type/assoc-value #fhir/dateTime"2021-04" #system/date-time"2022")
+               #fhir/dateTime"2022"))
+        (is (= (type/assoc-value #fhir/dateTime"2021-04" #system/date-time"2022-03")
+               #fhir/dateTime"2022-03"))
+        (is (= (type/assoc-value #fhir/dateTime"2021-04" #system/date-time"2022-03-16")
+               #fhir/dateTime"2022-03-16")))
+
+      (testing "already extended"
+        (is (= (type/assoc-value #fhir/dateTime{:id "foo"} #system/date-time"2020-04")
+               #fhir/dateTime{:id "foo" :value #system/date-time"2020-04"}))))
+
     (testing "lookup"
       (testing "other keys are not found"
         (is (= ::not-found (::other-key #fhir/dateTime"1970-01" ::not-found)))))
@@ -1244,6 +1379,19 @@
       (are [x] (= #system/date-time"2022-05-23" (type/value x) (:value x) (:value x ::foo))
         #fhir/dateTime"2022-05-23"
         #fhir/dateTime{:id "foo" :value #system/date-time"2022-05-23"}))
+
+    (testing "assoc value"
+      (testing "non-extended"
+        (is (= (type/assoc-value #fhir/dateTime"2022-05-23" #system/date-time"2022")
+               #fhir/dateTime"2022"))
+        (is (= (type/assoc-value #fhir/dateTime"2022-05-23" #system/date-time"2022-03")
+               #fhir/dateTime"2022-03"))
+        (is (= (type/assoc-value #fhir/dateTime"2022-05-23" #system/date-time"2022-03-16")
+               #fhir/dateTime"2022-03-16")))
+
+      (testing "already extended"
+        (is (= (type/assoc-value #fhir/dateTime{:id "foo"} #system/date-time"2022-05-23")
+               #fhir/dateTime{:id "foo" :value #system/date-time"2022-05-23"}))))
 
     (testing "lookup"
       (testing "other keys are not found"
@@ -1577,11 +1725,42 @@
   (testing "interned"
     (is (not-interned? #fhir/time"13:53:21" #fhir/time"13:53:21")))
 
+  (testing "assoc id"
+    (testing "non-extended"
+      (is (= (type/assoc-id #fhir/time"13:53:21" "id-111030")
+             #fhir/time{:id "id-111030" :value #system/time"13:53:21"})))
+
+    (testing "already extended"
+      (is (= (type/assoc-id #fhir/time{:id "foo"} "bar")
+             #fhir/time{:id "bar"}))
+      (is (= (type/assoc-id #fhir/time{:extension #fhir/Extension{:url "foo"}} "id-111902")
+             #fhir/time{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+
+  (testing "assoc extension"
+    (testing "non-extended"
+      (is (= (type/assoc-extension #fhir/time"13:53:21" #fhir/Extension{:url "foo"})
+             #fhir/time{:extension #fhir/Extension{:url "foo"} :value #system/time"13:53:21"})))
+
+    (testing "already extended"
+      (is (= (type/assoc-extension #fhir/time{:id "id-111953"} #fhir/Extension{:url "foo"})
+             #fhir/time{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
+      (is (= (type/assoc-extension #fhir/time{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
+             #fhir/time{:extension #fhir/Extension{:url "bar"}}))))
+
   (testing "value is a System.Time which is a LocalTime"
     (are [x] (= #system/time"13:53:21" (type/value x))
       #fhir/time"13:53:21"
       #fhir/time{:id "foo" :value "13:53:21"}
       #fhir/time{:id "foo" :value #system/time"13:53:21"}))
+
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/time"13:53:21" #system/time"13:34:45")
+             #fhir/time"13:34:45")))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/time{:id "foo"} #system/time"13:34:45")
+             (type/time {:id "foo" :value #system/time"13:34:45"})))))
 
   (testing "to-json"
     (is (= "\"13:53:21\"" (gen-json-string #fhir/time"13:53:21"))))
@@ -1655,6 +1834,15 @@
     (are [x] (= "code-123745" (type/value x) (:value x) (:value x ::foo))
       #fhir/code"code-123745"
       #fhir/code{:id "foo" :value "code-123745"}))
+
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/code"code-165634" "code-165643")
+             #fhir/code"code-165643")))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/code{:id "foo"} "code-171046")
+             #fhir/code{:id "foo" :value "code-171046"}))))
 
   (testing "lookup"
     (testing "other keys are not found"
@@ -1750,6 +1938,15 @@
       #fhir/oid"oid-123745"
       #fhir/oid{:id "foo" :value "oid-123745"}))
 
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/oid"oid-165634" "oid-165643")
+             #fhir/oid"oid-165643")))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/oid{:id "foo"} "oid-171046")
+             #fhir/oid{:id "foo" :value "oid-171046"}))))
+
   (testing "lookup"
     (testing "other keys are not found"
       (is (= ::not-found (::other-key #fhir/oid"foo" ::not-found)))))
@@ -1804,6 +2001,15 @@
     (are [x] (= "id-123745" (type/value x) (:value x) (:value x ::foo))
       #fhir/id"id-123745"
       #fhir/id{:id "foo" :value "id-123745"}))
+
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/id"id-165634" "id-165643")
+             #fhir/id"id-165643")))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/id{:id "foo"} "id-171046")
+             #fhir/id{:id "foo" :value "id-171046"}))))
 
   (testing "lookup"
     (testing "other keys are not found"
@@ -1861,6 +2067,15 @@
       #fhir/markdown"markdown-123745"
       #fhir/markdown{:id "foo" :value "markdown-123745"}))
 
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/markdown"markdown-165634" "markdown-165643")
+             #fhir/markdown"markdown-165643")))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/markdown{:id "foo"} "markdown-171046")
+             #fhir/markdown{:id "foo" :value "markdown-171046"}))))
+
   (testing "lookup"
     (testing "other keys are not found"
       (is (= ::not-found (::other-key #fhir/markdown"foo" ::not-found)))))
@@ -1917,6 +2132,15 @@
     (are [x] (= 160845 (type/value x) (:value x) (:value x ::foo))
       #fhir/unsignedInt 160845
       #fhir/unsignedInt{:id "foo" :value 160845}))
+
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/unsignedInt 1 2)
+             #fhir/unsignedInt 2)))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/unsignedInt{:id "foo"} 1)
+             #fhir/unsignedInt{:id "foo" :value 1}))))
 
   (testing "lookup"
     (testing "other keys are not found"
@@ -1983,6 +2207,15 @@
     (are [x] (= 160845 (type/value x) (:value x) (:value x ::foo))
       #fhir/positiveInt 160845
       #fhir/positiveInt{:id "foo" :value 160845}))
+
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/positiveInt 1 2)
+             #fhir/positiveInt 2)))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/positiveInt{:id "foo"} 1)
+             #fhir/positiveInt{:id "foo" :value 1}))))
 
   (testing "lookup"
     (testing "other keys are not found"
@@ -2054,6 +2287,15 @@
       #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
       #fhir/uuid{:id "foo" :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"}))
 
+  (testing "assoc value"
+    (testing "non-extended"
+      (is (= (type/assoc-value #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")
+             #fhir/uuid"urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")))
+
+    (testing "already extended"
+      (is (= (type/assoc-value #fhir/uuid{:id "foo"} "urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")
+             #fhir/uuid{:id "foo" :value "urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217"}))))
+
   (testing "to-json"
     (is (= "\"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3\""
            (gen-json-string #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
@@ -2105,6 +2347,10 @@
 
   (testing "value"
     (is (= "xhtml-123745" (type/value #fhir/xhtml"xhtml-123745"))))
+
+  (testing "assoc value"
+    (is (= (type/assoc-value #fhir/xhtml"xhtml-165634" "xhtml-165643")
+           #fhir/xhtml"xhtml-165643")))
 
   (testing "to-json"
     (is (= "\"xhtml-123745\"" (gen-json-string #fhir/xhtml"xhtml-123745"))))

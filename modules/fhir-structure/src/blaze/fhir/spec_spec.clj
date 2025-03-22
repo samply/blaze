@@ -1,6 +1,7 @@
 (ns blaze.fhir.spec-spec
   (:require
    [blaze.anomaly-spec]
+   [blaze.fhir.parsing-context.spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.spec]
    [clojure.alpha.spec :as s2]
@@ -24,6 +25,11 @@
 
 (s/fdef fhir-spec/conform-json
   :args (s/cat :x any?)
+  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
+
+(s/fdef fhir-spec/parse-conform-json
+  :args (s/cat :context :blaze.fhir/parsing-context :type (s/? string?)
+               :source some?)
   :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/unform-json

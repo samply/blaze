@@ -25,6 +25,7 @@
   ;;
   :blaze/rest-api
   {:node #blaze/ref :blaze.db.main/node
+   :parsing-context #blaze/ref :blaze.fhir/parsing-context
    :admin-node #blaze/ref :blaze.db.admin/node
    :search-system-handler #blaze/ref :blaze.interaction/search-system
    :transaction-handler #blaze/ref :blaze.interaction/transaction
@@ -269,6 +270,7 @@
   :blaze/admin-api
   {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
    :admin-node #blaze/ref :blaze.db.admin/node
+   :parsing-context #blaze/ref :blaze.fhir/parsing-context
    :job-scheduler #blaze/ref :blaze/job-scheduler
    :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
    :read-job-handler #blaze/ref :blaze.interaction/read
@@ -455,6 +457,9 @@
    :scheduler #blaze/ref :blaze/scheduler
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
+
+  :blaze.fhir/parsing-context
+  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
 
   :blaze.fhir/structure-definition-repo {}}
 

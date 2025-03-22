@@ -48,6 +48,21 @@
   [x]
   (p/-value x))
 
+(defn assoc-id
+  "Associates `id` to `x`."
+  [x id]
+  (p/-assoc-id x id))
+
+(defn assoc-extension
+  "Associates `extension` to `x`."
+  [x extension]
+  (p/-assoc-extension x extension))
+
+(defn assoc-value
+  "Associates `value` to `x`."
+  [x value]
+  (p/-assoc-value x value))
+
 (defn to-xml [x]
   (p/-to-xml x))
 
@@ -85,7 +100,10 @@
   nil
   (-type [_])
   (-interned [_] true)
+  (-assoc-id [_ _])
+  (-assoc-extension [_ _])
   (-value [_])
+  (-assoc-value [_ _])
   (-has-primary-content [_] false)
   (-serialize-json [_ _ _])
   (-has-secondary-content [_] false)
@@ -111,7 +129,10 @@
   Boolean
   (-type [_] :fhir/boolean)
   (-interned [_] true)
+  (-assoc-id [b id] (boolean {:id id :value b}))
+  (-assoc-extension [b extension] (boolean {:extension extension :value b}))
   (-value [b] b)
+  (-assoc-value [_ value] (boolean value))
   (-has-primary-content [_] true)
   (-serialize-json [b generator]
     (.writeBoolean ^JsonGenerator generator b))
@@ -168,7 +189,10 @@
   Integer
   (-type [_] :fhir/integer)
   (-interned [_] false)
+  (-assoc-id [i id] (integer {:id id :value i}))
+  (-assoc-extension [i extension] (integer {:extension extension :value i}))
   (-value [i] i)
+  (-assoc-value [_ value] (integer value))
   (-has-primary-content [_] true)
   (-serialize-json [i generator]
     (.writeNumber ^JsonGenerator generator i))
@@ -211,7 +235,10 @@
   Long
   (-type [_] :fhir/long)
   (-interned [_] false)
+  (-assoc-id [l id] (long {:id id :value l}))
+  (-assoc-extension [l extension] (long {:extension extension :value l}))
   (-value [l] l)
+  (-assoc-value [_ value] (long value))
   (-has-primary-content [_] true)
   (-serialize-json [l generator]
     (.writeNumber ^JsonGenerator generator (unchecked-long l)))
@@ -254,7 +281,10 @@
   String
   (-type [_] :fhir/string)
   (-interned [_] false)
+  (-assoc-id [s id] (string {:id id :value s}))
+  (-assoc-extension [s extension] (string {:extension extension :value s}))
   (-value [s] s)
+  (-assoc-value [_ value] value)
   (-has-primary-content [_] true)
   (-serialize-json [s generator]
     (.writeString ^JsonGenerator generator s))
@@ -315,7 +345,10 @@
   BigDecimal
   (-type [_] :fhir/decimal)
   (-interned [_] false)
+  (-assoc-id [d id] (decimal {:id id :value d}))
+  (-assoc-extension [d extension] (decimal {:extension extension :value d}))
   (-value [d] d)
+  (-assoc-value [_ value] (decimal value))
   (-has-primary-content [_] true)
   (-serialize-json [d generator]
     (.writeNumber ^JsonGenerator generator d))
@@ -332,7 +365,7 @@
   (-references [_]))
 
 (defextended ExtendedDecimal [id extension ^BigDecimal value]
-  :fhir-type :fhir/decimal :hash-num 4)
+  :fhir-type :fhir/decimal :hash-num 4 :value-constructor bigdec)
 
 (def ^{:arglists '([x])} decimal
   (create-fn (intern/intern-value map->ExtendedDecimal) ->ExtendedDecimal
@@ -357,6 +390,8 @@
 
 (declare uri?)
 (declare uri)
+(declare create-uri)
+(declare map->ExtendedUri)
 (declare xml->Uri)
 
 (def-primitive-type Uri [^String value] :hash-num 5 :interned true)
@@ -365,6 +400,7 @@
 
 (declare url?)
 (declare url)
+(declare map->ExtendedUrl)
 (declare xml->Url)
 
 (def-primitive-type Url [value] :hash-num 6)
@@ -373,6 +409,8 @@
 
 (declare canonical?)
 (declare canonical)
+(declare create-canonical)
+(declare map->ExtendedCanonical)
 (declare xml->Canonical)
 
 (def-primitive-type Canonical [^String value] :hash-num 7 :interned true)
@@ -381,11 +419,14 @@
 
 (declare base64Binary?)
 (declare base64Binary)
+(declare map->ExtendedBase64Binary)
 (declare xml->Base64Binary)
 
 (def-primitive-type Base64Binary [value] :hash-num 8)
 
 ;; ---- instant ---------------------------------------------------------------
+
+(declare instant)
 
 (defmethod print-method Instant [^Instant instant ^Writer w]
   (doto w
@@ -398,7 +439,10 @@
   p/FhirType
   (-type [_] :fhir/instant)
   (-interned [_] false)
+  (-assoc-id [_ id] (instant {:id id :value value}))
+  (-assoc-extension [_ extension] (instant {:extension extension :value value}))
   (-value [_] value)
+  (-assoc-value [_ val] (instant val))
   (-has-primary-content [_] true)
   (-serialize-json [_ generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string value)))
@@ -436,7 +480,10 @@
   Instant
   (-type [_] :fhir/instant)
   (-interned [_] false)
+  (-assoc-id [i id] (instant {:id id :value i}))
+  (-assoc-extension [i extension] (instant {:extension extension :value i}))
   (-value [instant] (.atOffset instant ZoneOffset/UTC))
+  (-assoc-value [_ value] (instant value))
   (-has-primary-content [_] true)
   (-serialize-json [instant generator]
     (.writeString ^JsonGenerator generator (.format DateTimeFormatter/ISO_INSTANT instant)))
@@ -512,7 +559,11 @@
   p/FhirType
   (-type [_] :fhir/date)
   (-interned [_] false)
+  (-assoc-id [d id] (date {:id id :value (p/-value d)}))
+  (-assoc-extension [d extension]
+    (date {:extension extension :value (p/-value d)}))
   (-value [_] (system/date year))
+  (-assoc-value [_ value] (create-date value))
   (-has-primary-content [_] true)
   (-serialize-json [date generator]
     (.writeString ^JsonGenerator generator (str (p/-value date))))
@@ -553,7 +604,11 @@
   p/FhirType
   (-type [_] :fhir/date)
   (-interned [_] false)
+  (-assoc-id [d id] (date {:id id :value (p/-value d)}))
+  (-assoc-extension [d extension]
+    (date {:extension extension :value (p/-value d)}))
   (-value [_] (system/date year month))
+  (-assoc-value [_ value] (create-date value))
   (-has-primary-content [_] true)
   (-serialize-json [date generator]
     (.writeString ^JsonGenerator generator (str (p/-value date))))
@@ -594,7 +649,11 @@
   p/FhirType
   (-type [_] :fhir/date)
   (-interned [_] false)
+  (-assoc-id [d id] (date {:id id :value (p/-value d)}))
+  (-assoc-extension [d extension]
+    (date {:extension extension :value (p/-value d)}))
   (-value [_] (system/date year month day))
+  (-assoc-value [_ value] (create-date value))
   (-has-primary-content [_] true)
   (-serialize-json [date generator]
     (.writeString ^JsonGenerator generator (str (p/-value date))))
@@ -712,7 +771,11 @@
   p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
+  (-assoc-id [d id] (dateTime {:id id :value (p/-value d)}))
+  (-assoc-extension [d extension]
+    (dateTime {:extension extension :value (p/-value d)}))
   (-value [_] (system/date-time year))
+  (-assoc-value [_ value] (create-date-time value))
   (-has-primary-content [_] true)
   (-serialize-json [date-time generator]
     (.writeString ^JsonGenerator generator (str (p/-value date-time))))
@@ -753,7 +816,11 @@
   p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
+  (-assoc-id [d id] (dateTime {:id id :value (p/-value d)}))
+  (-assoc-extension [d extension]
+    (dateTime {:extension extension :value (p/-value d)}))
   (-value [_] (system/date-time year month))
+  (-assoc-value [_ value] (create-date-time value))
   (-has-primary-content [_] true)
   (-serialize-json [date-time generator]
     (.writeString ^JsonGenerator generator (str (p/-value date-time))))
@@ -794,7 +861,11 @@
   p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
+  (-assoc-id [d id] (dateTime {:id id :value (p/-value d)}))
+  (-assoc-extension [d extension]
+    (dateTime {:extension extension :value (p/-value d)}))
   (-value [_] (system/date-time year month day))
+  (-assoc-value [_ value] (create-date-time value))
   (-has-primary-content [_] true)
   (-serialize-json [date-time generator]
     (.writeString ^JsonGenerator generator (str (p/-value date-time))))
@@ -835,7 +906,11 @@
   OffsetDateTime
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
+  (-assoc-id [d id] (dateTime {:id id :value d}))
+  (-assoc-extension [d extension]
+    (dateTime {:extension extension :value d}))
   (-value [date-time] date-time)
+  (-assoc-value [_ value] (create-date-time value))
   (-has-primary-content [_] true)
   (-serialize-json [date-time generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
@@ -854,7 +929,11 @@
   LocalDateTime
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
+  (-assoc-id [d id] (dateTime {:id id :value d}))
+  (-assoc-extension [d extension]
+    (dateTime {:extension extension :value d}))
   (-value [date-time] date-time)
+  (-assoc-value [_ value] (create-date-time value))
   (-has-primary-content [_] true)
   (-serialize-json [date-time generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
@@ -942,7 +1021,11 @@
   LocalTime
   (-type [_] :fhir/time)
   (-interned [_] false)
+  (-assoc-id [t id] (time {:id id :value t}))
+  (-assoc-extension [t extension]
+    (time {:extension extension :value t}))
   (-value [time] time)
+  (-assoc-value [_ value] value)
   (-has-primary-content [_] true)
   (-serialize-json [time generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string time)))
@@ -1006,6 +1089,8 @@
 
 (declare code?)
 (declare code)
+(declare create-code)
+(declare map->ExtendedCode)
 (declare xml->Code)
 
 (def-primitive-type Code [^String value] :hash-num 13 :interned true)
@@ -1014,6 +1099,7 @@
 
 (declare oid?)
 (declare oid)
+(declare map->ExtendedOid)
 
 (def-primitive-type Oid [value] :hash-num 14)
 
@@ -1021,6 +1107,7 @@
 
 (declare id?)
 (declare id)
+(declare map->ExtendedId)
 
 (def-primitive-type Id [value] :hash-num 15)
 
@@ -1028,6 +1115,7 @@
 
 (declare markdown?)
 (declare markdown)
+(declare map->ExtendedMarkdown)
 (declare xml->Markdown)
 
 (def-primitive-type Markdown [value] :hash-num 16)
@@ -1036,6 +1124,7 @@
 
 (declare unsignedInt?)
 (declare unsignedInt)
+(declare map->ExtendedUnsignedInt)
 (declare xml->UnsignedInt)
 
 (def-primitive-type UnsignedInt [^Integer value] :hash-num 17)
@@ -1044,17 +1133,21 @@
 
 (declare positiveInt?)
 (declare positiveInt)
+(declare map->ExtendedPositiveInt)
 (declare xml->PositiveInt)
 
 (def-primitive-type PositiveInt [^Integer value] :hash-num 18)
 
 ;; ---- uuid ------------------------------------------------------------------
 
+(declare uuid)
+
 (extend-protocol p/FhirType
   UUID
   (-type [_] :fhir/uuid)
   (-interned [_] false)
   (-value [uuid] (str "urn:uuid:" uuid))
+  (-assoc-value [_ value] (uuid value))
   (-has-primary-content [_] true)
   (-serialize-json [uuid generator]
     (.writeString ^JsonGenerator generator (str "urn:uuid:" uuid)))
@@ -1072,7 +1165,7 @@
   (-references [_]))
 
 (defextended ExtendedUuid [id extension ^UUID value]
-  :fhir-type :fhir/uuid :hash-num 19 :value-form (str "urn:uuid:" value))
+  :fhir-type :fhir/uuid :hash-num 19 :value-constructor uuid :value-form (str "urn:uuid:" value))
 
 (def ^{:arglists '([x])} uuid
   (create-fn (intern/intern-value map->ExtendedUuid) ->ExtendedUuid
@@ -1110,11 +1203,14 @@
           (wrap-div)
           (parse-xhtml*)))))
 
+(declare ->Xhtml)
+
 (deftype Xhtml [value]
   p/FhirType
   (-type [_] :fhir/xhtml)
   (-interned [_] false)
   (-value [_] value)
+  (-assoc-value [_ val] (->Xhtml val))
   (-has-primary-content [_] true)
   (-serialize-json [_ generator]
     (.writeString ^JsonGenerator generator ^String value))
@@ -1164,7 +1260,7 @@
     (reduce #(when (p/-has-primary-content %2) (reduced true)) nil xs))
   (-serialize-json [xs generator]
     (.writeStartArray ^JsonGenerator generator)
-    (reduce #(p/-serialize-json %2 generator) nil xs)
+    (run! #(p/-serialize-json % generator) xs)
     (.writeEndArray ^JsonGenerator generator))
   (-has-secondary-content [xs]
     (reduce #(when (p/-has-secondary-content %2) (reduced true)) nil xs))
@@ -1187,7 +1283,10 @@
   (-type [m]
     (.valAt m :fhir/type))
   (-interned [_] false)
+  (-assoc-id [m id] (assoc m :id id))
+  (-assoc-extension [m extension] (assoc m :extension extension))
   (-value [_])
+  (-assoc-value [m value] (assoc m :value value))
   (-has-primary-content [_] true)
   (-serialize-json [m generator]
     (.writeStartObject ^JsonGenerator generator)

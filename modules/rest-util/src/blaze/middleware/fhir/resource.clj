@@ -35,25 +35,16 @@
       (str/starts-with? content-type "text/json")))
 
 (defn- parse-json
-  "Takes a request `body` and returns the parsed JSON content.
+  "Takes a request `body` and returns the parsed JSON content in internal format.
 
   Returns an anomaly on parse errors."
-  [body]
+  [parsing-context body]
   (with-open [_ (prom/timer parse-duration-seconds "json")]
-    (fhir-spec/parse-json body)))
+    (fhir-spec/parse-conform-json parsing-context body)))
 
-(defn- conform-json [json]
-  (if (map? json)
-    (fhir-spec/conform-json json)
-    (ba/incorrect
-     "Expect a JSON object."
-     :fhir/issue "structure"
-     :fhir/operation-outcome "MSG_JSON_OBJECT")))
-
-(defn- resource-request-json [{:keys [body] :as request}]
+(defn- resource-request-json [parsing-context {:keys [body] :as request}]
   (if body
-    (when-ok [x (parse-json body)
-              resource (conform-json x)]
+    (when-ok [resource (parse-json parsing-context body)]
       (assoc request :body resource))
     (ba/incorrect "Missing HTTP body.")))
 
@@ -102,10 +93,10 @@
   (format "Unsupported media type `%s` expect one of `application/fhir+json` or `application/fhir+xml`."
           media-type))
 
-(defn- resource-request [request]
+(defn- resource-request [parsing-context request]
   (if-let [content-type (request/content-type request)]
     (cond
-      (json-request? content-type) (resource-request-json request)
+      (json-request? content-type) (resource-request-json parsing-context request)
       (xml-request? content-type) (resource-request-xml request)
       :else
       (ba/incorrect (unsupported-media-type-msg content-type)
@@ -123,9 +114,9 @@
 
   In case on errors, returns an OperationOutcome in the internal format with the
   appropriate error and skips the handler."
-  [handler]
+  [handler parsing-context]
   (fn [request]
-    (if-ok [request (resource-request request)]
+    (if-ok [request (resource-request parsing-context request)]
       (handler request)
       ac/completed-future)))
 
@@ -147,11 +138,11 @@
             :data (type/base64Binary (encode-binary-data body))})
     (ba/incorrect "Missing HTTP body.")))
 
-(defn- binary-resource-request [request]
+(defn- binary-resource-request [parsing-context request]
   (if-let [content-type (request/content-type request)]
     (cond
       (str/starts-with? content-type "application/fhir+json")
-      (resource-request-json request)
+      (resource-request-json parsing-context request)
 
       (str/starts-with? content-type "application/fhir+xml")
       (resource-request-xml request)
@@ -169,8 +160,8 @@
 
   In case on errors, returns an OperationOutcome in the internal format with the
   appropriate error and skips the handler."
-  [handler]
+  [handler parsing-context]
   (fn [request]
-    (if-ok [request (binary-resource-request request)]
+    (if-ok [request (binary-resource-request parsing-context request)]
       (handler request)
       ac/completed-future)))

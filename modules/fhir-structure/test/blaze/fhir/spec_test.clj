@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec-test
   (:require
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
    [blaze.fhir.spec.generators :as fg]
@@ -20,6 +21,7 @@
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
+   [jsonista.core :as j]
    [juxt.iota :refer [given]])
   (:import
    [java.nio.charset StandardCharsets]
@@ -32,20 +34,35 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def structure-definition-repo
-  (:blaze.fhir/structure-definition-repo
-   (ig/init {:blaze.fhir/structure-definition-repo {}})))
+(def ^:private context
+  (:blaze.fhir/parsing-context
+   (ig/init
+    {:blaze.fhir/parsing-context
+     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
+     :blaze.fhir/structure-definition-repo {}})))
 
-(deftest parse-json-test
+(defn- parse-conform-json
+  ([source]
+   (fhir-spec/parse-conform-json context source))
+  ([type source]
+   (fhir-spec/parse-conform-json context type source)))
+
+(defn- conform-json
+  ([data]
+   (fhir-spec/parse-conform-json context (j/write-value-as-string data)))
+  ([type data]
+   (fhir-spec/parse-conform-json context type (j/write-value-as-string data))))
+
+(deftest parse-conform-json-test
   (testing "fails on unexpected end-of-input"
-    (given (fhir-spec/parse-json "{")
+    (given (parse-conform-json "{")
       ::anom/category := ::anom/incorrect
       ::anom/message :# "Unexpected end-of-input: expected close marker for Object(.|\\s)*"))
 
   (testing "fails on trailing token"
-    (given (fhir-spec/parse-json "{}{")
+    (given (parse-conform-json "Patient" "{}{")
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Trailing token (of type START_OBJECT) found after value (bound as `java.lang.Object`): not allowed as per `DeserializationFeature.FAIL_ON_TRAILING_TOKENS`\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 3]")))
+      ::anom/message := "Invalid JSON representation of a resource. incorrect trailing token START_OBJECT")))
 
 (deftest parse-cbor-test
   (given (fhir-spec/parse-cbor (byte-array 0))
@@ -127,102 +144,356 @@
 
 (deftest conform-json-test
   (testing "nil"
-    (given (fhir-spec/conform-json nil)
+    (given (conform-json nil)
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
-      [:fhir/issues 0 :fhir.issues/code] := "value"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Given resource does not contain a `resourceType` property."))
+      ::anom/message := "Invalid JSON representation of a resource. Error on value null. Expected type is `Resource`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value null. Expected type is `Resource`."
+      [:fhir/issues 0 :fhir.issues/expression] := ""))
 
   (testing "string"
-    (given (fhir-spec/conform-json "foo")
+    (given (conform-json "foo")
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
-      [:fhir/issues 0 :fhir.issues/code] := "value"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Given resource does not contain a `resourceType` property."))
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `Resource`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo`. Expected type is `Resource`."
+      [:fhir/issues 0 :fhir.issues/expression] := "")
+
+    (testing "type Patient"
+      (given (conform-json "Patient" "foo")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `Patient`."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo`. Expected type is `Patient`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient")))
 
   (testing "empty map"
-    (given (fhir-spec/conform-json {})
+    (given (conform-json {})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
-      [:fhir/issues 0 :fhir.issues/code] := "value"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Given resource does not contain a `resourceType` property."))
+      ::anom/message := "Invalid JSON representation of a resource. Missing property `resourceType`."))
 
-  (testing "invalid id"
-    (given (fhir-spec/conform-json {:resourceType "Patient" :id 0})
+  (testing "invalid Patient.id"
+    (given (conform-json {:resourceType "Patient" :id 0})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
+      ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `string`."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `0`. Expected type is `Patient.id`."
-      [:fhir/issues 0 :fhir.issues/expression] := "id"))
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.id")
+
+    (given (conform-json {:resourceType "Patient" :id 1.0})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on float value 1.0. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on float value 1.0. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.id"))
+
+  (testing "invalid Patient.active"
+    (given (conform-json {:resourceType "Patient" :active "true"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `true`. Expected type is `boolean`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `true`. Expected type is `boolean`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.active"))
+
+  (testing "invalid Patient.name"
+    (given (conform-json {:resourceType "Patient" :name "John"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `John`. Expected type is `HumanName`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `John`. Expected type is `HumanName`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name"))
+
+  (testing "invalid Patient.name.family"
+    (given (conform-json {:resourceType "Patient" :name {:family 0}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].family")
+
+    (given (conform-json {:resourceType "Patient" :name {:family true}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on boolean value true. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on boolean value true. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].family")
+
+    (given (conform-json {:resourceType "Patient" :name {:family false}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on boolean value false. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on boolean value false. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].family")
+
+    (given (conform-json {:resourceType "Patient" :name {:family []}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on array start. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on array start. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].family")
+
+    (given (conform-json {:resourceType "Patient" :name {:family {}}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on object start. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on object start. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].family"))
+
+  (testing "invalid Patient.name.given"
+    (given (conform-json {:resourceType "Patient" :name {:given 0}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `string[]`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `string[]`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].given"))
+
+  (testing "invalid Patient.gender"
+    (given (conform-json "Patient" {:resourceType "Patient" :gender "a  b"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `a  b`. Expected type is `code, regex [\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `a  b`. Expected type is `code, regex [\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.gender"))
+
+  (testing "unexpected end of input"
+    (testing "within field name"
+      (given (parse-conform-json "Patient" "{\"gender")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input while parsing a field name."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input while parsing a field name."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient"))
+
+    (testing "between field name and value"
+      (given (parse-conform-json "Patient" "{\"gender\"")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient"))
+
+    (testing "within string value"
+      (given (parse-conform-json "Patient" "{\"gender\":\"")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input while reading a string value."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input while reading a string value."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.gender"))
+
+    (testing "within boolean value"
+      (given (parse-conform-json "Patient" "{\"active\":t")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. JSON parsing error."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "JSON parsing error."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient"))
+
+    (testing "after boolean value"
+      (given (parse-conform-json "Patient" "{\"active\":true")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient"))
+
+    (testing "after integer value"
+      (given (parse-conform-json "Observation" "{\"valueInteger\":0")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/expression] := "Observation"))
+
+    (testing "within an array"
+      (given (parse-conform-json "Patient" "{\"name\":[")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.name"))
+
+    (testing "within an object in an array"
+      (given (parse-conform-json "Patient" "{\"name\":[{")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0]")))
+
+  (testing "invalid Patient.gender.id"
+    (given (conform-json {:resourceType "Patient" :_gender {:id 0}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `string`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.gender.id"))
+
+  (testing "invalid Patient.gender.extension.url"
+    (doseq [[value idx] [[{:extension {:url 0}} 0]
+                         [{:extension [{:url 0}]} 0]
+                         [{:extension [{:url "foo"} {:url 0}]} 1]]]
+      (given (conform-json {:resourceType "Patient" :_gender value})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `uri`."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `uri`."
+        [:fhir/issues 0 :fhir.issues/expression] := (format "Patient.gender.extension[%d].url" idx))))
+
+  (testing "unknown property Patient.gender.extension.name-163857"
+    (doseq [[value idx] [[{:extension {:name-163857 "foo"}} 0]
+                         [{:extension [{:name-163857 "foo"}]} 0]
+                         [{:extension [{:url "foo"} {:name-163857 "foo"}]} 1]]]
+      (given (conform-json {:resourceType "Patient" :_gender value})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unknown property `name-163857`."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Unknown property `name-163857`."
+        [:fhir/issues 0 :fhir.issues/expression] := (format "Patient.gender.extension[%d]" idx))))
+
+  (testing "invalid Patient.birthDate"
+    (testing "invalid token"
+      (given (conform-json {:resourceType "Patient" :birthDate 0})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `date`."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `date`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate"))
+
+    (testing "invalid string"
+      (given (conform-json {:resourceType "Patient" :birthDate "a"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `date`."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `a`. Expected type is `date`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate")))
+
+  (testing "invalid Patient.deceasedBoolean"
+    (given (conform-json {:resourceType "Patient" :deceasedBoolean "a"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `boolean`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `a`. Expected type is `boolean`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.deceased"))
+
+  (testing "invalid Patient.maritalStatus"
+    (given (conform-json {:resourceType "Patient" :maritalStatus "a"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `CodeableConcept`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `a`. Expected type is `CodeableConcept`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.maritalStatus"))
+
+  (testing "invalid Patient.contact"
+    (given (conform-json {:resourceType "Patient" :contact "a"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `BackboneElement`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `a`. Expected type is `BackboneElement`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.contact"))
+
+  (testing "invalid Patient.contact.organization"
+    (given (conform-json {:resourceType "Patient" :contact {:organization "a"}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `Reference`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `a`. Expected type is `Reference`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.contact[0].organization"))
 
   (testing "Bundle resource: nil"
-    (given (fhir-spec/conform-json
+    (given (conform-json
             {:resourceType "Bundle"
              :type "transaction"
              :entry [{:resource nil}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
+      ::anom/message := "Invalid JSON representation of a resource. Error on value null. Expected type is `Resource`."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `null`. Expected type is `Resource`."
-      [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value null. Expected type is `Resource`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource"))
 
   (testing "Bundle resource: string"
-    (given (fhir-spec/conform-json
+    (given (conform-json
             {:resourceType "Bundle"
              :type "transaction"
              :entry [{:resource "foo"}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `Resource`."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo`. Expected type is `Resource`."
-      [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
+      [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource"))
+
+  (testing "Bundle resource: Patient.gender error"
+    (given (conform-json
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry [{:resource {:resourceType "Patient" :gender 0}}]})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `code`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `code`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource.gender"))
 
   (testing "Bundle resource: empty map"
-    (given (fhir-spec/conform-json
+    (given (conform-json
             {:resourceType "Bundle"
              :type "transaction"
              :entry [{:resource {}}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
+      ::anom/message := "Invalid JSON representation of a resource. Missing property `resourceType`."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `{}`. Expected type is `Resource`."
-      [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Missing property `resourceType`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource"))
+
+  (testing "invalid Observation.value.value"
+    (given (conform-json {:resourceType "Observation" :valueQuantity {:value "a"}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `decimal`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `a`. Expected type is `decimal`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Observation.value.value"))
 
   (testing "Observation with invalid control character in value"
-    (given (fhir-spec/conform-json
+    (given (conform-json
             {:resourceType "Observation"
              :valueString "foo\u001Ebar"})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid JSON representation of a resource."
+      ::anom/message := "Invalid JSON representation of a resource. Error on value `foo\u001Ebar`. Expected type is `string, regex [\\r\\n\\t\\u0020-\\uFFFF]+`."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo\u001Ebar`. Expected type is `string`, regex `[\\r\\n\\t\\u0020-\\uFFFF]+`."
-      [:fhir/issues 0 :fhir.issues/expression] := "valueString"))
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo\u001Ebar`. Expected type is `string, regex [\\r\\n\\t\\u0020-\\uFFFF]+`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Observation.value"))
 
   (testing "empty patient resource"
     (testing "gets type annotated"
       (is (= :fhir/Patient
-             (fhir-spec/fhir-type
-              (fhir-spec/conform-json
-               {:resourceType "Patient"})))))
+             (fhir-spec/fhir-type (conform-json {:resourceType "Patient"})))))
 
     (testing "stays the same"
       (is (= {:fhir/type :fhir/Patient}
-             (fhir-spec/conform-json {:resourceType "Patient"})))))
+             (conform-json {:resourceType "Patient"})))))
 
   (testing "deceasedBoolean on Patient will be remapped"
     (is (= {:fhir/type :fhir/Patient :deceased true}
-           (fhir-spec/conform-json
-            {:resourceType "Patient" :deceasedBoolean true}))))
+           (conform-json {:resourceType "Patient" :deceasedBoolean true}))))
 
   (testing "deceasedDateTime on Patient will be remapped"
     (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}
-           (fhir-spec/conform-json
-            {:resourceType "Patient" :deceasedDateTime "2020"}))))
+           (conform-json {:resourceType "Patient" :deceasedDateTime "2020"}))))
 
   (testing "multipleBirthInteger on Patient will be remapped"
     (is (= {:fhir/type :fhir/Patient :multipleBirth 2}
-           (fhir-spec/conform-json
-            {:resourceType "Patient" :multipleBirthInteger 2}))))
+           (conform-json {:resourceType "Patient" :multipleBirthInteger 2}))))
+
+  (testing "with unknown property"
+    (given (conform-json {:resourceType "Patient" :unknown "foo"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Unknown property `unknown`."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Unknown property `unknown`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient"))
+
+  (testing "Patient with id"
+    (given (conform-json {:resourceType "Patient" :id "id-220105"})
+      :fhir/type := :fhir/Patient
+      :id := "id-220105"))
 
   (testing "Observation with code"
     (is (= {:fhir/type :fhir/Observation
@@ -232,9 +503,32 @@
               [#fhir/Coding
                 {:system #fhir/uri"http://loinc.org"
                  :code #fhir/code"39156-5"}]}}
-           (fhir-spec/conform-json
+           (conform-json
             {:resourceType "Observation"
              :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}))))
+
+  (testing "Observation with valueTime"
+    (is (= {:fhir/type :fhir/Observation
+            :value #fhir/time"16:26:42"}
+           (conform-json
+            {:resourceType "Observation"
+             :valueTime "16:26:42"}))))
+
+  (testing "Observation with valueTime with id"
+    (is (= {:fhir/type :fhir/Observation
+            :value #fhir/time{:id "foo" :value #system/time"16:26:42"}}
+           (conform-json
+            {:resourceType "Observation"
+             :valueTime "16:26:42"
+             :_valueTime {:id "foo"}}))))
+
+  (testing "Observation with valueTime with extension"
+    (is (= {:fhir/type :fhir/Observation
+            :value #fhir/time{:extension [#fhir/Extension{:url "foo"}] :value #system/time"16:26:42"}}
+           (conform-json
+            {:resourceType "Observation"
+             :valueTime "16:26:42"
+             :_valueTime {:extension {:url "foo"}}}))))
 
   (testing "questionnaire resource with item groups"
     (is (= {:fhir/type :fhir/Questionnaire
@@ -245,7 +539,7 @@
               [{:fhir/type :fhir.Questionnaire/item
                 :type #fhir/code"string"
                 :text "foo"}]}]}
-           (fhir-spec/conform-json
+           (conform-json
             {:resourceType "Questionnaire"
              :item
              [{:type "group"
@@ -454,39 +748,48 @@
     (given (fhir-spec/conform-cbor {})
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid intermediate representation of a resource."
-      :x := {})))
+      :x := {}))
 
-(defn- conform-unform-cbor [resource]
+  (testing "Patient"
+    (testing "without properties"
+      (is (= (fhir-spec/conform-cbor {:resourceType "Patient"})
+             {:fhir/type :fhir/Patient})))
+
+    (testing "with one unknown property"
+      (is (= (fhir-spec/conform-cbor {:resourceType "Patient" :unknown "foo"})
+             {:fhir/type :fhir/Patient :unknown "foo"})))))
+
+(defn- unform-conform-cbor [resource]
   (-> (fhir-spec/unform-cbor resource)
       fhir-spec/parse-cbor
       fhir-spec/conform-cbor))
 
 (deftest unform-cbor-test
   (testing "Patient with deceasedBoolean"
-    (are [resource] (= resource (conform-unform-cbor resource))
+    (are [resource] (= resource (unform-conform-cbor resource))
       {:fhir/type :fhir/Patient :deceased true}))
 
   (testing "Patient with deceasedDateTime"
-    (are [resource] (= resource (conform-unform-cbor resource))
+    (are [resource] (= resource (unform-conform-cbor resource))
       {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}))
 
   (testing "Patient with multipleBirthBoolean"
-    (are [resource] (= resource (conform-unform-cbor resource))
+    (are [resource] (= resource (unform-conform-cbor resource))
       {:fhir/type :fhir/Patient :multipleBirth false}))
 
   (testing "Patient with multipleBirthInteger"
-    (are [resource] (= resource (conform-unform-cbor resource))
+    (are [resource] (= resource (unform-conform-cbor resource))
       {:fhir/type :fhir/Patient :multipleBirth (int 2)}))
 
   (testing "Bundle with Patient"
-    (are [resource] (= resource (conform-unform-cbor resource))
+    (are [resource] (= resource (unform-conform-cbor resource))
       {:fhir/type :fhir/Bundle
        :entry
        [{:fhir/type :fhir.Bundle/entry
          :resource {:fhir/type :fhir/Patient :id "0"}}]}))
 
   (testing "Observation with code"
-    (are [resource] (= resource (conform-unform-cbor resource))
+    (are [resource] (= resource (unform-conform-cbor resource))
       {:fhir/type :fhir/Observation
        :code
        #fhir/CodeableConcept
@@ -496,14 +799,24 @@
             :code #fhir/code"39156-5"}]}}))
 
   (testing "Observation with valueQuantity"
-    (are [resource] (= resource (conform-unform-cbor resource))
+    (are [resource] (= resource (unform-conform-cbor resource))
       {:fhir/type :fhir/Observation
        :value
        #fhir/Quantity
         {:value 36.6M
          :unit #fhir/string"kg/m^2"
          :system #fhir/uri"http://unitsofmeasure.org"
-         :code #fhir/code"kg/m2"}})))
+         :code #fhir/code"kg/m2"}}))
+
+  (testing "Observation with valueTime"
+    (are [resource] (= resource (unform-conform-cbor resource))
+      {:fhir/type :fhir/Observation
+       :value #fhir/time"00:00"}))
+
+  (testing "Observation with valueTime with id"
+    (are [resource] (= resource (unform-conform-cbor resource))
+      {:fhir/type :fhir/Observation
+       :value #fhir/time{:id "foo" :value #system/time"00:00"}})))
 
 (deftest unform-xml-test
   (testing "Patient with id"
@@ -592,7 +905,7 @@
   (testing "Patient"
     (is (= :fhir/Patient
            (fhir-spec/fhir-type
-            (fhir-spec/conform-json {:resourceType "Patient"}))))))
+            (conform-json {:resourceType "Patient"}))))))
 
 (deftest explain-data-json-test
   (testing "valid resources"
@@ -4431,8 +4744,7 @@
         (prop/for-all [x (fg/bundle-entry :resource (fg/patient))]
           (= (->> x
                   fhir-spec/unform-json
-                  fhir-spec/parse-json
-                  (s2/conform :fhir.json.Bundle/entry))
+                  (parse-conform-json "Bundle.entry"))
              x))))
 
     (testing "XML"
@@ -4471,8 +4783,7 @@
         (prop/for-all [patient (fg/patient)]
           (= (-> patient
                  fhir-spec/unform-json
-                 fhir-spec/parse-json
-                 fhir-spec/conform-json)
+                 parse-conform-json)
              patient))))
 
     (testing "XML"
@@ -4507,16 +4818,15 @@
 (deftest observation-test
   (testing "transforming"
     (testing "JSON"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [observation (fg/observation)]
           (= (-> observation
                  fhir-spec/unform-json
-                 fhir-spec/parse-json
-                 fhir-spec/conform-json)
+                 parse-conform-json)
              observation))))
 
     (testing "XML"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [observation (fg/observation)]
           (= (-> observation
                  fhir-spec/unform-xml
@@ -4524,7 +4834,7 @@
              observation))))
 
     (testing "CBOR"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [observation (fg/observation)]
           (= (-> observation
                  fhir-spec/unform-cbor
@@ -4541,16 +4851,15 @@
 (deftest procedure-test
   (testing "transforming"
     (testing "JSON"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [procedure (fg/procedure)]
           (= (-> procedure
                  fhir-spec/unform-json
-                 fhir-spec/parse-json
-                 fhir-spec/conform-json)
+                 parse-conform-json)
              procedure))))
 
     (testing "XML"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [procedure (fg/procedure)]
           (= (-> procedure
                  fhir-spec/unform-xml
@@ -4558,7 +4867,7 @@
              procedure))))
 
     (testing "CBOR"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [procedure (fg/procedure)]
           (= (-> procedure
                  fhir-spec/unform-cbor
@@ -4595,16 +4904,15 @@
 (deftest allergy-intolerance-test
   (testing "transforming"
     (testing "JSON"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
           (= (-> allergy-intolerance
                  fhir-spec/unform-json
-                 fhir-spec/parse-json
-                 fhir-spec/conform-json)
+                 parse-conform-json)
              allergy-intolerance))))
 
     (testing "XML"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
           (= (-> allergy-intolerance
                  fhir-spec/unform-xml
@@ -4612,7 +4920,7 @@
              allergy-intolerance))))
 
     (testing "CBOR"
-      (satisfies-prop 10
+      (satisfies-prop 20
         (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
           (= (-> allergy-intolerance
                  fhir-spec/unform-cbor
@@ -4622,7 +4930,7 @@
 
 (deftest code-system-test
   (testing "summary conforming"
-    (satisfies-prop 10
+    (satisfies-prop 20
       (prop/for-all [code-system (fg/code-system)]
         (nil? (:concept (-> code-system
                             fhir-spec/unform-cbor
@@ -4631,7 +4939,7 @@
 
 (deftest value-set-test
   (testing "summary conforming"
-    (satisfies-prop 10
+    (satisfies-prop 20
       (prop/for-all [value-set (fg/value-set)]
         (nil? (:compose (-> value-set
                             fhir-spec/unform-cbor

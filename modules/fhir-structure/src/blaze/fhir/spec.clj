@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.fhir.hash.spec]
    [blaze.fhir.spec.impl :as impl]
+   [blaze.fhir.spec.resource :as res]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type :as type]
    [blaze.util :refer [conj-vec]]
@@ -307,6 +308,12 @@
     "Invalid JSON representation of a resource."
     :x x
     :fhir/issues (:fhir/issues (explain-data-json x)))))
+
+(defn parse-conform-json
+  ([context source]
+   (ba/try-all ::anom/incorrect (res/parse-json context source)))
+  ([context type source]
+   (ba/try-all ::anom/incorrect (res/parse-json context type source))))
 
 (defn conform-xml
   "Returns the internal representation of `x` parsed from XML.

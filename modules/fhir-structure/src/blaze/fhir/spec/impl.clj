@@ -648,7 +648,7 @@
 (defn struct-def->spec-def [{:keys [kind] {elem-defs :element} :snapshot}]
   (flatten (build-spec-defs kind [] (index-by-path elem-defs))))
 
-(defn- internal-spec-form [name]
+(defn- internal-pred [name]
   (case name
     "boolean" `type/boolean?
     "integer" `type/integer?
@@ -744,7 +744,7 @@
   "Converts a primitive type structure definition into spec defs for JSON and
    internal representation."
   [{:keys [name snapshot]}]
-  [{:key (keyword "fhir" name) :spec-form (internal-spec-form name)}
+  [{:key (keyword "fhir" name) :spec-form (internal-pred name)}
    {:key (keyword "fhir.json" name) :spec-form (json-spec-form name snapshot)}
    {:key (keyword "fhir.xml" name) :spec-form (xml-spec-form name snapshot)}
    {:key (keyword "fhir.cbor" name) :spec-form (cbor-spec-form name snapshot)}])

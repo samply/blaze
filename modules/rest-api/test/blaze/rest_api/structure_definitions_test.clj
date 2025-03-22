@@ -2,6 +2,7 @@
   (:require
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.rest-api.structure-definitions :as structure-definitions]
@@ -17,14 +18,18 @@
 (def config
   (assoc
    mem-node-config
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}
    :blaze.test/fixed-clock {}
    :blaze.test/incrementing-rng-fn {}))
 
-(deftest ensure-code-systems-test
+(deftest ensure-structure-definitions-test
   (log/set-min-level! :info)
   (with-system [{:blaze.db/keys [node]
+                 :blaze.fhir/keys [parsing-context]
                  :blaze.test/keys [fixed-clock incrementing-rng-fn]} config]
-    (let [context {:node node :structure-definition-repo structure-definition-repo
+    (let [context {:node node :parsing-context parsing-context
+                   :structure-definition-repo structure-definition-repo
                    :clock fixed-clock :rng-fn incrementing-rng-fn}]
 
       (testing "after creation"

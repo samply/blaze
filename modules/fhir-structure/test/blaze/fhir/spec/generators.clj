@@ -150,7 +150,7 @@
   (fn
     [& {:keys [id extension value]
         :or {id (gen/return nil)
-             extension (extensions)
+             extension (often-nil (extensions))
              value (nilable value-gen)}}]
     (->> (gen/tuple id extension value)
          (to-map [:id :extension :value])

@@ -1,7 +1,8 @@
 (ns blaze.terminology-service.extern-test
   (:require
    [blaze.fhir-client-spec]
-   [blaze.fhir.test-util]
+   [blaze.fhir.parsing-context]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as u]
    [blaze.http-client.spec]
    [blaze.module.test-util :refer [with-system]]
@@ -31,8 +32,11 @@
 (def config
   {::ts/extern
    {:base-uri "http://localhost:8080/fhir"
-    :http-client (ig/ref ::http-client)}
-   ::http-client {}})
+    :http-client (ig/ref ::http-client)
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)}
+   ::http-client {}
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}})
 
 (deftest init-test
   (testing "nil config"
@@ -46,23 +50,35 @@
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
 
   (testing "invalid base-uri"
     (given-thrown (ig/init {::ts/extern {:base-uri ::invalid}})
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:cause-data ::s/problems 1 :pred] := `string?
-      [:cause-data ::s/problems 1 :val] := ::invalid))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 2 :pred] := `string?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid http-client"
     (given-thrown (ig/init {::ts/extern {:http-client ::invalid}})
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
-      [:cause-data ::s/problems 1 :via] := [:blaze/http-client]
-      [:cause-data ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 2 :via] := [:blaze/http-client]
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid parsing-context"
+    (given-thrown (ig/init {::ts/extern {:parsing-context ::invalid}})
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
+      [:cause-data ::s/problems 2 :via] := [:blaze.fhir/parsing-context]
+      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (defn- expand-value-set [ts & nvs]
   (ts/expand-value-set ts (apply u/parameters nvs)))

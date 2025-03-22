@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.fhir-client :as fhir-client]
+   [blaze.fhir.parsing-context.spec]
    [blaze.fhir.spec.type :as type]
    [blaze.http-client.spec]
    [blaze.module :as m :refer [reg-collector]]
@@ -23,36 +24,37 @@
   {:namespace "terminology_service"}
   (take 14 (iterate #(* 2 %) 0.001)))
 
-(defn- expand-value-set* [base-uri http-client url]
+(defn- expand-value-set* [base-uri http-client parsing-context url]
   (log/debug "Expand ValueSet with url" url)
   (fhir-client/execute-type-get base-uri "ValueSet" "expand"
                                 {:http-client http-client
+                                 :parsing-context parsing-context
                                  :query-params {:url url}}))
 
 (defn- extract-url [{parameters :parameter}]
   (some #(when (= "url" (type/value (:name %))) (type/value (:value %)))
         parameters))
 
-(defn- expand-value-set [base-uri http-client params]
+(defn- expand-value-set [base-uri http-client parsing-context params]
   (let [timer (prom/timer request-duration-seconds)]
-    (-> (expand-value-set* base-uri http-client (extract-url params))
+    (-> (expand-value-set* base-uri http-client parsing-context (extract-url params))
         (ac/when-complete
          (fn [_ _] (prom/observe-duration! timer))))))
 
-(defn- cache [base-uri http-client]
+(defn- cache [base-uri http-client parsing-context]
   (-> (Caffeine/newBuilder)
       (.maximumSize 1000)
       (^[AsyncCacheLoader] Caffeine/.buildAsync
        (fn [params _]
-         (expand-value-set base-uri http-client params)))))
+         (expand-value-set base-uri http-client parsing-context params)))))
 
 (defmethod m/pre-init-spec ::ts/extern [_]
-  (s/keys :req-un [::base-uri :blaze/http-client]))
+  (s/keys :req-un [::base-uri :blaze/http-client :blaze.fhir/parsing-context]))
 
 (defmethod ig/init-key ::ts/extern
-  [_ {:keys [base-uri http-client]}]
+  [_ {:keys [base-uri http-client parsing-context]}]
   (log/info (str "Init terminology server connection: " base-uri))
-  (let [cache (cache base-uri http-client)]
+  (let [cache (cache base-uri http-client parsing-context)]
     (reify p/TerminologyService
       (-expand-value-set [_ params]
         (.get ^AsyncLoadingCache cache params)))))
