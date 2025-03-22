@@ -6,6 +6,7 @@
    [blaze.fhir.test-util]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.resource :refer [wrap-binary-data wrap-resource]]
+   [blaze.middleware.fhir.resource-spec]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
