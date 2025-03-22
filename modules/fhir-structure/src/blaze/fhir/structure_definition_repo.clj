@@ -8,16 +8,34 @@
    [jsonista.core :as j]
    [taoensso.timbre :as log]))
 
-(defn primitive-types [repo]
+(defn primitive-types
+  "Returns a list of all StructureDefinition resources of FHIR R4 primitive
+  types.
+
+  Loads them from directly classpath. Doesn't store them in memory."
+  [repo]
   (p/-primitive-types repo))
 
-(defn complex-types [repo]
+(defn complex-types
+  "Returns a list of all StructureDefinition resources of FHIR R4 complex types.
+
+  Loads them from directly classpath. Doesn't store them in memory."
+  [repo]
   (p/-complex-types repo))
 
-(defn resources [repo]
+(defn resources
+  "Returns a list of all StructureDefinition resources of FHIR R4 resources.
+
+  Loads them from directly classpath. Doesn't store them in memory."
+  [repo]
   (p/-resources repo))
 
-(defn- register-all! [repo]
+(defn- register-all!
+  "Register specs for all FHIR data types and resources.
+
+  That specs are used to conform and unform resources from JSON/XML to the
+  internal format."
+  [repo]
   (log/trace "Register primitive types")
   (si/register (mapcat si/primitive-type->spec-defs (primitive-types repo)))
 

@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.interaction.conditional-delete-type]
@@ -137,6 +138,7 @@
    mem-node-config
    :blaze/rest-api
    {:base-url "http://localhost:8080"
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)
     :structure-definition-repo structure-definition-repo
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
@@ -246,7 +248,9 @@
    :blaze.test/fixed-rng-fn {}
    ::page-store {}
    :blaze.test/page-id-cipher {}
-   ::ts-local/graph-cache {}))
+   ::ts-local/graph-cache {}
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defmethod ig/init-key ::auth-backend
   [_ _]
