@@ -721,6 +721,9 @@
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))
 
+          (testing "the entry has the right fhir type"
+            (is (= :fhir.Bundle/entry (:fhir/type entry))))
+
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/3")
                    (:fullUrl entry)))))))

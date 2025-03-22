@@ -96,7 +96,8 @@
 
 (defn build-entry [context {:fhir/keys [type] :keys [id] :as resource}]
   (cond->
-   {:fullUrl (fhir-util/instance-url context (name type) id)
+   {:fhir/type :fhir.Bundle/entry
+    :fullUrl (fhir-util/instance-url context (name type) id)
     :request
     {:fhir/type :fhir.Bundle.entry/request
      :method (method resource)

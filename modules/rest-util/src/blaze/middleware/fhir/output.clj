@@ -13,10 +13,11 @@
    [clojure.java.io :as io]
    [muuntaja.parse :as parse]
    [prometheus.alpha :as prom]
+   [ring.core.protocols :as rp]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayOutputStream]
+   [java.io ByteArrayOutputStream OutputStream]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -35,10 +36,13 @@
       handler-util/operation-outcome
       generation-fn))
 
-(defn- generate-json [body]
-  (log/trace "generate JSON")
-  (with-open [_ (prom/timer generate-duration-seconds "json")]
-    (fhir-spec/unform-json body)))
+(defn- generate-json [writing-context body]
+  (reify rp/StreamableResponseBody
+    (write-body-to-stream [_body _response output-stream]
+      (log/trace "generate JSON")
+      (with-open [_ (prom/timer generate-duration-seconds "json")]
+        (fhir-spec/write-json writing-context output-stream body)
+        (.close ^OutputStream output-stream)))))
 
 (defn- generate-xml** [body]
   (let [out (ByteArrayOutputStream.)]
@@ -66,30 +70,30 @@
   (or (-> body :contentType type/value)
       "application/octet-stream"))
 
-(defn- generate-binary* [{:keys [body] :as response}]
+(defn- generate-binary* [writing-context {:keys [body] :as response}]
   (try
     (-> (update response :body generate-binary**)
         (ring/content-type (binary-content-type body)))
     (catch Throwable e
-      (-> (ring/response (generate-error-payload generate-json e))
+      (-> (ring/response (generate-error-payload (partial generate-json writing-context) e))
           (ring/status 500)
           (ring/content-type "application/fhir+json")))))
 
-(defn- generate-binary [response]
+(defn- generate-binary [writing-context response]
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
-    (generate-binary* response)))
+    (generate-binary* writing-context response)))
 
-(defn- encode-response-json [{:keys [body] :as response} content-type]
-  (cond-> response body (-> (update :body generate-json)
+(defn- encode-response-json [writing-context {:keys [body] :as response} content-type]
+  (cond-> response body (-> (update :body (partial generate-json writing-context))
                             (ring/content-type content-type))))
 
 (defn- encode-response-xml [{:keys [body] :as response} content-type]
   (cond-> response body (-> generate-xml
                             (ring/content-type content-type))))
 
-(defn- encode-response-binary [{:keys [body] :as response}]
-  (cond-> response body generate-binary))
+(defn- encode-response-binary [writing-context {:keys [body] :as response}]
+  (cond->> response body (generate-binary writing-context)))
 
 (defn- format-key [format]
   (condp = format
@@ -113,32 +117,32 @@
         (some format-key accept)
         :fhir+json)))
 
-(defn handle-response [opts request response]
+(defn handle-response [writing-context opts request response]
   (case (request-format request)
-    :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
+    :fhir+json (encode-response-json writing-context response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
-    :json (encode-response-json response "application/json;charset=utf-8")
+    :json (encode-response-json writing-context response "application/json;charset=utf-8")
     :xml (encode-response-xml response "application/xml;charset=utf-8")
-    :text-json (encode-response-json response "text/json;charset=utf-8")
+    :text-json (encode-response-json writing-context response "text/json;charset=utf-8")
     :text-xml (encode-response-xml response "text/xml;charset=utf-8")
     (when (:accept-all? opts) (dissoc response :body))))
 
 (defn wrap-output
   "Middleware to output resources in JSON or XML."
-  ([handler]
-   (wrap-output handler {}))
-  ([handler opts]
+  ([handler writing-context]
+   (wrap-output handler writing-context {}))
+  ([handler writing-context opts]
    (fn [request respond raise]
-     (handler request #(respond (handle-response opts request %)) raise))))
+     (handler request #(respond (handle-response writing-context opts request %)) raise))))
 
-(defn handle-binary-response [request response]
+(defn handle-binary-response [writing-context request response]
   (case (request-format request)
-    :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
+    :fhir+json (encode-response-json writing-context response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
-    (encode-response-binary response)))
+    (encode-response-binary writing-context response)))
 
 (defn wrap-binary-output
   "Middleware to output binary resources."
-  [handler]
+  [handler writing-context]
   (fn [request respond raise]
-    (handler request #(respond (handle-binary-response request %)) raise)))
+    (handler request #(respond (handle-binary-response writing-context request %)) raise)))

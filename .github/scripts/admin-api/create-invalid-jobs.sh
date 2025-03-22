@@ -5,6 +5,9 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 BASE="http://localhost:8080/fhir"
 
+ERROR_MESSAGE="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Patient\"}" "$BASE/__admin/Task" | jq -r '.issue[].diagnostics')"
+test "error message" "$ERROR_MESSAGE" "Incorrect resource type \`Patient\`. Expected type is \`Task\`."
+
 ERROR_MESSAGE="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Task\"}" "$BASE/__admin/Task" | jq -r '.issue[].details.text')"
 test "error message" "$ERROR_MESSAGE" "No allowed profile found."
 

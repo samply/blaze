@@ -1,5 +1,5 @@
 (ns blaze.db.impl.index.resource-handle
-  (:refer-clojure :exclude [hash])
+  (:refer-clojure :exclude [hash type])
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.codec :as codec]
@@ -91,6 +91,9 @@
   {:inline (fn [rh] `(.-tid ~(with-meta rh {:tag `ResourceHandle})))}
   [rh]
   (.-tid ^ResourceHandle rh))
+
+(defn type [rh]
+  (codec/tid->type (tid rh)))
 
 (defn id
   {:inline (fn [rh] `(.-id ~(with-meta rh {:tag `ResourceHandle})))}

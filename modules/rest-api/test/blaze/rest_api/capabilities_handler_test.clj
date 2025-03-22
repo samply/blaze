@@ -3,6 +3,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
    [blaze.db.impl.search-param]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -22,6 +23,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [integrant.core :as ig]
+   [jsonista.core :as j]
    [juxt.iota :refer [given]]
    [reitit.ring]
    [taoensso.timbre :as log]))
@@ -116,9 +118,7 @@
    {:version "version-131640"
     :release-date "2024-01-07"
     :structure-definition-repo structure-definition-repo
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}))
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)}))
 
 (deftest minimal-config-test
   (with-handler [handler minimal-config]
@@ -128,7 +128,7 @@
       (is (= 200 status))
 
       (testing "ETag header"
-        (is (= "W/\"2c43bb31\"" (get headers "ETag"))))
+        (is (= "W/\"f4e32549\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
@@ -194,7 +194,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"2c43bb31\"" "W/\"2c43bb31\", \"foo\""]]
+      (doseq [if-none-match ["W/\"f4e32549\"" "W/\"f4e32549\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -203,7 +203,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"2c43bb31\"" (get headers "ETag"))))))))
+            (is (= "W/\"f4e32549\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]
@@ -225,10 +225,11 @@
     (let [{:keys [headers body]} @(handler {})]
 
       (testing "ETag header"
-        (is (= "W/\"90f62a33\"" (get headers "ETag"))))
+        (is (= "W/\"ef6f90b9\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :interaction 0 :fhir/type] := :fhir.CapabilityStatement.rest/interaction
         [:rest 0 :interaction 0 :code] := #fhir/code"search-system"))))
 
 (def ^:private minimal-history-system-config
@@ -240,10 +241,11 @@
     (let [{:keys [headers body]} @(handler {})]
 
       (testing "ETag header"
-        (is (= "W/\"8f204ff\"" (get headers "ETag"))))
+        (is (= "W/\"39c4367c\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :interaction 0 :fhir/type] := :fhir.CapabilityStatement.rest/interaction
         [:rest 0 :interaction 0 :code] := #fhir/code"history-system"))))
 
 (def ^:private patient-read-interaction-config
@@ -255,20 +257,31 @@
                 #:blaze.rest-api.interaction
                  {:handler (fn [_])}}}]))
 
+(def ^:private parsing-context
+  (:blaze.fhir/parsing-context
+   (ig/init
+    {:blaze.fhir/parsing-context
+     {:structure-definition-repo structure-definition-repo}})))
+
 (defn- patient-profile [structure-definition-repo]
   (->> (sdr/resources structure-definition-repo)
        (some #(when (#{"Patient"} (:name %)) %))
-       (fhir-spec/conform-json)))
+       (j/write-value-as-string)
+       (fhir-spec/parse-json parsing-context)))
 
 (deftest patient-read-interaction-test
   (with-handler [handler patient-read-interaction-config]
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
+      [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
       [:rest 0 :resource 0 :type] := #fhir/code"Patient"
       [:rest 0 :resource 0 :profile] := #fhir/canonical"http://hl7.org/fhir/StructureDefinition/Patient"
+      [:rest 0 :resource 0 :interaction 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/interaction
       [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
       [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"single"
       [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"})
+      [:rest 0 :resource 0 :searchParam 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/searchParam
       [:rest 0 :resource 0 :searchParam 0 :name] := "address-use"
       [:rest 0 :resource 0 :searchParam 0 :type] := #fhir/code"token"
       [:rest 0 :resource 0 :searchParam 1 :name] := "address-country"
@@ -291,6 +304,8 @@
                                      false)]
       (given (:body @(handler {}))
         :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
+        [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
         [:rest 0 :resource 0 :type] := #fhir/code"Patient"
         [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
         [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code"enforced"})))))
@@ -302,6 +317,8 @@
                                      true)]
       (given (:body @(handler {}))
         :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
+        [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
         [:rest 0 :resource 0 :type] := #fhir/code"Patient"
         [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
         [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"multiple")))
@@ -316,6 +333,8 @@
 
       (given (:body @(handler {}))
         :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
+        [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
         [:rest 0 :resource 0 :type] := #fhir/code"Patient"
         [:rest 0 :resource 0 :profile] := #fhir/canonical"http://hl7.org/fhir/StructureDefinition/Patient"
         [:rest 0 :resource 0 :supportedProfile count] := 1
@@ -361,6 +380,8 @@
   (with-handler [handler observation-read-interaction-config]
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
+      [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
       [:rest 0 :resource 0 :type] := #fhir/code"Observation"
       [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
       [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :type]
@@ -390,7 +411,10 @@
   (with-handler [handler one-type-operation-config]
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
+      [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
       [:rest 0 :resource 0 :type] := #fhir/code"Measure"
+      [:rest 0 :resource 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/operation
       [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :definition] :=
       #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))
@@ -418,7 +442,10 @@
   (with-handler [handler one-type-operation-documentation-config]
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
+      [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
       [:rest 0 :resource 0 :type] := #fhir/code"Measure"
+      [:rest 0 :resource 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/operation
       [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :definition] :=
       #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
@@ -447,6 +474,7 @@
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :operation count] := 1
+      [:rest 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest/operation
       [:rest 0 :operation 0 :name] := "totals"
       [:rest 0 :operation 0 :definition] :=
       #fhir/canonical"https://samply.github.io/blaze/fhir/OperationDefinition/totals")))
@@ -507,10 +535,13 @@
         :publisher := "The Samply Community"
         :copyright := copyright
         :kind := #fhir/code"instance"
+        [:software :fhir/type] := :fhir.TerminologyCapabilities/software
         [:software :name] := "Blaze"
         [:software :version] := "version-131640"
+        [:implementation :fhir/type] := :fhir.TerminologyCapabilities/implementation
         [:implementation :url] := #fhir/url"base-url-131713"
         [:codeSystem count] := 0
+        [:validateCode :fhir/type] := :fhir.TerminologyCapabilities/validateCode
         [:validateCode :translations] := #fhir/boolean false)))
 
   (testing "with one code system"
@@ -525,7 +556,9 @@
                                :query-params {"mode" "terminology"}}))
         :fhir/type := :fhir/TerminologyCapabilities
         [:codeSystem count] := 1
+        [:codeSystem 0 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
         [:codeSystem 0 :uri] := #fhir/canonical"system-192435"
         [:codeSystem 0 :version count] := 1
+        [:codeSystem 0 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
         [:codeSystem 0 :version 0 :code] := #fhir/string"version-121451"
         [:codeSystem 0 :version 0 :isDefault] := #fhir/boolean true))))

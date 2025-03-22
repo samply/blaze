@@ -35,25 +35,17 @@
       (str/starts-with? content-type "text/json")))
 
 (defn- parse-json
-  "Takes a request `body` and returns the parsed JSON content.
+  "Takes a request `body` and returns the parsed JSON content in internal format.
 
   Returns an anomaly on parse errors."
-  [body]
+  [parsing-context type body]
   (with-open [_ (prom/timer parse-duration-seconds "json")]
-    (fhir-spec/parse-json body)))
+    (fhir-spec/parse-json parsing-context type body)))
 
-(defn- conform-json [json]
-  (if (map? json)
-    (fhir-spec/conform-json json)
-    (ba/incorrect
-     "Expect a JSON object."
-     :fhir/issue "structure"
-     :fhir/operation-outcome "MSG_JSON_OBJECT")))
-
-(defn- resource-request-json [{:keys [body] :as request}]
+(defn- resource-request-json
+  [parsing-context type {:keys [body] :as request}]
   (if body
-    (when-ok [x (parse-json body)
-              resource (conform-json x)]
+    (when-ok [resource (parse-json parsing-context type body)]
       (assoc request :body resource))
     (ba/incorrect "Missing HTTP body.")))
 
@@ -102,17 +94,21 @@
   (format "Unsupported media type `%s` expect one of `application/fhir+json` or `application/fhir+xml`."
           media-type))
 
-(defn- resource-request [request]
+(defn- unsupported-media-type-anom [content-type]
+  (ba/incorrect (unsupported-media-type-msg content-type) :http/status 415))
+
+(defn no-content-type-resource-request [request]
+  (if (str/blank? (slurp (:body request)))
+    (assoc request :body nil)
+    (ba/incorrect "Missing Content-Type header for FHIR resources.")))
+
+(defn- resource-request [parsing-context type request]
   (if-let [content-type (request/content-type request)]
     (cond
-      (json-request? content-type) (resource-request-json request)
+      (json-request? content-type) (resource-request-json parsing-context type request)
       (xml-request? content-type) (resource-request-xml request)
-      :else
-      (ba/incorrect (unsupported-media-type-msg content-type)
-                    :http/status 415))
-    (if (str/blank? (slurp (:body request)))
-      (assoc request :body nil)
-      (ba/incorrect "Missing Content-Type header for FHIR resources."))))
+      :else (unsupported-media-type-anom content-type))
+    (no-content-type-resource-request request)))
 
 (defn wrap-resource
   "Middleware to parse a resource from the body according to the content-type
@@ -123,9 +119,9 @@
 
   In case on errors, returns an OperationOutcome in the internal format with the
   appropriate error and skips the handler."
-  [handler]
+  [handler parsing-context type]
   (fn [request]
-    (if-ok [request (resource-request request)]
+    (if-ok [request (resource-request parsing-context type request)]
       (handler request)
       ac/completed-future)))
 
@@ -147,11 +143,11 @@
             :data (type/base64Binary (encode-binary-data body))})
     (ba/incorrect "Missing HTTP body.")))
 
-(defn- binary-resource-request [request]
+(defn- binary-resource-request [parsing-context request]
   (if-let [content-type (request/content-type request)]
     (cond
       (str/starts-with? content-type "application/fhir+json")
-      (resource-request-json request)
+      (resource-request-json parsing-context "Binary" request)
 
       (str/starts-with? content-type "application/fhir+xml")
       (resource-request-xml request)
@@ -169,8 +165,8 @@
 
   In case on errors, returns an OperationOutcome in the internal format with the
   appropriate error and skips the handler."
-  [handler]
+  [handler parsing-context]
   (fn [request]
-    (if-ok [request (binary-resource-request request)]
+    (if-ok [request (binary-resource-request parsing-context request)]
       (handler request)
       ac/completed-future)))

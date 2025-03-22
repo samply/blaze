@@ -1,7 +1,7 @@
 (ns blaze.db.resource-store.kv
   "A resource store implementation that uses a kev-value store as backend."
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-async do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.kv :as kv]
@@ -10,7 +10,9 @@
    [blaze.db.resource-store.kv.spec]
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
+   [blaze.fhir.parsing-context.spec]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.writing-context.spec]
    [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -45,32 +47,10 @@
   (-> (update e ::anom/message parse-msg hash)
       (assoc :blaze.resource/hash hash)))
 
-(defn- parse-cbor [bytes hash]
+(defn- parse-cbor [parsing-context bytes [type hash variant]]
   (with-open [_ (prom/timer duration-seconds "parse-resource")]
-    (-> (fhir-spec/parse-cbor bytes)
+    (-> (fhir-spec/parse-cbor parsing-context type bytes variant)
         (ba/exceptionally #(parse-anom % hash)))))
-
-(defn- conform-msg [hash]
-  (format "Error while conforming resource content with hash `%s`." hash))
-
-(defn- conform-anom [_e hash]
-  (ba/fault (conform-msg hash) :blaze.resource/hash hash))
-
-(defn- conform-cbor [x hash variant]
-  (with-open [_ (prom/timer duration-seconds "conform-resource")]
-    (-> (fhir-spec/conform-cbor x variant)
-        (ba/exceptionally #(conform-anom % hash)))))
-
-(defn- parse-and-conform-cbor [bytes hash variant]
-  (when-ok [x (parse-cbor bytes hash)]
-    (conform-cbor x hash variant)))
-
-(def ^:private entry-freezer
-  (map
-   (fn [[hash resource]]
-     (let [content (fhir-spec/unform-cbor resource)]
-       (prom/observe! resource-bytes (alength ^bytes content))
-       [:default (hash/to-byte-array hash) content]))))
 
 (defn- get-content [kv-store hash]
   (with-open [_ (prom/timer duration-seconds "get-resource")]
@@ -79,12 +59,13 @@
 (defn- get-content-async [kv-store executor hash]
   (ac/supply-async #(get-content kv-store hash) executor))
 
-(defn- get-and-parse-async [kv-store executor hash variant]
+(defn- get-and-parse-async [kv-store parsing-context executor [_ hash :as key]]
   (do-async [bytes (get-content-async kv-store executor hash)]
-    (some-> bytes (parse-and-conform-cbor hash variant))))
+    (when bytes
+      (parse-cbor parsing-context bytes key))))
 
-(defn- multi-get-and-parse-async [kv-store executor hashes variant]
-  (mapv #(get-and-parse-async kv-store executor % variant) hashes))
+(defn- multi-get-and-parse-async [kv-store parsing-context executor keys]
+  (mapv (partial get-and-parse-async kv-store parsing-context executor) keys))
 
 (defn- zipmap-found [hashes resources]
   (loop [map (transient {})
@@ -96,16 +77,16 @@
         (recur map hashes resources))
       (persistent! map))))
 
-(deftype KvResourceStore [kv-store executor]
+(deftype KvResourceStore [kv-store parsing-context entry-freezer executor]
   rs/ResourceStore
-  (-get [_ hash variant]
-    (get-and-parse-async kv-store executor hash variant))
+  (-get [_ key]
+    (get-and-parse-async kv-store parsing-context executor key))
 
-  (-multi-get [_ hashes variant]
-    (log/trace "multi-get" (count hashes) "hash(es)")
-    (let [futures (multi-get-and-parse-async kv-store executor hashes variant)]
+  (-multi-get [_ keys]
+    (log/trace "multi-get" (count keys) "hash(es)")
+    (let [futures (multi-get-and-parse-async kv-store parsing-context executor keys)]
       (do-sync [_ (ac/all-of futures)]
-        (zipmap-found hashes (map ac/join futures)))))
+        (zipmap-found keys (map ac/join futures)))))
 
   (-put [_ entries]
     (ac/supply-async
@@ -114,12 +95,21 @@
      executor)))
 
 (defmethod m/pre-init-spec ::rs/kv [_]
-  (s/keys :req-un [:blaze.db/kv-store ::executor]))
+  (s/keys :req-un [:blaze.db/kv-store :blaze.fhir/parsing-context
+                   :blaze.fhir/writing-context ::executor]))
+
+(defn- entry-freezer [writing-context]
+  (map
+   (fn [[hash resource]]
+     (let [content (fhir-spec/write-cbor writing-context resource)]
+       (prom/observe! resource-bytes (alength ^bytes content))
+       [:default (hash/to-byte-array hash) content]))))
 
 (defmethod ig/init-key ::rs/kv
-  [_ {:keys [kv-store executor]}]
+  [_ {:keys [kv-store parsing-context writing-context executor]}]
   (log/info "Open key-value store backed resource store.")
-  (->KvResourceStore kv-store executor))
+  (->KvResourceStore kv-store parsing-context (entry-freezer writing-context)
+                     executor))
 
 (derive ::rs/kv :blaze.db/resource-store)
 

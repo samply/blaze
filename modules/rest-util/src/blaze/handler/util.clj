@@ -185,7 +185,8 @@
       :outcome (operation-outcome error)})))
 
 (def ^:private not-found-issue
-  {:severity #fhir/code"error"
+  {:fhir/type :fhir.OperationOutcome/issue
+   :severity #fhir/code"error"
    :code #fhir/code"not-found"})
 
 (def ^:private not-found-outcome
@@ -200,7 +201,8 @@
           (str/upper-case (name request-method)) uri))
 
 (defn- method-not-allowed-issue [request]
-  {:severity #fhir/code"error"
+  {:fhir/type :fhir.OperationOutcome/issue
+   :severity #fhir/code"error"
    :code #fhir/code"processing"
    :diagnostics (method-not-allowed-msg request)})
 

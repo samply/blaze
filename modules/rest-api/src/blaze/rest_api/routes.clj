@@ -67,9 +67,10 @@
   {:name :output
    :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
               (condp = response-type
-                :json (output/wrap-output opts)
+                :json (fn [handler _writing-context]
+                        ((output/wrap-output opts) handler))
                 :binary fhir-output/wrap-binary-output
-                :none identity
+                :none (fn [handler _writing-context] handler)
                 fhir-output/wrap-output))})
 
 (def ^:private wrap-error
@@ -97,8 +98,8 @@
 
   Route data contains the resource type under :fhir.resource/type."
   {:arglists '([config resource-patterns structure-definition])}
-  [{:keys [node db-sync-timeout batch? page-id-cipher]} resource-patterns
-   {:keys [name] :as structure-definition}]
+  [{:keys [node db-sync-timeout batch? page-id-cipher parsing-context]}
+   resource-patterns {:keys [name] :as structure-definition}]
   (when-let
    [{:blaze.rest-api.resource-pattern/keys [interactions]}
     (u/resolve-pattern resource-patterns structure-definition)]
@@ -116,8 +117,8 @@
          (contains? interactions :create)
          (assoc :post {:interaction "create"
                        :middleware (if (= name "Binary")
-                                     [wrap-binary-data]
-                                     [wrap-resource])
+                                     [[wrap-binary-data parsing-context]]
+                                     [[wrap-resource parsing-context name]])
                        :handler (-> interactions :create
                                     :blaze.rest-api.interaction/handler)})
          (contains? interactions :conditional-delete-type)
@@ -186,8 +187,8 @@
             (contains? interactions :update)
             (assoc :put {:interaction "update"
                          :middleware (if (= name "Binary")
-                                       [wrap-binary-data]
-                                       [wrap-resource])
+                                       [[wrap-binary-data parsing-context]]
+                                       [[wrap-resource parsing-context name]])
                          :handler (-> interactions :update
                                       :blaze.rest-api.interaction/handler)})
             (contains? interactions :delete)
@@ -257,7 +258,7 @@
              :handler search-handler}}])))
 
 (defn- operation-system-handler-route
-  [{:keys [node db-sync-timeout]}
+  [{:keys [node db-sync-timeout parsing-context]}
    {::operation/keys [code affects-state response-type post-middleware
                       system-handler]}]
   (when system-handler
@@ -268,7 +269,7 @@
 
         :post {:middleware [(if post-middleware
                               post-middleware
-                              wrap-resource)]
+                              [wrap-resource parsing-context "Parameters"])]
                :handler system-handler}}
         (not (true? affects-state))
         (assoc :get system-handler)
@@ -276,7 +277,7 @@
         (assoc :response-type response-type))]]))
 
 (defn- operation-type-handler-route
-  [{:keys [node db-sync-timeout]}
+  [{:keys [node db-sync-timeout parsing-context]}
    {::operation/keys [code affects-state resource-types type-handler]}]
   (when type-handler
     (map
@@ -286,14 +287,14 @@
          {:interaction (str "operation-type-" code)
           :conflicting true
           :middleware [[wrap-db node db-sync-timeout]]
-          :post {:middleware [wrap-resource]
+          :post {:middleware [[wrap-resource parsing-context "Parameters"]]
                  :handler type-handler}}
           (not (true? affects-state))
           (assoc :get type-handler))])
      resource-types)))
 
 (defn- operation-instance-handler-route
-  [{:keys [node db-sync-timeout page-id-cipher]}
+  [{:keys [node db-sync-timeout page-id-cipher parsing-context]}
    {::operation/keys [code affects-state resource-types instance-handler
                       instance-page-handler]}]
   (when instance-handler
@@ -308,7 +309,7 @@
             :conflicting true
             :middleware [[wrap-db node db-sync-timeout]]
 
-            :post {:middleware [wrap-resource]
+            :post {:middleware [[wrap-resource parsing-context "Parameters"]]
                    :handler instance-handler}}
             (not (true? affects-state))
             (assoc :get instance-handler))]]
@@ -344,14 +345,17 @@
      async-status-cancel-handler
      capabilities-handler
      admin-handler
-     page-id-cipher]
+     page-id-cipher
+     parsing-context
+     writing-context]
     :or {context-path ""}
     :as config}]
   (cond->
    [""
     {:middleware
-     (cond-> [wrap-observe-request-duration wrap-params wrap-output
-              wrap-error [wrap-forwarded base-url] wrap-sync]
+     (cond-> [wrap-observe-request-duration wrap-params
+              [wrap-output writing-context] wrap-error
+              [wrap-forwarded base-url] wrap-sync]
        (seq auth-backends)
        (conj wrap-auth-guard))
      :blaze/context-path context-path}
@@ -364,7 +368,7 @@
                     :handler search-system-handler})
        (some? transaction-handler)
        (assoc :post {:interaction "transaction"
-                     :middleware [wrap-resource]
+                     :middleware [[wrap-resource parsing-context "Bundle"]]
                      :handler transaction-handler}))]
     ["/metadata"
      {:interaction "capabilities"

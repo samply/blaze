@@ -152,7 +152,7 @@
             [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
     (testing "missing resource content"
-      (with-redefs [rs/get (fn [_ _ _] (ac/completed-future nil))]
+      (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
         (with-handler [handler]
           (let [{:keys [status body]}
                 @(handler

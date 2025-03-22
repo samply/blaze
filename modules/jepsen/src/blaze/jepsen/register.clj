@@ -9,7 +9,6 @@
    [blaze.jepsen.util :as u]
    [clojure.tools.logging :refer [info]]
    [hato.client :as hc]
-   [integrant.core :as ig]
    [jepsen.checker :as checker]
    [jepsen.cli :as cli]
    [jepsen.client :as client]
@@ -17,8 +16,6 @@
    [jepsen.nemesis :as nemesis]
    [jepsen.tests :as tests]
    [knossos.model :as model]))
-
-(ig/init {:blaze.fhir/structure-definition-repo {}})
 
 (defn r [_ _]
   {:type :invoke :f :read :value nil})
@@ -71,7 +68,9 @@
     (info "Open client on node" node)
     (update this :context assoc
             :base-uri (str "http://" node "/fhir")
-            :http-client (hc/build-http-client {:connect-timeout 10000})))
+            :http-client (hc/build-http-client {:connect-timeout 10000})
+            :parsing-context (:blaze.fhir/parsing-context u/system)
+            :writing-context (:blaze.fhir/writing-context u/system)))
 
   (setup! [this _test]
     this)
@@ -89,7 +88,9 @@
 (defn trash-sender
   "Sends trash requests."
   [node]
-  (let [context {:base-uri (str "http://" node "/fhir")}]
+  (let [context {:base-uri (str "http://" node "/fhir")
+                 :parsing-context (:blaze.fhir/parsing-context u/system)
+                 :writing-context (:blaze.fhir/writing-context u/system)}]
     (reify nemesis/Nemesis
       (setup! [this _] this)
 

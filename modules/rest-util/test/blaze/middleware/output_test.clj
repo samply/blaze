@@ -14,7 +14,6 @@
    [com.google.common.base CaseFormat]))
 
 (set! *warn-on-reflection* true)
-
 (st/instrument)
 (log/set-min-level! :trace)
 

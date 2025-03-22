@@ -17,17 +17,14 @@ cat <<END
 END
 }
 
-
 # Create a Binary resource that contains that data, and get its ID (via XML)
 ID_VIA_XML=$(curl -s -H 'Content-Type: application/fhir+xml' -H 'Accept: application/fhir+xml' -d "$(binary)" "$BASE/Binary" | xq -x //id/@value)
 
 echo "Created Binary resource that contains the Random Data"
 echo "  - via XML, with ID: $ID_VIA_XML"
 
-
 # Retrieve the Binary resource, and Base64 encode it so it can be safely handled by Bash (via XML)
 BASE64_ENCODED_BINARY_RESOURCE_VIA_XML=$(curl -s -H 'Accept: application/pdf' "$BASE/Binary/$ID_VIA_XML" | base64 | tr -d '\n')
-
 
 echo "Binary data retrieved. Verifying content... (XML version)"
 

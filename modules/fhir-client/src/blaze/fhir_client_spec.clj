@@ -7,6 +7,7 @@
    [blaze.fhir-client :as fhir-client]
    [blaze.fhir-client.spec]
    [blaze.fhir.spec]
+   [blaze.fhir.writing-context.spec]
    [clojure.spec.alpha :as s])
   (:import
    [java.nio.file Path]))
@@ -83,5 +84,6 @@
   :ret ac/completable-future?)
 
 (s/fdef fhir-client/spit
-  :args (s/cat :dir #(instance? Path %) :publisher flow/publisher?)
+  :args (s/cat :writing-context :blaze.fhir/writing-context
+               :dir #(instance? Path %) :publisher flow/publisher?)
   :ret ac/completable-future?)

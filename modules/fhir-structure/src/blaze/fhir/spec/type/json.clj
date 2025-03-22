@@ -1,9 +1,7 @@
 (ns blaze.fhir.spec.type.json
   (:require
-   [blaze.fhir.spec.type.protocols :as p]
-   [clojure.string :as str])
+   [blaze.fhir.spec.type.protocols :as p])
   (:import
-   [clojure.lang PersistentVector]
    [com.fasterxml.jackson.core JsonGenerator SerializableString]
    [java.io Writer]
    [java.nio.charset StandardCharsets]
@@ -24,15 +22,19 @@
         (int -1)
         (do (System/arraycopy utf-8-bytes 0 buffer offset num-bytes)
             num-bytes))))
+  (appendQuoted [_ buffer offset]
+    (let [length (.length s)]
+      (if (> (unchecked-add-int offset length) (alength buffer))
+        (int -1)
+        (do (.getChars s 0 length buffer offset)
+            length))))
   (asUnquotedUTF8 [_]
     (Arrays/copyOf ^bytes utf-8-bytes (alength utf-8-bytes)))
   (asQuotedUTF8 [this]
-    (.asUnquotedUTF8 this)))
-
-(defmethod print-dup (Class/forName "[B") [^bytes bytes ^Writer w]
-  (.write w "#=(byte-array [")
-  (.write w ^String (str/join " " (map int (vec bytes))))
-  (.write w "])"))
+    (.asUnquotedUTF8 this))
+  Object
+  (toString [_]
+    s))
 
 (defmethod print-method FieldName [^FieldName fieldName ^Writer w]
   (.write w "#blaze/field-name")
@@ -49,22 +51,16 @@
     (.writeFieldName generator (str "_" (.getValue field-name)))
     (p/-serialize-json-secondary value generator)))
 
-(defn- has-primary-content-rf [_ x]
-  (when (p/-has-primary-content x) (reduced true)))
-
-(defn- has-secondary-content-rf [_ x]
-  (when (p/-has-secondary-content x) (reduced true)))
-
-(defn write-primitive-list-field [^JsonGenerator generator ^SerializableString field-name ^PersistentVector list]
-  (when (.reduce list has-primary-content-rf nil)
+(defn write-primitive-list-field [^JsonGenerator generator ^SerializableString field-name list]
+  (when (some p/-has-primary-content list)
     (.writeFieldName generator field-name)
     (.writeStartArray generator)
-    (.reduce list #(p/-serialize-json %2 generator) nil)
+    (run! #(p/-serialize-json % generator) list)
     (.writeEndArray generator))
-  (when (.reduce list has-secondary-content-rf nil)
+  (when (some p/-has-secondary-content list)
     (.writeFieldName generator (str "_" (.getValue field-name)))
     (.writeStartArray generator)
-    (.reduce list #(p/-serialize-json-secondary %2 generator) nil)
+    (run! #(p/-serialize-json-secondary % generator) list)
     (.writeEndArray generator)))
 
 (defn write-primitive-string-field [^JsonGenerator generator ^SerializableString field-name value]

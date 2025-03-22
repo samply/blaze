@@ -3,7 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.compact]
-   [blaze.fhir.util :as u]
+   [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
@@ -109,7 +109,7 @@
   (testing "Missing column-family parameter"
     (with-handler [handler]
       (let [{:keys [status body]}
-            @(handler {:body (u/parameters "database" #fhir/code"index")})]
+            @(handler {:body (fu/parameters "database" #fhir/code"index")})]
 
         (is (= 400 status))
 
@@ -122,7 +122,7 @@
   (testing "success"
     (with-handler [handler]
       (let [{:keys [status headers]}
-            @(handler {:body (u/parameters
+            @(handler {:body (fu/parameters
                               "database" #fhir/code"index"
                               "column-family" #fhir/code"resource-as-of-index")})]
 

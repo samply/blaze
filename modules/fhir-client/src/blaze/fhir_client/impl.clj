@@ -49,13 +49,12 @@
   (ba/throw-when (anomaly e)))
 
 (defmethod hm/coerce-response-body :fhir
-  [_ {:keys [body content-type] :as resp}]
+  [{:keys [parsing-context]} {:keys [body content-type] :as resp}]
   (let [charset (or (-> resp :content-type-params :charset) "UTF-8")]
     (if (json? content-type)
       (ba/throw-when
        (with-open [r (io/reader body :encoding charset)]
-         (when-ok [x (fhir-spec/parse-json r)
-                   resource (fhir-spec/conform-json x)]
+         (when-ok [resource (fhir-spec/parse-json parsing-context r)]
            (assoc resp :body resource))))
       resp)))
 
@@ -86,8 +85,8 @@
   (when-let [version-id (-> resource :meta :versionId)]
     (str "W/\"" version-id "\"")))
 
-(defn- generate-body [resource]
-  (fhir-spec/unform-json resource))
+(defn- generate-body [{:keys [writing-context]} resource]
+  (fhir-spec/write-json-as-bytes writing-context resource))
 
 (defn- if-match [etag]
   {"if-match" etag})
@@ -99,7 +98,7 @@
    (merge
     {:accept :fhir+json
      :content-type :fhir+json
-     :body (generate-body resource)
+     :body (generate-body opts resource)
      :as :fhir
      :async? true}
     opts)
@@ -114,7 +113,7 @@
     {:accept :fhir+json
      :content-type :fhir+json
      :headers (some-> (etag resource) if-match)
-     :body (generate-body resource)
+     :body (generate-body opts resource)
      :as :fhir
      :async? true}
     opts)
@@ -142,7 +141,7 @@
    (merge
     {:accept :fhir+json
      :content-type :fhir+json
-     :body (generate-body bundle)
+     :body (generate-body opts bundle)
      :as :fhir
      :async? true}
     opts)
@@ -180,8 +179,8 @@
 (defn- new-file-byte-channel ^SeekableByteChannel [file]
   (byte-channel file StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE))
 
-(deftype Spitter
-         [dir filename-fn filenames future ^:volatile-mutable subscription]
+(deftype Spitter [writing-context dir filename-fn filenames future
+                  ^:volatile-mutable subscription]
   Flow$Subscriber
   (onSubscribe [_ s]
     (set! subscription s)
@@ -191,7 +190,7 @@
     (let [file (.resolve ^Path dir ^String (filename-fn x))]
       (swap! filenames conj (.toAbsolutePath file))
       (with-open [bc (new-file-byte-channel file)]
-        (.write bc (bb/wrap (fhir-spec/unform-json x))))))
+        (.write bc (bb/wrap (fhir-spec/write-json-as-bytes writing-context x))))))
   (onError [_ e]
     (flow/cancel! subscription)
     (ac/complete-exceptionally! future e))
@@ -202,7 +201,7 @@
   (str (name type) "-" id ".json"))
 
 (defn spitter
-  ([dir future]
-   (spitter dir type-id-filename-fn future))
-  ([dir filename-fn future]
-   (->Spitter dir filename-fn (atom []) future nil)))
+  ([writing-context dir future]
+   (spitter writing-context dir type-id-filename-fn future))
+  ([writing-context dir filename-fn future]
+   (->Spitter writing-context dir filename-fn (atom []) future nil)))

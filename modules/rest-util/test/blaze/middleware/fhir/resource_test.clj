@@ -1,11 +1,12 @@
 (ns blaze.middleware.fhir.resource-test
   (:require
    [blaze.async.comp :as ac]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.handler.util :as handler-util]
-   [blaze.middleware.fhir.resource :refer [wrap-binary-data wrap-resource]]
+   [blaze.middleware.fhir.resource :as resource]
    [blaze.middleware.fhir.resource-spec]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
@@ -13,6 +14,7 @@
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [integrant.core :as ig]
    [jsonista.core :as j]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
@@ -27,21 +29,28 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private parsing-context
+  (:blaze.fhir/parsing-context
+   (ig/init
+    {:blaze.fhir/parsing-context
+     {:structure-definition-repo structure-definition-repo}})))
+
 (defn- wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
 
-(def ^:private resource-body-handler
+(defn- resource-body-handler
   "A handler which just returns the :body from a non-binary resource request."
+  [type]
   (-> (comp ac/completed-future :body)
-      wrap-resource
+      (resource/wrap-resource parsing-context type)
       wrap-error))
 
 (def ^:private binary-resource-body-handler
   "A handler which just returns the :body from a binary resource request."
   (-> (comp ac/completed-future :body)
-      wrap-binary-data
+      (resource/wrap-binary-data parsing-context)
       wrap-error))
 
 (defn- string-input-stream
@@ -64,80 +73,77 @@
   (testing "possible content types"
     (doseq [content-type ["application/fhir+json" "application/json" "text/json"]]
       (let [closed? (atom false)]
-        (given @(resource-body-handler
+        (given @((resource-body-handler "Patient")
                  {:headers {"content-type" content-type}
                   :body (string-input-stream "{\"resourceType\": \"Patient\"}" closed?)})
-          fhir-spec/fhir-type := :fhir/Patient)
+          :fhir/type := :fhir/Patient)
         (is (true? @closed?)))))
 
   (testing "empty body"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Resource")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "")})
       :status := 400
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "No content to map due to end-of-input\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1]"))
+      [:body :issue 0 :code] := #fhir/code"invariant"
+      [:body :issue 0 :diagnostics] := "Error on token null. Expected type is `Resource`."))
 
   (testing "body with invalid JSON"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Resource")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "x")})
       :status := 400
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "Unrecognized token 'x': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 2]"))
+      [:body :issue 0 :code] := #fhir/code"invariant"
+      [:body :issue 0 :diagnostics] := "JSON parsing error."))
 
   (testing "body with no JSON object"
-    ;; There is no XML analogy to this JSON test, since XML has no objects.
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Resource")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "1")})
       :status := 400
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"structure"
-      [:body :issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-      [:body :issue 0 :details :coding 0 :code] := #fhir/code"MSG_JSON_OBJECT"
-      [:body :issue 0 :diagnostics] := "Expect a JSON object."))
+      [:body :issue 0 :code] := #fhir/code"invariant"
+      [:body :issue 0 :diagnostics] := "Error on integer value 1. Expected type is `Resource`."))
 
   (testing "body with invalid resource"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Patient")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "{\"resourceType\": \"Patient\", \"gender\": {}}")})
       :status := 400
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
-      [:body :issue 0 :expression] := ["gender"]))
+      [:body :issue 0 :diagnostics] := "Error on object start. Expected type is `code`."
+      [:body :issue 0 :expression] := ["Patient.gender"]))
 
   (testing "body with bundle with null resource"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": null}]}")})
       :status := 400
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `null`. Expected type is `Resource`."
-      [:body :issue 0 :expression] := ["entry[0].resource"]))
+      [:body :issue 0 :diagnostics] := "Error on value null. Expected type is `Resource`."
+      [:body :issue 0 :expression] := ["Bundle.entry[0].resource"]))
 
   (testing "body with bundle with invalid resource"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": {\"resourceType\": \"Patient\", \"gender\": {}}}]}")})
       :status := 400
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
-      [:body :issue 0 :expression] := ["entry[0].resource.gender"]))
+      [:body :issue 0 :diagnostics] := "Error on object start. Expected type is `code`."
+      [:body :issue 0 :expression] := ["Bundle.entry[0].resource.gender"]))
 
   (testing "long attribute values are allowed (JSON-wrapped Binary data)"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Binary")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream (str "{\"data\" : \"" (apply str (repeat (* 8 1024 1024) \a)) "\", \"resourceType\" : \"Binary\"}"))})
       fhir-spec/fhir-type := :fhir/Binary)))
@@ -146,14 +152,14 @@
   (testing "possible content types"
     (doseq [content-type ["application/fhir+xml" "application/xml" "text/xml"]]
       (let [closed? (atom false)]
-        (given @(resource-body-handler
+        (given @((resource-body-handler "Patient")
                  {:headers {"content-type" content-type}
                   :body (string-input-stream "<Patient xmlns=\"http://hl7.org/fhir\"></Patient>" closed?)})
-          fhir-spec/fhir-type := :fhir/Patient)
+          :fhir/type := :fhir/Patient)
         (is (true? @closed?)))))
 
   (testing "empty body"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Patient")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "")})
       :status := 400
@@ -165,7 +171,7 @@
   (testing "body with invalid XML"
     (doseq [[input-string diagnostics] [["1" "Unexpected character '1' (code 49) in prolog; expected '<'\n at [row,col {unknown-source}]: [1,1]"]
                                         ["<Patient xmlns=\"http://hl7.org/fhir\"><id value \"a_b\"/></Patient>" "Unexpected character '\"' (code 34) expected '='\n at [row,col {unknown-source}]: [1,48]"]]]
-      (given @(resource-body-handler
+      (given @((resource-body-handler "Patient")
                {:request-method :post
                 :headers {"content-type" "application/fhir+xml"}
                 :body (string-input-stream input-string)})
@@ -176,7 +182,7 @@
         [:body :issue 0 :diagnostics] := diagnostics)))
 
   (testing "body with invalid resource"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Patient")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "<Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient>")})
       :status := 400
@@ -186,7 +192,7 @@
       [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
 
   (testing "body with bundle with empty resource"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource></resource></entry></Bundle>")})
       :status := 400
@@ -196,7 +202,7 @@
       [:body :issue 0 :diagnostics] := "Error on value `<:resource/>`. Expected type is `Resource`."))
 
   (testing "body with bundle with invalid resource"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient></resource></entry></Bundle>")})
       :status := 400
@@ -206,7 +212,7 @@
       [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
 
   (testing "long attribute values are allowed (XML-wrapped Binary data)"
-    (given @(resource-body-handler
+    (given @((resource-body-handler "Binary")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream (str "<Binary xmlns=\"http://hl7.org/fhir\"><data value=\"" (apply str (repeat (* 8 1024 1024) \a)) "\"/></Binary>"))})
       fhir-spec/fhir-type := :fhir/Binary)))
@@ -218,11 +224,12 @@
   (testing "blank body without content type header results in a nil body"
     (satisfies-prop 10
       (prop/for-all [s whitespace]
-        (nil? @(resource-body-handler {:body (string-input-stream s)})))))
+        (nil? @((resource-body-handler "Resource") {:body (string-input-stream s)})))))
 
   (testing "other content is invalid"
     (testing "with missing content-type header"
-      (given @(resource-body-handler {:body (string-input-stream "foo")})
+      (given @((resource-body-handler "Resource")
+               {:body (string-input-stream "foo")})
         :status := 400
         [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
         [:body :issue 0 :severity] := #fhir/code"error"
@@ -230,7 +237,8 @@
         [:body :issue 0 :diagnostics] := "Missing Content-Type header for FHIR resources."))
 
     (testing "with unknown content-type header"
-      (given @(resource-body-handler {:headers {"content-type" "text/plain"} :body (string-input-stream "foo")})
+      (given @((resource-body-handler "Resource")
+               {:headers {"content-type" "text/plain"} :body (string-input-stream "foo")})
         :status := 415
         [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
         [:body :issue 0 :severity] := #fhir/code"error"
@@ -239,7 +247,7 @@
 
     (testing "missing body"
       (doseq [content-type ["application/fhir+json" "application/fhir+xml"]]
-        (given @(resource-body-handler
+        (given @((resource-body-handler "Resource")
                  {:headers {"content-type" content-type}})
           [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
           [:body :issue 0 :severity] := #fhir/code"error"

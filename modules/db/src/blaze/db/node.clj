@@ -35,6 +35,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as fu]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.scheduler :as sched]
    [blaze.spec]
@@ -190,8 +191,8 @@
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
 
-(defn- hashes-of-non-deleted [resource-handles]
-  (into [] (comp (remove rh/deleted?) (map rh/hash)) resource-handles))
+(defn- rs-keys-of-non-deleted [resource-handles variant]
+  (into [] (comp (remove rh/deleted?) (map #(node-util/rs-key % variant))) resource-handles))
 
 (defn- deleted-resource [{:keys [id] :as resource-handle}]
   {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
@@ -205,17 +206,17 @@
   (ba/not-found (resource-content-not-found-msg resource-handle)
                 :blaze.db/resource-handle resource-handle))
 
-(defn- to-resource [tx-cache resources resource-handle]
+(defn- to-resource [tx-cache resources variant resource-handle]
   (if-let [resource (if (rh/deleted? resource-handle)
                       (deleted-resource resource-handle)
-                      (get resources (rh/hash resource-handle)))]
+                      (get resources (node-util/rs-key resource-handle variant)))]
     (enhance-resource tx-cache resource-handle resource)
     (resource-content-not-found-anom resource-handle)))
 
 (defn- get-resource [resource-store resource-handle variant]
   (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
-    (rs/get resource-store (rh/hash resource-handle) variant)))
+    (rs/get resource-store (node-util/rs-key resource-handle variant))))
 
 (defn- patient-compartment-search-param-codes [search-param-registry type]
   (when (seq (sr/compartment-resources search-param-registry "Patient" type))
@@ -286,7 +287,7 @@
                                    clauses))))
 
 (def ^:private add-subsetted-xf
-  (map #(update % :meta update :tag conj-vec fhir-spec/subsetted)))
+  (map #(update % :meta update :tag conj-vec fu/subsetted)))
 
 (defn- subset-xf [elements]
   (let [keys (conj (seq elements) :fhir/type :id :meta)]
@@ -392,12 +393,12 @@
 
   (-pull-many [_ resource-handles variant]
     (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
-          hashes (hashes-of-non-deleted resource-handles)
-          [variant elements] (if (keyword? variant) [variant] [:complete variant])]
-      (do-sync [resources (rs/multi-get resource-store hashes variant)]
+          [variant elements] (if (keyword? variant) [variant] [:complete variant])
+          keys (rs-keys-of-non-deleted resource-handles variant)]
+      (do-sync [resources (rs/multi-get resource-store keys)]
         (into
          []
-         (cond-> (comp (map (partial to-resource tx-cache resources))
+         (cond-> (comp (map (partial to-resource tx-cache resources variant))
                        (halt-when ba/anomaly?))
            elements (comp (subset-xf elements)))
          resource-handles))))

@@ -7,22 +7,25 @@
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.kv :as-alias kv]
    [blaze.db.kv.rocksdb :as rocksdb]
-   [blaze.db.node :as node :refer [node?]]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.tx-log :as tx-log]
    [blaze.elm.compiler :as c]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
-   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.interaction.create]
    [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
    [blaze.job-scheduler :as js]
    [blaze.middleware.fhir.db-spec]
+   [blaze.middleware.fhir.output-spec]
+   [blaze.middleware.fhir.resource-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.page-store-spec]
    [blaze.page-store.local]
@@ -34,8 +37,10 @@
    [java-time.api :as time]
    [jsonista.core :as j]
    [juxt.iota :refer [given]]
+   [ring.core.protocols :as rp]
    [taoensso.timbre :as log])
   (:import
+   [java.io ByteArrayOutputStream]
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
    [java.time Instant]))
@@ -145,6 +150,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
+    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/rocksdb :blaze.db/resource-kv-store]
@@ -172,11 +179,25 @@
    :blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}
 
+   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
+   {:structure-definition-repo structure-definition-repo}
+
+   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
+   {:structure-definition-repo structure-definition-repo
+    :fail-on-unknown-property false
+    :include-summary-only true
+    :use-regex false}
+
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}
+
    ::rocksdb/block-cache {:size-in-mb 1}
 
    :blaze/admin-api
    {:context-path "/fhir"
     :admin-node (ig/ref :blaze.db.admin/node)
+    :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
+    :writing-context (ig/ref :blaze.fhir/writing-context)
     :job-scheduler (ig/ref :blaze/job-scheduler)
     :read-job-handler (ig/ref :blaze.interaction/read)
     :history-job-handler (ig/ref :blaze.interaction.history/instance)
@@ -219,7 +240,10 @@
 
    :blaze.test/fixed-rng {}
    :blaze.test/fixed-rng-fn {}
-   :blaze.test/page-id-cipher {}})
+   :blaze.test/page-id-cipher {}
+
+   :blaze.test/json-writer
+   {:writing-context (ig/ref :blaze.fhir/writing-context)}})
 
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
@@ -237,42 +261,78 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "invalid context path"
     (given-thrown (ig/init {:blaze/admin-api {:context-path ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 7 :via] := [:blaze/context-path]
-      [:cause-data ::s/problems 7 :pred] := `string?
-      [:cause-data ::s/problems 7 :val] := ::invalid))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 9 :via] := [:blaze/context-path]
+      [:cause-data ::s/problems 9 :val] := ::invalid))
 
   (testing "invalid admin node"
     (given-thrown (ig/init {:blaze/admin-api {:admin-node ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 7 :via] := [:blaze.db/node]
-      [:cause-data ::s/problems 7 :pred] := `node?
-      [:cause-data ::s/problems 7 :val] := ::invalid))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 9 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 9 :val] := ::invalid))
+
+  (testing "invalid parsing context"
+    (given-thrown (ig/init {:blaze/admin-api {:parsing-context ::invalid}})
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 9 :via] := [:blaze.fhir/parsing-context]
+      [:cause-data ::s/problems 9 :val] := ::invalid))
+
+  (testing "invalid writing context"
+    (given-thrown (ig/init {:blaze/admin-api {:writing-context ::invalid}})
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 9 :via] := [:blaze.fhir/writing-context]
+      [:cause-data ::s/problems 9 :val] := ::invalid))
 
   (testing "invalid settings"
     (given-thrown (ig/init {:blaze/admin-api {:settings ::invalid}})
@@ -280,14 +340,15 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 7 :via] := [::admin-api/settings]
-      [:cause-data ::s/problems 7 :pred] := `coll?
-      [:cause-data ::s/problems 7 :val] := ::invalid))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 9 :via] := [::admin-api/settings]
+      [:cause-data ::s/problems 9 :val] := ::invalid))
 
   (testing "invalid features"
     (given-thrown (ig/init {:blaze/admin-api {:features ::invalid}})
@@ -295,23 +356,29 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 7 :via] := [::admin-api/features]
-      [:cause-data ::s/problems 7 :pred] := `coll?
-      [:cause-data ::s/problems 7 :val] := ::invalid))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 9 :via] := [::admin-api/features]
+      [:cause-data ::s/problems 9 :val] := ::invalid))
 
   (testing "with minimal config"
     (with-system [{handler :blaze/admin-api} (config (new-temp-dir!))]
       (is (fn? handler)))))
 
-(defn wrap-read-json [handler]
+(defn- read-body [body]
+  (let [out (ByteArrayOutputStream.)]
+    (rp/write-body-to-stream body nil out)
+    (j/read-value (.toByteArray out))))
+
+(defn- wrap-read-json [handler]
   (fn [request]
     (do-sync [response (handler request)]
-      (update response :body j/read-value))))
+      (update response :body read-body))))
 
 (defmacro with-system-data
   [[binding-form config] txs & body]
@@ -750,13 +817,13 @@
 
 (deftest create-job-test
   (testing "no profile"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json
+               :body (json-writer
                       {:fhir/type :fhir/Task
                        :status #fhir/code"draft"
                        :intent #fhir/code"order"})})]
@@ -770,13 +837,13 @@
           ["issue" 0 "details" "text"] := "No allowed profile found."))))
 
   (testing "wrong profile"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json
+               :body (json-writer
                       {:fhir/type :fhir/Task
                        :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/Foo"]}
                        :status #fhir/code"draft"
@@ -791,13 +858,13 @@
           ["issue" 0 "details" "text"] := "No allowed profile found."))))
 
   (testing "missing code"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json (dissoc re-index-job :code))})]
+               :body (json-writer (dissoc re-index-job :code))})]
 
         (is (= 400 status))
 
@@ -808,13 +875,13 @@
           ["issue" 0 "diagnostics"] := "Task.code: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
 
   (testing "missing authoredOn"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json (dissoc re-index-job :authoredOn))})]
+               :body (json-writer (dissoc re-index-job :authoredOn))})]
 
         (is (= 400 status))
 
@@ -825,13 +892,13 @@
           ["issue" 0 "diagnostics"] := "Task.authoredOn: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
 
   (testing "wrong code"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json (update-in re-index-job [:code :coding 0] merge {:code #fhir/code"compact" :display "Compact a Database Column Family"}))})]
+               :body (json-writer (update-in re-index-job [:code :coding 0] merge {:code #fhir/code"compact" :display "Compact a Database Column Family"}))})]
 
         (is (= 400 status))
 
@@ -843,13 +910,13 @@
 
   (testing "re-index job"
     (testing "non-absolute search-param-url"
-      (with-handler [handler] (config (new-temp-dir!)) []
+      (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
         (let [{:keys [status body]}
               @(handler
                 {:request-method :post
                  :uri "/fhir/__admin/Task"
                  :headers {"content-type" "application/fhir+json"}
-                 :body (fhir-spec/unform-json (assoc-in re-index-job [:input 0 :value] #fhir/canonical"foo"))})]
+                 :body (json-writer (assoc-in re-index-job [:input 0 :value] #fhir/canonical"foo"))})]
 
           (is (= 400 status))
 
@@ -859,13 +926,13 @@
             ["issue" 0 "code"] := "processing"
             ["issue" 0 "diagnostics"] := "Canonical URLs must be absolute URLs if they are not fragment references (foo)"))))
 
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       (let [{:keys [status headers body]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json re-index-job)})]
+               :body (json-writer re-index-job)})]
 
         (is (= 201 status))
 
@@ -884,13 +951,13 @@
 
   (testing "compact job"
     (testing "unknown database code"
-      (with-handler [handler] (config (new-temp-dir!)) []
+      (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
         (let [{:keys [status body]}
               @(handler
                 {:request-method :post
                  :uri "/fhir/__admin/Task"
                  :headers {"content-type" "application/fhir+json"}
-                 :body (fhir-spec/unform-json (assoc-in compact-job [:input 0 :value] #fhir/code"foo"))})]
+                 :body (json-writer (assoc-in compact-job [:input 0 :value] #fhir/code"foo"))})]
 
           (is (= 400 status))
 
@@ -903,13 +970,13 @@
             ["issue" 1 "code"] := "processing"
             ["issue" 1 "diagnostics"] := "The value provided ('foo') was not found in the value set 'Database Value Set' (https://samply.github.io/blaze/fhir/ValueSet/Database), and a code is required from this value set  (error message = Unknown code 'https://samply.github.io/blaze/fhir/CodeSystem/Database#foo' for in-memory expansion of ValueSet 'https://samply.github.io/blaze/fhir/ValueSet/Database')"))))
 
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       (let [{:keys [status headers body]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json compact-job)})]
+               :body (json-writer compact-job)})]
 
         (is (= 201 status))
 
@@ -928,12 +995,12 @@
 
 (deftest read-job-test
   (testing "existing job"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       @(handler
         {:request-method :post
          :uri "/fhir/__admin/Task"
          :headers {"content-type" "application/fhir+json"}
-         :body (fhir-spec/unform-json re-index-job)})
+         :body (json-writer re-index-job)})
 
       (let [{:keys [status body]}
             @(handler
@@ -966,12 +1033,12 @@
 
 (deftest history-job-test
   (testing "existing job"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
       @(handler
         {:request-method :post
          :uri "/fhir/__admin/Task"
          :headers {"content-type" "application/fhir+json"}
-         :body (fhir-spec/unform-json re-index-job)})
+         :body (json-writer re-index-job)})
 
       (let [{:keys [status body]}
             @(handler
@@ -1003,12 +1070,12 @@
           ["issue" 0 "diagnostics"] := "Resource `Task/AAAAAAAAAAAAAAAA` was not found.")))))
 
 (deftest search-jobs-test
-  (with-handler [handler] (config (new-temp-dir!)) []
+  (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
     @(handler
       {:request-method :post
        :uri "/fhir/__admin/Task"
        :headers {"content-type" "application/fhir+json"}
-       :body (fhir-spec/unform-json re-index-job)})
+       :body (json-writer re-index-job)})
 
     (let [{:keys [status] {[first-entry] "entry" :as body} :body}
           @(handler

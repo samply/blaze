@@ -2,12 +2,13 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.executors :as ex]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo]
    [integrant.core :as ig]
    [java-time.api :as time])
   (:import
-   [com.google.crypto.tink Aead DeterministicAead KeysetHandle]
+   [com.google.crypto.tink Aead DeterministicAead KeysetHandle RegistryConfiguration]
    [com.google.crypto.tink.daead DeterministicAeadConfig PredefinedDeterministicAeadParameters]
    [java.time Clock Instant]
    [java.util Random]
@@ -69,7 +70,7 @@
   [_ _]
   (let [^DeterministicAead aead
         (-> (KeysetHandle/generateNew PredefinedDeterministicAeadParameters/AES256_SIV)
-            (.getPrimitive DeterministicAead))]
+            (.getPrimitive (RegistryConfiguration/get) DeterministicAead))]
     ;; this wraps a DeterministicAead into a normal Aead
     ;; should be only done in tests
     (reify Aead
@@ -77,3 +78,13 @@
         (.encryptDeterministically aead plaintext associatedData))
       (decrypt [_ ciphertext associatedData]
         (.decryptDeterministically aead ciphertext associatedData)))))
+
+(defmethod ig/init-key :blaze.test/json-parser
+  [_ {:keys [parsing-context]}]
+  (fn [source]
+    (fhir-spec/parse-json parsing-context source)))
+
+(defmethod ig/init-key :blaze.test/json-writer
+  [_ {:keys [writing-context]}]
+  (fn [value]
+    (fhir-spec/write-json-as-bytes writing-context value)))

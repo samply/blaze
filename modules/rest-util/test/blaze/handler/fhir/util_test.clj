@@ -4,10 +4,10 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.util :as fu]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
@@ -379,15 +379,6 @@
     (testing "operation"
       (is (= {:type "Measure" :id "172940" :kind :operation} (fhir-util/match-url "Measure/172940/$evaluate-measure"))))))
 
-(deftest subsetted-test
-  (are [coding] (fhir-util/subsetted? coding)
-    {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-     :code #fhir/code"SUBSETTED"})
-
-  (are [coding] (not (fhir-util/subsetted? coding))
-    {:code #fhir/code"SUBSETTED"}
-    {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"}))
-
 (deftest validate-entry-test
   (testing "missing request"
     (satisfies-prop 10
@@ -577,7 +568,7 @@
                                                     :method #fhir/code"PUT"
                                                     :url #fhir/uri"Patient"}
                                           :resource {:fhir/type :fhir/Patient
-                                                     :meta (type/map->Meta {:tag [fhir-spec/subsetted]})}})
+                                                     :meta (type/map->Meta {:tag [fu/subsetted]})}})
            {::anom/category ::anom/incorrect
             ::anom/message "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
             :fhir/issue "processing"
@@ -592,7 +583,7 @@
                                                     :method #fhir/code"PUT"
                                                     :url (type/uri (str "Patient/" id))}
                                           :resource {:fhir/type :fhir/Patient :id id
-                                                     :meta (type/map->Meta {:tag [fhir-spec/subsetted]})}})
+                                                     :meta (type/map->Meta {:tag [fu/subsetted]})}})
            {::anom/category ::anom/incorrect
             ::anom/message "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
             :fhir/issue "processing"

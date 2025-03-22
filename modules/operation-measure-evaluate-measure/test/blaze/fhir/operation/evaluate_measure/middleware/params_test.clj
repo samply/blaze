@@ -3,7 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.operation.evaluate-measure.middleware.params :as params]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
-   [blaze.fhir.util :as u]
+   [blaze.fhir.util :as fu]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -107,7 +107,7 @@
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
             @(handler
               {:body
-               (u/parameters
+               (fu/parameters
                 "periodStart" #fhir/date"2020"
                 "periodEnd" #fhir/date"2021")})]
 
@@ -119,7 +119,7 @@
     (testing "invalid (only POST)"
       (let [request {:request-method :post
                      :body
-                     (u/parameters
+                     (fu/parameters
                       "periodStart" #fhir/date"2014"
                       "periodEnd" #fhir/date"2015"
                       "measure" #fhir/date"2015")}
@@ -141,7 +141,7 @@
                  "periodEnd" "2016"
                  "measure" "measure-202606"}}
                {:body
-                (u/parameters
+                (fu/parameters
                  "periodStart" #fhir/date"2014"
                  "periodEnd" #fhir/date"2015"
                  "measure" #fhir/string"measure-202606")}]]
@@ -193,7 +193,7 @@
             @(handler
               {:request-method :post
                :body
-               (u/parameters
+               (fu/parameters
                 "periodStart" #fhir/date"2014"
                 "periodEnd" #fhir/date"2015"
                 "reportType" #fhir/code"subject-list")})]

@@ -11,7 +11,7 @@
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
-   [blaze.fhir.util :as u]
+   [blaze.fhir.util :as fu]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
@@ -255,7 +255,7 @@
                   {:request-method :post
                    :path-params {:id "0"}
                    :body
-                   (u/parameters
+                   (fu/parameters
                     "periodStart" #fhir/date"2014"
                     "periodEnd" #fhir/date"2015")})]
 
@@ -310,7 +310,7 @@
           [:issue 0 :diagnostics] := "The Measure resource with the id `0` was deleted."))))
 
   (testing "Returns Server Error on Missing Measure Content"
-    (with-redefs [rs/get (fn [_ _ _] (ac/completed-future nil))]
+    (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Measure :id "0"}]]]
 
@@ -505,7 +505,7 @@
                 @(handler
                   {:request-method :post
                    :body
-                   (u/parameters
+                   (fu/parameters
                     "measure" #fhir/string"url-181501"
                     "periodStart" #fhir/date"2014"
                     "periodEnd" #fhir/date"2015")})]
@@ -539,7 +539,7 @@
                         {:request-method :post
                          :headers {"prefer" "return=minimal"}
                          :body
-                         (u/parameters
+                         (fu/parameters
                           "measure" #fhir/string"url-181501"
                           "periodStart" #fhir/date"2014"
                           "periodEnd" #fhir/date"2015")})]
@@ -574,7 +574,7 @@
                   @(handler
                     {:request-method :post
                      :body
-                     (u/parameters
+                     (fu/parameters
                       "periodStart" #fhir/date"2014"
                       "periodEnd" #fhir/date"2015")})]
 
@@ -609,7 +609,7 @@
                   @(handler
                     {:request-method :post
                      :body
-                     (u/parameters
+                     (fu/parameters
                       "periodStart" #fhir/date"2014"
                       "periodEnd"  #fhir/date"2015"
                       "measure" "url-181501")})]

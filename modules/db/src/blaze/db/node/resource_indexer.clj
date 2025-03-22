@@ -6,7 +6,6 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.resource :as cr]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.kv :as kv]
    [blaze.db.kv.spec]
@@ -115,8 +114,8 @@
   (log/trace "Index" (count entries) "resource(s)")
   (ac/all-of (mapv (partial async-index-resource context) entries)))
 
-(defn- hashes [tx-cmds]
-  (into [] (keep :hash) tx-cmds))
+(defn- cmd-rs-keys [tx-cmds variant]
+  (into [] (keep (fn [{:keys [type hash]}] (when hash [type hash variant]))) tx-cmds))
 
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of
@@ -130,10 +129,14 @@
   (let [context (assoc resource-indexer :last-updated last-updated)]
     (if resources
       (index-resources* context resources)
-      (-> (rs/multi-get resource-store (hashes tx-cmds) :complete)
-          (ac/then-compose (partial index-resources* context))))))
+      (-> (rs/multi-get resource-store (cmd-rs-keys tx-cmds :complete))
+          (ac/then-compose
+           (fn [resources]
+             (index-resources*
+              context
+              (into {} (map (fn [[[_type hash] resource]] [hash resource])) resources))))))))
 
-(defn- re-index-resource [search-param [hash resource]]
+(defn- re-index-resource [search-param [[_type hash] resource]]
   (log/trace "Re-index resource with hash" (str hash))
   (search-param-index-entries search-param nil hash resource))
 
@@ -146,10 +149,13 @@
       resources))
    executor))
 
+(defn- rs-keys [resource-handles variant]
+  (mapv #(node-util/rs-key % variant) resource-handles))
+
 (defn- re-index-resources*
   [{:keys [resource-store kv-store executor]} search-param resource-handles]
   (log/trace "Re-index" (count resource-handles) "resource(s)")
-  (do-sync [resources (rs/multi-get resource-store (mapv rh/hash resource-handles) :complete)]
+  (do-sync [resources (rs/multi-get resource-store (rs-keys resource-handles :complete))]
     (async-re-index-resources kv-store executor search-param resources)))
 
 (defn re-index-resources

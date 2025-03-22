@@ -23,8 +23,10 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -54,6 +56,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
+    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -62,6 +66,15 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}
+
+   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
+   {:structure-definition-repo structure-definition-repo
+    :fail-on-unknown-property false
+    :include-summary-only true
+    :use-regex false}
+
+   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}})
 
 (def config

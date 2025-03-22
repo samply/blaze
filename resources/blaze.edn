@@ -25,6 +25,8 @@
   ;;
   :blaze/rest-api
   {:node #blaze/ref :blaze.db.main/node
+   :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
+   :writing-context #blaze/ref :blaze.fhir/writing-context
    :admin-node #blaze/ref :blaze.db.admin/node
    :search-system-handler #blaze/ref :blaze.interaction/search-system
    :transaction-handler #blaze/ref :blaze.interaction/transaction
@@ -269,6 +271,8 @@
   :blaze/admin-api
   {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
    :admin-node #blaze/ref :blaze.db.admin/node
+   :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
+   :writing-context #blaze/ref :blaze.fhir/writing-context
    :job-scheduler #blaze/ref :blaze/job-scheduler
    :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
    :read-job-handler #blaze/ref :blaze.interaction/read
@@ -456,6 +460,18 @@
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
+  [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
+  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+
+  [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
+  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
+   :fail-on-unknown-property false
+   :include-summary-only true
+   :use-regex false}
+
+  :blaze.fhir/writing-context
+  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+
   :blaze.fhir/structure-definition-repo {}}
 
  :storage
@@ -556,6 +572,8 @@
    ;;
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
+    :parsing-context #blaze/ref :blaze.fhir.parsing-context/resource-store
+    :writing-context #blaze/ref :blaze.fhir/writing-context
     :executor #blaze/ref :blaze.db.resource-store.kv/executor}
 
    :blaze.db.resource-store.kv/executor
@@ -875,6 +893,8 @@
    ;;
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
+    :parsing-context #blaze/ref :blaze.fhir.parsing-context/resource-store
+    :writing-context #blaze/ref :blaze.fhir/writing-context
     :executor #blaze/ref :blaze.db.resource-store.kv/executor}
 
    :blaze.db.resource-store.kv/executor
@@ -1240,7 +1260,9 @@
    ;; Can be referred by the super key :blaze.db/resource-store.
    ;;
    :blaze.db.resource-store/cassandra
-   {:contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
+   {:parsing-context #blaze/ref :blaze.fhir.parsing-context/resource-store
+    :writing-context #blaze/ref :blaze.fhir/writing-context
+    :contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
     :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
     :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
     :key-space #blaze/cfg ["DB_CASSANDRA_KEY_SPACE" string? "blaze"]

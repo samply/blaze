@@ -13,10 +13,23 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [with-system]]
    [integrant.core :as ig]
    [java-time.api :as time]))
+
+(def ^:private root-system
+  "Root part of the system initialized for performance reasons."
+  (ig/init
+   {:blaze.fhir/parsing-context
+    {:structure-definition-repo structure-definition-repo
+     :fail-on-unknown-property false
+     :include-summary-only true
+     :use-regex false}
+    :blaze.fhir/writing-context
+    {:structure-definition-repo structure-definition-repo}}))
 
 (def mem-node-config
   {:blaze.db/node
@@ -65,6 +78,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :parsing-context (:blaze.fhir/parsing-context root-system)
+    :writing-context (:blaze.fhir/writing-context root-system)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]

@@ -12,8 +12,10 @@
    [blaze.fhir.operation.evaluate-measure.measure.population-spec]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
    [clojure.java.io :as io]
@@ -70,9 +72,15 @@
    {:method #fhir/code"PUT"
     :url #fhir/uri"Library/1"}})
 
+(def ^:private parsing-context
+  (:blaze.fhir/parsing-context
+   (ig/init
+    {:blaze.fhir/parsing-context
+     {:structure-definition-repo structure-definition-repo}})))
+
 (defn- read-data [name]
   (let [raw (slurp-resource (str name ".json"))
-        bundle (fhir-spec/conform-json (fhir-spec/parse-json raw))
+        bundle (fhir-spec/parse-json parsing-context "Bundle" raw)
         library (library-entry (slurp-resource (str name ".cql")))]
     (update bundle :entry conj library)))
 

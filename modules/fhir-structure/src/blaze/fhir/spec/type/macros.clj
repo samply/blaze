@@ -103,6 +103,12 @@
                               (int -1)
                               (do (System/arraycopy ~quoted-utf-8-bytes 0 ~'buffer ~'offset num-bytes#)
                                   num-bytes#))))
+      (~'appendQuoted [~'_ ~'buffer ~'offset]
+                      (let [length# (.length ~value)]
+                        (if (> (unchecked-add-int ~'offset length#) (alength ~'buffer))
+                          (int -1)
+                          (do (.getChars ~value 0 length# ~'buffer ~'offset)
+                              length#))))
       (~'asUnquotedUTF8 [~'_]
                         (Arrays/copyOf ~unquoted-utf-8-bytes (alength ~unquoted-utf-8-bytes)))
       (~'asQuotedUTF8 [~'_]
@@ -121,6 +127,15 @@
        (~'-type [~'_] ~fhir-type)
        (~'-interned [~'_] ~interned)
        (~'-value [~'_] ~value)
+       (~'-assoc-id [~'_ id#]
+         (~(symbol (lower-case-first name)) {:id id# :value ~'value}))
+       (~'-assoc-extension [~'_ ~'extension]
+         (~(symbol (lower-case-first name)) {:extension ~'extension :value ~'value}))
+       (~'-assoc-value [~'_ ~'val]
+         (~(if (and interned (#{'String} (:tag (meta value))))
+             (symbol (str "create-" (lower-case-first name)))
+             (symbol (str name ".")))
+          ~'val))
        (~'-has-primary-content [~'_] true)
        ~(if (and interned (#{'String} (:tag (meta value))))
           `(~'-serialize-json [~'this ~'generator]
@@ -171,7 +186,8 @@
   (.writeEndObject generator))
 
 (defn- gen-extended-record
-  [name value-sym {:keys [fhir-type hash-num interned value-form]
+  [name value-sym {:keys [fhir-type hash-num interned value-constructor
+                          value-form]
                    :or {interned false}}]
   `(do
      (defrecord ~name [~'id ~'extension ~value-sym]
@@ -182,10 +198,16 @@
             `(and (p/-interned ~'extension) (nil? ~'id))
             `(and (nil? ~value-sym) (p/-interned ~'extension) (nil? ~'id))))
        (~'-value [~'_] ~(or value-form value-sym))
+       (~'-assoc-id [~'this ~'id]
+         (assoc ~'this :id ~'id))
+       (~'-assoc-extension [~'this ~'extension]
+         (assoc ~'this :extension ~'extension))
+       (~'-assoc-value [~'this ~'val]
+         (assoc ~'this :value ~(if value-constructor `(~value-constructor ~'val) 'val)))
        (~'-has-primary-content [~'_] (some? ~value-sym))
        (~'-serialize-json [~'_ ~'generator]
          (if (some? ~value-sym)
-           ~(write-value 'generator value-sym)
+           ~(write-value 'generator (or value-form value-sym))
            ~(write-null 'generator)))
        (~'-has-secondary-content [~'_]
          (or ~'id (seq ~'extension)))

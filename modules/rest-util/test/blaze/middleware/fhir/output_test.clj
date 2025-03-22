@@ -1,44 +1,65 @@
 (ns blaze.middleware.fhir.output-test
   (:require
    [blaze.byte-string :as bs]
+   [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
+   [blaze.middleware.fhir.output-spec]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.test-util :as tu]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
+   [ring.core.protocols :as rp]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.io ByteArrayOutputStream]))
 
 (set! *warn-on-reflection* true)
-
 (st/instrument)
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private parsing-context
+  (:blaze.fhir/parsing-context
+   (ig/init
+    {:blaze.fhir/parsing-context
+     {:structure-definition-repo structure-definition-repo}})))
+
+(def ^:private writing-context
+  (:blaze.fhir/writing-context
+   (ig/init
+    {:blaze.fhir/writing-context
+     {:structure-definition-repo structure-definition-repo}})))
+
 (defn- resource-handler-200 [resource]
   (wrap-output
    (fn [_ respond _]
-     (respond (ring/response resource)))))
+     (respond (ring/response resource)))
+   writing-context))
 
 (def ^:private resource-handler-200-with-patient
   "A handler which just returns a patient."
   (wrap-output
    (fn [_ respond _]
-     (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
+     (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))
+   writing-context))
 
 (def ^:private resource-handler-304
   "A handler which returns a 304 Not Modified response."
   (wrap-output
    (fn [_ respond _]
-     (respond (ring/status 304)))))
+     (respond (ring/status 304)))
+   writing-context))
 
 (defn- binary-resource-handler-200
   "A handler which uses the binary middleware and
@@ -50,17 +71,21 @@
       (ring/response
        (cond-> {:fhir/type :fhir/Binary}
          data (assoc :data (type/base64Binary data))
-         content-type (assoc :contentType (type/code content-type))))))))
+         content-type (assoc :contentType (type/code content-type))))))
+   writing-context))
 
 (def ^:private binary-resource-handler-200-no-body
   "A handler which uses the binary middleware and
   returns a response with 200 and no body."
   (wrap-binary-output
    (fn [_ respond _]
-     (respond (ring/status 200)))))
+     (respond (ring/status 200)))
+   writing-context))
 
 (defn- parse-json [body]
-  (fhir-spec/conform-json (fhir-spec/parse-json body)))
+  (let [out (ByteArrayOutputStream.)]
+    (rp/write-body-to-stream body nil out)
+    (fhir-spec/parse-json parsing-context (.toByteArray out))))
 
 (deftest json-test
   (testing "JSON is the default"

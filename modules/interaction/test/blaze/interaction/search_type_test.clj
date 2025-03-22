@@ -1557,7 +1557,7 @@
             (is (= (str base-url context-path "/Patient/0")
                    (:fullUrl first-entry))))
 
-          (testing "the entry has the right fullUrl"
+          (testing "the second entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/1")
                    (:fullUrl second-entry))))
 
@@ -2905,7 +2905,7 @@
           (is (nil? (:value resource)))))))
 
   (testing "missing resource contents"
-    (with-redefs [rs/multi-get (fn [_ _ _] (ac/completed-future {}))]
+    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 

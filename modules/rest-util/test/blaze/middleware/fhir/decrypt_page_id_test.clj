@@ -12,7 +12,7 @@
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom])
   (:import
-   [com.google.crypto.tink Aead KeysetHandle]
+   [com.google.crypto.tink Aead KeysetHandle RegistryConfiguration]
    [com.google.crypto.tink.aead AeadConfig PredefinedAeadParameters]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +23,7 @@
 
 (def page-id-cipher
   (-> (KeysetHandle/generateNew PredefinedAeadParameters/AES128_GCM)
-      (.getPrimitive Aead)))
+      (.getPrimitive (RegistryConfiguration/get) Aead)))
 
 (def handler
   (wrap-decrypt-page-id ac/completed-future page-id-cipher))

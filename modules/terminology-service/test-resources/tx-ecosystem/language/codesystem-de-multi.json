@@ -5,7 +5,6 @@
   "url" : "http://hl7.org/fhir/test/CodeSystem/de-multi",
   "name" : "TestCodeSystemMultiLangDE",
   "title" : "Testcodesystem mit mehreren Sprachen",
-  "title:en" : "Test Code System with Multiple Languages",
   "_title" : {
     "extension" : [{
       "url" : "http://hl7.org/fhir/StructureDefinition/translation",
@@ -28,7 +27,6 @@
     "code" : "code1",
     "display" : "Anzeige 1",
     "definition" : "Mein erster Code",
-    "definition:en" : "My first code",
     "_definition" : {
       "extension" : [{
         "url" : "http://hl7.org/fhir/StructureDefinition/translation",
@@ -50,7 +48,6 @@
     "code" : "code2",
     "display" : "Anzeige 2",
     "definition" : "Mein zweiter Code, mit Kindern",
-    "definition:en" : "My second code, with children",
     "_definition" : {
       "extension" : [{
         "url" : "http://hl7.org/fhir/StructureDefinition/translation",
@@ -77,7 +74,6 @@
       "code" : "code2a",
       "display" : "Anzeige 2a",
       "definition" : "Mein erster Second-Level-Code",
-      "definition:en" : "My first second level code",
       "_definition" : {
         "extension" : [{
           "url" : "http://hl7.org/fhir/StructureDefinition/translation",
@@ -101,7 +97,6 @@
         "code" : "code2aI",
         "display" : "Anzeige 2aI",
         "definition" : "Mein erster Third-Level-Code",
-        "definition:en" : "My first third level code",
         "_definition" : {
           "extension" : [{
             "url" : "http://hl7.org/fhir/StructureDefinition/translation",
@@ -123,7 +118,6 @@
         "code" : "code2aII",
         "display" : "Anzeige 2aII",
         "definition" : "Mein zweiter Third-Level-Code",
-        "definition:en" : "My second third level code",
         "_definition" : {
           "extension" : [{
             "url" : "http://hl7.org/fhir/StructureDefinition/translation",
@@ -142,7 +136,6 @@
       "code" : "code2b",
       "display" : "Anzeige 2b",
       "definition" : "Mein zweiter Second-Level-Code",
-      "definition:en" : "My second second level code",
       "_definition" : {
         "extension" : [{
           "url" : "http://hl7.org/fhir/StructureDefinition/translation",
@@ -165,7 +158,6 @@
     "code" : "code3",
     "display" : "Anzeige 3",
     "definition" : "Mein Third-Level-Code",
-    "definition:en" : "My Third Level Code",
     "_definition" : {
       "extension" : [{
         "url" : "http://hl7.org/fhir/StructureDefinition/translation",

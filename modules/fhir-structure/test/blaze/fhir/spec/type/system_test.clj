@@ -538,25 +538,19 @@
 (deftest parse-date-time-test
   (testing "valid"
     (are [s d] (= d (system/parse-date-time s))
-      "2020" #system/date-time"2020"
-      "2020-01" #system/date-time"2020-01"
-      "2020-01-02" #system/date-time"2020-01-02"
-      "2020-01-02T03" #system/date-time"2020-01-02T03"
+      "2020" (system/date-time 2020)
+      "2020-01" (system/date-time 2020 1)
+      "2020-01-02" (system/date-time 2020 1 2)
+      "2020-01-02T03" (system/date-time 2020 1 2 3)
       "2020-01-02T03:04" (system/date-time 2020 1 2 3 4)
       "2020-01-02T03:04:05" (system/date-time 2020 1 2 3 4 5)
       "2020-01-02T03:04:05.006" (system/date-time 2020 1 2 3 4 5 6)
-      "2020-01-02T03:04:05Z"
-      (system/date-time 2020 1 2 3 4 5 0 ZoneOffset/UTC)
-      "2020-01-02T03:04:05-01:00"
-      (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours -1))
-      "2020-01-02T03:04:05+01:00"
-      (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours 1))
-      "2020-01-02T03:04:05.006Z"
-      (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
-      "2020-01-02T03:04:05.006-01:00"
-      (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours -1))
-      "2020-01-02T03:04:05.006+01:00"
-      (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))))
+      "2020-01-02T03:04:05Z" (system/date-time 2020 1 2 3 4 5 0 ZoneOffset/UTC)
+      "2020-01-02T03:04:05-01:00" (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours -1))
+      "2020-01-02T03:04:05+01:00" (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours 1))
+      "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
+      "2020-01-02T03:04:05.006-01:00" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours -1))
+      "2020-01-02T03:04:05.006+01:00" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))))
 
   (testing "invalid"
     (are [s] (ba/incorrect? (st/with-instrument-disabled (system/parse-date-time s)))
