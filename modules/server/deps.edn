@@ -8,14 +8,14 @@
   {:local/root "../module-base"}
 
   ring/ring-core
-  {:mvn/version "1.13.0"
+  {:mvn/version "1.13.1"
    :exclusions
    [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality
     crypto-random/crypto-random]}
 
   ring/ring-jetty-adapter
-  {:mvn/version "1.13.0"}}
+  {:mvn/version "1.13.1"}}
 
  :deps/prep-lib
  {:alias :build
