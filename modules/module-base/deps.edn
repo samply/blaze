@@ -8,7 +8,7 @@
   {:mvn/version "6.6.1"}
 
   com.google.guava/guava
-  {:mvn/version "33.4.5-jre"
+  {:mvn/version "33.4.6-jre"
    :exclusions
    [com.google.code.findbugs/jsr305
     org.checkerframework/checker-qual
