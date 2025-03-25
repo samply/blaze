@@ -4,7 +4,7 @@
    [cognitect.anomalies :as anom]
    [io.aviso.exception :as aviso])
   (:import
-   [clojure.lang ExceptionInfo]
+   [clojure.lang APersistentMap ExceptionInfo]
    [java.util Map]
    [java.util.concurrent CancellationException ExecutionException TimeoutException]))
 
@@ -13,52 +13,57 @@
 (defn anomaly?
   "Checks whether `x` is an anomaly."
   [x]
-  (some? (::anom/category x)))
+  (and (instance? APersistentMap x)
+       (.containsKey ^APersistentMap x ::anom/category)))
+
+(defmacro has-category [category x]
+  `(and (instance? APersistentMap ~x)
+        (identical? ~category (.valAt ~(with-meta x {:tag `APersistentMap}) ::anom/category))))
 
 (defn unavailable?
   "Checks whether `x` is an anomaly of category `unavailable`."
   [x]
-  (identical? ::anom/unavailable (::anom/category x)))
+  (has-category ::anom/unavailable x))
 
 (defn interrupted?
   "Checks whether `x` is an anomaly of category `interrupted`."
   [x]
-  (identical? ::anom/interrupted (::anom/category x)))
+  (has-category ::anom/interrupted x))
 
 (defn incorrect?
   "Checks whether `x` is an anomaly of category `incorrect`."
   [x]
-  (identical? ::anom/incorrect (::anom/category x)))
+  (has-category ::anom/incorrect x))
 
 (defn forbidden?
   "Checks whether `x` is an anomaly of category `forbidden`."
   [x]
-  (identical? ::anom/forbidden (::anom/category x)))
+  (has-category ::anom/forbidden x))
 
 (defn unsupported?
   "Checks whether `x` is an anomaly of category `unsupported`."
   [x]
-  (identical? ::anom/unsupported (::anom/category x)))
+  (has-category ::anom/unsupported x))
 
 (defn not-found?
   "Checks whether `x` is an anomaly of category `not-found`."
   [x]
-  (identical? ::anom/not-found (::anom/category x)))
+  (has-category ::anom/not-found x))
 
 (defn conflict?
   "Checks whether `x` is an anomaly of category `conflict`."
   [x]
-  (identical? ::anom/conflict (::anom/category x)))
+  (has-category ::anom/conflict x))
 
 (defn fault?
   "Checks whether `x` is an anomaly of category `fault`."
   [x]
-  (identical? ::anom/fault (::anom/category x)))
+  (has-category ::anom/fault x))
 
 (defn busy?
   "Checks whether `x` is an anomaly of category `busy`."
   [x]
-  (identical? ::anom/busy (::anom/category x)))
+  (has-category ::anom/busy x))
 
 (defn- anomaly*
   ([category msg]
@@ -210,7 +215,7 @@
   (if (seq bindings)
     (let [[binding-form expr-form & next] bindings]
       `(let [val# ~expr-form]
-         (if (::anom/category val#)
+         (if (anomaly? val#)
            val#
            (let [~binding-form val#]
              (when-ok ~(vec next) ~@body)))))
@@ -232,19 +237,19 @@
   (if (seq bindings)
     (let [[binding-form expr-form & next] bindings]
       `(let [val# ~expr-form]
-         (if (::anom/category val#)
+         (if (anomaly? val#)
            (~else val#)
            (let [~binding-form val#]
              (if-ok ~(vec next) ~then ~else)))))
     then))
 
 (defn map [x f]
-  (if (::anom/category x) x (f x)))
+  (if (anomaly? x) x (f x)))
 
 (defn exceptionally [x f]
-  (if (::anom/category x) (f x) x))
+  (if (anomaly? x) (f x) x))
 
 (defn ignore
   "Ignores a possible anomaly, returning nil instead."
   [x]
-  (when-not (::anom/category x) x))
+  (when-not (anomaly? x) x))
