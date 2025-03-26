@@ -4,7 +4,7 @@
    [clojure.datafy :as datafy]
    [clojure.string :as str])
   (:import
-   [com.google.crypto.tink Aead KeyStatus KeysetHandle KeysetHandle$Entry Parameters]
+   [com.google.crypto.tink Aead KeyStatus KeysetHandle KeysetHandle$Entry Parameters RegistryConfiguration]
    [com.google.crypto.tink.aead AeadConfig PredefinedAeadParameters]))
 
 (set! *warn-on-reflection* true)
@@ -24,7 +24,7 @@
   (.size ^KeysetHandle handle))
 
 (defn- last-entry [handle]
-  (.getAt ^KeysetHandle handle (dec (size handle))))
+  (.getAt ^KeysetHandle handle (unchecked-dec-int (size handle))))
 
 (defn- add-new-entry [handle]
   (-> (KeysetHandle/newBuilder ^KeysetHandle handle)
@@ -62,12 +62,12 @@
     (set-last-entry-primary handle)))
 
 (defn get-aead [key-set-handle]
-  (.getPrimitive ^KeysetHandle key-set-handle Aead))
+  (.getPrimitive ^KeysetHandle key-set-handle (RegistryConfiguration/get) Aead))
 
 (extend-protocol p/Datafiable
   KeysetHandle
   (datafy [handle]
-    (mapv #(datafy/datafy (.getAt handle %)) (range (.size handle))))
+    (mapv #(datafy/datafy (.getAt handle (int %))) (range (.size handle))))
 
   KeysetHandle$Entry
   (datafy [entry]
