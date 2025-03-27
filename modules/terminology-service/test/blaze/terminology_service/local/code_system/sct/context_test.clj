@@ -451,7 +451,7 @@
 
   (testing "correct path"
     (given (context/build (path "sct-release"))
-      [:code-systems count] := 136
+      [:code-systems count] := 25
       [:code-systems 0 :fhir/type] := :fhir/CodeSystem
       [:code-systems 0 :url] := #fhir/uri"http://snomed.info/sct"
       [:code-systems 0 :version] := #fhir/string"http://snomed.info/sct/11000274103/version/20231115"
@@ -475,24 +475,16 @@
       [:code-systems 0 :filter 1 :operator 0] := #fhir/code"descendent-of"
       [:code-systems 0 :filter 1 :value] := #fhir/string"A SNOMED CT code"
 
-      [:code-systems 1 :version] := #fhir/string"http://snomed.info/sct/11000274103/version/20240115"
+      [:code-systems 1 :version] := #fhir/string"http://snomed.info/sct/11000274103/version/20240515"
       [:code-systems 1 :title] := #fhir/string"Germany National Extension module (core metadata concept)"
-      [:code-systems 1 :date] := #fhir/dateTime"2024-01-15"
+      [:code-systems 1 :date] := #fhir/dateTime"2024-05-15"
 
-      [:code-systems 2 :version] := #fhir/string"http://snomed.info/sct/11000274103/version/20240415"
+      [:code-systems 2 :version] := #fhir/string"http://snomed.info/sct/11000274103/version/20241115"
       [:code-systems 2 :title] := #fhir/string"Germany National Extension module (core metadata concept)"
-      [:code-systems 2 :date] := #fhir/dateTime"2024-04-15"
+      [:code-systems 2 :date] := #fhir/dateTime"2024-11-15"
 
-      [:code-systems 3 :version] := #fhir/string"http://snomed.info/sct/11000274103/version/20240711"
-      [:code-systems 3 :title] := #fhir/string"Germany National Extension module (core metadata concept)"
-      [:code-systems 3 :date] := #fhir/dateTime"2024-07-11"
-
-      [:code-systems 4 :version] := #fhir/string"http://snomed.info/sct/449080006/version/20130731"
-      [:code-systems 4 :title] := #fhir/string"SNOMED CT to ICD-10 rule-based mapping module (core metadata concept)"
-      [:code-systems 4 :date] := #fhir/dateTime"2013-07-31"
-
-      [:code-systems 5 :version] := #fhir/string"http://snomed.info/sct/449080006/version/20140131"
-      [:code-systems 5 :title] := #fhir/string"SNOMED CT to ICD-10 rule-based mapping module (core metadata concept)"
-      [:code-systems 5 :date] := #fhir/dateTime"2014-01-31"
+      [:code-systems 3 :version] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20220131"
+      [:code-systems 3 :title] := #fhir/string"SNOMED CT core module (core metadata concept)"
+      [:code-systems 3 :date] := #fhir/dateTime"2022-01-31"
 
       [:current-int-system :date] := #fhir/dateTime"2024-10-01")))

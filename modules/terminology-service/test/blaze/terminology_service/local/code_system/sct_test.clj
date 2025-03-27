@@ -32,8 +32,8 @@
       (testing "after creation"
         (let [db @(sct/ensure-code-systems context sct)]
 
-          (testing "136 code systems are available"
-            (is (= 136 (d/type-total db "CodeSystem"))))))
+          (testing "25 code systems are available"
+            (is (= 25 (d/type-total db "CodeSystem"))))))
 
       (testing "a second call does nothing"
         (is (nil? @(sct/ensure-code-systems context sct)))))))
