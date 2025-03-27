@@ -211,14 +211,14 @@
   (with-system [{:blaze.db/keys [node]} sct-config]
     (testing "SNOMED CT code systems are available"
       (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
-        count := 136
-        [0 :id] := "AAAAAAAAAAAAAAA2"
+        count := 25
+        [0 :id] := "AAAAAAAAAAAAAAAA"
         [0 :url] := #fhir/uri"http://snomed.info/sct"))
 
     (testing "can't delete the first SNOMED CT code system"
-      (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAA2"]])
+      (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAAA"]])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAA2`."))))
+        ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAAA`."))))
 
 (deftest init-ucum-test
   (with-system [{:blaze.db/keys [node]} ucum-config]

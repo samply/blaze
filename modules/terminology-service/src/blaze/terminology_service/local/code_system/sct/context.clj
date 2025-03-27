@@ -345,49 +345,132 @@
 (defn- version-url [module-id date]
   (format "%s/%s/version/%s" url module-id date))
 
+(def ^:private published-release-versions
+  "This map contains the known published release versions by module. Only
+  CodeSystem resources with that versions are created given that the data from
+  the release files is available.
+
+  The versions are taken from: https://mlds.ihtsdotools.org/api/releasePackages
+  using the script `sct-release-versions.sh`."
+  {11000279109 [20250127],
+   11000221109 [20240531 20241130],
+   784009001 [20230731 20240701],
+   816211006 [20230430 20240430],
+   11000210104 [20231001 20241001],
+   890195008 [20230731 20240701],
+   11000229106 [20241215],
+   715152001 [20220731 20240101 20250101],
+   11000318109 [20240725],
+   11000172109 [20231115 20240515 20241115 20241215 20250215 20250315],
+   827022005 [20230731 20240701],
+   11000234105 [20230815 20240215 20240815 20250215],
+   11000274103 [20231115 20240515 20241115],
+   11000146104 [20230930 20240331 20240930 20241031 20241130 20250131 20250228],
+   450829007 [20230430 20230930 20240331 20240930],
+   1303956008 [20240101 20250101],
+   900000000000207008
+   [20220131
+    20221231
+    20230131
+    20230228
+    20230331
+    20230430
+    20230531
+    20230630
+    20230731
+    20230901
+    20231001
+    20231101
+    20231201
+    20240101
+    20240301
+    20240401
+    20240501
+    20240601
+    20240701
+    20240801
+    20240901
+    20241001
+    20241101
+    20241201
+    20250101
+    20250201
+    20250301
+    20250401],
+   2011000195101 [20230607 20231207 20240607 20241207],
+   51000202101 [20231015 20240415 20240515 20240915 20241015 20241115 20241215 20250215 20250315],
+   1157359004 [20220731 20240101 20250101],
+   11000220105 [20231021 20240421 20241021],
+   718292005 [20230731 20240701],
+   554471000005108 [20230930 20240331 20240930],
+   721230008 [20230731 20240701]})
+
+(defn- module-max-effective-times! [lines]
+  (stream-transduce!
+   (comp
+    (map module-dependency-refset-line)
+    (filter (comp #{1} :active))
+    (filter (comp #{model-component-module} :referenced-component-id)))
+   (completing
+    (fn [r {:keys [effective-time module-id]}]
+      (update r module-id (fnil max 0) effective-time)))
+   {}
+   lines))
+
+(defn- module-versions [max-effective-times]
+  (reduce-kv
+   (fn [r module-id effective-time]
+     (if-some [versions (published-release-versions module-id)]
+       (if-some [versions (subseq (apply sorted-set versions) <= effective-time)]
+         (assoc r module-id versions)
+         r)
+       r))
+   {} max-effective-times))
+
+(defn- create-code-system
+  [module-dependency-index fully-specified-name-index module-id version]
+  {:fhir/type :fhir/CodeSystem
+   :meta
+   #fhir/Meta
+    {:tag
+     [#fhir/Coding
+       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+        :code #fhir/code"read-only"}]}
+   :url (type/uri url)
+   :version (type/string (version-url module-id version))
+   :title (type/string (find-fully-specified-name module-dependency-index
+                                                  fully-specified-name-index
+                                                  module-id version
+                                                  module-id))
+   :status #fhir/code"active"
+   :experimental #fhir/boolean false
+   :date (type/dateTime (str (LocalDate/parse (str version) DateTimeFormatter/BASIC_ISO_DATE)))
+   :caseSensitive #fhir/boolean true
+   :hierarchyMeaning #fhir/code"is-a"
+   :versionNeeded #fhir/boolean false
+   :content #fhir/code"not-present"
+   :filter
+   [{:fhir/type :fhir.CodeSystem/filter
+     :code #fhir/code"concept"
+     :description #fhir/string"Includes all concept ids that have a transitive is-a relationship with the code provided as the value."
+     :operator [#fhir/code"is-a"]
+     :value #fhir/string"A SNOMED CT code"}
+    {:fhir/type :fhir.CodeSystem/filter
+     :code #fhir/code"concept"
+     :description #fhir/string"Includes all concept ids that have a transitive is-a relationship with the code provided as the value, excluding the code itself."
+     :operator [#fhir/code"descendent-of"]
+     :value #fhir/string"A SNOMED CT code"}]})
+
 (defn- build-code-systems
   "Generates a list of CodeSystem resources based on the `lines` of the module
   dependency refset file."
   [module-dependency-index fully-specified-name-index lines]
-  (-> ^Stream lines
-      (.map module-dependency-refset-line)
-      (.filter #(= 1 (:active %)))
-      (.filter #(= model-component-module (:referenced-component-id %)))
-      (.map
-       (fn [{:keys [effective-time module-id]}]
-         {:fhir/type :fhir/CodeSystem
-          :meta
-          #fhir/Meta
-           {:tag
-            [#fhir/Coding
-              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-               :code #fhir/code"read-only"}]}
-          :url (type/uri url)
-          :version (type/string (version-url module-id effective-time))
-          :title (type/string (find-fully-specified-name module-dependency-index
-                                                         fully-specified-name-index
-                                                         module-id effective-time
-                                                         module-id))
-          :status #fhir/code"active"
-          :experimental #fhir/boolean false
-          :date (type/dateTime (str (LocalDate/parse (str effective-time) DateTimeFormatter/BASIC_ISO_DATE)))
-          :caseSensitive #fhir/boolean true
-          :hierarchyMeaning #fhir/code"is-a"
-          :versionNeeded #fhir/boolean false
-          :content #fhir/code"not-present"
-          :filter
-          [{:fhir/type :fhir.CodeSystem/filter
-            :code #fhir/code"concept"
-            :description #fhir/string"Includes all concept ids that have a transitive is-a relationship with the code provided as the value."
-            :operator [#fhir/code"is-a"]
-            :value #fhir/string"A SNOMED CT code"}
-           {:fhir/type :fhir.CodeSystem/filter
-            :code #fhir/code"concept"
-            :description #fhir/string"Includes all concept ids that have a transitive is-a relationship with the code provided as the value, excluding the code itself."
-            :operator [#fhir/code"descendent-of"]
-            :value #fhir/string"A SNOMED CT code"}]}))
-      (.toList)
-      (vec)))
+  (into
+   []
+   (mapcat
+    (fn [[module-id versions]]
+      (map (partial create-code-system module-dependency-index fully-specified-name-index module-id) versions)))
+   (module-versions (module-max-effective-times! lines))))
 
 (defn- find-file [path prefix]
   (with-open [stream (Files/newDirectoryStream ^Path path (str prefix "*"))]
