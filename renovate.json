@@ -31,6 +31,12 @@
       "matchPackageNames": [
         "/ca.uhn.hapi.fhir/"
       ]
+    },
+    {
+      "groupName": "reitit",
+      "matchPackageNames": [
+        "/reitit/"
+      ]
     }
   ],
   "ignorePaths": [
