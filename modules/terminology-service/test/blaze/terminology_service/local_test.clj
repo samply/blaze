@@ -968,7 +968,9 @@
                ["http://snomed.info/sct/11000274103"
                 "http://snomed.info/sct/11000274103/version/20241115"]
                ["http://snomed.info/sct/11000274103/version/20241115"
-                "http://snomed.info/sct/11000274103/version/20241115"]]]
+                "http://snomed.info/sct/11000274103/version/20241115"]
+               ["http://snomed.info/sct/11000274103/version/20240515"
+                "http://snomed.info/sct/11000274103/version/20240515"]]]
         (given @(code-system-validate-code ts
                   "url" #fhir/uri"http://snomed.info/sct"
                   "code" #fhir/code"441510007"
