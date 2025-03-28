@@ -166,6 +166,13 @@
                     update (= 1 active) (fnil conj []) source-id))
        (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
+(defn- find-dependencies
+  "Returns a list of `[module-id version]` tuples of dependencies from module
+  with `module-id` in `version`."
+  [module-dependency-index module-id version]
+  (when-let [versions (get module-dependency-index module-id)]
+    (some-> (first (subseq versions >= version)) val)))
+
 (defn- neighbors* [index module-id version concept-id]
   (when-let [versions (get-in index [module-id concept-id])]
     (reduce
@@ -183,7 +190,7 @@
    (mapcat
     (fn [[module-id version]]
       (neighbors* index module-id version concept-id)))
-   (get-in module-dependency-index [module-id version])))
+   (find-dependencies module-dependency-index module-id version)))
 
 (defn transitive-neighbors
   "Returns a set of transitive neighbors (parents or children depending on
@@ -251,9 +258,9 @@
 (defn find-multi-module [module-dependency-index index f module-id version concept-id]
   (if-some [res (f index module-id version concept-id)]
     res
-    (loop [[[module-id version] & more] (get-in module-dependency-index [module-id version])]
+    (loop [[[module-id version] & more] (find-dependencies module-dependency-index module-id version)]
       (when module-id
-        (if-some [res (f index module-id version concept-id)]
+        (if-some [res (find-multi-module module-dependency-index index f module-id version concept-id)]
           res
           (recur more))))))
 
@@ -302,7 +309,7 @@
    (mapcat
     (fn [[module-id version]]
       (find-synonyms* synonym-index module-id version concept-id)))
-   (get-in module-dependency-index [module-id version])))
+   (find-dependencies module-dependency-index module-id version)))
 
 (defn find-acceptability [acceptability-index version id]
   (when-let [versions (get acceptability-index id)]
@@ -319,8 +326,8 @@
        (fn [index
             {:keys [module-id source-effective-time
                     referenced-component-id target-effective-time]}]
-         (update-in index [module-id source-effective-time] (fnil conj [])
-                    [referenced-component-id target-effective-time]))
+         (update index module-id update-time-map source-effective-time
+                 (fnil conj []) [referenced-component-id target-effective-time]))
        (partial merge-with (partial merge-with into)))))
 
 (defn- acceptability [acceptability-id]

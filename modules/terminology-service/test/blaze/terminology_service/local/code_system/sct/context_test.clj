@@ -42,9 +42,10 @@
   (apply sorted-map-by > kvs))
 
 (deftest find-concept-test
-  (let [module-dependency-index {11000274103 {20231115 [[900000000000207008 20231001]
+  (let [module-dependency-index {11000274103 (time-map
+                                              20231115 [[900000000000207008 20231001]
                                                         [900000000000012004 20231001]]
-                                              20240415 [[900000000000207008 20240401]]}}
+                                              20240415 [[900000000000207008 20240401]])}
         concept-index {900000000000207008 {106004
                                            (time-map
                                             20240301 false
@@ -71,14 +72,14 @@
 
     (testing "from Germany National Extension module"
       (testing "non-existing concept"
-        (is (nil? (find-concept 11000274103 20240415 38945723498756))))
+        (is (nil? (find-concept 11000274103 20240515 38945723498756))))
 
       (testing "concept from core module"
         (testing "is active"
           (is (true? (find-concept 11000274103 20231115 106004))))
 
         (testing "is inactive"
-          (is (false? (find-concept 11000274103 20240415 106004)))))
+          (is (false? (find-concept 11000274103 20240515 106004)))))
 
       (testing "concept from model component module"
         (is (true? (find-concept 11000274103 20231115 900000000000012004)))))))
@@ -339,7 +340,7 @@
       (is (nil? (find-fully-specified-name 900000000000207008 20170731 127858008))))))
 
 (deftest find-synonyms-test
-  (let [module-dependency-index {11000274103 {20241115 [[900000000000207008 20241001]]}}
+  (let [module-dependency-index {11000274103 (time-map 20241115 [[900000000000207008 20241001]])}
         index {900000000000207008
                {440500007
                 (time-map
@@ -373,7 +374,7 @@
               [810131000274113 ["de" "Dried Blood Spot Sample"]]
               [2792601011 ["en" "Blood spot specimen"]]
               [3533707010 ["en" "Dried blood spot specimen"]]]
-             (find-synonyms 11000274103 20241115 440500007)))))
+             (find-synonyms 11000274103 20241116 440500007)))))
 
   (let [index {900000000000207008
                {445295009
