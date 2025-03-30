@@ -11,6 +11,7 @@
    [blaze.db.kv.protocols :as kv-p]
    [blaze.db.node :as node :refer [node?]]
    [blaze.db.resource-store :as rs]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type-spec]
    [blaze.handler.util :as handler-util]
@@ -1217,10 +1218,7 @@
                     [{:fhir/type :fhir.Bundle/entry
                       :resource
                       {:fhir/type :fhir/Patient :id "0"
-                       :meta #fhir/Meta{:tag
-                                        [#fhir/Coding
-                                          {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                                           :code #fhir/code"SUBSETTED"}]}}
+                       :meta (type/map->Meta {:tag [fhir-spec/subsetted]})}
                       :request
                       {:fhir/type :fhir.Bundle.entry/request
                        :method #fhir/code"PUT"
@@ -1457,7 +1455,7 @@
                 [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))))
 
       (testing "on missing resource content"
-        (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
+        (with-redefs [rs/get (fn [_ _ _] (ac/completed-future nil))]
           (with-handler [handler]
             (let [{:keys [status body]}
                   @(handler
@@ -1485,7 +1483,7 @@
 
     (testing "and create interaction"
       (testing "on missing resource content"
-        (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
+        (with-redefs [rs/get (fn [_ _ _] (ac/completed-future nil))]
           (with-handler [handler]
             (let [{:keys [status body]}
                   @(handler
@@ -1818,11 +1816,7 @@
                   [{:fhir/type :fhir.Bundle/entry
                     :resource
                     {:fhir/type :fhir/Patient :id "0"
-                     :meta
-                     #fhir/Meta{:tag
-                                [#fhir/Coding
-                                  {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                                   :code #fhir/code"SUBSETTED"}]}}
+                     :meta (type/map->Meta {:tag [fhir-spec/subsetted]})}
                     :request
                     {:fhir/type :fhir.Bundle.entry/request
                      :method #fhir/code"PUT"

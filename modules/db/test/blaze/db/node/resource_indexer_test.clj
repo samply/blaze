@@ -17,7 +17,7 @@
    [blaze.db.node.resource-indexer-spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
-   [blaze.db.resource-store.spec :refer [resource-store?]]
+   [blaze.db.resource-store.spec]
    [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
    [blaze.executors :as ex]
    [blaze.fhir-path :as fhir-path]
@@ -120,7 +120,7 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 3 :pred] := `resource-store?
+      [:cause-data ::s/problems 3 :via] := [:blaze.db/resource-store]
       [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid search-param-registry"

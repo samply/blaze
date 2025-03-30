@@ -72,6 +72,6 @@
                   :input [(u/request-bundle-input "Bundle/180302")]}]
 
         (given @(mtu/assoc-thread-name (u/pull-request-bundle node task))
+          [meta :thread-name] :? mtu/common-pool-thread?
           :fhir/type := :fhir/Bundle
-          :id := "180302"
-          [meta :thread-name] :? mtu/common-pool-thread?)))))
+          :id := "180302")))))

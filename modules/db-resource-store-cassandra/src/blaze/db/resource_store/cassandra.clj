@@ -53,33 +53,33 @@
 (defn- conform-msg [hash]
   (format "Error while conforming resource content with hash `%s`." hash))
 
-(defn- conform-cbor [x hash]
-  (-> (fhir-spec/conform-cbor x)
+(defn- conform-cbor [x hash variant]
+  (-> (fhir-spec/conform-cbor x variant)
       (ba/exceptionally
        (fn [_]
          (ba/fault
           (conform-msg hash)
           :blaze.resource/hash hash)))))
 
-(defn- read-content [result-set hash]
+(defn- read-content [result-set hash variant]
   (when-ok [row (cass/first-row result-set)
             x (parse-cbor row hash)]
-    (conform-cbor x hash)))
+    (conform-cbor x hash variant)))
 
 (defn- map-execute-get-error [hash e]
   (assoc e :op :get :blaze.resource/hash hash))
 
-(defn- execute-get* [session statement hash]
+(defn- execute-get* [session statement hash variant]
   (-> (execute session "get" (cass/bind statement (str hash)))
-      (ac/then-apply-async #(read-content % hash))
+      (ac/then-apply-async #(read-content % hash variant))
       (ac/exceptionally (partial map-execute-get-error hash))))
 
-(defn- execute-get [session statement hash]
-  (-> (ac/retry #(execute-get* session statement hash) 5)
+(defn- execute-get [session statement hash variant]
+  (-> (ac/retry #(execute-get* session statement hash variant) 5)
       (ac/exceptionally #(when-not (ba/not-found? %) %))))
 
-(defn- execute-multi-get [session get-statement hashes]
-  (mapv #(ac/->completable-future (execute-get session get-statement %)) hashes))
+(defn- execute-multi-get [session get-statement hashes variant]
+  (mapv #(ac/->completable-future (execute-get session get-statement % variant)) hashes))
 
 (defn- bind-put [statement hash resource]
   (let [content (bb/wrap (fhir-spec/unform-cbor resource))]
@@ -115,13 +115,13 @@
 
 (deftype CassandraResourceStore [session get-statement put-statement]
   rs/ResourceStore
-  (-get [_ hash]
+  (-get [_ hash variant]
     (log/trace "get resource with hash:" hash)
-    (execute-get session get-statement hash))
+    (execute-get session get-statement hash variant))
 
-  (-multi-get [_ hashes]
+  (-multi-get [_ hashes variant]
     (log/trace "multi-get" (count hashes) "resource(s)")
-    (let [futures (execute-multi-get session get-statement hashes)]
+    (let [futures (execute-multi-get session get-statement hashes variant)]
       (do-sync [_ (ac/all-of futures)]
         (zipmap-found hashes (map ac/join futures)))))
 

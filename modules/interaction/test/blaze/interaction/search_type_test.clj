@@ -2732,7 +2732,7 @@
           (is (nil? (:value resource)))))))
 
   (testing "missing resource contents"
-    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+    (with-redefs [rs/multi-get (fn [_ _ _] (ac/completed-future {}))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 

@@ -5,23 +5,23 @@
 (defprotocol ResourceStore
   "Resource content access by content-hash."
 
-  (-get [store hash])
+  (-get [store hash variant])
 
-  (-multi-get [store hashes])
+  (-multi-get [store hashes variant])
 
   (-put [store entries]))
 
 (defn get
   "Returns a CompletableFuture that will complete with the resource content of
-  `hash` or will complete with nil if it was not found."
-  [store hash]
-  (-get store hash))
+  `hash` in `variant` or will complete with nil if it was not found."
+  [store hash variant]
+  (-get store hash variant))
 
 (defn multi-get
   "Returns a CompletableFuture that will complete with a map from `hash` to the
-  resource content of all found `hashes`."
-  [store hashes]
-  (-multi-get store hashes))
+  resource content of all found `hashes` in `variant`."
+  [store hashes variant]
+  (-multi-get store hashes variant))
 
 (defn put!
   "Puts `entries`, a map of resource hashes to resource contents, into `store`.

@@ -130,7 +130,7 @@
   (let [context (assoc resource-indexer :last-updated last-updated)]
     (if resources
       (index-resources* context resources)
-      (-> (rs/multi-get resource-store (hashes tx-cmds))
+      (-> (rs/multi-get resource-store (hashes tx-cmds) :complete)
           (ac/then-compose (partial index-resources* context))))))
 
 (defn- re-index-resource [search-param [hash resource]]
@@ -149,7 +149,7 @@
 (defn- re-index-resources*
   [{:keys [resource-store kv-store executor]} search-param resource-handles]
   (log/trace "Re-index" (count resource-handles) "resource(s)")
-  (do-sync [resources (rs/multi-get resource-store (mapv rh/hash resource-handles))]
+  (do-sync [resources (rs/multi-get resource-store (mapv rh/hash resource-handles) :complete)]
     (async-re-index-resources kv-store executor search-param resources)))
 
 (defn re-index-resources

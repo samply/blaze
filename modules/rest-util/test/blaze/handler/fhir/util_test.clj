@@ -4,6 +4,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
@@ -235,9 +236,9 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (given @(mtu/assoc-thread-name (fhir-util/pull (d/db node) "Patient" "0"))
+        [meta :thread-name] :? mtu/common-pool-thread?
         :fhir/type := :fhir/Patient
-        :id := "0"
-        [meta :thread-name] :? mtu/common-pool-thread?)))
+        :id := "0")))
 
   (testing "pull error"
     (with-redefs
@@ -272,17 +273,17 @@
 
       (testing "version 1"
         (given @(mtu/assoc-thread-name (fhir-util/pull-historic (d/db node) "Patient" "0" 1))
+          [meta :thread-name] :? mtu/common-pool-thread?
           :fhir/type := :fhir/Patient
           :id := "0"
-          :active := false
-          [meta :thread-name] :? mtu/common-pool-thread?))
+          :active := false))
 
       (testing "version 2"
         (given @(mtu/assoc-thread-name (fhir-util/pull-historic (d/db node) "Patient" "0" 2))
+          [meta :thread-name] :? mtu/common-pool-thread?
           :fhir/type := :fhir/Patient
           :id := "0"
-          :active := true
-          [meta :thread-name] :? mtu/common-pool-thread?)))
+          :active := true)))
 
     (testing "deleted version"
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -520,10 +521,7 @@
                                                     :method #fhir/code"PUT"
                                                     :url #fhir/uri"Patient"}
                                           :resource {:fhir/type :fhir/Patient
-                                                     :meta #fhir/Meta{:tag
-                                                                      [#fhir/Coding
-                                                                        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                                                                         :code #fhir/code"SUBSETTED"}]}}})
+                                                     :meta (type/map->Meta {:tag [fhir-spec/subsetted]})}})
            {::anom/category ::anom/incorrect
             ::anom/message "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
             :fhir/issue "processing"
@@ -538,10 +536,7 @@
                                                     :method #fhir/code"PUT"
                                                     :url (type/uri (str "Patient/" id))}
                                           :resource {:fhir/type :fhir/Patient :id id
-                                                     :meta #fhir/Meta{:tag
-                                                                      [#fhir/Coding
-                                                                        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                                                                         :code #fhir/code"SUBSETTED"}]}}})
+                                                     :meta (type/map->Meta {:tag [fhir-spec/subsetted]})}})
            {::anom/category ::anom/incorrect
             ::anom/message "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
             :fhir/issue "processing"
