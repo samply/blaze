@@ -37,7 +37,7 @@
   The index consists of a map of CodeSystem URL to a list of CodeSystem
   resources ordered by falling priority."
   [db]
-  (do-sync [code-systems (d/pull-many db (d/type-list db "CodeSystem"))]
+  (do-sync [code-systems (d/pull-many db (d/type-list db "CodeSystem") :summary)]
     (into
      {}
      (map

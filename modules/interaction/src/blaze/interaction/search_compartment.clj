@@ -126,7 +126,7 @@
 
     :else
     (let [handling (handler-util/preference headers "handling")]
-      (do-sync [params (params/decode page-store handling params)]
+      (do-sync [params (params/decode page-store type handling params)]
         (cond->
          (assoc context
                 :blaze/base-url base-url
