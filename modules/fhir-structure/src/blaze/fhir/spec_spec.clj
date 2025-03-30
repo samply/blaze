@@ -35,7 +35,7 @@
   :ret (s/or :data some? :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/conform-cbor
-  :args (s/cat :x any?)
+  :args (s/cat :x any? :variant (s/? :blaze.resource/variant))
   :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/unform-cbor

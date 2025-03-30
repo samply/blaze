@@ -25,6 +25,9 @@
   (s/and string?
          (s/conformer #(or (fsr/split-literal-ref %) ::s/invalid))))
 
+(s/def :blaze.resource/variant
+  #{:complete :summary})
+
 (s/def :blaze/resource
   #(s2/valid? :fhir/Resource %))
 

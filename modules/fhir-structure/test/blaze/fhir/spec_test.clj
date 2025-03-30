@@ -389,9 +389,6 @@
                [::f/type {:value "string"}]
                [::f/text {:value "foo"}]]]])))))
 
-(defn remove-narrative [entry]
-  (update entry :resource dissoc :text))
-
 (defn- unform-json [resource]
   (String. ^bytes (fhir-spec/unform-json resource) StandardCharsets/UTF_8))
 
@@ -4622,6 +4619,24 @@
                  fhir-spec/parse-cbor
                  fhir-spec/conform-cbor)
              allergy-intolerance))))))
+
+(deftest code-system-test
+  (testing "summary conforming"
+    (satisfies-prop 10
+      (prop/for-all [code-system (fg/code-system)]
+        (nil? (:concept (-> code-system
+                            fhir-spec/unform-cbor
+                            fhir-spec/parse-cbor
+                            (fhir-spec/conform-cbor :summary))))))))
+
+(deftest value-set-test
+  (testing "summary conforming"
+    (satisfies-prop 10
+      (prop/for-all [value-set (fg/value-set)]
+        (nil? (:compose (-> value-set
+                            fhir-spec/unform-cbor
+                            fhir-spec/parse-cbor
+                            (fhir-spec/conform-cbor :summary))))))))
 
 (deftest provenance-test
   (testing "references"
