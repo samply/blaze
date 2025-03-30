@@ -1,6 +1,5 @@
 (ns macros)
 
-
 (defmacro def-complex-type
   [name [& fields] & {:keys [fhir-type hash-num interned references field-serializers]
                       :or {interned false}}]
@@ -10,5 +9,5 @@
      (~'-interned [~'_] ~interned)
      ~(if references
         `(~'-references [~'_]
-           ~references)
+                        ~references)
         `(~'-references [~'_]))))

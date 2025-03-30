@@ -497,3 +497,41 @@
    type (codeable-concept)
    subject (rare-nil (gen/one-of [(codeable-concept) (reference :reference (gen/return nil))]))
    content (gen/vector (attachment))])
+
+(defn- code-system-concept
+  [& {:keys [code]
+      :or {code (code)}}]
+  (->> (gen/tuple code)
+       (to-map [:code])
+       (fhir-type :fhir.CodeSystem/concept)))
+
+(def-resource-gen code-system
+  [id id-value
+   meta (meta)
+   url (uri)
+   identifier (gen/vector (identifier))
+   version (rare-nil (string))
+   name (nilable (string))
+   title (nilable (string))
+   status (rare-nil (code))
+   experimental (nilable (boolean))
+   concept (gen/vector (code-system-concept))])
+
+(defn- value-set-compose
+  [& {:keys [inactive]
+      :or {inactive (often-nil (boolean))}}]
+  (->> (gen/tuple inactive)
+       (to-map [:inactive])
+       (fhir-type :fhir.ValueSet/compose)))
+
+(def-resource-gen value-set
+  [id id-value
+   meta (meta)
+   url (uri)
+   identifier (gen/vector (identifier))
+   version (rare-nil (string))
+   name (nilable (string))
+   title (nilable (string))
+   status (rare-nil (code))
+   experimental (nilable (boolean))
+   compose (value-set-compose)])

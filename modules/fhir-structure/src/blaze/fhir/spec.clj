@@ -1,10 +1,11 @@
 (ns blaze.fhir.spec
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.fhir.hash.spec]
    [blaze.fhir.spec.impl :as impl]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [conj-vec]]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -71,12 +72,7 @@
   [source]
   (ba/try-all ::anom/incorrect (j/read-value source cbor-object-mapper)))
 
-(defn conform-cbor
-  "Returns the internal representation of `x` parsed from CBOR.
-
-  Returns an anomaly if `x` isn't a valid intermediate representation of a
-  resource."
-  {:arglists '([x])}
+(defn conform-cbor*
   [{type :resourceType :as x}]
   (or
    (when type
@@ -85,6 +81,34 @@
          (when-not (s2/invalid? resource)
            resource))))
    (ba/incorrect "Invalid intermediate representation of a resource." :x x)))
+
+(def ^:private subsetted
+  #fhir/Coding
+   {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+    :code #fhir/code"SUBSETTED"})
+
+(defn- select-summary* [resource & keys]
+  (-> (apply dissoc resource keys)
+      (update :meta update :tag conj-vec subsetted)))
+
+(defn- select-summary [{:fhir/keys [type] :as resource}]
+  (cond-> resource
+    (= :fhir/CodeSystem type)
+    (select-summary* :description :purpose :copyright :concept)
+
+    (= :fhir/ValueSet type)
+    (select-summary* :description :purpose :copyright :compose :expansion)))
+
+(defn conform-cbor
+  "Returns the internal representation of `x` parsed from CBOR.
+
+  Returns an anomaly if `x` isn't a valid intermediate representation of a
+  resource."
+  ([x]
+   (conform-cbor x :complete))
+  ([x variant]
+   (when-ok [resource (conform-cbor* x)]
+     (cond-> resource (= :summary variant) select-summary))))
 
 (defn- transform-type-key [type-key modifier]
   (let [ns (namespace type-key)
