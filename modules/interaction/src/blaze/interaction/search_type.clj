@@ -81,9 +81,15 @@
              (map #(search-util/entry context % search-util/include)))
        include-futures)))
 
-(defn- pull-matches-xf [{:keys [elements]} db]
-  (if (seq elements)
+(defn- pull-matches-xf [type {:keys [summary elements]} db]
+  (cond
+    (seq elements)
     (map #(d/pull-many db % elements))
+
+    (and (#{"CodeSystem" "ValueSet"} type) (not (#{"data" "false"} summary)))
+    (map #(d/pull-many db % :summary))
+
+    :else
     (map (partial d/pull-many db))))
 
 (defn- total-future
@@ -131,7 +137,7 @@
     (let [{:keys [matches includes next-match]}
           (build-page db include-defs page-size handles)
           total-future (total-future db type query params matches next-match)
-          match-futures (into [] (comp (partition-all 100) (pull-matches-xf params db)) matches)
+          match-futures (into [] (comp (partition-all 100) (pull-matches-xf type params db)) matches)
           include-futures (into [] (comp (partition-all 100) (map (partial d/pull-many db))) includes)]
       (-> (ac/all-of (into (conj match-futures total-future) include-futures))
           (ac/exceptionally
@@ -288,7 +294,7 @@
     :as request}]
   (let [handling (handler-util/preference headers "handling")
         respond-async (handler-util/preference headers "respond-async")]
-    (do-sync [params (params/decode page-store handling params)]
+    (do-sync [params (params/decode page-store type handling params)]
       (cond->
        (assoc context
               :blaze/base-url base-url

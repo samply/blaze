@@ -1393,6 +1393,12 @@ jobs:
     - name: Check Terminology Capabilities
       run: .github/scripts/check-terminology-capabilities.sh
 
+    - name: Download CodeSystem Resources
+      run: .github/scripts/download-resources.sh CodeSystem
+
+    - name: Download ValueSet Resources
+      run: .github/scripts/download-resources.sh ValueSet
+
     - name: Validate Resources
       run: .github/validation/validate.sh
 

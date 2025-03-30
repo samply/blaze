@@ -29,10 +29,15 @@
      (when-ok [clauses (iu/clauses query-params)]
        {:clauses clauses}))))
 
+(defn- allowed-summary-values [type]
+  (if (#{"CodeSystem" "ValueSet"} type)
+    #{"true" "data" "count" "false"}
+    #{"count"}))
+
 (defn- summary
   "Returns true if a summary result is requested."
-  [handling {summary "_summary"}]
-  (let [value (some #{"count"} (u/to-seq summary))]
+  [type handling {summary "_summary"}]
+  (let [value (some (allowed-summary-values type) (u/to-seq summary))]
     (if (and (nil? value)
              (identical? :blaze.preference.handling/strict handling)
              (seq (u/to-seq summary)))
@@ -55,10 +60,10 @@
   Decoded params consist of:
    :clauses - query clauses
    :token - possibly a token encoding the query clauses"
-  [page-store handling query-params]
+  [page-store type handling query-params]
   (do-sync [{:keys [clauses token]} (clauses page-store query-params)]
     (when-ok [include-defs (include/include-defs handling query-params)
-              summary (summary handling query-params)
+              summary (summary type handling query-params)
               total (total query-params)]
       (cond->
        {:clauses clauses
