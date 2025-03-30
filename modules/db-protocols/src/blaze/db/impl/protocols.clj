@@ -92,11 +92,11 @@
   (-matcher-clauses [matcher]))
 
 (defprotocol Pull
-  (-pull [pull resource-handle])
+  (-pull [pull resource-handle variant])
 
-  (-pull-content [pull resource-handle])
+  (-pull-content [pull resource-handle variant])
 
-  (-pull-many [pull resource-handles] [pull resource-handles elements]))
+  (-pull-many [pull resource-handles variant]))
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")

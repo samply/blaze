@@ -82,14 +82,14 @@
            resource))))
    (ba/incorrect "Invalid intermediate representation of a resource." :x x)))
 
-(def ^:private subsetted
+(def subsetted
   #fhir/Coding
    {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
     :code #fhir/code"SUBSETTED"})
 
 (defn- select-summary* [resource & keys]
   (-> (apply dissoc resource keys)
-      (update :meta update :tag conj-vec subsetted)))
+      (update :meta (fnil update #fhir/Meta{}) :tag conj-vec subsetted)))
 
 (defn- select-summary [{:fhir/keys [type] :as resource}]
   (cond-> resource

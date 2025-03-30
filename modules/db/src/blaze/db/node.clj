@@ -212,10 +212,10 @@
     (enhance-resource tx-cache resource-handle resource)
     (resource-content-not-found-anom resource-handle)))
 
-(defn- get-resource [resource-store resource-handle]
+(defn- get-resource [resource-store resource-handle variant]
   (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
-    (rs/get resource-store (rh/hash resource-handle))))
+    (rs/get resource-store (rh/hash resource-handle) variant)))
 
 (defn- patient-compartment-search-param-codes [search-param-registry type]
   (when (seq (sr/compartment-resources search-param-registry "Patient" type))
@@ -285,13 +285,8 @@
       (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
                                    clauses))))
 
-(def ^:private subsetted
-  #fhir/Coding
-   {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-    :code #fhir/code"SUBSETTED"})
-
 (def ^:private add-subsetted-xf
-  (map #(update % :meta update :tag conj-vec subsetted)))
+  (map #(update % :meta update :tag conj-vec fhir-spec/subsetted)))
 
 (defn- subset-xf [elements]
   (let [keys (conj (seq elements) :fhir/type :id :meta)]
@@ -385,29 +380,27 @@
     (compile-compartment-query search-param-registry code type clauses true))
 
   p/Pull
-  (-pull [_ resource-handle]
-    (do-sync [resource (get-resource resource-store resource-handle)]
+  (-pull [_ resource-handle variant]
+    (do-sync [resource (get-resource resource-store resource-handle variant)]
       (or (some->> resource (enhance-resource tx-cache resource-handle))
           (resource-content-not-found-anom resource-handle))))
 
-  (-pull-content [_ resource-handle]
-    (do-sync [resource (get-resource resource-store resource-handle)]
+  (-pull-content [_ resource-handle variant]
+    (do-sync [resource (get-resource resource-store resource-handle variant)]
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
-  (-pull-many [_ resource-handles]
+  (-pull-many [_ resource-handles variant]
     (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
-          hashes (hashes-of-non-deleted resource-handles)]
-      (do-sync [resources (rs/multi-get resource-store hashes)]
+          hashes (hashes-of-non-deleted resource-handles)
+          [variant elements] (if (keyword? variant) [variant] [:complete variant])]
+      (do-sync [resources (rs/multi-get resource-store hashes variant)]
         (into
          []
-         (comp (map (partial to-resource tx-cache resources))
-               (halt-when ba/anomaly?))
+         (cond-> (comp (map (partial to-resource tx-cache resources))
+                       (halt-when ba/anomaly?))
+           elements (comp (subset-xf elements)))
          resource-handles))))
-
-  (-pull-many [node resource-handles elements]
-    (do-sync [resources (p/-pull-many node resource-handles)]
-      (into [] (subset-xf elements) resources)))
 
   Runnable
   (run [node]

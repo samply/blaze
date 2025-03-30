@@ -310,7 +310,7 @@
           [:issue 0 :diagnostics] := "The Measure resource with the id `0` was deleted."))))
 
   (testing "Returns Server Error on Missing Measure Content"
-    (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
+    (with-redefs [rs/get (fn [_ _ _] (ac/completed-future nil))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Measure :id "0"}]]]
 

@@ -249,7 +249,8 @@
 
 (s/fdef d/pull
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
-               :resource-handle :blaze.db/resource-handle)
+               :resource-handle :blaze.db/resource-handle
+               :variant (s/? :blaze.resource/variant))
   :ret ac/completable-future?)
 
 (s/fdef d/pull-content
@@ -260,7 +261,8 @@
 (s/fdef d/pull-many
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :resource-handles (cs/coll-of :blaze.db/resource-handle)
-               :elements (s/? (s/coll-of keyword?)))
+               :variant (s/? (s/or :variant :blaze.resource/variant
+                                   :elements (s/coll-of keyword?))))
   :ret ac/completable-future?)
 
 (s/fdef d/re-index-total

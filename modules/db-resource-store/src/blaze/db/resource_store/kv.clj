@@ -56,14 +56,14 @@
 (defn- conform-anom [_e hash]
   (ba/fault (conform-msg hash) :blaze.resource/hash hash))
 
-(defn- conform-cbor [x hash]
+(defn- conform-cbor [x hash variant]
   (with-open [_ (prom/timer duration-seconds "conform-resource")]
-    (-> (fhir-spec/conform-cbor x)
+    (-> (fhir-spec/conform-cbor x variant)
         (ba/exceptionally #(conform-anom % hash)))))
 
-(defn- parse-and-conform-cbor [bytes hash]
+(defn- parse-and-conform-cbor [bytes hash variant]
   (when-ok [x (parse-cbor bytes hash)]
-    (conform-cbor x hash)))
+    (conform-cbor x hash variant)))
 
 (def ^:private entry-freezer
   (map
@@ -79,12 +79,12 @@
 (defn- get-content-async [kv-store executor hash]
   (ac/supply-async #(get-content kv-store hash) executor))
 
-(defn- get-and-parse-async [kv-store executor hash]
+(defn- get-and-parse-async [kv-store executor hash variant]
   (do-async [bytes (get-content-async kv-store executor hash)]
-    (some-> bytes (parse-and-conform-cbor hash))))
+    (some-> bytes (parse-and-conform-cbor hash variant))))
 
-(defn- multi-get-and-parse-async [kv-store executor hashes]
-  (mapv (partial get-and-parse-async kv-store executor) hashes))
+(defn- multi-get-and-parse-async [kv-store executor hashes variant]
+  (mapv #(get-and-parse-async kv-store executor % variant) hashes))
 
 (defn- zipmap-found [hashes resources]
   (loop [map (transient {})
@@ -98,12 +98,12 @@
 
 (deftype KvResourceStore [kv-store executor]
   rs/ResourceStore
-  (-get [_ hash]
-    (get-and-parse-async kv-store executor hash))
+  (-get [_ hash variant]
+    (get-and-parse-async kv-store executor hash variant))
 
-  (-multi-get [_ hashes]
+  (-multi-get [_ hashes variant]
     (log/trace "multi-get" (count hashes) "hash(es)")
-    (let [futures (multi-get-and-parse-async kv-store executor hashes)]
+    (let [futures (multi-get-and-parse-async kv-store executor hashes variant)]
       (do-sync [_ (ac/all-of futures)]
         (zipmap-found hashes (map ac/join futures)))))
 

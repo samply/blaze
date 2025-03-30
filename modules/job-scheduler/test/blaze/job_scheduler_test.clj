@@ -318,11 +318,11 @@
 
       (testing "the job is created as ready"
         (given @(mtu/assoc-thread-name (js/create-job job-scheduler (ready-job "test")))
+          [meta :thread-name] :? mtu/common-pool-thread?
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
           jtu/combined-status := :ready
-          job-util/job-type := :test
-          [meta :thread-name] :? mtu/common-pool-thread?))
+          job-util/job-type := :test))
 
       (testing "the job is in-progress"
         (given @(jtu/pull-job system job-id :in-progress/started)
@@ -453,11 +453,11 @@
       @(jtu/pull-job system job-id :in-progress/started)
 
       (given @(mtu/assoc-thread-name (js/cancel-job job-scheduler job-id))
+        [meta :thread-name] :? mtu/common-pool-thread?
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :cancelled/requested
-        job-util/job-type := :test
-        [meta :thread-name] :? mtu/common-pool-thread?)
+        job-util/job-type := :test)
 
       @(jtu/pull-job system job-id :cancelled/finished)
 
@@ -534,11 +534,11 @@
       @(jtu/pull-job system job-id :in-progress/started)
 
       (given @(mtu/assoc-thread-name (js/pause-job job-scheduler job-id))
+        [meta :thread-name] :? mtu/common-pool-thread?
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :on-hold/paused
-        job-util/job-type := :test
-        [meta :thread-name] :? mtu/common-pool-thread?)))
+        job-util/job-type := :test)))
 
   (testing "pause is idempotent, so it can be called twice with the same output"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
@@ -581,11 +581,11 @@
       @(js/pause-job job-scheduler job-id)
 
       (given @(mtu/assoc-thread-name (js/resume-job job-scheduler job-id))
+        [meta :thread-name] :? mtu/common-pool-thread?
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :in-progress/resumed
-        job-util/job-type := :test
-        [meta :thread-name] :? mtu/common-pool-thread?)
+        job-util/job-type := :test)
 
       (testing "the job is completed"
         (given @(jtu/pull-job system job-id :completed)

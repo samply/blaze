@@ -4,6 +4,7 @@
   Caffeine is used because it have better performance characteristics as a
   ConcurrentHashMap."
   (:require
+   [blaze.async.comp :as ac]
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]
@@ -19,13 +20,19 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- remove-variant
+  "Removes variant to the keys of `resources`."
+  [resources]
+  (persistent! (reduce-kv #(assoc! %1 (first %2) %3) (transient {}) resources)))
+
 (deftype ResourceCache [^AsyncLoadingCache cache resource-store put-executor]
   rs/ResourceStore
-  (-get [_ hash]
-    (.get cache hash))
+  (-get [_ hash variant]
+    (.get cache [hash variant]))
 
-  (-multi-get [_ hashes]
-    (.getAll cache hashes))
+  (-multi-get [_ hashes variant]
+    (-> (.getAll cache (map #(vector % variant) hashes))
+        (ac/then-apply remove-variant)))
 
   (-put [_ entries]
     (rs/put! resource-store entries))
@@ -43,6 +50,11 @@
 (defmethod m/pre-init-spec :blaze.db/resource-cache [_]
   (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size]))
 
+(defn- add-variant
+  "Adds `variant` to the keys of `resources`."
+  [resources variant]
+  (persistent! (reduce-kv #(assoc! %1 [%2 variant] %3) (transient {}) resources)))
+
 (defmethod ig/init-key :blaze.db/resource-cache
   [_ {:keys [resource-store max-size] :or {max-size 0}}]
   (log/info "Create resource cache with a size of" max-size "resources")
@@ -52,10 +64,12 @@
        (.recordStats)
        (.buildAsync
         (reify AsyncCacheLoader
-          (asyncLoad [_ hash _]
-            (rs/get resource-store hash))
+          (asyncLoad [_ [hash variant] _]
+            (rs/get resource-store hash variant))
 
-          (asyncLoadAll [_ hashes _]
-            (rs/multi-get resource-store (vec hashes))))))
+          (asyncLoadAll [_ keys _]
+            (let [variant (second (first keys))]
+              (-> (rs/multi-get resource-store (mapv first keys) variant)
+                  (ac/then-apply #(add-variant % variant))))))))
    resource-store
    (ForkJoinPool/commonPool)))

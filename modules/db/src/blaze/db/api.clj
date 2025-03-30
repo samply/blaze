@@ -502,13 +502,18 @@
   "Returns a CompletableFuture that will complete with the resource of
   `resource-handle` or an anomaly in case of errors.
 
+  Optional, a content `variant` like :complete or :summary can be given in order
+  to pull only a subset of data.
+
   Note: If an deleted resource is pulled, a stub with type, id and meta will be
   returned.
 
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
-  [node-or-db resource-handle]
-  (p/-pull node-or-db resource-handle))
+  ([node-or-db resource-handle]
+   (p/-pull node-or-db resource-handle :complete))
+  ([node-or-db resource-handle variant]
+   (p/-pull node-or-db resource-handle variant)))
 
 (defn pull-content
   "Returns a CompletableFuture that will complete with the resource content of
@@ -518,22 +523,23 @@
   :lastUpdated in :meta and also not :blaze.db/t, :blaze.db/num-changes,
   :blaze.db/op and :blaze.db/tx in metadata."
   [node-or-db resource-handle]
-  (p/-pull-content node-or-db resource-handle))
+  (p/-pull-content node-or-db resource-handle :complete))
 
 (defn pull-many
   "Returns a CompletableFuture that will complete with a vector of all resources
   of all `resource-handles` in the same order.
 
-  Optional, `elements` can be given which is a list of top-level keys to return
-  instead of all keys. Certain mandatory and modifier elements are returned
-  regardless of if they are specified in `elements`. In addition the resources
+  Optional, `variant` can be given which is either a content variant like
+  :complete or :summary or a list of top-level keys to return instead of all
+  keys (elements). Certain mandatory and modifier elements are returned
+  regardless of if they are specified in `variant`. In addition the resources
   are marked with the tag SUBSETTED in this case.
 
   Returns a failed CompletableFuture if one pull fails."
   ([node-or-db resource-handles]
-   (p/-pull-many node-or-db resource-handles))
-  ([node-or-db resource-handles elements]
-   (p/-pull-many node-or-db resource-handles elements)))
+   (p/-pull-many node-or-db resource-handles :complete))
+  ([node-or-db resource-handles variant]
+   (p/-pull-many node-or-db resource-handles variant)))
 
 ;; ---- (Re) Index ------------------------------------------------------------
 

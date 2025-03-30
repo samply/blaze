@@ -57,11 +57,11 @@
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
   (reify
     rs/ResourceStore
-    (-get [_ hash]
-      (-> (rs/get resource-store hash)
+    (-get [_ hash variant]
+      (-> (rs/get resource-store hash variant)
           (ac/then-apply-async identity delayed-executor)))
-    (-multi-get [_ hashes]
-      (-> (rs/multi-get resource-store hashes)
+    (-multi-get [_ hashes variant]
+      (-> (rs/multi-get resource-store hashes variant)
           (ac/then-apply-async identity delayed-executor)))
     (-put [_ entries]
       (-> (rs/put! resource-store entries)
@@ -6926,9 +6926,9 @@
   (let [store (atom {})]
     (reify
       rs/ResourceStore
-      (-get [_ hash]
+      (-get [_ hash _]
         (ac/completed-future (get @store hash)))
-      (-multi-get [_ hashes]
+      (-multi-get [_ hashes _]
         (ac/completed-future (select-keys @store hashes)))
       (-put [_ entries]
         (swap! store merge (select-keys entries hashes-to-store))
@@ -6956,11 +6956,62 @@
             resource-handle (d/resource-handle db "Patient" "0")]
         (doseq [target [node db]]
           (given @(mtu/assoc-thread-name (d/pull target resource-handle))
+            [meta :thread-name] :? mtu/common-pool-thread?
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH
-            [meta :thread-name] :? mtu/common-pool-thread?)))))
+            [:meta :lastUpdated] := Instant/EPOCH))))
+
+    (testing "summary"
+      (testing "CodeSystem"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-115910"
+                   :version #fhir/string"version-170327"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-115927"}]}]]]
+
+          (let [db (d/db node)
+                resource-handle (d/resource-handle db "CodeSystem" "0")]
+            (doseq [target [node db]]
+              (given @(mtu/assoc-thread-name (d/pull target resource-handle :summary))
+                [meta :thread-name] :? mtu/common-pool-thread?
+                :fhir/type := :fhir/CodeSystem
+                :id := "0"
+                [:meta :versionId] := #fhir/id"1"
+                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                [:meta :tag 0 :code] := #fhir/code"SUBSETTED"
+                :url := #fhir/uri"system-115910"
+                :version := #fhir/string"version-170327"
+                :content := #fhir/code"complete"
+                :concept := nil)))))
+
+      (testing "ValueSet"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                   :url #fhir/uri"value-set-154043"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"}]}}]]]
+
+          (let [db (d/db node)
+                resource-handle (d/resource-handle db "ValueSet" "0")]
+            (doseq [target [node db]]
+              (given @(mtu/assoc-thread-name (d/pull target resource-handle :summary))
+                [meta :thread-name] :? mtu/common-pool-thread?
+                :fhir/type := :fhir/ValueSet
+                :id := "0"
+                [:meta :versionId] := #fhir/id"1"
+                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                [:meta :tag 0 :code] := #fhir/code"SUBSETTED"
+                :url := #fhir/uri"value-set-154043"
+                :compose := nil)))))))
 
   (testing "resource content not-found"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-config)]
@@ -6983,10 +7034,10 @@
             resource-handle (d/resource-handle db "Patient" "0")]
         (doseq [target [node db]]
           (given @(mtu/assoc-thread-name (d/pull-content target resource-handle))
+            [meta :thread-name] :? mtu/common-pool-thread?
             :fhir/type := :fhir/Patient
             :id := "0"
-            :meta := nil
-            [meta :thread-name] :? mtu/common-pool-thread?)))))
+            :meta := nil)))))
 
   (testing "resource content not-found"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-config)]
@@ -6999,28 +7050,70 @@
                                     (:hash resource-handle)))))))
 
 (deftest pull-many-test
-  (testing "pull all elements"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"system-191514"
-                    :code #fhir/code"code-191518"}]}}]]]
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"system-191514"
+                  :code #fhir/code"code-191518"}]}}]]]
 
-      (with-open-db [db node]
+    (with-open-db [db node]
+      (doseq [target [node db]]
+        (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation")))
+          [meta :thread-name] :? mtu/common-pool-thread?
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [0 :meta :tag] := nil
+          [0 :code :coding 0 :code] := #fhir/code"code-191518"
+          [0 :subject :reference] := #fhir/string"Patient/0"))))
+
+  (testing "summary"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :version #fhir/string"version-170327"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-115927"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-154043"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-115910"}]}}]]]
+
+      (let [db (d/db node)
+            code-system-handle (d/resource-handle db "CodeSystem" "0")
+            value-set-handle (d/resource-handle db "ValueSet" "0")]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation")))
-            count := 1
-            [0 :fhir/type] := :fhir/Observation
+          (given @(mtu/assoc-thread-name (d/pull-many target [code-system-handle value-set-handle] :summary))
+            [meta :thread-name] :? mtu/common-pool-thread?
+            count := 2
+            [0 :fhir/type] := :fhir/CodeSystem
             [0 :id] := "0"
-            [0 :meta :tag] := nil
-            [0 :code :coding 0 :code] := #fhir/code"code-191518"
-            [0 :subject :reference] := #fhir/string"Patient/0"
-            [meta :thread-name] :? mtu/common-pool-thread?)))))
+            [0 :meta :versionId] := #fhir/id"1"
+            [0 :meta :lastUpdated] := Instant/EPOCH
+            [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+            [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
+            [0 :url] := #fhir/uri"system-115910"
+            [0 :version] := #fhir/string"version-170327"
+            [0 :content] := #fhir/code"complete"
+            [0 :concept] := nil
+            [1 :fhir/type] := :fhir/ValueSet
+            [1 :id] := "0"
+            [1 :meta :versionId] := #fhir/id"1"
+            [1 :meta :lastUpdated] := Instant/EPOCH
+            [1 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+            [1 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
+            [1 :url] := #fhir/uri"value-set-154043"
+            [1 :compose] := nil)))))
 
   (testing "pull only certain elements"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -7037,14 +7130,14 @@
       (with-open-db [db node]
         (doseq [target [node db]]
           (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation") [:subject]))
+            [meta :thread-name] :? mtu/common-pool-thread?
             count := 1
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"
             [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
             [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
             [0 :code] := nil
-            [0 :subject :reference] := #fhir/string"Patient/0"
-            [meta :thread-name] :? mtu/common-pool-thread?)))))
+            [0 :subject :reference] := #fhir/string"Patient/0")))))
 
   (testing "pull a single non-existing hash"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-config)]

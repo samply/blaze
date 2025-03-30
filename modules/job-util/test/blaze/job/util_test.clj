@@ -138,9 +138,9 @@
     [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
     (given @(mtu/assoc-thread-name (job-util/pull-job node "0"))
+      [meta :thread-name] :? mtu/common-pool-thread?
       :fhir/type := :fhir/Task
-      :id := "0"
-      [meta :thread-name] :? mtu/common-pool-thread?)))
+      :id := "0")))
 
 (deftest update-job-test
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -151,8 +151,8 @@
       (testing "start job"
         (let [job @(mtu/assoc-thread-name (job-util/update-job node job start-job))]
           (given job
-            :status := #fhir/code"in-progress"
-            [meta :thread-name] :? mtu/common-pool-thread?)
+            [meta :thread-name] :? mtu/common-pool-thread?
+            :status := #fhir/code"in-progress")
 
           (testing "fail job"
             (given @(job-util/update-job node job job-util/fail-job (ba/fault "msg-181135"))
@@ -190,8 +190,8 @@
         (let [job @(job-util/pull-job node "0")]
 
           (given @(mtu/assoc-thread-name (job-util/update-job+ node job nil start-job))
-            :status := #fhir/code"in-progress"
-            [meta :thread-name] :? mtu/common-pool-thread?))))
+            [meta :thread-name] :? mtu/common-pool-thread?
+            :status := #fhir/code"in-progress"))))
 
     (testing "with one argument"
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]

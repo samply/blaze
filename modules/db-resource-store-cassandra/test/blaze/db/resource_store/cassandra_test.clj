@@ -110,7 +110,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (given-failed-future (rs/get store hash)
+          (given-failed-future (rs/get store hash :complete)
             ::anom/message :# "Error while parsing resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`:(.|\\s)*"
             :blaze.resource/hash := hash)))))
 
@@ -134,7 +134,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (given-failed-future (rs/get store hash)
+          (given-failed-future (rs/get store hash :complete)
             ::anom/message := "Error while conforming resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`."
             :blaze.resource/hash := hash)))))
 
@@ -157,7 +157,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (is (nil? @(rs/get store hash)))))))
+          (is (nil? @(rs/get store hash :complete)))))))
 
   (testing "execute error"
     (let [hash (hash "0")
@@ -177,7 +177,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (given-failed-future (rs/get store hash)
+          (given-failed-future (rs/get store hash :complete)
             ::anom/category := ::anom/fault
             ::anom/message := "msg-141754"
             :blaze.resource/hash := hash)))))
@@ -200,7 +200,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (given-failed-future (rs/get store hash)
+          (given-failed-future (rs/get store hash :complete)
             ::anom/category := ::anom/busy
             ::anom/message := "Cassandra msg-115452"
             :blaze.resource/hash := hash)))))
@@ -226,9 +226,10 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (given @(mtu/assoc-thread-name (rs/get store hash))
-            identity := content
-            [meta :thread-name] :? mtu/common-pool-thread?)))))
+          (given @(mtu/assoc-thread-name (rs/get store hash :complete))
+            [meta :thread-name] :? mtu/common-pool-thread?
+            :fhir/type := :fhir/Patient
+            :id := "0")))))
 
   (testing "success after one retry due to timeout"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -255,9 +256,9 @@
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (testing "content matches"
-            (given @(mtu/assoc-thread-name (rs/get store hash))
-              identity := content
-              [meta :thread-name] :? mtu/common-pool-thread?)))))))
+            (given @(mtu/assoc-thread-name (rs/get store hash :complete))
+              [meta :thread-name] :? mtu/common-pool-thread?
+              identity := content)))))))
 
 (deftest multi-get-test
   (testing "not found"
@@ -280,9 +281,9 @@
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (testing "result is empty"
-            (given @(mtu/assoc-thread-name (rs/multi-get store [hash]))
-              identity :? empty?
-              [meta :thread-name] :? mtu/common-pool-thread?))))))
+            (given @(mtu/assoc-thread-name (rs/multi-get store [hash] :complete))
+              [meta :thread-name] :? mtu/common-pool-thread?
+              identity :? empty?))))))
 
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -305,9 +306,9 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (given @(mtu/assoc-thread-name (rs/multi-get store [hash]))
-            identity := {hash content}
-            [meta :thread-name] :? mtu/common-pool-thread?))))))
+          (given @(mtu/assoc-thread-name (rs/multi-get store [hash] :complete))
+            [meta :thread-name] :? mtu/common-pool-thread?
+            identity := {hash content}))))))
 
 (def bound-put-statement (reify BoundStatement))
 

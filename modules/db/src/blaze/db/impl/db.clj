@@ -214,17 +214,14 @@
   ;; ---- Pull ----------------------------------------------------------------
 
   p/Pull
-  (-pull [_ resource-handle]
-    (p/-pull node resource-handle))
+  (-pull [_ resource-handle variant]
+    (p/-pull node resource-handle variant))
 
-  (-pull-content [_ resource-handle]
-    (p/-pull-content node resource-handle))
+  (-pull-content [_ resource-handle variant]
+    (p/-pull-content node resource-handle variant))
 
-  (-pull-many [_ resource-handles]
-    (p/-pull-many node resource-handles))
-
-  (-pull-many [_ resource-handles elements]
-    (p/-pull-many node resource-handles elements)))
+  (-pull-many [_ resource-handles variant]
+    (p/-pull-many node resource-handles variant)))
 
 (defmethod print-method Db [^Db db ^Writer w]
   (.write w (format "Db[t=%d]" (.t db))))
