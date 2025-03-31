@@ -941,6 +941,8 @@
 
   (testing-query "q62-consent" 4)
 
+  (testing-query "q63-blood-pressure" 1)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
@@ -1203,4 +1205,4 @@
 
 (comment
   (log/set-min-level! :debug)
-  (evaluate "q62-consent"))
+  (evaluate "q63-blood-pressure"))
