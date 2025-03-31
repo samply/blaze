@@ -1,0 +1,190 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "0",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "75367002",
+              "version": "http://snomed.info/sct/900000000000207008/version/20230731"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood pressure panel with all children optional"
+            }
+          ]
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure"
+                },
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "271649006",
+                  "version": "http://snomed.info/sct/900000000000207008/version/20230731",
+                  "display": "Systolic blood pressure (observable entity)"
+                },
+                {
+                  "system": "urn:iso:std:iso:11073:10101",
+                  "code": "150017",
+                  "display": "Systolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]",
+              "value": 120,
+              "unit": "millimeter Mercury column"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8478-0",
+                  "display": "Mean blood pressure"
+                },
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "6797001",
+                  "version": "http://snomed.info/sct/900000000000207008/version/20230731",
+                  "display": "Mean blood pressure (observable entity)"
+                },
+                {
+                  "system": "urn:iso:std:iso:11073:10101",
+                  "code": "150019",
+                  "display": "Mean blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]",
+              "value": 90,
+              "unit": "millimeter Mercury column"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure"
+                },
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "271650006",
+                  "version": "http://snomed.info/sct/900000000000207008/version/20230731",
+                  "display": "Diastolic blood pressure (observable entity)"
+                },
+                {
+                  "system": "urn:iso:std:iso:11073:10101",
+                  "code": "150018",
+                  "display": "Diastolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]",
+              "value": 80,
+              "unit": "millimeter Mercury column"
+            }
+          }
+        ],
+        "subject": {
+          "reference": "Patient/0"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql-identifier",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}
