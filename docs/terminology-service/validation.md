@@ -15,4 +15,4 @@ java -jar validator_cli.jar -version 4.0.1 -level error \
   "Condition-1.json"
 ```
 
-[1]: <https://github.com/hapifhir/org.hl7.fhir.validator-wrapper/releases>
+[1]: <https://github.com/hapifhir/org.hl7.fhir.core/releases/latest>
