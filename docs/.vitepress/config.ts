@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress';
 export default defineConfig({
 	title: 'Blaze',
 	description: 'Blaze FHIR Server Documentation',
-	head: [['link', { rel: 'icon', href: '/blaze-icon.ico' }]],
+	head: [['link', { rel: 'icon', href: '/favicon.svg' }]],
 
 	base: process.env.DOCS_BASE || '',
 	lastUpdated: true,

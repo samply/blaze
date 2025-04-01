@@ -16,6 +16,7 @@ Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`.
 ### Type Level
 
 * [Create](api/interaction/create.md)
+* [Delete](api/interaction/delete-type.md)
 * [Search](api/interaction/search-type.md)
 * [History](api/interaction/history-type.md)
 
