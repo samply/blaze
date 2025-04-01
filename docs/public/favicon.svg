@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="1000" height="1000"><g clip-path="url(#SvgjsClipPath1033)"><rect width="1000" height="1000" fill="#f3f4f4"></rect><g transform="matrix(10,0,0,10,150,150)"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="70" height="70"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 70 70">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: url(#Unbenannter_Verlauf_35);
+      }
+    </style>
+    <linearGradient id="Unbenannter_Verlauf_35" data-name="Unbenannter Verlauf 35" x1="-71.6" y1="-169.9" x2="-40.1" y2="-245.9" gradientTransform="translate(-17.9 244.9) rotate(30)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2afcff"></stop>
+      <stop offset=".2" stop-color="#1adcea"></stop>
+      <stop offset=".4" stop-color="#00a4c6"></stop>
+      <stop offset=".7" stop-color="#053f7e"></stop>
+      <stop offset=".7" stop-color="#062c70"></stop>
+    </linearGradient>
+  <clipPath id="SvgjsClipPath1033"><rect width="1000" height="1000" x="0" y="0" rx="350" ry="350"></rect></clipPath></defs>
+  <!-- Generator: Adobe Illustrator 28.7.1, SVG Export Plug-In . SVG Version: 1.2.0 Build 142)  -->
+  <g>
+    <g id="Ebene_1">
+      <path class="cls-1" d="M36.2.7l-10.3,17.9-10.3,17.9h0s0,0,0,.1c-5.7,9.9-2.3,22.5,7.6,28.1l10.3-17.9,10.3-17.9h0s0,0,0-.1c5.7-9.9,2.3-22.5-7.6-28.1ZM54.6,59.4c-5.5,9.5-17.6,12.8-27.1,7.3l19.9-34.4c9.5,5.5,12.8,17.6,7.3,27.1Z"></path>
+    </g>
+  </g>
+</svg></svg></g></g></svg>
