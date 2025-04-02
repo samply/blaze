@@ -425,7 +425,56 @@
               (given body
                 :fhir/type := :fhir/Parameters
                 [(parameter "result") 0 :value] := #fhir/boolean true
-                [(parameter "display") 0 :value] := #fhir/string"display-125412")))))))
+                [(parameter "display") 0 :value] := #fhir/string"display-125412"))))))
+
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :version "1.0"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-115927"}]}]
+        [:put {:fhir/type :fhir/CodeSystem :id "1"
+               :url #fhir/uri"system-115910"
+               :version "1.2"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-155335"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "152952"
+               :url #fhir/uri"value-set-163309"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-115910"}]}}]]]
+
+      (let [{:keys [status body]}
+            @(handler {:query-params {"url" "value-set-163309"
+                                      "system" "system-115910"
+                                      "code" "code-155335"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :fhir/type := :fhir/Parameters
+          [:parameter 0 :name] := #fhir/string"result"
+          [:parameter 0 :value type/value] := true))
+
+      (testing "with system-version"
+        (let [{:keys [status body]}
+              @(handler {:query-params {"url" "value-set-163309"
+                                        "system" "system-115910"
+                                        "code" "code-115927"
+                                        "system-version" "system-115910|1.0"}})]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/Parameters
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value type/value] := true)))))
 
   (testing "successful validation by valueSet"
     (testing "code only"

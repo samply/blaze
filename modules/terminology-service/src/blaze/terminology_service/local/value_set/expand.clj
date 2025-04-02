@@ -7,8 +7,8 @@
    [blaze.spec]
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.value-set :as vs]
+   [blaze.terminology-service.local.value-set.util :as vs-u]
    [clojure.set :as set]
-   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [java-time.api :as time]))
 
@@ -18,16 +18,10 @@
 (defn- all-version-expansion-anom [url]
   (ba/unsupported (all-version-expansion-msg url)))
 
-(defn- find-version [{:keys [system-versions]} system]
-  (some
-   #(let [[s v] (str/split (type/value %) #"\|")]
-      (when (= system s) v))
-   system-versions))
-
 (defn- find-code-system [{:keys [params] :as context} {:keys [system version]}]
   (condp = (type/value version)
     "*" (ac/completed-future (all-version-expansion-anom (type/value system)))
-    nil (if-let [version (find-version params (type/value system))]
+    nil (if-let [version (vs-u/find-version params (type/value system))]
           (cs/find context (type/value system) version)
           (cs/find context (type/value system)))
     (cs/find context (type/value system) (type/value version))))

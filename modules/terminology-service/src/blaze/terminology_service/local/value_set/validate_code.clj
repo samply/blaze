@@ -6,6 +6,7 @@
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.validate-code :as vc]
    [blaze.terminology-service.local.value-set :as vs]
+   [blaze.terminology-service.local.value-set.util :as vs-u]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]))
@@ -36,8 +37,7 @@
          :issues [not-in-vs (issue/missing-system clause)])))
     (ba/incorrect "Missing required parameter `coding.code`.")))
 
-(defn- validate-params
-  "Tries to extract :clause from `params`."
+(defn- validate-params*
   [value-set
    {:keys [code system infer-system coding codeable-concept] :as params}]
   (cond
@@ -67,6 +67,19 @@
 
     :else
     (ba/incorrect "Missing one of the parameters `code`, `coding` or `codeableConcept`.")))
+
+(defn- resolve-version [{:keys [system version] :as clause} params]
+  (if-not version
+    (if-some [version (vs-u/find-version params system)]
+      (assoc clause :version version)
+      clause)
+    clause))
+
+(defn- validate-params
+  "Tries to extract :clause from `params`."
+  [value-set params]
+  (let [params (validate-params* value-set params)]
+    (update params :clause resolve-version params)))
 
 (defn- anom-clause
   ([{:keys [code system version]}]

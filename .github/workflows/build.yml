@@ -1463,6 +1463,9 @@ jobs:
     - name: Check Good
       run: .github/terminology-tests/good.sh
 
+    - name: Check Validation Version
+      run: .github/terminology-tests/validation-version.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-24.04

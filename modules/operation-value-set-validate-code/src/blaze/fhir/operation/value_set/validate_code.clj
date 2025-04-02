@@ -19,6 +19,9 @@
     (type/boolean value)
     (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
 
+(defn- coerce-canonical [_ value]
+  (type/canonical value))
+
 (defn- coerce-code [_ value]
   (type/code value))
 
@@ -44,6 +47,7 @@
    "displayLanguage" {:action :copy :coerce coerce-string}
    "useSupplement" {}
    "inferSystem" {:action :copy :coerce coerce-boolean}
+   "system-version" {:action :copy :coerce coerce-canonical}
    "tx-resource" {:action :complex}})
 
 (defn- parameter [name value]
