@@ -276,6 +276,7 @@
    "displayLanguage" {:action :parse :cardinality :many :parse parse/parse-accept-charset}
    "useSupplement" {}
    "inferSystem" {:action :copy}
+   "system-version" {:action :parse-canonical :cardinality :many}
    "tx-resource" {:action :copy-resource :cardinality :many}
    "lenient-display-validation" {:action :copy}
    "activeOnly" {:action :copy}})
