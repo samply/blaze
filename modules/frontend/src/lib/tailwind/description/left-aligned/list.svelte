@@ -1,8 +1,10 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	interface Props {
-		title?: import('svelte').Snippet;
-		description?: import('svelte').Snippet;
-		children?: import('svelte').Snippet;
+		title?: Snippet;
+		description?: Snippet;
+		children?: Snippet;
 	}
 
 	let { title, description, children }: Props = $props();
@@ -18,7 +20,7 @@
 		</p>
 	</div>
 	<div class="mt-6 border-t border-gray-100">
-		<dl class="divide-y divide-gray-100">
+		<dl class="divide-y divide-gray-100" role="list">
 			{@render children?.()}
 		</dl>
 	</div>

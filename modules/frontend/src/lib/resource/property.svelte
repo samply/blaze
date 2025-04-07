@@ -5,6 +5,7 @@
 		type FhirPrimitive,
 		type FhirObject
 	} from './resource-card.js';
+
 	import type {
 		Attachment,
 		Identifier,
@@ -14,6 +15,7 @@
 		Reference,
 		Dosage
 	} from 'fhir/r4';
+
 	import PrimitiveValue from './primitive-value.svelte';
 	import ComplexValue from './complex-value.svelte';
 	import AttachmentValues from '$lib/values/attachment.svelte';
@@ -24,6 +26,8 @@
 	import ReferenceValues from '$lib/values/reference.svelte';
 	import DosageValues from '$lib/values/dosage.svelte';
 
+	import { toTitleCase } from '$lib/util.js';
+
 	interface Props {
 		property: FhirProperty;
 	}
@@ -33,8 +37,6 @@
 	function toArray<T>(x: T[] | T): T[] {
 		return Array.isArray(x) ? x : [x];
 	}
-
-	const name = property.name.substring(0, 1).toUpperCase() + property.name.substring(1);
 
 	const singlePrimitiveValue =
 		isPrimitive(property.type) && !Array.isArray(property.value)
@@ -79,8 +81,10 @@
 	}
 </script>
 
-<div class="py-4 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6 sm:py-5">
-	<dt class="text-sm font-medium text-gray-500">{name}</dt>
+<div class="py-4 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6 sm:py-5" role="listitem">
+	<dt class="text-sm font-medium text-gray-500">
+		{toTitleCase(property.humanName ?? property.name)}
+	</dt>
 	<dd class="mt-1 text-sm text-gray-900 sm:col-span-3 sm:mt-0">
 		{#if singlePrimitiveValue}
 			<PrimitiveValue value={singlePrimitiveValue} />

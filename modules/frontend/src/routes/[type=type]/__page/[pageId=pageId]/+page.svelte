@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { fade, slide } from 'svelte/transition';
 
+	import Breadcrumb from '$lib/breadcrumb.svelte';
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
 	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 	import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
@@ -34,13 +35,11 @@
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-	<nav class="flex pl-8 py-4 border-b border-gray-200" aria-label="Breadcrumb">
-		<ol class="flex items-center py-0.5 space-x-4">
-			<BreadcrumbEntryHome />
-			<BreadcrumbEntryType />
-			<BreadcrumbEntryPage />
-		</ol>
-	</nav>
+	<Breadcrumb>
+		<BreadcrumbEntryHome />
+		<BreadcrumbEntryType />
+		<BreadcrumbEntryPage />
+	</Breadcrumb>
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">

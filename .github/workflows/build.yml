@@ -2034,8 +2034,8 @@ jobs:
     - name: Run Keycloak
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d keycloak
 
-    - name: Sleep 20 Seconds
-      run: sleep 20
+    - name: Install Dependencies
+      run: make -C modules/frontend-e2e install
 
     - name: Run Everything Else
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d
@@ -2060,9 +2060,6 @@ jobs:
 
     - name: Download Patient Resources
       run: modules/frontend-e2e/download-patient-resources.sh
-
-    - name: Install Playwright
-      run: make -C modules/frontend-e2e install
 
     - name: Run Playwright Tests
       run: make -C modules/frontend-e2e test

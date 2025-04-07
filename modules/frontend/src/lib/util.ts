@@ -2,6 +2,11 @@ export function toTitleCase(s: string): string {
 	return s.substring(0, 1).toUpperCase() + s.substring(1);
 }
 
+export function startsWithUpperCase(s: string): boolean {
+	const c = s.charAt(0);
+	return c.toUpperCase() === c;
+}
+
 export function sortByProperty<T>(propName: keyof T) {
 	return function (a: T, b: T) {
 		if (a[propName] === undefined || a[propName] === null) return 1;
@@ -75,6 +80,10 @@ export function processParams(params: URLSearchParams): string {
 	// a default count of 20 is sufficient for the UI
 	if (!newParams.has('_count')) {
 		newParams.append('_count', defaultCount);
+	}
+	// we like to have summary representations by default
+	if (!newParams.has('_summary')) {
+		newParams.append('_summary', 'true');
 	}
 	return newParams.toString();
 }

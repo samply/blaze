@@ -1,15 +1,14 @@
-import type { Bundle, StructureDefinition } from 'fhir/r4';
+import type { Bundle, ElementDefinition, StructureDefinition } from 'fhir/r4';
 import { describe, expect, it } from 'vitest';
-import { error } from '@sveltejs/kit';
-import { calcPropertiesDeep, type FhirObject } from './resource-card.js';
+import { calcPropertiesDeep, type FhirObject, getTypeElements } from './resource-card.js';
 import { readFileSync } from 'fs';
 
-const structureDefinitionPatient = await readStructureDefinition('Patient');
-const structureDefinitionObservation = await readStructureDefinition('Observation');
-const structureDefinitionMedicationAdministration = await readStructureDefinition(
+const structureDefinitionPatient = readStructureDefinition('Patient');
+const structureDefinitionObservation = readStructureDefinition('Observation');
+const structureDefinitionMedicationAdministration = readStructureDefinition(
 	'MedicationAdministration'
 );
-const structureDefinitionCarePlan = await readStructureDefinition('CarePlan');
+const structureDefinitionCarePlan = readStructureDefinition('CarePlan');
 
 function readBundle(name: string): Bundle {
 	const data = readFileSync(name);
@@ -21,26 +20,29 @@ function readStructureDefinitionFrom(file: string, name: string): StructureDefin
 	return bundle.entry?.find((e) => e.resource?.id === name)?.resource as StructureDefinition;
 }
 
-async function readStructureDefinition(name: string): Promise<StructureDefinition> {
+function readStructureDefinition(name: string): StructureDefinition {
 	const structureDefinition = readStructureDefinitionFrom('types', name);
 	if (structureDefinition === undefined) {
 		const structureDefinition = readStructureDefinitionFrom('resources', name);
-		return structureDefinition === undefined
-			? Promise.reject(`StructureDefinition ${name} not found`)
-			: Promise.resolve(structureDefinition);
+		return structureDefinition as StructureDefinition;
 	} else {
-		return Promise.resolve(structureDefinition);
+		return structureDefinition;
 	}
 }
 
 describe('calcPropertiesDeep test', () => {
-	it('Patient.id', async () => {
-		await expect(
-			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-				resourceType: 'Patient',
-				id: 'foo'
-			})
-		).resolves.toStrictEqual({
+	it('Patient.id', () => {
+		expect(
+			calcPropertiesDeep(
+				readStructureDefinition,
+				getTypeElements(new Map<string, ElementDefinition[]>()),
+				structureDefinitionPatient,
+				{
+					resourceType: 'Patient',
+					id: 'foo'
+				}
+			)
+		).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
 				{
@@ -60,15 +62,20 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('Patient.meta.profile', async () => {
-		await expect(
-			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-				resourceType: 'Patient',
-				meta: {
-					profile: ['foo']
+	it('Patient.meta.profile', () => {
+		expect(
+			calcPropertiesDeep(
+				readStructureDefinition,
+				getTypeElements(new Map<string, ElementDefinition[]>()),
+				structureDefinitionPatient,
+				{
+					resourceType: 'Patient',
+					meta: {
+						profile: ['foo']
+					}
 				}
-			})
-		).resolves.toStrictEqual({
+			)
+		).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
 				{
@@ -113,14 +120,19 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('Patient active comes before gender', async () => {
-		await expect(
-			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-				resourceType: 'Patient',
-				gender: 'male',
-				active: false
-			})
-		).resolves.toStrictEqual({
+	it('Patient active comes before gender', () => {
+		expect(
+			calcPropertiesDeep(
+				readStructureDefinition,
+				getTypeElements(new Map<string, ElementDefinition[]>()),
+				structureDefinitionPatient,
+				{
+					resourceType: 'Patient',
+					gender: 'male',
+					active: false
+				}
+			)
+		).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
 				{
@@ -146,17 +158,22 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('Patient.identifier', async () => {
-		await expect(
-			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-				resourceType: 'Patient',
-				identifier: [
-					{
-						value: 'foo'
-					}
-				]
-			})
-		).resolves.toStrictEqual({
+	it('Patient.identifier', () => {
+		expect(
+			calcPropertiesDeep(
+				readStructureDefinition,
+				getTypeElements(new Map<string, ElementDefinition[]>()),
+				structureDefinitionPatient,
+				{
+					resourceType: 'Patient',
+					identifier: [
+						{
+							value: 'foo'
+						}
+					]
+				}
+			)
+		).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
 				{
@@ -194,18 +211,23 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('contained resource', async () => {
-		await expect(
-			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-				resourceType: 'Patient',
-				contained: [
-					{
-						resourceType: 'Patient',
-						gender: 'female'
-					}
-				]
-			})
-		).resolves.toStrictEqual({
+	it('contained resource', () => {
+		expect(
+			calcPropertiesDeep(
+				readStructureDefinition,
+				getTypeElements(new Map<string, ElementDefinition[]>()),
+				structureDefinitionPatient,
+				{
+					resourceType: 'Patient',
+					contained: [
+						{
+							resourceType: 'Patient',
+							gender: 'female'
+						}
+					]
+				}
+			)
+		).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
 				{
@@ -250,9 +272,10 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('polymorph attribute with complex type', async () => {
-		const result = await calcPropertiesDeep(
+	it('polymorph attribute with complex type', () => {
+		const result = calcPropertiesDeep(
 			readStructureDefinition,
+			getTypeElements(new Map<string, ElementDefinition[]>()),
 			structureDefinitionMedicationAdministration,
 			{
 				resourceType: 'MedicationAdministration',
@@ -279,15 +302,20 @@ describe('calcPropertiesDeep test', () => {
 			value: 'text-131123'
 		});
 	});
-	it('backbone element', async () => {
-		const result = await calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-			resourceType: 'Patient',
-			contact: [
-				{
-					gender: 'female'
-				}
-			]
-		});
+	it('backbone element', () => {
+		const result = calcPropertiesDeep(
+			readStructureDefinition,
+			getTypeElements(new Map<string, ElementDefinition[]>()),
+			structureDefinitionPatient,
+			{
+				resourceType: 'Patient',
+				contact: [
+					{
+						gender: 'female'
+					}
+				]
+			}
+		);
 		expect(result).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
@@ -326,18 +354,23 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('multiple backbone elements', async () => {
-		const result = await calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-			resourceType: 'Patient',
-			contact: [
-				{
-					gender: 'female'
-				},
-				{
-					gender: 'male'
-				}
-			]
-		});
+	it('multiple backbone elements', () => {
+		const result = calcPropertiesDeep(
+			readStructureDefinition,
+			getTypeElements(new Map<string, ElementDefinition[]>()),
+			structureDefinitionPatient,
+			{
+				resourceType: 'Patient',
+				contact: [
+					{
+						gender: 'female'
+					},
+					{
+						gender: 'male'
+					}
+				]
+			}
+		);
 		expect(result).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
@@ -392,20 +425,25 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('nested backbone elements', async () => {
-		const result = await calcPropertiesDeep(readStructureDefinition, structureDefinitionCarePlan, {
-			resourceType: 'CarePlan',
-			activity: [
-				{
-					detail: {
-						status: 'completed'
+	it('nested backbone elements', () => {
+		const result = calcPropertiesDeep(
+			readStructureDefinition,
+			getTypeElements(new Map<string, ElementDefinition[]>()),
+			structureDefinitionCarePlan,
+			{
+				resourceType: 'CarePlan',
+				activity: [
+					{
+						detail: {
+							status: 'completed'
+						}
 					}
-				}
-			],
-			status: 'unknown',
-			intent: 'proposal',
-			subject: {}
-		});
+				],
+				status: 'unknown',
+				intent: 'proposal',
+				subject: {}
+			}
+		);
 		expect(result).toStrictEqual({
 			type: { code: 'CarePlan' },
 			properties: [
@@ -484,10 +522,11 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('recursive backbone elements', async () => {
-		const result = await calcPropertiesDeep(
+	it('recursive backbone elements', () => {
+		const result = calcPropertiesDeep(
 			readStructureDefinition,
-			await readStructureDefinition('Consent'),
+			getTypeElements(new Map<string, ElementDefinition[]>()),
+			readStructureDefinition('Consent'),
 			{
 				resourceType: 'Consent',
 				provision: {
@@ -594,10 +633,11 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('nested referenced backbone elements', async () => {
-		const result = await calcPropertiesDeep(
+	it('nested referenced backbone elements', () => {
+		const result = calcPropertiesDeep(
 			readStructureDefinition,
-			await readStructureDefinition('ValueSet'),
+			getTypeElements(new Map<string, ElementDefinition[]>()),
+			readStructureDefinition('ValueSet'),
 			{
 				resourceType: 'ValueSet',
 				compose: {
@@ -706,9 +746,10 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('element', async () => {
-		const result = await calcPropertiesDeep(
+	it('element', () => {
+		const result = calcPropertiesDeep(
 			readStructureDefinition,
+			getTypeElements(new Map<string, ElementDefinition[]>()),
 			structureDefinitionObservation,
 			{
 				resourceType: 'Observation',
@@ -741,6 +782,7 @@ describe('calcPropertiesDeep test', () => {
 				},
 				{
 					name: 'effectiveTiming',
+					humanName: 'effective',
 					type: { code: 'Timing' },
 					value: {
 						type: { code: 'Timing' },
@@ -783,26 +825,31 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('primitive extension', async () => {
-		await expect(
-			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
-				resourceType: 'Patient',
-				id: 'foo',
-				gender: 'other',
-				_gender: {
-					extension: [
-						{
-							url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
-							valueCoding: {
-								system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
-								code: 'D',
-								display: 'divers'
+	it('primitive extension', () => {
+		expect(
+			calcPropertiesDeep(
+				readStructureDefinition,
+				getTypeElements(new Map<string, ElementDefinition[]>()),
+				structureDefinitionPatient,
+				{
+					resourceType: 'Patient',
+					id: 'foo',
+					gender: 'other',
+					_gender: {
+						extension: [
+							{
+								url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
+								valueCoding: {
+									system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+									code: 'D',
+									display: 'divers'
+								}
 							}
-						}
-					]
+						]
+					}
 				}
-			})
-		).resolves.toStrictEqual({
+			)
+		).toStrictEqual({
 			type: { code: 'Patient' },
 			properties: [
 				{
@@ -835,6 +882,7 @@ describe('calcPropertiesDeep test', () => {
 									},
 									{
 										name: 'valueCoding',
+										humanName: 'value',
 										type: { code: 'Coding' },
 										value: {
 											type: { code: 'Coding' },
@@ -897,19 +945,5 @@ describe('calcPropertiesDeep test', () => {
 				}
 			}
 		});
-	});
-	it('with error during StructureDefinition fetch', async () => {
-		await expect(() =>
-			calcPropertiesDeep(
-				() => {
-					error(404);
-				},
-				structureDefinitionPatient,
-				{
-					resourceType: 'Patient',
-					identifier: [{}]
-				}
-			)
-		).rejects.toThrowError();
 	});
 });

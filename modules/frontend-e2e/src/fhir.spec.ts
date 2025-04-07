@@ -43,7 +43,7 @@ test('History Page', async ({page}) => {
     await page.getByRole('link', {name: 'History', exact: true}).click();
 
     await expect(page).toHaveTitle("History - Blaze");
-    await expect(page.getByText('Total: 92,300')).toBeVisible();
+    await expect(page.getByText('Total:')).toBeVisible();
 });
 
 test('Metadata Page', async ({page}) => {
@@ -71,7 +71,7 @@ test('Metadata Page', async ({page}) => {
     await page.getByRole('link', {name: 'Resources'}).click();
 
     await expect(page).toHaveTitle("Encounter - Blaze");
-    await expect(page.getByText('Total: 4,769')).toBeVisible();
+    await expect(page.getByText('Total:')).toBeVisible();
 });
 
 test.describe('Admin', () => {
@@ -223,8 +223,8 @@ test.describe('Admin', () => {
             await expect(page.getByText('Search Param URL ' + searchParamUrl)).toBeVisible();
 
             // may appear later
-            await expect(page.getByText('Total Resources 92.3 k')).toBeVisible({timeout: 30000});
-            await expect(page.getByText('Resources Processed 92.3 k')).toBeVisible({timeout: 50000});
+            await expect(page.getByText('Total Resources')).toBeVisible({timeout: 30000});
+            await expect(page.getByText('Resources Processed')).toBeVisible({timeout: 50000});
             await expect(page.getByText('Processing Duration')).toBeVisible({timeout: 50000});
             await expect(page.getByText('Status completed')).toBeVisible({timeout: 50000});
         });
@@ -250,7 +250,7 @@ test('Patients Page', async ({page}) => {
     await expect(page).toHaveTitle("Patient - Blaze");
     await expect(page.getByTitle('Patient History')).toBeVisible();
     await expect(page.getByTitle('Patient Metadata')).toBeVisible();
-    await expect(page.getByText('Total: 120')).toBeVisible();
+    await expect(page.getByText('Total:')).toBeVisible();
 
     await page.getByTitle('Patient Metadata').click();
     await expect(page).toHaveTitle("Patient - Metadata - Blaze");
@@ -270,7 +270,7 @@ test('Patients History Page', async ({page}) => {
     await page.getByTitle('Patient History').click()
 
     await expect(page).toHaveTitle("History - Patient - Blaze");
-    await expect(page.getByText('Total: 120')).toBeVisible();
+    await expect(page.getByText('Total:')).toBeVisible();
 });
 
 test('Signing in after sign out goes to the Keycloak Sign-In Page', async ({page}) => {

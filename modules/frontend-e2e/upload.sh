@@ -12,9 +12,8 @@ blazectl --no-progress \
   --token "$TOKEN" \
   upload "$SCRIPT_DIR/../../.github/test-data/synthea"
 
-echo "Download KDS Fall Package..."
-wget -q --content-disposition "https://packages.simplifier.net/de.medizininformatikinitiative.kerndatensatz.fall/2025.0.0"
-tar xzf de.medizininformatikinitiative.kerndatensatz.fall-2025.0.0.tgz
-
 echo "Upload KDS Fall Profile..."
-curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$CA_CERT" --oauth2-bearer "$TOKEN" -d @"package/StructureDefinition-mii-pr-fall-kontakt-gesundheitseinrichtung.json" "$BASE/StructureDefinition"
+curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$CA_CERT" --oauth2-bearer "$TOKEN" -d @"$SCRIPT_DIR/node_modules/de.medizininformatikinitiative.kerndatensatz.fall/StructureDefinition-mii-pr-fall-kontakt-gesundheitseinrichtung.json" "$BASE/StructureDefinition"
+
+echo "Upload one Value Set..."
+curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$CA_CERT" --oauth2-bearer "$TOKEN" -d @"$SCRIPT_DIR/node_modules/de.medizininformatikinitiative.kerndatensatz.laborbefund/ValueSet-mii-vs-labor-laborbereich.json" "$BASE/ValueSet"

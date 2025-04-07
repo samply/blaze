@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { isTabActive, withTab } from './util.js';
+	import { isTabActive, withTab } from '$lib/util.js';
 
 	interface Props {
 		name: string;

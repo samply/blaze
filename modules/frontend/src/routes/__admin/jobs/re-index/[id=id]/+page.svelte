@@ -2,10 +2,10 @@
 	import type { PageProps } from './$types';
 
 	import { invalidateAll } from '$app/navigation';
-	import Status from '$lib/jobs/re-index/status.svelte';
 	import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';
-	import DateTime from '$lib/values/date-time.svelte';
 	import Row from '$lib/tailwind/description/left-aligned/row-3-2.svelte';
+	import Status from '$lib/jobs/re-index/status.svelte';
+	import DateTime from '$lib/values/date-time.svelte';
 	import prettyNum from '$lib/pretty-num';
 	import humanizeDuration from 'humanize-duration';
 

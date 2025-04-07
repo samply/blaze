@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
+	import type { FhirResource } from 'fhir/r4';
 
-	import { base } from '$app/paths';
 	import { page } from '$app/state';
 
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
@@ -9,35 +9,44 @@
 	import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
 
 	import ResourceCard from '$lib/resource/resource-card.svelte';
+	import HistoryButton from './history-button.svelte';
+	import CodeSystemOperationDropdown from '../../CodeSystem/[id=id]/operation-dropdown.svelte';
+	import ValueSetOperationDropdown from '../../ValueSet/[id=id]/operation-dropdown.svelte';
+
+	import { title } from '$lib/resource.js';
 
 	let { data }: PageProps = $props();
+
+	let resource = $derived(data.resource.object as FhirResource);
 </script>
 
 <svelte:head>
-	<title>{page.params.type}/{page.params.id} - Blaze</title>
+	<title>{title(resource)} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-	<nav class="flex pl-8 py-4 border-b border-gray-200" aria-label="Breadcrumb">
-		<ol class="flex items-center py-0.5 space-x-4">
-			<BreadcrumbEntryHome />
-			<BreadcrumbEntryType />
-			<BreadcrumbEntryResource />
-		</ol>
-	</nav>
+	<div class="flex gap-2 pl-8 pr-4 sm:pr-6 py-3.5 border-b border-gray-200">
+		<nav class="flex flex-auto" aria-label="Breadcrumb">
+			<ol class="flex items-center py-0.5 space-x-4">
+				<BreadcrumbEntryHome />
+				<BreadcrumbEntryType />
+				<BreadcrumbEntryResource {resource} last />
+			</ol>
+		</nav>
+		{#if page.params.type === 'CodeSystem'}
+			<CodeSystemOperationDropdown />
+		{:else if page.params.type === 'ValueSet'}
+			<ValueSetOperationDropdown />
+		{/if}
+		<HistoryButton />
+	</div>
 </header>
 
 {#if data.resource}
 	<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
 		<ResourceCard resource={data.resource}>
 			{#snippet header()}
-				<div>
-					<a
-						href="{base}/{page.params.type}/{page.params.id}/_history"
-						class="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-						title="Go to resource history">History</a
-					>
-				</div>
+				<div></div>
 			{/snippet}
 		</ResourceCard>
 	</main>
