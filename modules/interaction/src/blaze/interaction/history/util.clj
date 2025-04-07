@@ -25,6 +25,12 @@
       (catch DateTimeParseException _))
    (u/to-seq v)))
 
+(defn summary
+  "Returns either :complete or :summary based on the `_summary` query param."
+  {:arglists '([query-params])}
+  [{summary "_summary"}]
+  (or (first (keep {"true" :summary} (u/to-seq summary))) :complete))
+
 (defn page-xform [db page-size since]
   (cond->> (take (inc page-size))
     since

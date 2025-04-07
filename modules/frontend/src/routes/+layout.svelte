@@ -1,14 +1,17 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	import '../app.css';
 	import '@fontsource-variable/lexend';
 	import { page } from '$app/state';
+	import { fade } from 'svelte/transition';
 	import { onNavigate } from '$app/navigation';
 	import { signOut } from '@auth/sveltekit/client';
 	import NavItem from '$lib/nav-item.svelte';
 	import { base } from '$app/paths';
 
 	interface Props {
-		children?: import('svelte').Snippet;
+		children?: Snippet;
 	}
 
 	let { children }: Props = $props();
@@ -108,23 +111,26 @@
                             From: "transform opacity-100 scale-100"
                             To: "transform opacity-0 scale-95"
                         -->
-						<div
-							class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-							role="menu"
-							aria-orientation="vertical"
-							aria-labelledby="user-menu-button"
-							tabindex="-1"
-							class:hidden={!userProfileOpen}
-						>
-							<p class="block px-4 py-2 text-sm text-gray-900">{page.data.session?.user?.name}</p>
-							<button
-								onclick={() => signOut()}
-								class="block px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
-								role="menuitem"
+						{#if userProfileOpen}
+							<div
+								class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+								role="menu"
+								aria-orientation="vertical"
+								aria-labelledby="user-menu-button"
 								tabindex="-1"
-								id="user-menu-item-sign-out">Sign out</button
+								transition:fade={{ duration: 100 }}
 							>
-						</div>
+								<p class="block px-4 py-2 text-sm text-gray-900">{page.data.session?.user?.name}</p>
+								<button
+									onclick={() => signOut()}
+									class="block px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+									role="menuitem"
+									tabindex="-1"
+									id="user-menu-item-sign-out"
+									>Sign out
+								</button>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>

@@ -1,10 +1,12 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	import ExternLinkIcon from './extern-link-icon.svelte';
 
 	interface Props {
 		href: string;
 		title?: string | undefined;
-		children?: import('svelte').Snippet;
+		children?: Snippet;
 	}
 
 	let { href, title = undefined, children }: Props = $props();

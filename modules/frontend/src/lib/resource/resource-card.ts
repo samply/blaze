@@ -60,7 +60,7 @@ export type FhirComplexType =
 /**
  * A structured representation of a Resource with ordered properties and type annotations.
  */
-export interface FhirObject<ObjectType = FhirComplexType> extends FhirType {
+export interface FhirObject<ObjectType = FhirComplexType | FhirResource> extends FhirType {
 	properties: FhirProperty[];
 	object: ObjectType;
 }

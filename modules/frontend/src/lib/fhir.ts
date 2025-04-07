@@ -1,4 +1,11 @@
-import type { Bundle, BundleLink, CodeableConcept, Coding } from 'fhir/r4';
+import type {
+	Bundle,
+	BundleLink,
+	CodeableConcept,
+	Coding,
+	Parameters,
+	ParametersParameter
+} from 'fhir/r4';
 
 export enum SearchParamType {
 	number = 'number',
@@ -30,4 +37,8 @@ export function bundleLink(bundle: Bundle, relation: string): BundleLink | undef
 
 export function coding(concept: CodeableConcept, system: string): Coding | undefined {
 	return concept.coding?.filter((c) => c.system == system)[0];
+}
+
+export function parameter(concept: Parameters, name: string): ParametersParameter | undefined {
+	return concept.parameter?.filter((c) => c.name == name)[0];
 }
