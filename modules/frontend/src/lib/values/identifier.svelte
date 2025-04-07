@@ -1,7 +1,8 @@
 <script lang="ts">
-	import type { FhirObject } from '$lib/resource/resource-card.js';
 	import type { Identifier } from 'fhir/r4';
-	import { sortByProperty } from '../util.js';
+	import type { FhirObject } from '$lib/resource/resource-card.js';
+
+	import { sortByProperty } from '$lib/util.js';
 
 	function compactType(value: Identifier): string | undefined {
 		return value.type?.text;

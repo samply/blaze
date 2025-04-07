@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { Bundle } from 'fhir/r4';
 	import { bundleLink } from './fhir.js';
 	import { fade } from 'svelte/transition';
@@ -7,7 +8,7 @@
 	interface Props {
 		bundle: Bundle;
 		showFirstLink?: boolean;
-		children?: import('svelte').Snippet;
+		children?: Snippet;
 	}
 
 	let { bundle, showFirstLink = false, children }: Props = $props();

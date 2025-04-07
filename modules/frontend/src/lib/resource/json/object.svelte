@@ -11,9 +11,8 @@
 	let { indent = 0, insideArray = false, object }: Props = $props();
 </script>
 
-{insideArray ? ' '.repeat(indent) : ''}<span>{'{\n'}</span
->{#each object.properties as property, index (property.name)}<Property
+{insideArray ? ' '.repeat(indent) : ''}{'{\n'}{#each object.properties as property, index}<Property
 		indent={indent + 4}
 		isLast={index + 1 === object.properties.length}
 		{property}
-	/>{/each}<span>{' '.repeat(indent)}{'}'}</span>
+	/>{/each}{' '.repeat(indent)}{'}'}

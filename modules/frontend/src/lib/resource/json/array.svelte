@@ -8,10 +8,13 @@
 	}
 
 	let { indent, values }: Props = $props();
+
+	const maxLength = 100;
+	let length = Math.min(values.length, maxLength);
 </script>
 
-<span>{'[\n'}</span>{#each values as value, index}<Value
+[{#if length < values.length}&nbsp;!!!&nbsp;SHORTENED&nbsp;-&nbsp;DO&nbsp;NOT&nbsp;COPY&nbsp;!!!{/if}{'\n'}{#each values.slice(0, maxLength) as value, index}<Value
 		indent={indent + 4}
 		insideArray={true}
 		{value}
-	/>{index < values.length - 1 ? ',\n' : '\n'}{/each}<span>{' '.repeat(indent)}{']'}</span>
+	/>{index < length - 1 ? ',\n' : '\n'}{/each}{' '.repeat(indent)}]

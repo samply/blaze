@@ -1,19 +1,25 @@
 <script lang="ts">
-	import { isPrimitive } from '../resource-card.js';
+	import { type FhirObject, type FhirPrimitive, isPrimitive } from '../resource-card.js';
 	import PrimitiveValue from './primitive-value.svelte';
 	import Object from './object.svelte';
 
 	interface Props {
 		indent: number;
 		insideArray?: boolean;
-		// eslint-disable-next-line
-		value: any; //FhirObject | FhirPrimitive
+		value: FhirObject | FhirPrimitive;
 	}
 
 	let { indent, insideArray = false, value }: Props = $props();
+
+	function toPrimitive(value: FhirObject | FhirPrimitive): FhirPrimitive {
+		return value as FhirPrimitive;
+	}
+
+	function toObject(value: FhirObject | FhirPrimitive): FhirObject {
+		return value as FhirObject;
+	}
 </script>
 
-<!-- eslint-disable -->
 {#if isPrimitive(value.type)}{insideArray ? ' '.repeat(indent) : ''}<PrimitiveValue
-		{value}
-	/>{:else}<Object {indent} {insideArray} object={value} />{/if}
+		value={toPrimitive(value)}
+	/>{:else}<Object {indent} {insideArray} object={toObject(value)} />{/if}

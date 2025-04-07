@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { FhirObject } from '$lib/resource/resource-card.js';
 	import type { ContactPoint } from 'fhir/r4';
-	import { joinStrings } from '../util.js';
+	import { joinStrings } from '$lib/util.js';
 	import GrayBadge from './util/gray-badge.svelte';
 
 	interface Props {

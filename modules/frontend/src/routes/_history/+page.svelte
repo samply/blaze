@@ -14,7 +14,7 @@
 
 <main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col gap-4">
 	<TotalCard bundle={data.bundle}>
-		<p class="flex-grow py-1.5 ml-2">
+		<p class="flex-grow py-1.5">
 			{#if data.bundle.total !== undefined}
 				<TotalBadge total={data.bundle.total} />
 			{/if}

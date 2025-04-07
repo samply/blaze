@@ -17,6 +17,8 @@
 	import ErrorCard from '$lib/error-card.svelte';
 	import HistoryButton from './history-button.svelte';
 	import MetadataButton from './metadata-button.svelte';
+	import CodeSystemOperationDropdown from '../CodeSystem/operation-dropdown.svelte';
+	import ValueSetOperationDropdown from '../ValueSet/operation-dropdown.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -35,15 +37,24 @@
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-	<nav class="flex pl-8 py-4 border-b border-gray-200" aria-label="Breadcrumb">
-		<ol class="flex items-center py-0.5 space-x-4">
-			<BreadcrumbEntryHome />
-			<BreadcrumbEntryType />
-		</ol>
-	</nav>
+	<div class="flex gap-2 pl-8 pr-4 sm:pr-6 py-3.5 border-b border-gray-200">
+		<nav class="flex flex-auto" aria-label="Breadcrumb">
+			<ol class="flex items-center py-0.5 space-x-4">
+				<BreadcrumbEntryHome />
+				<BreadcrumbEntryType last />
+			</ol>
+		</nav>
+		{#if page.params.type === 'CodeSystem'}
+			<CodeSystemOperationDropdown />
+		{:else if page.params.type === 'ValueSet'}
+			<ValueSetOperationDropdown />
+		{/if}
+		<HistoryButton />
+		<MetadataButton />
+	</div>
 </header>
 
-<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+<main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
 	<SearchForm searchParams={data.searchParams} />
 	{#await data.streamed.bundle}
 		{#if duration > 300}
@@ -66,9 +77,7 @@
 		{@const bundle = bundleWithDuration.bundle}
 
 		<TotalCard {bundle}>
-			<HistoryButton />
-			<MetadataButton />
-			<p class="py-1.5 ml-2">
+			<p class="py-1.5">
 				{#if bundle.total !== undefined}
 					<TotalBadge total={bundle.total} />
 				{/if}

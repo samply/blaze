@@ -1,9 +1,11 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	interface Props {
 		clazz?: string;
-		caption?: import('svelte').Snippet;
-		head?: import('svelte').Snippet;
-		children?: import('svelte').Snippet;
+		caption?: Snippet;
+		head?: Snippet;
+		children?: Snippet;
 	}
 
 	let { clazz = '', caption, head, children }: Props = $props();

@@ -3,13 +3,15 @@
 
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
+	import { sortByProperty2 } from '$lib/util';
 
+	import Breadcrumb from '$lib/breadcrumb.svelte';
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
 	import BreadcrumbEntryMetadata from '$lib/breadcrumb/metadata.svelte';
 	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 	import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';
 	import Row from '$lib/tailwind/description/left-aligned/row-5-4.svelte';
-	import { sortByProperty2 } from '$lib/util';
+	import ExternalLink from '$lib/values/util/external-link.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -26,13 +28,11 @@
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-	<nav class="flex pl-8 py-4 border-b border-gray-200" aria-label="Breadcrumb">
-		<ol class="flex items-center py-0.5 space-x-4">
-			<BreadcrumbEntryHome />
-			<BreadcrumbEntryMetadata />
-			<BreadcrumbEntryType />
-		</ol>
-	</nav>
+	<Breadcrumb>
+		<BreadcrumbEntryHome />
+		<BreadcrumbEntryMetadata />
+		<BreadcrumbEntryType />
+	</Breadcrumb>
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
@@ -44,6 +44,11 @@
 			{#snippet description()}
 				<a class="hover:text-gray-400" href="{base}/{resource?.type}">Resources</a>
 			{/snippet}
+			<Row title="Spec">
+				<ExternalLink href="https://hl7.org/fhir/R4/{page.params.type}.html"
+					>{page.params.type}</ExternalLink
+				>
+			</Row>
 			<Row title="Supported Profiles">
 				{#if resource?.supportedProfile !== undefined}
 					<ul>

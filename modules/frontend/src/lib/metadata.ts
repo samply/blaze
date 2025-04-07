@@ -38,7 +38,7 @@ export async function fetchStructureDefinition(
 	fetch: typeof window.fetch = window.fetch
 ) {
 	const cached = structureDefinitionStore.get(type);
-	if (cached) {
+	if (cached !== undefined) {
 		return cached;
 	}
 

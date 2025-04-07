@@ -16,11 +16,10 @@
 
 	let { indent, isLast, property }: Props = $props();
 
-	let primitiveExtensions = $derived(
+	let primitiveExtensions =
 		!Array.isArray(property.value) && isPrimitive(property.value.type)
 			? (property.value as FhirPrimitive).extensions
-			: undefined
-	);
+			: undefined;
 </script>
 
 {' '.repeat(indent)}<span class="text-orange-700">"{property.name}"</span

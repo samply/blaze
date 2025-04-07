@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
 
@@ -10,7 +12,7 @@
 		} | null;
 		homeHref?: string;
 		homeMsg?: string;
-		children?: import('svelte').Snippet;
+		children?: Snippet;
 	}
 
 	let {
