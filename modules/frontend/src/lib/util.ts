@@ -76,5 +76,9 @@ export function processParams(params: URLSearchParams): string {
 	if (!newParams.has('_count')) {
 		newParams.append('_count', defaultCount);
 	}
+	// we like to have summary representations by default
+	if (!newParams.has('_summary')) {
+		newParams.append('_summary', 'true');
+	}
 	return newParams.toString();
 }

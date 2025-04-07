@@ -12,7 +12,7 @@
 </script>
 
 {#if entry.fhirObject}
-	<ResourceCard resource={entry.fhirObject} versionLink={true} embedded={true}>
+	<ResourceCard resource={entry.fhirObject} embedded={true}>
 		{#snippet header()}
 			<Badge {entry} />
 		{/snippet}

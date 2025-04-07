@@ -79,7 +79,7 @@
 	}
 </script>
 
-<div class="py-4 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6 sm:py-5">
+<div class="py-4 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6 sm:py-5" role="listitem">
 	<dt class="text-sm font-medium text-gray-500">{name}</dt>
 	<dd class="mt-1 text-sm text-gray-900 sm:col-span-3 sm:mt-0">
 		{#if singlePrimitiveValue}

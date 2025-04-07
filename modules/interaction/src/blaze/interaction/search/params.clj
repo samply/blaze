@@ -34,9 +34,7 @@
     #{"true" "data" "count" "false"}
     #{"count"}))
 
-(defn- summary
-  "Returns true if a summary result is requested."
-  [type handling {summary "_summary"}]
+(defn- summary [type handling {summary "_summary"}]
   (let [value (some (allowed-summary-values type) (u/to-seq summary))]
     (if (and (nil? value)
              (identical? :blaze.preference.handling/strict handling)
