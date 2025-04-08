@@ -1,6 +1,6 @@
 {:deps
  {com.google.guava/guava
-  {:mvn/version "33.4.6-jre"
+  {:mvn/version "33.4.7-android"
    :exclusions
    [com.google.code.findbugs/jsr305
     org.checkerframework/checker-qual
