@@ -920,7 +920,6 @@
 
       (are [x] (false? (eval (compile elm/string x)))
         "aaaa"
-        "12:54"
         "24:54:00"
         "23:60:00"
         "14-30-00.0"))
@@ -1885,30 +1884,30 @@
   (let [eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
       (are [x res] (= res (eval (ctu/compile-unop elm/to-time elm/string x)))
-        "12:54:30" (system/time 12 54 30)
-        "12:54:30.010" (system/time 12 54 30 10)
+        "12:54" #system/time"12:54:00"
+        "12:54:30" #system/time"12:54:30"
+        "12:54:30.010" #system/time"12:54:30.010"
 
         "aaaa" nil
-        "12:54" nil
         "24:54:00" nil
         "23:60:00" nil
         "14-30-00.0" nil))
 
     (testing "Time"
       (are [x res] (= res (eval (ctu/compile-unop elm/to-time elm/time x)))
-        "12:54" (system/time 12 54)
-        "12:54:00" (system/time 12 54 00)
-        "12:54:30.010" (system/time 12 54 30 10)))
+        "12:54" #system/time"12:54:00"
+        "12:54:00" #system/time"12:54:00"
+        "12:54:30.010" #system/time"12:54:30.010"))
 
     (testing "DateTime"
       (are [x res] (= res (eval (ctu/compile-unop elm/to-time elm/date-time x)))
-        "2020-03-08T12:54:00" (system/time 12 54 00)
-        "2020-03-08T12:54:30.010" (system/time 12 54 30 10)))
+        "2020-03-08T12:54:00" #system/time"12:54:00"
+        "2020-03-08T12:54:30.010" #system/time"12:54:30.010"))
 
     (testing "Dynamic"
       (are [x res] (= res (ctu/dynamic-compile-eval (elm/to-time x)))
-        #elm/parameter-ref "12:54:00" (system/time 12 54 00)
-        #elm/parameter-ref "2020-01-02T03:04:05.006Z" (system/time 3 4 5 6))))
+        #elm/parameter-ref "12:54:00" #system/time"12:54:00"
+        #elm/parameter-ref "2020-01-02T03:04:05.006Z" #system/time"03:04:05.006")))
 
   (ctu/testing-unary-null elm/to-time)
 

@@ -16,7 +16,6 @@
    [blaze.elm.literal-spec]
    [blaze.elm.protocols :as p]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.spec.type.system :as system]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [juxt.iota :refer [given]])
@@ -60,19 +59,19 @@
 
   (is (= Instant/EPOCH (p/get #fhir/instant"1970-01-01T00:00:00Z" :value)))
 
-  (is (= (system/date 2025) (p/get #fhir/date"2025" :value)))
+  (is (= #system/date"2025" (p/get #fhir/date"2025" :value)))
 
-  (is (= (system/date 2025 4) (p/get #fhir/date"2025-04" :value)))
+  (is (= #system/date"2025-04" (p/get #fhir/date"2025-04" :value)))
 
-  (is (= (system/date 2025 4 9) (p/get #fhir/date"2025-04-09" :value)))
+  (is (= #system/date"2025-04-09" (p/get #fhir/date"2025-04-09" :value)))
 
-  (is (= (system/date-time 2025) (p/get #fhir/dateTime"2025" :value)))
+  (is (= #system/date-time"2025" (p/get #fhir/dateTime"2025" :value)))
 
-  (is (= (system/date-time 2025 4) (p/get #fhir/dateTime"2025-04" :value)))
+  (is (= #system/date-time"2025-04" (p/get #fhir/dateTime"2025-04" :value)))
 
-  (is (= (system/date-time 2025 4 9) (p/get #fhir/dateTime"2025-04-09" :value)))
+  (is (= #system/date-time"2025-04-09" (p/get #fhir/dateTime"2025-04-09" :value)))
 
-  (is (= (system/time 17 20 8) (p/get #fhir/time"17:20:08" :value)))
+  (is (= #system/time"17:20:08" (p/get #fhir/time"17:20:08" :value)))
 
   (is (= "value-165314" (p/get #fhir/code"value-165314" :value)))
 
@@ -263,7 +262,7 @@
           (testing "eval"
             (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
               #fhir/date"2023-05-07" #system/date"2023-05-07"
-              #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+              #fhir/date{:id "foo" :value #system/date"2023-05-07"} #system/date"2023-05-07"
               #fhir/date{:id "foo"} nil
               #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
 
@@ -437,7 +436,7 @@
         (testing "eval"
           (are [birth-date res] (= res (core/-eval expr {:expression-defs {"Patient" {:expression (source birth-date)}}} nil nil))
             #fhir/date"2023-05-07" #system/date"2023-05-07"
-            #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+            #fhir/date{:id "foo" :value #system/date"2023-05-07"} #system/date"2023-05-07"
             #fhir/date{:id "foo"} nil
             #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
 

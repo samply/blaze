@@ -169,7 +169,9 @@
 
   Returns an anomaly if `s` isn't a valid System.Date."
   [s]
-  (ba/try-one DateTimeException ::anom/incorrect (Date/parse s)))
+  (if (nil? s)
+    (ba/incorrect "nil date value")
+    (ba/try-one DateTimeException ::anom/incorrect (Date/parse s))))
 
 (extend-protocol SystemType
   DateYear
@@ -289,7 +291,9 @@
 
   Returns an anomaly if `s` isn't a valid System.DateTime."
   [s]
-  (ba/try-one DateTimeException ::anom/incorrect (parse-date-time* s)))
+  (if (nil? s)
+    (ba/incorrect "nil date-time value")
+    (ba/try-one DateTimeException ::anom/incorrect (parse-date-time* s))))
 
 (defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
   (.write w "#system/date-time\"")
@@ -542,6 +546,11 @@
 
 ;; ---- System.Time -----------------------------------------------------------
 
+(defn time?
+  "Returns true if `x` is a System.Time."
+  [x]
+  (identical? :system/time (-type x)))
+
 (extend-protocol SystemType
   LocalTime
   (-type [_]
@@ -568,20 +577,14 @@
    (LocalTime/of (int hour) (int minute) (int second)
                  (unchecked-multiply-int (int millis) 1000000))))
 
-(defn parse-time* [s]
-  (LocalTime/parse s))
-
-(defn- time-string? [s]
-  (.matches (re-matcher #"([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?" s)))
-
 (defn parse-time
   "Parses `s` into a System.Time.
 
   Returns an anomaly if `s` isn't a valid System.Time."
   [s]
-  (if (time-string? s)
-    (ba/try-one DateTimeParseException ::anom/incorrect (parse-time* s))
-    (ba/incorrect (format "Invalid date-time value `%s`." s))))
+  (if (nil? s)
+    (ba/incorrect "nil time value")
+    (ba/try-one DateTimeParseException ::anom/incorrect (LocalTime/parse s))))
 
 ;; ---- Other -----------------------------------------------------------------
 
