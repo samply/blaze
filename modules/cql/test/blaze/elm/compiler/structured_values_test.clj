@@ -14,12 +14,15 @@
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal]
    [blaze.elm.literal-spec]
-   [blaze.fhir.spec.type]
+   [blaze.elm.protocols :as p]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [juxt.iota :refer [given]])
   (:import
-   [blaze.elm.code Code]))
+   [blaze.elm.code Code]
+   [java.time Instant]))
 
 (st/instrument)
 (ctu/instrument-compile)
@@ -31,6 +34,61 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
+
+(deftest get-test
+  (are [value] (= value (p/get (type/boolean value) :value))
+    true
+    false)
+
+  (are [value] (= value (p/get (type/boolean {:id "foo" :value value}) :value))
+    true
+    false)
+
+  (is (= 1 (p/get #fhir/integer 1 :value)))
+
+  (is (= "value-172719" (p/get #fhir/string"value-172719" :value)))
+
+  (is (= 1M (p/get #fhir/decimal 1M :value)))
+
+  (is (= "value-170022" (p/get #fhir/uri"value-170022" :value)))
+
+  (is (= "value-170031" (p/get #fhir/url"value-170031" :value)))
+
+  (is (= "value-170723" (p/get #fhir/canonical"value-170723" :value)))
+
+  (is (= "value-170805" (p/get #fhir/base64Binary"value-170805" :value)))
+
+  (is (= Instant/EPOCH (p/get #fhir/instant"1970-01-01T00:00:00Z" :value)))
+
+  (is (= (system/date 2025) (p/get #fhir/date"2025" :value)))
+
+  (is (= (system/date 2025 4) (p/get #fhir/date"2025-04" :value)))
+
+  (is (= (system/date 2025 4 9) (p/get #fhir/date"2025-04-09" :value)))
+
+  (is (= (system/date-time 2025) (p/get #fhir/dateTime"2025" :value)))
+
+  (is (= (system/date-time 2025 4) (p/get #fhir/dateTime"2025-04" :value)))
+
+  (is (= (system/date-time 2025 4 9) (p/get #fhir/dateTime"2025-04-09" :value)))
+
+  (is (= (system/time 17 20 8) (p/get #fhir/time"17:20:08" :value)))
+
+  (is (= "value-165314" (p/get #fhir/code"value-165314" :value)))
+
+  (is (= "value-165314" (p/get #fhir/code{:id "foo" :value "value-165314"} :value)))
+
+  (is (= "value-172210" (p/get #fhir/oid"value-172210" :value)))
+
+  (is (= "value-172229" (p/get #fhir/id"value-172229" :value)))
+
+  (is (= "value-172243" (p/get #fhir/markdown"value-172243" :value)))
+
+  (is (= 1 (p/get #fhir/unsignedInt 1 :value)))
+
+  (is (= 1 (p/get #fhir/positiveInt 1 :value)))
+
+  (is (= #uuid"6a989368-0d9a-48b0-8bdb-5b61e29f9b39" (p/get #fhir/uuid"urn:uuid:6a989368-0d9a-48b0-8bdb-5b61e29f9b39" :value))))
 
 ;; 2.1. Tuple
 ;;
@@ -329,6 +387,41 @@
 
         (testing "form"
           (has-form expr '(:gender (expr-ref "Patient"))))))
+
+    (testing "Patient.gender.value"
+      (let [library {:statements {:def [{:type "ExpressionDef"
+                                         :name "Patient"}]}}
+            elm
+            #elm/source-property [#elm/source-property [#elm/expression-ref "Patient" "gender"] "value"]
+            source
+            {:fhir/type :fhir/Patient :id "0"
+             :gender #fhir/code"male"}
+            expr (c/compile {:library library :eval-context "Patient"} elm)
+            expr-def {:type "ExpressionDef"
+                      :context "Patient"
+                      :name "Patient"
+                      :expression source}]
+
+        (testing "eval"
+          (is (= "male" (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil))))
+
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
+
+        (ctu/testing-constant-attach-cache expr)
+
+        (ctu/testing-constant-patient-count expr)
+
+        (testing "resolve expression references"
+          (let [expr (c/resolve-refs expr {"Patient" expr-def})]
+            (has-form expr (list :value (list :gender source)))))
+
+        (testing "resolve parameters"
+          (let [expr (c/resolve-params expr {})]
+            (has-form expr '(:value (:gender (expr-ref "Patient"))))))
+
+        (testing "form"
+          (has-form expr '(:value (:gender (expr-ref "Patient")))))))
 
     (testing "Patient.birthDate.value"
       (let [library {:statements {:def [{:type "ExpressionDef"

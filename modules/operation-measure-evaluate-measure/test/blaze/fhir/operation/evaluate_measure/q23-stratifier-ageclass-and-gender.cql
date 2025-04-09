@@ -11,4 +11,11 @@ define AgeClass:
   (AgeInYears() div 10) * 10
 
 define Gender:
-  Patient.gender
+  if Patient.gender = 'other' then
+    case Patient.gender.extension.where(url = 'http://fhir.de/StructureDefinition/gender-amtlich-de').value.code.value
+      when 'D' then 'divers'
+      when 'X' then 'unbestimmt'
+      else 'other'
+    end
+  else
+    Patient.gender

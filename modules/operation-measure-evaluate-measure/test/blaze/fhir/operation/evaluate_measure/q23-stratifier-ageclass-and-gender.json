@@ -52,6 +52,30 @@
     },
     {
       "resource": {
+        "resourceType": "Patient",
+        "id": "4",
+        "gender": "other",
+        "_gender": {
+          "extension": [
+            {
+              "url": "http://fhir.de/StructureDefinition/gender-amtlich-de",
+              "valueCoding": {
+                "system": "http://fhir.de/CodeSystem/gender-amtlich-de",
+                "code": "D",
+                "display": "divers"
+              }
+            }
+          ]
+        },
+        "birthDate": "1960"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/4"
+      }
+    },
+    {
+      "resource": {
         "resourceType": "Measure",
         "id": "0",
         "url": "0",

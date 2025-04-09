@@ -8,6 +8,7 @@
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
   (:import
+   [clojure.lang ILookup]
    [com.fasterxml.jackson.core JsonGenerator SerializableString]
    [com.fasterxml.jackson.core.io JsonStringEncoder]
    [com.google.common.hash PrimitiveSink]
@@ -137,6 +138,14 @@
        (~'-references [~'_])
        ~@(when (and interned (#{'String} (:tag (meta value))))
            (gen-serializable-string value))
+       ILookup
+       (~'valAt [~'_ ~'key]
+         (when (identical? :value ~'key)
+           ~value))
+       (~'valAt [~'_ ~'key ~'not-found]
+         (if (identical? :value ~'key)
+           ~value
+           ~'not-found))
        Object
        (~'equals [~'this ~'x]
          (or (identical? ~'this ~'x)
