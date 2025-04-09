@@ -8,6 +8,12 @@ The architecture is shown in the following figure.
 
 Please also have a look into the [architecture](../architecture.md) and [authentication](../authentication.md) documentation.
 
+## A note about Docker
+
+If you happen to work behind a proxy server, then you might have already configured a proxy for both http & https. In such a case, you'll have to bypass the proxy settings for `keycloak.localhost` (as shown in the image below), because the frontend needs to complete the sign-in process with Keycloak.
+
+![docker bypass proxy](full-standalone/screenshots/docker-bypass-proxy.png)
+
 ## Example Setup
 
 The `docs/deployment/full-standalone` directory contains a Docker Compose file with an example system consisting of all components needed in a full standalone setup.
@@ -20,6 +26,9 @@ The `docs/deployment/full-standalone` directory contains a Docker Compose file w
 
 > [!NOTE]
 > The example setup uses the default context path /fhir. Currently the UI only works with that default context path.
+
+> [!NOTE]
+> This example setup is for a developer's machine (on localhost) and things may be different on a real virtual machine.
 
 Before you can start the system, you have to generate certificates for the ingress component. To do so, please go into the base directory of this Blaze repository and run:
 
