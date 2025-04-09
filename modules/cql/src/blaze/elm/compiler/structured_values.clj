@@ -13,7 +13,6 @@
    [blaze.fhir.spec.type :as type]
    [clojure.string :as str])
   (:import
-   [blaze.fhir.spec.type.system DateYear DateYearMonth DateDate DateTimeYear DateTimeYearMonth DateTimeDate]
    [clojure.lang ILookup IReduceInit]
    [java.time Instant LocalTime]
    [java.util UUID]))
@@ -57,30 +56,6 @@
   (get [instant key]
     (when (identical? :value key)
       instant))
-  DateYear
-  (get [date key]
-    (when (identical? :value key)
-      date))
-  DateYearMonth
-  (get [date key]
-    (when (identical? :value key)
-      date))
-  DateDate
-  (get [date key]
-    (when (identical? :value key)
-      date))
-  DateTimeYear
-  (get [date key]
-    (when (identical? :value key)
-      date))
-  DateTimeYearMonth
-  (get [date key]
-    (when (identical? :value key)
-      date))
-  DateTimeDate
-  (get [date key]
-    (when (identical? :value key)
-      date))
   LocalTime
   (get [time key]
     (when (identical? :value key)

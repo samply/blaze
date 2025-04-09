@@ -275,7 +275,8 @@
       "2020-01-02" #system/date"2020-01-02"))
 
   (testing "invalid"
-    (are [s] (ba/incorrect? (system/parse-date s))
+    (are [s] (ba/incorrect? (st/with-instrument-disabled (system/parse-date s)))
+      nil
       ""
       "a"
       "aaaa"
@@ -558,7 +559,8 @@
       (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))))
 
   (testing "invalid"
-    (are [s] (ba/incorrect? (system/parse-date-time s))
+    (are [s] (ba/incorrect? (st/with-instrument-disabled (system/parse-date-time s)))
+      nil
       ""
       "a"
       "aaaa"
@@ -650,6 +652,14 @@
       :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
 
 (deftest time-test
+  (testing "time?"
+    (are [time] (true? (system/time? time))
+      #system/time"03:04:05")
+
+    (are [x] (false? (system/time? x))
+      nil
+      #system/date-time"2020"))
+
   (testing "type"
     (is (= :system/time (system/type (LocalTime/of 0 0 0)))))
 
@@ -680,7 +690,8 @@
       "03:04:05.006" (system/time 3 4 5 6)))
 
   (testing "invalid"
-    (are [s] (ba/incorrect? (system/parse-time s))
+    (are [s] (ba/incorrect? (st/with-instrument-disabled (system/parse-time s)))
+      nil
       "a"
       ""
       "25:00:00"

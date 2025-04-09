@@ -1,8 +1,10 @@
 (ns blaze.fhir.spec.type
+  "Functions for primitive and complex types."
   (:refer-clojure
    :exclude
    [boolean boolean? decimal? integer? long meta string? time type uri? uuid?])
   (:require
+   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.fhir.spec.impl.intern :as intern]
    [blaze.fhir.spec.type.json :as json]
    [blaze.fhir.spec.type.macros :as macros
@@ -15,9 +17,8 @@
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
   (:import
-   [blaze.fhir.spec.type.system
-    Date DateDate DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
-   [clojure.lang IPersistentMap Keyword]
+   [blaze.fhir.spec.type.system Date]
+   [clojure.lang ILookup IPersistentMap Keyword]
    [com.fasterxml.jackson.core JsonGenerator]
    [com.fasterxml.jackson.databind.module SimpleModule]
    [com.fasterxml.jackson.databind.ser.std StdSerializer]
@@ -104,6 +105,8 @@
 
 ;; ---- boolean ---------------------------------------------------------------
 
+(declare boolean)
+
 (extend-protocol p/FhirType
   Boolean
   (-type [_] :fhir/boolean)
@@ -130,7 +133,8 @@
 (def ^{:arglists '([x])} boolean
   (let [intern (intern/intern-value map->ExtendedBoolean)]
     (fn [x]
-      (if (map? x)
+      (cond
+        (map? x)
         (let [{:keys [id extension value]} x]
           (cond
             (and (nil? extension) (nil? id))
@@ -141,7 +145,8 @@
 
             :else
             (->ExtendedBoolean id extension value)))
-        x))))
+        (clojure.core/boolean? x) x
+        :else ::s2/invalid))))
 
 (defn xml->Boolean
   {:arglists '([element])}
@@ -156,6 +161,8 @@
   (identical? :fhir/boolean (type x)))
 
 ;; ---- integer ---------------------------------------------------------------
+
+(declare integer)
 
 (extend-protocol p/FhirType
   Integer
@@ -182,7 +189,7 @@
 
 (def ^{:arglists '([x])} integer
   (create-fn (intern/intern-value map->ExtendedInteger) ->ExtendedInteger
-             int))
+             #(if (clojure.core/int? %) (clojure.core/int %) ::s2/invalid)))
 
 (defn xml->Integer
   {:arglists '([element])}
@@ -197,6 +204,8 @@
   (identical? :fhir/integer (type x)))
 
 ;; ---- long ---------------------------------------------------------------
+
+(declare long)
 
 (extend-protocol p/FhirType
   Long
@@ -223,7 +232,7 @@
 
 (def ^{:arglists '([x])} long
   (create-fn (intern/intern-value map->ExtendedLong) ->ExtendedLong
-             identity))
+             #(if (clojure.core/int? %) (clojure.core/long %) ::s2/invalid)))
 
 (defn xml->Long
   {:arglists '([element])}
@@ -238,6 +247,8 @@
   (identical? :fhir/long (type x)))
 
 ;; ---- string ----------------------------------------------------------------
+
+(declare string)
 
 (extend-protocol p/FhirType
   String
@@ -298,6 +309,8 @@
 
 ;; ---- decimal ---------------------------------------------------------------
 
+(declare decimal)
+
 (extend-protocol p/FhirType
   BigDecimal
   (-type [_] :fhir/decimal)
@@ -323,7 +336,10 @@
 
 (def ^{:arglists '([x])} decimal
   (create-fn (intern/intern-value map->ExtendedDecimal) ->ExtendedDecimal
-             #(if (int? %) (BigDecimal/valueOf (clojure.core/long %)) %)))
+             #(cond
+                (int? %) (BigDecimal/valueOf (clojure.core/long %))
+                (clojure.core/decimal? %) %
+                :else ::s2/invalid)))
 
 (defn xml->Decimal
   {:arglists '([element])}
@@ -397,7 +413,6 @@
       (.putByte (byte 2)))                                  ; :value
     (system/-hash-into value sink))
   (-references [_])
-
   Object
   (equals [this x]
     (or (identical? this x)
@@ -444,17 +459,20 @@
   :fhir-type :fhir/instant :hash-num 9 :value-form (some-> value at-utc))
 
 (defn- parse-instant-value [value]
-  (cond
-    (str/ends-with? value "Z") (Instant/parse value)
-    (str/ends-with? value "+00:00") (Instant/parse (str (subs value 0 (- (count value) 6)) "Z"))
-    :else (OffsetDateTime/parse value)))
+  (try
+    (cond
+      (str/ends-with? value "Z") (Instant/parse value)
+      (str/ends-with? value "+00:00") (Instant/parse (str (subs value 0 (- (count value) 6)) "Z"))
+      :else (OffsetDateTime/parse value))
+    (catch DateTimeException _
+      ::s2/invalid)))
 
 (def ^{:arglists '([x])} instant
   (let [intern (intern/intern-value map->ExtendedInstant)]
     (fn [x]
       (if (map? x)
         (let [{:keys [id extension value]} x
-              value (some-> value parse-instant-value)]
+              value (cond-> value (string? value) parse-instant-value)]
           (cond
             (and (nil? value) (p/-interned extension) (nil? id))
             (intern {:extension extension})
@@ -486,93 +504,203 @@
 
 ;; -- date --------------------------------------------------------------------
 
-(extend-protocol p/FhirType
-  DateYear
-  (-type [_] :fhir/date)
-  (-interned [_] false)
-  (-value [date] date)
-  (-has-primary-content [_] true)
-  (-serialize-json [date generator]
-    (.writeString ^JsonGenerator generator (str date)))
-  (-has-secondary-content [_] false)
-  (-serialize-json-secondary [_ generator]
-    (.writeNull ^JsonGenerator generator))
-  (-to-xml [date]
-    (xml-node/element nil {:value (str date)}))
-  (-hash-into [date sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 10))                                  ; :fhir/date
-      (.putByte (byte 2)))                                  ; :value
-    (.hashInto date sink))
-  (-references [_])
+(declare date)
+(declare create-date)
+(declare map->ExtendedDate)
 
-  DateYearMonth
+(deftype DateYear [^int year]
+  p/FhirType
   (-type [_] :fhir/date)
   (-interned [_] false)
-  (-value [date] date)
+  (-value [_] (system/date year))
   (-has-primary-content [_] true)
   (-serialize-json [date generator]
-    (.writeString ^JsonGenerator generator (str date)))
+    (.writeString ^JsonGenerator generator (str (p/-value date))))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
   (-to-xml [date]
-    (xml-node/element nil {:value (str date)}))
+    (xml-node/element nil {:value (str (p/-value date))}))
   (-hash-into [date sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 10))                                  ; :fhir/date
       (.putByte (byte 2)))                                  ; :value
-    (.hashInto date sink))
+    (system/-hash-into (p/-value date) sink))
   (-references [_])
+  ILookup
+  (valAt [date-time key]
+    (when (identical? :value key)
+      (p/-value date-time)))
+  (valAt [date-time key not-found]
+    (if (identical? :value key)
+      (p/-value date-time)
+      not-found))
+  Object
+  (equals [date x]
+    (or (identical? date x)
+        (and (instance? DateYear x)
+             (= year (.year ^DateYear x)))))
+  (hashCode [_]
+    year)
+  (toString [date]
+    (str (p/-value date))))
 
-  DateDate
+(defmethod print-method DateYear [^DateYear date ^Writer w]
+  (.write w "#fhir/date\"")
+  (.write w (str date))
+  (.write w "\""))
+
+(defmethod print-dup DateYear [^DateYear date ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.DateYear. ")
+  (.write w (str (.year date)))
+  (.write w ")"))
+
+(deftype DateYearMonth [^int year ^int month]
+  p/FhirType
   (-type [_] :fhir/date)
   (-interned [_] false)
-  (-value [date] date)
+  (-value [_] (system/date year month))
   (-has-primary-content [_] true)
   (-serialize-json [date generator]
-    (.writeString ^JsonGenerator generator (str date)))
+    (.writeString ^JsonGenerator generator (str (p/-value date))))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
   (-to-xml [date]
-    (xml-node/element nil {:value (str date)}))
+    (xml-node/element nil {:value (str (p/-value date))}))
   (-hash-into [date sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 10))                                  ; :fhir/date
       (.putByte (byte 2)))                                  ; :value
-    (.hashInto date sink))
-  (-references [_]))
+    (system/-hash-into (p/-value date) sink))
+  (-references [_])
+  ILookup
+  (valAt [date-time key]
+    (when (identical? :value key)
+      (p/-value date-time)))
+  (valAt [date-time key not-found]
+    (if (identical? :value key)
+      (p/-value date-time)
+      not-found))
+  Object
+  (equals [date x]
+    (or (identical? date x)
+        (and (instance? DateYearMonth x)
+             (.equals ^Object (p/-value date) (p/-value x)))))
+  (hashCode [date]
+    (.hashCode ^Object (p/-value date)))
+  (toString [date]
+    (str (p/-value date))))
+
+(defmethod print-method DateYearMonth [^DateYearMonth date ^Writer w]
+  (.write w "#fhir/date\"")
+  (.write w (str date))
+  (.write w "\""))
+
+(defmethod print-dup DateYearMonth [^DateYearMonth date ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.DateYearMonth. ")
+  (.write w (str (.year date)))
+  (.write w " ")
+  (.write w (str (.month date)))
+  (.write w ")"))
+
+(deftype DateDate [^int year ^int month ^int day]
+  p/FhirType
+  (-type [_] :fhir/date)
+  (-interned [_] false)
+  (-value [_] (system/date year month day))
+  (-has-primary-content [_] true)
+  (-serialize-json [date generator]
+    (.writeString ^JsonGenerator generator (str (p/-value date))))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
+  (-to-xml [date]
+    (xml-node/element nil {:value (str (p/-value date))}))
+  (-hash-into [date sink]
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 10))                                  ; :fhir/date
+      (.putByte (byte 2)))                                  ; :value
+    (system/-hash-into (p/-value date) sink))
+  (-references [_])
+  ILookup
+  (valAt [date-time key]
+    (when (identical? :value key)
+      (p/-value date-time)))
+  (valAt [date-time key not-found]
+    (if (identical? :value key)
+      (p/-value date-time)
+      not-found))
+  Object
+  (equals [date x]
+    (or (identical? date x)
+        (and (instance? DateDate x)
+             (.equals ^Object (p/-value date) (p/-value x)))))
+  (hashCode [date]
+    (.hashCode ^Object (p/-value date)))
+  (toString [date]
+    (str (p/-value date))))
+
+(defmethod print-method DateDate [^DateDate date ^Writer w]
+  (.write w "#fhir/date\"")
+  (.write w (str date))
+  (.write w "\""))
+
+(defmethod print-dup DateDate [^DateDate date ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.DateDate. ")
+  (.write w (str (.year date)))
+  (.write w " ")
+  (.write w (str (.month date)))
+  (.write w " ")
+  (.write w (str (.day date)))
+  (.write w ")"))
 
 (defextended ExtendedDate [id extension value]
   :fhir-type :fhir/date :hash-num 10)
 
-(defn- parse-date-value [value]
+(defn create-date [system-date]
+  (condp = (class system-date)
+    blaze.fhir.spec.type.system.DateYear
+    (DateYear.
+     (.year ^blaze.fhir.spec.type.system.DateYear system-date))
+    blaze.fhir.spec.type.system.DateYearMonth
+    (DateYearMonth.
+     (.year ^blaze.fhir.spec.type.system.DateYearMonth system-date)
+     (.month ^blaze.fhir.spec.type.system.DateYearMonth system-date))
+    blaze.fhir.spec.type.system.DateDate
+    (DateDate.
+     (.year ^blaze.fhir.spec.type.system.DateDate system-date)
+     (.month ^blaze.fhir.spec.type.system.DateDate system-date)
+     (.day ^blaze.fhir.spec.type.system.DateDate system-date))))
+
+(defn- parse-date [s]
   (try
-    (Date/parse value)
+    (create-date (Date/parse s))
     (catch DateTimeException _
-      ;; in case of leap year errors not covered by regex
       ::s2/invalid)))
 
 (def ^{:arglists '([x])} date
   (let [intern (intern/intern-value map->ExtendedDate)]
     (fn [x]
-      (if (map? x)
+      (cond
+        (map? x)
         (let [{:keys [id extension value]} x
-              value (some-> value parse-date-value)]
+              value (cond-> value (string? value) system/parse-date)]
           (cond
-            (s2/invalid? value)
+            (ba/anomaly? value)
             ::s2/invalid
 
             (and (nil? value) (p/-interned extension) (nil? id))
             (intern {:extension extension})
 
             (and (nil? extension) (nil? id))
-            value
+            (create-date value)
 
             :else
             (ExtendedDate. id extension value)))
-        (parse-date-value x)))))
+        (system/date? x) (create-date x)
+        (string? x) (parse-date x)
+        :else ::s2/invalid))))
 
 (defn xml->Date
   "Creates a primitive date value from XML `element`."
@@ -580,7 +708,11 @@
   [{{:keys [id value]} :attrs content :content}]
   (let [extension (seq content)]
     (if (or id extension)
-      (date {:id id :extension extension :value value})
+      (if value
+        (if-ok [value (system/parse-date value)]
+          (date {:id id :extension extension :value value})
+          (fn [_] ::s2/invalid))
+        (date {:id id :extension extension}))
       (date value))))
 
 (defn date? [x]
@@ -596,63 +728,156 @@
 
 ;; -- dateTime ----------------------------------------------------------------
 
-(extend-protocol p/FhirType
-  DateTimeYear
-  (-type [_] :fhir/dateTime)
-  (-interned [_] false)
-  (-value [date] date)
-  (-has-primary-content [_] true)
-  (-serialize-json [date generator]
-    (.writeString ^JsonGenerator generator (str date)))
-  (-has-secondary-content [_] false)
-  (-serialize-json-secondary [_ generator]
-    (.writeNull ^JsonGenerator generator))
-  (-to-xml [date]
-    (xml-node/element nil {:value (str date)}))
-  (-hash-into [date sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 11))                                  ; :fhir/dateTime
-      (.putByte (byte 2)))                                  ; :value
-    (.hashInto date sink))
-  (-references [_])
+(declare dateTime)
+(declare create-date-time)
+(declare map->ExtendedDateTime)
 
-  DateTimeYearMonth
+(deftype DateTimeYear [^int year]
+  p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
-  (-value [date] date)
+  (-value [_] (system/date-time year))
   (-has-primary-content [_] true)
-  (-serialize-json [date generator]
-    (.writeString ^JsonGenerator generator (str date)))
+  (-serialize-json [date-time generator]
+    (.writeString ^JsonGenerator generator (str (p/-value date-time))))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
-  (-to-xml [date]
-    (xml-node/element nil {:value (str date)}))
-  (-hash-into [date sink]
+  (-to-xml [date-time]
+    (xml-node/element nil {:value (str (p/-value date-time))}))
+  (-hash-into [date-time sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 11))                                  ; :fhir/dateTime
       (.putByte (byte 2)))                                  ; :value
-    (.hashInto date sink))
+    (system/-hash-into (p/-value date-time) sink))
   (-references [_])
+  ILookup
+  (valAt [date-time key]
+    (when (identical? :value key)
+      (p/-value date-time)))
+  (valAt [date-time key not-found]
+    (if (identical? :value key)
+      (p/-value date-time)
+      not-found))
+  Object
+  (equals [date-time x]
+    (or (identical? date-time x)
+        (and (instance? DateTimeYear x)
+             (= year (.year ^DateTimeYear x)))))
+  (hashCode [_]
+    year)
+  (toString [date-time]
+    (str (p/-value date-time))))
 
-  DateTimeDate
+(defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
+  (.write w "#fhir/dateTime\"")
+  (.write w (str date-time))
+  (.write w "\""))
+
+(defmethod print-dup DateTimeYear [^DateTimeYear date-time ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.DateTimeYear. ")
+  (.write w (str (.year date-time)))
+  (.write w ")"))
+
+(deftype DateTimeYearMonth [^int year ^int month]
+  p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
-  (-value [date] date)
+  (-value [_] (system/date-time year month))
   (-has-primary-content [_] true)
-  (-serialize-json [date generator]
-    (.writeString ^JsonGenerator generator (str date)))
+  (-serialize-json [date-time generator]
+    (.writeString ^JsonGenerator generator (str (p/-value date-time))))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
-  (-to-xml [date]
-    (xml-node/element nil {:value (str date)}))
-  (-hash-into [date sink]
+  (-to-xml [date-time]
+    (xml-node/element nil {:value (str (p/-value date-time))}))
+  (-hash-into [date-time sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 11))                                  ; :fhir/dateTime
       (.putByte (byte 2)))                                  ; :value
-    (.hashInto date sink))
-  (-references [_]))
+    (system/-hash-into (p/-value date-time) sink))
+  (-references [_])
+  ILookup
+  (valAt [date-time key]
+    (when (identical? :value key)
+      (p/-value date-time)))
+  (valAt [date-time key not-found]
+    (if (identical? :value key)
+      (p/-value date-time)
+      not-found))
+  Object
+  (equals [date-time x]
+    (or (identical? date-time x)
+        (and (instance? DateTimeYearMonth x)
+             (.equals ^Object (p/-value date-time) (p/-value x)))))
+  (hashCode [date-time]
+    (.hashCode ^Object (p/-value date-time)))
+  (toString [date]
+    (str (p/-value date))))
+
+(defmethod print-method DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
+  (.write w "#fhir/dateTime\"")
+  (.write w (str date-time))
+  (.write w "\""))
+
+(defmethod print-dup DateYearMonth [^DateTimeYearMonth date-time ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.DateTimeYearMonth. ")
+  (.write w (str (.year date-time)))
+  (.write w " ")
+  (.write w (str (.month date-time)))
+  (.write w ")"))
+
+(deftype DateTimeDate [^int year ^int month ^int day]
+  p/FhirType
+  (-type [_] :fhir/dateTime)
+  (-interned [_] false)
+  (-value [_] (system/date-time year month day))
+  (-has-primary-content [_] true)
+  (-serialize-json [date-time generator]
+    (.writeString ^JsonGenerator generator (str (p/-value date-time))))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
+  (-to-xml [date-time]
+    (xml-node/element nil {:value (str (p/-value date-time))}))
+  (-hash-into [date-time sink]
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 11))                                  ; :fhir/dateTime
+      (.putByte (byte 2)))                                  ; :value
+    (system/-hash-into (p/-value date-time) sink))
+  (-references [_])
+  ILookup
+  (valAt [date-time key]
+    (when (identical? :value key)
+      (p/-value date-time)))
+  (valAt [date-time key not-found]
+    (if (identical? :value key)
+      (p/-value date-time)
+      not-found))
+  Object
+  (equals [date-time x]
+    (or (identical? date-time x)
+        (and (instance? DateTimeDate x)
+             (.equals ^Object (p/-value date-time) (p/-value x)))))
+  (hashCode [date-time]
+    (.hashCode ^Object (p/-value date-time)))
+  (toString [date-time]
+    (str (p/-value date-time))))
+
+(defmethod print-method DateTimeDate [^DateTimeDate date-time ^Writer w]
+  (.write w "#fhir/dateTime\"")
+  (.write w (str date-time))
+  (.write w "\""))
+
+(defmethod print-dup DateTimeDate [^DateTimeDate date-time ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.DateTimeDate. ")
+  (.write w (str (.year date-time)))
+  (.write w " ")
+  (.write w (str (.month date-time)))
+  (.write w " ")
+  (.write w (str (.day date-time)))
+  (.write w ")"))
 
 (extend-protocol p/FhirType
   OffsetDateTime
@@ -696,32 +921,50 @@
 (defextended ExtendedDateTime [id extension value]
   :fhir-type :fhir/dateTime :hash-num 11)
 
-(defn- parse-date-time-value [value]
+(defn create-date-time [system-date-time]
+  (condp = (class system-date-time)
+    blaze.fhir.spec.type.system.DateTimeYear
+    (DateTimeYear.
+     (.year ^blaze.fhir.spec.type.system.DateTimeYear system-date-time))
+    blaze.fhir.spec.type.system.DateTimeYearMonth
+    (DateTimeYearMonth.
+     (.year ^blaze.fhir.spec.type.system.DateTimeYearMonth system-date-time)
+     (.month ^blaze.fhir.spec.type.system.DateTimeYearMonth system-date-time))
+    blaze.fhir.spec.type.system.DateTimeDate
+    (DateTimeDate.
+     (.year ^blaze.fhir.spec.type.system.DateTimeDate system-date-time)
+     (.month ^blaze.fhir.spec.type.system.DateTimeDate system-date-time)
+     (.day ^blaze.fhir.spec.type.system.DateTimeDate system-date-time))
+    system-date-time))
+
+(defn- parse-date-time [value]
   (try
-    (system/parse-date-time* value)
+    (create-date-time (system/parse-date-time* value))
     (catch DateTimeException _
-      ;; in case of leap year errors not covered by regex
       ::s2/invalid)))
 
 (def ^{:arglists '([x])} dateTime
   (let [intern (intern/intern-value map->ExtendedDateTime)]
     (fn [x]
-      (if (map? x)
+      (cond
+        (map? x)
         (let [{:keys [id extension value]} x
-              value (some-> value parse-date-time-value)]
+              value (cond-> value (string? value) system/parse-date-time)]
           (cond
-            (s2/invalid? value)
+            (ba/anomaly? value)
             ::s2/invalid
 
             (and (nil? value) (p/-interned extension) (nil? id))
             (intern {:extension extension})
 
             (and (nil? extension) (nil? id))
-            value
+            (create-date-time value)
 
             :else
             (ExtendedDateTime. id extension value)))
-        (parse-date-time-value x)))))
+        (system/date-time? x) (create-date-time x)
+        (string? x) (parse-date-time x)
+        :else ::s2/invalid))))
 
 (defn xml->DateTime
   "Creates a primitive dateTime value from XML `element`."
@@ -729,13 +972,19 @@
   [{{:keys [id value]} :attrs content :content}]
   (let [extension (seq content)]
     (if (or id extension)
-      (dateTime {:id id :extension extension :value value})
+      (if value
+        (if-ok [value (system/parse-date-time value)]
+          (dateTime {:id id :extension extension :value value})
+          (fn [_] ::s2/invalid))
+        (dateTime {:id id :extension extension}))
       (dateTime value))))
 
 (defn dateTime? [x]
   (identical? :fhir/dateTime (type x)))
 
 ;; ---- time ------------------------------------------------------------------
+
+(declare time)
 
 (extend-protocol p/FhirType
   LocalTime
@@ -760,14 +1009,21 @@
 (defextended ExtendedTime [id extension value]
   :fhir-type :fhir/time :hash-num 12)
 
+(defn- parse-time [s]
+  (try
+    (LocalTime/parse s)
+    (catch DateTimeException _
+      ::s2/invalid)))
+
 (def ^{:arglists '([x])} time
   (let [intern (intern/intern-value map->ExtendedTime)]
     (fn [x]
-      (if (map? x)
+      (cond
+        (map? x)
         (let [{:keys [id extension value]} x
-              value (some-> value LocalTime/parse)]
+              value (cond-> value (string? value) system/parse-time)]
           (cond
-            (s2/invalid? value)
+            (ba/anomaly? value)
             ::s2/invalid
 
             (and (nil? value) (p/-interned extension) (nil? id))
@@ -778,7 +1034,9 @@
 
             :else
             (ExtendedTime. id extension value)))
-        (LocalTime/parse x)))))
+        (system/time? x) x
+        (string? x) (parse-time x)
+        :else ::s2/invalid))))
 
 (defn xml->Time
   "Creates a primitive time value from XML `element`."
