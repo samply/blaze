@@ -436,9 +436,13 @@
         (type/uri {:extension [not-internable-extension] :value "185838"}))))
 
   (testing "value"
-    (are [x] (= "105614" (type/value x) (:value x))
+    (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
       #fhir/uri"105614"
       #fhir/uri{:id "foo" :value "105614"}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/uri"foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"105846\"" (gen-json-string #fhir/uri"105846"))))
@@ -525,9 +529,13 @@
         (type/url {:extension [internable-extension]}))))
 
   (testing "value"
-    (are [x] (= "105614" (type/value x) (:value x))
+    (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
       #fhir/url"105614"
       #fhir/url{:id "foo" :value "105614"}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/url"foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"105846\"" (gen-json-string #fhir/url"105846"))))
@@ -606,9 +614,13 @@
         (type/canonical {:extension [not-internable-extension] :value "185838"}))))
 
   (testing "value"
-    (are [x] (= "105614" (type/value x) (:value x))
+    (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
       #fhir/canonical"105614"
       #fhir/canonical{:id "foo" :value "105614"}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/canonical"foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"105846\"" (gen-json-string #fhir/canonical"105846"))))
@@ -703,9 +715,13 @@
         (type/base64Binary {:extension [internable-extension]}))))
 
   (testing "value"
-    (are [x] (= "MTA1NjE0Cg==" (type/value x) (:value x))
+    (are [x] (= "MTA1NjE0Cg==" (type/value x) (:value x) (:value x ::foo))
       #fhir/base64Binary"MTA1NjE0Cg=="
       #fhir/base64Binary{:id "foo" :value "MTA1NjE0Cg=="}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/base64Binary"foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"MTA1NjE0Cg==\"" (gen-json-string #fhir/base64Binary"MTA1NjE0Cg=="))))
@@ -892,9 +908,13 @@
           (type/date {:extension [internable-extension]}))))
 
     (testing "value"
-      (are [x] (= #system/date"2020" (type/value x) (:value x))
+      (are [x] (= #system/date"2020" (type/value x) (:value x) (:value x ::foo))
         #fhir/date"2020"
         #fhir/date{:id "foo" :value #system/date"2020"}))
+
+    (testing "lookup"
+      (testing "other keys are not found"
+        (is (= ::not-found (::other-key #fhir/date"1970" ::not-found)))))
 
     (testing "to-json"
       (are [date json] (= json (gen-json-string date))
@@ -925,7 +945,10 @@
     (testing "references"
       (are [x refs] (= refs (type/references x))
         #fhir/date"2020"
-        nil)))
+        nil))
+
+    (testing "print"
+      (is (= "#fhir/date\"2020\"" (pr-str #fhir/date"2020")))))
 
   (testing "with year-month precision"
     (testing "date?"
@@ -947,9 +970,13 @@
       (is (not-interned? #fhir/date"2020-01" #fhir/date"2020-01")))
 
     (testing "value"
-      (are [x] (= #system/date"2020-01" (type/value x) (:value x))
+      (are [x] (= #system/date"2020-01" (type/value x) (:value x) (:value x ::foo))
         #fhir/date"2020-01"
         #fhir/date{:id "foo" :value "2020-01"}))
+
+    (testing "lookup"
+      (testing "other keys are not found"
+        (is (= ::not-found (::other-key #fhir/date"1970-01" ::not-found)))))
 
     (testing "to-json"
       (are [date json] (= json (gen-json-string date))
@@ -979,7 +1006,10 @@
     (testing "references"
       (are [x refs] (= refs (type/references x))
         #fhir/date"2020-01"
-        nil)))
+        nil))
+
+    (testing "print"
+      (is (= "#fhir/date\"2020-01\"" (pr-str #fhir/date"2020-01")))))
 
   (testing "with date precision"
     (testing "date?"
@@ -999,9 +1029,13 @@
       (is (not-interned? #fhir/date"2020-01-01" #fhir/date"2020-01-01")))
 
     (testing "value"
-      (are [x] (= #system/date"2020-01-02" (type/value x) (:value x))
+      (are [x] (= #system/date"2020-01-02" (type/value x) (:value x) (:value x ::foo))
         #fhir/date"2020-01-02"
         #fhir/date{:id "foo" :value "2020-01-02"}))
+
+    (testing "lookup"
+      (testing "other keys are not found"
+        (is (= ::not-found (::other-key #fhir/date"1970-01-01" ::not-found)))))
 
     (testing "to-json"
       (are [date json] (= json (gen-json-string date))
@@ -1037,7 +1071,10 @@
         #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
     (testing "references"
-      (is (nil? (type/references #fhir/date"2020-01-01"))))))
+      (is (nil? (type/references #fhir/date"2020-01-01"))))
+
+    (testing "print"
+      (is (= "#fhir/date\"2020-01-01\"" (pr-str #fhir/date"2020-01-01"))))))
 
 (deftest dateTime-test
   (testing "with year precision"
@@ -1084,9 +1121,13 @@
           (type/dateTime {:extension [internable-extension]}))))
 
     (testing "value"
-      (are [x] (= #system/date-time"2020" (type/value x) (:value x))
+      (are [x] (= #system/date-time"2020" (type/value x) (:value x) (:value x ::foo))
         #fhir/dateTime"2020"
         #fhir/dateTime{:id "foo" :value #system/date-time"2020"}))
+
+    (testing "lookup"
+      (testing "other keys are not found"
+        (is (= ::not-found (::other-key #fhir/dateTime"1970" ::not-found)))))
 
     (testing "to-json"
       (are [date-time json] (= json (gen-json-string date-time))
@@ -1116,7 +1157,10 @@
     (testing "references"
       (are [x refs] (= refs (type/references x))
         #fhir/dateTime"2020"
-        nil)))
+        nil))
+
+    (testing "print"
+      (is (= "#fhir/dateTime\"2020\"" (pr-str #fhir/dateTime"2020")))))
 
   (testing "with year-month precision"
     (testing "dateTime?"
@@ -1137,9 +1181,13 @@
       (is (not-interned? #fhir/dateTime"2022-05" #fhir/dateTime"2022-05")))
 
     (testing "value"
-      (are [x] (= #system/date-time"2020-01" (type/value x) (:value x))
+      (are [x] (= #system/date-time"2020-01" (type/value x) (:value x) (:value x ::foo))
         #fhir/dateTime"2020-01"
         #fhir/dateTime{:id "foo" :value #system/date-time"2020-01"}))
+
+    (testing "lookup"
+      (testing "other keys are not found"
+        (is (= ::not-found (::other-key #fhir/dateTime"1970-01" ::not-found)))))
 
     (testing "to-json"
       (are [date-time json] (= json (gen-json-string date-time))
@@ -1169,7 +1217,10 @@
     (testing "references"
       (are [x refs] (= refs (type/references x))
         #fhir/dateTime"2020-01"
-        nil)))
+        nil))
+
+    (testing "print"
+      (is (= "#fhir/dateTime\"2020-01\"" (pr-str #fhir/dateTime"2020-01")))))
 
   (testing "with date precision"
     (testing "dateTime?"
@@ -1190,9 +1241,13 @@
       (is (not-interned? #fhir/dateTime"2022-05-23" #fhir/dateTime"2022-05-23")))
 
     (testing "value"
-      (are [x] (= #system/date-time"2022-05-23" (type/value x) (:value x))
+      (are [x] (= #system/date-time"2022-05-23" (type/value x) (:value x) (:value x ::foo))
         #fhir/dateTime"2022-05-23"
         #fhir/dateTime{:id "foo" :value #system/date-time"2022-05-23"}))
+
+    (testing "lookup"
+      (testing "other keys are not found"
+        (is (= ::not-found (::other-key #fhir/dateTime"1970-01-01" ::not-found)))))
 
     (testing "to-json"
       (are [date-time json] (= json (gen-json-string date-time))
@@ -1220,7 +1275,10 @@
     (testing "references"
       (are [x refs] (= refs (type/references x))
         #fhir/dateTime"2020-01-01"
-        nil)))
+        nil))
+
+    (testing "print"
+      (is (= "#fhir/dateTime\"2020-01-01\"" (pr-str #fhir/dateTime"2020-01-01")))))
 
   (testing "without timezone"
     (testing "dateTime?"
@@ -1594,9 +1652,13 @@
                                 :value "code-123745"}))))
 
   (testing "value"
-    (are [x] (= "code-123745" (type/value x) (:value x))
+    (are [x] (= "code-123745" (type/value x) (:value x) (:value x ::foo))
       #fhir/code"code-123745"
       #fhir/code{:id "foo" :value "code-123745"}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/code"foo" ::not-found)))))
 
   (testing "to-json"
     (are [code json] (= json (gen-json-string code))
@@ -1684,9 +1746,13 @@
     (is (not-interned? #fhir/oid"oid-123745" #fhir/oid"oid-123745")))
 
   (testing "value"
-    (are [x] (= "oid-123745" (type/value x) (:value x))
+    (are [x] (= "oid-123745" (type/value x) (:value x) (:value x ::foo))
       #fhir/oid"oid-123745"
       #fhir/oid{:id "foo" :value "oid-123745"}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/oid"foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"oid-123745\"" (gen-json-string #fhir/oid"oid-123745"))))
@@ -1735,9 +1801,13 @@
     (is (not-interned? #fhir/id"id-123745" #fhir/id"id-123745")))
 
   (testing "value"
-    (are [x] (= "id-123745" (type/value x) (:value x))
+    (are [x] (= "id-123745" (type/value x) (:value x) (:value x ::foo))
       #fhir/id"id-123745"
       #fhir/id{:id "foo" :value "id-123745"}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/id"foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"id-123745\"" (gen-json-string #fhir/id"id-123745"))))
@@ -1787,9 +1857,13 @@
                        #fhir/markdown"markdown-123745")))
 
   (testing "value"
-    (are [x] (= "markdown-123745" (type/value x) (:value x))
+    (are [x] (= "markdown-123745" (type/value x) (:value x) (:value x ::foo))
       #fhir/markdown"markdown-123745"
       #fhir/markdown{:id "foo" :value "markdown-123745"}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/markdown"foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"markdown-123745\""
@@ -1840,9 +1914,13 @@
                        #fhir/unsignedInt 160845)))
 
   (testing "value"
-    (are [x] (= 160845 (type/value x) (:value x))
+    (are [x] (= 160845 (type/value x) (:value x) (:value x ::foo))
       #fhir/unsignedInt 160845
       #fhir/unsignedInt{:id "foo" :value 160845}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/unsignedInt 1 ::not-found)))))
 
   (testing "to-json"
     (is (= "160845" (gen-json-string #fhir/unsignedInt 160845))))
@@ -1870,19 +1948,18 @@
       nil))
 
   (testing "print"
-    (testing "print"
-      (are [x s] (= (pr-str x) s)
-        #fhir/unsignedInt 192629
-        "#fhir/unsignedInt 192629"
+    (are [x s] (= (pr-str x) s)
+      #fhir/unsignedInt 192629
+      "#fhir/unsignedInt 192629"
 
-        #fhir/unsignedInt{:id "id-192647"}
-        "#fhir/unsignedInt{:id \"id-192647\"}"
+      #fhir/unsignedInt{:id "id-192647"}
+      "#fhir/unsignedInt{:id \"id-192647\"}"
 
-        #fhir/unsignedInt{:id "id-192703" :value 192711}
-        "#fhir/unsignedInt{:id \"id-192703\", :value 192711}"
+      #fhir/unsignedInt{:id "id-192703" :value 192711}
+      "#fhir/unsignedInt{:id \"id-192703\", :value 192711}"
 
-        #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-192724"}]}
-        "#fhir/unsignedInt{:extension [#fhir/Extension{:url \"url-192724\"}]}"))))
+      #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-192724"}]}
+      "#fhir/unsignedInt{:extension [#fhir/Extension{:url \"url-192724\"}]}")))
 
 (deftest positiveInt-test
   (testing "positiveInt?"
@@ -1903,9 +1980,13 @@
                        #fhir/positiveInt 160845)))
 
   (testing "value"
-    (are [x] (= 160845 (type/value x) (:value x))
+    (are [x] (= 160845 (type/value x) (:value x) (:value x ::foo))
       #fhir/positiveInt 160845
       #fhir/positiveInt{:id "foo" :value 160845}))
+
+  (testing "lookup"
+    (testing "other keys are not found"
+      (is (= ::not-found (::other-key #fhir/positiveInt 1 ::not-found)))))
 
   (testing "to-json"
     (is (= "160845" (gen-json-string #fhir/positiveInt 160845))))

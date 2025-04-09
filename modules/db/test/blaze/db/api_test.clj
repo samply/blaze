@@ -374,7 +374,7 @@
           [meta :blaze.db/op] := :put
           [:birthDate :extension 0 :url] := "foo"
           [:birthDate :extension 0 :value] := #fhir/code"bar"
-          [:birthDate :value] := #fhir/date"2022"))))
+          [:birthDate :value] := #system/date"2022"))))
 
   (testing "one Patient with one Observation"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5524,14 +5524,17 @@
   [(system/date-time-lower-bound date-time) Long/MAX_VALUE])
 
 (defn- date-time-range [date-time]
-  (if (fhir-spec/primitive-val? date-time)
-    [(system/date-time-lower-bound (type/value date-time))
-     (system/date-time-upper-bound (type/value date-time))]
-    [(system/date-time-lower-bound (type/value (:start date-time)))
-     (system/date-time-upper-bound (type/value (:end date-time)))]))
+  [(system/date-time-lower-bound date-time)
+   (system/date-time-upper-bound date-time)])
 
-(defn- unwrap-value [value]
-  (cond-> value (fhir-spec/primitive-val? value) type/value))
+(defn- fhir-date-time-range [x]
+  (condp = (type/type x)
+    :fhir/Period
+    [(system/date-time-lower-bound (type/value (:start x)))
+     (system/date-time-upper-bound (type/value (:end x)))]
+    :fhir/dateTime
+    [(system/date-time-lower-bound (type/value x))
+     (system/date-time-upper-bound (type/value x))]))
 
 (defn- fully-contains? [[x1 x2] [y1 y2]]
   (<= x1 y1 y2 x2))
@@ -5542,8 +5545,7 @@
   [param-value]
   (let [param-range (date-time-range param-value)]
     (fn [resource-value]
-      (when-let [resource-value (unwrap-value resource-value)]
-        (fully-contains? param-range (date-time-range resource-value))))))
+      (fully-contains? param-range (fhir-date-time-range resource-value)))))
 
 (defn- not-equal
   "The range of the parameter value does not fully contain the range of the
@@ -5551,8 +5553,7 @@
   [param-value]
   (let [param-range (date-time-range param-value)]
     (fn [resource-value]
-      (when-let [resource-value (unwrap-value resource-value)]
-        (not (fully-contains? param-range (date-time-range resource-value)))))))
+      (not (fully-contains? param-range (fhir-date-time-range resource-value))))))
 
 (defn- overlaps? [[x1 x2] [y1 y2]]
   (and (<= x1 y2) (<= y1 x2)))
@@ -5563,8 +5564,7 @@
   [param-value]
   (let [param-range (range-above param-value)]
     (fn [resource-value]
-      (when-let [resource-value (unwrap-value resource-value)]
-        (overlaps? param-range (date-time-range resource-value))))))
+      (overlaps? param-range (fhir-date-time-range resource-value)))))
 
 (defn- less-than
   "The range below the parameter value intersects (i.e. overlaps) with the range
@@ -5572,8 +5572,7 @@
   [param-value]
   (let [param-range (range-below param-value)]
     (fn [resource-value]
-      (when-let [resource-value (unwrap-value resource-value)]
-        (overlaps? (date-time-range resource-value) param-range)))))
+      (overlaps? (fhir-date-time-range resource-value) param-range))))
 
 (defn- greater-equal
   "The range above the parameter value intersects (i.e. overlaps) with the range
@@ -5605,7 +5604,7 @@
   (let [param-range (date-time-range param-value)
         param-range-above (range-above param-value)]
     (fn [resource-value]
-      (when-let [value-range (some-> resource-value unwrap-value date-time-range)]
+      (when-let [value-range (fhir-date-time-range resource-value)]
         (and (not (overlaps? param-range value-range))
              (fully-contains? param-range-above value-range))))))
 
@@ -5617,7 +5616,7 @@
   (let [param-range (date-time-range param-value)
         param-range-below (range-below param-value)]
     (fn [resource-value]
-      (when-let [value-range (some-> resource-value unwrap-value date-time-range)]
+      (when-let [value-range (fhir-date-time-range resource-value)]
         (and (not (overlaps? param-range value-range))
              (fully-contains? param-range-below value-range))))))
 
@@ -5627,12 +5626,11 @@
   [param-value]
   (let [param-range (date-time-range param-value)]
     (fn [resource-value]
-      (when-let [resource-value (unwrap-value resource-value)]
-        (overlaps? param-range (date-time-range resource-value))))))
+      (overlaps? param-range (fhir-date-time-range resource-value)))))
 
 (defn- every-found-observation-matches? [pred node prefix date-time]
   (let [pull (partial pull-type-query node "Observation")
-        pred (comp (pred (type/dateTime date-time)) :effective)
+        pred (comp (pred (system/parse-date-time date-time)) :effective)
         observations (pull [["date" (str prefix date-time)]])]
     (and (every? pred observations)
          (or (< (count observations) 2)

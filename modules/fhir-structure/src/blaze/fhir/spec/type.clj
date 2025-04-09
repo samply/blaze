@@ -528,12 +528,11 @@
     (system/-hash-into (p/-value date) sink))
   (-references [_])
   ILookup
-  (valAt [date-time key]
-    (when (identical? :value key)
-      (p/-value date-time)))
-  (valAt [date-time key not-found]
+  (valAt [date key]
+    (.valAt date key nil))
+  (valAt [date key not-found]
     (if (identical? :value key)
-      (p/-value date-time)
+      (p/-value date)
       not-found))
   Object
   (equals [date x]
@@ -549,11 +548,6 @@
   (.write w "#fhir/date\"")
   (.write w (str date))
   (.write w "\""))
-
-(defmethod print-dup DateYear [^DateYear date ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.DateYear. ")
-  (.write w (str (.year date)))
-  (.write w ")"))
 
 (deftype DateYearMonth [^int year ^int month]
   p/FhirType
@@ -575,12 +569,11 @@
     (system/-hash-into (p/-value date) sink))
   (-references [_])
   ILookup
-  (valAt [date-time key]
-    (when (identical? :value key)
-      (p/-value date-time)))
-  (valAt [date-time key not-found]
+  (valAt [date key]
+    (.valAt date key nil))
+  (valAt [date key not-found]
     (if (identical? :value key)
-      (p/-value date-time)
+      (p/-value date)
       not-found))
   Object
   (equals [date x]
@@ -596,13 +589,6 @@
   (.write w "#fhir/date\"")
   (.write w (str date))
   (.write w "\""))
-
-(defmethod print-dup DateYearMonth [^DateYearMonth date ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.DateYearMonth. ")
-  (.write w (str (.year date)))
-  (.write w " ")
-  (.write w (str (.month date)))
-  (.write w ")"))
 
 (deftype DateDate [^int year ^int month ^int day]
   p/FhirType
@@ -624,12 +610,11 @@
     (system/-hash-into (p/-value date) sink))
   (-references [_])
   ILookup
-  (valAt [date-time key]
-    (when (identical? :value key)
-      (p/-value date-time)))
-  (valAt [date-time key not-found]
+  (valAt [date key]
+    (.valAt date key nil))
+  (valAt [date key not-found]
     (if (identical? :value key)
-      (p/-value date-time)
+      (p/-value date)
       not-found))
   Object
   (equals [date x]
@@ -645,15 +630,6 @@
   (.write w "#fhir/date\"")
   (.write w (str date))
   (.write w "\""))
-
-(defmethod print-dup DateDate [^DateDate date ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.DateDate. ")
-  (.write w (str (.year date)))
-  (.write w " ")
-  (.write w (str (.month date)))
-  (.write w " ")
-  (.write w (str (.day date)))
-  (.write w ")"))
 
 (defextended ExtendedDate [id extension value]
   :fhir-type :fhir/date :hash-num 10)
@@ -753,8 +729,7 @@
   (-references [_])
   ILookup
   (valAt [date-time key]
-    (when (identical? :value key)
-      (p/-value date-time)))
+    (.valAt date-time key nil))
   (valAt [date-time key not-found]
     (if (identical? :value key)
       (p/-value date-time)
@@ -773,11 +748,6 @@
   (.write w "#fhir/dateTime\"")
   (.write w (str date-time))
   (.write w "\""))
-
-(defmethod print-dup DateTimeYear [^DateTimeYear date-time ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.DateTimeYear. ")
-  (.write w (str (.year date-time)))
-  (.write w ")"))
 
 (deftype DateTimeYearMonth [^int year ^int month]
   p/FhirType
@@ -800,8 +770,7 @@
   (-references [_])
   ILookup
   (valAt [date-time key]
-    (when (identical? :value key)
-      (p/-value date-time)))
+    (.valAt date-time key nil))
   (valAt [date-time key not-found]
     (if (identical? :value key)
       (p/-value date-time)
@@ -820,13 +789,6 @@
   (.write w "#fhir/dateTime\"")
   (.write w (str date-time))
   (.write w "\""))
-
-(defmethod print-dup DateYearMonth [^DateTimeYearMonth date-time ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.DateTimeYearMonth. ")
-  (.write w (str (.year date-time)))
-  (.write w " ")
-  (.write w (str (.month date-time)))
-  (.write w ")"))
 
 (deftype DateTimeDate [^int year ^int month ^int day]
   p/FhirType
@@ -849,8 +811,7 @@
   (-references [_])
   ILookup
   (valAt [date-time key]
-    (when (identical? :value key)
-      (p/-value date-time)))
+    (.valAt date-time key nil))
   (valAt [date-time key not-found]
     (if (identical? :value key)
       (p/-value date-time)
@@ -869,15 +830,6 @@
   (.write w "#fhir/dateTime\"")
   (.write w (str date-time))
   (.write w "\""))
-
-(defmethod print-dup DateTimeDate [^DateTimeDate date-time ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.DateTimeDate. ")
-  (.write w (str (.year date-time)))
-  (.write w " ")
-  (.write w (str (.month date-time)))
-  (.write w " ")
-  (.write w (str (.day date-time)))
-  (.write w ")"))
 
 (extend-protocol p/FhirType
   OffsetDateTime
