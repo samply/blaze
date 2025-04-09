@@ -7,6 +7,7 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.search.nav :as nav]
    [blaze.interaction.search.params :as params]
@@ -29,8 +30,8 @@
 (defn- handles [{{:keys [page-size]} :params :as context}]
   (into [] (take (inc page-size)) (handles* context)))
 
-(defn- entries [{:blaze/keys [db] :as context}]
-  (-> (d/pull-many db (handles context))
+(defn- entries [{:blaze/keys [db] :keys [pull-variant] :as context}]
+  (-> (d/pull-many db (handles context) pull-variant)
       (ac/exceptionally
        #(assoc %
                ::anom/category ::anom/fault
@@ -100,14 +101,15 @@
     :blaze/keys [base-url db]
     ::reitit/keys [router match]}]
   (let [handling (handler-util/preference headers "handling")]
-    (do-sync [params (params/decode page-store "Resource" handling params)]
+    (do-sync [decoded-params (params/decode page-store "Resource" handling params)]
       (assoc context
              :blaze/base-url base-url
              :blaze/db db
              ::reitit/router router
              ::reitit/match match
              :page-match #(reitit/match-by-name router :page {:page-id %})
-             :params params))))
+             :params decoded-params
+             :pull-variant (fhir-util/summary params)))))
 
 (defmethod m/pre-init-spec :blaze.interaction/search-system [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store

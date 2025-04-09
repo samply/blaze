@@ -79,6 +79,12 @@
   [{v "__page-id"}]
   (some #(when (s/valid? :blaze.resource/id %) %) (u/to-seq v)))
 
+(defn summary
+  "Returns either :complete or :summary based on the `_summary` query param."
+  {:arglists '([query-params])}
+  [{summary "_summary"}]
+  (or (first (keep {"true" :summary} (u/to-seq summary))) :complete))
+
 (defn elements
   "Returns a vector of keywords created from the comma separated values of 
    all `_elements` query params."

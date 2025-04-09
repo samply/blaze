@@ -5,11 +5,8 @@
   (:import
    [java.util Random]))
 
-(defn page-store? [x]
-  (satisfies? p/PageStore x))
-
 (s/def :blaze/page-store
-  page-store?)
+  #(satisfies? p/PageStore %))
 
 (s/def :blaze.page-store/secure-rng
   #(instance? Random %))

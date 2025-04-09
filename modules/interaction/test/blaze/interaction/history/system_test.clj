@@ -18,7 +18,7 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
-   [blaze.page-id-cipher.spec :refer [page-id-cipher?]]
+   [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -43,6 +43,7 @@
 (def router
   (reitit/router
    [["/Patient" {:name :Patient/type}]
+    ["/CodeSystem" {:name :CodeSystem/type}]
     ["/_history" {:name :history}]
     ["/__history-page/{page-id}" {:name :history-page}]]
    {:syntax :bracket
@@ -101,7 +102,7 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `page-id-cipher?
+      [:cause-data ::s/problems 2 :via] := [:blaze/page-id-cipher]
       [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (def config
@@ -229,6 +230,119 @@
             :status := "201"
             :etag := "W/\"1\""
             :lastModified := Instant/EPOCH)))))
+
+  (testing "with one code system"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :version #fhir/string"version-170327"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-115927"}]}]]]
+
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
+            @(handler {})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle id is an LUID"
+          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+        (testing "the bundle type is history"
+          (is (= #fhir/code"history" (:type body))))
+
+        (testing "the total count is 1"
+          (is (= #fhir/unsignedInt 1 (:total body))))
+
+        (testing "has a self link"
+          (is (= (str base-url context-path "/_history")
+                 (link-url body "self"))))
+
+        (testing "has no next link"
+          (is (nil? (link-url body "next"))))
+
+        (testing "the bundle contains one entry"
+          (is (= 1 (count (:entry body)))))
+
+        (testing "the entry has the right fullUrl"
+          (is (= (str base-url context-path "/CodeSystem/0")
+                 (:fullUrl first-entry))))
+
+        (testing "the entry has the right resource"
+          (given (:resource first-entry)
+            :fhir/type := :fhir/CodeSystem
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH
+            [:concept 0 :code] := #fhir/code"code-115927"))
+
+        (testing "the second entry has the right request"
+          (given (:request first-entry)
+            :method := #fhir/code"PUT"
+            :url := "CodeSystem/0"))
+
+        (testing "the entry has the right response"
+          (given (:response first-entry)
+            :status := "201"
+            :etag := "W/\"1\""
+            :lastModified := Instant/EPOCH)))
+
+      (testing "in summary mode"
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler {:params {"_summary" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle id is an LUID"
+            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+          (testing "the bundle type is history"
+            (is (= #fhir/code"history" (:type body))))
+
+          (testing "the total count is 1"
+            (is (= #fhir/unsignedInt 1 (:total body))))
+
+          (testing "has a self link"
+            (is (= (str base-url context-path "/_history")
+                   (link-url body "self"))))
+
+          (testing "has no next link"
+            (is (nil? (link-url body "next"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the entry has the right fullUrl"
+            (is (= (str base-url context-path "/CodeSystem/0")
+                   (:fullUrl first-entry))))
+
+          (testing "the entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/CodeSystem
+              :id := "0"
+              [:meta :versionId] := #fhir/id"1"
+              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+              [:meta :tag 0 :code] := #fhir/code"SUBSETTED"
+              :concept := nil))
+
+          (testing "the second entry has the right request"
+            (given (:request first-entry)
+              :method := #fhir/code"PUT"
+              :url := "CodeSystem/0"))
+
+          (testing "the entry has the right response"
+            (given (:response first-entry)
+              :status := "201"
+              :etag := "W/\"1\""
+              :lastModified := Instant/EPOCH))))))
 
   (testing "with two patients in one transaction"
     (with-handler [handler node page-id-cipher]

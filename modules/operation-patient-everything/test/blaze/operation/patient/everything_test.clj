@@ -10,7 +10,7 @@
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
    [blaze.operation.patient.everything]
-   [blaze.page-id-cipher.spec :refer [page-id-cipher?]]
+   [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -68,7 +68,7 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `page-id-cipher?
+      [:cause-data ::s/problems 2 :via] := [:blaze/page-id-cipher]
       [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (def base-url "base-url-113047")
