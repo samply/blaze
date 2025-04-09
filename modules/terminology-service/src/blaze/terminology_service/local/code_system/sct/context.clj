@@ -488,8 +488,11 @@
   (with-open [lines (-> (Files/lines ^Path path) (.skip 1) (.parallel))]
     (apply f lines args)))
 
+(defn- has-core-version? [{:keys [version]}]
+  (str/starts-with? (type/value version) core-version-prefix))
+
 (defn- find-current-int-system [code-systems]
-  (last (sort-by :date (filter #(str/starts-with? (type/value (:version %)) core-version-prefix) code-systems))))
+  (last (sort-by (comp :value :date) (filter has-core-version? code-systems))))
 
 (defn build [release-path]
   (when-ok [full-path (find-file release-path "Full")

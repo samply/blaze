@@ -7,6 +7,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
@@ -192,7 +193,7 @@
       (prop/for-all [name gen/string-alphanumeric
                      value fg/date-value]
         (let [query-params {name value}]
-          (= (type/date value) (fhir-util/date query-params name)))))))
+          (= (system/parse-date value) (fhir-util/date query-params name)))))))
 
 (def router
   (reitit/router

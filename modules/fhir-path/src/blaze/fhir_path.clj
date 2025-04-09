@@ -69,8 +69,9 @@
   (-> (ba/try-anomaly (-eval expr {:resolver resolver} [value]))
       (ba/exceptionally #(assoc % :expression expr :value value))))
 
-;; See: http://hl7.org/fhirpath/index.html#conversion
-(defn- convertible? [type item]
+(defn- convertible?
+  "See: http://hl7.org/fhirpath/index.html#conversion"
+  [type item]
   (if (identical? type (fhir-spec/fhir-type item))
     true
     (case [(fhir-spec/fhir-type item) type]
@@ -79,8 +80,9 @@
       true
       false)))
 
-;; See: http://hl7.org/fhirpath/index.html#conversion
-(defn- convert [type item]
+(defn- convert
+  "See: http://hl7.org/fhirpath/index.html#conversion"
+  [type item]
   (if (identical? type (fhir-spec/fhir-type item))
     item
     (case [(fhir-spec/fhir-type item) type]
@@ -89,6 +91,13 @@
 
       [:fhir/date :fhir/dateTime]
       (fhir-spec/to-date-time item))))
+
+(defn- convert-fhir-primitive
+  "Converts `x` to a system type if it is a primitive FHIR type.
+
+  See: https://build.fhir.org/fhirpath.html#types"
+  [x]
+  (cond-> x (fhir-spec/primitive-val? x) (type/value)))
 
 ;; See: http://hl7.org/fhirpath/index.html#singleton-evaluation-of-collections
 (defn- singleton-evaluation-msg [coll]
@@ -213,7 +222,7 @@
         (not= (count left) (count right)) [false]
         :else
         (loop [[l & ls] left [r & rs] right]
-          (if (system/equals (type/value l) (type/value r))
+          (if (system/equals (convert-fhir-primitive l) (convert-fhir-primitive r))
             (if (empty? ls)
               [true]
               (recur ls rs))
@@ -229,7 +238,7 @@
         (not= (count left) (count right)) [false]
         :else
         (loop [[l & ls] left [r & rs] right]
-          (if (system/equals (type/value l) (type/value r))
+          (if (system/equals (convert-fhir-primitive l) (convert-fhir-primitive r))
             (if (empty? ls)
               [false]
               (recur ls rs))
@@ -500,13 +509,13 @@
   fhirpathParser$DateLiteralContext
   (-compile [ctx]
     (let [text (subs (.getText (.getSymbol (.DATE ctx))) 1)]
-      [(type/date text)]))
+      [(system/parse-date text)]))
 
   fhirpathParser$DateTimeLiteralContext
   (-compile [ctx]
     (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)
           text (if (str/ends-with? text "T") (subs text 0 (dec (count text))) text)]
-      [(type/dateTime text)]))
+      [(system/parse-date-time text)]))
 
   fhirpathParser$MemberInvocationContext
   (-compile [ctx]
