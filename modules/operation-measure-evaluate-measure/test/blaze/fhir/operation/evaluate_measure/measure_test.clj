@@ -1025,7 +1025,7 @@
       :fhir/type := :fhir.MeasureReport.group/stratifier)
 
     (given (first-stratifier-strata result)
-      count := 3
+      count := 4
       [0 keys] := [:fhir/type :component :population]
       [0 :fhir/type] := :fhir.MeasureReport.group.stratifier/stratum
       [0 :component 0 :code :text] := "age-class"
@@ -1040,14 +1040,17 @@
       [1 :population 0 :count] := #fhir/integer 1
       [2 :component 0 :value :text] := "70"
       [2 :component 1 :value :text] := "female"
-      [2 :population 0 :count] := #fhir/integer 2))
+      [2 :population 0 :count] := #fhir/integer 2
+      [3 :component 0 :value :text] := "10"
+      [3 :component 1 :value :text] := "divers"
+      [3 :population 0 :count] := #fhir/integer 1))
 
   (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
 
     (given (first-stratifier-strata result)
-      count := 3
+      count := 4
       [0 :component 0 :code :text] := "age-class"
       [0 :component 0 :value :text] := "10"
       [0 :component 1 :code :text] := "gender"
@@ -1063,7 +1066,11 @@
       [2 :component 0 :value :text] := "70"
       [2 :component 1 :value :text] := "female"
       [2 :population 0 :count] := #fhir/integer 2
-      [2 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD")
+      [2 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD"
+      [3 :component 0 :value :text] := "10"
+      [3 :component 1 :value :text] := "divers"
+      [3 :population 0 :count] := #fhir/integer 1
+      [3 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAE")
 
     (given (:tx-ops result)
       [1 1 :fhir/type] := :fhir/List

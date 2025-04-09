@@ -418,7 +418,7 @@
         (type/uri {:extension [not-internable-extension] :value "185838"}))))
 
   (testing "value"
-    (are [x] (= "105614" (type/value x))
+    (are [x] (= "105614" (type/value x) (:value x))
       #fhir/uri"105614"
       #fhir/uri{:id "foo" :value "105614"}))
 
@@ -507,7 +507,7 @@
         (type/url {:extension [internable-extension]}))))
 
   (testing "value"
-    (are [x] (= "105614" (type/value x))
+    (are [x] (= "105614" (type/value x) (:value x))
       #fhir/url"105614"
       #fhir/url{:id "foo" :value "105614"}))
 
@@ -588,7 +588,7 @@
         (type/canonical {:extension [not-internable-extension] :value "185838"}))))
 
   (testing "value"
-    (are [x] (= "105614" (type/value x))
+    (are [x] (= "105614" (type/value x) (:value x))
       #fhir/canonical"105614"
       #fhir/canonical{:id "foo" :value "105614"}))
 
@@ -685,7 +685,7 @@
         (type/base64Binary {:extension [internable-extension]}))))
 
   (testing "value"
-    (are [x] (= "MTA1NjE0Cg==" (type/value x))
+    (are [x] (= "MTA1NjE0Cg==" (type/value x) (:value x))
       #fhir/base64Binary"MTA1NjE0Cg=="
       #fhir/base64Binary{:id "foo" :value "MTA1NjE0Cg=="}))
 
@@ -1545,7 +1545,7 @@
                                 :value "code-123745"}))))
 
   (testing "value"
-    (are [x] (= "code-123745" (type/value x))
+    (are [x] (= "code-123745" (type/value x) (:value x))
       #fhir/code"code-123745"
       #fhir/code{:id "foo" :value "code-123745"}))
 
@@ -1634,7 +1634,7 @@
     (is (not-interned? #fhir/oid"oid-123745" #fhir/oid"oid-123745")))
 
   (testing "value"
-    (are [x] (= "oid-123745" (type/value x))
+    (are [x] (= "oid-123745" (type/value x) (:value x))
       #fhir/oid"oid-123745"
       #fhir/oid{:id "foo" :value "oid-123745"}))
 
@@ -1685,7 +1685,7 @@
     (is (not-interned? #fhir/id"id-123745" #fhir/id"id-123745")))
 
   (testing "value"
-    (are [x] (= "id-123745" (type/value x))
+    (are [x] (= "id-123745" (type/value x) (:value x))
       #fhir/id"id-123745"
       #fhir/id{:id "foo" :value "id-123745"}))
 
@@ -1737,7 +1737,7 @@
                        #fhir/markdown"markdown-123745")))
 
   (testing "value"
-    (are [x] (= "markdown-123745" (type/value x))
+    (are [x] (= "markdown-123745" (type/value x) (:value x))
       #fhir/markdown"markdown-123745"
       #fhir/markdown{:id "foo" :value "markdown-123745"}))
 
@@ -1790,7 +1790,7 @@
                        #fhir/unsignedInt 160845)))
 
   (testing "value"
-    (are [x] (= 160845 (type/value x))
+    (are [x] (= 160845 (type/value x) (:value x))
       #fhir/unsignedInt 160845
       #fhir/unsignedInt{:id "foo" :value 160845}))
 
@@ -1853,7 +1853,7 @@
                        #fhir/positiveInt 160845)))
 
   (testing "value"
-    (are [x] (= 160845 (type/value x))
+    (are [x] (= 160845 (type/value x) (:value x))
       #fhir/positiveInt 160845
       #fhir/positiveInt{:id "foo" :value 160845}))
 
