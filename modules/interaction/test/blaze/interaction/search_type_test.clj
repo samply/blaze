@@ -20,10 +20,10 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
-   [blaze.page-id-cipher.spec :refer [page-id-cipher?]]
+   [blaze.page-id-cipher.spec]
    [blaze.page-store-spec]
    [blaze.page-store.local]
-   [blaze.page-store.spec :refer [page-store?]]
+   [blaze.page-store.spec]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -140,7 +140,7 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 3 :pred] := `page-store?
+      [:cause-data ::s/problems 3 :via] := [:blaze/page-store]
       [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid page-id-cipher"
@@ -150,7 +150,7 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 3 :pred] := `page-id-cipher?
+      [:cause-data ::s/problems 3 :via] := [:blaze/page-id-cipher]
       [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid context-path"

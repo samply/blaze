@@ -5,11 +5,8 @@
   (:import
    [com.google.crypto.tink Aead]))
 
-(defn page-id-cipher? [x]
-  (instance? Aead x))
-
 (s/def :blaze/page-id-cipher
-  page-id-cipher?)
+  #(instance? Aead %))
 
 (s/def :blaze.page-id-cipher/key-rotation-period
   time/duration?)

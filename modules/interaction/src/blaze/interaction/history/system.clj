@@ -39,7 +39,8 @@
         paged-version-handles (into [] page-xform version-handles)
         next-link (partial next-link context query-params)]
     ;; we need take here again because we take page-size + 1 above
-    (-> (d/pull-many db (into [] (take page-size) paged-version-handles))
+    (-> (d/pull-many db (into [] (take page-size) paged-version-handles)
+                     (fhir-util/summary query-params))
         (ac/exceptionally
          #(assoc %
                  ::anom/category ::anom/fault

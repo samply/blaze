@@ -136,6 +136,27 @@
     {:vector (mapv keyword fields)
      :string (str/join (cons (first fields) (interleave separators (rest fields))))}))
 
+(deftest summary-test
+  (testing "no query param"
+    (is (= :complete (fhir-util/summary {}))))
+
+  (testing "non true query param"
+    (are [summary] (= :complete (fhir-util/summary {"_summary" summary}))
+      "<invalid>"
+      ["<invalid>" "<invalid>"]
+      "false"
+      ["false" "false"]
+      "data"
+      "text"
+      "count"))
+
+  (testing "true query param"
+    (are [summary] (= :summary (fhir-util/summary {"_summary" summary}))
+      "true"
+      ["<invalid>" "true"]
+      ["false" "true"]
+      ["true" "false"])))
+
 (deftest elements-test
   (testing "_elements is not present"
     (are [x] (empty? (fhir-util/elements x))

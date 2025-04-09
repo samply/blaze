@@ -8,7 +8,7 @@
    [blaze.page-store :as page-store]
    [blaze.page-store-spec]
    [blaze.page-store.local]
-   [blaze.page-store.spec :refer [page-store?]]
+   [blaze.page-store.spec]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -112,7 +112,7 @@
     (given-thrown (ig/init {:blaze.page-store.local/collector {:page-store ::invalid}})
       :key := :blaze.page-store.local/collector
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `page-store?
+      [:cause-data ::s/problems 0 :via] := [:blaze/page-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "is a collector"
