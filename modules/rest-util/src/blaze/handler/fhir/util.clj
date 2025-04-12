@@ -163,14 +163,10 @@
       handle)
     (ba/not-found (format "Resource `%s/%s` was not found." type id))))
 
-(defn- pull* [db resource-handle]
-  (if (ba/anomaly? resource-handle)
-    (ac/completed-future resource-handle)
-    (-> (d/pull db resource-handle)
-        (ac/exceptionally
-         #(assoc %
-                 ::anom/category ::anom/fault
-                 :fhir/issue "incomplete")))))
+(defn- pull* [db resource-handle variant]
+  (-> (d/pull db resource-handle variant)
+      (ac/exceptionally
+       #(assoc % ::anom/category ::anom/fault :fhir/issue "incomplete"))))
 
 (defn pull
   "Returns a CompletableFuture that will complete with the resource with `type`
@@ -182,8 +178,12 @@
 
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
-  [db type id]
-  (pull* db (resource-handle db type id)))
+  ([db type id]
+   (pull db type id :complete))
+  ([db type id variant]
+   (if-ok [resource-handle (resource-handle db type id)]
+     (pull* db resource-handle variant)
+     ac/completed-future)))
 
 (defn- historic-resource-handle-not-found-anom [type id t]
   (ba/not-found
@@ -214,7 +214,9 @@
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
   [db type id t]
-  (pull* db (historic-resource-handle db type id t)))
+  (if-ok [resource-handle (historic-resource-handle db type id t)]
+    (pull* db resource-handle :complete)
+    ac/completed-future))
 
 (defn- timeout-msg [timeout]
   (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often." timeout))

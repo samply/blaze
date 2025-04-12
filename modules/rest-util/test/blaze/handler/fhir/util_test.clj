@@ -260,11 +260,27 @@
       (given @(mtu/assoc-thread-name (fhir-util/pull (d/db node) "Patient" "0"))
         [meta :thread-name] :? mtu/common-pool-thread?
         :fhir/type := :fhir/Patient
-        :id := "0")))
+        :id := "0"))
+
+    (testing "summary variant"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri"system-115910"
+                 :version #fhir/string"version-170327"
+                 :content #fhir/code"complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code"code-115927"}]}]]]
+
+        (given @(mtu/assoc-thread-name (fhir-util/pull (d/db node) "CodeSystem" "0" :summary))
+          [meta :thread-name] :? mtu/common-pool-thread?
+          :fhir/type := :fhir/CodeSystem
+          :id := "0"
+          :concept := nil))))
 
   (testing "pull error"
     (with-redefs
-     [d/pull (fn [_ _] (ac/completed-future (ba/fault)))]
+     [d/pull (fn [_ _ _] (ac/completed-future (ba/fault)))]
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
@@ -321,7 +337,7 @@
 
   (testing "pull error"
     (with-redefs
-     [d/pull (fn [_ _] (ac/completed-future (ba/fault)))]
+     [d/pull (fn [_ _ _] (ac/completed-future (ba/fault)))]
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 

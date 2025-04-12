@@ -74,7 +74,8 @@
   :ret string?)
 
 (s/fdef fhir-util/pull
-  :args (s/cat :db :blaze.db/db :type :fhir.resource/type :id :blaze.resource/id)
+  :args (s/cat :db :blaze.db/db :type :fhir.resource/type :id :blaze.resource/id
+               :variant (s/? :blaze.resource/variant))
   :ret ac/completable-future?)
 
 (s/fdef fhir-util/pull-historic
