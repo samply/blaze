@@ -95,7 +95,7 @@
 (defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
   (if-ok [params (validate-params* request)]
     (if id
-      (do-sync [{:keys [url]} (fhir-util/pull db "ValueSet" id)]
+      (do-sync [{:keys [url]} (fhir-util/pull db "ValueSet" id :summary)]
         (update params :parameter (fnil conj []) (parameter "url" url)))
       (ac/completed-future params))
     ac/completed-future))
