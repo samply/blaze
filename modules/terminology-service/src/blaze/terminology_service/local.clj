@@ -287,7 +287,7 @@
 
 (defn- terminology-service [node context]
   (reify p/TerminologyService
-    (p/-code-systems [_]
+    (-code-systems [_]
       (c/code-systems (d/db node)))
     (-code-system-validate-code [_ params]
       (if-ok [params (validate-params cs-validate-code-param-specs params)
