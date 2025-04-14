@@ -2,7 +2,7 @@ fmt:
 	cljfmt check src test test-perf deps.edn tests.edn
 
 lint:
-	clj-kondo --lint src test deps.edn
+	clj-kondo --fail-level error --lint src test deps.edn
 
 prep:
 	clojure -X:deps prep

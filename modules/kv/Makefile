@@ -2,7 +2,7 @@ fmt:
 	cljfmt check src test build.clj deps.edn tests.edn
 
 lint:
-	clj-kondo --lint src test build.clj deps.edn
+	clj-kondo --fail-level error --lint src test build.clj deps.edn
 
 build:
 	clojure -T:build compile
