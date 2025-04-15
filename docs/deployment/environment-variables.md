@@ -424,13 +424,13 @@ The maximum number of parallel Bloom filter calculations for the CQL expression 
 
 #### `ALLOW_MULTIPLE_DELETE` <Badge type="warning" text="Since 0.30"/>
 
-Allow deleting multiple resources using [Conditional Delete](../api.md#conditional-delete).
+Allow deleting multiple resources using [Conditional Delete](../api/interaction/delete-type.md).
 
 **Default:** false
 
 #### `ENABLE_INTERACTION_DELETE_HISTORY` <Badge type="warning" text="Since 0.30.1"/>
 
-Enable the [Delete History](../api.md#delete-history) interaction.
+Enable the [Delete History](../api/interaction/delete-history.md) interaction.
 
 #### `ENABLE_OPERATION_PATIENT_PURGE` <Badge type="warning" text="Since 0.30.1"/>
 
