@@ -1945,6 +1945,12 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
 
+    strategy:
+      matrix:
+        binary-size:
+        - '8388608'
+        - '67108864'
+
     steps:
     - name: Check out Git repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -1968,7 +1974,7 @@ jobs:
       run: docker logs blaze
 
     - name: Generate Large Binary Resources (JSON and XML)
-      run: .github/scripts/generate-large-binary-resource.sh
+      run: .github/scripts/generate-large-binary-resource.sh ${{ matrix.binary-size }}
 
     - name: Post Large Binary JSON Resource
       run:  curl -f -H Content-Type:application/fhir+json -H Prefer:return=minimal -d @large-binary.json http://localhost:8080/fhir/Binary
