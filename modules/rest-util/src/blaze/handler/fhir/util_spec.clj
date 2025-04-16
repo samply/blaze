@@ -88,6 +88,14 @@
                :timeout ::rest-api/db-sync-timeout)
   :ret ac/completable-future?)
 
+(s/fdef fhir-util/match-type-id
+  :args (s/cat :url string?)
+  :ret (s/nilable (s/tuple :fhir.resource/type :blaze.resource/id)))
+
+(s/fdef fhir-util/match-type-query-params
+  :args (s/cat :url string?)
+  :ret (s/nilable (s/tuple :fhir.resource/type (s/nilable string?))))
+
 (s/fdef fhir-util/match-url
   :args (s/cat :url string?)
   :ret map?)

@@ -145,7 +145,31 @@
                  :method #fhir/code"DELETE"
                  :url #fhir/uri"Patient/id-215232"}}])
         count := 1
-        [0 :tx-op] := [:delete "Patient" "id-215232"])))
+        [0 :tx-op] := [:delete "Patient" "id-215232"]))
+
+    (testing "conditional delete"
+      (testing "without search params"
+        (doseq [url [#fhir/uri"Patient" #fhir/uri"Patient?"]]
+          (given (bundle/assoc-tx-ops
+                  (d/db node)
+                  [{:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code"DELETE"
+                     :url url}}])
+            count := 1
+            [0 :tx-op] := [:conditional-delete "Patient"])))
+
+      (testing "with search params"
+        (given (bundle/assoc-tx-ops
+                (d/db node)
+                [{:fhir/type :fhir.Bundle/entry
+                  :request
+                  {:fhir/type :fhir.Bundle.entry/request
+                   :method #fhir/code"DELETE"
+                   :url #fhir/uri"Patient?name-170043=value-170047"}}])
+          count := 1
+          [0 :tx-op] := [:conditional-delete "Patient" [["name-170043" "value-170047"]]]))))
 
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
     [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]

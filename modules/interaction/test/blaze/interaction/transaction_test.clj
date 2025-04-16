@@ -15,6 +15,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type-spec]
    [blaze.handler.util :as handler-util]
+   [blaze.interaction.conditional-delete-type]
    [blaze.interaction.create]
    [blaze.interaction.delete]
    [blaze.interaction.read]
@@ -59,7 +60,7 @@
 (defmethod ig/init-key ::router
   [_ {:keys [node create-handler search-type-handler
              read-handler delete-handler update-handler
-             batch?]}]
+             conditional-delete-type-handler batch?]}]
   (reitit.ring/router
    [["/metadata"
      {:get
@@ -72,7 +73,8 @@
       :fhir.resource/type "Observation"
       :get {:middleware [[wrap-db node 100]]
             :handler (wrap-params search-type-handler)}
-      :post create-handler}]
+      :post create-handler
+      :delete conditional-delete-type-handler}]
     ["/Observation/__page"
      {:name :Observation/page
       :conflicting true
@@ -84,7 +86,8 @@
       :fhir.resource/type "Patient"
       :get {:middleware [[wrap-db node 100]]
             :handler (wrap-params search-type-handler)}
-      :post create-handler}]
+      :post create-handler
+      :delete conditional-delete-type-handler}]
     ["/Patient/__page"
      {:name :Patient/page
       :conflicting true
@@ -170,6 +173,9 @@
    :blaze.interaction/update
    {:node (ig/ref :blaze.db/node)}
 
+   :blaze.interaction/conditional-delete-type
+   {:node (ig/ref :blaze.db/node)}
+
    ::batch-handler
    {:router (ig/ref ::batch-router)}
 
@@ -179,7 +185,8 @@
     :search-type-handler (ig/ref :blaze.interaction/search-type)
     :read-handler (ig/ref :blaze.interaction/read)
     :delete-handler (ig/ref :blaze.interaction/delete)
-    :update-handler (ig/ref :blaze.interaction/update)}
+    :update-handler (ig/ref :blaze.interaction/update)
+    :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)}
 
    ::batch-router
    {:batch? true
@@ -188,7 +195,8 @@
     :search-type-handler (ig/ref :blaze.interaction/search-type)
     :read-handler (ig/ref :blaze.interaction/read)
     :delete-handler (ig/ref :blaze.interaction/delete)
-    :update-handler (ig/ref :blaze.interaction/update)}
+    :update-handler (ig/ref :blaze.interaction/update)
+    :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)}
 
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
@@ -1665,7 +1673,52 @@
                   :fhir/type := :fhir/OperationOutcome
                   [:issue 0 :severity] := #fhir/code"error"
                   [:issue 0 :code] := #fhir/code"conflict"
-                  [:issue 0 :diagnostics] := "Resource `Patient/0` already exists."))))))))
+                  [:issue 0 :diagnostics] := "Resource `Patient/0` already exists.")))))))
+
+    (testing "and conditional delete interaction"
+      (let [entries
+            [{:fhir/type :fhir.Bundle/entry
+              :request
+              {:fhir/type :fhir.Bundle.entry/request
+               :method #fhir/code"DELETE"
+               :url #fhir/uri"Patient"}}
+             {:fhir/type :fhir.Bundle/entry
+              :request
+              {:fhir/type :fhir.Bundle.entry/request
+               :method #fhir/code"DELETE"
+               :url #fhir/uri"Observation"}}]]
+
+        (testing "without return preference"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]
+              [:put {:fhir/type :fhir/Observation :id "0"
+                     :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+            (let [{:keys [status body]
+                   {[{:keys [resource response]}] :entry} :body}
+                  @(handler
+                    {:body
+                     {:fhir/type :fhir/Bundle
+                      :type #fhir/code"transaction"
+                      :entry entries}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "bundle"
+                (given body
+                  :fhir/type := :fhir/Bundle
+                  :id := "AAAAAAAAAAAAAAAA"
+                  :type := #fhir/code"transaction-response"))
+
+              (testing "entry resource"
+                (is (nil? resource)))
+
+              (testing "entry response"
+                (given response
+                  :status := "204"
+                  :etag := "W/\"2\""
+                  :lastModified := Instant/EPOCH))))))))
 
   (testing "On batch bundle"
     (testing "on missing request"
@@ -2388,6 +2441,42 @@
                     [:issue 0 :code] := #fhir/code"conflict"
                     [:issue 0 :diagnostics] := "Resource `Patient/0` already exists."
                     [:issue 0 :expression 0] := "Bundle.entry[0]"))))))))
+
+    (testing "and conditional delete interaction"
+      (let [entries
+            [{:fhir/type :fhir.Bundle/entry
+              :request
+              {:fhir/type :fhir.Bundle.entry/request
+               :method #fhir/code"DELETE"
+               :url #fhir/uri"Patient"}}]]
+
+        (testing "without return preference"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]
+                   {[{:keys [resource response]}] :entry} :body}
+                  @(handler
+                    {:body
+                     {:fhir/type :fhir/Bundle
+                      :type #fhir/code"batch"
+                      :entry entries}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "bundle"
+                (given body
+                  :fhir/type := :fhir/Bundle
+                  :id := "AAAAAAAAAAAAAAAA"
+                  :type := #fhir/code"batch-response"))
+
+              (testing "entry resource"
+                (is (nil? resource)))
+
+              (testing "entry response"
+                (given response
+                  :status := "204")))))))
 
     (testing "and search-type interaction"
       (with-handler [handler]

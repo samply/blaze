@@ -767,6 +767,25 @@
               :op := :delete
               :num-changes := 2))))))
 
+  (testing "Encounter and Condition referencing each other"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Encounter :id "0"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition #fhir/Reference{:reference "Condition/0"}}]}]
+        [:put {:fhir/type :fhir/Condition :id "0"
+               :encounter #fhir/Reference{:reference "Encounter/0"}}]]]
+
+      (testing "deleting both types in one transaction succeeds"
+        (let [db @(d/transact node [[:conditional-delete "Encounter"]
+                                    [:conditional-delete "Condition"]])]
+          (given (d/resource-handle db "Encounter" "0")
+            :op := :delete
+            :num-changes := 2)
+          (given (d/resource-handle db "Condition" "0")
+            :op := :delete
+            :num-changes := 2)))))
+
   (testing "on updating the matching Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"

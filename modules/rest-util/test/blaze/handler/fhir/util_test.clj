@@ -345,6 +345,24 @@
           ::anom/category := ::anom/fault
           :fhir/issue := "incomplete")))))
 
+(deftest match-type-id-test
+  (is (= ["Patient" "164325"] (fhir-util/match-type-id "Patient/164325")))
+
+  (are [url] (nil? (fhir-util/match-type-id url))
+    "Patient"
+    "Patient/"
+    "Patient?"))
+
+(deftest match-type-query-params-test
+  (is (= ["Patient" nil] (fhir-util/match-type-query-params "Patient")))
+  (is (= ["Patient" ""] (fhir-util/match-type-query-params "Patient?")))
+  (is (= ["Patient" "name-164520=value-164527"] (fhir-util/match-type-query-params "Patient?name-164520=value-164527")))
+
+  (are [url] (nil? (fhir-util/match-type-query-params url))
+    ""
+    "a"
+    "0"))
+
 (deftest match-url-test
   (testing "system-level"
     (is (nil? (fhir-util/match-url ""))))
@@ -654,8 +672,7 @@
              (cond->
               {:batch-handler (constantly (ac/completed-future (ring/status 201)))
                :blaze/base-url base-url}
-               context-path
-               (assoc :context-path context-path))
+               context-path (assoc :context-path context-path))
              idx
              {:fhir/type :fhir.Bundle/entry
               :request {:fhir/type :fhir.Bundle.entry/request
@@ -665,6 +682,26 @@
            {:fhir/type :fhir.Bundle/entry
             :response {:fhir/type :fhir.Bundle.entry/response
                        :status "201"}}))))
+
+  (testing "Patient DELETE request"
+    (satisfies-prop 10
+      (prop/for-all [base-url (s/gen :blaze/base-url)
+                     context-path (gen/elements [nil "" "/fhir" "/other"])
+                     idx gen/nat]
+        (= @(fhir-util/process-batch-entry
+             (cond->
+              {:batch-handler (constantly (ac/completed-future (ring/status 204)))
+               :blaze/base-url base-url}
+               context-path (assoc :context-path context-path))
+             idx
+             {:fhir/type :fhir.Bundle/entry
+              :request {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"DELETE"
+                        :url #fhir/uri"Patient"}
+              :resource {:fhir/type :fhir/Parameters}})
+           {:fhir/type :fhir.Bundle/entry
+            :response {:fhir/type :fhir.Bundle.entry/response
+                       :status "204"}}))))
 
   (testing "Observation?code=code-100815 GET request"
     (st/unstrument `fhir-util/process-batch-entry)
