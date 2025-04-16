@@ -1099,6 +1099,9 @@ jobs:
     - name: Conditional Delete - Delete All List Resources
       run: .github/scripts/conditional-delete-type/delete-all-resources-of-type.sh "List"
 
+    - name: Conditional Delete - Delete Multiple Types In Transaction
+      run: .github/scripts/conditional-delete-type/delete-multiple-types-in-transaction.sh
+
     - name: Patient Purge
       run: .github/scripts/patient-purge.sh
 

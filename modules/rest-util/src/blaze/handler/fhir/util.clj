@@ -344,6 +344,21 @@
 (def ^:private type-id-operation-pattern
   (re-pattern (format "(%s)/(%s)/[^/]+" type-part id-part)))
 
+(def ^:private type-query-params-pattern
+  (re-pattern (format "(%s)(?:\\?(.*))?" type-part)))
+
+(defn match-type-id
+  "Tries to parse a `type` and `id` from `url`. Returns a tuple with `type` and
+  `id` if successful. Otherwise nil."
+  [url]
+  (next (re-matches type-id-pattern url)))
+
+(defn match-type-query-params
+  "Tries to parse a `type` and `query-params` from `url`. Returns a tuple with
+  `type` and `query-params` (optional nil) if successful. Otherwise nil."
+  [url]
+  (next (re-matches type-query-params-pattern url)))
+
 (defn match-url
   "Tries to parse a `type` and `id` from `url`. Returns a map with :type and :id
   if successful. Otherwise nil.

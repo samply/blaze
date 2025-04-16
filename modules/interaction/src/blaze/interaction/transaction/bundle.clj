@@ -34,8 +34,10 @@
 
 (defmethod entry-tx-op "DELETE"
   [_ {{:keys [url]} :request :as entry}]
-  (let [{:keys [type id]} (fhir-util/match-url (type/value url))]
-    (assoc entry :tx-op [:delete type id])))
+  (if-let [[type id] (fhir-util/match-type-id (type/value url))]
+    (assoc entry :tx-op [:delete type id])
+    (when-let [[type query-params] (fhir-util/match-type-query-params (type/value url))]
+      (assoc entry :tx-op (cond-> [:conditional-delete type] (not (str/blank? query-params)) (conj (-> query-params ring-codec/form-decode iu/search-clauses)))))))
 
 (defmethod entry-tx-op :default
   [_ entry]
