@@ -25,7 +25,7 @@
 
 (def ^:private stream-read-constraints
   (-> (StreamReadConstraints/builder)
-      (.maxStringLength 5e7)
+      (.maxStringLength Integer/MAX_VALUE)
       (.build)))
 
 (def ^:private json-factory
