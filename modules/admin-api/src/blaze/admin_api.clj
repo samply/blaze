@@ -11,6 +11,7 @@
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
    [blaze.elm.expression.spec]
+   [blaze.fhir.parsing-context.spec]
    [blaze.fhir.response.create :as create-response]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.fhir.util :as fhir-util]
@@ -237,7 +238,7 @@
   (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
 
 (defn- router
-  [{:keys [context-path admin-node validator db-sync-timeout dbs
+  [{:keys [context-path admin-node validator parsing-context db-sync-timeout dbs
            create-job-handler read-job-handler history-job-handler
            search-type-job-handler pause-job-handler resume-job-handler
            cancel-job-handler cql-cache-stats-handler cql-bloom-filters-handler]
@@ -398,7 +399,8 @@
        {:middleware [[wrap-db admin-node db-sync-timeout]]
         :handler search-type-job-handler}
        :post
-       {:middleware [wrap-resource [wrap-validate-job validator]]
+       {:middleware [[wrap-resource parsing-context]
+                     [wrap-validate-job validator]]
         :handler create-job-handler}}]
      ["/{id}"
       [""
@@ -548,22 +550,22 @@
           (ac/completed-future)))))
 
 (defmethod m/pre-init-spec :blaze/admin-api [_]
-  (s/keys :req-un [:blaze/context-path ::admin-node :blaze/job-scheduler
-                   ::read-job-handler ::history-job-handler
+  (s/keys :req-un [:blaze/context-path ::admin-node :blaze.fhir/parsing-context
+                   :blaze/job-scheduler ::read-job-handler ::history-job-handler
                    ::search-type-job-handler ::settings ::features]
           :opt [::dbs ::expr/cache ::db-sync-timeout]))
 
 (defmethod ig/init-key :blaze/admin-api
-  [_ {:keys [job-scheduler] :as context}]
+  [_ {:keys [job-scheduler] :as config}]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
-   (router (assoc context :validator (create-validator)
+   (router (assoc config :validator (create-validator)
                   :create-job-handler (create-job-handler job-scheduler)
                   :pause-job-handler (job-action-handler job-scheduler js/pause-job)
                   :resume-job-handler (job-action-handler job-scheduler js/resume-job)
                   :cancel-job-handler (job-action-handler job-scheduler js/cancel-job)
-                  :cql-cache-stats-handler (cql-cache-stats-handler context)
-                  :cql-bloom-filters-handler (cql-bloom-filters-handler context)))
+                  :cql-cache-stats-handler (cql-cache-stats-handler config)
+                  :cql-bloom-filters-handler (cql-bloom-filters-handler config)))
    ((wrap-json-output {})
     (fn [{:keys [uri]}]
       (-> (ring/not-found {"uri" uri})

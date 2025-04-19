@@ -9,6 +9,7 @@
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.luid :as luid]
    [clojure.string :as str]
+   [jsonista.core :as j]
    [taoensso.timbre :as log]))
 
 (def ^:private read-only-tag
@@ -45,21 +46,25 @@
     :luid-generator (luid-generator context)}
    structure-definitions))
 
-(defn- conform [x]
-  (update-in (fhir-spec/conform-json x) [:meta :tag] (fnil conj []) read-only-tag))
+(defn- conform [parsing-context resource]
+  (fhir-spec/parse-conform-json parsing-context (j/write-value-as-string resource)))
 
-(defn- resources-and-types [structure-definition-repo]
-  (into (mapv conform (sdr/resources structure-definition-repo))
-        (map conform) (sdr/complex-types structure-definition-repo)))
+(defn- append-read-only-tag [resource]
+  (update-in resource [:meta :tag] (fnil conj []) read-only-tag))
+
+(defn- resources-and-types [parsing-context structure-definition-repo]
+  (let [f (comp append-read-only-tag (partial conform parsing-context))]
+    (into (mapv f (sdr/resources structure-definition-repo))
+          (map f) (sdr/complex-types structure-definition-repo))))
 
 (defn ensure-structure-definitions
   "Ensures that all StructureDefinition resources are present in the database node."
   {:arglists '([context])}
-  [{:keys [node structure-definition-repo] :as context}]
+  [{:keys [node parsing-context structure-definition-repo] :as context}]
   (-> (structure-definition-urls (d/db node))
       (ac/then-compose
        (fn [existing-urls]
-         (let [tx-ops (tx-ops context existing-urls (resources-and-types structure-definition-repo))]
+         (let [tx-ops (tx-ops context existing-urls (resources-and-types parsing-context structure-definition-repo))]
            (if (seq tx-ops)
              (do (log/debug "Create" (count tx-ops) "new StructureDefinition resources...")
                  (d/transact node tx-ops))
