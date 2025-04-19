@@ -11,6 +11,8 @@
    [blaze.db.api-spec]
    [blaze.db.impl.db-spec]
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.kv :as kv]
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
@@ -8305,3 +8307,98 @@
                                   "Observation" "09999")
                 :num-resources := 1
                 :next := nil))))))))
+
+(defn- prune-steps [node n t num-steps]
+  (take num-steps (iterate (fn [{start :next}] (d/prune node n t start)) (d/prune node n t))))
+
+(deftest prune-total-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+    (is (= 3 (d/prune-total node))))
+
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:create {:fhir/type :fhir/Patient :id "0"}]
+      [:create {:fhir/type :fhir/Patient :id "1"}]]]
+
+    (is (= 6 (d/prune-total node)))))
+
+(deftest prune-test
+  (testing "one purged patient in three steps"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:patient-purge "0"]]]
+
+      (testing "the next handles go from one index to the next"
+        (given (prune-steps node 1 2 3)
+          count := 3
+          [0 :num-index-entries-processed] := 1
+          [0 :num-index-entries-deleted] := 1
+          [0 :next] := {:index :type-as-of-index}
+          [1 :num-index-entries-processed] := 1
+          [1 :num-index-entries-deleted] := 1
+          [1 :next] := {:index :system-as-of-index}
+          [2 :num-index-entries-processed] := 1
+          [2 :num-index-entries-deleted] := 1
+          [2 :next] := nil))
+
+      (testing "all index entries are gone"
+        (with-open [snapshot (kv/new-snapshot (:kv-store node))]
+          (is (empty? (vec (i/entries snapshot :resource-as-of-index identity))))
+          (is (empty? (vec (i/entries snapshot :type-as-of-index identity))))
+          (is (empty? (vec (i/entries snapshot :system-as-of-index identity))))))))
+
+  (testing "two purged patients in three steps"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Patient :id "1"}]]
+       [[:patient-purge "0"]]
+       [[:patient-purge "1"]]]
+
+      (testing "the next handles go from one index to the next"
+        (given (prune-steps node 2 3 3)
+          count := 3
+          [0 :num-index-entries-processed] := 2
+          [0 :num-index-entries-deleted] := 2
+          [0 :next] := {:index :type-as-of-index}
+          [1 :num-index-entries-processed] := 2
+          [1 :num-index-entries-deleted] := 2
+          [1 :next] := {:index :system-as-of-index}
+          [2 :num-index-entries-processed] := 2
+          [2 :num-index-entries-deleted] := 2
+          [2 :next] := nil))
+
+      (testing "all index entries are gone"
+        (with-open [snapshot (kv/new-snapshot (:kv-store node))]
+          (is (empty? (vec (i/entries snapshot :resource-as-of-index identity))))
+          (is (empty? (vec (i/entries snapshot :type-as-of-index identity))))
+          (is (empty? (vec (i/entries snapshot :system-as-of-index identity))))))))
+
+  (testing "two purged patients in six steps"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Patient :id "1"}]]
+       [[:patient-purge "0"]]
+       [[:patient-purge "1"]]]
+
+      (testing "the next handles go from one index to the next with sub steps"
+        (given (prune-steps node 1 3 6)
+          count := 6
+          [0 :num-index-entries-processed] := 1
+          [0 :next] := {:index :resource-as-of-index :type "Patient" :id "1" :t 1}
+          [1 :num-index-entries-processed] := 1
+          [1 :next] := {:index :type-as-of-index}
+          [2 :num-index-entries-processed] := 1
+          [2 :next] := {:index :type-as-of-index :type "Patient" :id "1" :t 1}
+          [3 :num-index-entries-processed] := 1
+          [3 :next] := {:index :system-as-of-index}
+          [4 :num-index-entries-processed] := 1
+          [4 :next] := {:index :system-as-of-index :type "Patient" :id "1" :t 1}
+          [5 :num-index-entries-processed] := 1
+          [5 :next] := nil))
+
+      (testing "all index entries are gone"
+        (with-open [snapshot (kv/new-snapshot (:kv-store node))]
+          (is (empty? (vec (i/entries snapshot :resource-as-of-index identity))))
+          (is (empty? (vec (i/entries snapshot :type-as-of-index identity))))
+          (is (empty? (vec (i/entries snapshot :system-as-of-index identity)))))))))
