@@ -842,6 +842,20 @@
                         :request-method :get
                         :uri (str context-path "/Patient")}}]))))
 
+  (testing "processing isn't bound to stack size"
+    (let [num-entries 100000]
+      (given @(fhir-util/process-batch-entries
+               {:batch-handler (fn [_] (ac/completed-future (ring/response nil)))
+                :blaze/base-url ""
+                :context-path "/fhir"}
+               (repeat
+                num-entries
+                {:fhir/type :fhir.Bundle/entry
+                 :request {:fhir/type :fhir.Bundle.entry/request
+                           :method #fhir/code"GET"
+                           :url #fhir/uri"Patient"}}))
+        count := num-entries)))
+
   (testing "missing request"
     (satisfies-prop 10
       (prop/for-all [base-url (s/gen :blaze/base-url)]
