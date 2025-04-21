@@ -543,9 +543,15 @@
     (comp ac/completed-future response-entry
           handler-util/bundle-error-response)))
 
+(defn- process-batch-entries* [context [entry & more] idx results]
+  (if entry
+    (-> (process-batch-entry context idx entry)
+        (ac/then-compose-async
+         (fn [result]
+           (process-batch-entries* context more (inc idx) (conj results result)))))
+    (ac/completed-future results)))
+
 (defn process-batch-entries
   "Processes `entries` of a batch bundle using :batch-handler from `context`."
   [context entries]
-  (let [futures (map-indexed (partial process-batch-entry context) entries)]
-    (do-sync [_ (ac/all-of futures)]
-      (mapv ac/join futures))))
+  (process-batch-entries* context entries 0 []))
