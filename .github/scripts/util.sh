@@ -18,7 +18,7 @@ test_not_equal() {
   fi
 }
 
-test-regex() {
+test_regex() {
   if [[ "$2" =~ $3 ]]; then
     echo "✅ the $1 matches $3"
   else
@@ -27,7 +27,7 @@ test-regex() {
   fi
 }
 
-test-le() {
+test_le() {
   if [ "$2" -le "$3" ]; then
     echo "✅ the $1 of $2 is <= $3"
   else
