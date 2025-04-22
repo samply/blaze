@@ -5,11 +5,8 @@
   (:import
    [java.net.http HttpClient]))
 
-(defn http-client? [x]
-  (instance? HttpClient x))
-
 (s/def :blaze/http-client
-  http-client?)
+  #(instance? HttpClient %))
 
 (s/def ::http-client/connect-timeout
   pos-int?)
