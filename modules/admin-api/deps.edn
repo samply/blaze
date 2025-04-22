@@ -75,7 +75,7 @@
   {:mvn/version "7.6.1"}
 
   org.fhir/ucum
-  {:mvn/version "1.0.9"
+  {:mvn/version "1.0.10"
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
 
   com.fasterxml.jackson.datatype/jackson-datatype-jsr310
