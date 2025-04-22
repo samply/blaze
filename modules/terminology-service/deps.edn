@@ -15,7 +15,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   org.fhir/ucum
-  {:mvn/version "1.0.9"
+  {:mvn/version "1.0.10"
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}}
 
  :deps/prep-lib
