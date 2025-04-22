@@ -34,7 +34,7 @@ for YEAR in {1990..2020}; do
     MONTH_SIZE=$((MONTH_SIZE + SIZE))
   done
 
-  test-le "$YEAR months sum" "$MONTH_SIZE" "$YEAR_SIZE"
+  test_le "$YEAR months sum" "$MONTH_SIZE" "$YEAR_SIZE"
   test "[$YEAR-01-01, $YEAR-12-31] size" "$(size "sa$((YEAR - 1))-12-31&date=eb$((YEAR + 1))-01-01")" "$YEAR_SIZE"
 
 done

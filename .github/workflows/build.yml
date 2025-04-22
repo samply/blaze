@@ -1023,6 +1023,9 @@ jobs:
     - name: Create Patient
       run: .github/scripts/create-patient.sh
 
+    - name: Create Patient in Batch
+      run: .github/scripts/create-patient-batch.sh
+
     - name: Read Ignores T
       run: .github/scripts/read-ignores-t.sh
 
