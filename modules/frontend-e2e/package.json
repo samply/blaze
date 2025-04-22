@@ -10,9 +10,5 @@
   "devDependencies": {
     "@playwright/test": "^1.42.1",
     "@types/node": "^22.0.0"
-  },
-  "dependencies": {
-    "de.medizininformatikinitiative.kerndatensatz.fall": "^2025.0.0",
-    "de.medizininformatikinitiative.kerndatensatz.laborbefund": "^2025.0.2"
   }
 }

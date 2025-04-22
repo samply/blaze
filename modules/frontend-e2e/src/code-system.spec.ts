@@ -19,6 +19,7 @@ test.beforeEach('Sign In', async ({ page }) => {
 
 	await expect(page).toHaveTitle('CodeSystem - Blaze');
 	await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
+  await expect(page.getByText('Total:')).toBeVisible();
 });
 
 test('Search Page', async ({ page }) => {
