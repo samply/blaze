@@ -1,7 +1,7 @@
 (ns blaze.openid-auth-test
   (:require
    [blaze.http-client]
-   [blaze.http-client.spec :refer [http-client?]]
+   [blaze.http-client.spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.openid-auth :as openid-auth]
    [blaze.openid-auth.impl-test :refer [jwks-document-one-key]]
@@ -44,7 +44,7 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))
-      [:cause-data ::s/problems 2 :pred] := `http-client?
+      [:cause-data ::s/problems 2 :via] := [:blaze/http-client]
       [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid scheduler"

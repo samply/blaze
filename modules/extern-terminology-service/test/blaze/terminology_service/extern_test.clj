@@ -1,8 +1,9 @@
 (ns blaze.terminology-service.extern-test
   (:require
+   [blaze.fhir-client-spec]
    [blaze.fhir.test-util]
    [blaze.fhir.util :as u]
-   [blaze.http-client.spec :refer [http-client?]]
+   [blaze.http-client.spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service-spec]
@@ -60,7 +61,7 @@
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
-      [:cause-data ::s/problems 1 :pred] := `http-client?
+      [:cause-data ::s/problems 1 :via] := [:blaze/http-client]
       [:cause-data ::s/problems 1 :val] := ::invalid)))
 
 (defn- expand-value-set [ts & nvs]
