@@ -152,7 +152,13 @@
 (defrecord SearchParamToken [name url type base code target c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
-    (codec/v-hash value))
+    (if (= "reference" type)
+      (if-let [[type id] (fsr/split-literal-ref value)]
+        (codec/tid-id (codec/tid type) (codec/id-byte-string id))
+        (if (and (= 1 (count target)) (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" value)))
+          (codec/tid-id (codec/tid (first target)) (codec/id-byte-string value))
+          (codec/v-hash value)))
+      (codec/v-hash value)))
 
   (-chunked-resource-handles [_ batch-db tid modifier value]
     (coll/eduction
