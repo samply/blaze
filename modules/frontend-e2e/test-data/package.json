@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "de.medizininformatikinitiative.kerndatensatz.fall": "^2025.0.0",
+    "de.medizininformatikinitiative.kerndatensatz.laborbefund": "^2025.0.2"
+  }
+}

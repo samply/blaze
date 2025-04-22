@@ -1,6 +1,7 @@
 install:
 	npm install
 	npx playwright install --with-deps
+	$(MAKE) -C test-data install
 
 test:
 	npx playwright test
@@ -18,5 +19,9 @@ cloc-prod:
 
 cloc-test:
 	cloc src
+
+clean:
+	rm -r node_modules
+	$(MAKE) -C test-data clean
 
 .PHONY: fmt lint install test test-dev-chromium test-dev-ui test-coverage cloc-prod cloc-test clean
