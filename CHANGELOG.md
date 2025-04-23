@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.34.0
+
+### Notes
+
+This is mostly a bug-fix release with some [Terminology Service](https://samply.github.io/blaze/terminology-service.html) enhancements. 
+
+### Enhancements
+
+* Add Terminology Operations UI ([#2544](https://github.com/samply/blaze/issues/2544))
+* Support system-version Parameter on ValueSet $validate-code ([#2536](https://github.com/samply/blaze/issues/2536))
+* Implement Summary Mode for Code Systems and Value Sets ([#2527](https://github.com/samply/blaze/issues/2527))
+* Add LOINC Answer List Property answer-list ([#2471](https://github.com/samply/blaze/issues/2471))
+
+### Bugfixes
+
+* Fix Low and High Property Access on Interval ([#2467](https://github.com/samply/blaze/issues/2467))
+* Fix SNOMED CT Versions ([#2515](https://github.com/samply/blaze/issues/2515))
+* Fix Conditional Delete in Transaction ([#2574](https://github.com/samply/blaze/issues/2574))
+* Remove Maximum String Length on JSON Payload ([#2577](https://github.com/samply/blaze/issues/2577))
+* Fix False Positives while Searching for References ([#2592](https://github.com/samply/blaze/issues/2592))
+* Fix Thread Deadlock on Large Batches ([#2584](https://github.com/samply/blaze/issues/2584))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/105?closed=1).
+
 ## v0.33.0
 
 ### Enhancements
