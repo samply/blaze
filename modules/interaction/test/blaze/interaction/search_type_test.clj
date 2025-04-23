@@ -2692,9 +2692,10 @@
                  [{:fhir/type :fhir.CodeSystem/concept
                    :code #fhir/code"code-115927"}]}]]]
 
-        (testing "summary mode is the default"
+        (testing "summary true returns the resource in summary mode"
           (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
-                @(handler {::reitit/match (match-of "CodeSystem")})]
+                @(handler {::reitit/match (match-of "CodeSystem")
+                           :params {"_summary" "true"}})]
 
             (is (= 200 status))
 
@@ -2776,9 +2777,10 @@
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-115910"}]}}]]]
 
-        (testing "summary mode is the default"
+        (testing "summary true returns the resource in summary mode"
           (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
-                @(handler {::reitit/match (match-of "ValueSet")})]
+                @(handler {::reitit/match (match-of "ValueSet")
+                           :params {"_summary" "true"}})]
 
             (is (= 200 status))
 

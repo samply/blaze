@@ -86,7 +86,7 @@
     (seq elements)
     (map #(d/pull-many db % elements))
 
-    (and (#{"CodeSystem" "ValueSet"} type) (not (#{"data" "false"} summary)))
+    (and (#{"CodeSystem" "ValueSet"} type) (= "true" summary))
     (map #(d/pull-many db % :summary))
 
     :else
