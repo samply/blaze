@@ -1,5 +1,5 @@
 #!/bin/bash -e
 
-VERSION="1.0.61"
+VERSION="6.5.5"
 
-curl -sLO "https://github.com/hapifhir/org.hl7.fhir.validator-wrapper/releases/download/$VERSION/validator_cli.jar"
+curl -sLO "https://github.com/hapifhir/org.hl7.fhir.core/releases/download/$VERSION/validator_cli.jar"
