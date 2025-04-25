@@ -14,10 +14,10 @@
   {:mvn/version "3.2.0"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.18.3"}
+  {:mvn/version "2.19.0"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
-  {:mvn/version "2.18.3"}
+  {:mvn/version "2.19.0"}
 
   metosin/jsonista
   {:mvn/version "0.3.13"}
