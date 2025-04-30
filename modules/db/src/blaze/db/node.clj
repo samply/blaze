@@ -10,10 +10,13 @@
    [blaze.db.impl.db :as db]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.patient-last-change :as plc]
+   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.system-as-of :as sao]
    [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
+   [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv]
    [blaze.db.node.protocols :as np]
@@ -297,6 +300,38 @@
   (with-open [db (batch-db/new-batch-db node t t)]
     (into [] (take-while #(= t (rh/t %))) (d/type-history db type))))
 
+(defn- prune-next [{:keys [tid id t] :as next} index next-index]
+  (cond
+    next
+    {:index index
+     :type (codec/tid->type tid)
+     :id (codec/id-string id)
+     :t t}
+    next-index
+    {:index next-index}))
+
+(defmulti prune (fn [_ _ _ {:keys [index]}] index))
+
+(defmethod prune nil [snapshot n t _]
+  (-> (rao/prune snapshot n t)
+      (update :next prune-next :resource-as-of-index :type-as-of-index)))
+
+(defmethod prune :resource-as-of-index [snapshot n t {:keys [type id] :as start}]
+  (-> (rao/prune snapshot n t (codec/tid type) (codec/id-byte-string id) (:t start))
+      (update :next prune-next :resource-as-of-index :type-as-of-index)))
+
+(defmethod prune :type-as-of-index [snapshot n t {:keys [type id] :as start}]
+  (-> (if type
+        (tao/prune snapshot n t (codec/tid type) (:t start) (codec/id-byte-string id))
+        (tao/prune snapshot n t))
+      (update :next prune-next :type-as-of-index :system-as-of-index)))
+
+(defmethod prune :system-as-of-index [snapshot n t {:keys [type id] :as start}]
+  (-> (if type
+        (sao/prune snapshot n t (:t start) (codec/tid type) (codec/id-byte-string id))
+        (sao/prune snapshot n t))
+      (update :next prune-next :system-as-of-index nil)))
+
 (defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
@@ -351,6 +386,21 @@
              (log/trace "Publish" (count changed-handles) "changed" type "resource handles")
              (flow/submit! publisher changed-handles)))))
       publisher))
+
+  (-prune-total [_]
+    (+ (kv/estimate-num-keys kv-store :resource-as-of-index)
+       (kv/estimate-num-keys kv-store :type-as-of-index)
+       (kv/estimate-num-keys kv-store :system-as-of-index)))
+
+  (-prune [_ n t start]
+    (log/trace "prune at most" n "index entries starting at t =" t)
+    (let [{:keys [delete-entries num-entries-processed next]}
+          (with-open [snapshot (kv/new-snapshot kv-store)]
+            (prune snapshot n t start))]
+      (kv/delete! kv-store delete-entries)
+      {:num-index-entries-processed num-entries-processed
+       :num-index-entries-deleted (count delete-entries)
+       :next next}))
 
   p/Tx
   (-tx [_ t]

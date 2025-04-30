@@ -34,7 +34,8 @@ will produce the following Clojure data structure:
  :deceasedBoolean false}
 ```
 
-**Note:** Clojure data structures are explained [here][3]. Clojure uses generic data structures like maps and lists instead of domain specific classes like Java.
+> [!NOTE]
+> Clojure data structures are explained [here][3]. Clojure uses generic data structures like maps and lists instead of domain specific classes like Java.
 
 The Clojure map looks exactly the same as the JSON document. The main difference is, that all keys are converted to Clojure keywords which can be written without quotes and always start with a colon. The parsing process is fully generic like in JavaScript. There is no need to define any domain specific classes like in Java.
 

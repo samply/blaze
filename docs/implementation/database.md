@@ -16,15 +16,18 @@ The idea behind an immutable database is, that the whole database content at a p
 
 Database values are not copied entirely from one version to the next. Instead, like in persistent data structures, structural sharing is used. As such each database value can be seen as a complete copy of the database from the outside, but at the inside, the implementation is efficient enough to be feasible nowadays.
 
-**Note:** In contrast, relational databases, which where designed in the 80's, use an update in-place model, because storage was expensive then.
+> [!NOTE]
+> In contrast, relational databases, which where designed in the 80's, use an update in-place model, because storage was expensive then.
 
 A similar technic is [copy-on-write][4], used in many areas of computing like modern filesystems.
 
 Having a database architecture which consists of immutable database values evolving over time, were past values are kept either forever or at least sufficiently long, has the property that reads don't need coordination. Because database values can be referenced by `t`, an arbitrarily number queries, spread over arbitrarily periods of time, can access the same immutable snapshot of the database. In case data is replicated over multiple nodes, queries can even run in parallel, all accessing the same coherent database value.
 
-As one example, in paging of FHIR searchset or history bundles, Blaze simply refers to the database value's `t` of the first page, in order to calculate every remaining page based on the same stable database value.
+As one example, in paging of FHIR searchset or history bundles, Blaze simply refers to the database value's `t` of the first page, in order to calculate every remaining page based on the same immutable database value.
 
 In practise, each FHIR RESTful API read request will obtain the newest known database value and use that for all queries necessary to answer the request.
+
+Database values will be no longer accessible after [pruning](#pruning) because pruning actually removes purged data for GDPR regularity or simply space saving reasons. 
 
 ## Logical Data Model
 
@@ -49,6 +52,8 @@ There are two different sets of indices, ones which depend on the database value
 | TByInstant        | instant   | t                                         |
 | TypeStats         | type t    | total, num-changes                        |
 | SystemStats       | t         | total, num-changes                        |
+
+The first three indices `ResourceAsOf`, `TypeAsOf` and `SystemAsOf` put all versions of resources on the timeline. The only difference between that indices is the order of the parts of the key.
 
 #### ResourceAsOf
 
@@ -86,7 +91,7 @@ In addition to direct resource lookup, the `ResourceAsOf` index is used for list
 
 #### TypeAsOf
 
-The `TypeAsOf` index contains the same information as the `ResourceAsOf` index with the difference that the components of the key are ordered `type`,  `t` and `id` instead of `type`, `id` and `t`. The index is used for listing all versions of all resources of a particular type. Such history listings start with the `t` of the database value going into the past. This is done by not only choosing the resource version with the latest `t` less or equal the database values `t` but instead using all older versions. Such versions even include deleted versions because in FHIR it is allowed to bring back a resource to a new life after it was already deleted. The listing is done by simply scanning through the index in reverse. Because the key is ordered by `type`,  `t` and  `id`, the entries will be first ordered by time, newest first, and second by resource identifier.
+The `TypeAsOf` index contains the same information as the `ResourceAsOf` index with the difference that the parts of the key are ordered `type`,  `t` and `id` instead of `type`, `id` and `t`. The index is used for listing all versions of all resources of a particular type. Such history listings start with the `t` of the database value going into the past. This is done by not only choosing the resource version with the latest `t` less or equal the database values `t` but instead using all older versions. Such versions even include deleted versions because in FHIR it is allowed to bring back a resource to a new life after it was already deleted. The listing is done by simply scanning through the index in reverse. Because the key is ordered by `type`,  `t` and  `id`, the entries will be first ordered by time, newest first, and second by resource identifier.
 
 #### SystemAsOf
 
@@ -100,7 +105,8 @@ The `PatientLastChange` index contains all changes to resources in the compartme
 
 The `TxSuccess` index contains the real point in time, as `java.time.Instant`, successful transactions happened. In other words, this index maps each `t` which is just a monotonically increasing number to a real point in time. 
 
-**Note:** Other than XTDB, Blaze is not a bitemporal. That means the time recorded in the history of resources is the transaction time, not a business time. That also means that one can't fix the history, because the history only reflects the transactions happened. 
+> [!NOTE]
+> Other than XTDB, Blaze is not a bitemporal. That means the time recorded in the history of resources is the transaction time, not a business time. That also means that one can't fix the history, because the history only reflects the transactions happened. 
 
 #### TxError
 
@@ -332,7 +338,7 @@ The `delete-history` command is used to delete the history of a resource.
 
 * get all instance history entries
 * add the `t` of the transaction as `purged-at?` to the value of each of the history entries not only in the ResourceAsOf index, but also in the TypeAsOf and SystemAsOf index
-* remove the number of history entries purged from the number of changes of `type` and thw whole system
+* remove the number of history entries purged from the number of changes of `type` and the whole system
 
 ### Patient Purge
 
@@ -344,6 +350,14 @@ The `patient-purge` command is used to remove all current and historical version
 |------------|----------|-----------|----------------------------------|
 | id         | yes      | string    | patient id                       |
 | check-refs | no       | boolean   | use referential integrity checks |
+
+## History Deletion / Purging
+
+Blaze keeps always a history of all resources. So updating or deleting a resource creates a new version and keeps all previous versions. However the history can be deleted using the [delete history](#delete-history) command. Also, in case all data of a particular patient including history should be deleted, the [patient purge](#patient-purge) command can be used.
+
+History deletion works in two stages, first the resource versions are marked are purged and second the marked versions are removed during [pruning](#pruning). The two sage process is necessary, because database values have to be still immutable and actually removing data would violate the immutability. The marks itself will contain the `t` of the transaction that purged the entry. 
+
+## Pruning
 
 [1]: <https://www.datomic.com>
 [2]: <https://xtdb.com>

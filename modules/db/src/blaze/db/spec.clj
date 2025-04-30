@@ -116,3 +116,13 @@
 
 (s/def :blaze.db/allow-multiple-delete
   boolean?)
+
+(s/def :blaze.db.prune/index
+  #{:resource-as-of-index :type-as-of-index :system-as-of-index})
+
+(s/def :blaze.db.prune/start
+  (s/keys :req-un [(or :blaze.db.prune/index
+                       (and :blaze.db.prune/index
+                            :fhir.resource/type
+                            :blaze.resource/id
+                            :blaze.db/t))]))

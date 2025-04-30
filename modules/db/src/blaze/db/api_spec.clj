@@ -274,3 +274,12 @@
                :start (s/? (s/cat :start-type :fhir.resource/type
                                   :start-id :blaze.resource/id)))
   :ret ac/completable-future?)
+
+(s/fdef d/prune-total
+  :args (s/cat :node :blaze.db/node)
+  :ret nat-int?)
+
+(s/fdef d/prune
+  :args (s/cat :node :blaze.db/node :n pos-int? :t :blaze.db/t
+               :start (s/? :blaze.db.prune/start))
+  :ret ac/completable-future?)

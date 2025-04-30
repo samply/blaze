@@ -1,0 +1,7 @@
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
+
+ :lint-as
+ {blaze.job.prune-test/with-system-data clojure.core/with-open}}
