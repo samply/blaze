@@ -6,7 +6,7 @@ The database architecture of Blaze is influenced by [Datomic][1] and [XTDB][2]. 
 
 ## Immutable Database
 
-The idea behind an immutable database is, that the whole database content at a point in time acts like one big immutable value. The database itself evolves over time by transitioning database values through transactions. The time is modelled explicitly, assigning each database value a value `t` which increases monotonously.
+The idea behind an immutable database is, that the whole database content at a point in time acts like one big immutable value. The database itself evolves over time by transitioning database values through transactions. The time is modelled explicitly, assigning each database value a value `t` (logical timestamp) which increases monotonously.
 
 ```
 +-------------+                   +-------------+
@@ -18,23 +18,23 @@ Database values are not copied entirely from one version to the next. Instead, l
 
 **Note:** In contrast, relational databases, which where designed in the 80's, use an update in-place model, because storage was expensive then.
 
-A similar technic is [copy-on-write][4], used in many areas of computing like modern filesystems.
+A similar technique is [copy-on-write][4], used in many areas of computing, like modern filesystems.
 
-Having a database architecture which consists of immutable database values evolving over time, were past values are kept either forever or at least sufficiently long, has the property that reads don't need coordination. Because database values can be referenced by `t`, an arbitrarily number queries, spread over arbitrarily periods of time, can access the same immutable snapshot of the database. In case data is replicated over multiple nodes, queries can even run in parallel, all accessing the same coherent database value.
+Having a database architecture which consists of immutable database values evolving over time, where past values are kept either forever or at least sufficiently long, has the property that reads don't need coordination. Because database values can be referenced by `t`, an arbitrary number of queries, spread over arbitrary periods of time, can access the same immutable snapshot of the database. In case data is replicated over multiple nodes, queries can even run in parallel, all accessing the same coherent database value.
 
-As one example, in paging of FHIR searchset or history bundles, Blaze simply refers to the database value's `t` of the first page, in order to calculate every remaining page based on the same stable database value.
+As one example, in paging of FHIR searchset or history bundles, Blaze simply refers to the timestamp value `t` of the first page, in order to calculate every remaining page based on the same stable database value.
 
 In practise, each FHIR RESTful API read request will obtain the newest known database value and use that for all queries necessary to answer the request.
 
 ## Logical Data Model
 
-Datomic uses a fact based data model, were each fact is the triple `(entity, attribute, value)` for example `(<patient-id>, birthDate, 2020)`. This model has one big advantage, the minimum change between two database values will be a fact, which is quite small. The disadvantage is, that bigger structures like resources have to be reconstructed from individual facts. In addition to that, because in FHIR, updates are always whole resources, the actual changed facts have to be determined by diffing the old and new resource.
+Datomic uses a fact based data model, where each fact is a triple `(entity, attribute, value)` for example `(<patient-id>, birthDate, 2020)`. This model has one big advantage, the minimum change between two database values will be a fact, which is quite small. The disadvantage is, that bigger structures like resources have to be reconstructed from individual facts. In addition to that, because in FHIR, updates are always whole resources, the actual changed facts have to be determined by diffing the old and new resource.
 
-Another data model is the document model used in document stores like [MongoDB][5] but also XTDB. With documents, the smallest structure in the database is a document. Blaze uses that document data model were each resource version is a document. Because Blaze uses resource versions as documents, instead of only the current version, documents can't be indexed by resource identifier. Instead, as XTDB does, content hashes will be used. Aside the version based document store, several indices are used to build up the database values and enable queries. 
+Another data model is the document model used in document stores like [MongoDB][5] but also XTDB. With documents, the smallest structure in the database is a document. Blaze uses a document data model where each resource version is a document. Because Blaze uses resource versions as documents, instead of only the current version, documents can't be indexed by resource identifier. Instead, as XTDB does, content hashes will be used. Aside from the version based document store, several indices are used to build up the database values and enable queries.
 
 ## Indices
 
-There are two different sets of indices, ones which depend on the database value point in time `t` and the ones which only depend on the content hash of resource versions. The former indices are used to build up the database values were the latter are used to enable queries based on search parameters.
+There are two different sets of indices - the first set depends on a database value at time `t` and the second set depends only on the content hash of resource versions. The former set of indices is used to build up the database values, whereas the latter set is used to enable queries based on search parameters.
 
 ### Transaction Indices
 
@@ -82,7 +82,7 @@ provides the basis for the following database values:
 
 The database value with `t=1` contains one patient with `id=0` and content hash `ba9c9b24`, because the second patient was created later at `t=2`. The index access algorithm will not find an entry for the patient with `id=1` on a database value with `t=1` because there is no index key with `type=Patient`, `id=1` and `t<=1`. However, the database value with `t=2` will contain the patient with `id=1` and additionally contains the patient with `id=0` because there is a key with `type=Patient`, `id=0` and `t<=2`. Next, the database value with `t=3` still contains the same content hash for the patient with `id=1` and reflects the update on patient with `id=0` because the key `(Patient, 0, 3)` is now the one with the greatest `t<=3`, resulting in the content hash `b7e3e5f8`. Finally, the database value with `t=4` doesn't contain the patient with `id=0` anymore, because it was deleted. As can be seen in the index, deleting a resource is done by adding the information that it was deleted at some point in time.
 
-In addition to direct resource lookup, the `ResourceAsOf` index is used for listing all versions of a particular resource, listing all resources of a particular type and listing all resources at all. Listings are done by scanning through the index and for the non-history case, skipping versions not appropriate for the `t` of the database value. 
+In addition to a direct resource lookup, the `ResourceAsOf` index is used for listing all versions of a particular resource, listing all resources of a particular type and listing all resources (of all types). Listings are done by scanning through the index and for the non-history case, skipping versions not appropriate for the `t` of the database value. 
 
 #### TypeAsOf
 
@@ -98,9 +98,9 @@ The `PatientLastChange` index contains all changes to resources in the compartme
 
 #### TxSuccess
 
-The `TxSuccess` index contains the real point in time, as `java.time.Instant`, successful transactions happened. In other words, this index maps each `t` which is just a monotonically increasing number to a real point in time. 
+The `TxSuccess` index contains the real point in time (as `java.time.Instant`) of a successful transaction. In other words, this index maps each `t` which is just a monotonically increasing number to a real point in time.
 
-**Note:** Other than XTDB, Blaze is not a bitemporal. That means the time recorded in the history of resources is the transaction time, not a business time. That also means that one can't fix the history, because the history only reflects the transactions happened. 
+**Note:** Blaze is not bitemporal, like XTDB is. This means that the time recorded in the history of resources is the transaction time, not a business time. This also means that one can't fix the history, because the history only reflects the transactions happened.
 
 #### TxError
 

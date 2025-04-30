@@ -84,7 +84,7 @@ In the top right, you will see the user menu were you can sign out again.
 
 After the UI works, with authentication via Keycloak, we need to be able to perform authorized API requests via curl and [blazectl][1]. Other REST API clients should work similar.
 
-For API requests [OAuth 2 Client Credentials Grant][2] should be used in order to obtain an access token. The bash script `docs/deployment/full-standalone/fetch-access-token.sh` can be used to fetch an access token. By default is uses the client `account` present in the example keycloak config.
+For API requests [OAuth 2 Client Credentials Grant][2] should be used in order to obtain an access token. The bash script `docs/deployment/full-standalone/fetch-access-token.sh` can be used to fetch an access token. By default, it uses the client `account` present in the example keycloak config.
 
 Now that we are able to obtain an access token, we can use curl to count the number of resources available in Blaze:
 
