@@ -19,6 +19,7 @@
    [blaze.terminology-service.local.value-set.expand :as vs-expand]
    [blaze.terminology-service.local.value-set.validate-code :as vs-validate-code]
    [blaze.terminology-service.protocols :as p]
+   [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]
@@ -219,7 +220,10 @@
   able to generate the TerminologyCapabilities as fast as possible."
   [node]
   (log/info "Load all code systems into the resource cache...")
-  @(cs/list (d/db node)))
+  (let [start (System/nanoTime)]
+    @(cs/list (d/db node))
+    (log/info "Successfully loaded all code systems in"
+              (format "%.1f" (u/duration-s start)) "seconds")))
 
 (def ^:private cs-validate-code-param-specs
   {"url" {:action :copy}
