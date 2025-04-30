@@ -16,7 +16,7 @@ Using the following command:
 cat docs/cql-queries/gender-male.cql | base64 | tr -d '\n'
 ```
 
-the following Base64 string can be generated:
+generates the following Base64 string:
 
 ```text
 bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo=

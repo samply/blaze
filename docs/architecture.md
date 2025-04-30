@@ -26,9 +26,9 @@ In this architecture, the [FHIR API][8] on the left is supported by the Queries,
 
 ### Transaction Log
 
-The Transaction Log is a central component in Blaze. it is used to ensure [ACID][2] (atomicity, consistency, isolation, durability) properties of Blaze by maintaining a total order of all transactions which corresponds to the isolation level [Serializable][3].
+The Transaction Log is a central component in Blaze. It is used to ensure [ACID][2] (atomicity, consistency, isolation, durability) properties of Blaze by maintaining a total order of all transactions which corresponds to the isolation level [Serializable][3].
 
-In the standalone deployment scenario, the Transaction Log is backed by RocksDB and embedded in the overall Blaze Process, in order to keep it simple and use the same technology that the Indices use already. However other implementations are possible.
+In the standalone deployment scenario, the Transaction Log is backed by RocksDB and embedded in the overall Blaze Process, in order to keep it simple and use the same technology that the Indices use already. However, other implementations are possible.
 
 In the distributed case a single [Kafka][4] topic with a single partition is used to ensure the total order of transaction commands while multiple Database Nodes write into this topic. Performance wise, the single topic is no problem, because the transaction commands are small.
 
@@ -38,13 +38,14 @@ The Resource Store holds all versions of all resources by their content hash. Th
 
 In the standalone deployment scenario, the Resource Store is embedded and backed by RocksDB for the same reason why the Transaction Log uses RocksDB. Again other implementations are possible.
 
-In the distributed case a [Cassandra][5] database is used. However adapters for any suitable central key-value store could be implemented. Even relational databases like Postgres would be possible. Cassandra was chosen as first implementation, because it can be deployed in a cluster, so that it will scale and be high available.
+In the distributed case a [Cassandra][5] database is used. However adapters for any suitable central key-value store could be implemented. Even relational databases like Postgres would be possible. Cassandra was chosen as first implementation, because it can be deployed in a cluster, so that it will scale and be highly available.
 
 ### Database Node
 
-As written already above, the Database Node represents the data access layer in Blaze. In the distributed deployment scenario, a Database Node will exist in every Blaze Process. This also means that every Blaze Process contains it's own set of Indices and can answer Queries without relaying on central resources. Only at the point were resources actually should be returned by the FHIR API, and a cache miss in the Resource Cache happens, access to the central Resource Store is needed. The Transaction Log is not needed for Queries and Pulls at all.
+As mentioned before, the Database Node represents the data access layer in Blaze. In the distributed deployment scenario, a Database Node will exist in every Blaze Process. This also means that every Blaze Process contains its own set of Indices and can answer Queries without relying on central resources. Only at the point where resources actually should be returned by the FHIR API, and a cache miss in the Resource Cache happens, access to the central Resource Store is needed. The Transaction Log is not needed for Queries and Pulls at all.
 
-One important note is, that Blaze uses full replication over all Database Nodes. In order to ensure full consistency and keep the implementation simple, sharding isn't a feature of Blaze yet. That means that the storage requirements for the Indices grow with the number of Database Nodes deployed.
+> [!NOTE]
+> Blaze uses full replication over all Database Nodes. In order to ensure full consistency and keep the implementation simple, sharding isn't a feature of Blaze yet. This means that the storage requirements for the Indices grow with the number of Database Nodes deployed.
 
 ### Blaze Process
 
@@ -60,7 +61,7 @@ The architecture of Blaze is inspired by the architecture of [XTDB][9] but optim
 
 ## Auth Provider
 
-Currently the only supported auth provider is Keycloak. Others can be added in the future. The auth provider doesn't have to be part of teh Blaze deployment. External Keycloak instanced can be used. 
+Currently, the only supported auth provider is Keycloak. Others can be added in the future. The auth provider doesn't have to be part of teh Blaze deployment. External Keycloak instanced can be used. 
 
 [1]: <https://rocksdb.org>
 [2]: <https://en.wikipedia.org/wiki/ACID>

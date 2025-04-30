@@ -12,7 +12,7 @@ Blaze comes with a Web UI that provides a user friendly view on the FHIR data an
 
 ### Job System
 
-The next part of the Admin UI is a job system were background jobs of Blaze can be managed. Currently the only available job type is **(Re)Index a Search Parameter**.  
+The next part of the Admin UI is a job system where background jobs of Blaze can be managed. Currently, the only available job type is **(Re)Index a Search Parameter**.  
 
 A new job can be created by clicking on the **New Job** button on the Jobs page in the Admin UI.
 
