@@ -30,6 +30,15 @@ The `docs/deployment/full-standalone` directory contains a Docker Compose file w
 > [!NOTE]
 > This example setup is for a developer's machine (on localhost) and things may be different on a real virtual machine.
 
+Create two entries in your `/etc/hosts` (`C:\Windows\System32\Drivers\Etc\hosts` on Windows):
+
+```
+127.0.0.1       blaze.localhost
+127.0.0.1       keycloak.localhost
+```
+
+These subdomains of `localhost` are used as virtual hosts of the nginx ingress container. They ensure that Keycloak and Blaze are separated properly. Other hostnames can be used, but have to be changed everywhere in this setup.
+
 Before you can start the system, you have to generate certificates for the ingress component. To do so, please go into the base directory of this Blaze repository and run:
 
 ```sh
@@ -57,9 +66,6 @@ docker compose logs -f
 ```
 
 In your browser, please go to `https://blaze.localhost/fhir`. 
-
-> [!NOTE]
-> The hostname `blaze.localhost` doesn't work in Safari.
 
 > [!IMPORTANT]
 > You have to accept certificate violations in your browser twice, once for the `blaze.localhost` domain and once for the `keycloak.localhost` domain.
