@@ -8,7 +8,7 @@
     com.google.j2objc/j2objc-annotations]}
 
   com.taoensso/timbre
-  {:mvn/version "6.7.0"}
+  {:mvn/version "6.7.1"}
 
   org.clojars.akiel/iota
   {:mvn/version "0.1"}
