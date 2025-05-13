@@ -15,7 +15,7 @@
   {:local/root "../module-base"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "10.0.1"}}
+  {:mvn/version "10.2.1"}}
 
  :aliases
  {:test
