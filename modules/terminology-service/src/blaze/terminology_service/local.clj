@@ -11,6 +11,7 @@
    [blaze.terminology-service.local.capabilities :as c]
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.code-system.bcp-13 :as bcp-13]
+   [blaze.terminology-service.local.code-system.bcp-47 :as bcp-47]
    [blaze.terminology-service.local.code-system.loinc :as loinc]
    [blaze.terminology-service.local.code-system.sct :as sct]
    [blaze.terminology-service.local.code-system.ucum :as ucum]
@@ -203,11 +204,13 @@
 (defn- ensure-code-systems
   "Ensures that all code systems of internal terminologies like SNOMED CT are
   present in the database node."
-  [{:keys [enable-bcp-13 enable-ucum] :as config}
+  [{:keys [enable-bcp-13 enable-bcp-47 enable-ucum] :as config}
    {loinc-context :loinc/context
     sct-context :sct/context}]
   (when enable-bcp-13
     @(bcp-13/ensure-code-system config))
+  (when enable-bcp-47
+    @(bcp-47/ensure-code-system config))
   (when enable-ucum
     @(ucum/ensure-code-system config))
   (when loinc-context
@@ -335,7 +338,7 @@
 
 (defmethod m/pre-init-spec ::ts/local [_]
   (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn ::graph-cache]
-          :opt-un [::enable-bcp-13 ::enable-ucum ::loinc ::sct]))
+          :opt-un [::enable-bcp-13 ::enable-bcp-47 ::enable-ucum ::loinc ::sct]))
 
 (defmethod ig/init-key ::ts/local
   [_ {:keys [node] :as config}]

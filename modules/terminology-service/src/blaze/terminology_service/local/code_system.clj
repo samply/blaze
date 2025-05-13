@@ -8,6 +8,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.bcp-13]
+   [blaze.terminology-service.local.code-system.bcp-47]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.default]
    [blaze.terminology-service.local.code-system.sct]
@@ -24,6 +25,7 @@
    (fn [{:keys [url content]}]
      (or (#{"complete" "fragment"} (type/value content))
          (#{"urn:ietf:bcp:13"
+            "urn:ietf:bcp:47"
             "http://loinc.org"
             "http://snomed.info/sct"
             "http://unitsofmeasure.org"}
