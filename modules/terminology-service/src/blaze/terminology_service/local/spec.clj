@@ -12,6 +12,9 @@
 (s/def ::local/enable-bcp-13
   boolean?)
 
+(s/def ::local/enable-bcp-47
+  boolean?)
+
 (s/def ::local/enable-ucum
   boolean?)
 
