@@ -763,14 +763,16 @@
         (are [x y res] (= res (compile op-xtor x y "Year"))
           "2018" "2019" 1
           "2018" "2017" -1
-          "2018" "2018" 0)))
+          "2018" "2018" 0
+          "2018" "2018-12-31" 0)))
 
     (testing "Month precision"
       (doseq [op-ctor [elm/date elm/date-time]]
         (are [x y res] (= res (compile op-ctor x y "Month"))
           "2018-01" "2018-02" 1
           "2018-01" "2017-12" -1
-          "2018-01" "2018-01" 0)))
+          "2018-01" "2018-01" 0
+          "2018-01" "2018-01-31" 0)))
 
     (testing "Day precision"
       (doseq [op-ctor [elm/date elm/date-time]]

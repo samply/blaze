@@ -694,7 +694,47 @@
                       (concatenate "Encounter/" (:id E))))
                    (retrieve "Encounter"))))
                distinct)
-              (retrieve "Observation"))))))))
+              (retrieve "Observation")))))))
+
+  (testing "Sort"
+    (testing "ByExpression"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Encounter :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime"2025-05-15"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1"
+                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime"2025-05-16"}}]]]
+
+        (let [elm {:type "Query"
+                   :source
+                   [#elm/aliased-query-source [#elm/retrieve{:type "Encounter"} "E"]]
+                   :return {:expression #elm/scope-property ["E" "id"]}
+                   :sort
+                   {:type "SortClause",
+                    :by
+                    [{:type "ByExpression"
+                      :expression
+                      {:type "Property"
+                       :path "value"
+                       :source
+                       {:type "Property"
+                        :path "start"
+                        :source
+                        {:type "IdentifierRef"
+                         :name "period"
+                         :resultTypeName "{http://hl7.org/fhir}Period"}
+                        :resultTypeName "{http://hl7.org/fhir}dateTime"}
+                       :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"}
+                      :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"
+                      :direction "asc"}]}}]
+
+          (let [expr (c/compile {:node node :eval-context "Patient"} elm)
+                db (d/db node)
+                patient (ctu/resource db "Patient" "0")]
+            (testing "eval"
+              (is (= ["1" "0"] (core/-eval expr {:db db} patient nil))))))))))
 
 (deftest compile-query-medication-reference-test
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
