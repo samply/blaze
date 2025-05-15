@@ -510,6 +510,14 @@
         #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false?
         #elm/interval [#elm/integer "1" #elm/integer "1"] {:type "Null"} nil?))
 
+    (testing "Date"
+      (are [interval x pred] (pred (c/compile {} (elm/contains [interval x])))
+        #elm/interval [#elm/date "2019" #elm/date "2021"] #elm/date "2020" true?
+        #elm/interval [#elm/date "2019" #elm/date "2021"] #elm/date-time "2020-05-15T17:12" true?
+        #elm/interval [#elm/date-time "2019-05-15T17:12" #elm/date-time "2021-05-15T17:12"] #elm/date "2020" true?
+        #elm/interval [#elm/date "2019" #elm/date "2021"] #elm/date "2022" false?
+        #elm/interval [#elm/date "2019" #elm/date "2021"] {:type "Null"} nil?))
+
     (testing "Date with precision"
       (testing "Static"
         (are [interval x pred] (pred (c/compile {} (elm/contains [interval x "year"])))
