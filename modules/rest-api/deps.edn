@@ -2,9 +2,6 @@
  {blaze/async
   {:local/root "../async"}
 
-  blaze/module-base
-  {:local/root "../module-base"}
-
   blaze/job-async-interaction
   {:local/root "../job-async-interaction"}
 
@@ -22,7 +19,14 @@
 
   buddy/buddy-auth
   {:mvn/version "3.0.323"
-   :exclusions [buddy/buddy-sign]}}
+   :exclusions [buddy/buddy-sign]}
+
+  ;; this dependency is only here because otherwise it gets loaded concurrently
+  ;; which breaks caching
+  prom-metrics/prom-metrics
+  {:git/url "https://github.com/alexanderkiel/prom-metrics.git"
+   :git/tag "v0.6-alpha.8"
+   :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}}
 
  :aliases
  {:test

@@ -1,8 +1,5 @@
 {:deps
- {blaze/module-base
-  {:local/root "../module-base"}
-
-  blaze/rest-util
+ {blaze/rest-util
   {:local/root "../rest-util"}
 
   blaze/terminology-service

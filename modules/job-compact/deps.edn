@@ -7,8 +7,12 @@
   blaze/kv
   {:local/root "../kv"}
 
-  blaze/module-base
-  {:local/root "../module-base"}}
+  ;; this dependency is only here because otherwise it gets loaded concurrently
+  ;; which breaks caching
+  prom-metrics/prom-metrics
+  {:git/url "https://github.com/alexanderkiel/prom-metrics.git"
+   :git/tag "v0.6-alpha.8"
+   :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}}
 
  :deps/prep-lib
  {:alias :build

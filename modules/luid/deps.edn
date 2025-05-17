@@ -1,8 +1,5 @@
 {:deps
- {blaze/module-base
-  {:local/root "../module-base"}
-
-  blaze/spec
+ {blaze/spec
   {:local/root "../spec"}}
 
  :aliases

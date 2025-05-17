@@ -60,10 +60,6 @@
     info.cqframework/model
     org.apache.commons/commons-collections4]}
 
-  ;; CVE-2024-26308, we need at least 1.26.0
-  org.apache.commons/commons-compress
-  {:mvn/version "1.27.1"}
-
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
   {:mvn/version "7.6.1"
    :exclusions [com.google.code.findbugs/jsr305]}
@@ -74,12 +70,23 @@
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
   {:mvn/version "7.6.1"}
 
+  com.fasterxml.jackson.datatype/jackson-datatype-jsr310
+  {:mvn/version "2.19.0"}
+
+  ;; CVE-2024-26308, we need at least 1.26.0
+  org.apache.commons/commons-compress
+  {:mvn/version "1.27.1"}
+
   org.fhir/ucum
   {:mvn/version "1.0.10"
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
 
-  com.fasterxml.jackson.datatype/jackson-datatype-jsr310
-  {:mvn/version "2.19.0"}}
+  ;; this dependency is only here because otherwise it gets loaded concurrently
+  ;; which breaks caching
+  prom-metrics/prom-metrics
+  {:git/url "https://github.com/alexanderkiel/prom-metrics.git"
+   :git/tag "v0.6-alpha.8"
+   :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}}
 
  :aliases
  {:test

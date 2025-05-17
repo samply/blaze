@@ -8,10 +8,7 @@
   {:local/root "../luid"}
 
   blaze/job-util
-  {:local/root "../job-util"}
-
-  blaze/module-base
-  {:local/root "../module-base"}}
+  {:local/root "../job-util"}}
 
  :deps/prep-lib
  {:alias :build
