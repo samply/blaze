@@ -21,7 +21,7 @@ cloc-test:
 	cloc src
 
 clean:
-	rm -r node_modules
+	rm -rf node_modules
 	$(MAKE) -C test-data clean
 
 .PHONY: fmt lint install test test-dev-chromium test-dev-ui test-coverage cloc-prod cloc-test clean

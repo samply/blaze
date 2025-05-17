@@ -2,6 +2,6 @@ install:
 	npm install
 
 clean:
-	rm -r node_modules
+	rm -rf node_modules
 
 .PHONY: install clean
