@@ -10,6 +10,7 @@
    [blaze.fhir.util :as fu]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
+   [blaze.handler.util :as handler-util]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.set :as set]
@@ -658,21 +659,43 @@
     (satisfies-prop 10
       (prop/for-all [base-url (s/gen :blaze/base-url)
                      context-path (gen/elements [nil "" "/fhir" "/other"])
-                     idx gen/nat]
+                     idx gen/nat
+                     location gen/string-alphanumeric]
         (= @(fhir-util/process-batch-entry
              (cond->
-              {:batch-handler (constantly (ac/completed-future (ring/status 201)))
+              {:batch-handler
+               (fn [{:keys [headers]}]
+                 (ac/completed-future
+                  (ring/created
+                   location
+                   {:fhir/type :fhir/MeasureReport
+                    :extension
+                    [(type/map->Extension
+                      {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
+                       :value (type/code (name (handler-util/preference headers "return")))})]})))
                :blaze/base-url base-url}
                context-path (assoc :context-path context-path))
              idx
              {:fhir/type :fhir.Bundle/entry
               :request {:fhir/type :fhir.Bundle.entry/request
+                        :extension
+                        [#fhir/Extension
+                          {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
+                           :value #fhir/code"representation"}]
                         :method #fhir/code"POST"
                         :url #fhir/uri"Measure/$evaluate-measure"}
               :resource {:fhir/type :fhir/Parameters}})
            {:fhir/type :fhir.Bundle/entry
-            :response {:fhir/type :fhir.Bundle.entry/response
-                       :status "201"}}))))
+            :response
+            {:fhir/type :fhir.Bundle.entry/response
+             :status "201"
+             :location (type/uri location)}
+            :resource
+            {:fhir/type :fhir/MeasureReport
+             :extension
+             [#fhir/Extension
+               {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
+                :value #fhir/code"representation"}]}}))))
 
   (testing "Patient DELETE request"
     (satisfies-prop 10
@@ -770,7 +793,7 @@
                    :status "200"
                    :lastModified (time/truncate-to (:blaze.db.tx/instant tx) :seconds)
                    :etag (fhir-util/etag tx)
-                   :location location})
+                   :location (type/uri location)})
                (= resource
                   (cond->
                    {:blaze/base-url base-url

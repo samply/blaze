@@ -46,16 +46,30 @@
                 :code #fhir/code"t"})]})
      :value (type/unsignedInt t)}]})
 
-(defn request-bundle [id method url]
-  {:fhir/type :fhir/Bundle
-   :id id
-   :type #fhir/code"batch"
-   :entry
-   [{:fhir/type :fhir.Bundle/entry
-     :request
-     {:fhir/type :fhir.Bundle.entry/request
-      :method (type/code method)
-      :url (type/uri url)}}]})
+(defn- return-preference-extension [return-preference]
+  (type/map->Extension
+   {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
+    :value (type/code (name return-preference))}))
+
+(defn request-bundle
+  ([id method url]
+   (request-bundle id method url nil {}))
+  ([id method url resource {return-preference :blaze.preference/return}]
+   {:fhir/type :fhir/Bundle
+    :id id
+    :type #fhir/code"batch"
+    :entry
+    [(cond->
+      {:fhir/type :fhir.Bundle/entry
+       :request
+       (cond->
+        {:fhir/type :fhir.Bundle.entry/request
+         :method (type/code method)
+         :url (type/uri url)}
+         return-preference
+         (assoc :extension [(return-preference-extension return-preference)]))}
+       resource
+       (assoc :resource resource))]}))
 
 (defn- start-job [job]
   (assoc
@@ -118,7 +132,7 @@
                (ac/then-compose
                 (fn [{:keys [id] :as job}]
                   (swap! running-jobs assoc id false)
-                  (let [start (System/currentTimeMillis)]
+                  (let [start (System/nanoTime)]
                     (-> (process-batch-entries context job t entries)
                         (ac/then-compose
                          (fn [{bundle-id :id :as bundle}]

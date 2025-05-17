@@ -15,6 +15,9 @@
   (:import
    [java.util.concurrent CompletionException]))
 
+(def ^:private valid-return-preferences
+  #{"minimal" "representation" "OperationOutcome"})
+
 (defn preference
   "Returns the value of the preference with `name` as keyword from `headers` or
   nil if there is none."
@@ -23,7 +26,10 @@
        (some
         #(when (= name (:name %))
            (if (:value %)
-             (keyword (str "blaze.preference." name) (:value %))
+             (if (= "return" name)
+               (when (valid-return-preferences (:value %))
+                 (keyword (str "blaze.preference." name) (:value %)))
+               (keyword (str "blaze.preference." name) (:value %)))
              (keyword "blaze.preference" name))))))
 
 (defn- issue-code [category]

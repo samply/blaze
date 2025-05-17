@@ -94,7 +94,7 @@
      :response
      {:fhir/type :fhir.Bundle.entry/response
       :status "201"
-      :location (location context type id vid)
+      :location (type/uri (location context type id vid))
       :etag (str "W/\"" vid "\"")
       :lastModified (:blaze.db.tx/instant tx)}}))
 
@@ -161,7 +161,7 @@
        :etag (str "W/\"" vid "\"")
        :lastModified (:blaze.db.tx/instant tx)}
        created
-       (assoc :location (location context type id vid)))}))
+       (assoc :location (type/uri (location context type id vid))))}))
 
 (defmethod build-response-entry "PUT"
   [{:blaze/keys [db] return-preference :blaze.preference/return :as context}

@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
+   [blaze.handler.util :as handler-util]
    [blaze.job-scheduler :as js]
    [blaze.job.async-interaction :as job-async]
    [blaze.luid :as luid]
@@ -18,11 +19,17 @@
 (defn- luid [{:keys [clock rng-fn]}]
   (luid/luid clock (rng-fn)))
 
-(defn- request-bundle [id context-path {:keys [request-method uri query-string]}]
-  (job-async/request-bundle id (str/upper-case (name request-method))
-                            (cond-> (strip-context-path context-path uri)
-                              (seq query-string)
-                              (str "?" query-string))))
+(defn- request-bundle
+  [id context-path {:keys [request-method uri headers query-string body]}]
+  (let [return-preference (handler-util/preference headers "return")]
+    (job-async/request-bundle
+     id (str/upper-case (name request-method))
+     (cond-> (strip-context-path context-path uri)
+       (seq query-string)
+       (str "?" query-string))
+     (when (and (= :post request-method) (map? body)) body)
+     (cond-> {}
+       return-preference (assoc :blaze.preference/return return-preference)))))
 
 (defn- async-status-url
   [{:keys [context-path]} {:blaze/keys [base-url]} {:keys [id]}]

@@ -237,6 +237,16 @@
        (ac/or-timeout! timeout TimeUnit/MILLISECONDS)
        (ac/exceptionally #(cond-> % (ba/busy? %) (assoc ::anom/message (timeout-t-msg t timeout)))))))
 
+(def ^:private ^:const return-preference-url
+  "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference")
+
+(def ^:private return-preference-pred
+  #(when (= return-preference-url (:url %))
+     (keyword "blaze.preference" (type/value (:value %)))))
+
+(defn- find-return-preference [{extensions :extension}]
+  (some return-preference-pred extensions))
+
 (defn- batch-request
   {:arglists '([context bundle-entry])}
   [{:keys [context-path]
@@ -246,12 +256,14 @@
    {{:keys [method url]
      if-none-match :ifNoneMatch
      if-match :ifMatch
-     if-none-exist :ifNoneExist}
+     if-none-exist :ifNoneExist
+     :as request}
     :request :keys [resource]}]
   (let [url (-> url type/value u/strip-leading-slashes)
         [url query-string] (str/split url #"\?")
         method (keyword (str/lower-case (type/value method)))
-        return-preference (or return-preference
+        return-preference (or (find-return-preference request)
+                              return-preference
                               (when (#{:post :put} method)
                                 :blaze.preference.return/minimal))]
     (cond->
@@ -303,7 +315,7 @@
       :status (str status)}
 
       location
-      (assoc :location location)
+      (assoc :location (type/uri location))
 
       etag
       (assoc :etag etag)

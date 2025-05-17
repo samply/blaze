@@ -30,8 +30,15 @@ cat <<END
 END
 }
 
+START_EPOCH="$(date +"%s")"
+
+eclipsed() {
+  EPOCH="$(date +"%s")"
+  echo $((EPOCH - START_EPOCH))
+}
+
 evaluate_measure() {
-  parameters "$2" | curl -sH "Content-Type: application/fhir+json" -d @- "$1/Measure/\$evaluate-measure"
+  parameters "$2" | curl -s -H "Prefer: respond-async,return=representation" -H "Content-Type: application/fhir+json" -d @- -o /dev/null -D - "$1/Measure/\$evaluate-measure"
 }
 
 fetch_patients() {
@@ -46,7 +53,16 @@ MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
 create_bundle_library_measure "$MEASURE_URI" "$NAME" | transact "$BASE" > /dev/null
 
-REPORT=$(evaluate_measure "$BASE" "$MEASURE_URI")
+HEADERS=$(evaluate_measure "$BASE" "$MEASURE_URI")
+STATUS_URL=$(echo "$HEADERS" | grep -i content-location | tr -d '\r' | cut -d: -f2- | xargs)
+
+# wait for response available
+while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$STATUS_URL")" != "200") ]]; do
+  sleep 0.1
+done
+
+BUNDLE="$(curl -s -H 'Accept: application/fhir+json' "$STATUS_URL")"
+REPORT=$(echo "$BUNDLE" | jq -r ".entry[0].resource")
 COUNT=$(echo "$REPORT" | jq -r ".group[0].population[0].count")
 
 if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
@@ -56,6 +72,10 @@ else
   echo "Report:"
   echo "$REPORT" | jq .
   exit 1
+fi
+
+if [ "0" = "$EXPECTED_COUNT" ]; then
+  exit 0
 fi
 
 LIST_ID=$(echo "$REPORT" | jq -r '.group[0].population[0].subjectResults.reference | split("/")[1]')
