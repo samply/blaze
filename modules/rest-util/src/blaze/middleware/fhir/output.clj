@@ -17,7 +17,7 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayOutputStream OutputStream]
+   [java.io ByteArrayOutputStream]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -41,8 +41,7 @@
     (write-body-to-stream [_body _response output-stream]
       (log/trace "generate JSON")
       (with-open [_ (prom/timer generate-duration-seconds "json")]
-        (fhir-spec/write-json writing-context output-stream body)
-        (.close ^OutputStream output-stream)))))
+        (fhir-spec/write-json writing-context output-stream body)))))
 
 (defn- generate-xml** [body]
   (let [out (ByteArrayOutputStream.)]
