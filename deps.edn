@@ -71,13 +71,20 @@
   {:mvn/version "1.5.2"}
 
   org.slf4j/slf4j-nop
-  {:mvn/version "2.0.17"}}
+  {:mvn/version "2.0.17"}
+
+  ;; this dependency is only here because otherwise it gets loaded concurrently
+  ;; which breaks caching
+  prom-metrics/prom-metrics
+  {:git/url "https://github.com/alexanderkiel/prom-metrics.git"
+   :git/tag "v0.6-alpha.8"
+   :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}}
 
  :aliases
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.10.6" :git/sha "52cf7d6"}}
+    {:git/tag "v0.10.9" :git/sha "e405aac"}}
    :ns-default build}
 
   ;; For both toying at the terminal and/or use via any nREPL-aware IDE
