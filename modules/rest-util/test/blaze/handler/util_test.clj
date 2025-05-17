@@ -23,8 +23,10 @@
   (testing "return"
     (are [headers res] (= res (handler-util/preference headers "return"))
       {"prefer" "return=representation"} :blaze.preference.return/representation
+      {"prefer" "respond-async,return=representation"} :blaze.preference.return/representation
       {"prefer" "return=minimal"} :blaze.preference.return/minimal
       {"prefer" "return=OperationOutcome"} :blaze.preference.return/OperationOutcome
+      {"prefer" "return=invalid"} nil
       {"prefer" "handling=strict"} nil
       {"prefer" ""} nil))
 

@@ -21,7 +21,7 @@ STATUS_URL=$(echo "$HEADERS" | grep -i content-location | tr -d '\r' | cut -d: -
 
 # wait for response available
 while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$STATUS_URL")" != "200") ]]; do
-  sleep 1
+  sleep 0.1
 done
 
 RESPONSE_BUNDLE="$(curl -s -H 'Accept: application/fhir+json' "$STATUS_URL")"

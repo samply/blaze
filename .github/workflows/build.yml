@@ -452,11 +452,14 @@ jobs:
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh q1 56
 
-    - name: Evaluate CQL Query 1 using Blazectl
+    - name: Evaluate CQL Query 1 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q1 56
 
     - name: Evaluate CQL Query 1 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q1 56
+
+    - name: Evaluate CQL Query 1 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q1 56
 
     - name: Evaluate CQL Query 1 on Individual Patients
       run: .github/scripts/evaluate-patient-q1-measure.sh
@@ -464,29 +467,38 @@ jobs:
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh q2 42
 
-    - name: Evaluate CQL Query 2 using Blazectl
+    - name: Evaluate CQL Query 2 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q2 42
 
     - name: Evaluate CQL Query 2 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q2 42
 
+    - name: Evaluate CQL Query 2 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q2 42
+
     - name: Evaluate CQL Query 4
       run: .github/scripts/evaluate-measure.sh q4 0
 
-    - name: Evaluate CQL Query 4 using Blazectl
+    - name: Evaluate CQL Query 4 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q4 0
 
     - name: Evaluate CQL Query 4 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q4 0
 
+    - name: Evaluate CQL Query 4 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q4 0
+
     - name: Evaluate CQL Query 7
       run: .github/scripts/evaluate-measure.sh q7 81
 
-    - name: Evaluate CQL Query 7 using Blazectl
+    - name: Evaluate CQL Query 7 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q7 81
 
     - name: Evaluate CQL Query 7 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q7 81
+
+    - name: Evaluate CQL Query 7 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q7 81
 
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh q14 96
@@ -494,34 +506,40 @@ jobs:
     - name: Check Bloom Filter
       run: .github/scripts/check-bloom-filter.sh a08d0235112a8033c36c5d33564aaa00f4190281e4db8f7ec1d8d55cd7f4c56f 96
 
-    - name: Evaluate CQL Query 14 using Blazectl
+    - name: Evaluate CQL Query 14 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q14 96
 
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q14 96
 
+    - name: Evaluate CQL Query 14 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q14 96
+
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh q17 120
 
-    - name: Evaluate CQL Query 17 using Blazectl
+    - name: Evaluate CQL Query 17 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q17 120
 
     - name: Evaluate CQL Query 17 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q17 120
 
-    - name: Evaluate CQL Query 20 using Blazectl
+    - name: Evaluate CQL Query 17 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q17 120
+
+    - name: Evaluate CQL Query 20 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
 
-    - name: Evaluate CQL Query 21 using Blazectl
+    - name: Evaluate CQL Query 21 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
 
-    - name: Evaluate CQL Query 26 using Blazectl
+    - name: Evaluate CQL Query 26 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
 
-    - name: Evaluate CQL Query 27 using Blazectl
+    - name: Evaluate CQL Query 27 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
 
-    - name: Evaluate CQL Query 32 using Blazectl
+    - name: Evaluate CQL Query 32 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
 
     - name: Evaluate CQL Query 36
@@ -533,17 +551,23 @@ jobs:
     - name: Evaluate CQL Query 36 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
 
+    - name: Evaluate CQL Query 36 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q36-parameter 86
+
     - name: Evaluate CQL Query 37
       run: .github/scripts/evaluate-measure.sh q37-overlaps 24
 
     - name: Check Bloom Filter
       run: .github/scripts/check-bloom-filter.sh 9fe779d821d7647831331b490939aa0cdf314d76c9b2a9518ffaf559353db043 24
 
-    - name: Evaluate CQL Query 37 using Blazectl
+    - name: Evaluate CQL Query 37 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 37 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 37 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 46
       run: .github/scripts/evaluate-measure.sh q46-between-date 19
@@ -551,7 +575,7 @@ jobs:
     - name: Check Bloom Filter
       run: .github/scripts/check-bloom-filter.sh 237bcfac3e879272f508e143095e4a0025e1b54505bbb2cf36fbda83dec237f2 19
 
-    - name: Evaluate CQL Query 46 using Blazectl
+    - name: Evaluate CQL Query 46 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
   integration-test:
@@ -843,19 +867,22 @@ jobs:
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh q1 56
 
-    - name: Evaluate CQL Query 1 as Batch
+    - name: Evaluate CQL Query 1 - Batch
       run: .github/scripts/evaluate-measure-as-batch.sh q1 56
 
-    - name: Evaluate CQL Query 1 async
+    - name: Evaluate CQL Query 1 - Async
       run: .github/scripts/evaluate-measure-async.sh q1 56
 
-    - name: Evaluate CQL Query 1 using Blazectl
+    - name: Evaluate CQL Query 1 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q1 56
 
     - name: Evaluate CQL Query 1 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q1 56
 
-    - name: Evaluate CQL Query 1 - Subject List as Batch
+    - name: Evaluate CQL Query 1 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q1 56
+
+    - name: Evaluate CQL Query 1 - Subject List - Batch
       run: .github/scripts/evaluate-measure-subject-list-as-batch.sh q1 56
 
     - name: Evaluate CQL Query 1 on Individual Patients
@@ -864,67 +891,88 @@ jobs:
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh q2 42
 
-    - name: Evaluate CQL Query 2 as Batch
+    - name: Evaluate CQL Query 2 - Async
+      run: .github/scripts/evaluate-measure-async.sh q2 42
+
+    - name: Evaluate CQL Query 2 - Batch
       run: .github/scripts/evaluate-measure-as-batch.sh q2 42
 
-    - name: Evaluate CQL Query 2 using Blazectl
+    - name: Evaluate CQL Query 2 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q2 42
 
     - name: Evaluate CQL Query 2 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q2 42
 
-    - name: Evaluate CQL Query 2 - Subject List as Batch
+    - name: Evaluate CQL Query 2 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q2 42
+
+    - name: Evaluate CQL Query 2 - Subject List - Batch
       run: .github/scripts/evaluate-measure-subject-list-as-batch.sh q2 42
 
     - name: Evaluate CQL Query 4
       run: .github/scripts/evaluate-measure.sh q4 0
 
-    - name: Evaluate CQL Query 4 using Blazectl
+    - name: Evaluate CQL Query 4 - Async
+      run: .github/scripts/evaluate-measure-async.sh q4 0
+
+    - name: Evaluate CQL Query 4 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q4 0
 
     - name: Evaluate CQL Query 4 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q4 0
 
+    - name: Evaluate CQL Query 4 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q4 0
+
     - name: Evaluate CQL Query 7
       run: .github/scripts/evaluate-measure.sh q7 81
 
-    - name: Evaluate CQL Query 7 using Blazectl
+    - name: Evaluate CQL Query 7 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q7 81
 
     - name: Evaluate CQL Query 7 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q7 81
 
+    - name: Evaluate CQL Query 7 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q7 81
+
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh q14 96
 
-    - name: Evaluate CQL Query 14 using Blazectl
+    - name: Evaluate CQL Query 14 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q14 96
 
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q14 96
 
+    - name: Evaluate CQL Query 14 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q14 96
+
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh q17 120
 
-    - name: Evaluate CQL Query 17 using Blazectl
+    - name: Evaluate CQL Query 17 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q17 120
 
     - name: Evaluate CQL Query 17 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q17 120
 
-    - name: Evaluate CQL Query 20 using Blazectl
+    - name: Evaluate CQL Query 17 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q17 120
+
+    - name: Evaluate CQL Query 20 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
 
-    - name: Evaluate CQL Query 21 using Blazectl
+    - name: Evaluate CQL Query 21 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
 
-    - name: Evaluate CQL Query 26 using Blazectl
+    - name: Evaluate CQL Query 26 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
 
-    - name: Evaluate CQL Query 27 using Blazectl
+    - name: Evaluate CQL Query 27 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
 
-    - name: Evaluate CQL Query 32 using Blazectl
+    - name: Evaluate CQL Query 32 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
 
     - name: Evaluate CQL Query 36
@@ -933,19 +981,25 @@ jobs:
     - name: Evaluate CQL Query 36 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
 
+    - name: Evaluate CQL Query 36 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q36-parameter 86
+
     - name: Evaluate CQL Query 34
       run: .github/scripts/evaluate-measure.sh q37-overlaps 24
 
-    - name: Evaluate CQL Query 34 using Blazectl
+    - name: Evaluate CQL Query 34 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 34 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
 
+    - name: Evaluate CQL Query 34 - Subject List - Async
+      run: .github/scripts/evaluate-measure-subject-list-async.sh q37-overlaps 24
+
     - name: Evaluate CQL Query 46
       run: .github/scripts/evaluate-measure.sh q46-between-date 19
 
-    - name: Evaluate CQL Query 46 using Blazectl
+    - name: Evaluate CQL Query 46 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
     - name: Forwarded Header HTTPS

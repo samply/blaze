@@ -45,7 +45,7 @@ STATUS_URL=$(echo "$HEADERS" | grep -i content-location | tr -d '\r' | cut -d: -
 
 # wait for response available
 while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$STATUS_URL")" != "200") ]]; do
-  sleep 1
+  sleep 0.1
 done
 
 JOB_ID=$(echo "$STATUS_URL" | cut -d '/' -f6)

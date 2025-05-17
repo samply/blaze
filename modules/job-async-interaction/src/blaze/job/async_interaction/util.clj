@@ -23,7 +23,7 @@
 
 (defn processing-duration [start]
   (type/quantity
-   {:value (type/decimal (BigDecimal/valueOf (- (System/currentTimeMillis) start) 3))
+   {:value (type/decimal (BigDecimal/valueOf (- (System/nanoTime) start) 9))
     :unit #fhir/string"s"
     :system #fhir/uri"http://unitsofmeasure.org"
     :code #fhir/code"s"}))
