@@ -62,6 +62,7 @@
   (primitive? (fhir-type x)))
 
 (defn write-json
+  "Writes `value` to output stream `out` closing it if done."
   [context out value]
   (res/write-json context out value))
 
