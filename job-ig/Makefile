@@ -12,6 +12,6 @@ validate: validator_cli.jar
 
 clean:
 	rm -rf fsh-generated
-	rm validator_cli.jar
+	rm -f validator_cli.jar
 
 .PHONY: install build validate clean
