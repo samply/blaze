@@ -25,7 +25,7 @@
 		"autoprefixer": "^10.4.14",
 		"change-case": "^5.0.2",
 		"eslint": "^9.0.0",
-		"eslint-config-prettier": "^9.1.0",
+		"eslint-config-prettier": "^10.0.0",
 		"eslint-plugin-svelte": "^3.0.0",
 		"globals": "^16.0.0",
 		"humanize-duration": "^3.32.0",
