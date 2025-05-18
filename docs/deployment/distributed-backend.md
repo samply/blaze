@@ -28,7 +28,7 @@ The Kafka section of the Docker Compose file, shown below, contains a setup of a
 
 ```yaml
 kafka:
-  image: "apache/kafka:3.7.0"
+  image: "apache/kafka:4.0.0"
   environment:
     KAFKA_NODE_ID: 1
     CLUSTER_ID: '5L6g3nShT-eMCtK--X86sw'
@@ -73,7 +73,7 @@ The purpose of the Kafka Topic Creator creator component shown below is solely t
 
 ```yaml
 kafka-topic-creator-main:
-  image: "apache/kafka:3.7.0"
+  image: "apache/kafka:4.0.0"
   command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
       --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
       --topic blaze-tx-main --partitions 1 --replication-factor 1 
