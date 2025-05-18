@@ -5,6 +5,7 @@
     "helpers:pinGitHubActionDigests",
     "docker:pinDigests"
   ],
+  "labels": ["dependencies"],
   "packageRules": [
     {
       "matchDatasources": [
@@ -37,10 +38,16 @@
       "matchPackageNames": [
         "/reitit/"
       ]
+    },
+    {
+      "groupName": "ring",
+      "matchPackageNames": [
+        "/ring/"
+      ]
     }
   ],
   "ignorePaths": [
-    "docker-compose.yml"
+    "docs"
   ],
   "prConcurrentLimit": 3
 }
