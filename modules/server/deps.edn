@@ -15,7 +15,7 @@
     crypto-random/crypto-random]}
 
   ring/ring-jetty-adapter
-  {:mvn/version "1.13.1"}}
+  {:mvn/version "1.14.1"}}
 
  :deps/prep-lib
  {:alias :build
