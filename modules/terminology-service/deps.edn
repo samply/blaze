@@ -37,7 +37,7 @@
     {:mvn/version "1.0.0"}
 
     io.github.clojure/tools.build
-    {:git/tag "v0.10.6" :git/sha "52cf7d6"}}
+    {:git/tag "v0.10.9" :git/sha "e405aac"}}
 
    :ns-default build}
 
