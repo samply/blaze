@@ -1,6 +1,6 @@
 services:
   ingress:
-    image: "nginx:1.27.2"
+    image: "nginx:1.27.2@sha256:bc5eac5eafc581aeda3008b4b1f07ebba230de2f27d47767129a6a905c84f470"
     environment:
       BLAZE_HOST: "blaze.localhost"
       KEYCLOAK_HOST: "keycloak.localhost"
@@ -51,7 +51,7 @@ services:
     - "../ingress/keycloak-trust-store.p12:/app/keycloak-trust-store.p12:ro"
 
   keycloak:
-    image: "quay.io/keycloak/keycloak:24.0.1"
+    image: "quay.io/keycloak/keycloak:24.0.1@sha256:8e38bc8a4e0606e38a37401422dfbf414e2b73797952dfe94c9b56e2f9207897"
     command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true"
     environment:
       KEYCLOAK_ADMIN: admin
