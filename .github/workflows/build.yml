@@ -2334,10 +2334,16 @@ jobs:
     - custom-search-parameters-test
     - build-patient-last-change-index-test
     runs-on: ubuntu-24.04
-
+    if: always()
     steps:
-    - name: Check out Git repository
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - name: Check if any job failed
+      run: |
+        if [[ ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }} == true ]]; then
+          echo "One or more jobs have failed or been cancelled"
+          exit 1
+        else
+          echo "All jobs completed successfully"
+        fi
 
   push-image:
     if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
