@@ -10,7 +10,6 @@
 
 (s/fdef params/decode
   :args (s/cat :page-store :blaze/page-store
-               :type :fhir.resource/type
                :handling (s/nilable (s/and keyword? #(= "blaze.preference.handling" (namespace %))))
                :query-params (s/nilable :ring.request/query-params))
   :ret ac/completable-future?)

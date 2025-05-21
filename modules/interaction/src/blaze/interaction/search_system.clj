@@ -101,7 +101,7 @@
     :blaze/keys [base-url db]
     ::reitit/keys [router match]}]
   (let [handling (handler-util/preference headers "handling")]
-    (do-sync [decoded-params (params/decode page-store "Resource" handling params)]
+    (do-sync [decoded-params (params/decode page-store handling params)]
       (assoc context
              :blaze/base-url base-url
              :blaze/db db
