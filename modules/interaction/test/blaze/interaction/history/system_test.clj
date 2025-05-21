@@ -13,7 +13,7 @@
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.history.system]
    [blaze.interaction.history.util-spec]
-   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
@@ -329,8 +329,7 @@
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
               [:meta :lastUpdated] := Instant/EPOCH
-              [:meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-              [:meta :tag 0 :code] := #fhir/code"SUBSETTED"
+              [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code"SUBSETTED"
               :concept := nil))
 
           (testing "the second entry has the right request"

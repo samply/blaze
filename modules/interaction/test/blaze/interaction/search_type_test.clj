@@ -14,7 +14,7 @@
    [blaze.interaction.search.nav-spec]
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util-spec]
-   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
    [blaze.job-scheduler-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
@@ -65,11 +65,7 @@
     ["/Medication" {:name :Medication/type}]
     ["/Organization" {:name :Organization/type}]
     ["/Encounter" {:name :Encounter/type}]
-    ["/Encounter/__page/{page-id}" {:name :Encounter/page}]
-    ["/CodeSystem" {:name :CodeSystem/type}]
-    ["/CodeSystem/__page/{page-id}" {:name :CodeSystem/page}]
-    ["/ValueSet" {:name :ValueSet/type}]
-    ["/ValueSet/__page/{page-id}" {:name :ValueSet/page}]]
+    ["/Encounter/__page/{page-id}" {:name :Encounter/page}]]
    {:syntax :bracket
     :path context-path}))
 
@@ -623,11 +619,53 @@
 
   (testing "with one patient"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :multipleBirth #fhir/boolean true}]]]
 
       (testing "Returns all existing resources of type"
+        (doseq [params [{} {"_summary" "false"}]]
+          (let [{:keys [status] {[first-entry] :entry :as body} :body}
+                @(handler {:params params})]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code"searchset" (:type body))))
+
+            (testing "the total count is 1"
+              (is (= #fhir/unsignedInt 1 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_count=50")
+                     (link-url body "self"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))
+
+            (testing "the entry has the right fullUrl"
+              (is (= (str base-url context-path "/Patient/0")
+                     (:fullUrl first-entry))))
+
+            (testing "the entry has the right resource"
+              (given (:resource first-entry)
+                :fhir/type := :fhir/Patient
+                :id := "0"
+                [:meta :versionId] := #fhir/id"1"
+                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :tag (coding v3-ObservationValue) count] := 0
+                :multipleBirth := #fhir/boolean true))
+
+            (testing "the entry has the right search mode"
+              (given (:search first-entry)
+                fhir-spec/fhir-type := :fhir.Bundle.entry/search
+                :mode := #fhir/code"match")))))
+
+      (testing "with param _summary equal to true"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
-              @(handler {})]
+              @(handler {:params {"_summary" "true"}})]
 
           (is (= 200 status))
 
@@ -641,7 +679,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=50")
+            (is (= (str base-url context-path "/Patient?_summary=true&_count=50")
                    (link-url body "self"))))
 
           (testing "the bundle contains one entry"
@@ -656,7 +694,9 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code"SUBSETTED"
+              :multipleBirth := nil))
 
           (testing "the entry has the right search mode"
             (given (:search first-entry)
@@ -665,8 +705,7 @@
 
       (testing "with param _summary equal to count"
         (let [{:keys [status body]}
-              @(handler
-                {:params {"_summary" "count"}})]
+              @(handler {:params {"_summary" "count"}})]
 
           (is (= 200 status))
 
@@ -688,8 +727,7 @@
 
       (testing "with param _count equal to zero"
         (let [{:keys [status body]}
-              @(handler
-                {:params {"_count" "0"}})]
+              @(handler {:params {"_count" "0"}})]
 
           (is (= 200 status))
 
@@ -716,8 +754,7 @@
 
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
-              @(handler
-                {:params {"_count" "1"}})]
+              @(handler {:params {"_count" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -2681,175 +2718,6 @@
             [:issue 0 :code] := #fhir/code"invalid"
             [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`.")))))
 
-  (testing "_summary"
-    (testing "CodeSystem"
-      (with-handler [handler _ _]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri"system-115910"
-                 :version #fhir/string"version-170327"
-                 :content #fhir/code"complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code"code-115927"}]}]]]
-
-        (testing "summary true returns the resource in summary mode"
-          (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
-                @(handler {::reitit/match (match-of "CodeSystem")
-                           :params {"_summary" "true"}})]
-
-            (is (= 200 status))
-
-            (testing "the body contains a bundle"
-              (is (= :fhir/Bundle (:fhir/type body))))
-
-            (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
-
-            (testing "the total count is 1"
-              (is (= #fhir/unsignedInt 1 (:total body))))
-
-            (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body)))))
-
-            (testing "the entry has the right fullUrl"
-              (is (= (str base-url context-path "/CodeSystem/0") (:fullUrl entry))))
-
-            (testing "the resource is subsetted"
-              (given (-> resource :meta :tag first)
-                :system := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                :code := #fhir/code"SUBSETTED"))
-
-            (testing "the resource has still an id"
-              (is (= "0" (:id resource))))
-
-            (testing "the resource has an URL"
-              (is (= #fhir/uri"system-115910" (-> resource :url))))
-
-            (testing "the resource has no concept"
-              (is (nil? (:concept resource))))))
-
-        (testing "summary data and false returns everything"
-          (doseq [summary ["data" "false"]]
-            (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
-                  @(handler
-                    {::reitit/match (match-of "CodeSystem")
-                     :params {"_summary" summary}})]
-
-              (is (= 200 status))
-
-              (testing "the body contains a bundle"
-                (is (= :fhir/Bundle (:fhir/type body))))
-
-              (testing "the bundle type is searchset"
-                (is (= #fhir/code"searchset" (:type body))))
-
-              (testing "the total count is 1"
-                (is (= #fhir/unsignedInt 1 (:total body))))
-
-              (testing "the bundle contains one entry"
-                (is (= 1 (count (:entry body)))))
-
-              (testing "the entry has the right fullUrl"
-                (is (= (str base-url context-path "/CodeSystem/0") (:fullUrl entry))))
-
-              (testing "the resource is not subsetted"
-                (is (nil? (-> resource :meta :tag))))
-
-              (testing "the resource has still an id"
-                (is (= "0" (:id resource))))
-
-              (testing "the resource has an URL"
-                (is (= #fhir/uri"system-115910" (-> resource :url))))
-
-              (testing "the resource has a concept"
-                (given (:concept resource)
-                  count := 1
-                  [0 :fhir/type] := :fhir.CodeSystem/concept
-                  [0 :code] := #fhir/code"code-115927")))))))
-
-    (testing "ValueSet"
-      (with-handler [handler _ _]
-        [[[:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri"value-set-154043"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri"system-115910"}]}}]]]
-
-        (testing "summary true returns the resource in summary mode"
-          (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
-                @(handler {::reitit/match (match-of "ValueSet")
-                           :params {"_summary" "true"}})]
-
-            (is (= 200 status))
-
-            (testing "the body contains a bundle"
-              (is (= :fhir/Bundle (:fhir/type body))))
-
-            (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
-
-            (testing "the total count is 1"
-              (is (= #fhir/unsignedInt 1 (:total body))))
-
-            (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body)))))
-
-            (testing "the entry has the right fullUrl"
-              (is (= (str base-url context-path "/ValueSet/0") (:fullUrl entry))))
-
-            (testing "the resource is subsetted"
-              (given (-> resource :meta :tag first)
-                :system := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                :code := #fhir/code"SUBSETTED"))
-
-            (testing "the resource has still an id"
-              (is (= "0" (:id resource))))
-
-            (testing "the resource has an URL"
-              (is (= #fhir/uri"value-set-154043" (-> resource :url))))
-
-            (testing "the resource has no concept"
-              (is (nil? (:compose resource))))))
-
-        (testing "summary data and false returns everything"
-          (doseq [summary ["data" "false"]]
-            (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
-                  @(handler
-                    {::reitit/match (match-of "ValueSet")
-                     :params {"_summary" summary}})]
-
-              (is (= 200 status))
-
-              (testing "the body contains a bundle"
-                (is (= :fhir/Bundle (:fhir/type body))))
-
-              (testing "the bundle type is searchset"
-                (is (= #fhir/code"searchset" (:type body))))
-
-              (testing "the total count is 1"
-                (is (= #fhir/unsignedInt 1 (:total body))))
-
-              (testing "the bundle contains one entry"
-                (is (= 1 (count (:entry body)))))
-
-              (testing "the entry has the right fullUrl"
-                (is (= (str base-url context-path "/ValueSet/0") (:fullUrl entry))))
-
-              (testing "the resource is not subsetted"
-                (is (nil? (-> resource :meta :tag))))
-
-              (testing "the resource has still an id"
-                (is (= "0" (:id resource))))
-
-              (testing "the resource has an URL"
-                (is (= #fhir/uri"value-set-154043" (-> resource :url))))
-
-              (testing "the resource has a compose"
-                (given (:compose resource)
-                  :fhir/type := :fhir.ValueSet/compose))))))))
-
   (testing "_elements"
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -2891,8 +2759,7 @@
           (is (= (str base-url context-path "/Observation/0") (:fullUrl entry))))
 
         (testing "the resource is subsetted"
-          (given (-> resource :meta :tag first)
-            :system := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+          (given (-> resource :meta :tag (coding v3-ObservationValue) first)
             :code := #fhir/code"SUBSETTED"))
 
         (testing "the resource has still an id"

@@ -29,13 +29,11 @@
      (when-ok [clauses (iu/clauses query-params)]
        {:clauses clauses}))))
 
-(defn- allowed-summary-values [type]
-  (if (#{"CodeSystem" "ValueSet"} type)
-    #{"true" "data" "count" "false"}
-    #{"count"}))
+(def ^:private allowed-summary-values
+  #{"true" "count"})
 
-(defn- summary [type handling {summary "_summary"}]
-  (let [value (some (allowed-summary-values type) (u/to-seq summary))]
+(defn- summary [handling {summary "_summary"}]
+  (let [value (some allowed-summary-values (u/to-seq summary))]
     (if (and (nil? value)
              (identical? :blaze.preference.handling/strict handling)
              (seq (u/to-seq summary)))
@@ -58,20 +56,20 @@
   Decoded params consist of:
    :clauses - query clauses
    :token - possibly a token encoding the query clauses"
-  [page-store type handling query-params]
+  [page-store handling query-params]
   (do-sync [{:keys [clauses token]} (clauses page-store query-params)]
     (when-ok [include-defs (include/include-defs handling query-params)
-              summary (summary type handling query-params)
-              total (total query-params)]
-      (cond->
-       {:clauses clauses
-        :include-defs include-defs
-        :summary? (summary? summary query-params)
-        :summary summary
-        :elements (fhir-util/elements query-params)
-        :page-size (fhir-util/page-size query-params)
-        :page-type (fhir-util/page-type query-params)
-        :page-id (fhir-util/page-id query-params)
-        :page-offset (fhir-util/page-offset query-params)}
-        token (assoc :token token)
-        total (assoc :total total)))))
+              summary (summary handling query-params)]
+      (let [total (total query-params)]
+        (cond->
+         {:clauses clauses
+          :include-defs include-defs
+          :summary? (summary? summary query-params)
+          :summary summary
+          :elements (fhir-util/elements query-params)
+          :page-size (fhir-util/page-size query-params)
+          :page-type (fhir-util/page-type query-params)
+          :page-id (fhir-util/page-id query-params)
+          :page-offset (fhir-util/page-offset query-params)}
+          token (assoc :token token)
+          total (assoc :total total))))))
