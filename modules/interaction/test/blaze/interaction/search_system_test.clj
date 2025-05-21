@@ -12,7 +12,7 @@
    [blaze.interaction.search.nav-spec]
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util-spec]
-   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
@@ -42,8 +42,7 @@
 (def router
   (reitit/router
    [["/__page/{page-id}" {:name :page}]
-    ["/Patient" {:name :Patient/type}]
-    ["/CodeSystem" {:name :CodeSystem/type}]]
+    ["/Patient" {:name :Patient/type}]]
    {:syntax :bracket}))
 
 (def default-match
@@ -199,11 +198,54 @@
 
   (testing "with one patient"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :multipleBirth #fhir/boolean true}]]]
 
       (testing "Returns all existing resources"
+        (doseq [params [{} {"_summary" "false"}]]
+          (let [{:keys [status] {[first-entry] :entry :as body} :body}
+                @(handler {:params params})]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle id is an LUID"
+              (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code"searchset" (:type body))))
+
+            (testing "the total count is 1"
+              (is (= #fhir/unsignedInt 1 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url "?_count=50")
+                     (link-url body "self"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))
+
+            (testing "the entry has the right fullUrl"
+              (is (= (str base-url "/Patient/0")
+                     (:fullUrl first-entry))))
+
+            (testing "the entry has the right resource"
+              (given (:resource first-entry)
+                :fhir/type := :fhir/Patient
+                :id := "0"
+                [:meta :versionId] := #fhir/id"1"
+                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :tag (coding v3-ObservationValue) count] := 0
+                :multipleBirth := #fhir/boolean true)))))
+
+      (testing "with param _summary equal to true"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
-              @(handler {})]
+              @(handler {:params {"_summary" "true"}})]
 
           (is (= 200 status))
 
@@ -220,7 +262,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url "?_count=50")
+            (is (= (str base-url "?_summary=true&_count=50")
                    (link-url body "self"))))
 
           (testing "has no next link"
@@ -238,7 +280,9 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH))))
+              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code"SUBSETTED"
+              :multipleBirth := nil))))
 
       (testing "with param _summary equal to count"
         (let [{:keys [status body]}
@@ -292,98 +336,6 @@
 
           (testing "the bundle contains no entry"
             (is (empty? (:entry body))))))))
-
-  (testing "with one code system"
-    (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-115910"
-               :version #fhir/string"version-170327"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]]]
-
-      (testing "Returns all existing resources"
-        (let [{:keys [status] {[first-entry] :entry :as body} :body}
-              @(handler {})]
-
-          (is (= 200 status))
-
-          (testing "the body contains a bundle"
-            (is (= :fhir/Bundle (:fhir/type body))))
-
-          (testing "the bundle id is an LUID"
-            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
-
-          (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
-
-          (testing "the total count is 1"
-            (is (= #fhir/unsignedInt 1 (:total body))))
-
-          (testing "has a self link"
-            (is (= (str base-url "?_count=50")
-                   (link-url body "self"))))
-
-          (testing "has no next link"
-            (is (nil? (link-url body "next"))))
-
-          (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body)))))
-
-          (testing "the entry has the right fullUrl"
-            (is (= (str base-url "/CodeSystem/0")
-                   (:fullUrl first-entry))))
-
-          (testing "the entry has the right resource"
-            (given (:resource first-entry)
-              :fhir/type := :fhir/CodeSystem
-              :id := "0"
-              [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH
-              [:concept 0 :code] := #fhir/code"code-115927"))))
-
-      (testing "with param _summary equal to true"
-        (let [{:keys [status] {[first-entry] :entry :as body} :body}
-              @(handler {:params {"_summary" "true"}})]
-
-          (is (= 200 status))
-
-          (testing "the body contains a bundle"
-            (is (= :fhir/Bundle (:fhir/type body))))
-
-          (testing "the bundle id is an LUID"
-            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
-
-          (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
-
-          (testing "the total count is 1"
-            (is (= #fhir/unsignedInt 1 (:total body))))
-
-          (testing "has a self link"
-            (is (= (str base-url "?_count=50")
-                   (link-url body "self"))))
-
-          (testing "has no next link"
-            (is (nil? (link-url body "next"))))
-
-          (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body)))))
-
-          (testing "the entry has the right fullUrl"
-            (is (= (str base-url "/CodeSystem/0")
-                   (:fullUrl first-entry))))
-
-          (testing "the entry has the right resource"
-            (given (:resource first-entry)
-              :fhir/type := :fhir/CodeSystem
-              :id := "0"
-              [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH
-              [:meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-              [:meta :tag 0 :code] := #fhir/code"SUBSETTED"
-              :concept := nil))))))
 
   (testing "with two patients"
     (with-handler [handler node page-id-cipher]

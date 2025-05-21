@@ -45,6 +45,15 @@ test_empty() {
   fi
 }
 
+test_non_empty() {
+  if [ -n "$2" ]; then
+    echo "✅ the $1 is non-empty"
+  else
+    echo "🆘 the $1 is $2, should be non-empty"
+    exit 1
+  fi
+}
+
 create() {
   curl -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1"
 }

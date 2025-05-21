@@ -24,20 +24,19 @@
 (deftest decode-test
   (testing "unsupported sort parameter"
     (given-failed-future (params/decode page-store
-                                        "Resource"
                                         ::handling/lenient
                                         {"_sort" "a,b"})
       ::anom/category := ::anom/unsupported))
 
   (testing "invalid include parameter"
     (given-failed-future (params/decode page-store
-                                        "Resource"
                                         ::handling/strict
                                         {"_include" "Observation"})
-      ::anom/category := ::anom/incorrect))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing search parameter code in _include search parameter with source type `Observation`."))
 
   (testing "decoding clauses from query params"
-    (given @(params/decode page-store "Resource" ::handling/strict {"foo" "bar"})
+    (given @(params/decode page-store ::handling/strict {"foo" "bar"})
       :clauses := [["foo" "bar"]]
       :token := nil))
 
@@ -47,7 +46,6 @@
                (-get [_ token]
                  (assert (= (str/join (repeat 32 "A")) token))
                  (ac/completed-future [["foo" "bar"]])))
-             "Resource"
              ::handling/strict
              {"__token" (str/join (repeat 32 "A"))})
       :clauses := [["foo" "bar"]]
@@ -60,7 +58,6 @@
         (-get [_ token]
           (assert (= (str/join (repeat 32 "A")) token))
           (ac/completed-future (ba/not-found "Not Found"))))
-      "Resource"
       ::handling/strict
       {"__token" (str/join (repeat 32 "A"))})
       ::anom/category := ::anom/not-found
@@ -69,86 +66,84 @@
   (testing "decoding _elements"
     (testing "one element"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_elements" "a"})
+        (given @(params/decode page-store handling {"_elements" "a"})
           :elements := [:a])))
 
     (testing "two elements"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_elements" "a,b"})
+        (given @(params/decode page-store handling {"_elements" "a,b"})
           :elements := [:a :b])))
 
     (testing "two elements with space after comma"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_elements" "a, b"})
+        (given @(params/decode page-store handling {"_elements" "a, b"})
           :elements := [:a :b])))
 
     (testing "two elements with space before comma"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_elements" "a ,b"})
+        (given @(params/decode page-store handling {"_elements" "a ,b"})
           :elements := [:a :b])))
 
     (testing "two elements with space before and after comma"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_elements" "a , b"})
+        (given @(params/decode page-store handling {"_elements" "a , b"})
           :elements := [:a :b])))
 
     (testing "three elements"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_elements" "a,b,c"})
+        (given @(params/decode page-store handling {"_elements" "a,b,c"})
           :elements := [:a :b :c])))
 
     (testing "two elements parameters"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_elements" ["a" "b"]})
+        (given @(params/decode page-store handling {"_elements" ["a" "b"]})
           :elements := [:a :b]))))
 
   (testing "decoding _summary"
+    (testing "true"
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling {"_summary" "true"})
+          :summary? := false
+          :summary := "true")))
+
     (testing "count"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_summary" "count"})
+        (given @(params/decode page-store handling {"_summary" "count"})
           :summary? := true
           :summary := "count")))
 
-    (testing "true/data/false on CodeSystem/ValueSet"
-      (doseq [type ["CodeSystem" "ValueSet"]
-              handling [::handling/strict ::handling/lenient nil]
-              summary ["true" "data" "false"]]
-        (given @(params/decode page-store type handling {"_summary" summary})
-          :summary? := false
-          :summary := summary)))
-
     (testing "invalid counts"
       (doseq [handling [::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_summary" "counts"})
+        (given @(params/decode page-store handling {"_summary" "counts"})
           :summary? := false
           :summary := nil))
 
-      (given-failed-future (params/decode page-store "Resource" ::handling/strict {"_summary" "counts"})
+      (given-failed-future (params/decode page-store ::handling/strict {"_summary" "counts"})
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported _summary search param with value(s): counts"))
 
     (testing "count and invalid counts"
       (doseq [handling [::handling/strict ::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_summary" ["count" "counts"]})
+        (given @(params/decode page-store handling {"_summary" ["count" "counts"]})
           :summary? := true
           :summary := "count")))
 
-    (testing "unsupported true"
+    (testing "unsupported text"
       (doseq [handling [::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_summary" "true"})
+        (given @(params/decode page-store handling {"_summary" "text"})
           :summary? := false
           :summary := nil))
 
-      (given-failed-future (params/decode page-store "Resource" ::handling/strict {"_summary" "true"})
+      (given-failed-future (params/decode page-store ::handling/strict {"_summary" "text"})
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported _summary search param with value(s): true"))
+        ::anom/message := "Unsupported _summary search param with value(s): text"))
 
-    (testing "unsupported true and text"
+    (testing "unsupported data and text"
       (doseq [handling [::handling/lenient nil]]
-        (given @(params/decode page-store "Resource" handling {"_summary" ["true" "text"]})
+        (given @(params/decode page-store handling {"_summary" ["data" "text"]})
           :summary? := false
           :summary := nil))
 
-      (given-failed-future (params/decode page-store "Resource" ::handling/strict {"_summary" ["true" "text"]})
+      (given-failed-future (params/decode page-store ::handling/strict {"_summary" ["data" "text"]})
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported _summary search param with value(s): true, text"))))
+        ::anom/message := "Unsupported _summary search param with value(s): data, text"))))
