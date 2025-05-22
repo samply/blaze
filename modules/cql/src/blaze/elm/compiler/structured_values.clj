@@ -14,7 +14,7 @@
    [clojure.string :as str])
   (:import
    [clojure.lang ILookup IReduceInit]
-   [java.time Instant LocalTime]
+   [java.time Instant LocalDateTime LocalTime OffsetDateTime]
    [java.util UUID]))
 
 (set! *warn-on-reflection* true)
@@ -56,6 +56,14 @@
   (get [instant key]
     (when (identical? :value key)
       instant))
+  LocalDateTime
+  (get [date-time key]
+    (when (identical? :value key)
+      date-time))
+  OffsetDateTime
+  (get [date-time key]
+    (when (identical? :value key)
+      date-time))
   LocalTime
   (get [time key]
     (when (identical? :value key)

@@ -71,6 +71,12 @@
 
   (is (= #system/date-time"2025-04-09" (p/get #fhir/dateTime"2025-04-09" :value)))
 
+  (is (= #system/date-time"2025-04-09T12:34:56" (p/get #fhir/dateTime"2025-04-09T12:34:56" :value)))
+
+  (is (= #system/date-time"2025-04-09T12:34:56Z" (p/get #fhir/dateTime"2025-04-09T12:34:56Z" :value)))
+
+  (is (= #system/date-time"2025-04-09T12:34:56+01:00" (p/get #fhir/dateTime"2025-04-09T12:34:56+01:00" :value)))
+
   (is (= #system/time"17:20:08" (p/get #fhir/time"17:20:08" :value)))
 
   (is (= "value-165314" (p/get #fhir/code"value-165314" :value)))
