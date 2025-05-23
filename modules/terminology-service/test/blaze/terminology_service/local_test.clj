@@ -111,6 +111,19 @@
    :blaze.test/fixed-rng-fn {}
    ::ts-local/graph-cache {}))
 
+(def bcp-47-config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)
+    :enable-bcp-47 true}
+   :blaze.test/fixed-clock {}
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
+
 ;; put LOINC data into an opaque function, so that it can't be introspected
 ;; by dev tooling, because it's just large
 (defonce loinc
@@ -172,6 +185,7 @@
     :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
     :graph-cache (ig/ref ::ts-local/graph-cache)
     :enable-bcp-13 true
+    :enable-bcp-47 true
     :enable-ucum true
     :loinc (ig/ref ::loinc)
     :sct (ig/ref ::cs/sct)}
@@ -190,6 +204,19 @@
         [0 :url] := #fhir/uri"urn:ietf:bcp:13"))
 
     (testing "can't delete the BCP-13 code system"
+      (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAAA"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAAA`."))))
+
+(deftest init-bcp-47-test
+  (with-system [{:blaze.db/keys [node]} bcp-47-config]
+    (testing "the BCP-47 code system is available"
+      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+        count := 1
+        [0 :id] := "AAAAAAAAAAAAAAAA"
+        [0 :url] := #fhir/uri"urn:ietf:bcp:47"))
+
+    (testing "can't delete the BCP-47 code system"
       (given-failed-future (d/transact node [[:delete "CodeSystem" "AAAAAAAAAAAAAAAA"]])
         ::anom/category := ::anom/conflict
         ::anom/message := "Can't delete the read-only resource `CodeSystem/AAAAAAAAAAAAAAAA`."))))
@@ -888,6 +915,66 @@
           [(parameter "code") 0 :value] := #fhir/code"code-124951"
           [(parameter "system") 0 :value] := #fhir/uri"system-115910"
           [(parameter "version") 0 :value] := #fhir/string"version-124939")))))
+
+(deftest code-system-validate-code-bcp-47-test
+  (with-system [{ts ::ts/local} bcp-47-config]
+    (testing "existing code"
+      (doseq [[code display]
+              [["de" "German"]
+               ["de-DE" "German (Region=Germany)"]
+               ["nn-NO" "Norwegian Nynorsk (Region=Norway)"]
+               ["dje-Latn-NE" "Zarma (Script=Latin, Region=Niger)"]
+               ["sr-Cyrl-ME" "Serbian (Script=Cyrillic, Region=Montenegro)"]]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"urn:ietf:bcp:47"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := #fhir/uri"urn:ietf:bcp:47"
+          [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+          [(parameter "display") 0 :value] := (type/string display))))
+
+    (testing "non-existing code"
+      (doseq [[code display]
+              [["xx-yyy" nil]]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"urn:ietf:bcp:47"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := #fhir/uri"urn:ietf:bcp:47"
+          [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+          [(parameter "display") 0 :value] := (type/string display))))))
+
+(deftest code-system-validate-code-bcp-13-test
+  (with-system [{ts ::ts/local} bcp-13-config]
+    (testing "existing code"
+      (doseq [[code]
+              [["text/plain"]
+               ["application/fhir+json"]]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"urn:ietf:bcp:13"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := #fhir/uri"urn:ietf:bcp:13"
+          [(parameter "version") 0 :value] := #fhir/string"1.0.0")))
+
+    (testing "non-existing code"
+      (doseq [[code]
+              [["text-plain"]
+               ["xx/yyy"]]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"urn:ietf:bcp:13"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "code") 0 :value] := (type/code code)
+          [(parameter "system") 0 :value] := #fhir/uri"urn:ietf:bcp:13"
+          [(parameter "version") 0 :value] := #fhir/string"1.0.0")))))
 
 (deftest code-system-validate-code-loinc-test
   (with-system [{ts ::ts/local} loinc-config]
@@ -3443,6 +3530,21 @@
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the value set `value-set-150638`. Expanding all BCP-13 concepts is not possible."))))
 
+(deftest expand-value-set-bcp-47-include-all-test
+  (testing "including all of BCP-47 is not possible"
+    (with-system-data [{ts ::ts/local} bcp-47-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-150638"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"urn:ietf:bcp:47"}]}}]]]
+
+      (given-failed-future (expand-value-set ts "url" #fhir/uri"value-set-150638")
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Error while expanding the value set `value-set-150638`. Expanding all BCP-47 concepts is not possible."))))
+
 (deftest expand-value-set-bcp-13-concept-test
   (with-system-data [{ts ::ts/local} bcp-13-config]
     [[[:put {:fhir/type :fhir/ValueSet :id "0"
@@ -3465,6 +3567,31 @@
       [:expansion :contains 0 :code] := #fhir/code"text/plain"
       [:expansion :contains 1 :system] := #fhir/uri"urn:ietf:bcp:13"
       [:expansion :contains 1 :code] := #fhir/code"application/fhir+json")))
+
+(deftest expand-value-set-bcp-47-concept-test
+  (with-system-data [{ts ::ts/local} bcp-47-config]
+    [[[:put {:fhir/type :fhir/ValueSet :id "0"
+             :url #fhir/uri"value-set-152706"
+             :compose
+             {:fhir/type :fhir.ValueSet/compose
+              :include
+              [{:fhir/type :fhir.ValueSet.compose/include
+                :system #fhir/uri"urn:ietf:bcp:47"
+                :concept
+                [{:fhir/type :fhir.ValueSet.compose.include/concept
+                  :code #fhir/code"ar"}
+                 {:fhir/type :fhir.ValueSet.compose.include/concept
+                  :code #fhir/code"bn"}
+                 {:fhir/type :fhir.ValueSet.compose.include/concept
+                  :code #fhir/code"ar_XXX"}]}]}}]]]
+
+    (given @(expand-value-set ts "url" #fhir/uri"value-set-152706")
+      :fhir/type := :fhir/ValueSet
+      [:expansion :contains count] := 2
+      [:expansion :contains 0 :system] := #fhir/uri"urn:ietf:bcp:47"
+      [:expansion :contains 0 :code] := #fhir/code"ar"
+      [:expansion :contains 1 :system] := #fhir/uri"urn:ietf:bcp:47"
+      [:expansion :contains 1 :code] := #fhir/code"bn")))
 
 (deftest expand-value-set-loinc-include-all-test
   (testing "including all of LOINC is too costly"
@@ -6563,7 +6690,7 @@
         [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))
 
 (deftest value-set-validate-code-bcp-13-include-all-test
-  (with-system-data [{ts ::ts/local} loinc-config]
+  (with-system-data [{ts ::ts/local} bcp-13-config]
     [[[:put {:fhir/type :fhir/ValueSet :id "0"
              :url #fhir/uri"value-set-142647"
              :compose
@@ -6580,6 +6707,25 @@
       [(parameter "result") 0 :value] := #fhir/boolean true
       [(parameter "code") 0 :value] := #fhir/code"text/plain"
       [(parameter "system") 0 :value] := #fhir/uri"urn:ietf:bcp:13")))
+
+(deftest value-set-validate-code-bcp-47-include-all-test
+  (with-system-data [{ts ::ts/local} bcp-47-config]
+    [[[:put {:fhir/type :fhir/ValueSet :id "0"
+             :url #fhir/uri"value-set-142647"
+             :compose
+             {:fhir/type :fhir.ValueSet/compose
+              :include
+              [{:fhir/type :fhir.ValueSet.compose/include
+                :system #fhir/uri"urn:ietf:bcp:47"}]}}]]]
+
+    (given @(value-set-validate-code ts
+              "url" #fhir/uri"value-set-142647"
+              "code" #fhir/code"ar"
+              "system" #fhir/uri"urn:ietf:bcp:47")
+      :fhir/type := :fhir/Parameters
+      [(parameter "result") 0 :value] := #fhir/boolean true
+      [(parameter "code") 0 :value] := #fhir/code"ar"
+      [(parameter "system") 0 :value] := #fhir/uri"urn:ietf:bcp:47")))
 
 (deftest value-set-validate-code-loinc-include-all-test
   (with-system-data [{ts ::ts/local} loinc-config]

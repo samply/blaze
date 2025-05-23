@@ -10,6 +10,7 @@
       "http://loinc.org" (when (:loinc/context context) :loinc)
       "http://snomed.info/sct" (when (:sct/context context) :sct)
       "urn:ietf:bcp:13" :bcp-13
+      "urn:ietf:bcp:47" :bcp-47
       "http://unitsofmeasure.org" :ucum
       nil)))
 
@@ -20,6 +21,7 @@
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
+      "urn:ietf:bcp:47" :bcp-47
       "http://unitsofmeasure.org" :ucum
       nil)))
 
@@ -30,6 +32,7 @@
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
+      "urn:ietf:bcp:47" :bcp-47
       "http://unitsofmeasure.org" :ucum
       nil)))
 
@@ -40,6 +43,7 @@
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
+      "urn:ietf:bcp:47" :bcp-47
       "http://unitsofmeasure.org" :ucum
       nil)))
 
@@ -59,6 +63,7 @@
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
+      "urn:ietf:bcp:47" :bcp-47
       "http://unitsofmeasure.org" :ucum
       nil)))
 

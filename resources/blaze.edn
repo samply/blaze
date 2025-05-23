@@ -1441,6 +1441,7 @@
      :rng-fn #blaze/ref :blaze/rng-fn
      :graph-cache #blaze/ref :blaze.terminology-service.local/graph-cache
      :enable-bcp-13 true
+     :enable-bcp-47 true
      :enable-ucum true}
 
     :blaze.terminology-service.local/graph-cache
