@@ -2418,12 +2418,20 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: GHCR meta
-      id: ghcr-meta
+    - name: Login to DockerHub
+      if: env.dockerhub_username != ''
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
+      with:
+        username: ${{ env.dockerhub_username }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Generate Image Metadata
+      id: meta
       uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5
       with:
         images: |
           ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}
+          ${{ env.dockerhub_username != '' && format('{0}/{1}', github.repository_owner, matrix.image.name ) || ''}}
         tags: |
           type=schedule
           type=ref,event=branch
@@ -2431,54 +2439,22 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
 
-    - name: Build and push to GHCR
-      id: ghcr-push
+    - name: Build and Push Image
+      id: push
       uses: docker/build-push-action@1dc73863535b631f98b2378be8619f83b136f4a0 # v6
       with:
         context: ${{ matrix.image.context }}
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: ${{ steps.ghcr-meta.outputs.tags }}
-        labels: ${{ steps.ghcr-meta.outputs.labels }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
 
     - name: Sign GHCR Image
-      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.ghcr-push.outputs.digest }}"
-
-    - name: Login to DockerHub
-      if: ${{ env.dockerhub_username != '' }}
-      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: DockerHub meta
-      if: ${{ env.dockerhub_username != '' }}
-      id: dockerhub-meta
-      uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5
-      with:
-        images: |
-          ${{ github.repository_owner }}/${{ matrix.image.name }}
-        tags: |
-          type=schedule
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-
-    - name: Build and push to DockerHub
-      id: dh-push
-      if: ${{ env.dockerhub_username != '' }}
-      uses: docker/build-push-action@1dc73863535b631f98b2378be8619f83b136f4a0 # v6
-      with:
-        context: ${{ matrix.image.context }}
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.dockerhub-meta.outputs.tags }}
-        labels: ${{ steps.dockerhub-meta.outputs.labels }}
+      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.push.outputs.digest }}"
 
     - name: Sign DockerHub Image
-      if: ${{ env.dockerhub_username != '' }}
-      run: cosign sign --yes "${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.dh-push.outputs.digest }}"
+      if: env.dockerhub_username != ''
+      run: cosign sign --yes "${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.push.outputs.digest }}"
 
   release:
     if: github.ref_type == 'tag'
