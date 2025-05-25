@@ -4,7 +4,8 @@
    [clojure.tools.build.api :as b]))
 
 (defn download-file [url output-path]
-  (let [response (hc/get url {:as :byte-array})]
+  (let [http-client (hc/build-http-client {:redirect-policy :normal})
+        response (hc/get url {:http-client http-client :as :byte-array})]
     (with-open [out (java.io.FileOutputStream. output-path)]
       (.write out (:body response)))))
 
