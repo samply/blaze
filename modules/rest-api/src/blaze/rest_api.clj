@@ -1,6 +1,5 @@
 (ns blaze.rest-api
   (:require
-   [blaze.async.comp :as ac]
    [blaze.db.spec]
    [blaze.fhir.parsing-context.spec]
    [blaze.fhir.writing-context.spec]
@@ -10,7 +9,6 @@
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
    [blaze.module :as m :refer [reg-collector]]
-   [blaze.rest-api.middleware.cors :as cors]
    [blaze.rest-api.middleware.log :refer [wrap-log]]
    [blaze.rest-api.middleware.metrics :as metrics]
    [blaze.rest-api.routes :as routes]
@@ -19,17 +17,10 @@
    [blaze.spec]
    [buddy.auth.middleware :refer [wrap-authentication]]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [integrant.core :as ig]
-   [reitit.core :as reitit]
    [reitit.ring]
    [reitit.ring.spec]
-   [ring.util.response :as ring]
    [taoensso.timbre :as log]))
-
-(def ^:private wrap-cors
-  {:name :cors
-   :wrap cors/wrap-cors})
 
 (def ^:private wrap-job-scheduler
   {:name :job-scheduler
@@ -37,26 +28,11 @@
            (fn [request respond raise]
              (handler (assoc request :blaze/job-scheduler job-scheduler) respond raise)))})
 
-(defn- allowed-methods [{{:keys [result]} ::reitit/match}]
-  (->> result
-       (keep (fn [[k v]] (when v k)))
-       (map (comp str/upper-case name))
-       (str/join ",")))
-
-(defn default-options-handler [request]
-  (-> (ring/status 204)
-      (ring/header "Access-Control-Allow-Methods" (allowed-methods request))
-      (ring/header "Access-Control-Allow-Headers" "content-type")
-      (ac/completed-future)))
-
 (defn- router [{:keys [context-path] :or {context-path ""} :as config}]
   (reitit.ring/router
    (routes/routes config)
    {:path context-path
-    :syntax :bracket
-    :reitit.ring/default-options-endpoint
-    {:no-doc true
-     :handler default-options-handler}}))
+    :syntax :bracket}))
 
 (defn- handler
   "Whole app Ring handler."
@@ -67,7 +43,7 @@
         (reitit.ring/redirect-trailing-slash-handler {:method :strip})
         (fhir-output/wrap-output handler-util/default-handler writing-context {:accept-all? true}))
        {:middleware
-        (cond-> [wrap-cors [wrap-job-scheduler job-scheduler]]
+        (cond-> [[wrap-job-scheduler job-scheduler]]
           (seq auth-backends)
           (conj #(apply wrap-authentication % auth-backends)))})
       wrap-log))

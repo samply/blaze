@@ -1050,9 +1050,6 @@ jobs:
     - name: Transaction with Invalid (Null) Resource
       run: .github/scripts/transaction-null-resource.sh
 
-    - name: OPTIONS
-      run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
-
     - name: Health
       run: curl -f http://localhost:8080/health
 
