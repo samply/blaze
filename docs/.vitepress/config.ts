@@ -40,7 +40,7 @@ export default defineConfig({
 		nav: [
 			{ text: 'Home', link: '/' },
 			{
-				text: 'v0.34.0',
+				text: 'v1.0.0',
 				items: [
 					{
 						text: 'Changelog',
@@ -163,7 +163,7 @@ export default defineConfig({
 			{
 				text: 'Usage',
 				items: [
-					{ text: 'Frontend', link: '/frontend' },
+					{ text: 'Web Frontend', link: '/frontend' },
 					{ text: 'Importing Data', link: '/importing-data' },
 					{ text: 'Sync Data', link: '/data-sync' },
 					{ text: 'Conformance', link: '/conformance' },

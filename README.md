@@ -7,11 +7,11 @@
 [![Latest Release](https://img.shields.io/github/v/release/samply/blaze?color=1874a7)][5]
 [![Docs](https://img.shields.io/badge/Docs-blue.svg)](https://samply.github.io/blaze)
 
-A FHIR® Store with internal, fast CQL Evaluation Engine
+A FHIR® Server with internal, fast CQL Evaluation Engine
 
 ## Goal
 
-The goal of this project is to provide a FHIR® Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
+The goal of this project is to provide a FHIR® Server with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries over millions of patients.
 
 ## Demo
 
@@ -19,9 +19,18 @@ A demo installation can be found [here](https://blaze.life.uni-leipzig.de/fhir) 
 
 ## State
 
-Blaze is widely used in the [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) in Germany and in [Biobanks](https://www.bbmri-eric.eu) across Europe. A 1.0 version is expected in the next months.
+Blaze is stable and widely used in the [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) in Germany and in [Biobanks](https://www.bbmri-eric.eu) across Europe.
 
-Latest release: [v0.34.0][5]
+Latest release: [v1.0.0][5]
+
+## Key Features
+
+* Implements large parts of the [FHIR® R4 API][1]
+* Contains a fast [CQL Evaluation Engine][17]
+* Supports the operations [$evaluate-measure][2], [$everything][13], [$validate-code][14], [$expand][15] amongst others
+* Offers [terminology services][16] including LOINC and SNOMED CT
+* Scales horizontally via [Distributed Storage Variant][18]
+* Comes with a modern [Web Frontend][19]
 
 ## Documentation
 
@@ -51,12 +60,21 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
+[1]: <https://samply.github.io/blaze/api.html>
+[2]: <https://samply.github.io/blaze/api/operation/measure-evaluate-measure.html>
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.34.0>
+[5]: <https://github.com/samply/blaze/releases/tag/v1.0.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
 [9]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [10]: <https://github.com/facebook/rocksdb/wiki/RocksDB-Basics#multi-threaded-compactions>
 [12]: <https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=6&format=ALL>
+[13]: <https://samply.github.io/blaze/api/operation/patient-everything.html>
+[14]: <https://samply.github.io/blaze/api/operation/code-system-validate-code.html>
+[15]: <https://samply.github.io/blaze/api/operation/value-set-expand.html>
+[16]: <https://samply.github.io/blaze/terminology-service.html>
+[17]: <https://samply.github.io/blaze/cql-queries.html>
+[18]: <https://samply.github.io/blaze/deployment/distributed-backend.html>
+[19]: <https://samply.github.io/blaze/frontend.html>

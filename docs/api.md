@@ -162,8 +162,8 @@ Blaze has to generate absolute URLs of its own in links and Location headers. By
 
 Besides the static `BASE_URL` setting, Blaze also respects the reverse proxy headers X-Forwarded-Host, X-Forwarded-Proto and [Forwarded][4] to generate its base URL dynamically.
 
-[1]: <https://www.hl7.org/fhir/http.html>
-[2]: <https://www.hl7.org/fhir/capabilitystatement.html>
+[1]: <https://hl7.org/fhir/R4/http.html>
+[2]: <https://hl7.org/fhir/R4/capabilitystatement.html>
 [3]: <https://github.com/samply/blaze/issues>
 [4]: <https://datatracker.ietf.org/doc/html/rfc7239>
 [5]: <https://hl7.org/fhir/http.html#capabilities>
