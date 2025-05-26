@@ -26,7 +26,6 @@
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
-   [reitit.core :as-alias reitit]
    [reitit.ring]
    [ring.core.protocols :as rp]
    [ring.util.response :as ring]
@@ -39,22 +38,6 @@
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
-
-(deftest default-options-handler-test
-  (testing "without match"
-    (given @(rest-api/default-options-handler {})
-      :status := 204
-      [:headers "Access-Control-Allow-Headers"] := "content-type"))
-
-  (testing "with one :get match"
-    (given @(rest-api/default-options-handler {::reitit/match {:result {:get {}}}})
-      :status := 204
-      [:headers "Access-Control-Allow-Methods"] := "GET"))
-
-  (testing "with one :get and one :post match"
-    (given @(rest-api/default-options-handler {::reitit/match {:result {:get {} :post {}}}})
-      :status := 204
-      [:headers "Access-Control-Allow-Methods"] := "GET,POST")))
 
 (deftest init-test
   (testing "nil config"
@@ -226,13 +209,6 @@
                       :headers {"x-forwarded-host" "blaze.de"}})
           :status := 200
           [:body json-parser :implementation :url] := #fhir/url"http://blaze.de")))))
-
-(deftest options-cors-test
-  (with-system [{:blaze/keys [rest-api]} config]
-    (given (call rest-api {:request-method :options :uri "/metadata"})
-      :status := 204
-      [:headers "Access-Control-Allow-Headers"] := "content-type"
-      [:headers "Access-Control-Allow-Methods"] := "GET,OPTIONS")))
 
 (deftest not-found-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
