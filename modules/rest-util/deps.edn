@@ -22,7 +22,7 @@
   {:mvn/version "5.3.4"}
 
   metosin/reitit-ring
-  {:mvn/version "0.8.0"
+  {:mvn/version "0.9.0"
    :exclusions [ring/ring-core]}
 
   metosin/muuntaja
