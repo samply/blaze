@@ -1,4 +1,4 @@
-# Frontend (Web UI)
+# Web Frontend
 
 Blaze comes with a Web UI that provides a user friendly view on the FHIR data and and administrative UI.
 

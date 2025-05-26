@@ -6,9 +6,9 @@ GET [base]?param1=value&...
 
 ## Search Result Parameters
 
-| Name       | Description                                      |
-|------------|--------------------------------------------------|
-| `_summary` | `true`, `data`, `count` and `false` is supported |
+| Name       | Since | Description                               |
+|------------|-------|-------------------------------------------|
+| `_summary` | 1.0.0 | `true`, `count` and `false` are supported |
 
 ## Paging
 

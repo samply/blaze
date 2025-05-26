@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.0.0
+
+### Enhancements
+
+* Implement Summary Mode for all Resources ([#199](https://github.com/samply/blaze/issues/199))
+
+### Security
+
+* Remove CORS Header ([#2691](https://github.com/samply/blaze/issues/2691))
+
+### Bugfixes
+
+* Fix missing Value Access in Some DateTime Types ([#2686](https://github.com/samply/blaze/issues/2686))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/85?closed=1).
+
 ## v0.34.0
 
 ### Notes
