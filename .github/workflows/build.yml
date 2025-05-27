@@ -160,6 +160,12 @@ jobs:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+
     - name: Download Job IG Profiles
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       with:
@@ -206,6 +212,12 @@ jobs:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-db-coverage-${{ hashFiles('modules/db/deps.edn') }}
 
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-db-coverage-${{ hashFiles('modules/db/deps.edn') }}
+
     - name: Download Job IG Profiles
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       with:
@@ -251,6 +263,12 @@ jobs:
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
+
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -303,6 +321,12 @@ jobs:
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-build-${{ hashFiles('**/deps.edn') }}
+
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -1857,6 +1881,12 @@ jobs:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+
     - name: APT Update
       run: sudo apt-get update
 
@@ -2254,6 +2284,12 @@ jobs:
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update
