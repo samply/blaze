@@ -2,13 +2,22 @@
 
 ## v1.0.0
 
+### Notes
+
+The version 1.0.0 is fully compatible with development versions starting with zero like all versions since v0.11.0. An upgrade to v1.0.0 with an existing database is no problem at all. The timing to go to v1.0.0 was overdue because Blaze is stable for at least two years now and is widely used in production. In conclusion, this version is not special except for it's actual number.  
+
+One important aspect of a version 1.0.0 was added: Docker Image Signing. Docker images can now be verified to be build on GitHub on a certain tag like v1.0.0. The documentation to run the verification locally can be found [here](https://samply.github.io/blaze/deployment.html).
+
 ### Enhancements
 
 * Implement Summary Mode for all Resources ([#199](https://github.com/samply/blaze/issues/199))
+* Implement Async Request Pattern for POST Requests ([#2648](https://github.com/samply/blaze/issues/2648))
+* Implement BCP 47 Code System ([#2505](https://github.com/samply/blaze/issues/2505))
 
 ### Security
 
 * Remove CORS Header ([#2691](https://github.com/samply/blaze/issues/2691))
+* Sign Docker Images ([#2678](https://github.com/samply/blaze/pull/2678))
 
 ### Bugfixes
 
