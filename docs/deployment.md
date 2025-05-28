@@ -24,19 +24,21 @@ cosign verify "samply/blaze:1.0" \
 The expected output is:
 
 ```text
-Verification for index.docker.io/samply/blaze:1.0
+Verification for index.docker.io/samply/blaze:1.0 --
 The following checks were performed on each of these signatures:
   - The cosign claims were validated
   - Existence of the claims in the transparency log was verified offline
   - The code-signing certificate was verified using trusted certificate authority certificates
-Certificate subject: https://github.com/samply/blaze/.github/workflows/build.yml@refs/...
+Certificate subject: https://github.com/samply/blaze/.github/workflows/build.yml@refs/tags/v1.0.0
 Certificate issuer URL: https://token.actions.githubusercontent.com
-GitHub Workflow Trigger: pull_request
-GitHub Workflow SHA: <SHA>
+GitHub Workflow Trigger: push
+GitHub Workflow SHA: 79937e53c48b5966bc8774feec98e1708980d73f
 GitHub Workflow Name: Build
 GitHub Workflow Repository: samply/blaze
-GitHub Workflow Ref: refs/...
+GitHub Workflow Ref: refs/tags/v1.0.0
 ```
+
+This output ensures that the image was build on the GitHub workflow on the repository `samply/blaze` and tag `v1.0.0`.
 
 ## Production
 
