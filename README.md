@@ -9,6 +9,10 @@
 
 A FHIR® Server with internal, fast CQL Evaluation Engine
 
+## News
+
+Alexander Kiel will give a talk about Blaze at the [HL7® FHIR® DevDays 2025](https://www.devdays.com/program-2025) at Wed, June 4 11:15 - 11:35. 
+
 ## Goal
 
 The goal of this project is to provide a FHIR® Server with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries over millions of patients.
