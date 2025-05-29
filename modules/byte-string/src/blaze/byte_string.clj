@@ -7,9 +7,6 @@
    [clojure.lang IObj]
    [com.google.common.io BaseEncoding]
    [com.google.protobuf ByteString]
-   [com.fasterxml.jackson.core JsonGenerator]
-   [com.fasterxml.jackson.databind.module SimpleModule]
-   [com.fasterxml.jackson.databind.ser.std StdSerializer]
    [java.io Writer]
    [java.nio ByteBuffer]
    [java.nio.charset StandardCharsets]))
@@ -144,15 +141,6 @@
 
 (defn as-read-only-byte-buffer [bs]
   (.asReadOnlyByteBuffer ^ByteString bs))
-
-(def ^:private serializer
-  (proxy [StdSerializer] [ByteString]
-    (serialize [^ByteString bs ^JsonGenerator gen _]
-      (.writeBinary gen (.toByteArray bs)))))
-
-(def object-mapper-module
-  (doto (SimpleModule. "ByteString")
-    (.addSerializer ByteString serializer)))
 
 (defmethod print-method ByteString [^ByteString bs ^Writer w]
   (.write w "#blaze/byte-string\"")

@@ -1,7 +1,6 @@
 (ns blaze.db.tx-log.local-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.byte-string :as bs]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
@@ -13,6 +12,7 @@
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
+   [blaze.fhir.test-util]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
@@ -38,8 +38,7 @@
 (def ^:private cbor-object-mapper
   (j/object-mapper
    {:factory (CBORFactory.)
-    :decode-key-fn true
-    :modules [bs/object-mapper-module]}))
+    :decode-key-fn true}))
 
 (def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
 (def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
