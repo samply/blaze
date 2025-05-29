@@ -141,10 +141,10 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.11.1264"}
+    {:mvn/version "2.11.1276"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "2.0.16"}}
+    {:mvn/version "2.0.17"}}
 
    :main-opts
    ["-m" "antq.core"
