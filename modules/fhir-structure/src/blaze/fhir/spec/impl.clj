@@ -11,7 +11,6 @@
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
   (:import
-   [com.github.benmanes.caffeine.cache CacheLoader Caffeine LoadingCache]
    [java.net URLEncoder]
    [java.nio.charset StandardCharsets]))
 
@@ -286,15 +285,8 @@
         (recur keys))
       (dissoc m key))))
 
-(def ^:private choice-type-key-cache
-  (-> (Caffeine/newBuilder)
-      (.build
-       (reify CacheLoader
-         (load [_ [key type]]
-           (keyword (str (name key) (su/capital (name type)))))))))
-
 (defn- choice-type-key [key type]
-  (.get ^LoadingCache choice-type-key-cache [key type]))
+  (keyword (str (name key) (su/capital (name type)))))
 
 (defn add-choice-type
   "Add the type suffix to the key of a choice typed data element."
