@@ -906,7 +906,7 @@
           "resourceType" := "OperationOutcome"
           ["issue" 0 "severity"] := "error"
           ["issue" 0 "code"] := "processing"
-          ["issue" 0 "diagnostics"] := "The pattern [system https://samply.github.io/blaze/fhir/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but must be 're-index'], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact a Database Column Family' but must be '(Re)Index a Search Parameter']]"))))
+          ["issue" 0 "diagnostics"] := "The pattern [system https://samply.github.io/blaze/fhir/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but is fixed to 're-index' in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob#Task], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact a Database Column Family' but is fixed to '(Re)Index a Search Parameter' in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob#Task]]"))))
 
   (testing "re-index job"
     (testing "non-absolute search-param-url"
