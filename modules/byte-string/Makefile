@@ -10,6 +10,12 @@ test:
 test-coverage:
 	clojure -M:test:coverage
 
+deps-tree:
+	clojure -X:deps tree
+
+deps-list:
+	clojure -X:deps list
+
 cloc-prod:
 	cloc src
 
