@@ -50,7 +50,7 @@
       (nil? ed)
       {:types (assoc types parent-type out)}
 
-      (not (str/starts-with? path parent-type))
+      (not (str/starts-with? path (str parent-type ".")))
       {:types (assoc types parent-type out) :more all}
 
       (backbone-element-definition? ed)

@@ -572,3 +572,73 @@
   [identifier (gen/vector (identifier))
    status (rare-nil (code))
    input (gen/vector (task-input))])
+
+(defn consent-policy
+  [& {:keys [id extension authority uri]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           authority (nilable (uri))
+           uri (nilable (uri))}}]
+  (->> (gen/tuple id extension authority uri)
+       (to-map [:id :extension :authority :uri])
+       (fhir-type :fhir.Consent/policy)))
+
+(defn consent-verification
+  [& {:keys [id extension verified verifiedWith verificationDate]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           verified (boolean)
+           verifiedWith (nilable (reference))
+           verificationDate (nilable (dateTime))}}]
+  (->> (gen/tuple id extension verified verifiedWith verificationDate)
+       (to-map [:id :extension :verified :verifiedWith :verificationDate])
+       (fhir-type :fhir.Consent/verification)))
+
+(defn consent-provision-actor
+  [& {:keys [id extension role reference]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           role (codeable-concept)
+           reference (reference)}}]
+  (->> (gen/tuple id extension role reference)
+       (to-map [:id :extension :role :reference])
+       (fhir-type :fhir.Consent.provision/actor)))
+
+(defn consent-provision-data
+  [& {:keys [id extension meaning reference]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           meaning (code)
+           reference (reference)}}]
+  (->> (gen/tuple id extension meaning reference)
+       (to-map [:id :extension :meaning :reference])
+       (fhir-type :fhir.Consent.provision/data)))
+
+(defn consent-provision
+  [& {:keys [id extension type period actor action securityLabel purpose class
+             code dataPeriod data]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           type (nilable (code))
+           period (nilable (period))
+           actor (gen/vector (consent-provision-actor))
+           action (gen/vector (codeable-concept))
+           securityLabel (gen/vector (coding))
+           purpose (gen/vector (coding))
+           class (gen/vector (coding))
+           code (gen/vector (codeable-concept))
+           dataPeriod (nilable (blaze.fhir.spec.generators/period))
+           data (gen/vector (consent-provision-data))}}]
+  (->> (gen/tuple id extension type period actor action securityLabel purpose
+                  class code dataPeriod data)
+       (to-map [:id :extension :type :period :actor :action :securityLabel
+                :purpose :class :code :dataPeriod :data :provision])
+       (fhir-type :fhir.Consent/provision)))
+
+(def-resource-gen consent
+  [identifier (gen/vector (identifier))
+   status (code)
+   policy (gen/vector (consent-policy))
+   policyRule (nilable (codeable-concept))
+   verification (gen/vector (consent-verification))
+   provision (nilable (consent-provision {:provision (gen/vector (consent-provision))}))])

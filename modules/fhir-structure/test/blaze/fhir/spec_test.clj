@@ -4155,7 +4155,8 @@
                :input
                [{:fhir/type :fhir.Task/input
                  :value #fhir/code"code-173329"}]})
-             {:resourceType "Task" :input [{:valueCode "code-173329"}]})))))
+             {:resourceType "Task"
+              :input [{:valueCode "code-173329"}]})))))
 
 (deftest library-test
   (testing "summary parsing"
@@ -4166,3 +4167,43 @@
           (and
            (->> library :meta :tag (some fu/subsetted?))
            (not-any? :data (:content library))))))))
+
+(deftest consent-test
+  (testing "round-trip"
+    (testing "JSON"
+      (satisfies-prop 20
+        (prop/for-all [consent (fg/consent)]
+          (= (->> (write-json consent)
+                  (parse-json "Consent"))
+             consent))))
+
+    (testing "XML"
+      (satisfies-prop 20
+        (prop/for-all [consent (fg/consent)]
+          (= (-> consent
+                 fhir-spec/unform-xml
+                 fhir-spec/conform-xml)
+             consent))))
+
+    (testing "CBOR"
+      (satisfies-prop 20
+        (prop/for-all [consent (fg/consent)]
+          (= (->> (write-cbor consent)
+                  (parse-cbor "Consent"))
+             consent)))))
+
+  (testing "parsing"
+    (testing "JSON"
+      (are [json fhir] (= fhir (write-parse-json "Consent" json))
+        {:resourceType "Consent"
+         :policyRule {}}
+        {:fhir/type :fhir/Consent
+         :policyRule #fhir/CodeableConcept{}})))
+
+  (testing "writing"
+    (testing "JSON"
+      (is (= (write-read-json
+              {:fhir/type :fhir/Consent
+               :policyRule #fhir/CodeableConcept{}})
+             {:resourceType "Consent"
+              :policyRule {}})))))
