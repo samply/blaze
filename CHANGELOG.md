@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.1
+
+### Bugfixes
+
+* Fix Consent Resource policyRule Property ([#2700](https://github.com/samply/blaze/issues/2700))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/106?closed=1).
+
 ## v1.0.0
 
 ### Notes
