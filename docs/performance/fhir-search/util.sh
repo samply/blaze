@@ -24,8 +24,8 @@ calc-print-stats() {
   STATS="$(calc-avg "$TIMES_FILE")"
   AVG=$(echo "$STATS" | jq .avg)
 
-  # the avg time per 1 million hits
-  AVG_1M=$(echo "scale=2; $AVG * 10^6 / $COUNT" | bc)
+  # resources per second
+  RES_S=$(echo "scale=2; $COUNT / $AVG" | bc)
 
   # shorten the count
   if (( $(echo "$COUNT > 1000000" | bc) )); then
@@ -38,7 +38,18 @@ calc-print-stats() {
     COUNT_FORMAT="%6.0f"
   fi
 
-  printf "| $COUNT_FORMAT | %8.2f | %6.3f | %6.2f |\n" "$COUNT" "$AVG" "$(echo "$STATS" | jq .stddev)" "$AVG_1M"
+  # shorten the resources per second
+  if (( $(echo "$RES_S > 1000000" | bc) )); then
+    RES_S=$(echo "scale=2; $RES_S / 1000000" | bc)
+    RES_S_FORMAT="%4.1f M"
+  elif (( $(echo "$RES_S > 1000" | bc) )); then
+    RES_S=$(echo "scale=2; $RES_S / 1000" | bc)
+    RES_S_FORMAT="%4.0f k"
+  else
+    RES_S_FORMAT="%6.0f"
+  fi
+
+  printf "| $COUNT_FORMAT | %8.2f | %6.3f | $RES_S_FORMAT |\n" "$COUNT" "$AVG" "$(echo "$STATS" | jq .stddev)" "$RES_S"
 }
 
 count-resources-raw() {
