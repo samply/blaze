@@ -13,7 +13,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def token (str/join (repeat 32 "A")))
+(def token (str/join (repeat 64 "A")))
 
 (deftest encode-decode-test
   (satisfies-prop 100

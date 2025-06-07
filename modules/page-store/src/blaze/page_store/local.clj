@@ -1,61 +1,72 @@
 (ns blaze.page-store.local
+  (:refer-clojure :exclude [load])
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.metrics.core :as metrics]
    [blaze.module :as m]
    [blaze.page-store :as-alias page-store]
+   [blaze.page-store.local.hash :as hash]
    [blaze.page-store.local.spec]
-   [blaze.page-store.local.token :as token]
    [blaze.page-store.protocols :as p]
    [blaze.page-store.spec]
-   [blaze.page-store.weigh :as w]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [java-time.api :as time]
    [taoensso.timbre :as log])
   (:import
-   [com.github.benmanes.caffeine.cache Cache Caffeine Weigher]))
+   [com.github.benmanes.caffeine.cache Cache Caffeine]
+   [com.google.common.hash HashCode]
+   [com.google.common.io BaseEncoding]
+   [java.util.function Function]))
 
 (set! *warn-on-reflection* true)
 
 (defn- not-found-msg [token]
   (format "Clauses of token `%s` not found." token))
 
-(defrecord LocalPageStore [secure-rng ^Cache cache]
+(defn- decode-token [token]
+  (HashCode/fromBytes (.decode (BaseEncoding/base16) ^String token)))
+
+(defn- load [^Cache cache token]
+  (some->> (.getIfPresent cache (decode-token token))
+           (reduce #(if-some [clause (.getIfPresent cache %2)]
+                      (conj %1 clause)
+                      (reduced nil))
+                   [])))
+
+(defn- store-clause [^Cache cache clause]
+  (let [hash (hash/hash-clause clause)]
+    (.get cache hash (reify Function (apply [_ _] clause)))
+    hash))
+
+(defn- store [^Cache cache clauses]
+  (let [hashes (mapv (partial store-clause cache) clauses)
+        hash (hash/hash-hashes hashes)]
+    (.get cache hash (reify Function (apply [_ _] hashes)))
+    (hash/encode hash)))
+
+(defrecord LocalPageStore [cache]
   p/PageStore
   (-get [_ token]
     (ac/completed-future
-     (or (.getIfPresent cache token) (ba/not-found (not-found-msg token)))))
+     (or (load cache token) (ba/not-found (not-found-msg token)))))
 
   (-put [_ clauses]
-    (if (empty? clauses)
-      (ac/completed-future (ba/incorrect "Clauses should not be empty."))
-      (let [token (token/generate secure-rng)]
-        (.put cache token clauses)
-        (ac/completed-future token)))))
-
-(def ^:private ^:const ^long token-weigh 72)
-
-(def ^:private weigher
-  (reify Weigher
-    (weigh [_ _ clauses]
-      (+ token-weigh (w/weigh clauses)))))
+    (ac/completed-future
+     (if (empty? clauses)
+       (ba/incorrect "Clauses should not be empty.")
+       (store cache clauses)))))
 
 (defmethod m/pre-init-spec ::page-store/local [_]
-  (s/keys :req-un [::page-store/secure-rng]
-          :opt-un [::max-size-in-mb ::expire-duration]))
+  (s/keys :opt-un [::expire-duration]))
 
 (defmethod ig/init-key ::page-store/local
-  [_ {:keys [secure-rng max-size-in-mb expire-duration]
-      :or {max-size-in-mb 10 expire-duration (time/hours 24)}}]
-  (log/info "Open local page store with a capacity of" max-size-in-mb
-            "MiB and an expire duration of" (str expire-duration))
+  [_ {:keys [expire-duration] :or {expire-duration (time/hours 1)}}]
+  (log/info "Open local page store with an expire duration of"
+            (str expire-duration))
   (->LocalPageStore
-   secure-rng
    (-> (Caffeine/newBuilder)
-       (.maximumWeight (bit-shift-left max-size-in-mb 20))
-       (.weigher weigher)
        (.expireAfterAccess expire-duration)
        (.build))))
 

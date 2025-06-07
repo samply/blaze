@@ -124,9 +124,11 @@
 
   (testing "removes keys"
     (are [key] (empty? (iu/clauses {key "bar"}))
-      "_foo"
-      "__token"
-      "__t")))
+      "_foo" "__token" "__t" "_total"))
+
+  (testing "keeps keys"
+    (are [key] (seq (iu/clauses {key "bar"}))
+      "_id" "_list" "_profile" "_tag" "_lastUpdated" "_has")))
 
 (deftest put-tx-op-test
   (testing "on empty database"

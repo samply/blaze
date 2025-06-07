@@ -199,6 +199,7 @@ export default defineConfig({
 					{
 						text: 'Implementation',
 						items: [
+							{ text: 'API', link: '/implementation/api' },
 							{ text: 'Database', link: '/implementation/database' },
 							{ text: 'FHIR Data Model', link: '/implementation/fhir-data-model' },
 							{ text: 'CQL', link: '/implementation/cql' },

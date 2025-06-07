@@ -233,8 +233,7 @@
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :context-path "/fhir"}
 
-   :blaze.page-store/local
-   {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+   :blaze.page-store/local {}
 
    :blaze/scheduler {}
 

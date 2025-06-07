@@ -452,8 +452,6 @@
 
   :blaze/rng-fn {}
 
-  :blaze/secure-rng {}
-
   :blaze/page-id-cipher
   {:node #blaze/ref :blaze.db.admin/node
    :scheduler #blaze/ref :blaze/scheduler
@@ -611,7 +609,7 @@
    ;; Can be referred by the super key :blaze/page-store.
    ;;
    :blaze.page-store/local
-   {:secure-rng #blaze/ref :blaze/secure-rng}
+   {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT1H"]}
 
    :blaze.page-store.local/collector
    {:page-store #blaze/ref :blaze.page-store/local}}
@@ -970,8 +968,7 @@
    ;; Can be referred by the super key :blaze/page-store.
    ;;
    :blaze.page-store/local
-   {:secure-rng #blaze/ref :blaze/secure-rng
-    :max-size-in-mb 100}
+   {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT1H"]}
 
    :blaze.page-store.local/collector
    {:page-store #blaze/ref :blaze.page-store/local}}
@@ -1281,8 +1278,7 @@
    ;; Can be referred by the super key :blaze/page-store.
    ;;
    :blaze.page-store/cassandra
-   {:secure-rng #blaze/ref :blaze/secure-rng
-    :contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
+   {:contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
     :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
     :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
     :key-space #blaze/cfg ["DB_CASSANDRA_KEY_SPACE" string? "blaze"]

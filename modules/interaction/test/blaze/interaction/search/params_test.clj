@@ -44,22 +44,22 @@
     (given @(params/decode
              (reify p/PageStore
                (-get [_ token]
-                 (assert (= (str/join (repeat 32 "A")) token))
+                 (assert (= (str/join (repeat 64 "A")) token))
                  (ac/completed-future [["foo" "bar"]])))
              ::handling/strict
-             {"__token" (str/join (repeat 32 "A"))})
+             {"__token" (str/join (repeat 64 "A"))})
       :clauses := [["foo" "bar"]]
-      :token := (str/join (repeat 32 "A"))))
+      :token := (str/join (repeat 64 "A"))))
 
   (testing "token not found"
     (given-failed-future
      (params/decode
       (reify p/PageStore
         (-get [_ token]
-          (assert (= (str/join (repeat 32 "A")) token))
+          (assert (= (str/join (repeat 64 "A")) token))
           (ac/completed-future (ba/not-found "Not Found"))))
       ::handling/strict
-      {"__token" (str/join (repeat 32 "A"))})
+      {"__token" (str/join (repeat 64 "A"))})
       ::anom/category := ::anom/not-found
       :http/status := nil))
 

@@ -173,7 +173,7 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-   :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+   :blaze.page-store/local {}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))
@@ -606,7 +606,7 @@
         (let [{:keys [status body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :path-params (page-path-params page-id-cipher {"__t" "0" "__token" (str/join (repeat 32 "A"))})})]
+                 :path-params (page-path-params page-id-cipher {"__t" "0" "__token" (str/join (repeat 64 "A"))})})]
 
           (is (= 404 status))
 
@@ -615,7 +615,7 @@
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
             [:issue 0 :diagnostics] := (format "Clauses of token `%s` not found."
-                                               (str/join (repeat 32 "A"))))))))
+                                               (str/join (repeat 64 "A"))))))))
 
   (testing "with one patient"
     (with-handler [handler]
@@ -955,11 +955,11 @@
                      (link-url body "self"))))
 
             (testing "has a first link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1"})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has a next link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -979,11 +979,11 @@
                        (link-url body "self"))))
 
               (testing "has a first link with token"
-                (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC" "_total" "accurate" "_count" "1" "__t" "1"})
+                (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_total" "accurate" "_count" "1" "__t" "1"})
                        (link-url body "first"))))
 
               (testing "has a next link with token"
-                (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC" "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2"})
+                (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2"})
                        (link-url body "next"))))
 
               (testing "the bundle contains one entry"
@@ -1015,7 +1015,7 @@
         (let [{:keys [body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :path-params (page-path-params page-id-cipher {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})})]
+                 :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})})]
 
           (testing "there is no total count because we have clauses and we have
                     more hits than page-size"
@@ -1025,7 +1025,7 @@
             (is (nil? (link-url body "self"))))
 
           (testing "has a first link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1"})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "has no next link"
@@ -1078,24 +1078,24 @@
                    :params {"active" "true" "_count" "1"}})]
 
             (testing "has a first link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1"})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has a first link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})
                      (link-url body "next"))))))
 
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
                   {::reitit/match patient-page-match
-                   :path-params (page-path-params page-id-cipher {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})})]
+                   :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})})]
 
             (testing "has no self link"
               (is (nil? (link-url body "self"))))
 
             (testing "has a next link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "3"})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "3"})
                      (link-url body "next")))))))))
 
   (testing "_id search"

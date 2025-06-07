@@ -436,6 +436,12 @@ Enable the [Delete History](../api/interaction/delete-history.md) interaction.
 
 Enable the [Operation \$purge on Patient](../api/operation/patient-purge.md).
 
+#### `PAGE_STORE_EXPIRE` <Badge type="warning" text="Since 1.0.2"/>
+
+The duration after page store entries expire. Lower that value if the size of the page store, available via the metric `blaze_page_store_estimated_size`, gets to large.
+
+**Default:** PT1H
+
 #### `ENABLE_TERMINOLOGY_SERVICE` <Badge type="warning" text="Since 0.31"/>
 
 Enable the [Terminology Service](../terminology-service.md).
