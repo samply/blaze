@@ -19,7 +19,6 @@
    [taoensso.timbre :as log])
   (:import
    [java.io PushbackReader]
-   [java.security SecureRandom]
    [java.time Clock LocalDate]
    [java.util.concurrent ThreadLocalRandom]))
 
@@ -254,7 +253,3 @@
 (defmethod ig/init-key :blaze/rng-fn
   [_ _]
   #(ThreadLocalRandom/current))
-
-(defmethod ig/init-key :blaze/secure-rng
-  [_ _]
-  (SecureRandom.))
