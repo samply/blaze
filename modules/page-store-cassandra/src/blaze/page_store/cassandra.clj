@@ -9,9 +9,9 @@
    [blaze.page-store :as-alias page-store]
    [blaze.page-store.cassandra.codec :as codec]
    [blaze.page-store.cassandra.statement :as statement]
-   [blaze.page-store.local.token :as token]
    [blaze.page-store.protocols :as p]
    [blaze.page-store.spec]
+   [blaze.page-store.token :as token]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [prometheus.alpha :as prom :refer [defhistogram]]
@@ -75,14 +75,14 @@
 (defn- execute-put [session statement token clauses]
   (ac/retry #(execute-put* session statement token clauses) 5))
 
-(defrecord CassandraPageStore [secure-rng session get-statement put-statement]
+(defrecord CassandraPageStore [session get-statement put-statement]
   p/PageStore
   (-get [_ token]
     (log/trace "get" token)
     (execute-get session get-statement token))
 
   (-put [_ clauses]
-    (let [token (token/generate secure-rng)]
+    (let [token (token/generate clauses)]
       (log/trace "put" token)
       (do-sync [_ (execute-put session put-statement token clauses)]
         token)))
@@ -92,8 +92,7 @@
     (cass/close session)))
 
 (defmethod m/pre-init-spec ::page-store/cassandra [_]
-  (s/keys :req-un [::page-store/secure-rng]
-          :opt-un [::cass/contact-points ::cass/key-space
+  (s/keys :opt-un [::cass/contact-points ::cass/key-space
                    ::cass/username ::cass/password
                    ::cass/put-consistency-level
                    ::cass/max-concurrent-read-requests
@@ -105,12 +104,11 @@
        (cass/format-config config)))
 
 (defmethod ig/init-key ::page-store/cassandra
-  [_ {:keys [secure-rng put-consistency-level]
+  [_ {:keys [put-consistency-level]
       :or {put-consistency-level "TWO"} :as config}]
   (log/info (init-msg config))
   (let [session (cass/session config)]
     (->CassandraPageStore
-     secure-rng
      session
      (cass/prepare session statement/get-statement)
      (cass/prepare session (statement/put-statement put-consistency-level)))))

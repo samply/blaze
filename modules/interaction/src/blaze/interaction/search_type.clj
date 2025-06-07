@@ -41,7 +41,7 @@
     (d/execute-query db query page-id)
     (d/execute-query db query)))
 
-(defn- handles-and-clauses
+(defn- handles-and-query
   [{:blaze/keys [db] :keys [type] :blaze.preference/keys [handling]
     {:keys [clauses page-id]} :params}]
   (if (empty? clauses)
@@ -50,7 +50,7 @@
       {:handles (execute-query db query page-id)
        :query query})))
 
-(defn- build-matches-only-page [page-size handles]
+(defn- build-page* [page-size handles]
   (let [handles (into [] (take (inc page-size)) handles)]
     (if (< page-size (count handles))
       {:matches (pop handles)
@@ -58,16 +58,10 @@
       {:matches handles})))
 
 (defn- build-page [db include-defs page-size handles]
-  (if (:direct include-defs)
-    (let [handles (into [] (take (inc page-size)) handles)]
-      (if (< page-size (count handles))
-        (let [page-handles (pop handles)]
-          {:matches page-handles
-           :includes (include/add-includes db include-defs page-handles)
-           :next-match (peek handles)})
-        {:matches handles
-         :includes (include/add-includes db include-defs handles)}))
-    (build-matches-only-page page-size handles)))
+  (let [{:keys [matches] :as res} (build-page* page-size handles)]
+    (cond-> res
+      (:direct include-defs)
+      (assoc :includes (include/add-includes db include-defs matches)))))
 
 (defn- entries [context match-futures include-futures]
   (log/trace "build entries")
@@ -133,7 +127,7 @@
   [{:blaze/keys [db] :keys [type]
     {:keys [include-defs page-size] :as params} :params
     :as context}]
-  (if-ok [{:keys [handles query]} (handles-and-clauses context)]
+  (if-ok [{:keys [handles query]} (handles-and-query context)]
     (let [{:keys [matches includes next-match]}
           (build-page db include-defs page-size handles)
           total-future (total-future db type query params matches next-match)
@@ -146,10 +140,12 @@
                    :fhir/issue "incomplete"))
           (ac/then-apply
            (fn [_]
-             {:entries (entries context match-futures include-futures)
-              :next-handle next-match
-              :total (ac/join total-future)
-              :clauses (some-> query d/query-clauses)}))))
+             (cond->
+              {:entries (entries context match-futures include-futures)
+               :next-handle next-match
+               :total (ac/join total-future)}
+               query
+               (assoc :clauses (d/query-clauses query)))))))
     ac/completed-future))
 
 (defn- link [relation url]

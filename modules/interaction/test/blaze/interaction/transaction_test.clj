@@ -204,7 +204,7 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
    :blaze.test/fixed-rng-fn {}
-   :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+   :blaze.page-store/local {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))
 

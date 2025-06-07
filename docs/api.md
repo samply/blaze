@@ -131,11 +131,11 @@ Interactions and operations that return a large list of resources support paging
 
 ### Stable
 
-Paging sessions operate on a stable database snapshot. Next links will point to custom paging session endpoints. The endpoints will expire after for 4 hours in order to constrain the usage of a paging session. That also means that clients which have access to a paging session, will be able to access deleted and changed resources for up to 4 hours.
+Paging sessions operate on a stable database snapshot. Next links will point to custom paging session endpoints. The endpoints will expire after one hour in order to constrain the usage of a paging session. That also means that clients which have access to a paging session, will be able to access deleted and changed resources for up to one hour.
 
 ### Expire
 
-Paging sessions will expire after 4 hours without activity. Activities are requesting the first or next page.
+Paging sessions will expire after one hour without activity. Activities are requesting the first or next page.
 
 ### Fast
 

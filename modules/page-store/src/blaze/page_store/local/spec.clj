@@ -4,8 +4,5 @@
    [clojure.spec.alpha :as s]
    [java-time.api :as time]))
 
-(s/def ::local/max-size-in-mb
-  nat-int?)
-
 (s/def ::local/expire-duration
   time/duration?)

@@ -11,15 +11,13 @@
    [blaze.page-store.cassandra.codec :as codec]
    [blaze.page-store.cassandra.codec-spec]
    [blaze.page-store.cassandra.statement :as statement]
+   [blaze.page-store.token-spec]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
-   [taoensso.timbre :as log])
-  (:import
-   [java.security SecureRandom]))
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -34,8 +32,7 @@
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid contact-points"
-    (given-thrown (ig/init {::page-store/cassandra {:secure-rng (SecureRandom.)
-                                                    :contact-points ::invalid}})
+    (given-thrown (ig/init {::page-store/cassandra {:contact-points ::invalid}})
       :key := ::page-store/cassandra
       :reason := ::ig/build-failed-spec
       [:value :contact-points] := ::invalid
@@ -50,27 +47,56 @@
     (statement/put-statement "TWO")
     ::prepared-put-statement))
 
+(def clauses [["active" "true"]])
+(def token "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7")
+
+(defn- bind [prepared-statement & params]
+  (condp = prepared-statement
+    ::prepared-get-statement
+    (do (assert (= [token] params))
+        ::bound-get-statement)
+    ::prepared-put-statement
+    (do (assert (= [token (bb/wrap (codec/encode clauses))] params))
+        ::bound-put-statement)))
+
+(defn- execute [session statement]
+  (assert (= ::session session))
+  (condp = statement
+    ::bound-get-statement
+    (ac/completed-future ::result-set)
+    ::bound-put-statement
+    (ac/completed-future ::result-set)))
+
+(defn- close [session]
+  (assert (= ::session session)))
+
 (def config
-  {::page-store/cassandra {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+  {::page-store/cassandra {}
    :blaze.test/fixed-rng {}})
 
-(def clauses [["active" "true"]])
-(def token (str (str/join (repeat 31 "A")) "B"))
+(deftest get-test
+  (testing "success"
+    (with-redefs
+     [cass/session (fn [_] ::session)
+      cass/prepare prepare
+      cass/bind bind
+      cass/execute execute
+      cass/first-row (fn [result-set]
+                       (assert (= ::result-set result-set))
+                       (codec/encode clauses))
+      cass/close close]
+      (with-system [{store ::page-store/cassandra} config]
+        @(page-store/put! store clauses)
+
+        (is (= clauses @(page-store/get store token)))))))
 
 (deftest put-test
   (testing "success"
     (with-redefs
      [cass/session (fn [_] ::session)
       cass/prepare prepare
-      cass/bind (fn [prepared-statement & params]
-                  (assert (= ::prepared-put-statement prepared-statement))
-                  (assert (= [token (bb/wrap (codec/encode clauses))] params))
-                  ::bound-put-statement)
-      cass/execute (fn [session statement]
-                     (assert (= ::session session))
-                     (assert (= ::bound-put-statement statement))
-                     (ac/completed-future ::result-set))
-      cass/close (fn [session]
-                   (assert (= ::session session)))]
+      cass/bind bind
+      cass/execute execute
+      cass/close close]
       (with-system [{store ::page-store/cassandra} config]
         (is (= token @(page-store/put! store clauses)))))))
