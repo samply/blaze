@@ -61,7 +61,7 @@
    :language #fhir/code"text/cql-identifier"
    :expression expr})
 
-(def library-content
+(def cql-attachment
   #fhir/Attachment
    {:contentType #fhir/code"text/cql"
     :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
@@ -215,31 +215,34 @@
   (testing "Returns Success"
     (testing "Sync"
       (testing "as GET request"
-        (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri"url-181501"
-                   :library [#fhir/canonical"library-url-094115"]}]
-            [:put {:fhir/type :fhir/Library :id "0"
-                   :url #fhir/uri"library-url-094115"
-                   :content [library-content]}]]]
+        (doseq [content [[cql-attachment]
+                         [#fhir/Attachment{:contentType #fhir/code"text/plain"}
+                          cql-attachment]]]
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Measure :id "0"
+                     :url #fhir/uri"url-181501"
+                     :library [#fhir/canonical"library-url-094115"]}]
+              [:put {:fhir/type :fhir/Library :id "0"
+                     :url #fhir/uri"library-url-094115"
+                     :content content}]]]
 
-          (let [{:keys [status body]}
-                @(handler
-                  {:request-method :get
-                   :path-params {:id "0"}
-                   :params {"periodStart" "2014"
-                            "periodEnd" "2015"}})]
+            (let [{:keys [status body]}
+                  @(handler
+                    {:request-method :get
+                     :path-params {:id "0"}
+                     :params {"periodStart" "2014"
+                              "periodEnd" "2015"}})]
 
-            (is (= 200 status))
+              (is (= 200 status))
 
-            (given body
-              :fhir/type := :fhir/MeasureReport
-              :status := #fhir/code"complete"
-              :type := #fhir/code"summary"
-              :measure := #fhir/canonical"url-181501"
-              :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime"2014"
-              [:period :end] := #fhir/dateTime"2015"))))
+              (given body
+                :fhir/type := :fhir/MeasureReport
+                :status := #fhir/code"complete"
+                :type := #fhir/code"summary"
+                :measure := #fhir/canonical"url-181501"
+                :date := #fhir/dateTime"1970-01-01T00:00:00Z"
+                [:period :start] := #fhir/dateTime"2014"
+                [:period :end] := #fhir/dateTime"2015")))))
 
       (testing "as POST request"
         (with-handler [handler]
@@ -248,7 +251,7 @@
                    :library [#fhir/canonical"library-url-094115"]}]
             [:put {:fhir/type :fhir/Library :id "0"
                    :url #fhir/uri"library-url-094115"
-                   :content [library-content]}]]]
+                   :content [cql-attachment]}]]]
 
           (let [{:keys [status headers body]}
                 @(handler
@@ -447,7 +450,7 @@
             [:put
              {:fhir/type :fhir/Library :id "0"
               :url #fhir/uri"library-url-094115"
-              :content [library-content]}]
+              :content [cql-attachment]}]
             [:put
              {:fhir/type :fhir/Patient
               :id "0"
@@ -499,7 +502,7 @@
                    :library [#fhir/canonical"library-url-094115"]}]
             [:put {:fhir/type :fhir/Library :id "0"
                    :url #fhir/uri"library-url-094115"
-                   :content [library-content]}]]]
+                   :content [cql-attachment]}]]]
 
           (let [{:keys [status headers body]}
                 @(handler
@@ -532,7 +535,7 @@
                          :library [#fhir/canonical"library-url-094115"]}]
                   [:put {:fhir/type :fhir/Library :id "0"
                          :url #fhir/uri"library-url-094115"
-                         :content [library-content]}]]]
+                         :content [cql-attachment]}]]]
 
                 (let [{:keys [status headers body]}
                       @(handler
@@ -710,7 +713,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :diagnostics] := "Missing content in library with id `0`."
+            [:issue 0 :diagnostics] := "No attachment with `text/cql` content type found in library with id `0`."
             [:issue 0 :expression first] := "Library.content"))))
 
     (testing "on Missing Data in Library Content"
@@ -738,7 +741,7 @@
             [:issue 0 :diagnostics] := "Missing embedded data of first attachment in library with id `0`."
             [:issue 0 :expression first] := "Library.content[0].data"))))
 
-    (testing "on text/cql content type"
+    (testing "on non text/cql content type"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Measure :id "0"
                  :url #fhir/uri"url-182051"
@@ -760,8 +763,8 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :diagnostics] := "Non `text/cql` content type of `text/plain` of first attachment in library with id `0`."
-            [:issue 0 :expression first] := "Library.content[0].contentType")))))
+            [:issue 0 :diagnostics] := "No attachment with `text/cql` content type found in library with id `0`."
+            [:issue 0 :expression first] := "Library.content")))))
 
   (testing "Returns Unprocessable Entity on Measure without Library"
     (with-handler [handler]
