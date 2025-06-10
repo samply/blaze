@@ -43,28 +43,26 @@
 
 ;; ---- Compilation -----------------------------------------------------------
 
+(def ^:private text-cql-content
+  #(when (-> % :contentType type/value #{"text/cql"}) %))
+
 (defn- extract-cql-code
   "Extracts the CQL code from the first attachment of `library`.
 
   Returns an anomaly on errors."
   {:arglists '([library])}
   [{:keys [id content]}]
-  (if-let [{:keys [contentType data]} (first content)]
-    (if (= "text/cql" (type/value contentType))
-      (let [data (type/value data)]
-        (if data
-          (String. ^bytes (.decode (Base64/getDecoder) ^String data)
-                   StandardCharsets/UTF_8)
-          (ba/incorrect
-           (format "Missing embedded data of first attachment in library with id `%s`." id)
-           :fhir/issue "value"
-           :fhir.issue/expression "Library.content[0].data")))
-      (ba/incorrect
-       (format "Non `text/cql` content type of `%s` of first attachment in library with id `%s`." contentType id)
-       :fhir/issue "value"
-       :fhir.issue/expression "Library.content[0].contentType"))
+  (if-let [{:keys [data]} (some text-cql-content content)]
+    (let [data (type/value data)]
+      (if data
+        (String. ^bytes (.decode (Base64/getDecoder) ^String data)
+                 StandardCharsets/UTF_8)
+        (ba/incorrect
+         (format "Missing embedded data of first attachment in library with id `%s`." id)
+         :fhir/issue "value"
+         :fhir.issue/expression "Library.content[0].data")))
     (ba/incorrect
-     (format "Missing content in library with id `%s`." id)
+     (format "No attachment with `text/cql` content type found in library with id `%s`." id)
      :fhir/issue "value"
      :fhir.issue/expression "Library.content")))
 
