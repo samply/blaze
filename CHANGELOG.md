@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.2
+
+### Bugfixes
+
+* Fix Stale Page Links ([#2719](https://github.com/samply/blaze/issues/2719))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/107?closed=1).
+
 ## v1.0.1
 
 ### Bugfixes
