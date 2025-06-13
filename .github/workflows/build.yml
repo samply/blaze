@@ -1065,6 +1065,9 @@ jobs:
     - name: Transaction
       run: .github/scripts/transaction.sh
 
+    - name: Transaction with Relative References
+      run: .github/scripts/transaction-relative-references.sh
+
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
 
