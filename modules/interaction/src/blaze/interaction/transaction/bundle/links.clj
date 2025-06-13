@@ -1,29 +1,39 @@
 (ns blaze.interaction.transaction.bundle.links
+  "Provides the function `resolve-entry-links` that resolves links in a bundle
+  according to the transaction processing rules (https://hl7.org/fhir/http.html#trules)
+  and resolving references in bundles (https://hl7.org/fhir/bundle.html#references)."
   (:require
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]))
+   [blaze.fhir.spec.references :as fsr]
+   [blaze.fhir.spec.type :as type]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]))
 
-(defn- resolve-link [index creator link]
-  (if-let [{:fhir/keys [type] :keys [id]} (get index (type/value link))]
-    (if (record? link)
-      (assoc link :value (str (name type) "/" id))
-      (creator (str (name type) "/" id)))
-    link))
+(defn- resolve-uri
+  "Resolves the possible relative `uri` against `base-url`.
+
+  The `uri` has to have the form `<type>/<id>`. Returns `uri` otherwise."
+  [base-url uri]
+  (cond->> uri (fsr/split-literal-ref uri) (str base-url "/")))
+
+(defn- resolve-link [{:keys [base-url index]} link]
+  (let [uri (some->> (type/value link) (resolve-uri base-url))]
+    (if-let [{:fhir/keys [type] :keys [id]} (get index uri)]
+      (type/assoc-value link (str (name type) "/" id))
+      link)))
 
 (declare resolve-links)
 
 (defn- resolve-single-element-links
-  [{:keys [index] :as context} value]
+  [context value]
   (let [type (fhir-spec/fhir-type value)]
     (cond
       (identical? :fhir/Reference type)
-      (update value :reference (partial resolve-link index type/string))
+      (update value :reference (partial resolve-link context))
 
-      (identical? :fhir/uri type)
-      (resolve-link index type/uri value)
-
-      (identical? :fhir/url type)
-      (resolve-link index type/url value)
+      (or (identical? :fhir/uri type)
+          (identical? :fhir/url type))
+      (resolve-link context value)
 
       (fhir-spec/primitive? type)
       value
@@ -55,13 +65,26 @@
    {}
    entries))
 
+(defn- base-url
+  "Tries to find the base URL of the possibly RESTful `full-url`.
+
+  RESTful URLs end with two path segments that conform to `type` and `id` of a
+  resource. Returns nil if not found."
+  [full-url]
+  (let [parts (str/split full-url #"/")]
+    (when (< 2 (count parts))
+      (let [last-parts (subvec parts (- (count parts) 2))]
+        (when (s/valid? :blaze.fhir/literal-ref-tuple last-parts)
+          (str/join "/" (subvec parts 0 (- (count parts) 2))))))))
+
 (defn resolve-entry-links
   "Resolves all links in `entries` according the transaction processing rules."
   [entries]
   (let [index (index-resources-by-full-url entries)]
     (mapv
-     (fn [entry]
+     (fn [{full-url :fullUrl :as entry}]
        (if-let [resource (:resource entry)]
-         (assoc entry :resource (resolve-links {:index index} resource))
+         (let [context {:index index :base-url (some-> (type/value full-url) base-url)}]
+           (assoc entry :resource (resolve-links context resource)))
          entry))
      entries)))

@@ -5,3 +5,9 @@ The transaction interaction allows to submit a set of actions to be performed in
 ```
 POST [base]
 ```
+
+## Processing Rules 
+
+References in transaction bundles are resolved according to [Resolving references in Bundles][1]. Especially absolute URIs like URNs and URLs can be used as well as relative references in entries with absolute RESTful fullUrls.
+
+[1]: <https://hl7.org/fhir/bundle.html#references>
