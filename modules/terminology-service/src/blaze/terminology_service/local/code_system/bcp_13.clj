@@ -8,7 +8,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
-   [blaze.luid :as luid]
+   [blaze.module :as m]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.util :as cs-u]
    [clojure.string :as str]
@@ -77,12 +77,9 @@
 (defn- bcp-13-query [db]
   (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:13"]]))
 
-(defn- luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
-
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create BCP-13 code system...")
-  (d/transact node [(cs-u/tx-op code-system (luid context))]))
+  (d/transact node [(cs-u/tx-op code-system (m/luid context))]))
 
 (defn ensure-code-system
   "Ensures that the BCP-13 code system is present in the database node."

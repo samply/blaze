@@ -34,17 +34,19 @@
         (ba/incorrect (format "Invalid request bundle reference `%s`." reference)))
     (ba/incorrect "Missing request bundle reference.")))
 
-(defn- deleted-anom [{job-id :id} bundle-id]
-  (ba/not-found (format "The request bundle with id `%s` of job with id `%s` was deleted." bundle-id job-id)))
+(defn- deleted-msg [{job-id :id} bundle-id]
+  (format "The request bundle with id `%s` of job with id `%s` was deleted."
+          bundle-id job-id))
 
-(defn- not-found-anom [{job-id :id} bundle-id]
-  (ba/not-found (format "Can't find the request bundle with id `%s` of job with id `%s`." bundle-id job-id)))
+(defn- not-found-msg [{job-id :id} bundle-id]
+  (format "Can't find the request bundle with id `%s` of job with id `%s`."
+          bundle-id job-id))
 
 (defn pull-request-bundle [node job]
   (if-ok [[type id] (request-bundle-ref job)]
     (if-let [handle (d/resource-handle (d/db node) type id)]
       (if-not (d/deleted? handle)
         (d/pull node handle)
-        (ac/completed-future (deleted-anom job id)))
-      (ac/completed-future (not-found-anom job id)))
+        (ac/completed-future (ba/not-found (deleted-msg job id))))
+      (ac/completed-future (ba/not-found (not-found-msg job id))))
     ac/completed-future))

@@ -17,6 +17,7 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.module-spec]
    [blaze.page-id-cipher.spec]
    [blaze.page-store-spec]
    [blaze.page-store.local]

@@ -9,5 +9,5 @@
 
 (s/fdef search-util/entry
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
-               :resource :blaze/resource
+               :resource :fhir/Resource
                :mode (s/? map?)))

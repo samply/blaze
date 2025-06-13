@@ -7,7 +7,6 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
-   [blaze.luid :as luid]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
    [blaze.spec]
@@ -19,11 +18,6 @@
 
 (def ^:private ^:const ^long max-size 10000)
 
-(defn- patient-handle [db id]
-  (when-let [handle (d/resource-handle db "Patient" id)]
-    (when-not (d/deleted? handle)
-      handle)))
-
 (defn- too-costly-msg [patient-id]
   (format "The compartment of the Patient with the id `%s` has more than %,d resources which is too costly to output. Please use paging by specifying the _count query param." patient-id max-size))
 
@@ -31,7 +25,7 @@
   (comp (drop page-offset) (take (inc (or page-size max-size)))))
 
 (defn- handles [db patient-id start end page-offset page-size]
-  (if-let [patient (patient-handle db patient-id)]
+  (when-ok [patient (fhir-util/resource-handle db "Patient" patient-id)]
     (let [handles (into [] (handles-xf page-offset page-size)
                         (d/patient-everything db patient start end))]
       (if page-size
@@ -41,11 +35,7 @@
           {:handles handles})
         (if (< max-size (count handles))
           (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
-          {:handles handles})))
-    (ba/not-found (format "The Patient with id `%s` was not found." patient-id))))
-
-(defn- luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
+          {:handles handles})))))
 
 (defn- page-match [{::reitit/keys [router] {:keys [id]} :path-params} page-id]
   (reitit/match-by-name router :Patient.operation/everything-page
@@ -73,7 +63,7 @@
   (let [entries (mapv (partial search-util/entry request) resources)]
     (cond->
      {:fhir/type :fhir/Bundle
-      :id (luid context)
+      :id (m/luid context)
       :type #fhir/code"searchset"
       :entry entries}
 

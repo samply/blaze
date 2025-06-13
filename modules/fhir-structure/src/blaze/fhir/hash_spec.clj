@@ -32,5 +32,5 @@
   :ret int?)
 
 (s/fdef hash/generate
-  :args (s/cat :resource :blaze/resource)
+  :args (s/cat :resource :fhir/Resource)
   :ret :blaze.resource/hash)

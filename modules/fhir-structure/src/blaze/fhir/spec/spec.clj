@@ -28,7 +28,7 @@
 (s/def :blaze.resource/variant
   #{:complete :summary})
 
-(s/def :blaze/resource
+(s/def :fhir/Resource
   #(s2/valid? :fhir/Resource %))
 
 (s/def :fhir/CodeableConcept

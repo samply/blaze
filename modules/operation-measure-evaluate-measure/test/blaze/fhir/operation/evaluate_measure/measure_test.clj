@@ -953,7 +953,7 @@
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
-      (is (s/valid? :blaze/resource (:resource result))))
+      (is (s/valid? :fhir/Resource (:resource result))))
 
     (given (first-population result)
       :count := 2
@@ -968,7 +968,7 @@
 (deftest stratifier-integration-test
   (let [result (evaluate "q19-stratifier-ageclass")]
     (testing "MeasureReport is valid"
-      (is (s/valid? :blaze/resource (:resource result))))
+      (is (s/valid? :fhir/Resource (:resource result))))
 
     (testing "MeasureReport type is `summary`"
       (is (= #fhir/code"summary" (-> result :resource :type))))
@@ -989,7 +989,7 @@
 
   (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
     (testing "MeasureReport is valid"
-      (is (s/valid? :blaze/resource (:resource result))))
+      (is (s/valid? :fhir/Resource (:resource result))))
 
     (testing "MeasureReport type is `subject-list`"
       (is (= #fhir/code"subject-list" (-> result :resource :type))))
@@ -1055,7 +1055,7 @@
 
   (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
     (testing "MeasureReport is valid"
-      (is (s/valid? :blaze/resource (:resource result))))
+      (is (s/valid? :fhir/Resource (:resource result))))
 
     (given (first-stratifier-strata result)
       count := 4

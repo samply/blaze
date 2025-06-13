@@ -5,7 +5,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
-   [blaze.luid :as luid]
+   [blaze.module :as m]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.util :as cs-u]
    [taoensso.timbre :as log])
@@ -71,12 +71,9 @@
 (defn- ucum-query [db]
   (d/type-query db "CodeSystem" [["url" "http://unitsofmeasure.org"]]))
 
-(defn- luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
-
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create UCUM code system...")
-  (d/transact node [(cs-u/tx-op code-system (luid context))]))
+  (d/transact node [(cs-u/tx-op code-system (m/luid context))]))
 
 (defn ensure-code-system
   "Ensures that the UCUM code system is present in the database node."

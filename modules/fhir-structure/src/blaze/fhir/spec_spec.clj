@@ -27,12 +27,12 @@
 (s/fdef fhir-spec/parse-json
   :args (s/cat :context :blaze.fhir/parsing-context :type (s/? string?)
                :source some?)
-  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
+  :ret (s/or :resource :fhir/Resource :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/parse-cbor
   :args (s/cat :context :blaze.fhir/parsing-context :type string?
                :source bytes? :variant (s/? :blaze.resource/variant))
-  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
+  :ret (s/or :resource :fhir/Resource :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/write-json
   :args (s/cat :context :blaze.fhir/writing-context :out some? :value any?))
@@ -51,7 +51,7 @@
 
 (s/fdef fhir-spec/conform-xml
   :args (s/cat :x any?)
-  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
+  :ret (s/or :resource :fhir/Resource :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/unform-xml
   :args (s/cat :resource any?))

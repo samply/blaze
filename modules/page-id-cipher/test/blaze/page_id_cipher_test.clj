@@ -12,6 +12,7 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
+   [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.page-id-cipher]
    [blaze.page-id-cipher.spec]

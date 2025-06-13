@@ -5,7 +5,6 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util.spec]
-   [blaze.handler.util :as handler-util]
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.async-interaction.spec]
    [blaze.job.async-interaction.util :as u]
@@ -87,7 +86,7 @@
 
 (defn- response-bundle [context entries]
   {:fhir/type :fhir/Bundle
-   :id (handler-util/luid context)
+   :id (m/luid context)
    :type #fhir/code"batch-response"
    :entry entries})
 

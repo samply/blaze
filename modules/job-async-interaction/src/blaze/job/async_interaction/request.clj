@@ -5,7 +5,7 @@
    [blaze.handler.util :as handler-util]
    [blaze.job-scheduler :as js]
    [blaze.job.async-interaction :as job-async]
-   [blaze.luid :as luid]
+   [blaze.module :as m]
    [clojure.string :as str]
    [java-time.api :as time]
    [ring.util.response :as ring]
@@ -15,9 +15,6 @@
 
 (defn- strip-context-path [context-path uri]
   (subs uri (inc (count context-path))))
-
-(defn- luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
 
 (defn- request-bundle
   [id context-path {:keys [request-method uri headers query-string body]}]
@@ -40,7 +37,7 @@
   [{:keys [context-path clock] :or {context-path ""} :as context}
    {:blaze/keys [job-scheduler db] :as request}]
   (let [authored-on (time/offset-date-time clock)
-        bundle-id (luid context)]
+        bundle-id (m/luid context)]
     (log/debug "Initiate async response...")
     (do-sync [job (js/create-job job-scheduler
                                  (job-async/job authored-on bundle-id (d/t db))

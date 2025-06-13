@@ -15,6 +15,7 @@
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
+   [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
@@ -377,7 +378,7 @@
         (doseq [library-ref [#fhir/canonical"library-url-094115"
                              #fhir/canonical"Library/0"
                              #fhir/canonical"/Library/0"]
-                cancelled?  [nil (constantly nil)]]
+                cancelled? [nil (constantly nil)]]
           (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"
@@ -614,7 +615,7 @@
                      :body
                      (fu/parameters
                       "periodStart" #fhir/date"2014"
-                      "periodEnd"  #fhir/date"2015"
+                      "periodEnd" #fhir/date"2015"
                       "measure" "url-181501")})]
 
               (is (= 422 status))

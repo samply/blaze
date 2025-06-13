@@ -73,6 +73,10 @@
   :args (s/cat :tx :blaze.db/tx)
   :ret string?)
 
+(s/fdef fhir-util/resource-handle
+  :args (s/cat :db :blaze.db/db :type :fhir.resource/type :id :blaze.resource/id)
+  :ret ac/completable-future?)
+
 (s/fdef fhir-util/pull
   :args (s/cat :db :blaze.db/db :type :fhir.resource/type :id :blaze.resource/id
                :variant (s/? :blaze.resource/variant))

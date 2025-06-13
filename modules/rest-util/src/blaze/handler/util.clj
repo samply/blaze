@@ -5,7 +5,6 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.spec.type :as type]
    [blaze.http.util :as hu]
-   [blaze.luid :as luid]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [io.aviso.exception :as aviso]
@@ -236,9 +235,3 @@
   "A handler returning failed futures."
   (reitit.ring/create-default-handler
    {:method-not-allowed method-not-allowed-batch-handler}))
-
-(defn luid
-  "Creates an LUID from :clock :rng-fn in `context`."
-  {:arglists '([context])}
-  [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))

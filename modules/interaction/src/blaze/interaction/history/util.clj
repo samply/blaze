@@ -3,8 +3,8 @@
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
-   [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.module :as m]
    [blaze.util :as u]
    [reitit.core :as reitit])
   (:import
@@ -121,7 +121,7 @@
 
 (defn build-bundle [context total query-params]
   {:fhir/type :fhir/Bundle
-   :id (handler-util/luid context)
+   :id (m/luid context)
    :type #fhir/code"history"
    :total (total-value total)
    :link [(self-link context query-params)]})

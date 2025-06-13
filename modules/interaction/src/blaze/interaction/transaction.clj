@@ -248,7 +248,7 @@
 
 (defn- response-bundle [context type entries]
   {:fhir/type :fhir/Bundle
-   :id (handler-util/luid context)
+   :id (m/luid context)
    :type (type/code (str (type/value type) "-response"))
    :entry entries})
 

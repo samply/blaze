@@ -9,6 +9,7 @@
   #fhir/BundleEntrySearch{:mode #fhir/code"include"})
 
 (defn entry
+  {:arglists '([context resource] [context resource mode])}
   ([context resource]
    (entry context resource match))
   ([context {:fhir/keys [type] :keys [id] :as resource} mode]

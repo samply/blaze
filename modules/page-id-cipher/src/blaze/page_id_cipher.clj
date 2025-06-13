@@ -6,7 +6,6 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.luid :as luid]
    [blaze.module :as m]
    [blaze.page-id-cipher.impl :as impl]
    [blaze.page-id-cipher.spec]
@@ -22,9 +21,6 @@
    [java.util.concurrent Flow$Subscriber]))
 
 (set! *warn-on-reflection* true)
-
-(defn- luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
 
 (def ^:private ^:const identifier
   "page-id-cipher")
@@ -50,7 +46,7 @@
 
 (defn- key-set-resource [context]
   {:fhir/type :fhir/DocumentReference
-   :id (luid context)
+   :id (m/luid context)
    :identifier [(type/map->Identifier {:value identifier})]
    :status #fhir/code"current"
    :content

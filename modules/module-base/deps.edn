@@ -4,6 +4,9 @@
  {blaze/anomaly
   {:local/root "../anomaly"}
 
+  blaze/luid
+  {:local/root "../luid"}
+
   com.taoensso/timbre
   {:mvn/version "6.7.1"}
 

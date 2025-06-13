@@ -5,11 +5,12 @@
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler.spec]
    [blaze.job.util-spec]
+   [blaze.module-spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef js/create-job
-  :args (s/cat :scheduler :blaze/job-scheduler :job :blaze/resource
-               :other-resources (s/* :blaze/resource))
+  :args (s/cat :scheduler :blaze/job-scheduler :job :fhir/Resource
+               :other-resources (s/* :fhir/Resource))
   :ret ac/completable-future?)
 
 (s/fdef js/cancel-job
