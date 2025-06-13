@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.3
+
+### Minor Enhancements
+
+* Support Resolving Relative References in Transaction Bundles ([#2734](https://github.com/samply/blaze/issues/2734))
+* Search for text/cql Content in Library ([#2718](https://github.com/samply/blaze/issues/2718))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/108?closed=1).
+
 ## v1.0.2
 
 ### Bugfixes
