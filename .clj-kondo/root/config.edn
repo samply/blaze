@@ -86,6 +86,7 @@
     blaze.terminology-service ts
     blaze.test-util tu
     blaze.util u
+    blaze.util.clauses uc
     buddy.auth auth
     cognitect.anomalies anom
     clojure.data.xml xml

@@ -29,6 +29,6 @@ export const load: PageLoad = async ({ fetch, params }) => {
 	const bundle: Bundle = await res.json();
 
 	return {
-		codeSystem: bundle?.entry?.[0].resource as CodeSystem
+		codeSystem: bundle.entry?.[0].resource as CodeSystem
 	};
 };

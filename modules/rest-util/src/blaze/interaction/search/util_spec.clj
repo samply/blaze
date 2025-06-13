@@ -1,6 +1,7 @@
 (ns blaze.interaction.search.util-spec
   (:require
    [blaze.fhir.spec.spec]
+   [blaze.handler.fhir.util-spec]
    [blaze.http.spec]
    [blaze.interaction.search.util :as search-util]
    [blaze.spec]

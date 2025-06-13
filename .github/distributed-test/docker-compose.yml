@@ -127,6 +127,7 @@ services:
       ALLOW_MULTIPLE_DELETE: "true"
       ENABLE_INTERACTION_DELETE_HISTORY: "true"
       ENABLE_OPERATION_PATIENT_PURGE: "true"
+      ENABLE_OPERATION_GRAPH: "true"
     ports:
     - "8081:8081"
     volumes:
@@ -160,6 +161,7 @@ services:
       ALLOW_MULTIPLE_DELETE: "true"
       ENABLE_INTERACTION_DELETE_HISTORY: "true"
       ENABLE_OPERATION_PATIENT_PURGE: "true"
+      ENABLE_OPERATION_GRAPH: "true"
     ports:
     - "8082:8081"
     volumes:

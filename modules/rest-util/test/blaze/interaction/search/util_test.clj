@@ -1,6 +1,7 @@
 (ns blaze.interaction.search.util-test
   (:require
    [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.search.util-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]

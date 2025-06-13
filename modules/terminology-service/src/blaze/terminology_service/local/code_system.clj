@@ -6,6 +6,7 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.bcp-13]
    [blaze.terminology-service.local.code-system.bcp-47]
@@ -14,7 +15,6 @@
    [blaze.terminology-service.local.code-system.sct]
    [blaze.terminology-service.local.code-system.ucum]
    [blaze.terminology-service.local.graph :as graph]
-   [blaze.terminology-service.local.priority :as priority]
    [blaze.terminology-service.local.validate-code :as vc]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]))
 
@@ -44,7 +44,7 @@
      {}
      (map
       (fn [[url code-systems]]
-        [url (priority/sort-by-priority code-systems)]))
+        [url (fu/sort-by-priority code-systems)]))
      (group-by (comp type/value :url) (filter-usable code-systems)))))
 
 (defn- assoc-graph [{concepts :concept :as code-system}]

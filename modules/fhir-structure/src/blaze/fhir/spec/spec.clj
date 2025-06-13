@@ -87,3 +87,6 @@
 
 (s/def :fhir.OperationOutcome/issue
   #(s2/valid? :fhir.OperationOutcome/issue %))
+
+(s/def :fhir/GraphDefinition
+  #(s2/valid? :fhir/GraphDefinition %))
