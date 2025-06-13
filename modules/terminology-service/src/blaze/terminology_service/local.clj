@@ -28,13 +28,9 @@
    [taoensso.timbre :as log])
   (:import
    [com.github.benmanes.caffeine.cache Caffeine]
-   [com.google.common.base CaseFormat]
    [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
-
-(defn- camel->kebab [s]
-  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
 
 (defn- plural [s]
   (if (str/ends-with? s "y")
@@ -43,8 +39,8 @@
 
 (defn- assoc-via [params {:keys [cardinality]} name value]
   (if (identical? :many cardinality)
-    (update params (keyword (plural (camel->kebab name))) (fnil into []) (if (sequential? value) value [value]))
-    (assoc params (keyword (camel->kebab name)) value)))
+    (update params (keyword (plural (u/camel->kebab name))) (fnil into []) (if (sequential? value) value [value]))
+    (assoc params (keyword (u/camel->kebab name)) value)))
 
 (defn- validate-params [specs {params :parameter}]
   (reduce

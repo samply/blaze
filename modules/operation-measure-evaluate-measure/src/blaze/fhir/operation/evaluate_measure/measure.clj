@@ -17,6 +17,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [java-time.api :as time]
    [prometheus.alpha :as prom]
@@ -376,9 +377,6 @@
     (seq result)
     (assoc :group result)))
 
-(defn- luid-generator [{:keys [clock rng-fn]}]
-  (luid/generator clock (rng-fn)))
-
 (defn- missing-subject-msg [type id]
   (format "Subject with type `%s` and id `%s` was not found." type id))
 
@@ -448,7 +446,7 @@
                 :parameters parameter-default-values
                 :subject-type subject-type
                 :report-type report-type
-                ::luid/generator (luid-generator context))
+                ::luid/generator (m/luid-generator context))
                 function-defs
                 (assoc :function-defs function-defs))]
           (when-ok [expression-defs (library/eval-unfiltered context expression-defs)

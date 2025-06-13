@@ -4,6 +4,7 @@
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.rest-api.structure-definitions :as structure-definitions]
    [blaze.test-util :as tu]

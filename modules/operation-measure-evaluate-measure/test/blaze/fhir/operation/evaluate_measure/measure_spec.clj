@@ -11,6 +11,7 @@
    [blaze.fhir.operation.evaluate-measure.measure.spec]
    [blaze.fhir.spec]
    [blaze.http.spec]
+   [blaze.module-spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [reitit.core :as reitit])

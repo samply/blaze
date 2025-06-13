@@ -8,6 +8,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.luid :as luid]
+   [blaze.module :as m]
    [clojure.string :as str]
    [jsonista.core :as j]
    [taoensso.timbre :as log]))
@@ -27,9 +28,6 @@
   (do-sync [structure-definitions (structure-definitions db)]
     (into #{} (comp (map (comp type/value :url)) url-filter) structure-definitions)))
 
-(defn- luid-generator [{:keys [clock rng-fn]}]
-  (luid/generator clock (rng-fn)))
-
 (defn- tx-op [{:keys [url] :as structure-definition} luid-generator]
   [:create (assoc structure-definition :id (luid/head luid-generator))
    [["url" (type/value url)]]])
@@ -43,7 +41,7 @@
       (-> (update ret :tx-ops conj (tx-op structure-definition luid-generator))
           (update :luid-generator luid/next))))
    {:tx-ops []
-    :luid-generator (luid-generator context)}
+    :luid-generator (m/luid-generator context)}
    structure-definitions))
 
 (defn- conform [parsing-context resource]

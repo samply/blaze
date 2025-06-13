@@ -23,6 +23,8 @@
   (let [parts (cons "fhir" (seq (str/split type #"\.")))]
     (keyword (str/join "." (butlast parts)) (last parts))))
 
+(deftype PropertyHandler [key field-name polymorphic type])
+
 (defn- property-handler-definitions
   "Takes `element-definition` and returns possibly multiple
   property handler definitions, one for each polymorphic type.
@@ -35,10 +37,11 @@
    {:keys [path] content-reference :contentReference element-types :type}]
   (if content-reference
     (let [base-field-name (res/base-field-name parent-type path false)]
-      {:key (keyword base-field-name)
-       :field-name (json/field-name base-field-name)
-       :polymorphic false
-       :type (fhir-type-keyword (subs content-reference 1))})
+      (PropertyHandler.
+       (keyword base-field-name)
+       (json/field-name base-field-name)
+       false
+       (fhir-type-keyword (subs content-reference 1))))
     (let [polymorphic (< 1 (count element-types))
           first-type-code (:code (first element-types))
           element-type (and (= 1 (count element-types))
@@ -47,45 +50,46 @@
                             (Character/isUpperCase ^char (first first-type-code))
                             (not (#{"BackboneElement" "Element" "Resource"} first-type-code)))
           base-field-name (res/base-field-name parent-type path polymorphic)]
-      (cond->
-       {:key (keyword base-field-name)
-        :polymorphic polymorphic}
-        (not polymorphic) (assoc :field-name (json/field-name base-field-name))
-        complex-type (assoc :type (keyword "fhir" first-type-code))
-        element-type (assoc :type (fhir-type-keyword path))))))
+      (PropertyHandler.
+       (keyword base-field-name)
+       (when-not polymorphic (json/field-name base-field-name))
+       polymorphic
+       (if complex-type
+         (keyword "fhir" first-type-code)
+         (when element-type
+           (fhir-type-keyword path)))))))
 
 (defn- create-property-handlers
   "Returns a map of JSON property names to property handlers."
   [type element-definitions]
   (mapv (partial property-handler-definitions type) element-definitions))
 
-(defn- field-name ^SerializableString [def type]
-  (or (:field-name def)
-      (json/field-name (str (name (:key def)) (su/capital (name type))))))
+(defn- field-name ^SerializableString [^PropertyHandler def type]
+  (or (.-field-name def)
+      (json/field-name (str (name (.-key def)) (su/capital (name type))))))
 
-(defn- write-field! [type-handlers ^JsonGenerator gen {:keys [type] :as def} value]
+(defn- write-field! [type-handlers ^JsonGenerator gen ^PropertyHandler def value]
   (if (sequential? value)
     (when-some [first-value (first value)]
-      (when-some [type (or type (type/type first-value))]
+      (when-some [type (or (.-type def) (type/type first-value))]
         (if-some [handler (type-handlers type)]
           (do (.writeFieldName gen (field-name def type))
               (.writeStartArray gen)
-              (loop [[v & more] value]
-                (handler type-handlers gen v)
-                (some-> more recur))
+              (run! (partial handler type-handlers gen) value)
               (.writeEndArray gen))
           (json/write-field gen (field-name def type) value))))
-    (when-some [type (or type (type/type value))]
+    (when-some [type (or (.-type def) (type/type value))]
       (if-some [handler (type-handlers type)]
         (do (.writeFieldName gen (field-name def type))
             (handler type-handlers gen value))
         (json/write-field gen (field-name def type) value)))))
 
 (defn- write-fields! [type-handlers property-handlers ^JsonGenerator gen value]
-  (loop [[{:keys [key] :as def} & more] property-handlers]
-    (when-some [child-value (value key)]
-      (write-field! type-handlers gen def child-value))
-    (some-> more recur)))
+  (run!
+   (fn [^PropertyHandler def]
+     (when-some [child-value (value (.-key def))]
+       (write-field! type-handlers gen def child-value)))
+   property-handlers))
 
 (def ^:private record-types
   #{"Attachment" "Extension" "Coding" "CodeableConcept" "Quantity" "Ratio"
