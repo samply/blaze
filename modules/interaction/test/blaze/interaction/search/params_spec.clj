@@ -6,6 +6,7 @@
    [blaze.interaction.search.params :as params]
    [blaze.interaction.util-spec]
    [blaze.page-store.spec]
+   [blaze.util.clauses-spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef params/decode

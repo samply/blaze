@@ -4,7 +4,7 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.page-store :as page-store]
-   [blaze.util :refer [conj-vec str]]
+   [blaze.util :as u :refer [str]]
    [clojure.string :as str]
    [reitit.core :as reitit]))
 
@@ -18,7 +18,7 @@
 
 (defmethod clause->query-param :default
   [ret [param & values]]
-  (update ret param conj-vec (str/join "," values)))
+  (update ret param u/conj-vec (str/join "," values)))
 
 (defn- clauses->query-params [clauses]
   (reduce clause->query-param {} clauses))

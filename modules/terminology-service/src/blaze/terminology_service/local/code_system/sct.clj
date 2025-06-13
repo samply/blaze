@@ -4,6 +4,7 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as fu]
    [blaze.module :as m]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.core :as c]
@@ -16,7 +17,6 @@
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]
    [blaze.terminology-service.local.code-system.sct.util :as sct-u]
    [blaze.terminology-service.local.code-system.util :as cs-u]
-   [blaze.terminology-service.local.priority :as priority]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -49,7 +49,7 @@
   (if (or (nil? version) (= version core-version-prefix))
     (ac/completed-future (assoc-context (:current-int-system context) context))
     (do-sync [code-systems (handles db version)]
-      (or (some-> (first (priority/sort-by-priority code-systems))
+      (or (some-> (first (fu/sort-by-priority code-systems))
                   (assoc-context context))
           (ba/not-found (code-system-not-found-msg version))))))
 

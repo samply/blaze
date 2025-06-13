@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.fhir.spec]
-   [blaze.terminology-service.local.priority-spec]
+   [blaze.fhir.util-spec]
    [blaze.terminology-service.local.value-set :as vs]
    [blaze.terminology-service.local.value-set.expand-spec]
    [blaze.terminology-service.local.value-set.spec]

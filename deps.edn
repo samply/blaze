@@ -25,6 +25,9 @@
   blaze.operation/compact
   {:local/root "modules/operation-compact"}
 
+  blaze.operation/graph
+  {:local/root "modules/operation-graph"}
+
   blaze.operation/graphql
   {:local/root "modules/operation-graphql"}
 

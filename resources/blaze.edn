@@ -1467,4 +1467,29 @@
     {:sct #blaze/ref :blaze.terminology-service.local.code-system/sct}
 
     :blaze.terminology-service.local.code-system/sct
-    {:release-path #blaze/cfg ["SNOMED_CT_RELEASE_PATH" blaze.path/dir?]}}}]}
+    {:release-path #blaze/cfg ["SNOMED_CT_RELEASE_PATH" blaze.path/dir?]}}}
+
+  {:key :graph
+   :name "Operation $graph on Resource"
+   :toggle "ENABLE_OPERATION_GRAPH"
+   :config
+   {:blaze.rest-api/operations
+    [#:blaze.rest-api.operation
+            {:code "graph"
+             :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graph"
+             :affects-state false
+             :resource-types ["Patient"]
+             :instance-handler #blaze/ref :blaze.operation/graph
+             :documentation "Return an entire graph of resources based on a GraphDefinition. The operation is invoked on a specific instance of a resource, and the graph definition tells the server what other resources to return in the same package."}]
+
+    :blaze.operation/graph
+    {:graph-cache #blaze/ref :blaze.operation.graph/graph-cache
+     :clock #blaze/ref :blaze/clock
+     :rng-fn #blaze/ref :blaze/rng-fn
+     :page-id-cipher #blaze/ref :blaze/page-id-cipher}
+
+    :blaze.operation.graph/graph-cache {}
+
+    :blaze/cache-collector
+    {:caches
+     {"operation-graph-graph-cache" #blaze/ref :blaze.operation.graph/graph-cache}}}}]}

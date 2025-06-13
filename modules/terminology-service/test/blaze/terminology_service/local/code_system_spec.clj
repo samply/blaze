@@ -3,10 +3,10 @@
    [blaze.async.comp :as ac]
    [blaze.db.spec]
    [blaze.fhir.spec.spec]
+   [blaze.fhir.util-spec]
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.code-system.sct.context-spec]
    [blaze.terminology-service.local.code-system.spec]
-   [blaze.terminology-service.local.priority-spec]
    [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))

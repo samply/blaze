@@ -288,6 +288,19 @@
         "/__admin" :get ::admin
         "/__admin/more" :get ::admin))))
 
+(deftest resource-type-test
+  (with-system [system system-config]
+    (let [router (router config system)]
+      (are [path request-method handler]
+           (= handler
+              (get-in
+               (reitit/match-by-path router path)
+               [:result request-method :data :fhir.resource/type]))
+        "/Patient/0/$everything" :get "Patient"
+        "/Patient/0/$everything" :post "Patient"
+        "/Measure/$evaluate-measure" :get "Measure"
+        "/Measure/$evaluate-measure" :post "Measure"))))
+
 (deftest middleware-test
   (with-system [system system-config]
     (let [router (router config system)]
