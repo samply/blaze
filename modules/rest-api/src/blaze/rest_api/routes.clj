@@ -287,6 +287,7 @@
        [(str "/" resource-type "/$" code)
         (cond->
          {:interaction (str "operation-type-" code)
+          :fhir.resource/type resource-type
           :conflicting true
           :middleware [[wrap-db node db-sync-timeout]]
           :post {:middleware [[wrap-resource parsing-context "Parameters"]]
@@ -308,6 +309,7 @@
          [(str "/$" code)
           (cond->
            {:name (keyword (str resource-type ".operation") code)
+            :fhir.resource/type resource-type
             :conflicting true
             :middleware [[wrap-db node db-sync-timeout]]
 

@@ -2,16 +2,13 @@
 	import type { PageProps } from './$types';
 	import type { FhirResource } from 'fhir/r4';
 
-	import { page } from '$app/state';
-
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
 	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 	import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
 
 	import ResourceCard from '$lib/resource/resource-card.svelte';
 	import HistoryButton from './history-button.svelte';
-	import CodeSystemOperationDropdown from '../../CodeSystem/[id=id]/operation-dropdown.svelte';
-	import ValueSetOperationDropdown from '../../ValueSet/[id=id]/operation-dropdown.svelte';
+	import OperationDropdown from './operation-dropdown.svelte';
 
 	import { title } from '$lib/resource.js';
 
@@ -33,11 +30,7 @@
 				<BreadcrumbEntryResource {resource} last />
 			</ol>
 		</nav>
-		{#if page.params.type === 'CodeSystem'}
-			<CodeSystemOperationDropdown />
-		{:else if page.params.type === 'ValueSet'}
-			<ValueSetOperationDropdown />
-		{/if}
+		<OperationDropdown />
 		<HistoryButton />
 	</div>
 </header>

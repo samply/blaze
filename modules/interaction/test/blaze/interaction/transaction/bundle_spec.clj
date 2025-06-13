@@ -4,6 +4,7 @@
    [blaze.fhir.spec.spec]
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.util-spec]
+   [blaze.util.clauses-spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 

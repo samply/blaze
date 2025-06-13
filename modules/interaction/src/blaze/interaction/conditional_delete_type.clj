@@ -9,9 +9,9 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.handler.util :as handler-util]
-   [blaze.interaction.util :as iu]
    [blaze.module :as m]
    [blaze.util :refer [str]]
+   [blaze.util.clauses :as uc]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]
@@ -55,7 +55,7 @@
   (log/info "Init FHIR conditional delete type interaction handler")
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers query-params]}]
-    (let [clauses (iu/search-clauses query-params)]
+    (let [clauses (uc/search-clauses query-params)]
       (do-sync [db (d/transact node [(conditional-delete-op type clauses)])]
         (build-response db type (handler-util/preference headers "return")
                         clauses)))))

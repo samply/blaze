@@ -26,6 +26,6 @@ export const load: PageLoad = async ({ fetch, params }) => {
 	const bundle: Bundle = await res.json();
 
 	return {
-		valueSet: bundle?.entry?.[0].resource as ValueSet
+		valueSet: bundle.entry?.[0].resource as ValueSet
 	};
 };

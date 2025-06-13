@@ -113,6 +113,7 @@ jobs:
         - openid-auth
         - operation-code-system-validate-code
         - operation-compact
+        - operation-graph
         - operation-graphql
         - operation-measure-evaluate-measure
         - operation-patient-everything
@@ -702,7 +703,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -e ENABLE_INTERACTION_DELETE_HISTORY=true -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -e ENABLE_INTERACTION_DELETE_HISTORY=true -e ENABLE_OPERATION_PATIENT_PURGE=true -e ENABLE_OPERATION_GRAPH=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Run Kafka, Cassandra and Blaze
@@ -1194,6 +1195,9 @@ jobs:
 
     - name: Patient Everything Paged with Date Range
       run: .github/scripts/patient-everything-paged-date-range.sh
+
+    - name: Patient Graph
+      run: .github/scripts/graph.sh
 
     - name: Patient Identical Update
       run: .github/scripts/patient-identical-update.sh

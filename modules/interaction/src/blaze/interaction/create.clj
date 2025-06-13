@@ -13,6 +13,7 @@
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
    [blaze.module :as m]
+   [blaze.util.clauses :as uc]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -28,7 +29,7 @@
 
 (defn- conditional-clauses [{:strs [if-none-exist]}]
   (when-not (str/blank? if-none-exist)
-    (-> if-none-exist ring-codec/form-decode iu/search-clauses)))
+    (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
 (defn- response-context [{:keys [headers] :as request} db-after]
   (let [return-preference (handler-util/preference headers "return")]

@@ -6,6 +6,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.transaction.bundle.links :as links]
    [blaze.interaction.util :as iu]
+   [blaze.util.clauses :as uc]
    [clojure.string :as str]
    [ring.util.codec :as ring-codec]))
 
@@ -13,7 +14,7 @@
 
 (defn- conditional-clauses [if-none-exist]
   (when-not (str/blank? if-none-exist)
-    (-> if-none-exist ring-codec/form-decode iu/search-clauses)))
+    (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
 (defmethod entry-tx-op "POST"
   [_ {:keys [resource] {if-none-exist :ifNoneExist} :request :as entry}]
@@ -37,7 +38,7 @@
   (if-let [[type id] (fhir-util/match-type-id (type/value url))]
     (assoc entry :tx-op [:delete type id])
     (when-let [[type query-params] (fhir-util/match-type-query-params (type/value url))]
-      (assoc entry :tx-op (cond-> [:conditional-delete type] (not (str/blank? query-params)) (conj (-> query-params ring-codec/form-decode iu/search-clauses)))))))
+      (assoc entry :tx-op (cond-> [:conditional-delete type] (not (str/blank? query-params)) (conj (-> query-params ring-codec/form-decode uc/search-clauses)))))))
 
 (defmethod entry-tx-op :default
   [_ entry]
