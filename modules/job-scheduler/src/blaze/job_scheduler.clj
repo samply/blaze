@@ -9,7 +9,6 @@
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.util :as job-util]
-   [blaze.luid :as luid]
    [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
@@ -122,16 +121,13 @@
     (flow/cancel! subscription))
   (onComplete [_]))
 
-(defn- luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
-
 (defn- current-job-number-observation [{:keys [node] :as context} db]
   (if-let [handle (coll/first (d/type-query db "Observation" [["identifier" "job-number"]]))]
     (d/pull node handle)
     (-> (d/transact node
                     [[:create
                       {:fhir/type :fhir/Observation
-                       :id (luid context)
+                       :id (m/luid context)
                        :identifier [#fhir/Identifier{:value #fhir/string"job-number"}]
                        :value #fhir/integer 0}
                       [["identifier" "job-number"]]]])
@@ -158,7 +154,7 @@
   (-> (current-job-number-observation context (d/db node))
       (ac/then-compose
        (fn [{job-number :value :as obs}]
-         (let [id (luid context)]
+         (let [id (m/luid context)]
            (-> (d/transact
                 node
                 (into

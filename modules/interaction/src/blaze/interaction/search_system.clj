@@ -62,7 +62,7 @@
     {{route-name :name} :data} ::reitit/match :as context} entries]
   (cond->
    {:fhir/type :fhir/Bundle
-    :id (handler-util/luid context)
+    :id (m/luid context)
     :type #fhir/code"searchset"
     :total (type/->UnsignedInt (d/system-total db))
     :entry (if (< page-size (count entries))
@@ -85,7 +85,7 @@
 (defn- search-summary [{:blaze/keys [db] :as context}]
   (ac/completed-future
    {:fhir/type :fhir/Bundle
-    :id (handler-util/luid context)
+    :id (m/luid context)
     :type #fhir/code"searchset"
     :total (type/->UnsignedInt (d/system-total db))
     :link [(self-link context)]}))

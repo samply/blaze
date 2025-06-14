@@ -9,6 +9,7 @@
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.module-spec]
    [blaze.operation.patient.everything]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -153,7 +154,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "The Patient with id `145801` was not found."))))
+          [:issue 0 :diagnostics] := "Resource `Patient/145801` was not found."))))
 
   (testing "Patient deleted"
     (with-handler [handler]
@@ -163,13 +164,13 @@
       (let [{:keys [status body]}
             @(handler {:path-params {:id "150158"}})]
 
-        (is (= 404 status))
+        (is (= 410 status))
 
         (given body
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "The Patient with id `150158` was not found."))))
+          [:issue 0 :code] := #fhir/code"deleted"
+          [:issue 0 :diagnostics] := "Resource `Patient/150158` was deleted."))))
 
   (testing "invalid start date"
     (with-handler [handler]

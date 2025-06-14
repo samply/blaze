@@ -1,7 +1,14 @@
 (ns blaze.module
   (:require
+   [blaze.luid :as luid]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]))
+
+(defn luid
+  "Creates an LUID from :clock :rng-fn in `context`."
+  {:arglists '([context])}
+  [{:keys [clock rng-fn]}]
+  (luid/luid clock (rng-fn)))
 
 (defmacro reg-collector
   "Registers a metrics collector to the central registry."

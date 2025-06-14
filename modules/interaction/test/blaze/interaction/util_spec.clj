@@ -21,14 +21,14 @@
   :ret :blaze.db.query/search-clauses)
 
 (s/fdef iu/update-tx-op
-  :args (s/cat :db :blaze.db/db :resource :blaze/resource
+  :args (s/cat :db :blaze.db/db :resource :fhir/Resource
                :if-match (s/nilable string?)
                :if-none-match (s/nilable string?))
   :ret (s/or :tx-op :blaze.db/tx-op :anomaly ::anom/anomaly))
 
 (s/fdef iu/strip-meta
-  :args (s/cat :resource :blaze/resource)
-  :ret :blaze/resource)
+  :args (s/cat :resource :fhir/Resource)
+  :ret :fhir/Resource)
 
 (s/fdef iu/keep?
   :args (s/cat :tx-op (s/nilable :blaze.db/tx-op))

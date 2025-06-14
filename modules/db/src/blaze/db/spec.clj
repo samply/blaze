@@ -58,7 +58,7 @@
 
 (defmethod tx-op :create [_]
   (s/cat :op #{:create}
-         :resource :blaze/resource
+         :resource :fhir/Resource
          :if-none-exist (s/? :blaze.db.tx-cmd/if-none-exist)))
 
 (defmulti put-precond-op "Put precondition operator" first)
@@ -76,7 +76,7 @@
 
 (defmethod tx-op :put [_]
   (s/cat :op #{:put}
-         :resource :blaze/resource
+         :resource :fhir/Resource
          :precondition (s/? :blaze.db.tx-op.put/precondition)))
 
 (defmethod tx-op :keep [_]

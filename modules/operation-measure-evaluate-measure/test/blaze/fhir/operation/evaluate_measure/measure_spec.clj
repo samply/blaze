@@ -39,5 +39,5 @@
    [::measure/subject-ref]))
 
 (s/fdef measure/evaluate-measure
-  :args (s/cat :context ::context :measure :blaze/resource :params ::params)
+  :args (s/cat :context ::context :measure :fhir/Resource :params ::params)
   :ret ac/completable-future?)

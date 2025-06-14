@@ -53,7 +53,7 @@
 
 (s/fdef job-util/update-job+
   :args (s/cat :node :blaze.db/node :job :fhir/Task
-               :other-resources (s/nilable (s/coll-of :blaze/resource))
+               :other-resources (s/nilable (s/coll-of :fhir/Resource))
                :f fn? :args (s/* any?))
   :ret ac/completable-future?)
 

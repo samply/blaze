@@ -3,6 +3,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.fhir.test-util]
+   [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service.local.code-system.bcp-13 :as bcp-13]
    [blaze.test-util :as tu]

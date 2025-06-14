@@ -5,16 +5,11 @@
    [blaze.luid.spec]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
-   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test :as test :refer [are deftest testing]]
    [cognitect.anomalies :as anom]
-   [java-time.api :as time]
-   [juxt.iota :refer [given]])
-  (:import
-   [java.util.concurrent ThreadLocalRandom]))
+   [juxt.iota :refer [given]]))
 
-(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
@@ -175,8 +170,3 @@
     ::anom/message := "Method POST not allowed on `/Patient/0` endpoint."
     :http/status := 405
     :fhir/issue := "processing"))
-
-(deftest luid-test
-  (let [context {:clock (time/system-clock)
-                 :rng-fn #(ThreadLocalRandom/current)}]
-    (is (s/valid? :blaze/luid (handler-util/luid context)))))

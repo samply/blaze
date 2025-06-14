@@ -26,6 +26,7 @@
    [blaze.interaction.util-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
+   [blaze.module-spec]
    [blaze.page-store-spec]
    [blaze.page-store.local]
    [blaze.test-util :as tu :refer [given-thrown]]

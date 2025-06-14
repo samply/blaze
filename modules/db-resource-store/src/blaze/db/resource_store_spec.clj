@@ -17,5 +17,5 @@
 
 (s/fdef rs/put!
   :args (s/cat :store :blaze.db/resource-store
-               :entries (s/map-of :blaze.resource/hash :blaze/resource))
+               :entries (s/map-of :blaze.resource/hash :fhir/Resource))
   :ret ac/completable-future?)

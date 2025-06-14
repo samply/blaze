@@ -22,9 +22,6 @@
   blaze/job-re-index
   {:local/root "../job-re-index"}
 
-  blaze/luid
-  {:local/root "../luid"}
-
   blaze/module-base
   {:local/root "../module-base"}
 

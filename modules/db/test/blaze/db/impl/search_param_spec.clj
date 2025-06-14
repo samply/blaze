@@ -76,13 +76,13 @@
 
 (s/fdef search-param/compartment-ids
   :args (s/cat :search-param :blaze.db/search-param
-               :resource :blaze/resource)
+               :resource :fhir/Resource)
   :ret (s/or :ids (s/coll-of :blaze.resource/id) :anomaly ::anom/anomaly))
 
 (s/fdef search-param/index-entries
   :args (s/cat :search-param :blaze.db/search-param
                :linked-compartments (s/nilable (s/coll-of (s/tuple string? string?)))
                :hash :blaze.resource/hash
-               :resource :blaze/resource)
+               :resource :fhir/Resource)
   :ret (s/or :entries (cs/coll-of :blaze.db.kv/put-entry)
              :anomaly ::anom/anomaly))

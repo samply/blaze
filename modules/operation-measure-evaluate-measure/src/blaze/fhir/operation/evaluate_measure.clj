@@ -16,7 +16,6 @@
    [blaze.fhir.response.create :as response]
    [blaze.handler.util :as handler-util]
    [blaze.job.async-interaction.request :as req]
-   [blaze.luid :as luid]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.spec]
    [blaze.util :as u]
@@ -31,9 +30,6 @@
    [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
-
-(defn- luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
 
 (defn- tx-ops [{:keys [tx-ops resource]} id]
   (conj (or tx-ops []) [:create (assoc resource :id id)]))
@@ -67,7 +63,7 @@
                (ac/completed-future (ring/response (:resource result)))
 
                (= :post request-method)
-               (let [id (luid context)]
+               (let [id (m/luid context)]
                  (-> (d/transact node (tx-ops result id))
                      (ac/then-compose
                       (fn [db-after]
