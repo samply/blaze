@@ -4,6 +4,7 @@
    [blaze.handler.fhir.util-spec]
    [blaze.http.spec]
    [blaze.interaction.history.util :as util]
+   [blaze.module-spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [reitit.core :as reitit]))
@@ -34,4 +35,4 @@
 
 (s/fdef util/build-entry
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
-               :resource :blaze/resource))
+               :resource :fhir/Resource))

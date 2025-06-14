@@ -32,7 +32,7 @@
 
 (s/fdef sr/linked-compartments
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
-               :resource :blaze/resource)
+               :resource :fhir/Resource)
   :ret (s/or :compartments (s/coll-of (s/tuple string? :blaze.resource/id))
              :anomaly ::anom/anomaly))
 

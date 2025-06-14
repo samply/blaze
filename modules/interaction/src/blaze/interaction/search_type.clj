@@ -172,7 +172,7 @@
   generating a token for the first link, we don't need in this case."
   [context clauses]
   {:fhir/type :fhir/Bundle
-   :id (handler-util/luid context)
+   :id (m/luid context)
    :type #fhir/code"searchset"
    :total #fhir/unsignedInt 0
    :link [(self-link context clauses)]})
@@ -182,7 +182,7 @@
    total]
   (cond->
    {:fhir/type :fhir/Bundle
-    :id (handler-util/luid context)
+    :id (m/luid context)
     :type #fhir/code"searchset"
     :entry entries
     :link [(first-link context token clauses)]}
@@ -212,7 +212,7 @@
 (defn- summary-response [context total clauses]
   (ring/response
    {:fhir/type :fhir/Bundle
-    :id (handler-util/luid context)
+    :id (m/luid context)
     :type #fhir/code"searchset"
     :total (type/->UnsignedInt total)
     :link [(self-link context clauses)]}))

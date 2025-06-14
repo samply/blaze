@@ -16,6 +16,7 @@
    [blaze.interaction.create]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.interaction.util-spec]
+   [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]

@@ -33,7 +33,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn camel->kebab [s]
+(defn- camel->kebab [s]
   (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
 
 (defn- plural [s]

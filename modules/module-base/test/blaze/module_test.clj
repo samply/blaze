@@ -1,18 +1,27 @@
 (ns blaze.module-test
   (:require
    [blaze.module :as m :refer [reg-collector]]
-   [blaze.test-util  :as tu :refer [given-thrown]]
+   [blaze.module-spec]
+   [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
+   [java-time.api :as time]
    [prometheus.alpha :refer [defcounter]])
   (:import
-   [io.prometheus.client Collector]))
+   [io.prometheus.client Collector]
+   [java.util.concurrent ThreadLocalRandom]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
+
+(deftest luid-test
+  (let [context {:clock (time/system-clock)
+                 :rng-fn #(ThreadLocalRandom/current)}]
+    (is (s/valid? :blaze/luid (m/luid context)))))
 
 (defcounter collector
   "Collector")

@@ -89,7 +89,11 @@
 (defn unsupported [msg & {:as kvs}]
   (anomaly* ::anom/unsupported msg kvs))
 
-(defn not-found [msg & {:as kvs}]
+(defn not-found
+  "Creates an anomaly with category `not-found`.
+
+  Typical keys are: :http/status, :http/headers, :fhir/issue"
+  [msg & {:as kvs}]
   (anomaly* ::anom/not-found msg kvs))
 
 (defn conflict

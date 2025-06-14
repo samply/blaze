@@ -157,7 +157,7 @@
       ["ETag" (etag tx)]]
      :fhir/issue "deleted")))
 
-(defn- resource-handle [db type id]
+(defn resource-handle [db type id]
   (if-let [handle (d/resource-handle db type id)]
     (if (d/deleted? handle)
       (deleted-anom db handle)

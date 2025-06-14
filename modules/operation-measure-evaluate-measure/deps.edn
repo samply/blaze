@@ -8,9 +8,6 @@
   blaze/job-async-interaction
   {:local/root "../job-async-interaction"}
 
-  blaze/luid
-  {:local/root "../luid"}
-
   blaze/metrics
   {:local/root "../metrics"}
 

@@ -3,6 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.job.async-interaction.request :as req]
    [blaze.job.async-interaction.request.spec]
+   [blaze.module-spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef req/handle-async

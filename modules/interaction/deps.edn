@@ -2,9 +2,6 @@
  {blaze/async
   {:local/root "../async"}
 
-  blaze/luid
-  {:local/root "../luid"}
-
   blaze/job-async-interaction
   {:local/root "../job-async-interaction"}
 

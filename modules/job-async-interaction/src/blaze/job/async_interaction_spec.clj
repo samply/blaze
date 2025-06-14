@@ -3,6 +3,7 @@
    [blaze.db.tx-log.spec]
    [blaze.fhir.spec.spec]
    [blaze.job.async-interaction :as job-async]
+   [blaze.module-spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef job-async/job

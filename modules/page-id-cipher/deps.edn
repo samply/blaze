@@ -2,9 +2,6 @@
  {blaze/db
   {:local/root "../db"}
 
-  blaze/luid
-  {:local/root "../luid"}
-
   blaze/module-base
   {:local/root "../module-base"}
 
