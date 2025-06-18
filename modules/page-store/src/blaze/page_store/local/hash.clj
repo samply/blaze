@@ -1,6 +1,6 @@
 (ns blaze.page-store.local.hash
   (:import
-   [com.google.common.hash HashCode Hashing]
+   [com.google.common.hash HashCode Hasher Hashing]
    [com.google.common.io BaseEncoding]
    [java.nio.charset StandardCharsets]))
 
@@ -10,14 +10,14 @@
   "Calculates a SHA256 hash of `clause`."
   [clause]
   (let [hasher (.newHasher (Hashing/sha256))]
-    (run! #(.putString hasher (str %) StandardCharsets/UTF_8) clause)
+    (run! #(.putString ^Hasher hasher (str %) StandardCharsets/UTF_8) clause)
     (.hash hasher)))
 
 (defn hash-hashes
   "Calculates a SHA256 hash of `hashes`."
   [hashes]
   (let [hasher (.newHasher (Hashing/sha256))]
-    (run! #(.putBytes hasher (.asBytes ^HashCode %)) hashes)
+    (run! #(.putBytes ^Hasher hasher (.asBytes ^HashCode %)) hashes)
     (.hash hasher)))
 
 (defn encode
