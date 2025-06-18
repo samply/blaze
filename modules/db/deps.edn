@@ -88,10 +88,6 @@
   :coverage
   {:extra-deps
    {lambdaisland/kaocha-cloverage
-    {:mvn/version "1.1.89"}
-
-    ;; TODO: remove after Cloverage reflection problems are solved. https://github.com/cloverage/cloverage/issues/345
-    org.clojure/clojure
-    {:mvn/version "1.11.4"}}
+    {:mvn/version "1.1.89"}}
 
    :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}

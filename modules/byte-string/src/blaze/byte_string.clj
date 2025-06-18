@@ -9,7 +9,8 @@
    [com.google.protobuf ByteString]
    [java.io Writer]
    [java.nio ByteBuffer]
-   [java.nio.charset StandardCharsets]))
+   [java.nio.charset StandardCharsets]
+   [java.util Comparator]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -107,16 +108,16 @@
   (.concat ^ByteString a b))
 
 (defn < [a b]
-  (neg? (.compare (ByteString/unsignedLexicographicalComparator) a b)))
+  (neg? (.compare ^Comparator (ByteString/unsignedLexicographicalComparator) a b)))
 
 (defn <=
   ([a b]
-   (clojure.core/<= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
+   (clojure.core/<= (.compare ^Comparator (ByteString/unsignedLexicographicalComparator) a b) 0))
   ([a b c]
    (and (<= a b) (<= b c))))
 
 (defn > [a b]
-  (pos? (.compare (ByteString/unsignedLexicographicalComparator) a b)))
+  (pos? (.compare ^Comparator (ByteString/unsignedLexicographicalComparator) a b)))
 
 (defn hex
   "Returns an upper-case hexadecimal string representation of `bs`."

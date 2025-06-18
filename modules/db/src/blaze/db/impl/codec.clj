@@ -5,7 +5,7 @@
    [blaze.fhir.spec.type.system])
   (:import
    [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
-   [com.google.common.hash Hashing]
+   [com.google.common.hash HashFunction Hashing]
    [java.nio.charset StandardCharsets]
    [java.util Arrays]))
 
@@ -39,8 +39,8 @@
   Returns an integer."
   (memoize-1
    (fn [type]
-     (-> (Hashing/murmur3_32_fixed)
-         (.hashBytes (.getBytes ^String type StandardCharsets/ISO_8859_1))
+     (-> (.hashBytes ^HashFunction (Hashing/murmur3_32_fixed)
+                     (.getBytes ^String type StandardCharsets/ISO_8859_1))
          (.asInt)))))
 
 (let [kvs [[-2146857976 "ClinicalImpression"]
@@ -239,8 +239,8 @@
   (bit-and (bit-not (unchecked-long l)) 0xFFFFFFFFFFFFFF))
 
 (defn c-hash [code]
-  (-> (Hashing/murmur3_32_fixed)
-      (.hashString code StandardCharsets/UTF_8)
+  (-> (.hashString ^HashFunction (Hashing/murmur3_32_fixed) code
+                   StandardCharsets/UTF_8)
       (.asInt)))
 
 (def c-hash->code
@@ -286,8 +286,8 @@
     "version"]))
 
 (defn v-hash [value]
-  (-> (Hashing/murmur3_32_fixed)
-      (.hashString value StandardCharsets/UTF_8)
+  (-> (.hashString ^HashFunction (Hashing/murmur3_32_fixed) value
+                   StandardCharsets/UTF_8)
       (.asBytes)
       bs/from-byte-array))
 
