@@ -37,7 +37,7 @@
 
 (defn- get-graph
   [cache {:keys [id] {version :versionId} :meta :as code-system}]
-  (let [key (str id (type/value version))]
+  (let [key [id (type/value version)]]
     (.get ^Cache cache key (fn [_] (graph/build-graph (:concept code-system))))))
 
 (defmethod c/find :default
