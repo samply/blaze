@@ -10,14 +10,16 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as kv-p]
-   [blaze.db.node :as node :refer [node?]]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
+   [blaze.db.spec]
    [blaze.fhir.response.create-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.interaction.update]
-   [blaze.test-util :as tu :refer [given-thrown satisfies-prop]]
+   [blaze.module.test-util :refer [given-failed-system]]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -55,22 +57,22 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction/update nil})
+    (given-failed-system {:blaze.interaction/update nil}
       :key := :blaze.interaction/update
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction/update {}})
+    (given-failed-system {:blaze.interaction/update {}}
       :key := :blaze.interaction/update
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/update {:node ::invalid}})
+    (given-failed-system {:blaze.interaction/update {:node ::invalid}}
       :key := :blaze.interaction/update
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `node?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config

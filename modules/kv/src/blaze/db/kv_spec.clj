@@ -57,10 +57,6 @@
                :key bytes?)
   :ret (s/nilable bytes?))
 
-(s/fdef kv/store?
-  :args (s/cat :x any?)
-  :ret boolean?)
-
 (s/fdef kv/new-snapshot
   :args (s/cat :kv-store :blaze.db/kv-store)
   :ret ::kv/snapshot)

@@ -14,22 +14,24 @@
    [blaze.db.node :as node]
    [blaze.db.node-spec]
    [blaze.db.node.resource-indexer :as resource-indexer]
+   [blaze.db.node.resource-indexer.spec]
+   [blaze.db.node.spec]
    [blaze.db.node.tx-indexer :as-alias tx-indexer]
    [blaze.db.node.version :as version]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.spec]
    [blaze.db.search-param-registry]
-   [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
-   [blaze.db.spec :refer [loading-cache?]]
+   [blaze.db.search-param-registry.spec]
+   [blaze.db.spec]
    [blaze.db.test-util :refer [config]]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
-   [blaze.db.tx-log.spec :refer [tx-log?]]
+   [blaze.db.tx-log.spec]
    [blaze.executors :as ex]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
-   [blaze.scheduler.spec :refer [scheduler?]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.scheduler.spec]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -100,13 +102,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.db/node nil})
+    (given-failed-system {:blaze.db/node nil}
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.db/node {}})
+    (given-failed-system {:blaze.db/node {}}
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :tx-log))
@@ -119,77 +121,77 @@
       [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
 
   (testing "invalid tx-log"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :tx-log] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :tx-log] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `tx-log?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/tx-log]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid tx-cache"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :tx-cache] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :tx-cache] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `loading-cache?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/tx-cache]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid indexer-executor"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :indexer-executor] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :indexer-executor] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `ex/executor?
+      [:cause-data ::s/problems 0 :via] := [::node/indexer-executor]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid kv-store"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :kv-store] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :kv-store] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `kv/store?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/kv-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid resource-indexer"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :resource-indexer] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :resource-indexer] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?
+      [:cause-data ::s/problems 0 :via] := [::node/resource-indexer]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid resource-store"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :resource-store] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :resource-store] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.db/resource-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :search-param-registry] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :search-param-registry] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `search-param-registry?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/search-param-registry]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid scheduler"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :scheduler] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :scheduler] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `scheduler?
+      [:cause-data ::s/problems 0 :via] := [:blaze/scheduler]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid enforce-referential-integrity"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :enforce-referential-integrity] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :enforce-referential-integrity] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `boolean?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/enforce-referential-integrity]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid allow-multiple-delete"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/node :allow-multiple-delete] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/node :allow-multiple-delete] ::invalid)
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `boolean?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/allow-multiple-delete]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "incompatible version"
-    (given-thrown (ig/init (with-index-store-version config -1))
+    (given-failed-system (with-index-store-version config -1)
       :key := :blaze.db/node
       :reason := ::ig/build-threw-exception
       [:cause-data :expected-version] := 0

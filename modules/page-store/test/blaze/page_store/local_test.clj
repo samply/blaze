@@ -4,21 +4,20 @@
    [blaze.fhir.test-util]
    [blaze.metrics.core :as metrics]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.page-store :as page-store]
    [blaze.page-store-spec]
-   [blaze.page-store.local]
+   [blaze.page-store.local :as local]
    [blaze.page-store.local.hash :as hash]
    [blaze.page-store.spec]
    [blaze.page-store.token-spec]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -39,17 +38,16 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.page-store/local nil})
+    (given-failed-system {:blaze.page-store/local nil}
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid expire duration"
-    (given-thrown (ig/init {:blaze.page-store/local {:expire-duration ::invalid}})
+    (given-failed-system {:blaze.page-store/local {:expire-duration ::invalid}}
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :path 0] := :expire-duration
-      [:cause-data ::s/problems 0 :pred] := `time/duration?
+      [:cause-data ::s/problems 0 :via] := [::local/expire-duration]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "is a page store"
@@ -117,19 +115,19 @@
 
 (deftest collector-init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.page-store.local/collector nil})
+    (given-failed-system {:blaze.page-store.local/collector nil}
       :key := :blaze.page-store.local/collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.page-store.local/collector {}})
+    (given-failed-system {:blaze.page-store.local/collector {}}
       :key := :blaze.page-store.local/collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
 
   (testing "invalid page store"
-    (given-thrown (ig/init {:blaze.page-store.local/collector {:page-store ::invalid}})
+    (given-failed-system {:blaze.page-store.local/collector {:page-store ::invalid}}
       :key := :blaze.page-store.local/collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/page-store]

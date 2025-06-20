@@ -7,7 +7,7 @@
    [java.lang AutoCloseable]))
 
 (s/def :blaze.db/kv-store
-  kv/store?)
+  #(satisfies? p/KvStore %))
 
 (s/def ::kv/snapshot
   (s/and #(satisfies? p/KvSnapshot %)

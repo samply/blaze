@@ -2,12 +2,12 @@
   (:require
    [blaze.http-client]
    [blaze.http-client.spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.openid-auth :as openid-auth]
    [blaze.openid-auth.impl-test :refer [jwks-document-one-key]]
    [blaze.openid-auth.spec]
-   [blaze.scheduler.spec :refer [scheduler?]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.scheduler.spec]
+   [blaze.test-util :as tu]
    [buddy.auth.protocols :as p]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -22,48 +22,6 @@
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
-
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::openid-auth/backend nil})
-      :key := ::openid-auth/backend
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {::openid-auth/backend {}})
-      :key := ::openid-auth/backend
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))))
-
-  (testing "invalid http-client"
-    (given-thrown (ig/init {::openid-auth/backend {:http-client ::invalid}})
-      :key := ::openid-auth/backend
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))
-      [:cause-data ::s/problems 2 :via] := [:blaze/http-client]
-      [:cause-data ::s/problems 2 :val] := ::invalid))
-
-  (testing "invalid scheduler"
-    (given-thrown (ig/init {::openid-auth/backend {:scheduler ::invalid}})
-      :key := ::openid-auth/backend
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))
-      [:cause-data ::s/problems 2 :pred] := `scheduler?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
-
-  (testing "invalid provider-url"
-    (given-thrown (ig/init {::openid-auth/backend {:provider-url ::invalid}})
-      :key := ::openid-auth/backend
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
-      [:cause-data ::s/problems 2 :pred] := `string?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (defmethod ig/init-key ::http-client-not-found [_ _]
   (let [http-client (HttpClientMock.)]
@@ -94,6 +52,42 @@
     :provider-url "http://localhost:8080"}
    ::http-client-success {}
    :blaze/scheduler {}})
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {::openid-auth/backend nil}
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {::openid-auth/backend {}}
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))))
+
+  (testing "invalid http-client"
+    (given-failed-system (assoc-in config-success [::openid-auth/backend :http-client] ::invalid)
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/http-client]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid scheduler"
+    (given-failed-system (assoc-in config-success [::openid-auth/backend :scheduler] ::invalid)
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/scheduler]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid provider-url"
+    (given-failed-system (assoc-in config-success [::openid-auth/backend :provider-url] ::invalid)
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::openid-auth/provider-url]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest backend-test
   (testing "public key not found"

@@ -2,7 +2,7 @@
   (:require
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.protocols :as p]
-   [blaze.db.node :refer [node?]]
+   [blaze.db.node.protocols :as np]
    [blaze.db.resource-store.spec]
    [blaze.db.tx-log.spec]
    [blaze.spec]
@@ -14,13 +14,10 @@
    [java.time Instant]))
 
 (s/def :blaze.db/node
-  node?)
-
-(defn loading-cache? [x]
-  (instance? LoadingCache x))
+  #(satisfies? np/Node %))
 
 (s/def :blaze.db/tx-cache
-  loading-cache?)
+  #(instance? LoadingCache %))
 
 (s/def :blaze.db/resource-cache
   :blaze.db/resource-store)

@@ -11,11 +11,8 @@
 (s/def :blaze.metrics/collectors
   (s/coll-of :blaze.metrics/collector))
 
-(defn registry? [x]
-  (instance? CollectorRegistry x))
-
 (s/def :blaze.metrics/registry
-  registry?)
+  #(instance? CollectorRegistry %))
 
 (s/def :blaze.metrics/metric
   (s/keys :req-un [:blaze.metrics.metric/name :blaze.metrics.metric/samples]))

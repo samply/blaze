@@ -53,9 +53,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn node? [x]
-  (satisfies? np/Node x))
-
 (defn submit-tx [node tx-ops]
   (np/-submit-tx node tx-ops))
 

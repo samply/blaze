@@ -10,9 +10,10 @@
    [blaze.job.async-interaction :as job-async]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.async-status-cancel-handler]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -29,19 +30,19 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::rest-api/async-status-cancel-handler nil})
+    (given-failed-system {::rest-api/async-status-cancel-handler nil}
       :key := ::rest-api/async-status-cancel-handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::rest-api/async-status-cancel-handler {}})
+    (given-failed-system {::rest-api/async-status-cancel-handler {}}
       :key := ::rest-api/async-status-cancel-handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))))
 
   (testing "invalid job-scheduler"
-    (given-thrown (ig/init {::rest-api/async-status-cancel-handler {:job-scheduler ::invalid}})
+    (given-failed-system {::rest-api/async-status-cancel-handler {:job-scheduler ::invalid}}
       :key := ::rest-api/async-status-cancel-handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?

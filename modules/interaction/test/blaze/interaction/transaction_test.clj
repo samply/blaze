@@ -9,8 +9,9 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as kv-p]
-   [blaze.db.node :as node :refer [node?]]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
+   [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type-spec]
    [blaze.fhir.util :as fu]
@@ -27,9 +28,10 @@
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.module-spec]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-store-spec]
    [blaze.page-store.local]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -115,34 +117,6 @@
 
 (derive ::batch-router ::router)
 
-(deftest init-handler-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction/transaction nil})
-      :key := :blaze.interaction/transaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction/transaction {}})
-      :key := :blaze.interaction/transaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
-
-  (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/transaction {:node ::invalid}})
-      :key := :blaze.interaction/transaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 4 :pred] := `node?
-      [:cause-data ::s/problems 4 :val] := ::invalid)))
-
 (def config
   (assoc
    api-stub/mem-node-config
@@ -208,6 +182,58 @@
    :blaze.page-store/local {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))
+
+(deftest init-handler-test
+  (testing "nil config"
+    (given-failed-system {:blaze.interaction/transaction nil}
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.interaction/transaction {}}
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+
+  (testing "invalid node"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :node] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid batch-handler"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :batch-handler] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/batch-handler]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid clock"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :clock] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :rng-fn] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid db-sync-timeout"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :db-sync-timeout] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/db-sync-timeout]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn wrap-defaults [handler router]
   (fn [request]

@@ -26,10 +26,10 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.output-spec]
    [blaze.middleware.fhir.resource-spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-store-spec]
    [blaze.page-store.local]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -51,211 +51,212 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(defn- config [dir]
-  {[:blaze.db/node :blaze.db.main/node]
-   {:tx-log (ig/ref :blaze.db.main/tx-log)
-    :tx-cache (ig/ref :blaze.db.main/tx-cache)
-    :indexer-executor (ig/ref :blaze.db.node.main/indexer-executor)
-    :resource-store (ig/ref :blaze.db/resource-store)
-    :kv-store (ig/ref :blaze.db.main/index-kv-store)
-    :resource-indexer (ig/ref :blaze.db.node.main/resource-indexer)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :scheduler (ig/ref :blaze/scheduler)
-    :poll-timeout (time/millis 10)}
-
-   [:blaze.db/node :blaze.db.admin/node]
-   {:tx-log (ig/ref :blaze.db.admin/tx-log)
-    :tx-cache (ig/ref :blaze.db.admin/tx-cache)
-    :indexer-executor (ig/ref :blaze.db.node.admin/indexer-executor)
-    :resource-store (ig/ref :blaze.db/resource-store)
-    :kv-store (ig/ref :blaze.db.admin/index-kv-store)
-    :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :scheduler (ig/ref :blaze/scheduler)
-    :poll-timeout (time/millis 10)}
-
-   [::tx-log/local :blaze.db.main/tx-log]
-   {:kv-store (ig/ref :blaze.db.main/transaction-kv-store)
-    :clock (ig/ref :blaze.test/fixed-clock)}
-
-   [::tx-log/local :blaze.db.admin/tx-log]
-   {:kv-store (ig/ref :blaze.db.admin/transaction-kv-store)
-    :clock (ig/ref :blaze.test/fixed-clock)}
-
-   [::kv/mem :blaze.db.main/transaction-kv-store]
-   {:column-families {}}
-
-   [::kv/mem :blaze.db.admin/transaction-kv-store]
-   {:column-families {}}
-
-   :blaze.test/fixed-clock {}
-
-   [:blaze.db/tx-cache :blaze.db.main/tx-cache]
-   {:kv-store (ig/ref :blaze.db.main/index-kv-store)}
-
-   [:blaze.db/tx-cache :blaze.db.admin/tx-cache]
-   {:kv-store (ig/ref :blaze.db.admin/index-kv-store)}
-
-   [::node/indexer-executor :blaze.db.node.main/indexer-executor] {}
-   [::node/indexer-executor :blaze.db.node.admin/indexer-executor] {}
-
-   [::kv/rocksdb :blaze.db.main/index-kv-store]
-   {:dir (str dir "/index")
-    :block-cache (ig/ref ::rocksdb/block-cache)
-    :column-families
-    {:search-param-value-index
-     {:write-buffer-size-in-mb 1
-      :max-write-buffer-number 1
-      :max-bytes-for-level-base-in-mb 1
-      :target-file-size-base-in-mb 1}
-     :resource-value-index nil
-     :compartment-search-param-value-index
-     {:write-buffer-size-in-mb 1
-      :max-write-buffer-number 1
-      :max-bytes-for-level-base-in-mb 1
-      :target-file-size-base-in-mb 1}
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
-     :patient-last-change-index
-     {:write-buffer-size-in-mb 1
-      :max-write-buffer-number 1
-      :max-bytes-for-level-base-in-mb 1
-      :target-file-size-base-in-mb 1}
-     :type-stats-index nil
-     :system-stats-index nil
-     :cql-bloom-filter nil
-     :cql-bloom-filter-by-t nil}}
-
-   [::kv/mem :blaze.db.admin/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
-     :type-stats-index nil
-     :system-stats-index nil}}
-
-   ::rs/kv
-   {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
-    :executor (ig/ref ::rs-kv/executor)}
-
-   [::kv/rocksdb :blaze.db/resource-kv-store]
-   {:dir (str dir "/resource")
-    :column-families {}}
-
-   ::rs-kv/executor {}
-
-   [::node/resource-indexer :blaze.db.node.main/resource-indexer]
-   {:kv-store (ig/ref :blaze.db.main/index-kv-store)
-    :resource-store (ig/ref :blaze.db/resource-store)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :executor (ig/ref :blaze.db.node.resource-indexer.main/executor)}
-
-   [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.main/executor] {}
-
-   [::node/resource-indexer :blaze.db.node.admin/resource-indexer]
-   {:kv-store (ig/ref :blaze.db.admin/index-kv-store)
-    :resource-store (ig/ref :blaze.db/resource-store)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :executor (ig/ref :blaze.db.node.resource-indexer.admin/executor)}
-
-   [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.admin/executor] {}
-
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
-
-   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
-   {:structure-definition-repo structure-definition-repo}
-
-   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
-   {:structure-definition-repo structure-definition-repo
-    :fail-on-unknown-property false
-    :include-summary-only true
-    :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}
-
-   ::rocksdb/block-cache {:size-in-mb 1}
-
-   :blaze/admin-api
-   {:context-path "/fhir"
-    :admin-node (ig/ref :blaze.db.admin/node)
-    :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
-    :job-scheduler (ig/ref :blaze/job-scheduler)
-    :read-job-handler (ig/ref :blaze.interaction/read)
-    :history-job-handler (ig/ref :blaze.interaction.history/instance)
-    :search-type-job-handler (ig/ref :blaze.interaction/search-type)
-    :dbs {"index" (ig/ref :blaze.db.main/index-kv-store)
-          "resource" (ig/ref :blaze.db/resource-kv-store)}
-    :settings []
-    :features []
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-
-   :blaze/job-scheduler
-   {:node (ig/ref :blaze.db.admin/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-
-   :blaze.interaction/create
-   {:node (ig/ref :blaze.db.admin/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-
-   :blaze.interaction/read {}
-
-   :blaze.interaction.history/instance
-   {:clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
-
-   :blaze.interaction/search-type
-   {:clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :page-store (ig/ref :blaze/page-store)
-    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
-    :context-path "/fhir"}
-
-   :blaze.page-store/local {}
-
-   :blaze/scheduler {}
-
-   :blaze.test/fixed-rng {}
-   :blaze.test/fixed-rng-fn {}
-   :blaze.test/page-id-cipher {}
-
-   :blaze.test/json-writer
-   {:writing-context (ig/ref :blaze.fhir/writing-context)}})
-
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
 
+(defn- config! []
+  (let [dir (new-temp-dir!)]
+    {[:blaze.db/node :blaze.db.main/node]
+     {:tx-log (ig/ref :blaze.db.main/tx-log)
+      :tx-cache (ig/ref :blaze.db.main/tx-cache)
+      :indexer-executor (ig/ref :blaze.db.node.main/indexer-executor)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :kv-store (ig/ref :blaze.db.main/index-kv-store)
+      :resource-indexer (ig/ref :blaze.db.node.main/resource-indexer)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+      :scheduler (ig/ref :blaze/scheduler)
+      :poll-timeout (time/millis 10)}
+
+     [:blaze.db/node :blaze.db.admin/node]
+     {:tx-log (ig/ref :blaze.db.admin/tx-log)
+      :tx-cache (ig/ref :blaze.db.admin/tx-cache)
+      :indexer-executor (ig/ref :blaze.db.node.admin/indexer-executor)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :kv-store (ig/ref :blaze.db.admin/index-kv-store)
+      :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+      :scheduler (ig/ref :blaze/scheduler)
+      :poll-timeout (time/millis 10)}
+
+     [::tx-log/local :blaze.db.main/tx-log]
+     {:kv-store (ig/ref :blaze.db.main/transaction-kv-store)
+      :clock (ig/ref :blaze.test/fixed-clock)}
+
+     [::tx-log/local :blaze.db.admin/tx-log]
+     {:kv-store (ig/ref :blaze.db.admin/transaction-kv-store)
+      :clock (ig/ref :blaze.test/fixed-clock)}
+
+     [::kv/mem :blaze.db.main/transaction-kv-store]
+     {:column-families {}}
+
+     [::kv/mem :blaze.db.admin/transaction-kv-store]
+     {:column-families {}}
+
+     :blaze.test/fixed-clock {}
+
+     [:blaze.db/tx-cache :blaze.db.main/tx-cache]
+     {:kv-store (ig/ref :blaze.db.main/index-kv-store)}
+
+     [:blaze.db/tx-cache :blaze.db.admin/tx-cache]
+     {:kv-store (ig/ref :blaze.db.admin/index-kv-store)}
+
+     [::node/indexer-executor :blaze.db.node.main/indexer-executor] {}
+     [::node/indexer-executor :blaze.db.node.admin/indexer-executor] {}
+
+     [::kv/rocksdb :blaze.db.main/index-kv-store]
+     {:dir (str dir "/index")
+      :block-cache (ig/ref ::rocksdb/block-cache)
+      :column-families
+      {:search-param-value-index
+       {:write-buffer-size-in-mb 1
+        :max-write-buffer-number 1
+        :max-bytes-for-level-base-in-mb 1
+        :target-file-size-base-in-mb 1}
+       :resource-value-index nil
+       :compartment-search-param-value-index
+       {:write-buffer-size-in-mb 1
+        :max-write-buffer-number 1
+        :max-bytes-for-level-base-in-mb 1
+        :target-file-size-base-in-mb 1}
+       :compartment-resource-type-index nil
+       :active-search-params nil
+       :tx-success-index {:reverse-comparator? true}
+       :tx-error-index nil
+       :t-by-instant-index {:reverse-comparator? true}
+       :resource-as-of-index nil
+       :type-as-of-index nil
+       :system-as-of-index nil
+       :patient-last-change-index
+       {:write-buffer-size-in-mb 1
+        :max-write-buffer-number 1
+        :max-bytes-for-level-base-in-mb 1
+        :target-file-size-base-in-mb 1}
+       :type-stats-index nil
+       :system-stats-index nil
+       :cql-bloom-filter nil
+       :cql-bloom-filter-by-t nil}}
+
+     [::kv/mem :blaze.db.admin/index-kv-store]
+     {:column-families
+      {:search-param-value-index nil
+       :resource-value-index nil
+       :compartment-search-param-value-index nil
+       :compartment-resource-type-index nil
+       :active-search-params nil
+       :tx-success-index {:reverse-comparator? true}
+       :tx-error-index nil
+       :t-by-instant-index {:reverse-comparator? true}
+       :resource-as-of-index nil
+       :type-as-of-index nil
+       :system-as-of-index nil
+       :type-stats-index nil
+       :system-stats-index nil}}
+
+     ::rs/kv
+     {:kv-store (ig/ref :blaze.db/resource-kv-store)
+      :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
+      :writing-context (ig/ref :blaze.fhir/writing-context)
+      :executor (ig/ref ::rs-kv/executor)}
+
+     [::kv/rocksdb :blaze.db/resource-kv-store]
+     {:dir (str dir "/resource")
+      :column-families {}}
+
+     ::rs-kv/executor {}
+
+     [::node/resource-indexer :blaze.db.node.main/resource-indexer]
+     {:kv-store (ig/ref :blaze.db.main/index-kv-store)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+      :executor (ig/ref :blaze.db.node.resource-indexer.main/executor)}
+
+     [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.main/executor] {}
+
+     [::node/resource-indexer :blaze.db.node.admin/resource-indexer]
+     {:kv-store (ig/ref :blaze.db.admin/index-kv-store)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+      :executor (ig/ref :blaze.db.node.resource-indexer.admin/executor)}
+
+     [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.admin/executor] {}
+
+     :blaze.db/search-param-registry
+     {:structure-definition-repo structure-definition-repo}
+
+     [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
+     {:structure-definition-repo structure-definition-repo}
+
+     [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
+     {:structure-definition-repo structure-definition-repo
+      :fail-on-unknown-property false
+      :include-summary-only true
+      :use-regex false}
+
+     :blaze.fhir/writing-context
+     {:structure-definition-repo structure-definition-repo}
+
+     ::rocksdb/block-cache {:size-in-mb 1}
+
+     :blaze/admin-api
+     {:context-path "/fhir"
+      :admin-node (ig/ref :blaze.db.admin/node)
+      :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
+      :writing-context (ig/ref :blaze.fhir/writing-context)
+      :job-scheduler (ig/ref :blaze/job-scheduler)
+      :read-job-handler (ig/ref :blaze.interaction/read)
+      :history-job-handler (ig/ref :blaze.interaction.history/instance)
+      :search-type-job-handler (ig/ref :blaze.interaction/search-type)
+      :dbs {"index" (ig/ref :blaze.db.main/index-kv-store)
+            "resource" (ig/ref :blaze.db/resource-kv-store)}
+      :settings []
+      :features []
+      :clock (ig/ref :blaze.test/fixed-clock)
+      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+     :blaze/job-scheduler
+     {:node (ig/ref :blaze.db.admin/node)
+      :clock (ig/ref :blaze.test/fixed-clock)
+      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+     :blaze.interaction/create
+     {:node (ig/ref :blaze.db.admin/node)
+      :clock (ig/ref :blaze.test/fixed-clock)
+      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+     :blaze.interaction/read {}
+
+     :blaze.interaction.history/instance
+     {:clock (ig/ref :blaze.test/fixed-clock)
+      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+      :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+
+     :blaze.interaction/search-type
+     {:clock (ig/ref :blaze.test/fixed-clock)
+      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+      :page-store (ig/ref :blaze/page-store)
+      :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
+      :context-path "/fhir"}
+
+     :blaze.page-store/local {}
+
+     :blaze/scheduler {}
+
+     :blaze.test/fixed-rng {}
+     :blaze.test/fixed-rng-fn {}
+     :blaze.test/page-id-cipher {}
+
+     :blaze.test/json-writer
+     {:writing-context (ig/ref :blaze.fhir/writing-context)}}))
+
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze/admin-api nil})
+    (given-failed-system {:blaze/admin-api nil}
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze/admin-api {}})
+    (given-failed-system {:blaze/admin-api {}}
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
@@ -270,103 +271,49 @@
       [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "invalid context path"
-    (given-thrown (ig/init {:blaze/admin-api {:context-path ::invalid}})
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :context-path] ::invalid)
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 9 :via] := [:blaze/context-path]
-      [:cause-data ::s/problems 9 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/context-path]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid admin node"
-    (given-thrown (ig/init {:blaze/admin-api {:admin-node ::invalid}})
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :admin-node] ::invalid)
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 9 :via] := [:blaze.db/node]
-      [:cause-data ::s/problems 9 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid parsing context"
-    (given-thrown (ig/init {:blaze/admin-api {:parsing-context ::invalid}})
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :parsing-context] ::invalid)
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 9 :via] := [:blaze.fhir/parsing-context]
-      [:cause-data ::s/problems 9 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/parsing-context]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid writing context"
-    (given-thrown (ig/init {:blaze/admin-api {:writing-context ::invalid}})
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :writing-context] ::invalid)
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 9 :via] := [:blaze.fhir/writing-context]
-      [:cause-data ::s/problems 9 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid settings"
-    (given-thrown (ig/init {:blaze/admin-api {:settings ::invalid}})
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :settings] ::invalid)
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 9 :via] := [::admin-api/settings]
-      [:cause-data ::s/problems 9 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::admin-api/settings]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid features"
-    (given-thrown (ig/init {:blaze/admin-api {:features ::invalid}})
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :features] ::invalid)
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 9 :via] := [::admin-api/features]
-      [:cause-data ::s/problems 9 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::admin-api/features]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "with minimal config"
-    (with-system [{handler :blaze/admin-api} (config (new-temp-dir!))]
+    (with-system [{handler :blaze/admin-api} (config!)]
       (is (fn? handler)))))
 
 (defn- read-body [body]
@@ -393,14 +340,14 @@
        ~@body)))
 
 (deftest handler-not-found-test
-  (with-handler [handler] (config (new-temp-dir!)) []
+  (with-handler [handler] (config!) []
     (given @(handler
              {:request-method :get
               :uri "/fhir/__admin/foo"})
       :status := 404)))
 
 (deftest handler-openapi-test
-  (with-handler [handler] (config (new-temp-dir!)) []
+  (with-handler [handler] (config!) []
     (let [{:keys [status body]} @(handler
                                   {:request-method :get
                                    :uri "/fhir/__admin/openapi.json"})]
@@ -525,7 +472,7 @@
 
 (deftest root-test
   (testing "without settings and features"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (testing "success"
         (given @(handler
                  {:request-method :get
@@ -536,7 +483,7 @@
 
   (testing "with one setting"
     (with-handler [handler]
-      (assoc-in (config (new-temp-dir!))
+      (assoc-in (config!)
                 [:blaze/admin-api :settings]
                 [{:name "SERVER_PORT"
                   :value 8081
@@ -555,7 +502,7 @@
 
     (testing "without default value"
       (with-handler [handler]
-        (assoc-in (config (new-temp-dir!))
+        (assoc-in (config!)
                   [:blaze/admin-api :settings]
                   [{:name "SERVER_PORT"
                     :value 8081}])
@@ -572,7 +519,7 @@
 
     (testing "with masked value"
       (with-handler [handler]
-        (assoc-in (config (new-temp-dir!))
+        (assoc-in (config!)
                   [:blaze/admin-api :settings]
                   [{:name "SERVER_PORT"
                     :masked true}])
@@ -589,7 +536,7 @@
 
   (testing "with one feature"
     (with-handler [handler]
-      (assoc-in (config (new-temp-dir!))
+      (assoc-in (config!)
                 [:blaze/admin-api :features]
                 [{:key "open-id-authentication"
                   :name "OpenID Authentication"
@@ -611,7 +558,7 @@
 
 (deftest databases-test
   (testing "with normal config"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (testing "success"
         (given @(handler
                  {:request-method :get
@@ -622,7 +569,7 @@
           [:body 1 "name"] := "resource")))))
 
 (deftest db-stats-test
-  (with-handler [handler] (config (new-temp-dir!)) []
+  (with-handler [handler] (config!) []
     (testing "with unknown database"
       (testing "success"
         (given @(handler
@@ -658,7 +605,7 @@
 
 (deftest column-families-test
   (testing "index database"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (testing "success"
         (given @(handler
                  {:request-method :get
@@ -672,7 +619,7 @@
           [:body 1 "name"] := "compartment-resource-type-index"))))
 
   (testing "resource database"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (testing "success"
         (given @(handler
                  {:request-method :get
@@ -686,7 +633,7 @@
           [:body 0 "sizeAllMemTables"] := 2048)))))
 
 (deftest column-family-state-test
-  (with-handler [handler] (config (new-temp-dir!)) []
+  (with-handler [handler] (config!) []
     (testing "patient-last-change-index"
       (with-redefs [plc/state (fn [_] {:type :current})]
         (given @(handler
@@ -703,7 +650,7 @@
         [:body "msg"] := "The state of the column family `default` in database `index` was not found."))))
 
 (deftest column-family-metadata-test
-  (with-handler [handler] (config (new-temp-dir!)) []
+  (with-handler [handler] (config!) []
     (testing "search-param-value-index in index database"
       (given @(handler
                {:request-method :get
@@ -726,7 +673,7 @@
         [:body "msg"] := "The column family `foo` in database `index` was not found."))))
 
 (deftest rocksdb-tables-test
-  (with-handler [handler] (config (new-temp-dir!))
+  (with-handler [handler] (config!)
     (-> (fn [pat-id]
           (into
            [[:put {:fhir/type :fhir/Patient :id (str pat-id)}]]
@@ -816,7 +763,7 @@
 
 (deftest create-job-test
   (testing "no profile"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
@@ -836,7 +783,7 @@
           ["issue" 0 "details" "text"] := "No allowed profile found."))))
 
   (testing "wrong profile"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
@@ -857,7 +804,7 @@
           ["issue" 0 "details" "text"] := "No allowed profile found."))))
 
   (testing "missing code"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
@@ -874,7 +821,7 @@
           ["issue" 0 "diagnostics"] := "Task.code: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
 
   (testing "missing authoredOn"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
@@ -891,7 +838,7 @@
           ["issue" 0 "diagnostics"] := "Task.authoredOn: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
 
   (testing "wrong code"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :post
@@ -909,7 +856,7 @@
 
   (testing "re-index job"
     (testing "non-absolute search-param-url"
-      (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+      (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
         (let [{:keys [status body]}
               @(handler
                 {:request-method :post
@@ -925,7 +872,7 @@
             ["issue" 0 "code"] := "processing"
             ["issue" 0 "diagnostics"] := "Canonical URLs must be absolute URLs if they are not fragment references (foo)"))))
 
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status headers body]}
             @(handler
               {:request-method :post
@@ -950,7 +897,7 @@
 
   (testing "compact job"
     (testing "unknown database code"
-      (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+      (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
         (let [{:keys [status body]}
               @(handler
                 {:request-method :post
@@ -969,7 +916,7 @@
             ["issue" 1 "code"] := "processing"
             ["issue" 1 "diagnostics"] := "The value provided ('foo') was not found in the value set 'Database Value Set' (https://samply.github.io/blaze/fhir/ValueSet/Database), and a code is required from this value set  (error message = Unknown code 'https://samply.github.io/blaze/fhir/CodeSystem/Database#foo' for in-memory expansion of ValueSet 'https://samply.github.io/blaze/fhir/ValueSet/Database')"))))
 
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status headers body]}
             @(handler
               {:request-method :post
@@ -994,7 +941,7 @@
 
 (deftest read-job-test
   (testing "existing job"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       @(handler
         {:request-method :post
          :uri "/fhir/__admin/Task"
@@ -1016,7 +963,7 @@
           "status" := "draft"))))
 
   (testing "non-existing job"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :get
@@ -1032,7 +979,7 @@
 
 (deftest history-job-test
   (testing "existing job"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       @(handler
         {:request-method :post
          :uri "/fhir/__admin/Task"
@@ -1054,7 +1001,7 @@
           ["entry" 0 "resource" "id"] := "AAAAAAAAAAAAAAAA"))))
 
   (testing "non-existing job"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (let [{:keys [status body]}
             @(handler
               {:request-method :get
@@ -1069,7 +1016,7 @@
           ["issue" 0 "diagnostics"] := "Resource `Task/AAAAAAAAAAAAAAAA` was not found.")))))
 
 (deftest search-jobs-test
-  (with-handler [handler {:blaze.test/keys [json-writer]}] (config (new-temp-dir!)) []
+  (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
     @(handler
       {:request-method :post
        :uri "/fhir/__admin/Task"
@@ -1116,7 +1063,7 @@
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (let [{:keys [status headers body]}
             @(handler
               {:request-method :post
@@ -1142,7 +1089,7 @@
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (let [{:keys [status headers body]}
             @(handler
               {:request-method :post
@@ -1168,7 +1115,7 @@
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (let [{:keys [status headers body]}
             @(handler
               {:request-method :post
@@ -1195,7 +1142,7 @@
 
 (deftest cql-bloom-filters-test
   (testing "without expression cache"
-    (with-handler [handler] (config (new-temp-dir!)) []
+    (with-handler [handler] (config!) []
       (testing "not-found"
         (given @(handler
                  {:request-method :get
@@ -1203,7 +1150,7 @@
           :status := 404
           [:body "msg"] := "The feature \"CQL Expression Cache\" is disabled."))))
 
-  (with-handler [handler {::expr/keys [cache]}] (with-cql-expr-cache (config (new-temp-dir!))) []
+  (with-handler [handler {::expr/keys [cache]}] (with-cql-expr-cache (config!)) []
     (let [elm {:type "Exists"
                :operand {:type "Retrieve" :dataType "{http://hl7.org/fhir}Observation"}}
           expr (c/compile {:eval-context "Patient"} elm)]

@@ -2,8 +2,8 @@
   (:require
    [blaze.http-client]
    [blaze.http-client.spec]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.core.protocols :refer [Datafiable]]
    [clojure.datafy :refer [datafy]]
    [clojure.java.io :as io]
@@ -35,30 +35,30 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze/http-client nil})
+    (given-failed-system {:blaze/http-client nil}
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid connect timeout"
-    (given-thrown (ig/init {:blaze/http-client {:connect-timeout ::invalid}})
+    (given-failed-system {:blaze/http-client {:connect-timeout ::invalid}}
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :via] := [:blaze.http-client/connect-timeout]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid trust store"
-    (given-thrown (ig/init {:blaze/http-client {:trust-store ::invalid}})
+    (given-failed-system {:blaze/http-client {:trust-store ::invalid}}
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `string?
+      [:cause-data ::s/problems 0 :via] := [:blaze.http-client/trust-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid trust store password"
-    (given-thrown (ig/init {:blaze/http-client {:trust-store-pass ::invalid}})
+    (given-failed-system {:blaze/http-client {:trust-store-pass ::invalid}}
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `string?
+      [:cause-data ::s/problems 0 :via] := [:blaze.http-client/trust-store-pass]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "default config"

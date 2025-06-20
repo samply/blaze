@@ -4,9 +4,10 @@
   https://build.fhir.org/http.html#delete-history"
   (:require
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.node :refer [node?]]
+   [blaze.db.spec]
    [blaze.interaction.delete-history]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -21,22 +22,22 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction/delete-history nil})
+    (given-failed-system {:blaze.interaction/delete-history nil}
       :key := :blaze.interaction/delete-history
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction/delete-history {}})
+    (given-failed-system {:blaze.interaction/delete-history {}}
       :key := :blaze.interaction/delete-history
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/delete-history {:node ::invalid}})
+    (given-failed-system {:blaze.interaction/delete-history {:node ::invalid}}
       :key := :blaze.interaction/delete-history
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `node?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config

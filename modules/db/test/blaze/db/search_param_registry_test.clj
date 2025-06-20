@@ -5,8 +5,8 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -31,37 +31,33 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.db/search-param-registry nil})
+    (given-failed-system {:blaze.db/search-param-registry nil}
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.db/search-param-registry {}})
+    (given-failed-system {:blaze.db/search-param-registry {}}
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
 
   (testing "invalid structure-definition-repo"
-    (given-thrown (ig/init {:blaze.db/search-param-registry {:structure-definition-repo ::invalid}})
+    (given-failed-system (assoc-in config [:blaze.db/search-param-registry :structure-definition-repo] ::invalid)
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid extra-bundle-file"
-    (given-thrown (ig/init {:blaze.db/search-param-registry
-                            {:structure-definition-repo structure-definition-repo
-                             :extra-bundle-file ::invalid}})
+    (given-failed-system (assoc-in config [:blaze.db/search-param-registry :extra-bundle-file] ::invalid)
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `string?
+      [:cause-data ::s/problems 0 :via] := [::sr/extra-bundle-file]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "not-found extra-bundle-file"
-    (given-thrown (ig/init {:blaze.db/search-param-registry
-                            {:structure-definition-repo structure-definition-repo
-                             :extra-bundle-file "foo"}})
+    (given-failed-system (assoc-in config [:blaze.db/search-param-registry :extra-bundle-file] "foo")
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-threw-exception))
 

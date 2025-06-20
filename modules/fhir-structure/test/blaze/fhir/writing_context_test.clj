@@ -1,7 +1,8 @@
 (ns blaze.fhir.writing-context-test
   (:require
    [blaze.fhir.writing-context]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -15,19 +16,19 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.fhir/writing-context nil})
+    (given-failed-system {:blaze.fhir/writing-context nil}
       :key := :blaze.fhir/writing-context
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.fhir/writing-context {}})
+    (given-failed-system {:blaze.fhir/writing-context {}}
       :key := :blaze.fhir/writing-context
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
 
   (testing "invalid structure-definition-repo"
-    (given-thrown (ig/init {:blaze.fhir/writing-context {:structure-definition-repo ::invalid}})
+    (given-failed-system {:blaze.fhir/writing-context {:structure-definition-repo ::invalid}}
       :key := :blaze.fhir/writing-context
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]

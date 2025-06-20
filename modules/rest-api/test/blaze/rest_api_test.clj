@@ -11,14 +11,14 @@
    [blaze.job-scheduler]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.output-spec]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.module.test-util.ring :as tu-r]
    [blaze.rest-api :as rest-api]
    [blaze.rest-api.capabilities-handler]
    [blaze.rest-api.routes-spec]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service.local :as ts-local]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -41,13 +41,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze/rest-api nil})
+    (given-failed-system {:blaze/rest-api nil}
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze/rest-api {}})
+    (given-failed-system {:blaze/rest-api {}}
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))

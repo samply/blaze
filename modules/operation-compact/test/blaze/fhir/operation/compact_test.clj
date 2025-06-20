@@ -5,12 +5,12 @@
    [blaze.fhir.operation.compact]
    [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -23,22 +23,22 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.fhir.operation/compact nil})
+    (given-failed-system {:blaze.fhir.operation/compact nil}
       :key := :blaze.fhir.operation/compact
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.fhir.operation/compact {}})
+    (given-failed-system {:blaze.fhir.operation/compact {}}
       :key := :blaze.fhir.operation/compact
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
 
   (testing "invalid clock"
-    (given-thrown (ig/init {:blaze.fhir.operation/compact {:clock ::invalid}})
+    (given-failed-system {:blaze.fhir.operation/compact {:clock ::invalid}}
       :key := :blaze.fhir.operation/compact
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `time/clock?
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def ^:private config

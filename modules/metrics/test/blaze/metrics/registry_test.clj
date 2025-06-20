@@ -2,8 +2,9 @@
   (:require
    [blaze.metrics.core :as metrics]
    [blaze.metrics.registry]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.metrics.spec]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -22,16 +23,16 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.metrics/registry nil})
+    (given-failed-system {:blaze.metrics/registry nil}
       :key := :blaze.metrics/registry
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid collectors"
-    (given-thrown (ig/init {:blaze.metrics/registry {:collectors ::invalid}})
+    (given-failed-system {:blaze.metrics/registry {:collectors ::invalid}}
       :key := :blaze.metrics/registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `coll?
+      [:cause-data ::s/problems 0 :via] := [:blaze.metrics/collectors]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def collector

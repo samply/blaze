@@ -3,11 +3,11 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.handler.util :as handler-util]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.batch-handler]
    [blaze.rest-api.routes-spec]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -36,13 +36,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::rest-api/batch-handler nil})
+    (given-failed-system {::rest-api/batch-handler nil}
       :key := ::rest-api/batch-handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::rest-api/batch-handler {}})
+    (given-failed-system {::rest-api/batch-handler {}}
       :key := ::rest-api/batch-handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
@@ -50,22 +50,25 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :resource-patterns))))
 
   (testing "invalid structure-definition-repo"
-    (given-thrown (ig/init {::rest-api/batch-handler {:structure-definition-repo ::invalid}})
+    (given-failed-system (assoc-in minimal-config [::rest-api/batch-handler :structure-definition-repo] ::invalid)
       :key := ::rest-api/batch-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-patterns))
-      [:cause-data ::s/problems 2 :via] := [:blaze.fhir/structure-definition-repo]
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid capabilities-handler"
-    (given-thrown (ig/init {::rest-api/batch-handler {:capabilities-handler ::invalid}})
+    (given-failed-system (assoc-in minimal-config [::rest-api/batch-handler :capabilities-handler] ::invalid)
       :key := ::rest-api/batch-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-patterns))
-      [:cause-data ::s/problems 2 :pred] := `fn?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::rest-api/capabilities-handler]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid resource-patterns"
+    (given-failed-system (assoc-in minimal-config [::rest-api/batch-handler :resource-patterns] ::invalid)
+      :key := ::rest-api/batch-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::rest-api/resource-patterns]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "minimal config"
     (with-system [{::rest-api/keys [batch-handler]} minimal-config]

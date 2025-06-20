@@ -5,11 +5,8 @@
   (:import
    [java.util.concurrent Future]))
 
-(defn scheduler? [x]
-  (satisfies? p/Scheduler x))
-
 (s/def :blaze/scheduler
-  scheduler?)
+  #(satisfies? p/Scheduler %))
 
 (s/def :blaze.scheduler/future
   #(instance? Future %))

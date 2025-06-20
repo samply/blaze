@@ -2,8 +2,8 @@
   (:require
    [blaze.executors :as ex]
    [blaze.metrics.core :as metrics]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [blaze.thread-pool-executor-collector]
    [blaze.thread-pool-executor-collector.spec :as spec]
    [clojure.spec.alpha :as s]
@@ -23,26 +23,26 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze/thread-pool-executor-collector nil})
+    (given-failed-system {:blaze/thread-pool-executor-collector nil}
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "nil executors"
-    (given-thrown (ig/init {:blaze/thread-pool-executor-collector {:executors nil}})
+    (given-failed-system {:blaze/thread-pool-executor-collector {:executors nil}}
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid executor key"
-    (given-thrown (ig/init {:blaze/thread-pool-executor-collector {:executors {"a" nil}}})
+    (given-failed-system {:blaze/thread-pool-executor-collector {:executors {"a" nil}}}
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `keyword?
       [:cause-data ::s/problems 0 :val] := "a"))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {:blaze/thread-pool-executor-collector {:executors {:a nil}}})
+    (given-failed-system {:blaze/thread-pool-executor-collector {:executors {:a nil}}}
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `spec/thread-pool-executor?

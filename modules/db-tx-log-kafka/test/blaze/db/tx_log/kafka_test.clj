@@ -3,12 +3,14 @@
    [blaze.anomaly-spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.kafka :as kafka]
+   [blaze.db.tx-log.kafka.spec]
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
+   [blaze.fhir.test-util]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -68,13 +70,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::tx-log/kafka nil})
+    (given-failed-system {::tx-log/kafka nil}
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::tx-log/kafka {}})
+    (given-failed-system {::tx-log/kafka {}}
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))
@@ -82,13 +84,25 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
 
   (testing "invalid bootstrap servers"
-    (given-thrown (ig/init {::tx-log/kafka {:bootstrap-servers ::invalid}})
+    (given-failed-system (assoc-in config [::tx-log/kafka :bootstrap-servers] ::invalid)
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :topic))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))
-      [:cause-data ::s/problems 2 :pred] := `string?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::kafka/bootstrap-servers]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid topic"
+    (given-failed-system (assoc-in config [::tx-log/kafka :topic] ::invalid)
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::kafka/topic]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid last-t-executor"
+    (given-failed-system (assoc-in config [::tx-log/kafka :last-t-executor] ::invalid)
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::kafka/last-t-executor]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "non default key"
     (with-redefs
@@ -174,7 +188,7 @@
             (assert (zero? offset)))
           (^ConsumerRecords poll [_ ^Duration duration]
             (assert (= (time/seconds 1) duration))
-            (ConsumerRecords. (Map/of)))
+            (ConsumerRecords. (Map/of) (Map/of)))
           AutoCloseable
           (close [_])))
       kafka/create-last-t-consumer no-op-consumer]

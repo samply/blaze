@@ -13,8 +13,8 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -86,13 +86,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::tx-log/local nil})
+    (given-failed-system {::tx-log/local nil}
       :key := ::tx-log/local
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::tx-log/local {}})
+    (given-failed-system {::tx-log/local {}}
       :key := ::tx-log/local
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))

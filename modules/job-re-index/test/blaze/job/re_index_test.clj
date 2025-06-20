@@ -7,7 +7,7 @@
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
-   [blaze.db.node :as node :refer [node?]]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.search-param-registry]
@@ -22,8 +22,9 @@
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.luid :as luid]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.spec]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -38,30 +39,6 @@
 (log/set-min-level! :debug)
 
 (test/use-fixtures :each tu/fixture)
-
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.job/re-index nil})
-      :key := :blaze.job/re-index
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.job/re-index {}})
-      :key := :blaze.job/re-index
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
-
-  (testing "invalid main-node"
-    (given-thrown (ig/init {:blaze.job/re-index {:main-node ::invalid}})
-      :key := :blaze.job/re-index
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `node?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (derive :blaze.db.main/node :blaze.db/node)
 (derive :blaze.db.admin/node :blaze.db/node)
@@ -208,6 +185,42 @@
     :offset-seconds 11}
 
    :blaze.test/fixed-rng-fn {}})
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze.job/re-index nil}
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.job/re-index {}}
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "invalid main-node"
+    (given-failed-system (assoc-in config [:blaze.job/re-index :main-node] ::invalid)
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid admin-node"
+    (given-failed-system (assoc-in config [:blaze.job/re-index :admin-node] ::invalid)
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid clock"
+    (given-failed-system (assoc-in config [:blaze.job/re-index :clock] ::invalid)
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def never-increment-config
   (assoc-in config [:blaze.test/offset-clock :offset-seconds] 10))
