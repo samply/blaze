@@ -4,10 +4,11 @@
   https://www.hl7.org/fhir/http.html#cdelete"
   (:require
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.node :refer [node?]]
+   [blaze.db.spec]
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.test-util :refer [wrap-error]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -18,28 +19,28 @@
 
 (st/instrument)
 (log/set-min-level! :trace)
-(tu/set-default-locale-english!)                ; important for the thousands separator in 10,000
+(tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction/conditional-delete-type nil})
+    (given-failed-system {:blaze.interaction/conditional-delete-type nil}
       :key := :blaze.interaction/conditional-delete-type
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction/conditional-delete-type {}})
+    (given-failed-system {:blaze.interaction/conditional-delete-type {}}
       :key := :blaze.interaction/conditional-delete-type
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/conditional-delete-type {:node ::invalid}})
+    (given-failed-system {:blaze.interaction/conditional-delete-type {:node ::invalid}}
       :key := :blaze.interaction/conditional-delete-type
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `node?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config

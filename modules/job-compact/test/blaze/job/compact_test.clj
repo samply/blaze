@@ -1,8 +1,9 @@
 (ns blaze.job.compact-test
   (:require
    [blaze.db.api-spec]
-   [blaze.db.kv :as kv :refer [store?]]
+   [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
+   [blaze.db.kv.spec]
    [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
@@ -18,8 +19,8 @@
    [blaze.job.compact-spec]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -31,32 +32,6 @@
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
-
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.job/compact nil})
-      :key := :blaze.job/compact
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.job/compact {}})
-      :key := :blaze.job/compact
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :index-db))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
-
-  (testing "invalid :index-db"
-    (given-thrown (ig/init {:blaze.job/compact {:index-db ::invalid}})
-      :key := :blaze.job/compact
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `store?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
-
-(derive :blaze.db.admin/node :blaze.db/node)
 
 (def config
   {:blaze/job-scheduler
@@ -167,6 +142,30 @@
     :offset-seconds 11}
 
    :blaze.test/fixed-rng-fn {}})
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze.job/compact nil}
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.job/compact {}}
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :index-db))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "invalid index-db"
+    (given-failed-system (assoc-in config [:blaze.job/compact :index-db] ::invalid)
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/kv-store]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(derive :blaze.db.admin/node :blaze.db/node)
 
 (def job-missing-database
   {:fhir/type :fhir/Task

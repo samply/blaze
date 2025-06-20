@@ -2,10 +2,11 @@
   (:require
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
-   [blaze.db.node :as node :refer [node?]]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.search-param-registry]
+   [blaze.db.spec]
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
@@ -13,11 +14,11 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.module-spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-id-cipher]
    [blaze.page-id-cipher.spec]
-   [blaze.scheduler.spec :refer [scheduler?]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.scheduler.spec]
+   [blaze.test-util :as tu]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -123,13 +124,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze/page-id-cipher nil})
+    (given-failed-system {:blaze/page-id-cipher nil}
       :key := :blaze/page-id-cipher
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze/page-id-cipher {}})
+    (given-failed-system {:blaze/page-id-cipher {}}
       :key := :blaze/page-id-cipher
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
@@ -138,44 +139,32 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid node"
-    (given-thrown (ig/init {:blaze/page-id-cipher {:node ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/page-id-cipher :node] ::invalid)
       :key := :blaze/page-id-cipher
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `node?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid scheduler"
-    (given-thrown (ig/init {:blaze/page-id-cipher {:scheduler ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/page-id-cipher :scheduler] ::invalid)
       :key := :blaze/page-id-cipher
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `scheduler?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/scheduler]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid clock"
-    (given-thrown (ig/init {:blaze/page-id-cipher {:clock ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/page-id-cipher :clock] ::invalid)
       :key := :blaze/page-id-cipher
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `time/clock?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid rng-fn"
-    (given-thrown (ig/init {:blaze/page-id-cipher {:rng-fn ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/page-id-cipher :rng-fn] ::invalid)
       :key := :blaze/page-id-cipher
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `fn?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "success"
     (with-system [{:blaze/keys [page-id-cipher]} config]

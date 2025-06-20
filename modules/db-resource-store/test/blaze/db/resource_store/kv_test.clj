@@ -6,10 +6,12 @@
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
    [blaze.db.kv.protocols :as kv-p]
+   [blaze.db.kv.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store-spec]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.resource-store.kv-spec]
+   [blaze.db.resource-store.kv.spec]
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
@@ -18,8 +20,8 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.metrics.spec]
-   [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :as mtu :refer [given-failed-future given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -65,13 +67,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::rs/kv nil})
+    (given-failed-system {::rs/kv nil}
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::rs/kv {}})
+    (given-failed-system {::rs/kv {}}
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
@@ -80,45 +82,45 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid kv-store"
-    (given-thrown (ig/init (assoc-in config [::rs/kv :kv-store] ::invalid))
+    (given-failed-system (assoc-in config [::rs/kv :kv-store] ::invalid)
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `kv/store?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/kv-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid parsing-context"
-    (given-thrown (ig/init (assoc-in config [::rs/kv :parsing-context] ::invalid))
+    (given-failed-system (assoc-in config [::rs/kv :parsing-context] ::invalid)
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/parsing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid writing-context"
-    (given-thrown (ig/init (assoc-in config [::rs/kv :writing-context] ::invalid))
+    (given-failed-system (assoc-in config [::rs/kv :writing-context] ::invalid)
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid executor"
-    (given-thrown (ig/init (assoc-in config [::rs/kv :executor] ::invalid))
+    (given-failed-system (assoc-in config [::rs/kv :executor] ::invalid)
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `ex/executor?
+      [:cause-data ::s/problems 0 :via] := [::rs-kv/executor]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest executor-init-test
   (testing "nil config"
-    (given-thrown (ig/init {::rs-kv/executor nil})
+    (given-failed-system {::rs-kv/executor nil}
       :key := ::rs-kv/executor
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid num-threads"
-    (given-thrown (ig/init {::rs-kv/executor {:num-threads ::invalid}})
+    (given-failed-system {::rs-kv/executor {:num-threads ::invalid}}
       :key := ::rs-kv/executor
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `nat-int?
+      [:cause-data ::s/problems 0 :via] := [::rs-kv/num-threads]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest resource-bytes-collector-init-test

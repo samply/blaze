@@ -6,11 +6,12 @@
    [blaze.fhir.util :as fu]
    [blaze.fhir.writing-context]
    [blaze.http-client.spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.extern]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.terminology-service.extern.spec]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -44,13 +45,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::ts/extern nil})
+    (given-failed-system {::ts/extern nil}
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::ts/extern {}})
+    (given-failed-system {::ts/extern {}}
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
@@ -59,28 +60,28 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
   (testing "invalid base-uri"
-    (given-thrown (ig/init (assoc-in config [::ts/extern :base-uri] ::invalid))
+    (given-failed-system (assoc-in config [::ts/extern :base-uri] ::invalid)
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `string?
+      [:cause-data ::s/problems 0 :via] := [:blaze.terminology-service.extern/base-uri]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid http-client"
-    (given-thrown (ig/init (assoc-in config [::ts/extern :http-client] ::invalid))
+    (given-failed-system (assoc-in config [::ts/extern :http-client] ::invalid)
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/http-client]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid parsing-context"
-    (given-thrown (ig/init (assoc-in config [::ts/extern :parsing-context] ::invalid))
+    (given-failed-system (assoc-in config [::ts/extern :parsing-context] ::invalid)
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/parsing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid writing-context"
-    (given-thrown (ig/init (assoc-in config [::ts/extern :writing-context] ::invalid))
+    (given-failed-system (assoc-in config [::ts/extern :writing-context] ::invalid)
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]

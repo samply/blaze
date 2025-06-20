@@ -9,16 +9,16 @@
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
-   [blaze.db.node :refer [node?]]
    [blaze.db.resource-store :as rs]
+   [blaze.db.spec]
    [blaze.fhir.response.create-spec]
    [blaze.fhir.spec.type]
    [blaze.interaction.create]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.interaction.util-spec]
    [blaze.module-spec]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -45,30 +45,6 @@
    {:syntax :bracket
     :path context-path}))
 
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction/create nil})
-      :key := :blaze.interaction/create
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction/create {}})
-      :key := :blaze.interaction/create
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
-
-  (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/create {:node ::invalid}})
-      :key := :blaze.interaction/create
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `node?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
-
 (def config
   (assoc
    mem-node-config
@@ -79,6 +55,42 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.test/executor {}
    :blaze.test/fixed-rng-fn {}))
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze.interaction/create nil}
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.interaction/create {}}
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "invalid node"
+    (given-failed-system (assoc-in config [:blaze.interaction/create :node] ::invalid)
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid clock"
+    (given-failed-system (assoc-in config [:blaze.interaction/create :clock] ::invalid)
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-failed-system (assoc-in config [:blaze.interaction/create :rng-fn] ::invalid)
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn wrap-defaults [handler]
   (fn [request]

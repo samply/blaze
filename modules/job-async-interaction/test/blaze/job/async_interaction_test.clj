@@ -4,10 +4,11 @@
    [blaze.db.api-spec]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
-   [blaze.db.node :as node :refer [node?]]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.search-param-registry]
+   [blaze.db.spec]
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
@@ -23,8 +24,8 @@
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.luid :as luid]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -39,70 +40,6 @@
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
-
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.job/async-interaction nil})
-      :key := :blaze.job/async-interaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.job/async-interaction {}})
-      :key := :blaze.job/async-interaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze/base-url))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :context-path))))
-
-  (testing "invalid base-url"
-    (given-thrown (ig/init {:blaze.job/async-interaction {:blaze/base-url ::invalid}})
-      :key := :blaze.job/async-interaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 5 :pred] := `string?
-      [:cause-data ::s/problems 5 :val] := ::invalid))
-
-  (testing "invalid main-node"
-    (given-thrown (ig/init {:blaze.job/async-interaction {:main-node ::invalid}})
-      :key := :blaze.job/async-interaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze/base-url))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 5 :pred] := `node?
-      [:cause-data ::s/problems 5 :val] := ::invalid))
-
-  (testing "invalid admin-node"
-    (given-thrown (ig/init {:blaze.job/async-interaction {:admin-node ::invalid}})
-      :key := :blaze.job/async-interaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze/base-url))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:cause-data ::s/problems 5 :pred] := `node?
-      [:cause-data ::s/problems 5 :val] := ::invalid)))
-
-(derive :blaze.db.main/node :blaze.db/node)
-(derive :blaze.db.admin/node :blaze.db/node)
-
-(defmethod ig/init-key ::batch-handler [_ _]
-  (fn [{:blaze/keys [cancelled?]}]
-    (Thread/sleep 100)
-    (if-let [anom (cancelled?)]
-      (ac/completed-future anom)
-      (ac/completed-future (ring/response {:fhir/type :fhir/Observation})))))
 
 (def config
   {:blaze/job-scheduler
@@ -248,6 +185,76 @@
 
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}})
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze.job/async-interaction nil}
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.job/async-interaction {}}
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze/base-url))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :context-path))))
+
+  (testing "invalid base-url"
+    (given-failed-system (assoc-in config [:blaze.job/async-interaction :blaze/base-url] ::invalid)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/base-url]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid main-node"
+    (given-failed-system (assoc-in config [:blaze.job/async-interaction :main-node] ::invalid)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid admin-node"
+    (given-failed-system (assoc-in config [:blaze.job/async-interaction :admin-node] ::invalid)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid batch-handler"
+    (given-failed-system (assoc-in config [:blaze.job/async-interaction :batch-handler] ::invalid)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/batch-handler]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid db-sync-timeout"
+    (given-failed-system (assoc-in config [:blaze.job/async-interaction :db-sync-timeout] ::invalid)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/db-sync-timeout]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid context-path"
+    (given-failed-system (assoc-in config [:blaze.job/async-interaction :context-path] ::invalid)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/context-path]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(derive :blaze.db.main/node :blaze.db/node)
+(derive :blaze.db.admin/node :blaze.db/node)
+
+(defmethod ig/init-key ::batch-handler [_ _]
+  (fn [{:blaze/keys [cancelled?]}]
+    (Thread/sleep 100)
+    (if-let [anom (cancelled?)]
+      (ac/completed-future anom)
+      (ac/completed-future (ring/response {:fhir/type :fhir/Observation})))))
 
 (defn- processing-duration [job]
   (some-> (job-util/output-value job job-async/output-uri "processing-duration")

@@ -2,9 +2,9 @@
   (:require
    [blaze.metrics.handler]
    [blaze.metrics.registry]
-   [blaze.metrics.spec :as spec]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.metrics.spec]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -20,22 +20,22 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.metrics/handler nil})
+    (given-failed-system {:blaze.metrics/handler nil}
       :key := :blaze.metrics/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.metrics/handler {}})
+    (given-failed-system {:blaze.metrics/handler {}}
       :key := :blaze.metrics/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :registry))))
 
   (testing "invalid registry"
-    (given-thrown (ig/init {:blaze.metrics/handler {:registry ::invalid}})
+    (given-failed-system {:blaze.metrics/handler {:registry ::invalid}}
       :key := :blaze.metrics/handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `spec/registry?
+      [:cause-data ::s/problems 0 :via] := [:blaze.metrics/registry]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config

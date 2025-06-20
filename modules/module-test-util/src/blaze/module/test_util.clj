@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :refer [do-sync]]
+   [blaze.test-util :as tu]
    [clojure.string :as str]
    [clojure.test :refer [is]]
    [integrant.core :as ig]
@@ -35,3 +36,13 @@
 (defmacro given-failed-future [future & body]
   `(given (ba/try-anomaly (deref ~future) (is false))
      ~@body))
+
+(defmacro given-failed-system
+  "Starts a system from `config`. Assumes that the startup fails. Stops the
+  system in order to stop successful started components. Runs a given macro with
+  `body` on the exception data."
+  [config & body]
+  `(let [data# (try (ig/init ~config) (is false) (catch Exception e# (tu/all-ex-data e#)))]
+     (ig/halt! (:system data#))
+     (given data#
+       ~@body)))

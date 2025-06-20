@@ -3,12 +3,13 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.node :refer [node?]]
+   [blaze.db.spec]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.operation.patient.purge]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -24,22 +25,22 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.operation.patient/purge nil})
+    (given-failed-system {:blaze.operation.patient/purge nil}
       :key := :blaze.operation.patient/purge
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.operation.patient/purge {}})
+    (given-failed-system {:blaze.operation.patient/purge {}}
       :key := :blaze.operation.patient/purge
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "invalid node"
-    (given-thrown (ig/init {:blaze.operation.patient/purge {:node ::invalid}})
+    (given-failed-system {:blaze.operation.patient/purge {:node ::invalid}}
       :key := :blaze.operation.patient/purge
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `node?
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def base-url "base-url-113047")

@@ -14,12 +14,12 @@
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
    [blaze.elm.expression.cache.codec-spec]
    [blaze.elm.expression.cache.codec.by-t-spec]
+   [blaze.elm.expression.cache.spec]
    [blaze.elm.literal :as elm]
    [blaze.executors :as ex]
    [blaze.fhir.test-util]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -54,35 +54,31 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::expr/cache nil})
+    (given-failed-system {::expr/cache nil}
       :key := ::expr/cache
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::expr/cache {}})
+    (given-failed-system {::expr/cache {}}
       :key := ::expr/cache
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid max size"
-    (given-thrown (ig/init {::expr/cache {:max-size-in-mb ::invalid}})
+    (given-failed-system (assoc-in config [::expr/cache :max-size-in-mb] ::invalid)
       :key := ::expr/cache
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 2 :pred] := `nat-int?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::ec/max-size-in-mb]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid refresh"
-    (given-thrown (ig/init {::expr/cache {:refresh ::invalid}})
+    (given-failed-system (assoc-in config [::expr/cache :refresh] ::invalid)
       :key := ::expr/cache
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 2 :pred] := `time/duration?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::ec/refresh]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "init"
     (with-system [{::expr/keys [cache]} config]
@@ -90,16 +86,16 @@
 
 (deftest executor-init-test
   (testing "nil config"
-    (given-thrown (ig/init {::ec/executor nil})
+    (given-failed-system {::ec/executor nil}
       :key := ::ec/executor
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid num-threads"
-    (given-thrown (ig/init {::ec/executor {:num-threads ::invalid}})
+    (given-failed-system (assoc-in config [::ec/executor :num-threads] ::invalid)
       :key := ::ec/executor
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :via] := [::ec/num-threads]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest executor-shutdown-timeout-test

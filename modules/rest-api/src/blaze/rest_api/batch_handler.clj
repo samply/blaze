@@ -14,7 +14,7 @@
    :req-un
    [:blaze.fhir/structure-definition-repo
     ::rest-api/capabilities-handler
-    ::resource-patterns]
+    ::rest-api/resource-patterns]
    :opt-un
    [:blaze/context-path
     ::search-system-handler

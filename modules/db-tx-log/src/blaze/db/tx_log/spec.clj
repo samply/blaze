@@ -6,17 +6,11 @@
    [blaze.spec]
    [clojure.spec.alpha :as s]))
 
-(defn tx-log? [x]
-  (satisfies? tx-log/TxLog x))
-
 (s/def :blaze.db/tx-log
-  tx-log?)
-
-(defn queue? [x]
-  (satisfies? tx-log/Queue x))
+  #(satisfies? tx-log/TxLog %))
 
 (s/def :blaze.db.tx-log/queue
-  queue?)
+  #(satisfies? tx-log/Queue %))
 
 (s/def :blaze.db.tx-cmd/op
   #{"create" "put" "keep" "delete" "conditional-delete" "delete-history"

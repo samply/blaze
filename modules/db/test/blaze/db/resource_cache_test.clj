@@ -5,6 +5,7 @@
    [blaze.db.kv.mem]
    [blaze.db.resource-cache :as resource-cache]
    [blaze.db.resource-cache-spec]
+   [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store-spec]
    [blaze.db.resource-store.kv :as rs-kv]
@@ -16,8 +17,8 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.fhir.writing-context]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -64,29 +65,29 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.db/resource-cache nil})
+    (given-failed-system {:blaze.db/resource-cache nil}
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing store"
-    (given-thrown (ig/init {:blaze.db/resource-cache {}})
+    (given-failed-system {:blaze.db/resource-cache {}}
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))))
 
   (testing "invalid store"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/resource-cache :resource-store] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/resource-cache :resource-store] ::invalid)
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.db/resource-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid max-size"
-    (given-thrown (ig/init (assoc-in config [:blaze.db/resource-cache :max-size] ::invalid))
+    (given-failed-system (assoc-in config [:blaze.db/resource-cache :max-size] ::invalid)
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `nat-int?
+      [:cause-data ::s/problems 0 :via] := [::resource-cache/max-size]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest get-test

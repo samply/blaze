@@ -17,16 +17,16 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module-spec]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
    [blaze.page-store-spec]
    [blaze.page-store.local]
    [blaze.page-store.spec]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
    [taoensso.timbre :as log])
@@ -59,62 +59,6 @@
      :blaze/base-url ""}
     :path ""}))
 
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction/search-system nil})
-      :key := :blaze.interaction/search-system
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction/search-system {}})
-      :key := :blaze.interaction/search-system
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
-
-  (testing "invalid clock"
-    (given-thrown (ig/init {:blaze.interaction/search-system {:clock ::invalid}})
-      :key := :blaze.interaction/search-system
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 3 :pred] := `time/clock?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
-
-  (testing "invalid rng-fn"
-    (given-thrown (ig/init {:blaze.interaction/search-system {:rng-fn ::invalid}})
-      :key := :blaze.interaction/search-system
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 3 :pred] := `fn?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
-
-  (testing "invalid page-store"
-    (given-thrown (ig/init {:blaze.interaction/search-system {:page-store ::invalid}})
-      :key := :blaze.interaction/search-system
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 3 :via] := [:blaze/page-store]
-      [:cause-data ::s/problems 3 :val] := ::invalid))
-
-  (testing "invalid page-id-cipher"
-    (given-thrown (ig/init {:blaze.interaction/search-system {:page-id-cipher ::invalid}})
-      :key := :blaze.interaction/search-system
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 3 :via] := [:blaze/page-id-cipher]
-      [:cause-data ::s/problems 3 :val] := ::invalid)))
-
 (def config
   (assoc
    api-stub/mem-node-config
@@ -128,6 +72,50 @@
    :blaze.page-store/local {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze.interaction/search-system nil}
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.interaction/search-system {}}
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "invalid clock"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-system :clock] ::invalid)
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-system :rng-fn] ::invalid)
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid page-store"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-system :page-store] ::invalid)
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/page-store]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid page-id-cipher"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-system :page-id-cipher] ::invalid)
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]

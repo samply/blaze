@@ -1,9 +1,11 @@
 (ns blaze.handler.app-test
   (:require
    [blaze.handler.app]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.handler.health.spec]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.module.test-util.ring :refer [call]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.rest-api.spec]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -17,36 +19,6 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.handler/app nil})
-      :key := :blaze.handler/app
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.handler/app {}})
-      :key := :blaze.handler/app
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rest-api))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :health-handler))))
-
-  (testing "invalid rest-api"
-    (given-thrown (ig/init {:blaze.handler/app {:rest-api ::invalid}})
-      :key := :blaze.handler/app
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :health-handler))
-      [:cause-data ::s/problems 1 :pred] := `fn?
-      [:cause-data ::s/problems 1 :val] := ::invalid))
-
-  (testing "invalid health"
-    (given-thrown (ig/init {:blaze.handler/app {:health-handler ::invalid}})
-      :key := :blaze.handler/app
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rest-api))
-      [:cause-data ::s/problems 1 :pred] := `fn?
-      [:cause-data ::s/problems 1 :val] := ::invalid)))
-
 (defn- rest-api [_ respond _]
   (respond (ring/response ::rest-api)))
 
@@ -57,6 +29,34 @@
   {:blaze.handler/app
    {:rest-api rest-api
     :health-handler health-handler}})
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze.handler/app nil}
+      :key := :blaze.handler/app
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.handler/app {}}
+      :key := :blaze.handler/app
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rest-api))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :health-handler))))
+
+  (testing "invalid rest-api"
+    (given-failed-system (assoc-in config [:blaze.handler/app :rest-api] ::invalid)
+      :key := :blaze.handler/app
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/rest-api]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid health"
+    (given-failed-system (assoc-in config [:blaze.handler/app :health-handler] ::invalid)
+      :key := :blaze.handler/app
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/health-handler]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest handler-test
   (with-system [{handler :blaze.handler/app} config]

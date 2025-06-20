@@ -7,8 +7,8 @@
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
    [blaze.db.kv.protocols :as p]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [ba bb bytes= given-thrown]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.test-util :as tu :refer [ba bb bytes=]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -45,16 +45,23 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::kv/mem nil})
+    (given-failed-system {::kv/mem nil}
       :key := ::kv/mem
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::kv/mem {}})
+    (given-failed-system {::kv/mem {}}
       :key := ::kv/mem
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :column-families)))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :column-families))))
+
+  (testing "invalid column-families"
+    (given-failed-system {::kv/mem {:column-families ::invalid}}
+      :key := ::kv/mem
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::kv/column-families]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn- iterator-invalid-anom? [anom]
   (and (ba/fault? anom) (= "The iterator is invalid." (::anom/message anom))))
@@ -596,6 +603,3 @@
     (given-failed-future (kv/compact! kv-store :foo)
       ::anom/category := ::anom/not-found
       ::anom/message := "Column family `foo` not found.")))
-
-(deftest init-component-test
-  (is (kv/store? (ig/init-key ::kv/mem {}))))

@@ -139,9 +139,6 @@
   [snapshot column-family key]
   (p/-snapshot-get snapshot column-family key))
 
-(defn store? [x]
-  (satisfies? p/KvStore x))
-
 (defn new-snapshot
   "Opens a new snapshot of `store`.
 

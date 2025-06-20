@@ -3,13 +3,15 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
+   [blaze.db.spec]
    [blaze.executors :as ex]
    [blaze.fhir.operation.graphql :as graphql]
+   [blaze.fhir.operation.graphql.spec]
    [blaze.fhir.operation.graphql.test-util :refer [wrap-error]]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -22,53 +24,58 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::graphql/handler nil})
-      :key := ::graphql/handler
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {::graphql/handler {}})
-      :key := ::graphql/handler
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
-
-  (testing "invalid executor"
-    (given-thrown (ig/init {::graphql/handler {:executor ::invalid}})
-      :key := ::graphql/handler
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `ex/executor?
-      [:cause-data ::s/problems 1 :val] := ::invalid)))
-
-(deftest executor-init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::graphql/executor nil})
-      :key := ::graphql/executor
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "invalid num-threads"
-    (given-thrown (ig/init {::graphql/executor {:num-threads ::invalid}})
-      :key := ::graphql/executor
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `pos-int?
-      [:cause-data ::s/problems 0 :val] := ::invalid))
-
-  (testing "with default num-threads"
-    (with-system [{::graphql/keys [executor]}
-                  {::graphql/executor {}}]
-      (is (ex/executor? executor)))))
-
 (def config
   (assoc api-stub/mem-node-config
          ::graphql/handler
          {:node (ig/ref :blaze.db/node)
           :executor (ig/ref :blaze.test/executor)}
          :blaze.test/executor {}))
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {::graphql/handler nil}
+      :key := ::graphql/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {::graphql/handler {}}
+      :key := ::graphql/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
+  (testing "invalid node"
+    (given-failed-system (assoc-in config [::graphql/handler :node] ::invalid)
+      :key := ::graphql/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid executor"
+    (given-failed-system (assoc-in config [::graphql/handler :executor] ::invalid)
+      :key := ::graphql/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::graphql/executor]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(deftest executor-init-test
+  (testing "nil config"
+    (given-failed-system {::graphql/executor nil}
+      :key := ::graphql/executor
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "invalid num-threads"
+    (given-failed-system {::graphql/executor {:num-threads ::invalid}}
+      :key := ::graphql/executor
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::graphql/num-threads]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "with default num-threads"
+    (with-system [{::graphql/keys [executor]} {::graphql/executor {}}]
+      (is (ex/executor? executor)))))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]

@@ -3,11 +3,12 @@
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.node :refer [node?]]
    [blaze.db.resource-store :as rs]
+   [blaze.db.spec]
    [blaze.elm.expression :as-alias expr]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
+   [blaze.fhir.operation.evaluate-measure.spec]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
@@ -16,8 +17,9 @@
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
    [blaze.module-spec]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.spec]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -88,13 +90,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::evaluate-measure/handler nil})
+    (given-failed-system {::evaluate-measure/handler nil}
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::evaluate-measure/handler {}})
+    (given-failed-system {::evaluate-measure/handler {}}
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
@@ -103,24 +105,32 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid node"
-    (given-thrown (ig/init {::evaluate-measure/handler {:node ::invalid}})
+    (given-failed-system (assoc-in config [::evaluate-measure/handler :node] ::invalid)
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `node?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {::evaluate-measure/handler {:executor ::invalid}})
+    (given-failed-system (assoc-in config [::evaluate-measure/handler :executor] ::invalid)
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `ex/executor?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::evaluate-measure/executor]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid clock"
+    (given-failed-system (assoc-in config [::evaluate-measure/handler :clock] ::invalid)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-failed-system (assoc-in config [::evaluate-measure/handler :rng-fn] ::invalid)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "init"
     (with-system [{::evaluate-measure/keys [handler]} config]
@@ -133,22 +143,22 @@
 
 (deftest timeout-init-test
   (testing "nil config"
-    (given-thrown (ig/init {::evaluate-measure/timeout nil})
+    (given-failed-system {::evaluate-measure/timeout nil}
       :key := ::evaluate-measure/timeout
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::evaluate-measure/timeout {}})
+    (given-failed-system {::evaluate-measure/timeout {}}
       :key := ::evaluate-measure/timeout
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :millis))))
 
   (testing "invalid millis"
-    (given-thrown (ig/init {::evaluate-measure/timeout {:millis ::invalid}})
+    (given-failed-system {::evaluate-measure/timeout {:millis ::invalid}}
       :key := ::evaluate-measure/timeout
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `nat-int?
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir.operation.evaluate-measure.timeout/millis]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "init"
@@ -158,16 +168,16 @@
 
 (deftest executor-init-test
   (testing "nil config"
-    (given-thrown (ig/init {::evaluate-measure/executor nil})
+    (given-failed-system {::evaluate-measure/executor nil}
       :key := ::evaluate-measure/executor
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid num-threads"
-    (given-thrown (ig/init {::evaluate-measure/executor {:num-threads ::invalid}})
+    (given-failed-system {::evaluate-measure/executor {:num-threads ::invalid}}
       :key := ::evaluate-measure/executor
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir.operation.evaluate-measure.executor/num-threads]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "init with default number of threads"
@@ -378,7 +388,7 @@
         (doseq [library-ref [#fhir/canonical"library-url-094115"
                              #fhir/canonical"Library/0"
                              #fhir/canonical"/Library/0"]
-                cancelled?  [nil (constantly nil)]]
+                cancelled? [nil (constantly nil)]]
           (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"
@@ -615,7 +625,7 @@
                      :body
                      (fu/parameters
                       "periodStart" #fhir/date"2014"
-                      "periodEnd"  #fhir/date"2015"
+                      "periodEnd" #fhir/date"2015"
                       "measure" "url-181501")})]
 
               (is (= 422 status))

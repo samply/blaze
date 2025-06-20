@@ -10,14 +10,15 @@
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
    [blaze.module-spec]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.operation.patient.everything]
    [blaze.page-id-cipher.spec]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.spec]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
    [taoensso.timbre :as log])
@@ -30,15 +31,25 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def config
+  (assoc
+   api-stub/mem-node-config
+   :blaze.operation.patient/everything
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.test/fixed-rng-fn {}
+   :blaze.test/page-id-cipher {}))
+
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.operation.patient/everything nil})
+    (given-failed-system {:blaze.operation.patient/everything nil}
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.operation.patient/everything {}})
+    (given-failed-system {:blaze.operation.patient/everything {}}
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
@@ -46,31 +57,25 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
   (testing "invalid clock"
-    (given-thrown (ig/init {:blaze.operation.patient/everything {:clock ::invalid}})
+    (given-failed-system (assoc-in config [:blaze.operation.patient/everything :clock] ::invalid)
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 2 :pred] := `time/clock?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid rng-fn"
-    (given-thrown (ig/init {:blaze.operation.patient/everything {:rng-fn ::invalid}})
+    (given-failed-system (assoc-in config [:blaze.operation.patient/everything :rng-fn] ::invalid)
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 2 :pred] := `fn?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid page-id-cipher"
-    (given-thrown (ig/init {:blaze.operation.patient/everything {:page-id-cipher ::invalid}})
+    (given-failed-system (assoc-in config [:blaze.operation.patient/everything :page-id-cipher] ::invalid)
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :via] := [:blaze/page-id-cipher]
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def base-url "base-url-113047")
 (def context-path "/context-path-173858")
@@ -91,16 +96,6 @@
 (def page-match
   (reitit/map->Match
    {:path (str context-path "/Patient/0/__everything-page")}))
-
-(def config
-  (assoc
-   api-stub/mem-node-config
-   :blaze.operation.patient/everything
-   {:clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
-   :blaze.test/fixed-rng-fn {}
-   :blaze.test/page-id-cipher {}))
 
 (defn wrap-defaults [handler]
   (fn [request]

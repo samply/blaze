@@ -14,8 +14,8 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
-   [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :as mtu :refer [given-failed-future given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -92,20 +92,20 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::rs/cassandra nil})
+    (given-failed-system {::rs/cassandra nil}
       :key := ::rs/cassandra
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::rs/cassandra {}})
+    (given-failed-system {::rs/cassandra {}}
       :key := ::rs/cassandra
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
   (testing "invalid contact-points"
-    (given-thrown (ig/init (assoc-in config [::rs/cassandra :contact-points] ::invalid))
+    (given-failed-system (assoc-in config [::rs/cassandra :contact-points] ::invalid)
       :key := ::rs/cassandra
       :reason := ::ig/build-failed-spec
       [:value :contact-points] := ::invalid

@@ -15,11 +15,11 @@
    [blaze.db.node :as-alias node]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer-spec]
+   [blaze.db.node.resource-indexer.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.resource-store.spec]
-   [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
-   [blaze.executors :as ex]
+   [blaze.db.search-param-registry.spec]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
@@ -28,8 +28,8 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -102,13 +102,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::node/resource-indexer nil})
+    (given-failed-system {::node/resource-indexer nil}
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::node/resource-indexer {}})
+    (given-failed-system {::node/resource-indexer {}}
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
@@ -117,44 +117,32 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid kv-store"
-    (given-thrown (ig/init {::node/resource-indexer {:kv-store ::invalid}})
+    (given-failed-system (assoc-in config [::node/resource-indexer :kv-store] ::invalid)
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 3 :pred] := `kv/store?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/kv-store]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid resource-store"
-    (given-thrown (ig/init {::node/resource-indexer {:resource-store ::invalid}})
+    (given-failed-system (assoc-in config [::node/resource-indexer :resource-store] ::invalid)
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 3 :via] := [:blaze.db/resource-store]
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/resource-store]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
-    (given-thrown (ig/init {::node/resource-indexer {:search-param-registry ::invalid}})
+    (given-failed-system (assoc-in config [::node/resource-indexer :search-param-registry] ::invalid)
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 3 :pred] := `search-param-registry?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/search-param-registry]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {::node/resource-indexer {:executor ::invalid}})
+    (given-failed-system (assoc-in config [::node/resource-indexer :executor] ::invalid)
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 3 :pred] := `ex/executor?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [::resource-indexer/executor]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "with custom name"
     (let [system (ig/init main-config)
@@ -163,16 +151,16 @@
 
 (deftest executor-init-test
   (testing "nil config"
-    (given-thrown (ig/init {::resource-indexer/executor nil})
+    (given-failed-system {::resource-indexer/executor nil}
       :key := ::resource-indexer/executor
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid num-threads"
-    (given-thrown (ig/init {::resource-indexer/executor {:num-threads ::invalid}})
+    (given-failed-system (assoc-in config [::resource-indexer/executor :num-threads] ::invalid)
       :key := ::resource-indexer/executor
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :via] := [::resource-indexer/num-threads]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest duration-seconds-collector-init-test

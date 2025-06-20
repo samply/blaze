@@ -5,14 +5,14 @@
    [blaze.cassandra :as cass]
    [blaze.cassandra-spec]
    [blaze.fhir.test-util]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-store :as page-store]
    [blaze.page-store.cassandra]
    [blaze.page-store.cassandra.codec :as codec]
    [blaze.page-store.cassandra.codec-spec]
    [blaze.page-store.cassandra.statement :as statement]
    [blaze.page-store.token-spec]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -26,13 +26,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::page-store/cassandra nil})
+    (given-failed-system {::page-store/cassandra nil}
       :key := ::page-store/cassandra
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid contact-points"
-    (given-thrown (ig/init {::page-store/cassandra {:contact-points ::invalid}})
+    (given-failed-system {::page-store/cassandra {:contact-points ::invalid}}
       :key := ::page-store/cassandra
       :reason := ::ig/build-failed-spec
       [:value :contact-points] := ::invalid

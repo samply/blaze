@@ -18,8 +18,9 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -84,48 +85,6 @@
      :name :CodeSystem/history}
     :path (str context-path "/CodeSystem/_history")}))
 
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction.history/type nil})
-      :key := :blaze.interaction.history/type
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction.history/type {}})
-      :key := :blaze.interaction.history/type
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
-
-  (testing "invalid clock"
-    (given-thrown (ig/init {:blaze.interaction.history/type {:clock ::invalid}})
-      :key := :blaze.interaction.history/type
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 2 :pred] := `time/clock?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
-
-  (testing "invalid rng-fn"
-    (given-thrown (ig/init {:blaze.interaction.history/type {:rng-fn ::invalid}})
-      :key := :blaze.interaction.history/type
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
-      [:cause-data ::s/problems 2 :pred] := `fn?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
-
-  (testing "invalid page-id-cipher"
-    (given-thrown (ig/init {:blaze.interaction.history/type {:page-id-cipher ::invalid}})
-      :key := :blaze.interaction.history/type
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :via] := [:blaze/page-id-cipher]
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
-
 (def config
   (assoc
    api-stub/mem-node-config
@@ -136,6 +95,42 @@
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}))
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze.interaction.history/type nil}
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze.interaction.history/type {}}
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "invalid clock"
+    (given-failed-system (assoc-in config [:blaze.interaction.history/type :clock] ::invalid)
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-failed-system (assoc-in config [:blaze.interaction.history/type :rng-fn] ::invalid)
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid page-id-cipher"
+    (given-failed-system (assoc-in config [:blaze.interaction.history/type :page-id-cipher] ::invalid)
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def system-clock-config
   (-> (assoc config :blaze.test/system-clock {})

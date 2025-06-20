@@ -1,9 +1,10 @@
 (ns blaze.cache-collector-test
   (:require
    [blaze.cache-collector]
+   [blaze.cache-collector.spec]
    [blaze.metrics.core :as metrics]
-   [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -30,22 +31,22 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze/cache-collector nil})
+    (given-failed-system {:blaze/cache-collector nil}
       :key := :blaze/cache-collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze/cache-collector {}})
+    (given-failed-system {:blaze/cache-collector {}}
       :key := :blaze/cache-collector
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :caches))))
 
   (testing "invalid caches"
-    (given-thrown (ig/init {:blaze/cache-collector {:caches ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/cache-collector :caches] ::invalid)
       :key := :blaze/cache-collector
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?
+      [:cause-data ::s/problems 0 :via] := [:blaze.cache-collector/caches]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest cache-collector-test
@@ -92,8 +93,8 @@
         [6 :samples 1 :value] := 0.0))
 
     (testing "one load"
-      (.get cache "1" (reify Function (apply [_ key] key)))
-      (.get async-cache "1" (reify Function (apply [_ key] key)))
+      (.get cache "1" identity)
+      (.get async-cache "1" ^Function identity)
       (Thread/sleep 100)
 
       (given (metrics/collect collector)
@@ -117,8 +118,8 @@
         [6 :samples 1 :value] := 1.0))
 
     (testing "one loads and one hit"
-      (.get cache "1" (reify Function (apply [_ key] key)))
-      (.get async-cache "1" (reify Function (apply [_ key] key)))
+      (.get cache "1" identity)
+      (.get async-cache "1" ^Function identity)
       (Thread/sleep 100)
 
       (given (metrics/collect collector)

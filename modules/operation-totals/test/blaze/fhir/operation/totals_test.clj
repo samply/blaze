@@ -6,7 +6,8 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :refer [given-failed-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -21,19 +22,19 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.fhir.operation/totals nil})
+    (given-failed-system {:blaze.fhir.operation/totals nil}
       :key := :blaze.fhir.operation/totals
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.fhir.operation/totals {}})
+    (given-failed-system {:blaze.fhir.operation/totals {}}
       :key := :blaze.fhir.operation/totals
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
 
   (testing "invalid structure definition repo"
-    (given-thrown (ig/init {:blaze.fhir.operation/totals {:structure-definition-repo ::invalid}})
+    (given-failed-system {:blaze.fhir.operation/totals {:structure-definition-repo ::invalid}}
       :key := :blaze.fhir.operation/totals
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]

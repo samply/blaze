@@ -11,8 +11,9 @@
    [blaze.db.kv.rocksdb.column-family-meta-data.level :as-alias column-family-meta-data-level]
    [blaze.db.kv.rocksdb.impl-spec]
    [blaze.db.kv.rocksdb.metrics :as-alias metrics]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [ba bb bytes= given-thrown]]
+   [blaze.db.kv.rocksdb.spec]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.test-util :as tu :refer [ba bb bytes=]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -31,102 +32,6 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::kv/rocksdb nil})
-      :key := ::kv/rocksdb
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {::kv/rocksdb {}})
-      :key := ::kv/rocksdb
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dir))))
-
-  (testing "invalid dir"
-    (given-thrown (ig/init {::kv/rocksdb {:dir ::invalid}})
-      :key := ::kv/rocksdb
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `string?
-      [:cause-data ::s/problems 0 :val] := ::invalid))
-
-  (testing "invalid block-cache"
-    (given-thrown (ig/init {::kv/rocksdb {:block-cache ::invalid}})
-      :key := ::kv/rocksdb
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dir))
-      [:cause-data ::s/problems 1 :via] := [::rocksdb/block-cache]
-      [:cause-data ::s/problems 1 :val] := ::invalid))
-
-  (testing "invalid stats"
-    (given-thrown (ig/init {::kv/rocksdb {:stats ::invalid}})
-      :key := ::kv/rocksdb
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dir))
-      [:cause-data ::s/problems 1 :via] := [::rocksdb/stats]
-      [:cause-data ::s/problems 1 :val] := ::invalid)))
-
-(deftest stats-collector-init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::rocksdb/stats-collector nil})
-      :key := ::rocksdb/stats-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {::rocksdb/stats-collector {}})
-      :key := ::rocksdb/stats-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :stats))))
-
-  (testing "invalid stats"
-    (given-thrown (ig/init {::rocksdb/stats-collector {:stats ::invalid}})
-      :key := ::rocksdb/stats-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [::metrics/stats]
-      [:cause-data ::s/problems 0 :val] := ::invalid)))
-
-(deftest block-cache-collector-init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::rocksdb/block-cache-collector nil})
-      :key := ::rocksdb/block-cache-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {::rocksdb/block-cache-collector {}})
-      :key := ::rocksdb/block-cache-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :block-cache))))
-
-  (testing "invalid stats"
-    (given-thrown (ig/init {::rocksdb/block-cache-collector {:block-cache ::invalid}})
-      :key := ::rocksdb/block-cache-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [::rocksdb/block-cache]
-      [:cause-data ::s/problems 0 :val] := ::invalid)))
-
-(deftest table-reader-collector-init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::rocksdb/table-reader-collector nil})
-      :key := ::rocksdb/table-reader-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {::rocksdb/table-reader-collector {}})
-      :key := ::rocksdb/table-reader-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :stores))))
-
-  (testing "invalid stores"
-    (given-thrown (ig/init {::rocksdb/table-reader-collector {:stores ::invalid}})
-      :key := ::rocksdb/table-reader-collector
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [::metrics/stores]
-      [:cause-data ::s/problems 0 :val] := ::invalid)))
-
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
 
@@ -143,6 +48,100 @@
    {:block-cache (ig/ref ::rocksdb/block-cache)}
    ::rocksdb/table-reader-collector
    {:stores {"default" (ig/ref ::kv/rocksdb)}}})
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {::kv/rocksdb nil}
+      :key := ::kv/rocksdb
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {::kv/rocksdb {}}
+      :key := ::kv/rocksdb
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dir))))
+
+  (testing "invalid dir"
+    (given-failed-system {::kv/rocksdb {:dir ::invalid}}
+      :key := ::kv/rocksdb
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::rocksdb/dir]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid block-cache"
+    (given-failed-system (assoc-in (config (new-temp-dir!)) [::kv/rocksdb :block-cache] ::invalid)
+      :key := ::kv/rocksdb
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::rocksdb/block-cache]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid stats"
+    (given-failed-system (assoc-in (config (new-temp-dir!)) [::kv/rocksdb :stats] ::invalid)
+      :key := ::kv/rocksdb
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::rocksdb/stats]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(deftest stats-collector-init-test
+  (testing "nil config"
+    (given-failed-system {::rocksdb/stats-collector nil}
+      :key := ::rocksdb/stats-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {::rocksdb/stats-collector {}}
+      :key := ::rocksdb/stats-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :stats))))
+
+  (testing "invalid stats"
+    (given-failed-system {::rocksdb/stats-collector {:stats ::invalid}}
+      :key := ::rocksdb/stats-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::metrics/stats]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(deftest block-cache-collector-init-test
+  (testing "nil config"
+    (given-failed-system {::rocksdb/block-cache-collector nil}
+      :key := ::rocksdb/block-cache-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {::rocksdb/block-cache-collector {}}
+      :key := ::rocksdb/block-cache-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :block-cache))))
+
+  (testing "invalid stats"
+    (given-failed-system {::rocksdb/block-cache-collector {:block-cache ::invalid}}
+      :key := ::rocksdb/block-cache-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::rocksdb/block-cache]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(deftest table-reader-collector-init-test
+  (testing "nil config"
+    (given-failed-system {::rocksdb/table-reader-collector nil}
+      :key := ::rocksdb/table-reader-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {::rocksdb/table-reader-collector {}}
+      :key := ::rocksdb/table-reader-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :stores))))
+
+  (testing "invalid stores"
+    (given-failed-system {::rocksdb/table-reader-collector {:stores ::invalid}}
+      :key := ::rocksdb/table-reader-collector
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::metrics/stores]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest valid-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]

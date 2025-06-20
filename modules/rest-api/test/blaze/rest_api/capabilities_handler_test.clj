@@ -9,13 +9,15 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.capabilities-handler]
    [blaze.rest-api.header-spec]
    [blaze.rest-api.spec]
+   [blaze.spec]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service.local :as ts-local]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -33,15 +35,24 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private minimal-config
+  (assoc
+   mem-node-config
+   ::rest-api/capabilities-handler
+   {:version "version-131640"
+    :release-date "2024-01-07"
+    :structure-definition-repo structure-definition-repo
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)}))
+
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {::rest-api/capabilities-handler nil})
+    (given-failed-system {::rest-api/capabilities-handler nil}
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {::rest-api/capabilities-handler {}})
+    (given-failed-system {::rest-api/capabilities-handler {}}
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
@@ -50,55 +61,39 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
 
   (testing "invalid version"
-    (given-thrown (ig/init {::rest-api/capabilities-handler {:version ::invalid}})
+    (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :version] ::invalid)
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 3 :pred] := `string?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/version]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid release-date"
-    (given-thrown (ig/init {::rest-api/capabilities-handler {:release-date ::invalid}})
+    (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :release-date] ::invalid)
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 3 :pred] := `string?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/release-date]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid structure-definition-repo"
-    (given-thrown (ig/init {::rest-api/capabilities-handler {:structure-definition-repo ::invalid}})
+    (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :structure-definition-repo] ::invalid)
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 3 :via] := [:blaze.fhir/structure-definition-repo]
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
-    (given-thrown (ig/init {::rest-api/capabilities-handler {:search-param-registry ::invalid}})
+    (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :search-param-registry] ::invalid)
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 3 :via] := [:blaze.db/search-param-registry]
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/search-param-registry]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid terminology-service"
-    (given-thrown (ig/init {::rest-api/capabilities-handler {:terminology-service ::invalid}})
+    (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :terminology-service] ::invalid)
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 4 :via] := [:blaze/terminology-service]
-      [:cause-data ::s/problems 4 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :via] := [:blaze/terminology-service]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def ^:private copyright
   #fhir/markdown"Copyright 2019 - 2025 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
@@ -110,15 +105,6 @@
        ~txs
        (let [~handler-binding (-> handler# (wrap-db node# 100))]
          ~@body))))
-
-(def ^:private minimal-config
-  (assoc
-   mem-node-config
-   ::rest-api/capabilities-handler
-   {:version "version-131640"
-    :release-date "2024-01-07"
-    :structure-definition-repo structure-definition-repo
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)}))
 
 (deftest minimal-config-test
   (with-handler [handler minimal-config]

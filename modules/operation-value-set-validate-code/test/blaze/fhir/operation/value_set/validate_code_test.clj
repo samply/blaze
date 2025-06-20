@@ -8,9 +8,10 @@
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
+   [blaze.module.test-util :refer [given-failed-system]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.local :as ts-local]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -25,19 +26,19 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze.fhir.operation.value-set/validate-code nil})
+    (given-failed-system {:blaze.fhir.operation.value-set/validate-code nil}
       :key := :blaze.fhir.operation.value-set/validate-code
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze.fhir.operation.value-set/validate-code {}})
+    (given-failed-system {:blaze.fhir.operation.value-set/validate-code {}}
       :key := :blaze.fhir.operation.value-set/validate-code
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
 
   (testing "invalid structure definition repo"
-    (given-thrown (ig/init {:blaze.fhir.operation.value-set/validate-code {:terminology-service ::invalid}})
+    (given-failed-system {:blaze.fhir.operation.value-set/validate-code {:terminology-service ::invalid}}
       :key := :blaze.fhir.operation.value-set/validate-code
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/terminology-service]

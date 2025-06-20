@@ -6,10 +6,11 @@
    [blaze.db.api-spec]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
-   [blaze.db.node :as node :refer [node?]]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.search-param-registry]
+   [blaze.db.spec]
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
@@ -22,8 +23,9 @@
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
-   [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.module.test-util :as mtu :refer [given-failed-future given-failed-system with-system]]
+   [blaze.spec]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -246,13 +248,13 @@
 
 (deftest init-test
   (testing "nil config"
-    (given-thrown (ig/init {:blaze/job-scheduler nil})
+    (given-failed-system {:blaze/job-scheduler nil}
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
-    (given-thrown (ig/init {:blaze/job-scheduler {}})
+    (given-failed-system {:blaze/job-scheduler {}}
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
@@ -260,31 +262,25 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid node"
-    (given-thrown (ig/init {:blaze/job-scheduler {:node ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/job-scheduler :node] ::invalid)
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `node?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid clock"
-    (given-thrown (ig/init {:blaze/job-scheduler {:clock ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/job-scheduler :clock] ::invalid)
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `time/clock?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/clock]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid rng-fn"
-    (given-thrown (ig/init {:blaze/job-scheduler {:rng-fn ::invalid}})
+    (given-failed-system (assoc-in config [:blaze/job-scheduler :rng-fn] ::invalid)
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `fn?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "success"
     (with-system [{:blaze/keys [job-scheduler]} config]
