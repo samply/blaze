@@ -4,10 +4,10 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.params.include :as include]
-   [blaze.interaction.util :as iu]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
    [blaze.util :as u]
+   [blaze.util.clauses :as uc]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
@@ -26,7 +26,7 @@
 
     :else
     (ac/completed-future
-     (when-ok [clauses (iu/clauses query-params)]
+     (when-ok [clauses (uc/clauses query-params)]
        {:clauses clauses}))))
 
 (def ^:private allowed-summary-values

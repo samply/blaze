@@ -25,10 +25,10 @@ const commonHeaders = {
 	'Authorization': `Bearer ${accessToken}`
 };
 
-const everythingParams = {
+const graphParams = {
 	headers: commonHeaders,
 	tags: {
-		name: 'everything'
+		name: 'graph'
 	},
 };
 
@@ -45,7 +45,7 @@ export default function({ patientIds }) {
 
 	const id = randomItem(patientIds);
 
-	http.get(`${base}/Patient/${id}/$everything?_count=1000`, everythingParams);
+	http.get(`${base}/Patient/${id}/$graph?graph=patient-observation-encounter`, graphParams);
 }
 
 function readPatientIds(url) {

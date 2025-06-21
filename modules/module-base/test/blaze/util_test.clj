@@ -33,3 +33,6 @@
 
 (deftest available-processors-test
   (is (pos-int? (u/available-processors))))
+
+(deftest camel->kebab-test
+  (is (= "a-a" (u/camel->kebab "aA"))))

@@ -1,6 +1,8 @@
 (ns blaze.util
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str])
+  (:import
+   [com.google.common.base CaseFormat]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,3 +25,6 @@
 
 (defn available-processors []
   (.availableProcessors (Runtime/getRuntime)))
+
+(defn camel->kebab [s]
+  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))

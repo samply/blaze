@@ -16,6 +16,7 @@
    [blaze.module :as m]
    [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
+   [blaze.util.clauses :as uc]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -74,7 +75,7 @@
         (when-ok [entries (validate-entries entries)]
           (-> (reduce
                prepare-entry
-               {::luid/generator (iu/luid-generator context) :entries []}
+               {::luid/generator (m/luid-generator context) :entries []}
                entries)
               :entries))
         entries))))
@@ -112,7 +113,7 @@
 
 (defn- conditional-clauses [if-none-exist]
   (when-not (str/blank? if-none-exist)
-    (-> if-none-exist ring-codec/form-decode iu/search-clauses)))
+    (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The transaction was successful but the resource content of `%s/%s` with hash `%s` was not found during response creation."

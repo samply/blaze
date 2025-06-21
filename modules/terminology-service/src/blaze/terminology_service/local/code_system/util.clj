@@ -3,7 +3,8 @@
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
-   [blaze.luid :as luid]))
+   [blaze.luid :as luid]
+   [blaze.module :as m]))
 
 (defn code-systems [db url]
   (d/pull-many db (d/type-query db "CodeSystem" [["url" url]])))
@@ -11,9 +12,6 @@
 (defn code-system-versions [db url]
   (do-sync [code-systems (code-systems db url)]
     (into #{} (map (comp type/value :version)) code-systems)))
-
-(defn- luid-generator [{:keys [clock rng-fn]}]
-  (luid/generator clock (rng-fn)))
 
 (defn tx-op [{:keys [url version] :as code-system} id]
   [:create (assoc code-system :id id)
@@ -29,5 +27,5 @@
       (-> (update ret :tx-ops conj (tx-op code-system (luid/head luid-generator)))
           (update :luid-generator luid/next))))
    {:tx-ops []
-    :luid-generator (luid-generator context)}
+    :luid-generator (m/luid-generator context)}
    code-systems))

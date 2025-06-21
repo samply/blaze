@@ -4,6 +4,7 @@
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.filter.core :as filter]
@@ -13,7 +14,6 @@
    [blaze.terminology-service.local.code-system.filter.is-a]
    [blaze.terminology-service.local.code-system.filter.regex]
    [blaze.terminology-service.local.graph :as graph]
-   [blaze.terminology-service.local.priority :as priority]
    [clojure.string :as str])
   (:import
    [com.github.benmanes.caffeine.cache Cache]))
@@ -45,7 +45,7 @@
     :or {required-content #{"complete" "fragment"}}}
    url & [version]]
   (do-sync [code-systems (d/pull-many db (d/type-query db "CodeSystem" (clauses url version)))]
-    (if-let [{:keys [content] :as code-system} (first (priority/sort-by-priority code-systems))]
+    (if-let [{:keys [content] :as code-system} (first (fu/sort-by-priority code-systems))]
       (if (required-content (type/value content))
         (assoc code-system :default/graph (get-graph graph-cache code-system))
         (code-system-not-required-content-anom code-system required-content))

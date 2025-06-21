@@ -10,3 +10,7 @@
 (s/fdef u/to-seq
   :args (s/cat :x any?)
   :ret (s/nilable sequential?))
+
+(s/fdef u/camel->kebab
+  :args (s/cat :s string?)
+  :ret string?)
