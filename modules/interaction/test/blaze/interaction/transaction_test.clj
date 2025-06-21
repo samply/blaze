@@ -1719,6 +1719,62 @@
                 (given response
                   :status := "204"
                   :etag := "W/\"2\""
+                  :lastModified := Instant/EPOCH)))))))
+
+    (testing "and read interaction after update interaction"
+      (let [entries
+            [{:fhir/type :fhir.Bundle/entry
+              :request
+              {:fhir/type :fhir.Bundle.entry/request
+               :method #fhir/code"GET"
+               :url #fhir/uri"Patient/111718"}}
+             {:fhir/type :fhir.Bundle/entry
+              :resource
+              {:fhir/type :fhir/Patient :id "111718"}
+              :request
+              {:fhir/type :fhir.Bundle.entry/request
+               :method #fhir/code"PUT"
+               :url #fhir/uri"Patient/111718"}}]]
+
+        (testing "without return preference"
+          (with-handler [handler]
+            (let [{:keys [status body]
+                   {[first-entry second-entry] :entry} :body}
+                  @(handler
+                    {:body
+                     {:fhir/type :fhir/Bundle
+                      :type #fhir/code"transaction"
+                      :entry entries}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "bundle"
+                (given body
+                  :fhir/type := :fhir/Bundle
+                  :id := "AAAAAAAAAAAAAAAA"
+                  :type := #fhir/code"transaction-response"))
+
+              (testing "the first entry has the right resource"
+                (given (:resource first-entry)
+                  :fhir/type := :fhir/Patient
+                  :id := "111718"
+                  [:meta :versionId] := #fhir/id"1"
+                  [:meta :lastUpdated] := Instant/EPOCH))
+
+              (testing "the first entry has the right response"
+                (given (:response first-entry)
+                  :status := "200"
+                  :etag := "W/\"1\""
+                  :lastModified := Instant/EPOCH))
+
+              (testing "the second entry resource is nil"
+                (is (nil? (:resource second-entry))))
+
+              (testing "the second entry has the right response"
+                (given (:response second-entry)
+                  :status := "201"
+                  :etag := "W/\"1\""
                   :lastModified := Instant/EPOCH))))))))
 
   (testing "On batch bundle"
