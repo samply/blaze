@@ -24,7 +24,9 @@
    [reitit.ring]
    [ring.util.codec :as ring-codec]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 
@@ -191,11 +193,20 @@
 (defn- build-response-entries* [context entries]
   (into [] (map-indexed (partial build-response-entry context)) entries))
 
+(defn- handle-close [stage db]
+  (ac/handle
+   stage
+   (fn [entries e]
+     (let [res (if e e entries)]
+       (.close ^AutoCloseable db)
+       res))))
+
 (defn- build-response-entries [{:blaze/keys [db] :as context} entries]
-  (with-open [db (d/new-batch-db db)]
-    (let [futures (build-response-entries* (assoc context :blaze/db db) entries)]
-      (do-sync [_ (ac/all-of futures)]
-        (mapv ac/join futures)))))
+  (let [db (d/new-batch-db db)
+        futures (build-response-entries* (assoc context :blaze/db db) entries)]
+    (-> (ac/all-of futures)
+        (ac/then-apply (fn [_] (mapv ac/join futures)))
+        (handle-close db))))
 
 (defmulti process-entries
   "Processes `entries` according the batch or transaction rules.
