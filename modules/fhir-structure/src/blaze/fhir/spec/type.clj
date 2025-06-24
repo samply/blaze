@@ -2,7 +2,7 @@
   "Functions for primitive and complex types."
   (:refer-clojure
    :exclude
-   [boolean boolean? decimal? integer? long meta string? time type uri? uuid?])
+   [boolean boolean? decimal? integer? long meta str string? time type uri? uuid?])
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.byte-string]
@@ -12,6 +12,7 @@
     :refer [def-complex-type def-primitive-type defextended]]
    [blaze.fhir.spec.type.protocols :as p]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [str]]
    [clojure.alpha.spec :as s2]
    [clojure.data.xml :as xml]
    [clojure.data.xml.name :as xml-name]

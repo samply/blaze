@@ -1,4 +1,5 @@
 (ns blaze.job.async-interaction
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -12,6 +13,7 @@
    [blaze.module :as m]
    [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log]))

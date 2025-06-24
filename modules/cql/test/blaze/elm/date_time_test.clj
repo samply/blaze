@@ -2,6 +2,7 @@
   (:require
    [blaze.elm.compiler :as c]
    [blaze.elm.date-time]
+   [blaze.elm.date-time-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest]]))

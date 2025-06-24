@@ -4,6 +4,7 @@
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.db.kv.mem]
    [blaze.db.search-param-registry]
+   [blaze.db.search-param-registry-spec]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
    [blaze.fhir.spec.references-spec]

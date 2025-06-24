@@ -1,0 +1,43 @@
+{:paths ["src" "java" "target/classes"]
+
+ :deps
+ {com.google.guava/guava
+  {:mvn/version "33.4.8-jre"
+   :exclusions
+   [com.google.errorprone/error_prone_annotations
+    com.google.guava/listenablefuture
+    com.google.j2objc/j2objc-annotations
+    org.jspecify/jspecify]}}
+
+ :deps/prep-lib
+ {:alias :build
+  :fn compile
+  :ensure "target/classes"}
+
+ :aliases
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.10.9" :git/sha "e405aac"}}
+   :ns-default build}
+
+  :test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.91.1392"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {lambdaisland/kaocha-cloverage
+    {:mvn/version "1.1.89"}}
+
+   :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}

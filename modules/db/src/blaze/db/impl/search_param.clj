@@ -1,4 +1,5 @@
 (ns blaze.db.impl.search-param
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.coll.core :as coll]
@@ -19,7 +20,8 @@
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.references :as fsr]))
+   [blaze.fhir.spec.references :as fsr]
+   [blaze.util :refer [str]]))
 
 (set! *warn-on-reflection* true)
 

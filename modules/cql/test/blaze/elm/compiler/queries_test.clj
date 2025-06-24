@@ -19,6 +19,7 @@
    [blaze.elm.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
+   [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [juxt.iota :refer [given]]))

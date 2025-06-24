@@ -23,6 +23,7 @@
    [blaze.page-store.local]
    [blaze.page-store.spec]
    [blaze.test-util :as tu]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]

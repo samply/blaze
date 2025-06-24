@@ -1,10 +1,12 @@
 (ns blaze.elm.compiler.macros
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.expression.cache.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [prometheus.alpha :as prom]
    [taoensso.timbre :as log]))

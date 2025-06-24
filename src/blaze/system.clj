@@ -4,10 +4,11 @@
   Call `init!` to initialize the system and `shutdown!` to bring it down.
   The specs at the beginning of the namespace describe the config which has to
   be given to `init!``. The server port has a default of `8080`."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.log]
    [blaze.path :refer [dir? path]]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]

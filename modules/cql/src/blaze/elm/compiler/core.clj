@@ -1,8 +1,10 @@
 (ns blaze.elm.compiler.core
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.elm.protocols :as p]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
    [clojure.lang IReduceInit]

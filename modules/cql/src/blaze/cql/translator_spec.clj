@@ -3,6 +3,7 @@
    [blaze.anomaly-spec]
    [blaze.cql.translator :as t]
    [blaze.elm.spec]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 

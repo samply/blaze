@@ -1,8 +1,10 @@
 (ns blaze.server
   "HTTP Server."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.module :as m]
    [blaze.server.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [ring.adapter.jetty :as ring-jetty]

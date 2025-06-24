@@ -1,4 +1,5 @@
 (ns blaze.fhir.spec.impl
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.fhir.spec.impl.intern :as intern]
@@ -6,6 +7,7 @@
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
+   [blaze.util :refer [str]]
    [clojure.alpha.spec :as s]
    [clojure.data.xml.name :as xml-name]
    [clojure.data.xml.node :as xml-node]

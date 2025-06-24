@@ -1,4 +1,5 @@
 (ns blaze.interaction.search.params
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -7,7 +8,7 @@
    [blaze.interaction.util :as iu]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 

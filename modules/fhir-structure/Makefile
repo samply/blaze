@@ -7,10 +7,13 @@ lint:
 build:
 	clojure -T:build compile
 
-test: build
+prep: build
+	clojure -X:deps prep
+
+test: prep
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: build
+test-coverage: prep
 	clojure -M:test:coverage
 
 deps-tree:

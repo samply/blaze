@@ -1,6 +1,8 @@
 (ns blaze.terminology-service.local.value-set.validate-code.issue
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [cognitect.anomalies :as anom]))
 
 (defn- tx-issue-type-coding [code]

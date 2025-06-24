@@ -10,6 +10,7 @@
    [blaze.db.impl.search-param.quantity :as spq]
    [blaze.db.impl.search-param.quantity-spec]
    [blaze.db.search-param-registry :as sr]
+   [blaze.db.search-param-registry-spec]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]

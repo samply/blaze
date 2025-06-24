@@ -3,6 +3,7 @@
    [blaze.byte-string-spec]
    [blaze.db.impl.search-param-spec]
    [blaze.db.search-param-registry :as sr]
+   [blaze.db.search-param-registry-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]

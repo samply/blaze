@@ -1,4 +1,5 @@
 (ns blaze.job.async-interaction.request
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
@@ -6,6 +7,7 @@
    [blaze.job-scheduler :as js]
    [blaze.job.async-interaction :as job-async]
    [blaze.module :as m]
+   [blaze.util :refer [str]]
    [clojure.string :as str]
    [java-time.api :as time]
    [ring.util.response :as ring]

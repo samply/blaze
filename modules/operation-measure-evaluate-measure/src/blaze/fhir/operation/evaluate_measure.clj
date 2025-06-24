@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure
   "Main entry point into the $evaluate-measure operation."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac]
@@ -18,7 +19,7 @@
    [blaze.job.async-interaction.request :as req]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.spec]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]

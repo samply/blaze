@@ -3,10 +3,12 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.elm.protocols :as p]
    [blaze.fhir.spec.type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [str]]
    [java-time.api :as time])
   (:import
    [blaze.fhir.spec.type.system

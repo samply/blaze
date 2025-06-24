@@ -4,12 +4,12 @@
    [blaze.async.comp-spec]
    [blaze.coll.spec :as cs]
    [blaze.db.api :as d]
-   [blaze.db.search-param-registry-spec]
    [blaze.db.spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.spec]
    [blaze.fhir.spec.type.system.spec]
    [blaze.spec]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 

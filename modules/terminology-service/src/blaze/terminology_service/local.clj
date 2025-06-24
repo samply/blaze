@@ -1,4 +1,5 @@
 (ns blaze.terminology-service.local
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
@@ -20,7 +21,7 @@
    [blaze.terminology-service.local.value-set.expand :as vs-expand]
    [blaze.terminology-service.local.value-set.validate-code :as vs-validate-code]
    [blaze.terminology-service.protocols :as p]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]

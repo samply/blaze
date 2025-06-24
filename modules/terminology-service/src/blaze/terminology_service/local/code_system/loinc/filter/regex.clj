@@ -1,9 +1,11 @@
 (ns blaze.terminology-service.local.code-system.loinc.filter.regex
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.loinc.context :as context :refer [url]]
-   [blaze.terminology-service.local.code-system.loinc.filter.core :as core]))
+   [blaze.terminology-service.local.code-system.loinc.filter.core :as core]
+   [blaze.util :refer [str]]))
 
 (defn- case-insensitive-pattern [value]
   (re-pattern (str "(?i)" value)))

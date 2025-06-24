@@ -1,4 +1,5 @@
 (ns blaze.db.impl.search-param.token
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-string :as bs]
@@ -16,6 +17,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)

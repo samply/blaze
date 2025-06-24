@@ -11,6 +11,7 @@
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry :as sr]
+   [blaze.db.search-param-registry-spec]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]

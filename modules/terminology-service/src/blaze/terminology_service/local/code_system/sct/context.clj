@@ -1,7 +1,9 @@
 (ns blaze.terminology-service.local.code-system.sct.context
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
    [com.google.common.base CaseFormat]

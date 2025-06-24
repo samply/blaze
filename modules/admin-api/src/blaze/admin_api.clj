@@ -1,4 +1,5 @@
 (ns blaze.admin-api
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.admin-api.spec]
    [blaze.admin-api.validation]
@@ -28,6 +29,7 @@
    [blaze.middleware.output :as output]
    [blaze.module :as m]
    [blaze.spec]
+   [blaze.util :refer [str]]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]

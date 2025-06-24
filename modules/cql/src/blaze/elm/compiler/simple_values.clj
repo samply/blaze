@@ -3,12 +3,13 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
-  (:refer-clojure :exclude [parse-long])
+  (:refer-clojure :exclude [parse-long str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.decimal :as decimal]
-   [blaze.elm.util :as elm-util]))
+   [blaze.elm.util :as elm-util]
+   [blaze.util :refer [str]]))
 
 (set! *warn-on-reflection* true)
 

@@ -1,10 +1,12 @@
 (ns blaze.terminology-service.local.value-set.loinc
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.loinc.context :as lc]
    [blaze.terminology-service.local.value-set.core :as c]
+   [blaze.util :refer [str]]
    [clojure.string :as str]))
 
 (def ^:const ^long value-set-prefix-length (count lc/value-set-prefix))

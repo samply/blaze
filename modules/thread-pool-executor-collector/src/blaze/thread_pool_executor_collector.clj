@@ -1,8 +1,10 @@
 (ns blaze.thread-pool-executor-collector
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.metrics.core :as metrics]
    [blaze.module :as m]
    [blaze.thread-pool-executor-collector.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log])

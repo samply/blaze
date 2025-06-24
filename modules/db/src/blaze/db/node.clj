@@ -1,5 +1,6 @@
 (ns blaze.db.node
   "This namespace contains the local database node component."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -29,7 +30,6 @@
    [blaze.db.node.version :as version]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry :as sr]
-   [blaze.db.search-param-registry.spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
    [blaze.fhir.spec :as fhir-spec]
@@ -39,7 +39,7 @@
    [blaze.module :as m :refer [reg-collector]]
    [blaze.scheduler :as sched]
    [blaze.spec]
-   [blaze.util :refer [conj-vec]]
+   [blaze.util :refer [conj-vec str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]

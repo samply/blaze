@@ -2,6 +2,7 @@
   (:require
    [blaze.db.kv.mem]
    [blaze.db.search-param-registry]
+   [blaze.db.search-param-registry-spec]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
    [blaze.page-id-cipher.impl :as impl]

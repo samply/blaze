@@ -1,7 +1,9 @@
 (ns blaze.terminology-service.local.code-system.loinc.context
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]))

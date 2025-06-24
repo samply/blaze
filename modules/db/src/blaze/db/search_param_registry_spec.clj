@@ -1,7 +1,6 @@
 (ns blaze.db.search-param-registry-spec
   (:require
    [blaze.db.search-param-registry :as sr]
-   [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))

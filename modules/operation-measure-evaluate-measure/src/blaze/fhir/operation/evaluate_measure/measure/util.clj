@@ -1,9 +1,11 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.util
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.coll.core :as coll]
    [blaze.fhir.spec.type :as type]
-   [blaze.luid :as luid]))
+   [blaze.luid :as luid]
+   [blaze.util :refer [str]]))
 
 (defn expression-name [population-path-fn criteria]
   (let [language (-> criteria :language type/value)

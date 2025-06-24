@@ -6,6 +6,7 @@
    [blaze.interaction.history.util :as util]
    [blaze.module-spec]
    [blaze.spec]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [reitit.core :as reitit]))
 

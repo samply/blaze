@@ -1,8 +1,10 @@
 (ns blaze.rest-api.middleware.forwarded
   "A middleware that sets the base URL in the request either of one of the
   Forwarded headers or the default."
+  (:refer-clojure :exclude [str])
   (:require
-   [blaze.http.util :as hu]))
+   [blaze.http.util :as hu]
+   [blaze.util :refer [str]]))
 
 (defn- name-value-map [m]
   (into {} (map (juxt :name :value)) m))

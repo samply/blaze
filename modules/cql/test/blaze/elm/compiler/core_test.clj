@@ -3,6 +3,7 @@
    [blaze.coll.core :as coll]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :refer [deftest is testing]]))
 

@@ -2,9 +2,11 @@
   "Implementation of the ratio type.
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.elm.compiler.core :as core]
    [blaze.elm.protocols :as p]
+   [blaze.util :refer [str]]
    [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)

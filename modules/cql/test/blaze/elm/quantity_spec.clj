@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly-spec]
    [blaze.elm.quantity :as quantity]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s])
   (:import
    [javax.measure Unit]))

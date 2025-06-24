@@ -1,4 +1,5 @@
 (ns blaze.rest-api.capabilities-handler
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
@@ -16,6 +17,7 @@
    [blaze.spec]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.ring]

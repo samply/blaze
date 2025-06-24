@@ -1,5 +1,5 @@
 (ns blaze.fhir-client.impl
-  (:refer-clojure :exclude [update])
+  (:refer-clojure :exclude [str update])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac]
@@ -7,6 +7,7 @@
    [blaze.byte-buffer :as bb]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [clojure.java.io :as io]
    [cognitect.anomalies :as anom]
    [hato.client :as hc]

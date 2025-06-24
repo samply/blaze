@@ -1,11 +1,12 @@
 (ns blaze.interaction.history.util
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [reitit.core :as reitit])
   (:import
    [java.time Instant OffsetDateTime]

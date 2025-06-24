@@ -1,4 +1,5 @@
 (ns blaze.interaction.search-compartment
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -12,6 +13,7 @@
    [blaze.module :as m]
    [blaze.page-store.spec]
    [blaze.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]

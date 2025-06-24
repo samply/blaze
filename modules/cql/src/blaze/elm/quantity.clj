@@ -3,10 +3,12 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.protocols :as p]
+   [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
    [com.google.common.base CharMatcher]

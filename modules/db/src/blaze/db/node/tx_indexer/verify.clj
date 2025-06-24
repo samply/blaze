@@ -1,6 +1,7 @@
 (ns blaze.db.node.tx-indexer.verify
   "Verifies terminal transaction commands. Non-terminal transaction commands
   are first expanded."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.db.api :as d]
@@ -14,7 +15,7 @@
    [blaze.db.node.tx-indexer.util :as tx-u]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.hash :as hash]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [clojure.string :as str]
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log]))

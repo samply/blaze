@@ -1,11 +1,12 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.stratifier
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
    [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]
-   [blaze.util :refer [conj-vec]]))
+   [blaze.util :refer [conj-vec str]]))
 
 (defn- value-concept
   "Converts `value` into a CodeableConcept so that it can be used in a

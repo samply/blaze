@@ -1,4 +1,5 @@
 (ns blaze.fhir.writing-context
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec.resource :as res]
@@ -10,6 +11,7 @@
    [blaze.fhir.structure-definition-repo.spec]
    [blaze.fhir.writing-context.spec]
    [blaze.module :as m]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]

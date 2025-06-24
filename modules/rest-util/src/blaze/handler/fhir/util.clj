@@ -1,6 +1,6 @@
 (ns blaze.handler.fhir.util
   "Utilities for FHIR interactions."
-  (:refer-clojure :exclude [sync])
+  (:refer-clojure :exclude [str sync])
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -11,7 +11,7 @@
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]

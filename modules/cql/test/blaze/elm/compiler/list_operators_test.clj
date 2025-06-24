@@ -28,6 +28,7 @@
    [blaze.fhir.test-util]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :refer [given-thrown satisfies-prop]]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]

@@ -1,4 +1,5 @@
 (ns blaze.terminology-service.local.value-set.expand
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -8,6 +9,7 @@
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.value-set :as vs]
    [blaze.terminology-service.local.value-set.util :as vs-u]
+   [blaze.util :refer [str]]
    [clojure.set :as set]
    [cognitect.anomalies :as anom]
    [java-time.api :as time]))

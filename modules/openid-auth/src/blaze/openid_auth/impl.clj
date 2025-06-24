@@ -1,7 +1,9 @@
 (ns blaze.openid-auth.impl
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.openid-auth.spec]
+   [blaze.util :refer [str]]
    [buddy.auth.protocols :as p]
    [buddy.core.keys :as keys]
    [buddy.sign.jwt :as jwt]

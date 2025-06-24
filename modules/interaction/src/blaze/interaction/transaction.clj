@@ -2,6 +2,7 @@
   "FHIR batch/transaction interaction.
 
   https://www.hl7.org/fhir/http.html#transaction"
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -16,6 +17,7 @@
    [blaze.module :as m]
    [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]

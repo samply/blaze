@@ -1,5 +1,7 @@
 (ns blaze.fhir.spec.type.string-util
+  (:refer-clojure :exclude [str])
   (:require
+   [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
    [com.google.common.base CaseFormat]))

@@ -2,6 +2,7 @@
   "FHIR conditional delete interaction at type level.
 
   https://www.hl7.org/fhir/http.html#cdelete"
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :refer [do-sync]]
    [blaze.coll.core :as coll]
@@ -10,6 +11,7 @@
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
    [blaze.module :as m]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]

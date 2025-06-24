@@ -2,6 +2,7 @@
   "https://www.rfc-editor.org/bcp/bcp47.txt
   https://datatracker.ietf.org/doc/html/rfc5646
   https://www.iana.org/assignments/language-subtags-tags-extensions/language-subtags-tags-extensions.xhtml#language-subtags"
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
@@ -11,6 +12,7 @@
    [blaze.module :as m]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.util :as cs-u]
+   [blaze.util :refer [str]]
    [clojure.string :as str]
    [taoensso.timbre :as log])
   (:import

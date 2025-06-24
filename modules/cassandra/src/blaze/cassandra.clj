@@ -1,7 +1,9 @@
 (ns blaze.cassandra
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.cassandra.session :as session]
+   [blaze.util :refer [str]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import

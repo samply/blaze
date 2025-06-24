@@ -1,5 +1,7 @@
 (ns blaze.db.node.tx-indexer.util
+  (:refer-clojure :exclude [str])
   (:require
+   [blaze.util :refer [str]]
    [clojure.string :as str]
    [prometheus.alpha :refer [defhistogram]]))
 

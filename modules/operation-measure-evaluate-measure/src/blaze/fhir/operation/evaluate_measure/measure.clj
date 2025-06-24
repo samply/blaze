@@ -1,4 +1,5 @@
 (ns blaze.fhir.operation.evaluate-measure.measure
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -17,6 +18,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [java-time.api :as time]
    [prometheus.alpha :as prom]

@@ -2,10 +2,12 @@
   "Provides the function `resolve-entry-links` that resolves links in a bundle
   according to the transaction processing rules (https://hl7.org/fhir/http.html#trules)
   and resolving references in bundles (https://hl7.org/fhir/bundle.html#references)."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
