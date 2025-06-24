@@ -1,9 +1,10 @@
 (ns blaze.interaction.search.nav
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.page-store :as page-store]
-   [blaze.util :refer [conj-vec]]
+   [blaze.util :refer [conj-vec str]]
    [clojure.string :as str]
    [reitit.core :as reitit]))
 

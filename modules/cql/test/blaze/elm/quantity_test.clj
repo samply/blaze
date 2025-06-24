@@ -3,6 +3,7 @@
    [blaze.elm.compiler.test-util :refer [has-form]]
    [blaze.elm.protocols :as p]
    [blaze.elm.quantity :refer [quantity]]
+   [blaze.elm.quantity-spec]
    [blaze.test-util :as tu]
    [clojure.java.io :as io]
    [clojure.spec.test.alpha :as st]

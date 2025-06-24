@@ -1,4 +1,5 @@
 (ns blaze.openid-auth
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :refer [if-ok]]
    [blaze.http-client.spec]
@@ -7,6 +8,7 @@
    [blaze.openid-auth.spec]
    [blaze.scheduler :as sched]
    [blaze.scheduler.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]

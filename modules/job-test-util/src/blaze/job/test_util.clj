@@ -1,10 +1,12 @@
 (ns blaze.job.test-util
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.job.util :as job-util]
-   [blaze.luid :as luid])
+   [blaze.luid :as luid]
+   [blaze.util :refer [str]])
   (:import
    [java.util.concurrent TimeUnit]))
 

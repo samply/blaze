@@ -7,10 +7,13 @@ lint:
 build:
 	clojure -T:build compile
 
-test: build
+prep: build
+	clojure -X:deps prep
+
+test: prep
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: build
+test-coverage: prep
 	clojure -M:test:coverage
 
 cloc-prod:
@@ -22,4 +25,4 @@ cloc-test:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint build test test-coverage cloc-prod cloc-test clean
+.PHONY: fmt lint build prep test test-coverage cloc-prod cloc-test clean

@@ -1,4 +1,5 @@
 (ns blaze.fhir.spec
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.hash.spec]
@@ -6,6 +7,7 @@
    [blaze.fhir.spec.resource :as res]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]

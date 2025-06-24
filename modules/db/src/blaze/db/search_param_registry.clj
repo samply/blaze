@@ -1,5 +1,5 @@
 (ns blaze.db.search-param-registry
-  (:refer-clojure :exclude [get])
+  (:refer-clojure :exclude [get str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.coll.core :as coll]
@@ -9,7 +9,7 @@
    [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.module :as m]
-   [blaze.util :refer [conj-vec]]
+   [blaze.util :refer [conj-vec str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]

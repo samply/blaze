@@ -2,6 +2,9 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/util
+  {:local/root "../util"}
+
   com.datastax.oss/java-driver-core
   {:mvn/version "4.17.0"
    :exclusions [com.github.spotbugs/spotbugs-annotations]}

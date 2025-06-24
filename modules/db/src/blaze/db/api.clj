@@ -5,7 +5,7 @@
 
   A database value is an immutable, indexed set of resources at a certain point
   in time `t`."
-  (:refer-clojure :exclude [sync])
+  (:refer-clojure :exclude [str sync])
   (:require
    [blaze.anomaly :refer [when-ok]]
    [blaze.async.comp :as ac]
@@ -13,6 +13,7 @@
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.protocols :as p]
    [blaze.db.node.protocols :as np]
+   [blaze.util :refer [str]]
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]))

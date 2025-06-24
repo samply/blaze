@@ -3,6 +3,7 @@
    [blaze.db.tx-log.spec]
    [blaze.fhir.spec.spec]
    [blaze.job.compact :as job-compact]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef job-compact/job

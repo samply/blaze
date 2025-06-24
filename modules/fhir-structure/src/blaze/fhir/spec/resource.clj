@@ -16,13 +16,14 @@
   A property-handler in this namespace is a function taking a map of all type
   handlers, a parser, a locator and a partially constructed FHIR value and
   returns either the FHIR value with data added or an anomaly in case of errors."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
-   [blaze.util :refer [conj-vec]]
+   [blaze.util :refer [conj-vec str]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import

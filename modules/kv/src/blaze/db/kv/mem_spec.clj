@@ -2,4 +2,5 @@
   (:require
    [blaze.db.kv-spec]
    [blaze.db.kv.mem]
-   [blaze.db.kv.spec]))
+   [blaze.db.kv.spec]
+   [blaze.util-spec]))

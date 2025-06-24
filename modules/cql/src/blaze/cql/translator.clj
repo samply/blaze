@@ -1,7 +1,9 @@
 (ns blaze.cql.translator
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.elm.spec]
+   [blaze.util :refer [str]]
    [jsonista.core :as j])
   (:import
    [org.cqframework.cql.cql2elm

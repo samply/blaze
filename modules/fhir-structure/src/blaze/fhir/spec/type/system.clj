@@ -9,12 +9,15 @@
    * DateTime
    * Time
    * Quantity"
-  (:refer-clojure :exclude [boolean? decimal? integer? string? time type])
+  (:refer-clojure :exclude [boolean? decimal? integer? str string? time type])
   (:require
    [blaze.anomaly :as ba]
+   [blaze.util :refer [str]]
    [cognitect.anomalies :as anom])
   (:import
-   [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
+   [blaze.fhir.spec.type.system
+    Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear
+    DateYearMonth]
    [com.google.common.hash PrimitiveSink]
    [java.io Writer]
    [java.nio.charset StandardCharsets]

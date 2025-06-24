@@ -1,8 +1,9 @@
 (ns blaze.fhir.spec.generators
-  (:refer-clojure :exclude [boolean meta time])
+  (:refer-clojure :exclude [boolean meta str time])
   (:require
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [str]]
    [clojure.string :as str]
    [clojure.test.check.generators :as gen])
   (:import

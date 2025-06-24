@@ -1,11 +1,12 @@
 (ns blaze.fhir-path
-  (:refer-clojure :exclude [compile eval resolve])
+  (:refer-clojure :exclude [compile eval resolve str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.coll.core :as coll]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [str]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [taoensso.timbre :as log])

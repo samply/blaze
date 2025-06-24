@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.compact
   "Main entry point into the $compact operation."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -8,6 +9,7 @@
    [blaze.job.compact :as job-compact]
    [blaze.module :as m]
    [blaze.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [java-time.api :as time]

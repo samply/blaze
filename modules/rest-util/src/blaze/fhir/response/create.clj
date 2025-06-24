@@ -1,9 +1,11 @@
 (ns blaze.fhir.response.create
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.util :refer [str]]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 

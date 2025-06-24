@@ -1,6 +1,8 @@
 (ns blaze.luid.impl-test
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.luid.impl :as impl]
+   [blaze.util :refer [str]]
    [clojure.test :refer [deftest is testing]])
   (:import
    [java.time Instant]))

@@ -1,4 +1,4 @@
-{:paths ["src" "resources" "target/classes"]
+{:paths ["src" "resources" "java" "target/classes"]
 
  :deps
  {blaze/byte-buffer

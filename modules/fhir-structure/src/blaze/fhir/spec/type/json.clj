@@ -1,6 +1,8 @@
 (ns blaze.fhir.spec.type.json
+  (:refer-clojure :exclude [str])
   (:require
-   [blaze.fhir.spec.type.protocols :as p])
+   [blaze.fhir.spec.type.protocols :as p]
+   [blaze.util :refer [str]])
   (:import
    [com.fasterxml.jackson.core JsonGenerator SerializableString]
    [java.io Writer]

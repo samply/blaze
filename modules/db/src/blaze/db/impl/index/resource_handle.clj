@@ -1,10 +1,11 @@
 (ns blaze.db.impl.index.resource-handle
-  (:refer-clojure :exclude [hash type])
+  (:refer-clojure :exclude [hash str type])
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.codec :as codec]
    [blaze.fhir.hash :as hash]
-   [blaze.fhir.spec.type.protocols :as p])
+   [blaze.fhir.spec.type.protocols :as p]
+   [blaze.util :refer [str]])
   (:import
    [clojure.lang ILookup Numbers]))
 

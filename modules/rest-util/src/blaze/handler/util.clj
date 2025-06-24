@@ -1,10 +1,12 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.fhir.spec.type :as type]
    [blaze.http.util :as hu]
+   [blaze.util :refer [str]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [io.aviso.exception :as aviso]

@@ -1,4 +1,5 @@
 (ns blaze.db.impl.search-param.util
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
@@ -8,6 +9,7 @@
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
    [org.apache.commons.codec.language Soundex]))

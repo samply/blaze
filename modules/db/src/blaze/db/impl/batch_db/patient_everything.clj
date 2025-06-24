@@ -1,11 +1,13 @@
 (ns blaze.db.impl.batch-db.patient-everything
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.coll.core :as coll]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.date :as spd]
    [blaze.db.search-param-registry :as sr]
-   [blaze.fhir.spec.type :as type]))
+   [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]))
 
 (defn- non-compartment-types [search-param-registry]
   (apply disj (sr/all-types search-param-registry)

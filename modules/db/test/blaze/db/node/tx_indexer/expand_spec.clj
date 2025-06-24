@@ -4,6 +4,7 @@
    [blaze.db.node.tx-indexer.expand :as expand]
    [blaze.db.node.tx-indexer.verify :as verify]
    [blaze.db.node.tx-indexer.verify.spec]
+   [blaze.db.search-param-registry-spec]
    [blaze.db.spec]
    [blaze.db.tx-log.spec]
    [clojure.spec.alpha :as s]

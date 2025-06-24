@@ -1,8 +1,10 @@
 (ns blaze.elm.spec
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.elm.quantity :as quantity]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [str]]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as sg])

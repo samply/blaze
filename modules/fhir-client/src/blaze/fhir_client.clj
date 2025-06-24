@@ -1,9 +1,10 @@
 (ns blaze.fhir-client
-  (:refer-clojure :exclude [read spit update])
+  (:refer-clojure :exclude [read spit str update])
   (:require
    [blaze.async.comp :as ac]
    [blaze.async.flow :as flow]
    [blaze.fhir-client.impl :as impl]
+   [blaze.util :refer [str]]
    [taoensso.timbre :as log])
   (:import
    [java.util.concurrent Flow$Publisher]))
@@ -69,7 +70,7 @@
   `return`."
   [base-uri type name & [opts]]
   (log/trace (execute-type-get-msg type name opts))
-  (impl/fetch (apply str base-uri "/" type "/$" name) opts))
+  (impl/fetch (str base-uri "/" type "/$" name) opts))
 
 (defn search-type-publisher
   "Returns a Publisher that produces a Bundle per page of resources with `type`.

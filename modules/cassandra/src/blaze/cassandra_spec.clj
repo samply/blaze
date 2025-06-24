@@ -3,6 +3,7 @@
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.cassandra :as cass]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom])
   (:import

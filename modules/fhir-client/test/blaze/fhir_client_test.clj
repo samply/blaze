@@ -20,6 +20,7 @@
    [java.nio.file Files Path]
    [java.nio.file.attribute FileAttribute]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 

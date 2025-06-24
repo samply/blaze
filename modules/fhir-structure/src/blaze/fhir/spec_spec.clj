@@ -5,6 +5,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.spec]
    [blaze.fhir.writing-context.spec]
+   [blaze.util-spec]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))

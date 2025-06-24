@@ -1,10 +1,12 @@
 (ns blaze.fhir.spec.type.macros
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.fhir.spec.impl.intern :as intern]
    [blaze.fhir.spec.type.json :as json]
    [blaze.fhir.spec.type.protocols :as p]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [str]]
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
   (:import

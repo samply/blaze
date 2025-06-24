@@ -1,5 +1,6 @@
 (ns blaze.operation.patient.everything
   "Main entry point into the Patient $everything operation."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :refer [do-sync]]
@@ -10,6 +11,7 @@
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
    [blaze.spec]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.core :as reitit]

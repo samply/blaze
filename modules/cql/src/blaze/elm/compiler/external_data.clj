@@ -3,6 +3,7 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.coll.core :as coll]
@@ -15,6 +16,7 @@
    [blaze.elm.spec]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec.references :as fsr]
+   [blaze.util :refer [str]]
    [prometheus.alpha :as prom :refer [defcounter]]))
 
 (set! *warn-on-reflection* true)

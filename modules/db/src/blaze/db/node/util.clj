@@ -1,6 +1,8 @@
 (ns blaze.db.node.util
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.util :refer [str]]
    [clojure.string :as str]))
 
 (defn name-part [[_ key]]

@@ -8,6 +8,7 @@
    [blaze.fhir-client.spec]
    [blaze.fhir.spec]
    [blaze.fhir.writing-context.spec]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s])
   (:import
    [java.nio.file Path]))

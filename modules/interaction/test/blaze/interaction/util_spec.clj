@@ -5,6 +5,7 @@
    [blaze.handler.fhir.util-spec]
    [blaze.interaction.util :as iu]
    [blaze.spec]
+   [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 

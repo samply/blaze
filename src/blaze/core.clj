@@ -1,7 +1,8 @@
 (ns blaze.core
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.system :as system]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [str]]
    [clojure.string :as str]
    [taoensso.timbre :as log])
   (:gen-class))

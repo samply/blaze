@@ -1,8 +1,10 @@
 (ns blaze.middleware.link-headers
   "Middleware that will transfer bundle links into link headers according to
   RFC 8288."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :refer [do-sync]]
+   [blaze.util :refer [str]]
    [clojure.string :as str]))
 
 (defn- link-header-value [{:keys [relation url]}]

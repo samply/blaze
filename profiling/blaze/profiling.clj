@@ -1,5 +1,6 @@
 (ns blaze.profiling
   "Profiling namespace without test dependencies."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.kv.rocksdb :as rocksdb]
@@ -7,6 +8,7 @@
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
    [blaze.system :as system]
+   [blaze.util :refer [str]]
    [clojure.tools.namespace.repl :refer [refresh]]
    [taoensso.timbre :as log]))
 

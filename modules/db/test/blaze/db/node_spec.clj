@@ -14,4 +14,5 @@
    [blaze.db.resource-store-spec]
    [blaze.db.search-param-registry-spec]
    [blaze.db.spec]
-   [blaze.db.tx-log-spec]))
+   [blaze.db.tx-log-spec]
+   [blaze.util-spec]))

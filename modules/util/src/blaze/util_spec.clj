@@ -10,3 +10,7 @@
 (s/fdef u/to-seq
   :args (s/cat :x any?)
   :ret (s/nilable sequential?))
+
+(s/fdef u/str
+  :args (s/cat :args (s/* any?))
+  :ret string?)

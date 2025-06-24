@@ -1,5 +1,6 @@
 (ns blaze.job.compact
   "The compaction job calls blaze.db.kv/compact! for one column family."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok if-ok]]
    [blaze.async.comp :as ac]
@@ -9,6 +10,7 @@
    [blaze.job.compact.spec]
    [blaze.job.util :as job-util]
    [blaze.module :as m]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log]))

@@ -2,6 +2,7 @@
   "In-Memory Implementation of a Key-Value Store.
 
   It uses sorted maps with byte array keys and values."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.async.comp :as ac]
@@ -10,6 +11,7 @@
    [blaze.db.kv.protocols :as p]
    [blaze.db.kv.spec]
    [blaze.module :as m]
+   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log])

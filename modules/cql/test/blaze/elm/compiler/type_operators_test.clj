@@ -1833,6 +1833,9 @@
 
   (testing "DateTime"
     (are [x res] (= res (ctu/compile-unop elm/to-string elm/date-time x))
+      "2019" "2019"
+      "2019-01" "2019-01"
+      "2019-01-01" "2019-01-01"
       "2019-01-01T01:00" "2019-01-01T01:00"))
 
   (testing "Time"

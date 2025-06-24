@@ -2,7 +2,7 @@ fmt:
 	cljfmt check src test deps.edn tests.edn
 
 lint:
-	clj-kondo --lint src deps.edn
+	clj-kondo --lint src test deps.edn
 
 prep:
 	clojure -X:deps prep

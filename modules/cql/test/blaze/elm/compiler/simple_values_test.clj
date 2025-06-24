@@ -11,6 +11,7 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.util-spec]
+   [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]

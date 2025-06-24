@@ -4,13 +4,8 @@
  {blaze/byte-buffer
   {:local/root "../byte-buffer"}
 
-  com.google.guava/guava
-  {:mvn/version "33.4.8-jre"
-   :exclusions
-   [com.google.errorprone/error_prone_annotations
-    com.google.guava/listenablefuture
-    com.google.j2objc/j2objc-annotations
-    org.jspecify/jspecify]}}
+  blaze/util
+  {:local/root "../util"}}
 
  :aliases
  {:test

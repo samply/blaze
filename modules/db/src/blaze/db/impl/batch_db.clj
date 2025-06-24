@@ -3,6 +3,7 @@
 
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
@@ -29,7 +30,8 @@
    [blaze.db.kv :as kv]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.search-param-registry :as sr]
-   [blaze.fhir.spec.type :as type])
+   [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]])
   (:import
    [java.io Writer]
    [java.lang AutoCloseable]))

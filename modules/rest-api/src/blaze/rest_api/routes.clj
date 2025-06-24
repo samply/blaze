@@ -1,4 +1,5 @@
 (ns blaze.rest-api.routes
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.middleware.fhir.db :as db]
@@ -17,6 +18,7 @@
    [blaze.rest-api.spec]
    [blaze.rest-api.util :as u]
    [blaze.spec]
+   [blaze.util :refer [str]]
    [reitit.ring]
    [reitit.ring.spec]
    [ring.middleware.params :as ring-params]))
