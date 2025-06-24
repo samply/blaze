@@ -10,6 +10,9 @@
   blaze/db-tx-log-kafka
   {:local/root "modules/db-tx-log-kafka"}
 
+  blaze/extern-terminology-service
+  {:local/root "modules/extern-terminology-service"}
+
   blaze/interaction
   {:local/root "modules/interaction"}
 

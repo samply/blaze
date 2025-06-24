@@ -44,7 +44,7 @@ calc-print-stats() {
     RES_S_FORMAT="%4.1f M"
   elif (( $(echo "$RES_S > 1000" | bc) )); then
     RES_S=$(echo "scale=2; $RES_S / 1000" | bc)
-    RES_S_FORMAT="%4.0f k"
+    RES_S_FORMAT="%4.1f k"
   else
     RES_S_FORMAT="%6.0f"
   fi

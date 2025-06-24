@@ -16,7 +16,10 @@
 
   ring/ring-jetty-adapter
   {:mvn/version "1.14.2"
-   :exclusions [ring/ring-core]}}
+   :exclusions
+   [ring/ring-core
+    ;; replaced via local namespace ring.util.jakarta.servlet
+    org.ring-clojure/ring-jakarta-servlet]}}
 
  :deps/prep-lib
  {:alias :build
