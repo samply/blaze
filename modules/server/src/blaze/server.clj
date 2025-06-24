@@ -10,21 +10,9 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [blaze.server ContextOutputStream]
-   [jakarta.servlet AsyncContext]
-   [jakarta.servlet.http HttpServletResponse]
    [org.eclipse.jetty.server Server]))
 
 (set! *warn-on-reflection* true)
-
-(alter-var-root
- #'ring.util.jakarta.servlet/make-output-stream
- (constantly
-  (fn [^HttpServletResponse response ^AsyncContext context]
-    (let [os (.getOutputStream response)]
-      (if (nil? context)
-        os
-        (ContextOutputStream. os context))))))
 
 (defn- server-request [request]
   (assoc request :blaze/request-arrived (System/nanoTime)))
