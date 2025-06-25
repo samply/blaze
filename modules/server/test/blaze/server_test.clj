@@ -25,7 +25,8 @@
 (test/use-fixtures :each tu/fixture)
 
 (defn ok-handler [_]
-  (ring/response "OK"))
+  (-> (ring/response "OK")
+      (ring/content-type "text/plain")))
 
 (defn- find-free-port! []
   (with-open [s (ServerSocket. 0)]
@@ -74,7 +75,9 @@
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn async-ok-handler [_ respond _]
-  (respond (ring/response "OK")))
+  (-> (ring/response "OK")
+      (ring/content-type "text/plain")
+      (respond)))
 
 (defn error-handler [_]
   (throw (Exception. "msg-163147")))
@@ -95,6 +98,7 @@
         (given (hc/get (str "http://localhost:" port))
           :status := 200
           :body := "OK"
+          [:headers "content-type"] := "text/plain"
           [:headers "server"] := "Blaze/1.0"))
 
       (testing "async"
@@ -102,6 +106,7 @@
           (given (hc/get (str "http://localhost:" port))
             :status := 200
             :body := "OK"
+            [:headers "content-type"] := "text/plain"
             [:headers "server"] := "Blaze/1.0"))))
 
     (testing "error"
