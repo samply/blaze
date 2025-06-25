@@ -9,10 +9,7 @@
   (:import
    [blaze.server ContextOutputStream]
    [jakarta.servlet AsyncContext]
-   [jakarta.servlet.http
-    HttpServlet
-    HttpServletRequest
-    HttpServletResponse]
+   [jakarta.servlet.http HttpServletRequest HttpServletResponse]
    [java.util Locale]))
 
 (set! *warn-on-reflection*  true)
@@ -53,20 +50,6 @@
    :ssl-client-cert (get-client-cert request)
    :body (.getInputStream request)})
 
-(defn merge-servlet-keys
-  "Associate servlet-specific keys with the request map for use with legacy
-  systems."
-  [request-map
-   ^HttpServlet servlet
-   ^HttpServletRequest request
-   ^HttpServletResponse response]
-  (merge request-map
-         {:servlet servlet
-          :servlet-request request
-          :servlet-response response
-          :servlet-context (.getServletContext servlet)
-          :servlet-context-path (.getContextPath request)}))
-
 (defn- set-headers [^HttpServletResponse response, headers]
   (doseq [[key val-or-vals] headers]
     (if (string? val-or-vals)
@@ -100,64 +83,3 @@
      (set-headers response headers)
      (let [output-stream (make-output-stream response context)]
        (protocols/write-body-to-stream body response-map output-stream)))))
-
-(defn- make-blocking-service-method [handler]
-  (fn [servlet request response]
-    (-> request
-        (build-request-map)
-        (merge-servlet-keys servlet request response)
-        (handler)
-        (->> (update-servlet-response response)))))
-
-(defn- make-async-service-method [handler]
-  (fn [servlet ^HttpServletRequest request ^HttpServletResponse response]
-    (let [^AsyncContext context (.startAsync request)]
-      (handler
-       (-> request
-           (build-request-map)
-           (merge-servlet-keys servlet request response))
-       (fn [response-map]
-         (update-servlet-response response context response-map))
-       (fn [^Throwable exception]
-         (.sendError response 500 (.getMessage exception))
-         (.complete context))))))
-
-(defn make-service-method
-  "Turns a handler into a function that takes the same arguments and has the
-  same return value as the service method in the HttpServlet class."
-  ([handler]
-   (make-service-method handler {}))
-  ([handler options]
-   (if (:async? options)
-     (make-async-service-method handler)
-     (make-blocking-service-method handler))))
-
-(defn servlet
-  "Create a servlet from a Ring handler."
-  ([handler]
-   (servlet handler {}))
-  ([handler options]
-   (let [service-method (make-service-method handler options)]
-     (proxy [HttpServlet] []
-       (service [request response]
-         (service-method this request response))))))
-
-(defmacro defservice
-  "Defines a service method with an optional prefix suitable for being used by
-  genclass to compile a HttpServlet class.
-
-  For example:
-
-    (defservice my-handler)
-    (defservice \"my-prefix-\" my-handler)"
-  ([handler]
-   `(defservice "-" ~handler))
-  ([prefix handler]
-   (if (map? handler)
-     `(defservice "-" ~prefix ~handler)
-     `(defservice ~prefix ~handler {})))
-  ([prefix handler options]
-   `(let [service-method# (make-service-method ~handler ~options)]
-      (defn ~(symbol (str prefix "service"))
-        [servlet# request# response#]
-        (service-method# servlet# request# response#)))))
