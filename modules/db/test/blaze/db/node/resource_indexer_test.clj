@@ -475,6 +475,57 @@
                 ["combo-code" (codec/v-hash "system-193821|code-193824")]
                 ["status" (codec/v-hash "status-193613")]]))))))
 
+(deftest index-appointment-resource-test
+  (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
+                 resource-store ::rs/kv
+                 ::node/keys [resource-indexer]} config]
+    (let [resource {:fhir/type :fhir/Appointment :id "id-151125"
+                    :status #fhir/code"status-151938"
+                    :participant
+                    [{:fhir/type :fhir.Appointment/participant
+                      :actor #fhir/Reference{:reference "Patient/id-151354"}}]}
+          hash (hash/generate resource)]
+      @(rs/put! resource-store {hash resource})
+      @(resource-indexer/index-resources
+        resource-indexer
+        {:t 0
+         :instant Instant/EPOCH
+         :tx-cmds
+         [{:op "put"
+           :type "Appointment"
+           :id "id-151125"
+           :hash hash}]})
+
+      (testing "SearchParamValueResource index"
+        (is (every? #{["Appointment" "id-151125" #blaze/hash-prefix"8351D5EB"]}
+                    (sp-vr-tu/decode-index-entries
+                     kv-store :type :id :hash-prefix)))
+        (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
+               [["patient" (codec/v-hash "id-151354")]
+                ["patient" (codec/tid-id
+                            (codec/tid "Patient")
+                            (codec/id-byte-string "id-151354"))]
+                ["patient" (codec/v-hash "Patient/id-151354")]
+                ["actor" (codec/v-hash "id-151354")]
+                ["actor" (codec/tid-id
+                          (codec/tid "Patient")
+                          (codec/id-byte-string "id-151354"))]
+                ["actor" (codec/v-hash "Patient/id-151354")]
+                ["status" (codec/v-hash "status-151938")]
+                ["_lastUpdated" #blaze/byte-string"80008001"]])))
+
+      (testing "CompartmentResourceType index"
+        (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
+               [[["Patient" "id-151354"] "Appointment" "id-151125"]])))
+
+      (testing "CompartmentSearchParamValueResource index"
+        (is (every? #{[["Patient" "id-151354"] "Appointment" "id-151125"
+                       #blaze/hash-prefix"8351D5EB"]}
+                    (c-sp-vr-tu/decode-index-entries
+                     kv-store :compartment :type :id :hash-prefix)))
+        (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
+               [["status" (codec/v-hash "status-151938")]]))))))
+
 (deftest index-delete-cmd-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  ::node/keys [resource-indexer]} config]
