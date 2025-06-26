@@ -215,11 +215,17 @@
     (ac/completed-future (deleted-resource resource-handle))
     (rs/get resource-store (node-util/rs-key resource-handle variant))))
 
-(defn- patient-compartment-search-param-codes [search-param-registry type]
+(defn- patient-compartment-search-param-codes
+  "Returns the search parameter codes for `type` in the patient compartment.
+
+  Will be either `#{\"subject\"}`, `#{\"patient\"}` or
+  `#{\"subject\" \"patient\"}`."
+  [search-param-registry type]
   (when (seq (sr/compartment-resources search-param-registry "Patient" type))
-    (cond-> #{"subject" "patient"}
-      (nil? (sr/get search-param-registry "subject" type)) (disj "subject")
-      (nil? (sr/get search-param-registry "patient" type)) (disj "patient"))))
+    (cond
+      (nil? (sr/get search-param-registry "subject" type)) #{"patient"}
+      (nil? (sr/get search-param-registry "patient" type)) #{"subject"}
+      :else #{"subject" "patient"})))
 
 (defn- clause-with-code-fn? [codes]
   (fn [[search-param]]
@@ -254,17 +260,16 @@
    values))
 
 (defn- compile-patient-type-query [search-param-registry type clauses]
-  (let [codes (patient-compartment-search-param-codes search-param-registry type)]
-    (when (seq codes)
-      (let [[compartment-clause & more] (filter (clause-with-code-fn? codes) clauses)
-            [token-clause] (filter token-clause? clauses)
-            patient-ids (compartment-clause-patient-ids compartment-clause)]
-        (when (and compartment-clause (empty? more) token-clause patient-ids)
-          (batch-db/->PatientTypeQuery
-           (codec/tid type)
-           patient-ids
-           compartment-clause
-           (into [token-clause] (remove (clause-with-code-fn? (conj codes (:code (first token-clause))))) clauses)))))))
+  (when-some [codes (patient-compartment-search-param-codes search-param-registry type)]
+    (let [[compartment-clause & more] (filter (clause-with-code-fn? codes) clauses)
+          [token-clause] (filter token-clause? clauses)
+          patient-ids (compartment-clause-patient-ids compartment-clause)]
+      (when (and compartment-clause (empty? more) token-clause patient-ids)
+        (batch-db/->PatientTypeQuery
+         (codec/tid type)
+         patient-ids
+         compartment-clause
+         (into [token-clause] (remove (clause-with-code-fn? (conj codes (:code (first token-clause))))) clauses))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
