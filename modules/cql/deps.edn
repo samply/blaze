@@ -39,7 +39,7 @@
    :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}
 
   systems.uom/systems-quantity
-  {:mvn/version "2.1"}
+  {:mvn/version "2.2"}
 
   systems.uom/systems-ucum
   {:mvn/version "2.1"}}
