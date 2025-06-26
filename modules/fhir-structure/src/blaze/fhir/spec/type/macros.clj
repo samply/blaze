@@ -310,29 +310,42 @@
 (defmacro defextended [name [_id _extension value] & {:as opts}]
   (gen-extended-record name value opts))
 
-(defn- field-name [field-sym]
+(defn- polymorphic-field-names [base-field-name types]
+  (into
+   {}
+   (map
+    (fn [type]
+      [(keyword "fhir" (str type))
+       (json/field-name (str base-field-name (su/capital (str type))))]))
+   types))
+
+(defn- field-name
+  "Pre-calculates the field name for non-polymorphic fields or emits code that
+  gets the field name from a pre-calculated map of possible field names by type."
+  [field-sym]
   (if (:polymorph (meta field-sym))
-    `(json/field-name (str ~(str field-sym) (su/capital (name (blaze.fhir.spec.type/type ~field-sym)))))
+    (let [field-names (polymorphic-field-names (str field-sym) (:types (meta field-sym)))]
+      `(~field-names (blaze.fhir.spec.type/type ~(with-meta field-sym nil))))
     (json/field-name (str field-sym))))
 
 (defn write-field [generator field-sym]
-  `(when-not (nil? ~field-sym)
+  `(when-not (nil? ~(with-meta field-sym nil))
      ~@(cond
          (= 'String (:tag (meta field-sym)))
          `[(.writeFieldName ~(with-meta generator {:tag `JsonGenerator}) ~(field-name field-sym))
-           (.writeString ~(with-meta generator {:tag `JsonGenerator}) ~field-sym)]
+           (.writeString ~(with-meta generator {:tag `JsonGenerator}) ~(with-meta field-sym nil))]
 
          (:primitive-string (meta field-sym))
-         `[(json/write-primitive-string-field ~generator ~(field-name field-sym) ~field-sym)]
+         `[(json/write-primitive-string-field ~generator ~(field-name field-sym) ~(with-meta field-sym nil))]
 
          (:primitive (meta field-sym))
-         `[(json/write-field ~generator ~(field-name field-sym) ~field-sym)]
+         `[(json/write-field ~generator ~(field-name field-sym) ~(with-meta field-sym nil))]
 
          (:primitive-list (meta field-sym))
-         `[(json/write-primitive-list-field ~generator ~(field-name field-sym) ~field-sym)]
+         `[(json/write-primitive-list-field ~generator ~(field-name field-sym) ~(with-meta field-sym nil))]
 
          :else
-         `[(json/write-non-primitive-field ~generator ~(field-name field-sym) ~field-sym)])))
+         `[(json/write-non-primitive-field ~generator ~(field-name field-sym) ~(with-meta field-sym nil))])))
 
 (defmacro def-complex-type
   [name [& fields] & {:keys [fhir-type hash-num interned references]}]

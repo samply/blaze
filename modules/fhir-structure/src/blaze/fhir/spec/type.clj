@@ -917,7 +917,7 @@
   (-assoc-value [_ value] (create-date-time value))
   (-has-primary-content [_] true)
   (-serialize-json [date-time generator]
-    (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
+    (.writeString ^JsonGenerator generator (.format DateTimeFormatter/ISO_DATE_TIME date-time)))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
@@ -940,7 +940,7 @@
   (-assoc-value [_ value] (create-date-time value))
   (-has-primary-content [_] true)
   (-serialize-json [date-time generator]
-    (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
+    (.writeString ^JsonGenerator generator (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time)))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
@@ -1333,7 +1333,16 @@
 
 (declare extension)
 
-(def-complex-type Extension [^String id extension ^String url ^:polymorph ^:primitive value]
+(def-complex-type Extension
+  [^String id extension ^String url ^:polymorph ^:primitive
+   ^{:types [base64Binary boolean canonical code date dateTime decimal id
+             instant integer markdown oid positiveInt string time unsignedInt
+             uri url uuid Address Age Annotation Attachment CodeableConcept
+             Coding ContactPoint Count Distance Duration HumanName Identifier
+             Money Period Quantity Range Ratio Reference SampledData Signature
+             Timing ContactDetail Contributor DataRequirement Expression
+             ParameterDefinition RelatedArtifact TriggerDefinition UsageContext
+             Dosage Meta]} value]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension) (p/-interned value)))
 

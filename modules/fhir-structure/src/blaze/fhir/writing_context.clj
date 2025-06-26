@@ -25,6 +25,17 @@
   (let [parts (cons "fhir" (seq (str/split type #"\.")))]
     (keyword (str/join "." (butlast parts)) (last parts))))
 
+(deftype PropertyHandler [key field-name polymorphic type])
+
+(defn- polymorphic-field-names [base-field-name element-types]
+  (into
+   {}
+   (map
+    (fn [{:keys [code]}]
+      [(keyword "fhir" code)
+       (json/field-name (str base-field-name (su/capital code)))]))
+   element-types))
+
 (defn- property-handler-definitions
   "Takes `element-definition` and returns possibly multiple
   property handler definitions, one for each polymorphic type.
@@ -36,11 +47,13 @@
   [parent-type
    {:keys [path] content-reference :contentReference element-types :type}]
   (if content-reference
-    (let [base-field-name (res/base-field-name parent-type path false)]
-      {:key (keyword base-field-name)
-       :field-name (json/field-name base-field-name)
-       :polymorphic false
-       :type (fhir-type-keyword (subs content-reference 1))})
+    (let [base-field-name (res/base-field-name parent-type path false)
+          field-name (json/field-name base-field-name)]
+      (PropertyHandler.
+       (keyword base-field-name)
+       (fn [_type] field-name)
+       false
+       (fhir-type-keyword (subs content-reference 1))))
     (let [polymorphic (< 1 (count element-types))
           first-type-code (:code (first element-types))
           element-type (and (= 1 (count element-types))
@@ -49,45 +62,48 @@
                             (Character/isUpperCase ^char (first first-type-code))
                             (not (#{"BackboneElement" "Element" "Resource"} first-type-code)))
           base-field-name (res/base-field-name parent-type path polymorphic)]
-      (cond->
-       {:key (keyword base-field-name)
-        :polymorphic polymorphic}
-        (not polymorphic) (assoc :field-name (json/field-name base-field-name))
-        complex-type (assoc :type (keyword "fhir" first-type-code))
-        element-type (assoc :type (fhir-type-keyword path))))))
+      (PropertyHandler.
+       (keyword base-field-name)
+       (if polymorphic
+         (polymorphic-field-names base-field-name element-types)
+         (let [field-name (json/field-name base-field-name)]
+           (fn [_type] field-name)))
+       polymorphic
+       (if complex-type
+         (keyword "fhir" first-type-code)
+         (when element-type
+           (fhir-type-keyword path)))))))
 
 (defn- create-property-handlers
   "Returns a map of JSON property names to property handlers."
   [type element-definitions]
-  (mapv (partial property-handler-definitions type) element-definitions))
+  (doall (map (partial property-handler-definitions type) element-definitions)))
 
-(defn- field-name ^SerializableString [def type]
-  (or (:field-name def)
-      (json/field-name (str (name (:key def)) (su/capital (name type))))))
+(defn- field-name ^SerializableString [^PropertyHandler def type]
+  ((.-field-name def) type))
 
-(defn- write-field! [type-handlers ^JsonGenerator gen {:keys [type] :as def} value]
+(defn- write-field! [type-handlers ^JsonGenerator gen ^PropertyHandler def value]
   (if (sequential? value)
     (when-some [first-value (first value)]
-      (when-some [type (or type (type/type first-value))]
+      (when-some [type (or (.-type def) (type/type first-value))]
         (if-some [handler (type-handlers type)]
           (do (.writeFieldName gen (field-name def type))
               (.writeStartArray gen)
-              (loop [[v & more] value]
-                (handler type-handlers gen v)
-                (some-> more recur))
+              (run! (partial handler type-handlers gen) value)
               (.writeEndArray gen))
           (json/write-field gen (field-name def type) value))))
-    (when-some [type (or type (type/type value))]
+    (when-some [type (or (.-type def) (type/type value))]
       (if-some [handler (type-handlers type)]
         (do (.writeFieldName gen (field-name def type))
             (handler type-handlers gen value))
         (json/write-field gen (field-name def type) value)))))
 
-(defn- write-fields! [type-handlers property-handlers ^JsonGenerator gen value]
-  (loop [[{:keys [key] :as def} & more] property-handlers]
-    (when-some [child-value (value key)]
-      (write-field! type-handlers gen def child-value))
-    (some-> more recur)))
+(defn- write-fields! [type-handlers property-handlers gen value]
+  (loop [[def & more] property-handlers]
+    (when def
+      (when-some [child-value (value (.-key ^PropertyHandler def))]
+        (write-field! type-handlers gen def child-value))
+      (recur more))))
 
 (def ^:private record-types
   #{"Attachment" "Extension" "Coding" "CodeableConcept" "Quantity" "Ratio"

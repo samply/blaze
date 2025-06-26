@@ -333,7 +333,7 @@
   {:arglists '([element])}
   [{:keys [attrs content]}]
   (transduce
-    ;; remove mixed character content
+   ;; remove mixed character content
    (filter xml/element?)
    (completing
     (fn [ret {:keys [tag] :as element}]
