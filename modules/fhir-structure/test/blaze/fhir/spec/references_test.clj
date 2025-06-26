@@ -21,7 +21,9 @@
 
   (testing "invalid refs"
     (are [ref] (nil? (fsr/split-literal-ref ref))
-      "http://localhost:8080/fhir/Patient/0"))
+      "http://localhost:8080/fhir/Patient/0"
+      "patient/0"
+      "Patient/_"))
 
   (testing "works on arbitrary strings"
     (satisfies-prop 10000

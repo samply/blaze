@@ -17,6 +17,10 @@
   (s/spec (s/cat :op #(= `s2/or %)
                  :choices (s/* (s/cat :key keyword? :spec some?)))))
 
+(s/fdef fhir-spec/fhir-type
+  :args (s/cat :x any?)
+  :ret (s/nilable :fhir/type))
+
 (s/fdef fhir-spec/primitive?
   :args (s/cat :spec any?)
   :ret boolean?)
@@ -56,7 +60,3 @@
 
 (s/fdef fhir-spec/unform-xml
   :args (s/cat :resource any?))
-
-(s/fdef fhir-spec/fhir-type
-  :args (s/cat :x any?)
-  :ret (s/nilable :fhir/type))

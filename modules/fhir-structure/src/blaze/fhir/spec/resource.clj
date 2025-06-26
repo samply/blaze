@@ -23,7 +23,7 @@
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
-   [blaze.util :refer [conj-vec str]]
+   [blaze.util :as u :refer [str]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
@@ -690,7 +690,7 @@
             (fn [resource]
               (-> (assoc! resource :fhir/type (fhir-type-keyword type))
                   (persistent!)
-                  (update :meta update-meta :tag conj-vec fu/subsetted)))
+                  (update :meta update-meta :tag u/conj-vec fu/subsetted)))
             #(persistent! (assoc! % :fhir/type (fhir-type-keyword type))))]
       (condp = kind
         :resource
