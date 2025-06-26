@@ -252,6 +252,7 @@
     "_profile"
     "_profile:below"
     "active"
+    "actor"
     "address"
     "birthdate"
     "bodysite"
