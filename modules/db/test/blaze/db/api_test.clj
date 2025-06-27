@@ -5510,7 +5510,7 @@
      :period (fg/period :extension (gen/return nil)
                         :start date-time :end date-time))))
 
-(deftest type-query-date-encounter-eq-sa-eb-test
+(deftest ^:slow type-query-date-encounter-eq-sa-eb-test
   (satisfies-prop 100
     (prop/for-all [year (gen/choose 1999 2001)
                    tx-ops (create-tx encounter-gen 10)]
@@ -5523,7 +5523,7 @@
              (num-encounter [["date" (format "sa%d-12-31" (dec year))]
                              ["date" (format "eb%d-01-01" (inc year))]])))))))
 
-(deftest type-query-date-encounter-ap-gt-lt-test
+(deftest ^:slow type-query-date-encounter-ap-gt-lt-test
   (satisfies-prop 100
     (prop/for-all [year (gen/choose 1999 2001)
                    tx-ops (create-tx encounter-gen 10)]
@@ -5672,7 +5672,7 @@
    :encounter (gen/return nil)
    :value (gen/return nil)))
 
-(deftest type-query-date-equal-generative-test
+(deftest ^:slow type-query-date-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5680,7 +5680,7 @@
         [tx-ops]
         (every-found-observation-matches? equal node "" date-time)))))
 
-(deftest type-query-date-not-equal-generative-test
+(deftest ^:slow type-query-date-not-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5688,7 +5688,7 @@
         [tx-ops]
         (every-found-observation-matches? not-equal node "ne" date-time)))))
 
-(deftest type-query-date-greater-than-generative-test
+(deftest ^:slow type-query-date-greater-than-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5696,7 +5696,7 @@
         [tx-ops]
         (every-found-observation-matches? greater-than node "gt" date-time)))))
 
-(deftest type-query-date-less-than-generative-test
+(deftest ^:slow type-query-date-less-than-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5704,7 +5704,7 @@
         [tx-ops]
         (every-found-observation-matches? less-than node "lt" date-time)))))
 
-(deftest type-query-date-greater-equal-generative-test
+(deftest ^:slow type-query-date-greater-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5712,7 +5712,7 @@
         [tx-ops]
         (every-found-observation-matches? greater-equal node "ge" date-time)))))
 
-(deftest type-query-date-less-equal-generative-test
+(deftest ^:slow type-query-date-less-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5720,7 +5720,7 @@
         [tx-ops]
         (every-found-observation-matches? less-equal node "le" date-time)))))
 
-(deftest type-query-date-starts-after-generative-test
+(deftest ^:slow type-query-date-starts-after-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5728,7 +5728,7 @@
         [tx-ops]
         (every-found-observation-matches? starts-after node "sa" date-time)))))
 
-(deftest type-query-date-ends-before-generative-test
+(deftest ^:slow type-query-date-ends-before-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -5736,7 +5736,7 @@
         [tx-ops]
         (every-found-observation-matches? ends-before node "eb" date-time)))))
 
-(deftest type-query-date-approximately-generative-test
+(deftest ^:slow type-query-date-approximately-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
@@ -6321,7 +6321,7 @@
                    node "Patient" [[:sort "_lastUpdated" :asc]])]
         (is (= [[:sort "_lastUpdated" :asc]] (d/query-clauses query)))))))
 
-(deftest count-query-test
+(deftest ^:slow count-query-test
   (testing "different sizes"
     (satisfies-prop 25
       (prop/for-all [n (gen/large-integer* {:min 1 :max 10000})]
@@ -8210,7 +8210,7 @@
 (defn- condition-create-op [id]
   [:create {:fhir/type :fhir/Condition :id (format "%05d" id)}])
 
-(deftest re-index-test
+(deftest ^:slow re-index-test
   (testing "unknown search param"
     (with-system [{:blaze.db/keys [node]} config]
       (given (d/re-index-total (d/db node) "unknown")

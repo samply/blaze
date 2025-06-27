@@ -186,8 +186,63 @@ jobs:
         name: coverage-report-${{ matrix.module }}
         path: modules/${{ matrix.module }}/target/coverage/codecov.json
 
+  test-slow:
+    strategy:
+      matrix:
+        module:
+        - db
+
+        java-version:
+        - '17'
+        - '21'
+
+    needs: job-ig
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4
+      with:
+        distribution: 'temurin'
+        java-version: ${{ matrix.java-version }}
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
+      with:
+        cli: '1.12.0.1479'
+
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+
+    - name: Download Job IG Profiles
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      with:
+        name: job-ig-profiles
+        path: job-ig/fsh-generated/resources
+
+    - name: Test
+      run: make -C modules/${{ matrix.module }} test-slow
+
   # Special treatment, because it runs much longer as the other modules.
   test-coverage-db:
+    strategy:
+      matrix:
+        kind:
+        - 'normal'
+        - 'slow'
+
     needs: job-ig
     runs-on: ubuntu-24.04
 
@@ -225,12 +280,17 @@ jobs:
         path: job-ig/fsh-generated/resources
 
     - name: Test Coverage
+      if: ${{ matrix.kind == 'normal' }}
       run: make -C modules/db test-coverage
+
+    - name: Test Coverage Slow
+      if: ${{ matrix.kind == 'slow' }}
+      run: make -C modules/db test-coverage-slow
 
     - name: Upload Coverage Report
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
-        name: coverage-report-db
+        name: coverage-report-db-${{ matrix.kind }}
         path: modules/db/target/coverage/codecov.json
 
   test-root:
@@ -2355,6 +2415,7 @@ jobs:
     - fmt
     - lint
     - test
+    - test-slow
     - test-root
     - image-scan
     - cql-expr-cache-test
