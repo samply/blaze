@@ -11,10 +11,16 @@ prep: build
 	clojure -X:deps prep
 
 test: prep
-	clojure -M:test:kaocha --profile :ci
+	clojure -M:test:kaocha --profile :ci --skip-meta :slow
+
+test-slow: prep
+	clojure -M:test:kaocha --profile :ci --focus-meta :slow
 
 test-coverage: prep
-	clojure -M:test:coverage
+	clojure -M:test:coverage --skip-meta :slow
+
+test-coverage-slow: prep
+	clojure -M:test:coverage --focus-meta :slow
 
 deps-tree:
 	clojure -X:deps tree
