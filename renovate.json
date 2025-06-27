@@ -44,6 +44,12 @@
       "matchPackageNames": [
         "/ring/"
       ]
+    },
+    {
+      "groupName": "systems.uom",
+      "matchPackageNames": [
+        "/systems.uom/"
+      ]
     }
   ],
   "ignorePaths": [
