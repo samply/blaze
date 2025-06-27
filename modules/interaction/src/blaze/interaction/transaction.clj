@@ -76,7 +76,7 @@
         (when-ok [entries (validate-entries entries)]
           (-> (reduce
                prepare-entry
-               {::luid/generator (iu/luid-generator context) :entries []}
+               {::luid/generator (m/luid-generator context) :entries []}
                entries)
               :entries))
         entries))))
