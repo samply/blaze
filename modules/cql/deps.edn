@@ -42,7 +42,7 @@
   {:mvn/version "2.1"}
 
   systems.uom/systems-ucum
-  {:mvn/version "2.1"}}
+  {:mvn/version "2.2"}}
 
  :aliases
  {:test
