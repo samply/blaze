@@ -83,7 +83,7 @@
    handle-error))
 
 (defn- etag [resource]
-  (when-let [version-id (-> resource :meta :versionId)]
+  (when-let [version-id (-> resource :meta :versionId type/value)]
     (str "W/\"" version-id "\"")))
 
 (defn- generate-body [{:keys [writing-context]} resource]
