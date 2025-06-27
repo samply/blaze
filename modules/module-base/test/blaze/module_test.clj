@@ -1,5 +1,6 @@
 (ns blaze.module-test
   (:require
+   [blaze.luid :as luid]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.module-spec]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -22,6 +23,11 @@
   (let [context {:clock (time/system-clock)
                  :rng-fn #(ThreadLocalRandom/current)}]
     (is (s/valid? :blaze/luid (m/luid context)))))
+
+(deftest luid-generator-test
+  (let [context {:clock (time/system-clock)
+                 :rng-fn #(ThreadLocalRandom/current)}]
+    (is (s/valid? :blaze/luid (luid/head (m/luid-generator context))))))
 
 (defcounter collector
   "Collector")

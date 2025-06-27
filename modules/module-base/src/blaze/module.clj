@@ -10,6 +10,11 @@
   [{:keys [clock rng-fn]}]
   (luid/luid clock (rng-fn)))
 
+(defn luid-generator
+  {:arglists '([context])}
+  [{:keys [clock rng-fn]}]
+  (luid/generator clock (rng-fn)))
+
 (defmacro reg-collector
   "Registers a metrics collector to the central registry."
   [key collector]

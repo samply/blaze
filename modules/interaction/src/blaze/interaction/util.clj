@@ -6,7 +6,6 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
-   [blaze.luid :as luid]
    [blaze.util :as u]
    [clojure.string :as str]
    [ring.util.response :as ring]))
@@ -56,9 +55,6 @@
 
 (defn search-clauses [query-params]
   (into [] query-params->clauses-xf query-params))
-
-(defn luid-generator [{:keys [clock rng-fn]}]
-  (luid/generator clock (rng-fn)))
 
 (defn- prep-if-none-match [if-none-match]
   (if (= "*" if-none-match)
