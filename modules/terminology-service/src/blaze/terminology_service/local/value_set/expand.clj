@@ -38,19 +38,21 @@
     (seq filters) (expand-filters code-system filters params)
     :else (cs/expand-complete code-system params)))
 
-(defn- used-codesystem-parameter [{:keys [url version]}]
+(defn- used-codesystem-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string"used-codesystem"
-   :value (type/uri (cond-> (type/value url) (type/value version) (str "|" (type/value version))))})
+   :value (type/uri (cond-> url version (str "|" version)))})
 
 (defn- version-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string"version"
    :value (type/uri (str url "|" version))})
 
-(defn- code-system-parameters [{:keys [url version] :as code-system}]
-  (cond-> #{(used-codesystem-parameter code-system)}
-    (type/value version) (conj (version-parameter (type/value url) (type/value version)))))
+(defn- code-system-parameters [{:keys [url version]}]
+  (let [url (type/value url)
+        version (type/value version)]
+    (cond-> #{(used-codesystem-parameter url version)}
+      version (conj (version-parameter url version)))))
 
 (defn- include-system
   [{:keys [params] :as context} {concepts :concept filters :filter :as include}]

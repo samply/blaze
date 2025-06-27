@@ -39,7 +39,8 @@
 
 (defn- value-set-canonical [{:keys [url version]}]
   (when-let [url (type/value url)]
-    (cond-> url (type/value version) (str "|" (type/value version)))))
+    (let [version (type/value version)]
+      (cond-> url version (str "|" version)))))
 
 (defn- value-set-msg [value-set]
   (if-let [c (value-set-canonical value-set)]
