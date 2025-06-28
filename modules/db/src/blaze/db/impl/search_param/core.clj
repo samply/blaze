@@ -1,6 +1,6 @@
 (ns blaze.db.impl.search-param.core
   (:require
-   [cognitect.anomalies :as anom]
+   [blaze.anomaly :as ba]
    [taoensso.timbre :as log]))
 
 (defmulti search-param
@@ -16,4 +16,4 @@
 (defmethod search-param :default
   [_ {:keys [url type]}]
   (log/warn (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
-  {::anom/category ::anom/unsupported})
+  (ba/unsupported))

@@ -5,10 +5,10 @@
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.spec]
+   [blaze.db.search-param :as-alias search-param]
    [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec.spec]
-   [clojure.spec.alpha :as s]
-   [cognitect.anomalies :as anom]))
+   [clojure.spec.alpha :as s]))
 
 (s/fdef spc/targets
   :args (s/cat :batch-db :blaze.db.impl/batch-db
@@ -17,8 +17,11 @@
                :target-tid (s/? :blaze.db/tid))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
-(s/fdef spc/parse-search-param
-  :args (s/cat :registry :blaze.db/search-param-registry
-               :type :fhir.resource/type
-               :s string?)
-  :ret (s/or :search-param :blaze.db/search-param :anomaly ::anom/anomaly))
+(s/fdef spc/chained-search-param
+  :args (s/cat :search-param :blaze.db/search-param
+               :ref-search-param :blaze.db/search-param
+               :ref-type :fhir.resource/type
+               :ref-modifier (s/nilable string?)
+               :original-code string?
+               :modifier (s/nilable ::search-param/modifier))
+  :ret (cs/coll-of :blaze.db/resource-handle))

@@ -117,10 +117,12 @@
   (-index-value-compiler [_]))
 
 (defprotocol SearchParamRegistry
+  (-parse [_ type s])
   (-get [_ code type])
   (-get-by-url [_ url])
   (-all-types [_])
   (-list-by-type [_ type])
   (-list-by-target [_ target])
   (-linked-compartments [_ resource])
-  (-compartment-resources [_ compartment-type] [_ compartment-type type]))
+  (-compartment-resources [_ compartment-type] [_ compartment-type type])
+  (-patient-compartment-search-param-codes [_ type]))
