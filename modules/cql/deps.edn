@@ -42,7 +42,8 @@
   {:mvn/version "2.2"}
 
   systems.uom/systems-ucum
-  {:mvn/version "2.2"}}
+  {:mvn/version "2.2"
+   :exclusions [si.uom/si-quantity]}}
 
  :aliases
  {:test
