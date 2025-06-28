@@ -5,6 +5,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec :as fhir-spec]
@@ -12,9 +13,20 @@
    [blaze.util :refer [conj-vec str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [integrant.core :as ig]
    [jsonista.core :as j]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [com.github.benmanes.caffeine.cache Caffeine LoadingCache]))
+
+(set! *warn-on-reflection* true)
+
+(defn parse
+  "Parses the search parameter `param` relative to `type` and returns either a
+  tuple of search parameter and modifier or an anomaly in case of errors."
+  [search-param-registry type param]
+  (p/-parse search-param-registry type param))
 
 (defn get
   "Returns the search parameter with `code` and `type` or nil if not found."
@@ -63,10 +75,23 @@
   ([search-param-registry compartment-type type]
    (p/-compartment-resources search-param-registry compartment-type type)))
 
+(defn patient-compartment-search-param-codes
+  "Returns the search parameter codes for `type` in the patient compartment.
+
+  Will be either `#{\"subject\"}`, `#{\"patient\"}` or
+  `#{\"subject\" \"patient\"}`."
+  [search-param-registry type]
+  (p/-patient-compartment-search-param-codes search-param-registry type))
+
 (deftype MemSearchParamRegistry [url-index index target-index compartment-index
                                  compartment-resource-index
-                                 compartment-resource-index-by-type]
+                                 compartment-resource-index-by-type
+                                 parse-cache
+                                 patient-compartment-search-param-codes-cache]
   p/SearchParamRegistry
+  (-parse [_ type s]
+    (.get ^LoadingCache parse-cache [type s]))
+
   (-get [_ code type]
     (or (get-in index [type code])
         (get-in index ["Resource" code])))
@@ -103,7 +128,10 @@
     (compartment-resource-index compartment-type []))
 
   (-compartment-resources [_ compartment-type type]
-    (get-in compartment-resource-index-by-type [compartment-type type] [])))
+    (get-in compartment-resource-index-by-type [compartment-type type] []))
+
+  (-patient-compartment-search-param-codes [_ type]
+    (.get ^LoadingCache patient-compartment-search-param-codes-cache type)))
 
 (def ^:private object-mapper
   (j/object-mapper
@@ -259,6 +287,62 @@
    {}
    entries))
 
+(defn- search-param-not-found-msg [code type]
+  (format "The search-param with code `%s` and type `%s` was not found."
+          code type))
+
+(defn- resolve-search-param [index type code]
+  (if-let [search-param (or (get-in index [type code])
+                            (get-in index ["Resource" code]))]
+    search-param
+    (ba/not-found (search-param-not-found-msg code type) :http/status 400)))
+
+(defn- reference-type-msg [ref-code s type]
+  (format "The search parameter with code `%s` in the chain `%s` must be of type reference but has type `%s`."
+          ref-code s type))
+
+(defn- ambiguous-target-type-msg [types s]
+  (format "Ambiguous target types `%s` in the chain `%s`. Please use a modifier to constrain the type."
+          types s))
+
+(defn- parse-search-param* [index [type s]]
+  (let [chain (str/split s #"\.")]
+    (case (count chain)
+      1
+      (let [[code :as ret] (str/split (first chain) #":" 2)]
+        (when-ok [search-param (resolve-search-param index type code)]
+          (assoc ret 0 search-param)))
+
+      2
+      (let [[[ref-code ref-modifier] [code modifier]] (mapv #(str/split % #":" 2) chain)]
+        (when-ok [{:keys [type target] :as ref-search-param} (resolve-search-param index type ref-code)]
+          (cond
+            (not= "reference" type)
+            (ba/incorrect (reference-type-msg ref-code s type))
+
+            (= 1 (count target))
+            (when-ok [search-param (resolve-search-param index (first target) code)]
+              (spc/chained-search-param search-param ref-search-param (first target)
+                                        ref-modifier s modifier))
+
+            ref-modifier
+            (when-ok [search-param (resolve-search-param index ref-modifier code)]
+              (spc/chained-search-param search-param ref-search-param ref-modifier
+                                        ref-modifier s modifier))
+
+            :else
+            (ba/incorrect (ambiguous-target-type-msg (str/join ", " target) s)))))
+
+      (ba/unsupported "Search parameter chains longer than 2 are currently not supported. Please file an issue."))))
+
+(defn- patient-compartment-search-param-codes*
+  [index compartment-resource-index-by-type type]
+  (when (get-in compartment-resource-index-by-type ["Patient" type])
+    (cond
+      (nil? (get-in index [type "subject"])) #{"patient"}
+      (nil? (get-in index [type "patient"])) #{"subject"}
+      :else #{"subject" "patient"})))
+
 (defmethod m/pre-init-spec :blaze.db/search-param-registry [_]
   (s/keys :req-un [:blaze.fhir/structure-definition-repo]
           :opt-un [::extra-bundle-file]))
@@ -271,12 +355,21 @@
      (str " including extra search parameters from file: " extra-bundle-file)))
   (let [entries (read-bundle-entries extra-bundle-file)
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")]
-    (when-ok [url-index (build-url-index entries)
-              index (build-index url-index entries)]
-      (->MemSearchParamRegistry
-       url-index
-       (add-special index)
-       (build-target-index url-index entries)
-       (index-compartment-def index patient-compartment)
-       (index-compartment-resources patient-compartment)
-       (index-compartment-resources-by-type patient-compartment)))))
+    (if-ok [url-index (build-url-index entries)]
+      (let [index (-> (build-index url-index entries) add-special)
+            index-compartment-resources-by-type (index-compartment-resources-by-type patient-compartment)]
+        (->MemSearchParamRegistry
+         url-index
+         index
+         (build-target-index url-index entries)
+         (index-compartment-def index patient-compartment)
+         (index-compartment-resources patient-compartment)
+         index-compartment-resources-by-type
+         (-> (Caffeine/newBuilder)
+             (.maximumSize 1000)
+             (.build (partial parse-search-param* index)))
+         (-> (Caffeine/newBuilder)
+             (.maximumSize 1000)
+             (.build (partial patient-compartment-search-param-codes*
+                              index index-compartment-resources-by-type)))))
+      ba/throw-anom)))

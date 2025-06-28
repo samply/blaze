@@ -39,7 +39,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [blaze.db.impl.batch_db PatientTypeQuery]
+   [blaze.db.impl.batch_db PatientTypeQuery TypeQuery]
    [com.google.common.base CaseFormat]
    [java.time Instant]
    [java.util.concurrent TimeUnit]))
@@ -2149,7 +2149,11 @@
           count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
-          [1 :id] := "0"))))
+          [1 :id] := "0"))
+
+      (testing "count queries"
+        (doseq [dir [:asc :desc]]
+          (is (= 2 (count-type-query node "Patient" [[:sort "_lastUpdated" dir]])))))))
 
   (testing "a node with three patients in three transactions"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -2185,7 +2189,11 @@
             count := 2
             [0 :fhir/type] := :fhir/Patient
             [0 :id] := "1"
-            [1 :id] := "0")))))
+            [1 :id] := "0")))
+
+      (testing "count queries"
+        (doseq [dir [:asc :desc]]
+          (is (= 3 (count-type-query node "Patient" [[:sort "_lastUpdated" dir]])))))))
 
   (testing "does not find the deleted active patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -6112,6 +6120,9 @@
 (defn- patient-type-query? [x]
   (instance? PatientTypeQuery x))
 
+(defn- type-query? [x]
+  (instance? TypeQuery x))
+
 (deftest compile-type-query-test
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -6146,14 +6157,25 @@
             [1] := ["active" "true"])))
 
       (testing "PatientTypeQuery"
-        (testing "patient and code"
+        (testing "patient/subject and code"
           (doseq [target [node (d/db node)]
-                  type ["Condition" "DiagnosticReport" "MedicationAdministration" "MedicationRequest" "MedicationStatement" "Observation" "Procedure"]
+                  type ["Condition" "DiagnosticReport" "MedicationAdministration"
+                        "MedicationRequest" "MedicationStatement" "Observation"
+                        "Procedure"]
                   subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
 
-            (let [clauses [["code" "system|code"]
-                           (into ["patient"] subjects)]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+            (doseq [clauses [[["code" "system|code"]
+                              (into ["patient"] subjects)]
+                             [(into ["patient"] subjects)
+                              ["code" "system|code"]]]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))
+
+            (doseq [value ["code" "|code"]
+                    clauses [[["code" value]
+                              (into ["patient"] subjects)]
+                             [(into ["patient"] subjects)
+                              ["code" value]]]]
+              (is (type-query? (d/compile-type-query target type clauses))))))
 
         (testing "patient and category"
           (doseq [target [node (d/db node)]
@@ -6191,9 +6213,20 @@
                            (into ["patient"] subjects)]]
               (is (patient-type-query? (d/compile-type-query target type clauses))))))
 
+        (testing "patient and status"
+          (doseq [target [node (d/db node)]
+                  type ["Account"]
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+
+            (let [clauses [["type" "system|code"]
+                           (into ["patient"] subjects)]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
         (testing "subject and code"
           (doseq [target [node (d/db node)]
-                  type ["Condition" "DiagnosticReport" "MedicationAdministration" "MedicationRequest" "MedicationStatement" "Observation" "Procedure"]]
+                  type ["Condition" "DiagnosticReport" "MedicationAdministration"
+                        "MedicationRequest" "MedicationStatement" "Observation"
+                        "Procedure"]]
 
             (let [clauses [["code" "system|code"]
                            ["subject" "Patient/0" "Patient/1"]]]
@@ -6204,6 +6237,14 @@
                   type ["Encounter"]]
 
             (let [clauses [["class" "system|code"]
+                           ["subject" "Patient/0" "Patient/1"]]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "subject and category"
+          (doseq [target [node (d/db node)]
+                  type ["AdverseEvent"]]
+
+            (let [clauses [["category" "system|code"]
                            ["subject" "Patient/0" "Patient/1"]]]
               (is (patient-type-query? (d/compile-type-query target type clauses))))))
 

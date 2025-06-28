@@ -1,9 +1,18 @@
 (ns blaze.db.search-param-registry-spec
   (:require
+   [blaze.db.search-param :as-alias search-param]
    [blaze.db.search-param-registry :as sr]
+   [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
+
+(s/fdef sr/parse
+  :args (s/cat :search-param-registry :blaze.db/search-param-registry
+               :type :fhir.resource/type
+               :param string?)
+  :ret (s/or :result (s/tuple :blaze.db/search-param ::search-param/modifier)
+             :anomaly ::anom/anomaly))
 
 (s/fdef sr/get
   :args (s/cat :search-param-registry :blaze.db/search-param-registry

@@ -6,23 +6,25 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param.all :as search-param-all]
-   [blaze.db.impl.search-param.chained :as spc]
-   [clojure.spec.alpha :as s]))
+   [blaze.db.search-param-registry :as sr]))
 
-(defmulti resolve-search-param (fn [_registry _type _ret [type] _lenient?] type))
+(defn- resolve-search-clause
+  [registry type ret [param & values :as clause] lenient?]
+  (let [values (cond->> values (< 1 (count values)) (into [] (distinct)))]
+    (if (empty? values)
+      (reduced (ba/incorrect (format "Clause `%s` isn't valid." clause)))
+      (if-ok [[search-param modifier] (sr/parse registry type param)]
+        (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
+          (conj ret [search-param modifier values compiled-values])
+          reduced)
+        #(if lenient? ret (reduced %))))))
 
-(defmethod resolve-search-param :search-clause
-  [registry type ret [_ [param & values]] lenient?]
-  (let [values (distinct values)]
-    (if-ok [[search-param modifier] (spc/parse-search-param registry type param)]
-      (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
-        (conj ret [search-param modifier values compiled-values])
-        reduced)
-      #(if lenient? ret (reduced %)))))
-
-(defmethod resolve-search-param :sort-clause
-  [registry type ret [_ [_ param direction]] _lenient?]
+(defn- resolve-sort-clause
+  [registry type ret [_ param direction :as clause]]
   (cond
+    (not (#{:asc :desc} direction))
+    (reduced (ba/incorrect (format "Clause `%s` isn't valid." clause)))
+
     (seq ret)
     (reduced (ba/incorrect "Sort clauses are only allowed at first position."))
 
@@ -33,18 +35,15 @@
     (reduced (ba/unsupported "Unsupported sort direction `desc` for search param `_id`."))
 
     :else
-    (let [[search-param] (spc/parse-search-param registry type param)]
+    (let [[search-param] (sr/parse registry type param)]
       (conj ret [search-param (name direction) [] []]))))
-
-(defn- conform-clause [clause]
-  (s/conform :blaze.db.query/clause clause))
 
 (defn- resolve-search-params* [registry type clauses lenient?]
   (reduce
-   #(let [clause (conform-clause %2)]
-      (if (s/invalid? clause)
-        (reduced (ba/incorrect (format "Clause `%s` isn't valid." %2)))
-        (resolve-search-param registry type %1 clause lenient?)))
+   (fn [ret clause]
+     (if (identical? :sort (first clause))
+       (resolve-sort-clause registry type ret clause)
+       (resolve-search-clause registry type ret clause lenient?)))
    []
    clauses))
 

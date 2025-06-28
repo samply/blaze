@@ -1,5 +1,7 @@
 (ns blaze.db.search-param-registry-test
   (:require
+   [blaze.anomaly :as ba]
+   [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
    [blaze.fhir-path :as fhir-path]
@@ -60,6 +62,12 @@
     (given-failed-system (assoc-in config [:blaze.db/search-param-registry :extra-bundle-file] "foo")
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-threw-exception))
+
+  (testing "invalid search param"
+    (with-redefs [sc/search-param (fn [_ _] (ba/incorrect))]
+      (given-failed-system config
+        :key := :blaze.db/search-param-registry
+        :reason := ::ig/build-threw-exception)))
 
   (testing "with nil extra bundle file"
     (is (->> (ig/init {:blaze.db/search-param-registry

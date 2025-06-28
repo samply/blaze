@@ -1,7 +1,7 @@
 (ns blaze.db.impl.search-param
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :refer [if-ok when-ok]]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -30,10 +30,12 @@
 
   Returns an anomaly on errors."
   [search-param modifier values]
-  (transduce
-   (comp (map (partial p/-compile-value search-param modifier))
-         (halt-when ba/anomaly?))
-   conj
+  (reduce
+   (fn [ret value]
+     (if-ok [compiled-value (p/-compile-value search-param modifier value)]
+       (conj ret compiled-value)
+       reduced))
+   []
    values))
 
 (defn resource-handles
