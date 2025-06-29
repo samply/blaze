@@ -10,12 +10,12 @@ The following table lists the recommended system sizes depending on the number o
 
 | # Patients | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache | CQL Cache |
 |-----------:|------:|--------:|-------:|---------:|------------:|---------------:|----------:|
-|       10 k |     2 |   8 GiB | 100 GB |    2 GiB |       2 GiB |          0.5 M |   128 MiB | 
-|     < 50 k |     4 |  16 GiB | 250 GB |    4 GiB |       4 GiB |            1 M |   128 MiB | 
-|    < 100 k |     4 |  32 GiB | 500 GB |    8 GiB |       8 GiB |          2.5 M |   512 MiB | 
-|      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |            5 M |   512 MiB | 
-|        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |           10 M |     1 GiB | 
-|      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |           20 M |     1 GiB | 
+|       10 k |     2 |   8 GiB | 100 GB |    2 GiB |       2 GiB |         0.25 M |   128 MiB | 
+|     < 50 k |     4 |  16 GiB | 250 GB |    4 GiB |       4 GiB |          0.5 M |   128 MiB | 
+|    < 100 k |     4 |  32 GiB | 500 GB |    8 GiB |       8 GiB |         1.25 M |   512 MiB | 
+|      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |          2.5 M |   512 MiB | 
+|        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |            5 M |     1 GiB | 
+|      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |           10 M |     1 GiB | 
 
 As a general rule of thumb, 1/4 of the available memory should be assigned to the heap memory, 1/4 to the block cache, and 1/2 to the Linux page cache, which is used to cache RocksDB database file access. The resource cache is configured by the number of resources instead of the amount of memory. The resource numbers given assume a certain resource size taken from [Synthea][1] resources. For fine-tuning that number, the Metric `JVM Memory Used by Pool` should be used. 
 
