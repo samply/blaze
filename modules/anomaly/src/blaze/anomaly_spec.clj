@@ -33,24 +33,28 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(s/fdef ba/unavailable
+  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :ret ::anom/anomaly)
+
 (s/fdef ba/interrupted
   :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
   :ret ::anom/anomaly)
 
 (s/fdef ba/incorrect
-  :args (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
   :ret ::anom/anomaly)
 
 (s/fdef ba/forbidden
-  :args (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
   :ret ::anom/anomaly)
 
 (s/fdef ba/unsupported
-  :args (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
   :ret ::anom/anomaly)
 
 (s/fdef ba/not-found
-  :args (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
   :ret ::anom/anomaly)
 
 (s/fdef ba/conflict
