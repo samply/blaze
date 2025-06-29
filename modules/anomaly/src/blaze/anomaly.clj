@@ -71,44 +71,66 @@
   ([category msg kvs]
    (merge (anomaly* category msg) kvs)))
 
-(defn unavailable [msg & {:as kvs}]
-  (anomaly* ::anom/unavailable msg kvs))
+(defn unavailable
+  "Creates an anomaly with category `unavailable`."
+  ([]
+   (unavailable nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/unavailable msg kvs)))
 
 (defn interrupted
+  "Creates an anomaly with category `interrupted`."
   ([]
    (interrupted nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/interrupted msg kvs)))
 
-(defn incorrect [msg & {:as kvs}]
-  (anomaly* ::anom/incorrect msg kvs))
+(defn incorrect
+  "Creates an anomaly with category `incorrect`."
+  ([]
+   (incorrect nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/incorrect msg kvs)))
 
-(defn forbidden [msg & {:as kvs}]
-  (anomaly* ::anom/forbidden msg kvs))
+(defn forbidden
+  "Creates an anomaly with category `forbidden`."
+  ([]
+   (forbidden nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/forbidden msg kvs)))
 
-(defn unsupported [msg & {:as kvs}]
-  (anomaly* ::anom/unsupported msg kvs))
+(defn unsupported
+  "Creates an anomaly with category `unsupported`."
+  ([]
+   (unsupported nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/unsupported msg kvs)))
 
 (defn not-found
   "Creates an anomaly with category `not-found`.
 
   Typical keys are: :http/status, :http/headers, :fhir/issue"
-  [msg & {:as kvs}]
-  (anomaly* ::anom/not-found msg kvs))
+  ([]
+   (not-found nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/not-found msg kvs)))
 
 (defn conflict
+  "Creates an anomaly with category `conflict`."
   ([]
    (conflict nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/conflict msg kvs)))
 
 (defn fault
+  "Creates an anomaly with category `fault`."
   ([]
    (fault nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/fault msg kvs)))
 
 (defn busy
+  "Creates an anomaly with category `busy`."
   ([]
    (busy nil))
   ([msg & {:as kvs}]

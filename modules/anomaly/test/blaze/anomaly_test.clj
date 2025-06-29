@@ -33,7 +33,7 @@
     (is (not (ba/unavailable? {::anom/category ::anom/fault}))))
 
   (testing "nil is no unavailable anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/unavailable? nil)))))
 
 (deftest interrupted?-test
   (testing "a interrupted anomaly has to have the right category"
@@ -43,7 +43,7 @@
     (is (not (ba/interrupted? {::anom/category ::anom/fault}))))
 
   (testing "nil is no interrupted anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/interrupted? nil)))))
 
 (deftest incorrect?-test
   (testing "a incorrect anomaly has to have the right category"
@@ -53,7 +53,7 @@
     (is (not (ba/incorrect? {::anom/category ::anom/fault}))))
 
   (testing "nil is no incorrect anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/incorrect? nil)))))
 
 (deftest forbidden?-test
   (testing "a forbidden anomaly has to have the right category"
@@ -63,7 +63,7 @@
     (is (not (ba/forbidden? {::anom/category ::anom/fault}))))
 
   (testing "nil is no forbidden anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/forbidden? nil)))))
 
 (deftest unsupported?-test
   (testing "a unsupported anomaly has to have the right category"
@@ -73,7 +73,7 @@
     (is (not (ba/unsupported? {::anom/category ::anom/fault}))))
 
   (testing "nil is no unsupported anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/unsupported? nil)))))
 
 (deftest not-found?-test
   (testing "a not-found anomaly has to have the right category"
@@ -83,7 +83,7 @@
     (is (not (ba/not-found? {::anom/category ::anom/fault}))))
 
   (testing "nil is no not-found anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/not-found? nil)))))
 
 (deftest conflict?-test
   (testing "a conflict anomaly has to have the right category"
@@ -93,7 +93,7 @@
     (is (not (ba/conflict? {::anom/category ::anom/fault}))))
 
   (testing "nil is no conflict anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/conflict? nil)))))
 
 (deftest fault?-test
   (testing "a fault anomaly has to have the right category"
@@ -103,7 +103,7 @@
     (is (not (ba/fault? {::anom/category ::anom/not-found}))))
 
   (testing "nil is no fault anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/fault? nil)))))
 
 (deftest busy?-test
   (testing "a busy anomaly has to have the right category"
@@ -113,9 +113,12 @@
     (is (not (ba/busy? {::anom/category ::anom/fault}))))
 
   (testing "nil is no busy anomaly"
-    (is (not (ba/anomaly? nil)))))
+    (is (not (ba/busy? nil)))))
 
 (deftest unavailable-test
+  (testing "without message"
+    (is (= (ba/unavailable) {::anom/category ::anom/unavailable})))
+
   (testing "with nil message"
     (is (= (ba/unavailable nil) {::anom/category ::anom/unavailable})))
 
@@ -149,6 +152,9 @@
       ::foo := ::bar)))
 
 (deftest incorrect-test
+  (testing "without message"
+    (is (= (ba/incorrect) {::anom/category ::anom/incorrect})))
+
   (testing "with nil message"
     (is (= (ba/incorrect nil) {::anom/category ::anom/incorrect})))
 
@@ -164,6 +170,9 @@
       ::foo := ::bar)))
 
 (deftest forbidden-test
+  (testing "without message"
+    (is (= (ba/forbidden) {::anom/category ::anom/forbidden})))
+
   (testing "with nil message"
     (is (= (ba/forbidden nil) {::anom/category ::anom/forbidden})))
 
@@ -179,6 +188,9 @@
       ::foo := ::bar)))
 
 (deftest unsupported-test
+  (testing "without message"
+    (is (= (ba/unsupported) {::anom/category ::anom/unsupported})))
+
   (testing "with nil message"
     (is (= (ba/unsupported nil) {::anom/category ::anom/unsupported})))
 
@@ -194,6 +206,9 @@
       ::foo := ::bar)))
 
 (deftest not-found-test
+  (testing "without message"
+    (is (= (ba/not-found) {::anom/category ::anom/not-found})))
+
   (testing "with nil message"
     (is (= (ba/not-found nil) {::anom/category ::anom/not-found})))
 
