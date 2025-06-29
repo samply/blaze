@@ -18,5 +18,7 @@
     (vector? key)
     (str (name-part key) "-")))
 
-(defn rs-key [resource-handle variant]
+(defn rs-key
+  "Returns the resource-store key of `resource-handle` in `variant`."
+  [resource-handle variant]
   [(rh/type resource-handle) (rh/hash resource-handle) variant])

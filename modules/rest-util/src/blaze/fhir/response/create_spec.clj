@@ -3,6 +3,7 @@
    [blaze.db.api-spec]
    [blaze.db.spec]
    [blaze.fhir.response.create :as create]
+   [blaze.handler.fhir.util-spec]
    [blaze.http.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]

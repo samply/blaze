@@ -126,5 +126,3 @@ export function handleSummary(data) {
 		+ resultLine(80, data)
 	};
 }
-
-// 1

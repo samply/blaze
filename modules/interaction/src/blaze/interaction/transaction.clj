@@ -18,6 +18,7 @@
    [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
    [blaze.util :refer [str]]
+   [blaze.util.clauses :as uc]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -114,7 +115,7 @@
 
 (defn- conditional-clauses [if-none-exist]
   (when-not (str/blank? if-none-exist)
-    (-> if-none-exist ring-codec/form-decode iu/search-clauses)))
+    (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The transaction was successful but the resource content of `%s/%s` with hash `%s` was not found during response creation."

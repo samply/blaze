@@ -50,11 +50,6 @@
                :name string?)
   :ret (s/or :date :system/date :anomaly ::anom/anomaly))
 
-(s/fdef fhir-util/type-url
-  :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
-               :type :fhir.resource/type)
-  :ret string?)
-
 (s/fdef fhir-util/instance-url
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
                :type :fhir.resource/type :id :blaze.resource/id)

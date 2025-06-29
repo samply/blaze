@@ -19,6 +19,7 @@
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]
+   [blaze.util.clauses-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]

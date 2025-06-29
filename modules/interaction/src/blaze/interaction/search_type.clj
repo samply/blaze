@@ -249,7 +249,8 @@
 (defn- page-match
   [{{{:fhir.resource/keys [type]} :data} ::reitit/match
     ::reitit/keys [router]}]
-  (fn [page-id] (reitit/match-by-name router (keyword type "page") {:page-id page-id})))
+  (fn [page-id]
+    (reitit/match-by-name router (keyword type "page") {:page-id page-id})))
 
 (defn- self-link-url-fn [{:blaze/keys [base-url] :as request} params]
   (fn [clauses]
