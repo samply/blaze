@@ -924,13 +924,13 @@ jobs:
     - name: Download DiagnosticReport Resources
       run: .github/scripts/download-resources.sh DiagnosticReport
 
-    - name: Download MedicationRequest Resources of Medications with code 854235
+    - name: Download MedicationRequest Resources of Medications with code 1736854
       run: .github/scripts/download-resources-query.sh MedicationRequest "medication.code=1736854" 112
 
-    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Ascending
+    - name: Download MedicationRequest Resources of Medications with code 1736854 Sorted Ascending
       run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "_lastUpdated" 112
 
-    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Descending
+    - name: Download MedicationRequest Resources of Medications with code 1736854 Sorted Descending
       run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "-_lastUpdated" 112
 
     - name: Download MedicationRequest Resources - Including Medications
@@ -1307,18 +1307,6 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
-
-    - name: Docker Logs
-      run: docker logs blaze
-
-    - name: Check Capability Statement
-      run: .github/scripts/check-capability-statement.sh
-
-    - name: Check Referential Integrity Enforced
-      run: .github/scripts/check-referential-integrity-enforced.sh
-
     - name: Download Synthea Test Data
       uses: ./.github/actions/speicherwolke-download
       with:
@@ -1330,6 +1318,18 @@ jobs:
 
     - name: Unpack Synthea Test Data
       run: tar -C test-data-synthea-1000 -xf synthea-1000.tar
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Referential Integrity Enforced
+      run: .github/scripts/check-referential-integrity-enforced.sh
 
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-1000
@@ -1357,6 +1357,53 @@ jobs:
 
     - name: Docker Stats
       run: docker stats --no-stream
+
+  integration-test-kds:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Download and Unzip MII Test Data
+      run: make -C .github/test-data kds-testdata-2024.0.1/tx
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Referential Integrity Enforced
+      run: .github/scripts/check-referential-integrity-enforced.sh
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/kds-testdata-2024.0.1/tx
+
+    - name: Check Total-Number of Resources are 345
+      run: .github/scripts/check-total-number-of-resources.sh 345
+
+    - name: Download MedicationStatement Resources with ATC Code B01AC06
+      run: .github/scripts/download-resources-query.sh MedicationStatement "medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
+
+    - name: Download MedicationStatement Resources with ATC Code B01AC06
+      run: .github/scripts/download-resources-query.sh MedicationStatement "patient=mii-exa-test-data-patient-1&medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
 
   integration-test-patient-purge:
     needs: build
@@ -1537,7 +1584,7 @@ jobs:
       run: make -C .github/value-set-expand install
 
     - name: Download and Unzip MII Test Data
-      run: make -C .github/validation kds-test-data
+      run: make -C .github/test-data kds-testdata-2024.0.1
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2421,6 +2468,7 @@ jobs:
     - cql-expr-cache-test
     - integration-test
     - integration-test-synthea-1000
+    - integration-test-kds
     - integration-test-patient-purge
     - integration-test-value-set-expand
     - integration-test-validation
