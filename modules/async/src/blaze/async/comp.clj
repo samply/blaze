@@ -9,8 +9,7 @@
    [cognitect.anomalies :as anom]
    [taoensso.timbre :as log])
   (:import
-   [java.util.concurrent CompletionStage CompletableFuture TimeUnit CompletionException]
-   [java.util.function BiConsumer Function BiFunction Supplier]))
+   [java.util.concurrent CompletionStage CompletableFuture TimeUnit CompletionException]))
 
 (set! *warn-on-reflection* true)
 
@@ -58,16 +57,15 @@
   [future x]
   (.complete ^CompletableFuture future x))
 
-(defn- ->Supplier [f]
-  (reify Supplier
-    (get [_]
-      (ba/throw-when (f)))))
+(defn- supplier [f]
+  (fn []
+    (ba/throw-when (f))))
 
 (defn complete-async!
   "Completes `future` with the result of `f` invoked with no arguments from an
   asynchronous task using the default executor."
   [future f]
-  (.completeAsync ^CompletableFuture future (->Supplier f)))
+  (.completeAsync ^CompletableFuture future (supplier f)))
 
 (defn or-timeout!
   "Exceptionally completes `future` with a TimeoutException if not otherwise
@@ -135,39 +133,27 @@
   running in `executor` with the value obtained by calling the function `f`
   with no arguments."
   ([f]
-   (CompletableFuture/supplyAsync (->Supplier f)))
+   (CompletableFuture/supplyAsync (supplier f)))
   ([f executor]
-   (CompletableFuture/supplyAsync (->Supplier f) executor)))
+   (CompletableFuture/supplyAsync (supplier f) executor)))
 
 (defn completion-stage? [x]
   (instance? CompletionStage x))
-
-(defn- ->Function [f]
-  (reify Function
-    (apply [_ x]
-      (ba/throw-when (f x)))))
 
 (defn then-apply
   "Returns a CompletionStage that, when `stage` completes normally, is executed
   with `stage`'s result as the argument to the function `f`."
   [stage f]
-  (.thenApply
-   ^CompletionStage stage
-   (->Function f)))
+  (.thenApply ^CompletionStage stage (comp ba/throw-when f)))
 
 (defn then-apply-async
   "Returns a CompletionStage that, when `stage` completes normally, is executed
   using the optional `executor`, with `stage`'s result as the argument to the
   function `f`."
   ([stage f]
-   (.thenApplyAsync
-    ^CompletionStage stage
-    (->Function f)))
+   (.thenApplyAsync ^CompletionStage stage (comp ba/throw-when f)))
   ([stage f executor]
-   (.thenApplyAsync
-    ^CompletionStage stage
-    (->Function f)
-    executor)))
+   (.thenApplyAsync ^CompletionStage stage (comp ba/throw-when f) executor)))
 
 (defn then-compose
   "Returns a CompletionStage that is completed with the same value as the
@@ -181,9 +167,7 @@
   To ensure progress, the function `f` must arrange eventual completion of its
   result."
   [stage f]
-  (.thenCompose
-   ^CompletionStage stage
-   (->Function f)))
+  (.thenCompose ^CompletionStage stage (comp ba/throw-when f)))
 
 (defn then-compose-async
   "Returns a CompletionStage that is completed with the same value as the
@@ -198,14 +182,9 @@
   To ensure progress, the function `f` must arrange eventual completion of its
   result."
   ([stage f]
-   (.thenComposeAsync
-    ^CompletionStage stage
-    (->Function f)))
+   (.thenComposeAsync ^CompletionStage stage (comp ba/throw-when f)))
   ([stage f executor]
-   (.thenComposeAsync
-    ^CompletionStage stage
-    (->Function f)
-    executor)))
+   (.thenComposeAsync ^CompletionStage stage (comp ba/throw-when f) executor)))
 
 (defprotocol CompletionCause
   (-completion-cause [e]))
@@ -216,10 +195,9 @@
   Throwable
   (-completion-cause [e] e))
 
-(defn- ->BiFunction [f]
-  (reify BiFunction
-    (apply [_ x e]
-      (ba/throw-when (f x (some-> e -completion-cause ba/anomaly))))))
+(defn- handler [f]
+  (fn [x e]
+    (ba/throw-when (f x (some-> e -completion-cause ba/anomaly)))))
 
 (defn handle
   "Returns a CompletionStage that, when `stage` completes either normally or
@@ -230,9 +208,7 @@
   if none) and the anomaly (or nil if none) of `stage` as arguments, and the
   `f`'s result is used to complete the returned stage."
   [stage f]
-  (.handle
-   ^CompletionStage stage
-   (->BiFunction f)))
+  (.handle ^CompletionStage stage (handler f)))
 
 (defn handle-async
   "Returns a CompletionStage that, when `stage` completes either normally or
@@ -244,9 +220,7 @@
   if none) and the anomaly (or nil if none) of `stage` as arguments, and the
   `f`'s result is used to complete the returned stage."
   [stage f]
-  (.handleAsync
-   ^CompletionStage stage
-   (->BiFunction f)))
+  (.handleAsync ^CompletionStage stage (handler f)))
 
 (defn exceptionally
   "Returns a CompletionStage that, when `stage` completes exceptionally, is
@@ -256,9 +230,8 @@
   [stage f]
   (.exceptionally
    ^CompletionStage stage
-   (reify Function
-     (apply [_ e]
-       (ba/throw-when (f (ba/anomaly (-completion-cause e))))))))
+   (fn [e]
+     (ba/throw-when (f (ba/anomaly (-completion-cause e)))))))
 
 (defn exceptionally-compose [stage f]
   (-> stage
@@ -296,24 +269,8 @@
   [stage f]
   (.whenComplete
    ^CompletionStage stage
-   (reify BiConsumer
-     (accept [_ x e]
-       (f x (some-> e -completion-cause ba/anomaly))))))
-
-(defn when-complete-async
-  "Returns a CompletionStage with the same result or exception as `stage`, that
-  runs `f` using `executor` when `stage` completes.
-
-  When `stage` is complete, the given action is invoked with the result (or nil
-  if none) and the exception (or nil if none) of `stage` as arguments. The
-  returned stage is completed when the action returns."
-  [stage f executor]
-  (.whenCompleteAsync
-   ^CompletionStage stage
-   (reify BiConsumer
-     (accept [_ x e]
-       (f x e)))
-   executor))
+   (fn [x e]
+     (f x (some-> e -completion-cause ba/anomaly)))))
 
 (defn ->completable-future [stage]
   (.toCompletableFuture ^CompletionStage stage))

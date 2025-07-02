@@ -15,8 +15,7 @@
   (:import
    [com.github.benmanes.caffeine.cache Cache Caffeine]
    [java.util Comparator]
-   [java.util.concurrent TimeUnit]
-   [java.util.function Function]))
+   [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -94,10 +93,7 @@
   [{:keys [t] :as context} tid
    [{:keys [c-hash]} {chain-c-hash :c-hash} join-tid value :as data]]
   (let [key [t tid join-tid chain-c-hash c-hash value]]
-    (.get resource-handles-cache key
-          (reify Function
-            (apply [_ _]
-              (resource-handles* context tid data))))))
+    (.get resource-handles-cache key (fn [_] (resource-handles* context tid data)))))
 
 (defn- matches?
   [context {:keys [tid] :as resource-handle} values]
