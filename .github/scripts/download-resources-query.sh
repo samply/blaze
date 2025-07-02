@@ -5,7 +5,7 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 BASE="http://localhost:8080/fhir"
 TYPE=$1
-QUERY=$2
+QUERY="${2//[[:space:]]/}"
 EXPECTED_SIZE=$3
 FILE_NAME_PREFIX="$(uuidgen)"
 
@@ -20,7 +20,7 @@ total_count() {
 test "_summary=count count" "$(summary_count)" "$EXPECTED_SIZE"
 test "_total=accurate count" "$(total_count)" "$EXPECTED_SIZE"
 
-blazectl --no-progress --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson"
+blazectl --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson" 2> /dev/null
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-get.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
@@ -31,7 +31,16 @@ else
   exit 1
 fi
 
-blazectl --server "$BASE" download "$TYPE" -p -q "$QUERY" -o "$FILE_NAME_PREFIX-post.ndjson"
+NUM_UNIQUE_IDS="$(jq -r .id "$FILE_NAME_PREFIX-get.ndjson" | sort -u | wc -l | xargs)"
+if [ "$EXPECTED_SIZE" = "$NUM_UNIQUE_IDS" ]; then
+  echo "✅ all resource IDs are unique"
+else
+  echo "🆘 there are at least some non-unique resource IDs"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
+  exit 1
+fi
+
+blazectl --server "$BASE" download "$TYPE" -p -q "$QUERY" -o "$FILE_NAME_PREFIX-post.ndjson" 2> /dev/null
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-post.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
@@ -43,7 +52,7 @@ else
   exit 1
 fi
 
-if [ "$(diff "$FILE_NAME_PREFIX-get.ndjson" "$FILE_NAME_PREFIX-post.ndjson")" = "" ]; then
+if diff -q "$FILE_NAME_PREFIX-get.ndjson" "$FILE_NAME_PREFIX-post.ndjson" >/dev/null; then
   echo "✅ both downloads are identical"
   rm "$FILE_NAME_PREFIX-get.ndjson"
   rm "$FILE_NAME_PREFIX-post.ndjson"

@@ -2,12 +2,12 @@
 
 BASE="http://localhost:8080/fhir"
 TYPE=$1
-QUERY=$2
+QUERY="${2//[[:space:]]/}"
 SORT=$3
 EXPECTED_SIZE=$4
 FILE_NAME_PREFIX="$(uuidgen)"
 
-blazectl --no-progress --server "$BASE" download "$TYPE" -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson"
+blazectl --server "$BASE" download "$TYPE" -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson"
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-get.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
@@ -30,7 +30,7 @@ else
   exit 1
 fi
 
-if [ "$(diff "$FILE_NAME_PREFIX-get.ndjson" "$FILE_NAME_PREFIX-post.ndjson")" = "" ]; then
+if diff -q "$FILE_NAME_PREFIX-get.ndjson" "$FILE_NAME_PREFIX-post.ndjson" >/dev/null; then
   echo "✅ both downloads are identical"
   rm "$FILE_NAME_PREFIX-post.ndjson"
 else

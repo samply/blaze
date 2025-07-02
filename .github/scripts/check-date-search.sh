@@ -7,7 +7,7 @@ BASE="http://localhost:8080/fhir"
 TYPE=$1
 
 download() {
-  blazectl --no-progress --server "$BASE" download "$TYPE" -q "date=$1" 2>/dev/null | wc -l | xargs
+  blazectl --server "$BASE" download "$TYPE" -q "date=$1" 2>/dev/null | wc -l | xargs
 }
 
 count() {

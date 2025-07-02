@@ -284,6 +284,46 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 ¹ resources per second
 
+## Multiple Codes and Patient Search
+
+In this section, FHIR Search for selecting Condition resources with a multiple codes and 1000 Patients is used.
+
+The codes used are the following SNOMED CT codes:
+
+```
+444814009,195662009,10509002,271737000,40055000,233604007,389087006,75498004
+```
+
+### Counting
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Condition?code=http://snomed.info/sct|$CODE_1,http://snomed.info/sct|$CODE_2&patient=$PATIENT_IDS&_summary=count"
+```
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |    3 k |     0.05 |  0.002 |  70.6 k |
+
+¹ resources per second
+
+### Download of Resources
+
+Most measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Condition -q "code=http://snomed.info/sct|$CODE_1,http://snomed.info/sct|$CODE_2&patient=$PATIENT_IDS&_count=1000" > /dev/null"
+```
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |    3 k |     0.18 |  0.005 |  17.6 k |
+
+¹ resources per second
+
 ## Code, Date and Patient Search
 
 In this section, FHIR Search for selecting Observation resources with a certain code, a certain date and 1000 Patients is used.
