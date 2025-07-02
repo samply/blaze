@@ -17,8 +17,7 @@
   (:import
    [com.github.benmanes.caffeine.cache Cache Caffeine]
    [com.google.common.hash HashCode]
-   [com.google.common.io BaseEncoding]
-   [java.util.function Function]))
+   [com.google.common.io BaseEncoding]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,13 +36,13 @@
 
 (defn- store-clause [^Cache cache clause]
   (let [hash (hash/hash-clause clause)]
-    (.get cache hash (reify Function (apply [_ _] clause)))
+    (.get cache hash (fn [_] clause))
     hash))
 
 (defn- store [^Cache cache clauses]
   (let [hashes (mapv (partial store-clause cache) clauses)
         hash (hash/hash-hashes hashes)]
-    (.get cache hash (reify Function (apply [_ _] hashes)))
+    (.get cache hash (fn [_] hashes))
     (hash/encode hash)))
 
 (defrecord LocalPageStore [cache]

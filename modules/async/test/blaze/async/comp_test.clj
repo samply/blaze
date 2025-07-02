@@ -66,7 +66,13 @@
 (deftest complete-async-test
   (let [future (ac/future)]
     (ac/complete-async! future (constantly 1))
-    (is (= 1 @future))))
+    (is (= 1 @future)))
+
+  (testing "returning an anomaly fails the future"
+    (let [f (ac/future)]
+      (ac/complete-async! f (constantly (ba/incorrect)))
+      (given-failed-future f
+        ::anom/category := ::anom/incorrect))))
 
 (deftest or-timeout!-test
   (testing "with timeout happen"
@@ -124,60 +130,112 @@
     (testing "with executor"
       (is (= 1 @(ac/supply-async (constantly 1) (ex/single-thread-executor))))))
 
-  (testing "error"
+  (testing "return anomaly"
+    (let [f (ac/supply-async (constantly (ba/incorrect))
+                             (ex/single-thread-executor))]
+      (given-failed-future f
+        ::anom/category := ::anom/incorrect))
+
+    (testing "with executor"
+      (let [f (ac/supply-async (constantly (ba/incorrect))
+                               (ex/single-thread-executor))]
+        (given-failed-future f
+          ::anom/category := ::anom/incorrect))))
+
+  (testing "throw error"
     (let [f (ac/supply-async (fn [] (throw (ex-info "e" {})))
                              (ex/single-thread-executor))]
-      (try
-        @f
-        (catch Exception e
-          (is (= "e" (ex-message (ex-cause e)))))))
+      (given-failed-future f
+        ::anom/message := "e"))
 
     (testing "with executor"
       (let [f (ac/supply-async (fn [] (throw (ex-info "e" {})))
                                (ex/single-thread-executor))]
-        (try
-          @f
-          (catch Exception e
-            (is (= "e" (ex-message (ex-cause e))))))))))
+        (given-failed-future f
+          ::anom/message := "e")))))
 
 (deftest then-apply-test
   (let [f (ac/future)
         f' (ac/then-apply f inc)]
     (ac/complete! f 1)
-    (is (= 2 @f'))))
+    (is (= 2 @f')))
+
+  (testing "returning an anomaly fails the future"
+    (let [f (ac/future)
+          f' (ac/then-apply f (fn [_] (ba/incorrect)))]
+      (ac/complete! f 1)
+      (given-failed-future f'
+        ::anom/category := ::anom/incorrect))))
 
 (deftest then-apply-async-test
   (testing "with default executor"
     (let [f (ac/future)
           f' (ac/then-apply-async f inc)]
       (ac/complete! f 1)
-      (is (= 2 @f'))))
+      (is (= 2 @f')))
+
+    (testing "returning an anomaly fails the future"
+      (let [f (ac/future)
+            f' (ac/then-apply-async f (fn [_] (ba/incorrect)))]
+        (ac/complete! f 1)
+        (given-failed-future f'
+          ::anom/category := ::anom/incorrect))))
 
   (testing "with custom executor"
     (let [f (ac/future)
           f' (ac/then-apply-async f inc (ex/single-thread-executor))]
       (ac/complete! f 1)
-      (is (= 2 @f')))))
+      (is (= 2 @f')))
+
+    (testing "returning an anomaly fails the future"
+      (let [f (ac/future)
+            f' (ac/then-apply-async f (fn [_] (ba/incorrect))
+                                    (ex/single-thread-executor))]
+        (ac/complete! f 1)
+        (given-failed-future f'
+          ::anom/category := ::anom/incorrect)))))
 
 (deftest then-compose-test
   (let [f (ac/future)
         f' (ac/then-compose f ac/completed-future)]
     (ac/complete! f 1)
-    (is (= 1 @f'))))
+    (is (= 1 @f')))
+
+  (testing "returning an anomaly fails the future"
+    (let [f (ac/future)
+          f' (ac/then-compose f (fn [_] (ba/incorrect)))]
+      (ac/complete! f 1)
+      (given-failed-future f'
+        ::anom/category := ::anom/incorrect))))
 
 (deftest then-compose-async-test
   (testing "with default executor"
     (let [f (ac/future)
           f' (ac/then-compose-async f ac/completed-future)]
       (ac/complete! f 1)
-      (is (= 1 @f'))))
+      (is (= 1 @f')))
+
+    (testing "returning an anomaly fails the future"
+      (let [f (ac/future)
+            f' (ac/then-compose-async f (fn [_] (ba/incorrect)))]
+        (ac/complete! f 1)
+        (given-failed-future f'
+          ::anom/category := ::anom/incorrect))))
 
   (testing "with custom executor"
     (let [f (ac/future)
           f' (ac/then-compose-async f ac/completed-future
                                     (ex/single-thread-executor))]
       (ac/complete! f 1)
-      (is (= 1 @f')))))
+      (is (= 1 @f')))
+
+    (testing "returning an anomaly fails the future"
+      (let [f (ac/future)
+            f' (ac/then-compose-async f (fn [_] (ba/incorrect))
+                                      (ex/single-thread-executor))]
+        (ac/complete! f 1)
+        (given-failed-future f'
+          ::anom/category := ::anom/incorrect)))))
 
 (deftest handle-test
   (testing "with success"
@@ -267,32 +325,8 @@
           f'' (ac/when-complete f (fn [_ e] (ac/complete! f' (::anom/message e))))]
       (ac/complete-exceptionally! f (ex-info "e" {}))
       (is (= "e" @f'))
-      (try
-        @f''
-        (catch Exception e
-          (is (= "e" (ex-message (ex-cause e)))))))))
-
-(deftest when-complete-async-test
-  (testing "with success"
-    (let [f (ac/future)
-          f' (ac/future)
-          f'' (ac/when-complete-async f (fn [x _] (ac/complete! f' (inc x)))
-                                      (ex/single-thread-executor))]
-      (ac/complete! f 1)
-      (is (= 2 @f'))
-      (is (= 1 @f''))))
-
-  (testing "with error"
-    (let [f (ac/future)
-          f' (ac/future)
-          f'' (ac/when-complete-async f (fn [_ e] (ac/complete! f' (ex-message e)))
-                                      (ex/single-thread-executor))]
-      (ac/complete-exceptionally! f (ex-info "e" {}))
-      (is (= "e" @f'))
-      (try
-        @f''
-        (catch Exception e
-          (is (= "e" (ex-message (ex-cause e)))))))))
+      (given-failed-future f''
+        ::anom/message := "e"))))
 
 (deftest ->completable-future-test
   (is (ac/completable-future? (ac/->completable-future (ac/future)))))
