@@ -43,6 +43,9 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
+    - name: Install Actionlint
+      run: .github/scripts/install-actionlint.sh
+
     - name: Lint
       run: make lint
 
