@@ -54,6 +54,7 @@ The latest LTS/stable releases of:
 * [Clojure, with CLI tools](https://clojure.org/guides/install_clojure)
 * clj-kondo
 * cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "`[`<latest-stable-release>`](https://github.com/weavejester/cljfmt/releases/latest)`"}' :as cljfmt`
+* [actionlint](https://github.com/rhysd/actionlint)
 
 ## Building Blaze
 

@@ -8,7 +8,10 @@ fmt-root:
 
 fmt: $(MODULES) fmt-root
 
-lint-root:
+lint-workflows:
+	actionlint
+
+lint-root: lint-workflows
 	clj-kondo --lint src test deps.edn
 
 lint: $(MODULES) lint-root

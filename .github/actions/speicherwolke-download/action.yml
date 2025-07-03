@@ -1,10 +1,13 @@
-name: "Download File from Speicherwolke with Caching"
+name: Download File from Speicherwolke with Caching
+description: Downloads a public available file from https://speicherwolke.uni-leipzig.de given it's token and filename. Files are cached to save further downloads.
 
 inputs:
   token:
     required: true
+    description: The token of the file to download.
   filename:
     required: true
+    description: The name of the file to download.
 
 runs:
   using: composite
