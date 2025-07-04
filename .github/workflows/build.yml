@@ -182,6 +182,10 @@ jobs:
       if: ${{ matrix.java-version == '21' && matrix.module != 'db' && matrix.module != 'jepsen' }}
       run: make -C modules/${{ matrix.module }} test-coverage
 
+    - name: Fix Codecov Path
+      if: ${{ matrix.java-version == '21' && matrix.module != 'db' && matrix.module != 'jepsen' }}
+      run: .github/scripts/fix-codecov-path.sh ${{ matrix.module }}
+
     - name: Upload Coverage Report
       if: ${{ matrix.java-version == '21' && matrix.module != 'db' && matrix.module != 'jepsen' }}
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -289,6 +293,9 @@ jobs:
     - name: Test Coverage Slow
       if: ${{ matrix.kind == 'slow' }}
       run: make -C modules/db test-coverage-slow
+
+    - name: Fix Codecov Path
+      run: .github/scripts/fix-codecov-path.sh db
 
     - name: Upload Coverage Report
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
