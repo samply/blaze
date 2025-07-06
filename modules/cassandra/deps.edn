@@ -22,10 +22,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/byte-buffer
-    {:local/root "../byte-buffer"}
-
-    blaze/test-util
+   {blaze/test-util
     {:local/root "../test-util"}}}
 
   :kaocha

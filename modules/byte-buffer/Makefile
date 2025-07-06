@@ -1,10 +1,13 @@
 fmt:
-	cljfmt check src test deps.edn tests.edn
+	cljfmt check src test build.clj deps.edn tests.edn
 
 lint:
-	clj-kondo --lint src test deps.edn
+	clj-kondo --lint src test build.clj deps.edn
 
-prep:
+build:
+	clojure -T:build compile
+
+prep: build
 	clojure -X:deps prep
 
 test: prep
@@ -20,7 +23,7 @@ deps-list:
 	clojure -X:deps list
 
 cloc-prod:
-	cloc src
+	cloc src java
 
 cloc-test:
 	cloc test
@@ -28,4 +31,4 @@ cloc-test:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean
+.PHONY: fmt lint build prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean

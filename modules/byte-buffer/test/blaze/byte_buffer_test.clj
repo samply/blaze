@@ -7,7 +7,8 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop])
   (:import
-   [com.google.protobuf ByteString]))
+   [blaze ByteString]
+   [com.google.common.io BaseEncoding]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -198,36 +199,39 @@
         (is (zero? (bb/remaining buf)))
         (is (= 1 (bb/get-byte! buf 0)))))))
 
+(defn from-hex [s]
+  (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))
+
 (deftest put-byte-string-test
   (testing "inlined"
     (testing "zero length"
       (let [buf (bb/allocate 0)]
-        (bb/put-byte-string! buf (ByteString/fromHex ""))
+        (bb/put-byte-string! buf (from-hex ""))
         (is (zero? (bb/remaining buf))))
 
       (let [buf (bb/allocate 1)]
-        (bb/put-byte-string! buf (ByteString/fromHex ""))
+        (bb/put-byte-string! buf (from-hex ""))
         (is (= 1 (bb/remaining buf)))))
 
     (testing "length one"
       (let [buf (bb/allocate 1)]
-        (bb/put-byte-string! buf (ByteString/fromHex "01"))
+        (bb/put-byte-string! buf (from-hex "01"))
         (is (zero? (bb/remaining buf)))
         (is (= 1 (bb/get-byte! buf 0))))))
 
   (testing "function"
     (testing "zero length"
       (let [buf (bb/allocate 0)]
-        (apply bb/put-byte-string! buf (ByteString/fromHex "") [])
+        (apply bb/put-byte-string! buf (from-hex "") [])
         (is (zero? (bb/remaining buf))))
 
       (let [buf (bb/allocate 1)]
-        (apply bb/put-byte-string! buf (ByteString/fromHex "") [])
+        (apply bb/put-byte-string! buf (from-hex "") [])
         (is (= 1 (bb/remaining buf)))))
 
     (testing "length one"
       (let [buf (bb/allocate 1)]
-        (apply bb/put-byte-string! buf (ByteString/fromHex "01") [])
+        (apply bb/put-byte-string! buf (from-hex "01") [])
         (is (zero? (bb/remaining buf)))
         (is (= 1 (bb/get-byte! buf 0)))))))
 
@@ -235,18 +239,18 @@
   (testing "inlined"
     (testing "zero length"
       (let [buf (bb/allocate 1)]
-        (bb/put-null-terminated-byte-string! buf (ByteString/fromHex ""))
+        (bb/put-null-terminated-byte-string! buf (from-hex ""))
         (is (zero? (bb/remaining buf)))
         (is (= 0 (bb/get-byte! buf 0))))
 
       (let [buf (bb/allocate 2)]
-        (bb/put-null-terminated-byte-string! buf (ByteString/fromHex ""))
+        (bb/put-null-terminated-byte-string! buf (from-hex ""))
         (is (= 1 (bb/remaining buf)))
         (is (= 0 (bb/get-byte! buf 0)))))
 
     (testing "length one"
       (let [buf (bb/allocate 2)]
-        (bb/put-null-terminated-byte-string! buf (ByteString/fromHex "01"))
+        (bb/put-null-terminated-byte-string! buf (from-hex "01"))
         (is (zero? (bb/remaining buf)))
         (is (= 1 (bb/get-byte! buf 0)))
         (is (= 0 (bb/get-byte! buf 1))))))
@@ -254,18 +258,18 @@
   (testing "function"
     (testing "zero length"
       (let [buf (bb/allocate 1)]
-        (apply bb/put-null-terminated-byte-string! buf (ByteString/fromHex "") [])
+        (apply bb/put-null-terminated-byte-string! buf (from-hex "") [])
         (is (zero? (bb/remaining buf)))
         (is (= 0 (bb/get-byte! buf 0))))
 
       (let [buf (bb/allocate 2)]
-        (apply bb/put-null-terminated-byte-string! buf (ByteString/fromHex "") [])
+        (apply bb/put-null-terminated-byte-string! buf (from-hex "") [])
         (is (= 1 (bb/remaining buf)))
         (is (= 0 (bb/get-byte! buf 0)))))
 
     (testing "length one"
       (let [buf (bb/allocate 2)]
-        (apply bb/put-null-terminated-byte-string! buf (ByteString/fromHex "01") [])
+        (apply bb/put-null-terminated-byte-string! buf (from-hex "01") [])
         (is (zero? (bb/remaining buf)))
         (is (= 1 (bb/get-byte! buf 0)))
         (is (= 0 (bb/get-byte! buf 1)))))))

@@ -31,4 +31,4 @@ cloc-test:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint build test test-coverage deps-tree deps-list cloc-prod cloc-test clean
+.PHONY: fmt lint build prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean

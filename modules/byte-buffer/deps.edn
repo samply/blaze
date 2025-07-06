@@ -1,9 +1,22 @@
-{:deps
- {com.google.protobuf/protobuf-java
-  {:mvn/version "4.31.1"}}
+{:paths ["src" "java" "target/classes"]
+
+ :deps
+ {blaze/util
+  {:local/root "../util"}}
+
+ :deps/prep-lib
+ {:alias :build
+  :fn compile
+  :ensure "target/classes"}
 
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.10.9" :git/sha "e405aac"}}
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps
