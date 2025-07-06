@@ -4,16 +4,16 @@ fmt:
 lint:
 	clj-kondo --fail-level error --lint src test build.clj deps.edn
 
-build:
-	clojure -T:build copy-profiles
-
-prep: build
+prep:
 	clojure -X:deps prep
 
-test: prep
+build: prep
+	clojure -T:build copy-profiles
+
+test: build
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: prep
+test-coverage: build
 	clojure -M:test:coverage
 
 cloc-prod:
@@ -25,4 +25,4 @@ cloc-test:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target resources
 
-.PHONY: fmt lint build prep test test-coverage cloc-prod cloc-test clean
+.PHONY: fmt lint prep build test test-coverage cloc-prod cloc-test clean

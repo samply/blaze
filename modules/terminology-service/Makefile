@@ -4,16 +4,16 @@ fmt:
 lint:
 	clj-kondo --lint src test deps.edn
 
-build:
-	clojure -T:build download-loinc
-
-prep: build
+prep:
 	clojure -X:deps prep
 
-test: prep
+build: prep
+	clojure -T:build download-loinc
+
+test: build
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: prep
+test-coverage: build
 	clojure -M:test:coverage
 
 cloc-prod:

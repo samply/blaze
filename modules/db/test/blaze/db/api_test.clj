@@ -3369,6 +3369,31 @@
           count := 1
           [0 :id] := "id-1")))))
 
+(deftest type-query-version-test
+  (testing "only the latest version matches"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active true
+               :birthDate #fhir/date"2020"}]]]
+
+      (given (pull-type-query node "Patient" [["active" "true"]])
+        count := 1
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "0"
+        [0 :birthDate] #fhir/date"2020")))
+
+  (testing "the latest version doesn't match"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active true
+               :birthDate #fhir/date"2020"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
+
+      (given (pull-type-query node "Patient" [["active" "true"]])
+        count := 0))))
+
 (deftest type-query-search-param-list-test
   (testing "Special Search Parameter _list"
     (testing "a node with two patients, one observation and one list in one transaction"
@@ -5152,30 +5177,105 @@
   (testing "with second precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code"final"
                :effective #fhir/dateTime"1990-06-14T12:24:47Z"}]
         [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code"final"
                :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "2"
+               :status #fhir/code"final"
                :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "3"
+               :status #fhir/code"final"
                :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "4"
+               :status #fhir/code"final"
                :effective #fhir/dateTime"1990-06-14T12:24:49Z"}]]]
 
-      (given (pull-type-query node "Observation" [[:sort "_id" :asc] ["date" "1990-06-14T12:24:48Z"]])
+      (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]])
         count := 3
         [0 :id] := "1"
         [1 :id] := "2"
         [2 :id] := "3")
 
       (testing "it is possible to start with the second observation"
-        (given (pull-type-query node "Observation" [[:sort "_id" :asc] ["date" "1990-06-14T12:24:48Z"]] "2")
+        (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]] "2")
           count := 2
           [0 :id] := "2"
           [1 :id] := "3"))
 
       (testing "count query"
-        (is (= 3 (count-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]])))))))
+        (is (= 3 (count-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]]))))
+
+      (testing "as second clause"
+        (given (pull-type-query node "Observation" [["status" "final"]
+                                                    ["date" "1990-06-14T12:24:48Z"]])
+          count := 3
+          [0 :id] := "1"
+          [1 :id] := "2"
+          [2 :id] := "3")
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" [["status" "final"]
+                                                      ["date" "1990-06-14T12:24:48Z"]]
+                                  "2")
+            count := 2
+            [0 :id] := "2"
+            [1 :id] := "3"))
+
+        (testing "count query"
+          (is (= 3 (count-type-query node "Observation" [["status" "final"]
+                                                         ["date" "1990-06-14T12:24:48Z"]]))))))))
+
+(deftest type-query-date-not-equal-test
+  (testing "with second precision"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"1990-06-14T12:24:47Z"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "4"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"1990-06-14T12:24:49Z"}]]]
+
+      (given (pull-type-query node "Observation" [["date" "ne1990-06-14T12:24:48Z"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "4")
+
+      (testing "it is possible to start with the second observation"
+        (given (pull-type-query node "Observation" [["date" "ne1990-06-14T12:24:48Z"]] "4")
+          count := 1
+          [0 :id] := "4"))
+
+      (testing "count query"
+        (is (= 2 (count-type-query node "Observation" [["date" "ne1990-06-14T12:24:48Z"]]))))
+
+      (testing "as second clause"
+        (given (pull-type-query node "Observation" [["status" "final"]
+                                                    ["date" "ne1990-06-14T12:24:48Z"]])
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "4")
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" [["status" "final"]
+                                                      ["date" "ne1990-06-14T12:24:48Z"]]
+                                  "4")
+            count := 1
+            [0 :id] := "4"))
+
+        (testing "count query"
+          (is (= 2 (count-type-query node "Observation" [["status" "final"]
+                                                         ["date" "ne1990-06-14T12:24:48Z"]]))))))))
 
 (deftest type-query-date-greater-than-test
   (testing "year precision"

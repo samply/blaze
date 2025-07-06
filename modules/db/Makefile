@@ -4,22 +4,22 @@ fmt:
 lint:
 	clj-kondo --lint src test test-perf build.clj deps.edn
 
-build:
-	clojure -T:build copy-profiles
-
-prep: build
+prep:
 	clojure -X:deps prep
 
-test: prep
+build: prep
+	clojure -T:build all
+
+test: build
 	clojure -M:test:kaocha --profile :ci --skip-meta :slow
 
-test-slow: prep
+test-slow: build
 	clojure -M:test:kaocha --profile :ci --focus-meta :slow
 
-test-coverage: prep
+test-coverage: build
 	clojure -M:test:coverage --skip-meta :slow
 
-test-coverage-slow: prep
+test-coverage-slow: build
 	clojure -M:test:coverage --focus-meta :slow
 
 deps-tree:
@@ -39,4 +39,4 @@ IG_PROFILES := $(wildcard resources/blaze/db/[A-Z]*.json)
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target $(IG_PROFILES)
 
-.PHONY: fmt lint prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean
+.PHONY: fmt lint prep build test test-coverage deps-tree deps-list cloc-prod cloc-test clean

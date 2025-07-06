@@ -31,13 +31,13 @@
         bs/from-byte-buffer!)))
 
 (defn prefix-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples starting at
+  "Returns a reducible collection of `SingleVersionId` instances starting at
   `value` and ending when `value` is no longer the prefix of the values
   processed."
   [snapshot compartment c-hash tid value]
   (let [seek-key (encode-seek-key compartment c-hash tid value)]
     (i/prefix-keys snapshot :compartment-search-param-value-index
-                   sp-vr/decode-id-hash-prefix (bs/size seek-key) seek-key)))
+                   sp-vr/decode-single-version-id (bs/size seek-key) seek-key)))
 
 (defn- encode-key
   [compartment sp-c-hash tid value id hash]
@@ -52,7 +52,7 @@
         (bb/put-null-terminated-byte-string! value)
         (bb/put-byte-string! id)
         (bb/put-byte! (bs/size id))
-        (hash/prefix-into-byte-buffer! (hash/prefix hash))
+        (hash/prefix-into-byte-buffer! hash)
         bb/array)))
 
 (defn index-entry

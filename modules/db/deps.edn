@@ -1,4 +1,4 @@
-{:paths ["src" "resources"]
+{:paths ["src" "resources" "java" "target/classes"]
 
  :deps
  {blaze/async
@@ -48,8 +48,8 @@
 
  :deps/prep-lib
  {:alias :build
-  :fn copy-profiles
-  :ensure "resources/blaze/db/Bundle-JobSearchParameterBundle.json"}
+  :fn all
+  :ensure "target/classes"}
 
  :aliases
  {:build

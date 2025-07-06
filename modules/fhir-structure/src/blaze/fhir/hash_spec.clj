@@ -19,6 +19,14 @@
   :args (s/cat :s string?)
   :ret :blaze.resource/hash)
 
+(s/fdef hash/into-byte-buffer!
+  :args (s/cat :byte-buffer bb/byte-buffer? :hash :blaze.resource/hash)
+  :ret bb/byte-buffer?)
+
+(s/fdef hash/prefix-into-byte-buffer!
+  :args (s/cat :byte-buffer bb/byte-buffer? :hash :blaze.resource/hash)
+  :ret bb/byte-buffer?)
+
 (s/fdef hash/to-byte-array
   :args (s/cat :hash :blaze.resource/hash)
   :ret bytes?)

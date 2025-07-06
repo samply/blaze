@@ -1,5 +1,11 @@
 (ns blaze.db.impl.search-param.util-test
+  (:refer-clojure :exclude [hash])
   (:require
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.multi-version-id :as mvi]
+   [blaze.db.impl.index.multi-version-id-spec]
+   [blaze.db.impl.index.single-version-id :as svi]
+   [blaze.db.impl.index.single-version-id-spec]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.impl.search-param.util-spec]
    [blaze.test-util :as tu :refer [satisfies-prop]]
@@ -70,3 +76,28 @@
           (and (string? url)
                (every? string? version-parts)
                (<= (count version-parts) 2)))))))
+
+(def ^:private hash
+  #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F")
+
+(deftest by-id-grouper-test
+  (testing "works with reduced values"
+    (testing "on single id"
+      (let [id (codec/id-byte-string "0")]
+        (is (= (transduce
+                u/by-id-grouper
+                (completing (fn [_ x] (reduced (mvi/id x))))
+                nil
+                [(svi/single-version-id id hash)])
+               id))))
+
+    (testing "on subsequent different id"
+      (let [id-0 (codec/id-byte-string "0")
+            id-1 (codec/id-byte-string "1")]
+        (is (= (transduce
+                u/by-id-grouper
+                (completing (fn [_ x] (reduced (mvi/id x))))
+                nil
+                [(svi/single-version-id id-0 hash)
+                 (svi/single-version-id id-1 hash)])
+               id-0))))))

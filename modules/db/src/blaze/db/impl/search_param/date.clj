@@ -70,7 +70,7 @@
                         start-id)))
 
 (def ^:private drop-value
-  (map #(subvec % 1)))
+  (map #(nth % 1)))
 
 (defn- equal?
   "Returns true if the parameter value interval `[param-lb param-ub]` fully
@@ -92,7 +92,7 @@
      result)))
 
 (defn- eq-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples of all keys were
+  "Returns a reducible collection of `SingleVersionId` instances of all keys were
   the parameter value interval `[param-lb param-ub]` fully contains the
   resource value interval starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid param-lb param-ub]
@@ -137,7 +137,7 @@
      (greater-than? param-ub value))))
 
 (defn- gt-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  "Returns a reducible collection of `SingleVersionId` instances of all
   keys with overlapping date/time intervals with the interval specified by
   `param-ub` and an infinite upper bound starting at `start-id` (optional)."
   ([context c-hash tid param-ub]
@@ -155,7 +155,7 @@
   (bs/< (codec-date/lower-bound-bytes value) param-lb))
 
 (defn- lt-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  "Returns a reducible collection of `SingleVersionId` instances of all
   keys with overlapping date/time intervals with the interval specified by
   an infinite lower bound and `param-lb` starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid param-lb]
@@ -181,7 +181,7 @@
      (greater-equal? param-lb param-ub value))))
 
 (defn- ge-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  "Returns a reducible collection of `SingleVersionId` instances of all
   keys with overlapping date/time intervals with the interval specified by
   `param-lb` and an infinite upper bound starting at `start-id` (optional)."
   ([context c-hash tid param-lb param-ub]
@@ -205,7 +205,7 @@
      (less-equal? value param-lb param-ub))))
 
 (defn- le-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  "Returns a reducible collection of `SingleVersionId` instances of all
   keys with overlapping date/time intervals with the interval specified by
   an infinite lower bound and `param-ub` starting at `start-id` (optional)."
   ([context c-hash tid param-lb param-ub]
@@ -267,7 +267,7 @@
      (approximately? value param-lb a-lb))))
 
 (defn- ap-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  "Returns a reducible collection of `SingleVersionId` instances of all
   keys with overlapping date/time intervals with the interval specified by
   `param-lb` and `param-ub` starting at `start-id` (optional)."
   ([context c-hash tid param-lb param-ub]

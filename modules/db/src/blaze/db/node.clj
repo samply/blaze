@@ -247,7 +247,10 @@
    []
    values))
 
-(defn- compile-patient-type-query [search-param-registry type clauses]
+(defn- compile-patient-type-query
+  "Tries to compile `clauses` into a PatientTypeQuery. Return nil if that isn't
+  possible."
+  [search-param-registry type clauses]
   (when-some [codes (sr/patient-compartment-search-param-codes search-param-registry type)]
     (let [[compartment-clause :as all] (filterv (clause-with-code-fn? codes) clauses)]
       (when (= 1 (count all))

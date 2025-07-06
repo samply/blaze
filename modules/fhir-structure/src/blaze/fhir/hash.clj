@@ -3,73 +3,38 @@
    [blaze.byte-buffer :as bb]
    [blaze.fhir.spec.type :as type])
   (:import
+   [blaze.fhir Hash]
    [com.fasterxml.jackson.core JsonGenerator]
    [com.fasterxml.jackson.databind.module SimpleModule]
    [com.fasterxml.jackson.databind.ser.std StdSerializer]
    [com.google.common.hash Hashing]
-   [com.google.common.io BaseEncoding]))
+   [java.io Writer]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:const ^long size 32)
 (def ^:const ^long prefix-size Integer/BYTES)
 
-(definterface Prefix
-  (^long prefix []))
-
-(deftype Hash [^long l0 ^long l1 ^long l2 ^long l3]
-  Prefix
-  (prefix [_]
-    (bit-and (unsigned-bit-shift-right l0 32) 0xFFFFFFFF))
-  Object
-  (equals [this x]
-    (or (identical? this x)
-        (and (instance? Hash x)
-             (= l0 (.l0 ^Hash x))
-             (= l1 (.l1 ^Hash x))
-             (= l2 (.l2 ^Hash x))
-             (= l3 (.l3 ^Hash x)))))
-  (hashCode [_]
-    (unchecked-int l0))
-  (toString [_]
-    (->> (-> (bb/allocate size)
-             (bb/put-long! l0)
-             (bb/put-long! l1)
-             (bb/put-long! l2)
-             (bb/put-long! l3)
-             bb/array)
-         (.encode (BaseEncoding/base16)))))
-
 (def deleted-hash
   "The hash of a deleted version of a resource."
-  (Hash. 0 0 0 0))
+  Hash/DELETED)
 
 (defn hash? [x]
   (instance? Hash x))
 
 (defn from-byte-buffer! [byte-buffer]
-  (Hash. (bb/get-long! byte-buffer)
-         (bb/get-long! byte-buffer)
-         (bb/get-long! byte-buffer)
-         (bb/get-long! byte-buffer)))
+  (Hash/fromByteBuffer byte-buffer))
 
 (defn from-hex [s]
-  (from-byte-buffer! (bb/wrap (.decode (BaseEncoding/base16) s))))
+  (Hash/fromHex s))
 
-(defn into-byte-buffer!
-  {:inline
-   (fn [byte-buffer hash]
-     `(-> ~byte-buffer
-          (bb/put-long! (.l0 ~(with-meta hash {:tag `Hash})))
-          (bb/put-long! (.l1 ~(with-meta hash {:tag `Hash})))
-          (bb/put-long! (.l2 ~(with-meta hash {:tag `Hash})))
-          (bb/put-long! (.l3 ~(with-meta hash {:tag `Hash})))))}
+(defn into-byte-buffer! [byte-buffer hash]
+  (.copyTo ^Hash hash byte-buffer)
+  byte-buffer)
+
+(defn prefix-into-byte-buffer!
   [byte-buffer hash]
-  (-> byte-buffer
-      (bb/put-long! (.l0 ^Hash hash))
-      (bb/put-long! (.l1 ^Hash hash))
-      (bb/put-long! (.l2 ^Hash hash))
-      (bb/put-long! (.l3 ^Hash hash))))
+  (bb/put-int! byte-buffer (.prefix ^Hash hash)))
 
 (defn to-byte-array [hash]
   (-> (bb/allocate size)
@@ -78,26 +43,15 @@
 
 (defn prefix
   "Returns the first 4 bytes of `hash`."
-  {:inline
-   (fn [hash]
-     `(.prefix ~(with-meta hash {:tag `Hash})))}
   [hash]
-  (.prefix ^Hash hash))
+  (bit-and (.prefix ^Hash hash) 0xFFFFFFFF))
 
 (defn prefix-from-byte-buffer!
-  {:inline (fn [byte-buffer] `(bit-and (bb/get-int! ~byte-buffer) 0xFFFFFFFF))}
   [byte-buffer]
   (bit-and (bb/get-int! byte-buffer) 0xFFFFFFFF))
 
 (defn prefix-from-hex [s]
   (Long/parseLong s 16))
-
-(defn prefix-into-byte-buffer!
-  {:inline
-   (fn [byte-buffer hash-prefix]
-     `(bb/put-int! ~byte-buffer (unchecked-int ~hash-prefix)))}
-  [byte-buffer hash-prefix]
-  (bb/put-int! byte-buffer (unchecked-int hash-prefix)))
 
 (def ^:private serializer
   (proxy [StdSerializer] [Hash]
@@ -118,3 +72,13 @@
   (let [hasher (.newHasher (Hashing/sha256))]
     (type/hash-into resource hasher)
     (from-byte-buffer! (bb/wrap (.asBytes (.hash hasher))))))
+
+(defmethod print-method Hash [^Hash hash ^Writer w]
+  (.write w "#blaze/hash\"")
+  (.write w (.toString hash))
+  (.write w "\""))
+
+(defmethod print-dup Hash [^Hash hash ^Writer w]
+  (.write w "#=(blaze.fhir.Hash/fromHex ")
+  (print-dup (.toString hash) w)
+  (.write w ")"))

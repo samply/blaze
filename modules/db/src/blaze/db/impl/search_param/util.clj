@@ -5,9 +5,10 @@
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.multi-version-id :as mvi]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.fhir.hash :as hash]
+   [blaze.db.impl.index.single-version-id :as svi]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.util :refer [str]]
    [clojure.string :as str])
@@ -33,27 +34,51 @@
           (str value) (fhir-spec/fhir-type value) url type))
 
 (def by-id-grouper
-  "Transducer which groups `[id hash-prefix]` tuples by `id`."
-  (partition-by (fn [[id]] id)))
+  "Transducer which partitions multiple consecutive `SingleVersionId` instances
+  by id, emitting one `MultiVersionId` instance per partition."
+  (fn [rf]
+    (let [acc (volatile! nil)]
+      (fn
+        ([result]
+         (let [mvi @acc
+               result (if (nil? mvi)
+                        result
+                        (do (vreset! acc nil)
+                            (unreduced (rf result mvi))))]
+           (rf result)))
+        ([result svi]
+         (let [mvi @acc
+               id (svi/id svi)]
+           (cond
+             (nil? mvi)
+             (do
+               (vreset! acc (mvi/from-single-version-id svi))
+               result)
+
+             (= id (mvi/id mvi))
+             (do
+               (vreset! acc (mvi/conj mvi svi))
+               result)
+
+             :else
+             (let [ret (rf result mvi)]
+               (vreset! acc (if (reduced? ret) nil (mvi/from-single-version-id svi)))
+               ret))))))))
 
 (defn non-deleted-resource-handle [{:keys [snapshot t]} tid id]
   (when-let [handle (rao/resource-handle snapshot tid id t)]
     (when-not (rh/deleted? handle)
       handle)))
 
-(defn- contains-hash-prefix-pred [resource-handle]
-  (let [hash-prefix (hash/prefix (rh/hash resource-handle))]
-    (fn [tuple] (= (long (coll/nth tuple 1)) hash-prefix))))
-
 (defn- resource-handle-xf [{:keys [snapshot t]} tid]
   (rao/resource-handle-type-xf
-   snapshot t tid (fn [[[id]]] id)
-   (fn [tuples handle] (coll/some (contains-hash-prefix-pred handle) tuples))))
+   snapshot t tid mvi/id
+   (fn [mvi handle] (mvi/matches-hash? mvi (rh/hash handle)))))
 
 (defn resource-handle-mapper
-  "Returns a transducer which groups `[id hash-prefix]` tuples by `id` and maps
-  them to a resource handle with `tid` if there is a current one with matching
-  hash prefix."
+  "Returns a transducer which partitions multiple consecutive `SingleVersionId`
+  instances by `id` and maps them to a resource handle with `tid` if there is a
+  current one with matching hash."
   [batch-db tid]
   (comp
    by-id-grouper
