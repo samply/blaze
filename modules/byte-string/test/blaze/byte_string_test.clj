@@ -169,6 +169,11 @@
       #blaze/byte-string"" #blaze/byte-string""
       #blaze/byte-string"00" #blaze/byte-string"00")))
 
+(deftest comparable-test
+  (are [unsorted sorted] (= sorted (sort unsorted))
+    [#blaze/byte-string"02" #blaze/byte-string"00" #blaze/byte-string"01"]
+    [#blaze/byte-string"00" #blaze/byte-string"01" #blaze/byte-string"02"]))
+
 (deftest hex-test
   (are [bs res] (= res (bs/hex bs))
     #blaze/byte-string"" ""
@@ -198,3 +203,8 @@
   (are [bs res] (= res (bs/as-read-only-byte-buffer bs))
     #blaze/byte-string"" (bb)
     #blaze/byte-string"00" (bb 0x00)))
+
+(deftest print-test
+  (are [bs s] (= s (pr-str bs))
+    #blaze/byte-string"" "#blaze/byte-string\"\""
+    #blaze/byte-string"6162" "#blaze/byte-string\"6162\""))

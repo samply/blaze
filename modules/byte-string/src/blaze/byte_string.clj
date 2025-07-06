@@ -1,16 +1,15 @@
 (ns blaze.byte-string
-  (:refer-clojure :exclude [concat empty nth subs < <= > >=])
+  (:refer-clojure :exclude [< <= > >= concat empty nth subs])
   (:require
    [blaze.byte-buffer :as bb]
    [clojure.string :as str])
   (:import
+   [blaze ByteString]
    [clojure.lang IObj]
    [com.google.common.io BaseEncoding]
-   [com.google.protobuf ByteString]
    [java.io Writer]
    [java.nio ByteBuffer]
-   [java.nio.charset StandardCharsets]
-   [java.util Comparator]))
+   [java.nio.charset StandardCharsets]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -32,9 +31,11 @@
   (ByteString/copyFrom ^bytes bs))
 
 (defn from-utf8-string
-  {:inline (fn [s] `(ByteString/copyFromUtf8 ~s))}
+  {:inline
+   (fn [s]
+     `(ByteString/copyFrom ~(tag s `String) StandardCharsets/UTF_8))}
   [s]
-  (ByteString/copyFromUtf8 s))
+  (ByteString/copyFrom ^String s StandardCharsets/UTF_8))
 
 (defn from-iso-8859-1-string
   {:inline
@@ -108,16 +109,16 @@
   (.concat ^ByteString a b))
 
 (defn < [a b]
-  (neg? (.compare ^Comparator (ByteString/unsignedLexicographicalComparator) a b)))
+  (neg? (.compareTo ^ByteString a b)))
 
 (defn <=
   ([a b]
-   (clojure.core/<= (.compare ^Comparator (ByteString/unsignedLexicographicalComparator) a b) 0))
+   (clojure.core/<= (.compareTo ^ByteString a b) 0))
   ([a b c]
    (and (<= a b) (<= b c))))
 
 (defn > [a b]
-  (pos? (.compare ^Comparator (ByteString/unsignedLexicographicalComparator) a b)))
+  (pos? (.compareTo ^ByteString a b)))
 
 (defn hex
   "Returns an upper-case hexadecimal string representation of `bs`."
@@ -130,9 +131,9 @@
   (.toByteArray ^ByteString bs))
 
 (defn to-string-utf8
-  {:inline (fn [bs] `(.toStringUtf8 ~(tag bs `ByteString)))}
+  {:inline (fn [bs] `(.toString ~(tag bs `ByteString) StandardCharsets/UTF_8))}
   [bs]
-  (.toStringUtf8 ^ByteString bs))
+  (.toString ^ByteString bs StandardCharsets/UTF_8))
 
 (defn to-string-iso-8859-1
   {:inline
@@ -154,6 +155,6 @@
   (.write w "])"))
 
 (defmethod print-dup ByteString [^ByteString bs ^Writer w]
-  (.write w "#=(com.google.protobuf.ByteString/copyFrom ")
+  (.write w "#=(blaze.ByteString/copyFrom ")
   (print-dup (.toByteArray bs) w)
   (.write w ")"))

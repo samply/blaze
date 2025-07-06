@@ -3,7 +3,7 @@
    [blaze.byte-buffer :as bb :refer [byte-buffer?]]
    [clojure.spec.alpha :as s])
   (:import
-   [com.google.protobuf ByteString]))
+   [blaze ByteString]))
 
 (s/fdef bb/allocate
   :args (s/cat :capacity nat-int?)
