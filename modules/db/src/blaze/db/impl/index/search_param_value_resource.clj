@@ -6,28 +6,23 @@
    [blaze.byte-string :as bs]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.search-param-value-resource.impl :as impl]
    [blaze.db.impl.iterators :as i]
-   [blaze.fhir.hash :as hash]))
+   [blaze.fhir.hash :as hash])
+  (:import
+   [blaze.db.impl.index SearchParamValueResource]))
 
+(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn decode-key
-  "Returns a triple of `[prefix id hash-prefix]`.
+  "Returns a tuple of `[prefix SingleVersionId]`.
 
   The prefix contains the c-hash, tid and value parts as encoded byte string."
   [buf]
-  (let [id-size (impl/id-size buf)
-        all-size (bb/remaining buf)
-        prefix-size (- all-size 2 id-size hash/prefix-size)
-        prefix (bs/from-byte-buffer! buf prefix-size)
-        _ (bb/get-byte! buf)
-        id (bs/from-byte-buffer! buf id-size)]
-    (bb/get-byte! buf)
-    [prefix id (hash/prefix-from-byte-buffer! buf)]))
+  (SearchParamValueResource/decodeKey buf))
 
 (defn keys
-  "Returns a reducible collection of `[prefix id hash-prefix]` triples starting
+  "Returns a reducible collection of `[prefix SingleVersionId]` tuples starting
   at `start-key`.
 
   The prefix contains the c-hash, tid and value parts as encoded byte string."
@@ -80,76 +75,63 @@
   ([c-hash tid value id]
    (bs/concat (encode-seek-key c-hash tid value id) max-hash-prefix)))
 
-(defn decode-value-id-hash-prefix
-  "Returns a triple of `[value id hash-prefix]`."
+(defn decode-value-single-version-id
+  "Decodes a tuple of `[value SingleVersionId]` from `buf`."
   [buf]
-  (let [id-size (impl/id-size buf)
-        _ (bb/set-position! buf base-key-size)
-        all-size (bb/remaining buf)
-        value-size (- all-size 2 id-size hash/prefix-size)
-        value (bs/from-byte-buffer! buf value-size)
-        _ (bb/get-byte! buf)
-        id (bs/from-byte-buffer! buf id-size)]
-    (bb/get-byte! buf)
-    [value id (hash/prefix-from-byte-buffer! buf)]))
+  (SearchParamValueResource/decodeValueSingleVersionId buf))
 
 (defn all-keys
-  "Returns a reducible collection of `[value id hash-prefix]` triples of the
+  "Returns a reducible collection of `[value SingleVersionId]` tuples of the
   whole range prefixed with `c-hash` and `tid` starting with `start-value` and
   `start-id` (optional)."
   ([snapshot c-hash tid]
    (let [prefix (encode-seek-key c-hash tid)]
      (i/prefix-keys snapshot :search-param-value-index
-                    decode-value-id-hash-prefix (bs/size prefix) prefix)))
+                    decode-value-single-version-id (bs/size prefix) prefix)))
   ([snapshot c-hash tid start-value start-id]
    (let [start-key (encode-seek-key c-hash tid start-value start-id)]
      (i/prefix-keys snapshot :search-param-value-index
-                    decode-value-id-hash-prefix base-key-size start-key))))
+                    decode-value-single-version-id base-key-size start-key))))
 
 (defn all-keys-prev
-  "Returns a reducible collection of `[value id hash-prefix]` triples of the
+  "Returns a reducible collection of `[value SingleVersionId]` tuples of the
   whole range prefixed with `c-hash` and `tid` starting with `start-value` and
   `start-id` (optional), iterating in reverse."
   ([snapshot c-hash tid]
    (i/prefix-keys-prev
     snapshot
     :search-param-value-index
-    decode-value-id-hash-prefix
+    decode-value-single-version-id
     base-key-size
     (encode-seek-key-for-prev c-hash tid)))
   ([snapshot c-hash tid start-value start-id]
    (i/prefix-keys-prev
     snapshot
     :search-param-value-index
-    decode-value-id-hash-prefix
+    decode-value-single-version-id
     base-key-size
     (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
 (defn prefix-keys-value [snapshot c-hash tid value-prefix]
   (let [start-key (encode-seek-key c-hash tid value-prefix)]
     (i/prefix-keys snapshot :search-param-value-index
-                   decode-value-id-hash-prefix base-key-size start-key)))
+                   decode-value-single-version-id base-key-size start-key)))
 
 (defn prefix-keys-value-prev [snapshot c-hash tid value-prefix]
   (i/prefix-keys-prev
    snapshot
    :search-param-value-index
-   decode-value-id-hash-prefix
+   decode-value-single-version-id
    base-key-size
    (encode-seek-key c-hash tid value-prefix)))
 
-(defn decode-id-hash-prefix
-  "Returns a tuple of `[id hash-prefix]`."
+(defn decode-single-version-id
+  "Decodes a `SingleVersionId` instance from `buf`."
   [buf]
-  (let [id-size (impl/id-size buf)
-        all-size (unchecked-inc-int (unchecked-add-int id-size hash/prefix-size))
-        _ (bb/set-position! buf (unchecked-subtract-int (bb/limit buf) all-size))
-        id (bs/from-byte-buffer! buf id-size)]
-    (bb/get-byte! buf)
-    [id (hash/prefix-from-byte-buffer! buf)]))
+  (SearchParamValueResource/decodeSingleVersionId buf))
 
 (defn prefix-keys
-  "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
+  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
   starting at `start-value` and optional `start-id` and ending when
   `prefix-length` bytes of `start-value` is no longer a prefix of the values
   processed."
@@ -157,31 +139,31 @@
    (i/prefix-keys
     snapshot
     :search-param-value-index
-    decode-id-hash-prefix
+    decode-single-version-id
     (+ base-key-size (long prefix-length))
     (encode-seek-key c-hash tid start-value)))
   ([snapshot c-hash tid prefix-length start-value start-id]
    (i/prefix-keys
     snapshot
     :search-param-value-index
-    decode-id-hash-prefix
+    decode-single-version-id
     (+ base-key-size (long prefix-length))
     (encode-seek-key c-hash tid start-value start-id))))
 
 (defn prefix-keys'
-  "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
+  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
   starting at `start-value` and ending when `prefix-length` bytes of
   `start-value` is no longer a prefix of the values processed."
   [snapshot c-hash tid prefix-length start-value]
   (i/prefix-keys
    snapshot
    :search-param-value-index
-   decode-id-hash-prefix
+   decode-single-version-id
    (+ base-key-size (long prefix-length))
    (encode-seek-key-for-prev c-hash tid start-value)))
 
 (defn prefix-keys-prev
-  "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
+  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
   starting at `start-value` and optional `start-id` and ending when
   `prefix-length` bytes of `start-value` is no longer a prefix of the values
   processed, iterating in reverse."
@@ -189,19 +171,19 @@
    (i/prefix-keys-prev
     snapshot
     :search-param-value-index
-    decode-id-hash-prefix
+    decode-single-version-id
     (+ base-key-size (long prefix-length))
     (encode-seek-key-for-prev c-hash tid start-value)))
   ([snapshot c-hash tid prefix-length start-value start-id]
    (i/prefix-keys-prev
     snapshot
     :search-param-value-index
-    decode-id-hash-prefix
+    decode-single-version-id
     (+ base-key-size (long prefix-length))
     (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
 (defn prefix-keys-prev'
-  "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
+  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
   starting at `start-value` and ending when `prefix-length` bytes of
   `start-value` is no longer a prefix of the values processed, iterating in
   reverse."
@@ -209,7 +191,7 @@
   (i/prefix-keys-prev
    snapshot
    :search-param-value-index
-   decode-id-hash-prefix
+   decode-single-version-id
    (+ base-key-size (long prefix-length))
    (encode-seek-key c-hash tid start-value)))
 
@@ -220,7 +202,7 @@
       (bb/put-null-terminated-byte-string! value)
       (bb/put-byte-string! id)
       (bb/put-byte! (bs/size id))
-      (hash/prefix-into-byte-buffer! (hash/prefix hash))
+      (hash/prefix-into-byte-buffer! hash)
       bb/array))
 
 (defn index-entry

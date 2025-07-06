@@ -1,5 +1,7 @@
 package blaze;
 
+import com.google.common.io.BaseEncoding;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -92,8 +94,6 @@ public final class ByteString implements Comparable<ByteString> {
 
     @Override
     public String toString() {
-        return "ByteString{" +
-                "bytes=" + Arrays.toString(bytes) +
-                '}';
+        return "0x" + BaseEncoding.base16().encode(bytes);
     }
 }

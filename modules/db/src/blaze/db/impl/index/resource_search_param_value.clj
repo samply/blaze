@@ -28,7 +28,7 @@
   (-> buf
       (bb/put-int! tid)
       (bb/put-null-terminated-byte-string! id)
-      (hash/prefix-into-byte-buffer! (hash/prefix hash))
+      (hash/prefix-into-byte-buffer! hash)
       (bb/put-int! c-hash)))
 
 (defn- encode-key-buf-1 [size tid id hash c-hash]
