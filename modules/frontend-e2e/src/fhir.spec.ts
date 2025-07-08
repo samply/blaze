@@ -1,4 +1,4 @@
-import type {Page} from '@playwright/test';
+import type {Page, Locator} from '@playwright/test';
 import {expect, test} from '@playwright/test';
 
 test.beforeEach('Sign In', async ({page}) => {
@@ -31,6 +31,12 @@ async function expectInActiveNavLink(page: Page, name: string): Promise<void> {
     await expect(overviewLink).not.toHaveAttribute('aria-current', 'page');
 }
 
+async function expectBadge(badge: Locator): Promise<void> {
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveCSS('background-color', /rgb\(.*\)/);
+    await expect(badge).toHaveCSS('border-radius', /\d+px/);
+}
+
 test('Home Page', async ({page}) => {
     await expect(page).toHaveTitle("Home - Blaze");
     await expect(page.getByRole('heading', {name: 'Resource Types'})).toBeVisible();
@@ -44,6 +50,7 @@ test('History Page', async ({page}) => {
 
     await expect(page).toHaveTitle("History - Blaze");
     await expect(page.getByText('Total:')).toBeVisible();
+    await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
 });
 
 test('Metadata Page', async ({page}) => {
@@ -250,6 +257,7 @@ test('Patients Page', async ({page}) => {
     await expect(page).toHaveTitle("Patient - Blaze");
     await expect(page.getByTitle('Patient History')).toBeVisible();
     await expect(page.getByTitle('Patient Metadata')).toBeVisible();
+    await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
     await expect(page.getByText('Total:')).toBeVisible();
 
     await page.getByTitle('Patient Metadata').click();
@@ -271,6 +279,7 @@ test('Patients History Page', async ({page}) => {
 
     await expect(page).toHaveTitle("History - Patient - Blaze");
     await expect(page.getByText('Total:')).toBeVisible();
+    await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
 });
 
 test('Signing in after sign out goes to the Keycloak Sign-In Page', async ({page}) => {
