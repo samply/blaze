@@ -1406,6 +1406,14 @@
              :instance-handler #blaze/ref :blaze.fhir.operation.value-set/expand
              :documentation "The $expand operation can be used to expand all codes of a ValueSet."}
      #:blaze.rest-api.operation
+             {:code "lookup"
+              :def-uri "http://hl7.org/fhir/OperationDefinition/CodeSystem-lookup"
+              :affects-state false
+              :resource-types ["CodeSystem"]
+              :type-handler #blaze/ref :blaze.fhir.operation.code-system/lookup
+              :instance-handler #blaze/ref :blaze.fhir.operation.code-system/lookup
+              :documentation "Lookup a coded value in the code system."}
+     #:blaze.rest-api.operation
              {:code "validate-code"
               :def-uri "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code"
               :affects-state false
@@ -1421,6 +1429,9 @@
               :type-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
               :instance-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
               :documentation "Validate that a coded value is in the set of codes allowed by a value set."}]
+
+    :blaze.fhir.operation.code-system/lookup
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
     :blaze.fhir.operation.code-system/validate-code
     {:terminology-service #blaze/ref :blaze.terminology-service/local}

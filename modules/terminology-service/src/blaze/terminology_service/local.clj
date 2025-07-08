@@ -297,6 +297,14 @@
   (reify p/TerminologyService
     (-code-systems [_]
       (c/code-systems (d/db node)))
+    (-code-system-lookup [_ params]
+      (if-ok [params (validate-params cs-validate-code-param-specs params)
+              params (cs-validate-code-more params)]
+             (let [db (d/new-batch-db (d/db node))]
+               (-> (find-code-system (context-with-db context db params) params)
+                   (ac/then-apply #(cs/validate-code % params))
+                   (handle-close db)))
+             ac/completed-future))
     (-code-system-validate-code [_ params]
       (if-ok [params (validate-params cs-validate-code-param-specs params)
               params (cs-validate-code-more params)]

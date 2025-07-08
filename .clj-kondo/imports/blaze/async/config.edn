@@ -1,0 +1,3 @@
+{:lint-as
+ {blaze.async.comp/do-sync clojure.core/let
+  blaze.async.comp/do-async clojure.core/let}}

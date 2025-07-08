@@ -9,6 +9,10 @@
   [terminology-service]
   (p/-code-systems terminology-service))
 
+(defn code-system-lookup
+  [terminology-service params]
+  (p/-code-system-lookup terminology-service params))
+
 (defn code-system-validate-code
   [terminology-service params]
   (p/-code-system-validate-code terminology-service params))
