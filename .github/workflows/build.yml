@@ -115,6 +115,7 @@ jobs:
         - metrics
         - module-base
         - openid-auth
+        - operation-code-system-lookup
         - operation-code-system-validate-code
         - operation-compact
         - operation-graph

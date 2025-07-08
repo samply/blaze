@@ -1,0 +1,2 @@
+{:lint-as
+ {blaze.coll.core/with-open-coll clojure.core/with-open}}

@@ -1,0 +1,2 @@
+{:lint-as
+ {blaze.module.test-util/with-system clojure.core/with-open}}

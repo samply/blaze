@@ -1,0 +1,3 @@
+{:lint-as
+ {blaze.anomaly/if-ok clojure.core/let
+  blaze.anomaly/when-ok clojure.core/let}}

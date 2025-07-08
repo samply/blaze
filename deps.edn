@@ -19,6 +19,9 @@
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
 
+  blaze.operation/code-system-lookup
+  {:local/root "modules/operation-code-system-lookup"}
+
   blaze.operation/code-system-validate-code
   {:local/root "modules/operation-code-system-validate-code"}
 
@@ -190,6 +193,7 @@
     "-d" "modules/module-base"
     "-d" "modules/module-test-util"
     "-d" "modules/openid-auth"
+    "-d" "modules/operation-code-system-lookup"
     "-d" "modules/operation-code-system-validate-code"
     "-d" "modules/operation-compact"
     "-d" "modules/operation-graphql"

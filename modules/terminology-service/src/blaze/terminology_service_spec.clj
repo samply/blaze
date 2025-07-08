@@ -15,6 +15,11 @@
                :params :fhir/Parameters)
   :ret ac/completable-future?)
 
+(s/fdef ts/code-system-lookup
+        :args (s/cat :terminology-service :blaze/terminology-service
+                     :params :fhir/Parameters)
+        :ret ac/completable-future?)
+
 (s/fdef ts/expand-value-set
   :args (s/cat :terminology-service :blaze/terminology-service
                :params :fhir/Parameters)
