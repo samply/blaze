@@ -165,6 +165,16 @@ We start by scanning through the index starting at the lower bound of `q` and en
 
 **TODO: continue...**
 
+###### Example
+
+| search-param | type        | value                  | id | hash-prefix |
+|--------------|-------------|------------------------|----|-------------|
+| date         | Observation | 2025-01-01, 2025-01-31 | 1  | 6744ed32    |
+| date         | Observation | 2025-02-01, 2025-02-31 | 2  | b7e3e5f8    |
+| date         | Observation | 2025-03-01, 2025-03-31 | 1  | ba9c9b24    |
+
+Search for `2025` results in the index handles `[1, [6744ed32]]`, `[2, [b7e3e5f8]]` and `[1, [ba9c9b24]]`. Note that the index handles are not distinct and not ordered.
+
 ##### String
 
 **TODO: continue...**
@@ -196,6 +206,14 @@ In case one searches for female patients, Blaze will seek into the index with th
 * `[2, b7e3e5f8]`.
 
 That tuples are further processed against the `ResourceAsOf` index in order to check whether the resource versions are valid regarding to the current `t`.
+
+| search-param | type        | value       | id | hash-prefix |
+|--------------|-------------|-------------|----|-------------|
+| status       | Observation | preliminary | 1  | 6744ed32    |
+| status       | Observation | preliminary | 1  | ba9c9b24    |
+| status       | Observation | final       | 1  | b7e3e5f8    |
+
+Search for `preliminary` results in an index handle of `[1 [6744ed32 ba9c9b24]]`. Search for `final` results in an index handle of `[1 [b7e3e5f8]]`. The union will give a index handle of `[1 [6744ed32 b7e3e5f8 ba9c9b24]]`.
 
 ##### Reference
 

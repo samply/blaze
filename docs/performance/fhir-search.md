@@ -171,6 +171,7 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&valu
 | LEA58  | 1M      | 29463-7 |  26.8 |  1.6 M |    17.89 |  0.397 |   11.45 |
 | LEA58  | 1M      | 29463-7 |  79.5 |  7.8 M |    17.69 |  0.167 |    2.25 |
 | LEA58  | 1M      | 29463-7 |   183 | 15.9 M |    17.53 |  0.110 |    1.10 |
+| A5N46  | 1M      | 29463-7 |  26.8 |  1.6 M |    56.84 |  2.925 |  27.5 k |
 
 ¹ time in seconds per 1 million resources, ² block cache hit ratio is near zero
 
@@ -197,6 +198,7 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | LEA58  | 100k    | 29463-7 |  26.8 |  158 k |    12.78 |  0.025 |    80.82 |
 | LEA58  | 100k    | 29463-7 |  79.5 |  790 k |    21.95 |  0.193 |    27.80 |
 | LEA58  | 100k    | 29463-7 |   183 |  1.6 M |    31.63 |  0.333 |    19.99 |
+| A5N46  | 1M      | 29463-7 |  26.8 |  1.6 M |    44.78 |  3.954 |   34.9 k |
 
 ¹ time in seconds per 1 million resources, ² block cache hit ratio is near zero
 

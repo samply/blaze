@@ -60,5 +60,6 @@
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :clauses :blaze.db.index.query/clauses)
+               :clauses :blaze.db.index.query/clauses
+               :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))

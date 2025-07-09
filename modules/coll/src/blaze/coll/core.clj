@@ -1,7 +1,12 @@
 (ns blaze.coll.core
   (:refer-clojure :exclude [count eduction empty? first nth some])
+  (:require
+   [clojure.core.protocols])
   (:import
-   [clojure.lang Counted Indexed IReduceInit Sequential]))
+   [blaze.coll IntersectionIterator UnionIterator]
+   [clojure.lang Counted IReduceInit Indexed Sequential]
+   [java.lang AutoCloseable]
+   [java.util ArrayDeque Iterator Queue]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -23,6 +28,34 @@
 
 (defn inc-rf [sum _] (inc ^long sum))
 
+(deftype TransformerIterator [rf ^Iterator iter ^Queue buffer ^:volatile-mutable completed]
+  Iterator
+  (hasNext [_]
+    (loop []
+      (if (.isEmpty buffer)
+        (cond
+          completed false
+
+          (.hasNext iter)
+          (let [res (rf nil (.next iter))]
+            (when (reduced? res)
+              (rf nil)
+              (set! completed true))
+            (recur))
+
+          :else
+          (do
+            (rf nil)
+            (set! completed true)
+            (recur)))
+        true)))
+  (next [i]
+    (.hasNext i)
+    (.remove buffer))
+  AutoCloseable
+  (close [_]
+    (when (instance? AutoCloseable iter) (.close ^AutoCloseable iter))))
+
 (defn eduction
   "Like `clojure.core/eduction` but implements Counted instead of Iterable."
   [xform coll]
@@ -33,7 +66,12 @@
       (transduce xform (completing f) init coll))
     Counted
     (count [coll]
-      (.reduce coll inc-rf 0))))
+      (.reduce coll inc-rf 0))
+    Iterable
+    (iterator [_]
+      (let [buffer (ArrayDeque.)
+            rf (xform (completing (fn [_ x] (.add buffer x))))]
+        (->TransformerIterator rf (.iterator ^Iterable coll) buffer false)))))
 
 (defn count
   "Like `clojure.core/count` but works only for non-nil collections
@@ -71,3 +109,56 @@
      Counted
      (count [coll#]
        (.reduce coll# inc-rf 0))))
+
+(defn intersection
+  ([_merge c1]
+   c1)
+  ([merge c1 c2]
+   (reify Iterable
+     (iterator [_]
+       (IntersectionIterator. merge (.iterator ^Iterable c1)
+                              (.iterator ^Iterable c2)))))
+  ([merge c1 c2 & more]
+   (letfn [(intersection-tree [colls]
+             (condp = (count colls)
+               1 (clojure.core/first colls)
+               2 (apply intersection merge colls)
+               (let [mid (quot (count colls) 2)
+                     left (subvec colls 0 mid)
+                     right (subvec colls mid)]
+                 (intersection merge (intersection-tree left)
+                               (intersection-tree right)))))]
+     (intersection-tree (into [c1 c2] more)))))
+
+(defn union
+  ([_merge c1]
+   c1)
+  ([merge c1 c2]
+   (reify Iterable
+     (iterator [_]
+       (UnionIterator. merge (.iterator ^Iterable c1)
+                       (.iterator ^Iterable c2)))))
+  ([merge c1 c2 & more]
+   (letfn [(union-tree [colls]
+             (condp = (count colls)
+               1 (clojure.core/first colls)
+               2 (apply union merge colls)
+               (let [mid (quot (count colls) 2)
+                     left (subvec colls 0 mid)
+                     right (subvec colls mid)]
+                 (union merge (union-tree left) (union-tree right)))))]
+     (union-tree (into [c1 c2] more)))))
+
+(defn reducible-coll
+  [coll]
+  (reify
+    Sequential
+    IReduceInit
+    (reduce [_ rf init]
+      (let [iter (.iterator ^Iterable coll)
+            res (clojure.core.protocols/iterator-reduce! iter rf init)]
+        (when (instance? AutoCloseable iter) (.close ^AutoCloseable iter))
+        res))
+    Counted
+    (count [coll]
+      (.reduce coll inc-rf 0))))

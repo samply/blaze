@@ -40,8 +40,8 @@
 
 (defn- rev-include [db snapshot reference source-tid code]
   (coll/eduction
-   (u/resource-handle-mapper db source-tid)
-   (sp-vr/prefix-keys snapshot code source-tid (bs/size reference) reference)))
+   (u/resource-handle-xf db source-tid)
+   (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
 
 (defn- sp-total
   [db {:keys [base]}]
@@ -306,19 +306,12 @@
     (ac/completed-future (count (p/-execute query batch-db))))
   (-execute [_ batch-db]
     (coll/eduction
-     (mapcat
-      #(index/compartment-query
-        batch-db [patient-c-hash (codec/id-byte-string %)] tid
-        clauses))
+     (mapcat #(index/compartment-query batch-db [patient-c-hash %] tid clauses))
      patient-ids))
   (-execute [_ batch-db start-id]
     (coll/eduction
-     (comp
-      (mapcat
-       #(index/compartment-query
-         batch-db [patient-c-hash (codec/id-byte-string %)] tid
-         clauses))
-      (drop-while #(not= start-id (rh/id %))))
+     (mapcat #(index/compartment-query batch-db [patient-c-hash %] tid clauses
+                                       (codec/id-byte-string start-id)))
      patient-ids))
   (-query-clauses [_]
     (decode-clauses (into [compartment-clause] clauses))))

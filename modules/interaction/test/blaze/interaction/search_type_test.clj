@@ -2144,7 +2144,7 @@
                 {::reitit/match (page-match-of "Condition")
                  :headers {"prefer" (str "handling=" handling)}
                  :path-params (page-path-params page-id-cipher {"code" "0,1" "_count" "2"
-                                                                "__t" "1" "__page-id" "1"})})]
+                                                                "__t" "1" "__page-id" "2"})})]
 
           (is (= 200 status))
 
@@ -2158,7 +2158,7 @@
             (is (= 1 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= (str base-url context-path "/Condition/1")
+            (is (= (str base-url context-path "/Condition/2")
                    (:fullUrl first-entry))))))))
 
   (testing "forward chaining"

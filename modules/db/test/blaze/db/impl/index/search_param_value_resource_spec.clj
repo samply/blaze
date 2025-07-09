@@ -14,7 +14,7 @@
 (s/fdef sp-vr/keys
   :args (s/cat :snapshot :blaze.db.kv/snapshot :start-key byte-string?))
 
-(s/fdef sp-vr/prefix-keys
+(s/fdef sp-vr/index-handles
   :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
                       :c-hash :blaze.db/c-hash
                       :tid :blaze.db/tid
