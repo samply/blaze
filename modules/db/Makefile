@@ -22,6 +22,9 @@ test-coverage: build
 test-coverage-slow: build
 	clojure -M:test:coverage --focus-meta :slow
 
+test-coverage-all: build
+	clojure -M:test:coverage
+
 deps-tree:
 	clojure -X:deps tree
 

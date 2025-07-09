@@ -185,6 +185,9 @@
       (count m)
       (column-family-not-found-anom column-family)))
 
+  (-estimate-scan-size [_ _ _]
+    (ba/unsupported "In-Memory KV Store doesn't support estimating the scan size."))
+
   (-compact [_ column-family]
     (ac/completed-future
      (when-not (get @db column-family)

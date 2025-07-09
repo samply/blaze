@@ -20,6 +20,7 @@
    [blaze.page-store.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [reitit.core :as reitit]
@@ -63,17 +64,45 @@
       (:direct include-defs)
       (assoc :includes (include/add-includes db include-defs matches)))))
 
-(defn- entries [context match-futures include-futures]
+(defn- match-xf [context]
+  (comp (mapcat ac/join) (map (partial search-util/match-entry context))))
+
+(defn- include-xf [context]
+  (comp (mapcat ac/join) (map (partial search-util/include-entry context))))
+
+(defn- render-search-param-code [{:keys [code modifier]}]
+  (cond-> code modifier (str ":" modifier)))
+
+(defn- stats-msg [{:keys [query-type scan-clauses seek-clauses]}]
+  (format
+   (cond->> "SCANS: %s; SEEKS: %s"
+     (= :compartment query-type)
+     (str "TYPE: compartment; "))
+   (if (seq scan-clauses)
+     (str/join ", " (map render-search-param-code scan-clauses))
+     "NONE")
+   (if (seq seek-clauses)
+     (str/join ", " (map render-search-param-code seek-clauses))
+     "NONE")))
+
+(defn- query-plan-outcome [{:blaze/keys [db]} query]
+  (let [plan (d/explain-query db query)]
+    {:fhir/type :fhir/OperationOutcome
+     :issue
+     [{:fhir/type :fhir.OperationOutcome/issue
+       :severity #fhir/code"information"
+       :code #fhir/code"informational"
+       :diagnostics (type/string (stats-msg plan))}]}))
+
+(defn- query-plan-entry [context query]
+  (search-util/outcome-entry context (query-plan-outcome context query)))
+
+(defn- entries
+  [{{:keys [explain?]} :params :as context} query match-futures include-futures]
   (log/trace "build entries")
-  (-> (into
-       []
-       (comp (mapcat ac/join)
-             (map (partial search-util/entry context)))
-       match-futures)
-      (into
-       (comp (mapcat ac/join)
-             (map #(search-util/entry context % search-util/include)))
-       include-futures)))
+  (-> (cond-> [] explain? (conj (query-plan-entry context query)))
+      (into (match-xf context) match-futures)
+      (into (include-xf context) include-futures)))
 
 (defn- pull-matches-xf [{:keys [summary elements]} db]
   (cond
@@ -141,7 +170,7 @@
           (ac/then-apply
            (fn [_]
              (cond->
-              {:entries (entries context match-futures include-futures)
+              {:entries (entries context query match-futures include-futures)
                :next-handle next-match
                :total (ac/join total-future)}
                query
@@ -178,8 +207,8 @@
    :link [(self-link context clauses)]})
 
 (defn- normal-bundle
-  [{{{route-name :name} :data} ::reitit/match :as context} token clauses entries
-   total]
+  [{{{route-name :name} :data} ::reitit/match :as context} token
+   {:keys [entries total clauses]}]
   (cond->
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
@@ -199,14 +228,14 @@
 (defn- search-normal [context]
   (-> (page-data context)
       (ac/then-compose
-       (fn [{:keys [entries next-handle total clauses]}]
-         (if (some-> total zero?)
-           (ac/completed-future (zero-bundle context clauses))
+       (fn [{:keys [next-handle entries clauses] :as page-data}]
+         (if (seq entries)
            (do-sync [token (gen-token! context clauses)]
              (if next-handle
-               (-> (normal-bundle context token clauses entries total)
+               (-> (normal-bundle context token page-data)
                    (update :link conj (next-link context token clauses next-handle)))
-               (normal-bundle context token clauses entries total))))))
+               (normal-bundle context token page-data)))
+           (ac/completed-future (zero-bundle context clauses)))))
       (ac/then-apply ring/response)))
 
 (defn- summary-response [context total clauses]

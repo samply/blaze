@@ -38,7 +38,7 @@
                :fhir/issue "incomplete"))
       (ac/then-apply
        (fn [resources]
-         (mapv (partial search-util/entry context) resources)))))
+         (mapv (partial search-util/match-entry context) resources)))))
 
 (defn- self-link [{:keys [params] :blaze/keys [base-url] ::reitit/keys [match]}]
   {:fhir/type :fhir.Bundle/link

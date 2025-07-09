@@ -1,7 +1,9 @@
 (ns blaze.db.kv.rocksdb
+  (:refer-clojure :exclude [range])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
+   [blaze.byte-string :as bs]
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as kv-p]
    [blaze.db.kv.rocksdb.impl :as impl]
@@ -19,8 +21,8 @@
    [java.nio ByteBuffer]
    [java.util ArrayList]
    [org.rocksdb
-    ColumnFamilyHandle Env LRUCache Priority ReadOptions RocksDB
-    RocksDBException RocksIterator Snapshot Statistics StatsLevel WriteBatch
+    ColumnFamilyHandle Env LRUCache Priority Range ReadOptions RocksDB
+    RocksDBException RocksIterator SizeApproximationFlag Slice Snapshot Statistics StatsLevel WriteBatch
     WriteOptions]))
 
 (set! *warn-on-reflection* true)
@@ -171,6 +173,18 @@
   [store column-family]
   (p/-drop-column-family store column-family))
 
+(defn- range [[start end]]
+  (Range. (Slice. ^bytes (bs/to-byte-array start))
+          (Slice. ^bytes (bs/to-byte-array end))))
+
+(def ^:private approximation-flags
+  (doto ^objects (make-array SizeApproximationFlag 1)
+    (aset 0 SizeApproximationFlag/INCLUDE_FILES)))
+
+(defn- estimate-scan-size [^RocksDB db cfh key-range]
+  (-> (.getApproximateSizes db cfh [(range key-range)] approximation-flags)
+      (aget 0)))
+
 (deftype RocksKvStore [^RocksDB db path ^WriteOptions write-opts cfhs]
   kv-p/KvStore
   (-new-snapshot [_]
@@ -197,6 +211,10 @@
 
   (-estimate-num-keys [store column-family]
     (p/-long-property store column-family "rocksdb.estimate-num-keys"))
+
+  (-estimate-scan-size [_ column-family key-range]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (estimate-scan-size db cfh key-range)))
 
   ;; After the column family has been compacted, all data will have been pushed
   ;; down to the last level containing any data.

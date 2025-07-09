@@ -1,10 +1,12 @@
 (ns blaze.db.impl.search-param.quantity-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string-spec]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.quantity :as spq]
@@ -37,16 +39,16 @@
   (testing "non matching op"
     ;; although a non-matching op isn't allowed in the spec, it could happen at
     ;; runtime, and we have to test that case
-    (st/unstrument `spq/resource-keys)
+    (st/unstrument `spq/index-handles)
 
     (try
-      (spq/resource-keys {} (codec/c-hash "value-quantity") 0 0 {:op :foo})
+      (spq/index-handles {} (codec/c-hash "value-quantity") 0 0 {:op :foo})
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))
 
     (testing "with start-id"
       (try
-        (spq/resource-keys {} (codec/c-hash "value-quantity") 0 0 {:op :foo} 0)
+        (spq/index-handles {} (codec/c-hash "value-quantity") 0 0 {:op :foo} 0)
         (catch Exception e
           (is (= "No matching clause: :foo" (ex-message e))))))))
 
@@ -143,6 +145,18 @@
               (value-quantity-param search-param-registry) nil ["ne23"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))))
+
+(deftest estimated-scan-size-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (sr/get search-param-registry "value-quantity" "Observation")]
+      (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
+
+(deftest ordered-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (sr/get search-param-registry "value-quantity" "Observation")]
+      (is (false? (p/-supports-ordered-index-handles search-param)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil))))))
 
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))

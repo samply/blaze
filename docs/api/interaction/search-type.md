@@ -9,7 +9,7 @@ POST [base]/[type]/_search
 
 | Name             | Since | Description                                                     |
 |------------------|-------|-----------------------------------------------------------------|
-| `_sort`          |       | see Sorting                                                     |
+| `_sort`          |       | see [Sorting](#sorting)                                         |
 | `_count`         |       | the default page size is 50 and the maximum page size is 10.000 |
 | `_include`       |       | supported, except the wildcard `*`                              |
 | `_revinclude`    |       | supported, except the wildcard `*`                              |
@@ -18,6 +18,7 @@ POST [base]/[type]/_search
 | `_elements`      |       | fully supported                                                 |
 | `_contained`     |       | not supported                                                   |
 | `_containedType` |       | not supported                                                   |
+| `__explain`      | 1.1.0 | see [Query Plan](#query-plan)                                   |
 
 ## _profile
 
@@ -54,6 +55,47 @@ Here the `Patient/` prefix in the reference ensures that the `id` is a patient I
 ```
 [base]/[type]?[token-param]=[system]|[code]&[reference-param]=Patient/[id]
 ```
+
+### Query Plan
+
+If the `__explain` search result parameter is set to `true`, the server returns an `OperationOutcome` as the first entry in the result bundle. That `OperationOutcome` contains a query plan in its `diagnostics` field.
+
+The query plan has the following format:
+
+```
+[TYPE: <type>;] SCANS: <scans>; SEEKS: <seeks>
+```
+
+Where:
+
+*   `TYPE`: (Optional) The type of query execution. The only possible value is `compartment`.
+*   `SCANS`: A list of search parameters that will be resolved by index scanning.
+*   `SEEKS`: A list of search parameters that will be resolved by index seeking.
+
+Generally, `token` type search parameters are placed in `SCANS`, while others are placed in `SEEKS`. If a query has multiple `token` search parameters, the most specific one (the one with the smallest index segment) is chosen for `SCANS`, and the rest are placed in `SEEKS`. Blaze uses internal statistics to determine the size of the index segments.
+
+A `scan` is more performant than a `seek`. The query execution will scan the index for the parameter in `SCANS` and then filter those results by seeking for the parameters in `SEEKS`.
+
+**Example 1**
+
+A `GET` request to `/Observation?status=final&date=2025&__explain=true` will result in the following `diagnostics` string in the `OperationOutcome`:
+
+```
+SCANS: status; SEEKS: date
+```
+
+The `status` search parameter is of type `token`, while the `date` search parameter is of type `date`. Therefore, `status` is used for scanning the index. The query execution will scan the `status` index for all Observation resources with a status of `final` and then check if the `effectiveDateTime` is in `2025` for each of those resources. This allows for efficient pagination, as subsequent pages can be retrieved quickly by seeking to the correct starting point in the `status` index.
+
+**Example 2**
+
+A `GET` request to `/Observation?status=final&code=http://loinc.org|9843-4&__explain=true` will result in the following `diagnostics` string in the `OperationOutcome`:
+
+```
+SCANS: code; SEEKS: status
+```
+
+Both the `status` and `code` search parameters are of type `token`. However, the index segment for the LOINC code `9843-4` is much smaller than for the status `final`, because fewer Observation resources contain that LOINC code. The query execution will scan the `code` index for all Observation resources with the code `http://loinc.org|9843-4` and then check for each of those resources if the `status` is `final`. This allows for efficient pagination, as subsequent pages can be retrieved quickly by seeking to the correct starting point in the `code` index.   
+
 
 [1]: <https://semver.org>
 [2]: <https://en.wikipedia.org/wiki/Coordinated_Universal_Time>

@@ -8,12 +8,25 @@
 (def ^:const include
   #fhir/BundleEntrySearch{:mode #fhir/code"include"})
 
-(defn entry
-  {:arglists '([context resource] [context resource mode])}
-  ([context resource]
-   (entry context resource match))
-  ([context {:fhir/keys [type] :keys [id] :as resource} mode]
-   {:fhir/type :fhir.Bundle/entry
-    :fullUrl (fhir-util/instance-url context (name type) id)
-    :resource resource
-    :search mode}))
+(def ^:const outcome
+  #fhir/BundleEntrySearch{:mode #fhir/code"outcome"})
+
+(defn full-url [context {:fhir/keys [type] :keys [id]}]
+  (fhir-util/instance-url context (name type) id))
+
+(defn match-entry [context resource]
+  {:fhir/type :fhir.Bundle/entry
+   :fullUrl (full-url context resource)
+   :resource resource
+   :search match})
+
+(defn include-entry [context resource]
+  {:fhir/type :fhir.Bundle/entry
+   :fullUrl (full-url context resource)
+   :resource resource
+   :search include})
+
+(defn outcome-entry [_ resource]
+  {:fhir/type :fhir.Bundle/entry
+   :resource resource
+   :search outcome})
