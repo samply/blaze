@@ -635,8 +635,26 @@
 
     (is (= 1 (kv/estimate-num-keys db :default)))))
 
+(def ^:private full-key-range
+  [#blaze/byte-string"00" #blaze/byte-string"FF"])
+
 (defn int-ba [i]
   (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i)))))
+
+(deftest estimate-storage-scan-test
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    (is (zero? (kv/estimate-scan-size db :default full-key-range)))
+
+    (given (kv/estimate-scan-size db :foo full-key-range)
+      ::anom/category := ::anom/not-found
+      ::anom/message := "Column family `foo` not found."))
+
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    (run!
+     #(kv/put! db [[:default (int-ba %) (apply ba (range 10000))]])
+     (range 10000 20000))
+
+    (is (pos? (kv/estimate-scan-size db :default full-key-range)))))
 
 (deftest compact-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]

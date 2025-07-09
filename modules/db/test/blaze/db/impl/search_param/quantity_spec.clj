@@ -12,7 +12,7 @@
    [blaze.fhir.spec.type.system-spec]
    [clojure.spec.alpha :as s]))
 
-(s/fdef spq/resource-keys
+(s/fdef spq/index-handles
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid

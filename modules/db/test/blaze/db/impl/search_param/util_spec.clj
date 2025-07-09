@@ -14,12 +14,6 @@
   :args (s/cat :value string?)
   :ret (s/tuple keyword? string?))
 
-(s/fdef u/resource-handle-mapper
-  :args (s/cat :batch-db :blaze.db.impl/batch-db :tid :blaze.db/tid))
-
-(s/fdef u/resource-handle-chunk-mapper
-  :args (s/cat :batch-db :blaze.db.impl/batch-db :tid :blaze.db/tid))
-
 (s/fdef u/reference-resource-handle-mapper
   :args (s/cat :batch-db :blaze.db.impl/batch-db))
 

@@ -2,7 +2,7 @@
 
 ## Systems
 
-The following systems were used for performance evaluation:
+The following systems, with increasing resources, were used for the performance evaluation:
 
 | System | Provider | CPU        | Cores |     RAM |  SSD | Heap Mem | Block Cache | Resource Cache ¹ | Background Jobs ² | Indexer Threads ³ |
 |--------|----------|------------|------:|--------:|-----:|---------:|------------:|-----------------:|------------------:|------------------:|

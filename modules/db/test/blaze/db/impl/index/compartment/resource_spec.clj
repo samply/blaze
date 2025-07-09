@@ -6,6 +6,7 @@
    [blaze.coll.spec :as cs]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec.spec]
+   [blaze.db.impl.index :as-alias index]
    [blaze.db.impl.index.compartment.resource :as cr]
    [blaze.db.impl.iterators-spec]
    [blaze.db.impl.search-param.spec]
@@ -17,7 +18,7 @@
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (cs/coll-of :blaze.db/resource-handle))
+  :ret (cs/coll-of ::index/handle))
 
 (s/fdef cr/index-entry
   :args (s/cat :compartment :blaze.db/compartment

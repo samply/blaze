@@ -46,6 +46,11 @@
   [summary query-params]
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
+(defn- explain?
+  "Returns true if a query plan is requested."
+  [{explain "__explain"}]
+  (= "true" explain))
+
 (defn- total [{total "_total"}]
   (when (= "accurate" total)
     total))
@@ -68,6 +73,7 @@
           :summary? (summary? summary query-params)
           :summary summary
           :elements (fhir-util/elements query-params)
+          :explain? (explain? query-params)
           :page-size (fhir-util/page-size query-params)
           :page-type (fhir-util/page-type query-params)
           :page-id (fhir-util/page-id query-params)

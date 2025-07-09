@@ -2,11 +2,11 @@
 
 ## Overview
 
-The database architecture of Blaze is influenced by [Datomic][1] and [XTDB][2]. Both databases have a strong foundation in functional programming and [persistent data structures][3] leading to immutable databases.
+The database architecture of Blaze is influenced by [Datomic][1] and [XTDB][2]. Both databases have a strong foundation in functional programming and [persistent data structures][3], leading to immutable databases.
 
 ## Immutable Database
 
-The idea behind an immutable database is, that the whole database content at a point in time acts like one big immutable value. The database itself evolves over time by transitioning database values through transactions. The time is modelled explicitly, assigning each database value a value `t` (logical timestamp) which increases monotonously.
+The core concept behind Blaze's database is immutability. The entire database at a specific point in time is treated as a single, immutable value. The database evolves over time by transitioning from one immutable value to the next through transactions. Time is modeled explicitly, with each database value being assigned a logical timestamp `t` that increases monotonically.
 
 ```
 +-------------+                   +-------------+
@@ -14,27 +14,33 @@ The idea behind an immutable database is, that the whole database content at a p
 +-------------+                   +-------------+
 ```
 
-Database values are not copied entirely from one version to the next. Instead, like in persistent data structures, structural sharing is used. As such each database value can be seen as a complete copy of the database from the outside, but at the inside, the implementation is efficient enough to be feasible nowadays.
+Instead of copying the entire database for each new version, Blaze uses structural sharing, a technique common in persistent data structures. This means that while each database value appears as a complete, independent snapshot from the outside, the underlying implementation is highly efficient.
 
-**Note:** In contrast, relational databases, which where designed in the 80's, use an update in-place model, because storage was expensive then.
+> [!NOTE] 
+> This contrasts with traditional relational databases, which were designed in an era of expensive storage and therefore use an update-in-place model.
 
-A similar technique is [copy-on-write][4], used in many areas of computing, like modern filesystems.
+A similar technique, [copy-on-write][4], is used in many areas of computing, including modern filesystems.
 
-Having a database architecture which consists of immutable database values evolving over time, where past values are kept either forever or at least sufficiently long, has the property that reads don't need coordination. Because database values can be referenced by `t`, an arbitrary number of queries, spread over arbitrary periods of time, can access the same immutable snapshot of the database. In case data is replicated over multiple nodes, queries can even run in parallel, all accessing the same coherent database value.
+This immutable architecture has a significant advantage: reads do not require coordination. Because each database value can be referenced by its unique `t`, any number of queries can access the same immutable snapshot of the database over any period. When data is replicated across multiple nodes, queries can run in parallel, all accessing the same coherent database value.
 
-As one example, in paging of FHIR searchset or history bundles, Blaze simply refers to the timestamp value `t` of the first page, in order to calculate every remaining page based on the same stable database value.
+For example, when paging through FHIR search results or history bundles, Blaze simply refers to the `t` of the first page to ensure that all subsequent pages are calculated against the same stable database value.
 
-In practise, each FHIR RESTful API read request will obtain the newest known database value and use that for all queries necessary to answer the request.
+In practice, each FHIR RESTful API read request obtains the most recent database value and uses that for all queries necessary to fulfill the request.
 
 ## Logical Data Model
 
-Datomic uses a fact based data model, where each fact is a triple `(entity, attribute, value)` for example `(<patient-id>, birthDate, 2020)`. This model has one big advantage, the minimum change between two database values will be a fact, which is quite small. The disadvantage is, that bigger structures like resources have to be reconstructed from individual facts. In addition to that, because in FHIR, updates are always whole resources, the actual changed facts have to be determined by diffing the old and new resource.
+Blaze uses a document-based data model, similar to document stores like [MongoDB][5] and XTDB. In this model, each version of a FHIR resource is a document.
 
-Another data model is the document model used in document stores like [MongoDB][5] but also XTDB. With documents, the smallest structure in the database is a document. Blaze uses a document data model where each resource version is a document. Because Blaze uses resource versions as documents, instead of only the current version, documents can't be indexed by resource identifier. Instead, as XTDB does, content hashes will be used. Aside from the version based document store, several indices are used to build up the database values and enable queries.
+This is different from a fact-based model like Datomic's, where each fact is a triple of `(entity, attribute, value)`. While the fact-based model allows for very granular changes, it requires reconstructing larger structures like resources from individual facts. In FHIR, where updates are always whole resources, a document model is a more natural fit.
+
+Because Blaze stores all versions of a resource, not just the current one, resources cannot be indexed solely by their logical ID. Instead, Blaze uses content hashes to identify each unique resource version. In addition to the versioned document store, several indices are used to build the database values and enable efficient queries.
 
 ## Indices
 
-There are two different sets of indices - the first set depends on a database value at time `t` and the second set depends only on the content hash of resource versions. The former set of indices is used to build up the database values, whereas the latter set is used to enable queries based on search parameters.
+There are two main categories of indices in Blaze:
+
+*   **Transaction Indices**: These indices depend on a database value at a specific time `t` and are used to construct the database values themselves.
+*   **Search Param Indices**: These indices are independent of `t` and point directly to resource versions by their content hash, enabling efficient searching.
 
 ### Transaction Indices
 
@@ -52,13 +58,13 @@ There are two different sets of indices - the first set depends on a database va
 
 #### ResourceAsOf
 
-The `ResourceAsOf` index is the primary index which maps the resource identifier `(type, id)` together with the `t` to the `content-hash` of the resource version. In addition to that, the index contains the number of changes `num-changes` to the resource, the operator `op` of the change leading to the index entry and an optional `purged-at` point in time were the version was purged.
+The `ResourceAsOf` index is the primary index for looking up resources. It maps a resource's identifier (`type`, `id`) and a logical timestamp `t` to the `content-hash` of that resource version. It also stores the number of changes (`num-changes`) to the resource, the operation (`op`) that created this version, and an optional `purged-at` timestamp.
 
-The `ResourceAsOf` index is used to access the version of a resource at a particular point in time `t`. In other words, given a point in time `t`, the database value with that `t`, allows to access the resource version at that point in time by its identifier. Because the index only contains entries with `t` values of changes to each resource, the most current resource version is determined by querying the index for the greatest `t` less or equal to the `t` of the database value.
+This index is used to access the version of a resource at a particular point in time `t`. To find the most current version of a resource for a given `t`, the database queries the index for the greatest `t` less than or equal to the database's `t`.
 
-Index entries with a `purged-at` point in time at or before the current `t` of a database are not part of that database. 
+Index entries with a `purged-at` timestamp at or before the current `t` of a database are not considered part of that database.
 
-##### Example 
+##### Example
 
 The following `ResourceAsOf` index:
 
@@ -74,7 +80,7 @@ provides the basis for the following database values:
 | t   | type    | id  | content-hash |
 |-----|---------|-----|--------------|
 | 1   | Patient | 0   | ba9c9b24     |
-| 2   | Patient | 0   | ba9c9b24     | 
+| 2   | Patient | 0   | ba9c9b24     |
 | 2   | Patient | 1   | 6744ed32     |
 | 3   | Patient | 0   | b7e3e5f8     |
 | 3   | Patient | 1   | 6744ed32     |
@@ -82,45 +88,46 @@ provides the basis for the following database values:
 
 The database value with `t=1` contains one patient with `id=0` and content hash `ba9c9b24`, because the second patient was created later at `t=2`. The index access algorithm will not find an entry for the patient with `id=1` on a database value with `t=1` because there is no index key with `type=Patient`, `id=1` and `t<=1`. However, the database value with `t=2` will contain the patient with `id=1` and additionally contains the patient with `id=0` because there is a key with `type=Patient`, `id=0` and `t<=2`. Next, the database value with `t=3` still contains the same content hash for the patient with `id=1` and reflects the update on patient with `id=0` because the key `(Patient, 0, 3)` is now the one with the greatest `t<=3`, resulting in the content hash `b7e3e5f8`. Finally, the database value with `t=4` doesn't contain the patient with `id=0` anymore, because it was deleted. As can be seen in the index, deleting a resource is done by adding the information that it was deleted at some point in time.
 
-In addition to a direct resource lookup, the `ResourceAsOf` index is used for listing all versions of a particular resource, listing all resources of a particular type and listing all resources (of all types). Listings are done by scanning through the index and for the non-history case, skipping versions not appropriate for the `t` of the database value. 
+In addition to direct resource lookups, the `ResourceAsOf` index is used for listing all versions of a particular resource, all resources of a particular type, and all resources in the database. Listings are done by scanning through the index and for the non-history case, skipping versions not appropriate for the logical timestamp `t` of the database value.
 
 #### TypeAsOf
 
-The `TypeAsOf` index contains the same information as the `ResourceAsOf` index with the difference that the components of the key are ordered `type`,  `t` and `id` instead of `type`, `id` and `t`. The index is used for listing all versions of all resources of a particular type. Such history listings start with the `t` of the database value going into the past. This is done by not only choosing the resource version with the latest `t` less or equal the database values `t` but instead using all older versions. Such versions even include deleted versions because in FHIR it is allowed to bring back a resource to a new life after it was already deleted. The listing is done by simply scanning through the index in reverse. Because the key is ordered by `type`,  `t` and  `id`, the entries will be first ordered by time, newest first, and second by resource identifier.
+The `TypeAsOf` index contains the same information as the `ResourceAsOf` index, but with a different key order: `type`, `t`, and `id`. This ordering is optimized for listing the history of all resources of a particular type in reverse chronological order.
 
 #### SystemAsOf
 
-In the same way the `TypeAsOf` index uses a different key ordering in comparison to the `ResourceAsOf` index, the `SystemAsOf` index will use the key order `t`, `type` and `id` in order to provide a global time axis order by resource type and by identifier secondarily.
+Similarly, the `SystemAsOf` index uses the key order `t`, `type`, and `id` to provide a global, time-ordered view of all resources in the database.
 
 #### PatientLastChange
 
-The `PatientLastChange` index contains all changes to resources in the compartment of a particular Patient on reverse chronological order. Using the `PatientLastChange` index it's possible to detect the `t` of the last change in a Patient compartment. The CQL cache uses this index to invalidate cached results of expressions in the Patient context. 
+The `PatientLastChange` index tracks all changes to resources within a patient's compartment in reverse chronological order. This allows for efficient detection of the last change in a patient's compartment, which is used by the CQL cache to invalidate cached results.
 
 #### TxSuccess
 
-The `TxSuccess` index contains the real point in time (as `java.time.Instant`) of a successful transaction. In other words, this index maps each `t` which is just a monotonically increasing number to a real point in time.
+The `TxSuccess` index maps the logical timestamp `t` to the real-world `java.time.Instant` of a successful transaction.
 
-**Note:** Blaze is not bitemporal, like XTDB is. This means that the time recorded in the history of resources is the transaction time, not a business time. This also means that one can't fix the history, because the history only reflects the transactions happened.
+> [!NOTE] 
+> Blaze is not bitemporal like XTDB. The time recorded in the history of resources is the transaction time, not a business time. This means that the history reflects the sequence of transactions as they happened and cannot be altered.
 
 #### TxError
 
-The `TxError` index will keep track of all failed transactions, storing the anomaly about the failure reason. It is used to be able to return this anomaly as result of failing transactions.
+The `TxError` index stores information about failed transactions, including the reason for the failure.
 
 #### TByInstant
 
-The `TByInstant` index is used to determine the `t` of a real point in time. This functionality is needed to support the `since` parameter in history queries.
+The `TByInstant` index is the reverse of `TxSuccess`, mapping a real-world `java.time.Instant` to a logical timestamp `t`. This is used to support the `_since` parameter in history queries.
 
 #### TypeStats
 
-The `TypeStats` index keeps track of the total number of resources, and the number of changes to resources of a particular type at a particular point in time `t`. This statistic is used to populate the total count property in type listings and type history listings in case there are no filters applied.
+The `TypeStats` index keeps track of the total number of resources and the number of changes for each resource type at a given `t`. This is used to efficiently populate the total count in type-level search and history queries.
 
 #### SystemStats
 
-The `SystemStats` index keeps track of the total number of resources, and the number of changes to all resources at a particular point in time `t`. This statistic is used to populate the total count property in system listings and system history listings in case there are no filters applied.
+The `SystemStats` index does the same as `TypeStats`, but for the entire system, providing total counts for system-level queries.
 
 ### Search Param Indices
 
-The indices not depending on `t` directly point to the resource versions by their content hash. 
+These indices are independent of `t` and are used to find resources based on their content.
 
 | Name                                | Key Parts                                                      | Value |
 |-------------------------------------|----------------------------------------------------------------|-------|
@@ -133,15 +140,15 @@ The indices not depending on `t` directly point to the resource versions by thei
 
 #### SearchParamValueResource
 
-The `SearchParamValueResource` index is used to find resources based on search parameter values. It contains all values from resources defined in search parameters with the value followed by the resource id and hash. The components of its key are:
+The `SearchParamValueResource` index is the primary index for searching. It maps a search parameter and its value to the resources that contain that value. The key is composed of:
 
-* `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
-* `type` - a 4-byte hash of the resource type
-* `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
-* `id` - the logical id of the resource
- * `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+*   `search-param`: A 4-byte hash of the search parameter's code.
+*   `type`: A 4-byte hash of the resource type.
+*   `value`: The encoded value of the search parameter.
+*   `id`: The logical ID of the resource.
+*   `hash-prefix`: A 4-byte prefix of the resource's content hash.
 
-The way the `SearchParamValueResource` index is used, depends on the type of the search parameter. The following sections will explain this in detail for each type:
+The usage of this index depends on the search parameter's type.
 
 ##### Number
 
@@ -149,7 +156,7 @@ The way the `SearchParamValueResource` index is used, depends on the type of the
 
 ##### Date/DateTime
 
-Search parameters of type `date` are used to search in data elements with date/time and period data types. All date types stand for an interval of a start point in time up to an end point in time. So date search uses interval arithmetic to find hits. For each value of a resource, the lower bound is encoded followed by the upper bound. Both bounds are encodes as numbers representing the seconds since epoch. UTC is used for local dates. The lower bound is separated by an null byte from the upper bound so that all resources are sorted by the lower bound first and the upper bound second.  
+Search parameters of type `date` are used to search in data elements with date/time and period data types. All date types stand for an interval of a start point in time up to an end point in time. So date search uses interval arithmetic to find hits. For each value of a resource, the lower bound is encoded followed by the upper bound. Both bounds are encodes as numbers representing the seconds since epoch. UTC is used for local dates. The lower bound is separated by an null byte from the upper bound so that all resources are sorted by the lower bound first and the upper bound second.
 
 For the different modifier, the search works the following way:
 
@@ -165,21 +172,30 @@ We start by scanning through the index starting at the lower bound of `q` and en
 
 **TODO: continue...**
 
+###### Example
+
+| search-param | type        | value                  | id | hash-prefix |
+|--------------|-------------|------------------------|----|-------------|
+| date         | Observation | 2025-01-01, 2025-01-31 | 1  | 6744ed32    |
+| date         | Observation | 2025-02-01, 2025-02-31 | 2  | b7e3e5f8    |
+| date         | Observation | 2025-03-01, 2025-03-31 | 1  | ba9c9b24    |
+
+Search for `2025` results in the index handles `[1, [6744ed32]]`, `[2, [b7e3e5f8]]` and `[1, [ba9c9b24]]`. Note that the index handles are not distinct and not ordered.
+
 ##### String
 
 **TODO: continue...**
 
 ##### Token
 
-Search parameters of type `token` are used for exact matches of terminology codes or identifiers potentially scoped by a URI which represents the code system or naming system.
+Search parameters of type `token` are used for exact matches of codes and identifiers. To support various search syntaxes, the value is encoded in four ways:
 
-In order to facilitate different forms of searches specified in the [FHIR Spec][6], the value is encoded in the following 4-ways:
-* `code` - the code without system
-* `system|code` - the code scoped by the system
-* `|code` - the code if the resource doesn't specify a system
-* `system|` - the system independent of the code, used to find all resources with any code in that system
+*   `code`: The code without system.
+*   `system|code`: The code scoped by the system.
+*   `|code`: The code if the resource doesn't specify a system.
+*   `system|`: The system independent of the code, used to find all resources with any code in that system.
 
-After concatenation, the strings are hashed with the [Murmur3][7] algorithm in its 32-bit variant, yielding a 4-byte wide value. The hashing is done to save space and ensure that all values are of the same length.
+These strings are then hashed using the 32-bit [Murmur3][7] algorithm to create a fixed-length value, saving space and improving performance.
 
 ###### Example
 
@@ -196,6 +212,14 @@ In case one searches for female patients, Blaze will seek into the index with th
 * `[2, b7e3e5f8]`.
 
 That tuples are further processed against the `ResourceAsOf` index in order to check whether the resource versions are valid regarding to the current `t`.
+
+| search-param | type        | value       | id | hash-prefix |
+|--------------|-------------|-------------|----|-------------|
+| status       | Observation | preliminary | 1  | 6744ed32    |
+| status       | Observation | preliminary | 1  | ba9c9b24    |
+| status       | Observation | final       | 1  | b7e3e5f8    |
+
+Search for `preliminary` results in an index handle of `[1 [6744ed32 ba9c9b24]]`. Search for `final` results in an index handle of `[1 [b7e3e5f8]]`. The union will give a index handle of `[1 [6744ed32 b7e3e5f8 ba9c9b24]]`.
 
 ##### Reference
 
@@ -219,38 +243,42 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 
 #### ResourceSearchParamValue
 
-The `ResourceSearchParamValue` index is used to decide whether a resource contains a search parameter based value. It contains all values from resources defined in search parameters with the resource id and hash followed by the value. The components of its key are:
-
-* `type` - a 4-byte hash of the resource type
-* `id` - the logical id of the resource
-* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
-* `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
-* `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
+The `ResourceSearchParamValue` index is used to verify if a resource contains a specific search parameter value. Its key is ordered by resource (`type`, `id`, `hash-prefix`) first, then by search parameter and value.
 
 #### CompartmentSearchParamValueResource
 
-The `CompartmentSearchParamValueResource` index is used to find resources of a particular compartment based on search parameter values.
+This index is used to find resources within a specific compartment that match a given search parameter value.
 
 #### CompartmentResourceType
 
-The `CompartmentResourceType` index is used to find all resources that belong to a certain compartment. The components of its key are:
+This index is used to find all resources of a specific type that belong to a given compartment. The components of its key are:
 
- * `comp-code` - a 4-byte hash of the compartment code, ex. `Patient`
- * `comp-id` - the logical id of the compartment, ex. the logical id of the Patient
- * `type` - a 4-byte hash of the resource type of the resource that belongs to the compartment, ex. `Observation`
- * `id` - the logical id of the resource that belongs to the compartment, ex. the logical id of the Observation
+* `comp-code` - a 4-byte hash of the compartment code, ex. `Patient`
+* `comp-id` - the logical id of the compartment, ex. the logical id of the Patient
+* `type` - a 4-byte hash of the resource type of the resource that belongs to the compartment, ex. `Observation`
+* `id` - the logical id of the resource that belongs to the compartment, ex. the logical id of the Observation
 
 #### ActiveSearchParams
 
-Currently not used.
+This index is currently not used.
 
 ## Transaction Handling
 
-* a transaction bundle is POST'ed to one arbitrary node
-* this node submits the transaction commands to the central transaction log
-* all nodes (including the transaction submitter) receive the transaction commands from the central transaction log
+1.  A transaction bundle is POSTed to an arbitrary node.
+2.  This node submits the transaction commands to a central transaction log.
+3.  All nodes (including the submitting node) receive the transaction commands from the log and apply them to their local state.
 
 ### Transaction Commands
+
+Blaze supports several transaction commands:
+
+*   **`create`**: Creates a new resource.
+*   **`put`**: Creates or updates a resource.
+*   **`keep`**: An optimized `put` for cases where the resource is unlikely to have changed.
+*   **`delete`**: Deletes a resource.
+*   **`conditional-delete`**: Deletes resources based on search criteria.
+*   **`delete-history`**: Deletes the history of a resource.
+*   **`patient-purge`**: Removes all data associated with a patient.
 
 ### Create
 
@@ -283,7 +311,7 @@ The `put` command is used to create or update a resource.
 
 ### Keep
 
-The `keep` command can be used instead of a `put` command if it's likely that the update of the resource will result in no changes. In that sense, the `keep` command is an optimization of the `put` command that has to be retried if it fails.   
+The `keep` command can be used instead of a `put` command if it's likely that the update of the resource will result in no changes. In that sense, the `keep` command is an optimization of the `put` command that has to be retried if it fails.
 
 #### Properties
 
@@ -346,6 +374,73 @@ The `patient-purge` command is used to remove all current and historical version
 |------------|----------|-----------|----------------------------------|
 | id         | yes      | string    | patient id                       |
 | check-refs | no       | boolean   | use referential integrity checks |
+
+## Queries
+
+### Type Query
+
+A type query retrieves all resources of a specific type that match a set of search parameter clauses. The execution of a type query is a two-phase process: query planning and query execution.
+
+#### Query Planning
+
+The goal of the query planning phase is to find the most efficient way to execute the query. This is done by splitting the search parameter clauses into two groups:
+
+*   **SCANS**: A small set of clauses that will be used to scan an index.
+*   **SEEKS**: The remaining clauses that will be used to filter the results from the scan.
+
+The query planner tries to find the clause with the highest selectivity for the `SCANS` group. The selectivity of a clause is determined by the type of the search parameter and the values being searched for.
+
+Generally, search parameters of type `token` are good candidates for `SCANS` because they often have a high selectivity. Other types like `date` or `quantity` are usually placed in the `SEEKS` group.
+
+If a query contains multiple `token` search parameters, the query planner estimates the size of the index segment that needs to be scanned for each of them. The clause with the smallest estimated scan size is chosen for the `SCANS` group. Other `token` clauses might be added to the `SCANS` group if their estimated scan size is not much larger than the smallest one.
+
+#### Query Execution
+
+After the query planning is complete, the query is executed. The execution distinguishes between index scans and index seeks.
+
+##### Index Scan
+
+The query execution starts by scanning the `SearchParamValueResource` index for all **index handles** that match the clauses in the `SCANS` group. An index handle is a lightweight pointer to a resource, containing the resource ID and a collection of hash prefixes. This is a continuous read of a segment of the index, resulting in a stream of index handles.
+
+###### Union and Intersection of Scans
+
+The index scan becomes more complex if multiple values are supplied for one search parameter or if multiple search parameters are used for the scan.
+
+*   **Union of Scans (Logical OR)**: If a search parameter in the `SCANS` group has multiple values (e.g. `(d/type-query db "Patient" [["gender" "male" "female"]])`), the query execution will perform an index scan for each value. The individual streams of index handles are then combined into a single stream by a **stream union** operation. The resulting stream contains all index handles from all scans, with duplicates removed.
+
+*   **Intersection of Scans (Logical AND)**: If there are multiple search parameters in the `SCANS` group (e.g. `(d/type-query db "Observation" [["status" "final"] ["code" "..."]])`), the query execution will perform an index scan for each search parameter. The individual streams of index handles are then combined into a single stream by a **stream intersection** operation. The resulting stream contains only those index handles that are present in all scanned streams.
+
+##### Index Seek
+
+For each **index handle** from the index scan, the query execution will then check if it also matches the clauses in the `SEEKS` group. This is also done using index seeks, but instead of looking up values in the `SearchParamValue-Resource` index, it uses the `ResourceSearchParamValue` index to efficiently verify if a given resource (represented by its index handle) has the required values for the `SEEKS` clauses.
+
+A scan is more performant than many individual seeks. Therefore, the query planner tries to minimize the number of seeks by selecting the most specific clause for the scan, which will produce the smallest number of index handles that need to be checked in the second phase.
+
+Finally, the index handles that survive the filtering process are converted into full **resource handles**. A resource handle is a more detailed pointer to a resource version, containing not only the resource ID and hash, but also the logical timestamp `t` of that version. This conversion requires an additional seek into the `ResourceAsOf` index for each index handle. This final seek is crucial because it guarantees that the returned resources are consistent with the state of the database at the specific point in time (`t`) of the query.
+
+#### Example
+
+Consider the following query:
+
+```clojure
+(d/type-query db "Observation" [["status" "final"] ["code" "http://loinc.org|9843-4"]])
+```
+
+Both `status` and `code` are `token` search parameters. The query planner will estimate the number of Observation resources with `status=final` and the number of Observation resources with `code=http://loinc.org|9843-4`. Let's assume that there are far fewer observations with that specific LOINC code than observations with the status `final`.
+
+The query plan will be:
+
+*   **SCANS**: `code=http://loinc.org|9843-4`
+*   **SEEKS**: `status=final`
+
+The query execution will then:
+
+1.  Scan the `SearchParamValueResource` index for all Observation **index handles** with `code=http://loinc.org|9843-4`.
+2.  For each of these **index handles**, it will perform a seek in the `ResourceSearchParamValue` index to check if the resource has a `status` of `final`.
+3.  The surviving **index handles** are then converted to **resource handles**.
+
+This is much more efficient than scanning all observations with `status=final` and then checking the code for each of them.
+
 
 [1]: <https://www.datomic.com>
 [2]: <https://xtdb.com>

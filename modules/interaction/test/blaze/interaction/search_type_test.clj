@@ -2144,7 +2144,7 @@
                 {::reitit/match (page-match-of "Condition")
                  :headers {"prefer" (str "handling=" handling)}
                  :path-params (page-path-params page-id-cipher {"code" "0,1" "_count" "2"
-                                                                "__t" "1" "__page-id" "1"})})]
+                                                                "__t" "1" "__page-id" "2"})})]
 
           (is (= 200 status))
 
@@ -2158,7 +2158,7 @@
             (is (= 1 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= (str base-url context-path "/Condition/1")
+            (is (= (str base-url context-path "/Condition/2")
                    (:fullUrl first-entry))))))))
 
   (testing "forward chaining"
@@ -2772,3 +2772,270 @@
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"incomplete"
             [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))
+
+(deftest handler-query-stats-test
+  (with-handler [handler]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :status #fhir/code"final"
+             :code #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri"http://loinc.org"
+                        :code #fhir/code"94564-2"}]}
+             :subject #fhir/Reference{:reference "Patient/0"}
+             :effective #fhir/dateTime"2025"}]]]
+
+    (testing "one unknown search param"
+      (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+            @(handler
+              {::reitit/match (match-of "Observation")
+               :params {"foo" "bar" "__explain" "true"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right resource"
+          (given (:resource first-entry)
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"information"
+            [:issue 0 :code] := #fhir/code"informational"
+            [:issue 0 :diagnostics] := #fhir/string"SCANS: NONE; SEEKS: NONE"))
+
+        (testing "the second entry has the right resource"
+          (given (:resource second-entry)
+            :fhir/type := :fhir/Observation
+            :id := "0"))))
+
+    (testing "one token search param"
+      (testing "with match"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"status" "final" "__explain" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"information"
+              [:issue 0 :code] := #fhir/code"informational"
+              [:issue 0 :diagnostics] := #fhir/string"SCANS: status; SEEKS: NONE"))
+
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "0"))))
+
+      (testing "without match"
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"status" "preliminary" "__explain" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"information"
+              [:issue 0 :code] := #fhir/code"informational"
+              [:issue 0 :diagnostics] := #fhir/string"SCANS: status; SEEKS: NONE"))))
+
+      (testing "with modifier"
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"_profile:below" "foo" "__explain" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"information"
+              [:issue 0 :code] := #fhir/code"informational"
+              [:issue 0 :diagnostics] := #fhir/string"SCANS: _profile:below; SEEKS: NONE")))))
+
+    (testing "two token search params"
+      (testing "with match"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"status" "final" "code" "94564-2" "__explain" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"information"
+              [:issue 0 :code] := #fhir/code"informational"
+              [:issue 0 :diagnostics] := #fhir/string"SCANS: status, code; SEEKS: NONE"))
+
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "0")))))
+
+    (testing "one token and one date search param"
+      (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+            @(handler
+              {::reitit/match (match-of "Observation")
+               :params {"status" "final" "date" "2025" "__explain" "true"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the entry has the right resource"
+          (given (:resource first-entry)
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"information"
+            [:issue 0 :code] := #fhir/code"informational"
+            [:issue 0 :diagnostics] := #fhir/string"SCANS: status; SEEKS: date"))
+
+        (testing "the second entry has the right resource"
+          (given (:resource second-entry)
+            :fhir/type := :fhir/Observation
+            :id := "0"))))
+
+    (testing "patient compartment search"
+      (testing "one token search param"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"patient" "0" "code" "http://loinc.org|94564-2" "__explain" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"information"
+              [:issue 0 :code] := #fhir/code"informational"
+              [:issue 0 :diagnostics] := #fhir/string"TYPE: compartment; SCANS: code; SEEKS: NONE"))
+
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "0"))))
+
+      (testing "one unindexed token search param"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"patient" "0" "code" "94564-2" "__explain" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"information"
+              [:issue 0 :code] := #fhir/code"informational"
+              [:issue 0 :diagnostics] := #fhir/string"TYPE: compartment; SCANS: NONE; SEEKS: code"))
+
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "0"))))
+
+      (testing "one token and one date search param"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"patient" "0" "code" "http://loinc.org|94564-2" "date" "2025" "__explain" "true"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"information"
+              [:issue 0 :code] := #fhir/code"informational"
+              [:issue 0 :diagnostics] := #fhir/string"TYPE: compartment; SCANS: code; SEEKS: date"))
+
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "0")))))))

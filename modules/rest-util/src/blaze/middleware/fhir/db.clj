@@ -22,7 +22,7 @@
 (defn wrap-snapshot-db
   "Database wrapping for requests that like to operate on a known database state.
 
-  Currently the `t` of the database state taken from the query or form param
+  The logical timestamp `t` of the database state is taken from the query param
   `__t`."
   [handler node timeout]
   (fn [{:keys [params] :as request}]

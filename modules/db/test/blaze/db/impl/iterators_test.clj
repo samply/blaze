@@ -9,8 +9,11 @@
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [ba]]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]]))
+   [clojure.test :as test :refer [deftest is testing]])
+  (:import
+   [java.lang AutoCloseable]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
@@ -33,6 +36,15 @@
                   +
                   [1 2])))))))
 
+(defn vec-from-iter [coll]
+  (let [iter (.iterator ^Iterable coll)]
+    (loop [res []]
+      (if (.hasNext iter)
+        (recur (conj res (.next iter)))
+        (do
+          (.close ^AutoCloseable iter)
+          res)))))
+
 (deftest keys-test
   (testing "normal read"
     (with-system [{kv-store ::kv/mem} config]
@@ -42,8 +54,11 @@
         [:default (ba 0x01) bytes/empty]])
 
       (with-open [snapshot (kv/new-snapshot kv-store)]
-        (is (= [#blaze/byte-string"00" #blaze/byte-string"01"]
-               (vec (i/keys snapshot :default bs/from-byte-buffer! #blaze/byte-string"00")))))))
+        (let [keys (i/keys snapshot :default bs/from-byte-buffer! #blaze/byte-string"00")]
+
+          (is (= [#blaze/byte-string"00" #blaze/byte-string"01"]
+                 (vec keys)
+                 (vec-from-iter keys)))))))
 
   (testing "too small ByteBuffer will be replaced with a larger one"
     (with-system [{kv-store ::kv/mem} config]

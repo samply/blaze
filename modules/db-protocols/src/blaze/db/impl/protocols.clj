@@ -31,6 +31,8 @@
 
   (-execute-query [db query] [db query arg1])
 
+  (-explain-query [db query])
+
   (-matcher-transducer [db matcher])
 
   (-stop-history-at [db instant])
@@ -86,7 +88,9 @@
 
   (-execute [query batch-db] [query batch-db arg1])
 
-  (-query-clauses [query]))
+  (-query-clauses [query])
+
+  (-query-plan [query batch-db]))
 
 (defprotocol Matcher
   (-transducer [matcher batch-db])
@@ -102,21 +106,37 @@
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
-  (-resource-handles
+  (-estimated-scan-size
+    [search-param batch-db tid modifier compiled-value]
+    "Returns a relative estimation of the amount of work to do while scanning
+    the index of `search-param` with `compiled-value` under `tid`.
+
+    The metric is relative and unitless. It can be only used to compare the
+    amount of scan work between different search params.
+
+    Returns an anomaly on errors.")
+  (-index-handles
     [search-param batch-db tid modifier compiled-value]
     [search-param batch-db tid modifier compiled-value start-id]
     "Returns a reducible collection.")
-  (-sorted-resource-handles
+  (-sorted-index-handles
     [search-param batch-db tid direction]
     [search-param batch-db tid direction start-id]
     "Returns a reducible collection.")
-  (-chunked-resource-handles
-    [search-param batch-db tid modifier compiled-value])
-  (-compartment-keys [search-param context compartment tid compiled-value])
+  (-supports-ordered-compartment-index-handles [search-param values]
+    "Returns true if `search-param` supports fetching ordered compartment index handles with `values`.")
+  (-ordered-compartment-index-handles
+    [search-param batch-db compartment tid compiled-value]
+    [search-param batch-db compartment tid compiled-value start-id]
+    "Returns a reducible collection.")
   (-matcher [_ batch-db modifier values])
+  (-single-version-id-matcher [_ batch-db tid modifier compiled-values])
+  (-second-pass-filter [search-param batch-db values])
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))
+
+(defprotocol WithOrderedIndexHandles)
 
 (defprotocol SearchParamRegistry
   (-parse [_ type s])

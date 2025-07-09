@@ -5,6 +5,7 @@
    [blaze.coll.spec :as cs]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
+   [blaze.db.impl.index :as-alias index]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
    [blaze.db.impl.index.resource-search-param-value-spec]
    [blaze.db.impl.index.search-param-value-resource-spec]
@@ -35,42 +36,60 @@
   :ret (s/or :compiled-values (s/coll-of some? :min-count 1)
              :anomaly ::anom/anomaly))
 
-(s/fdef search-param/resource-handles
+(s/fdef search-param/index-handles
   :args (s/cat :search-param :blaze.db/search-param
                :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
-               :values (s/coll-of some? :min-count 1)
+               :compiled-values (s/coll-of some? :min-count 1)
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (cs/coll-of :blaze.db/resource-handle))
+  :ret (cs/coll-of ::index/handle))
 
-(s/fdef search-param/sorted-resource-handles
+(s/fdef search-param/estimated-scan-size
+  :args (s/cat :search-param :blaze.db/search-param
+               :batch-db :blaze.db.impl/batch-db
+               :tid :blaze.db/tid
+               :modifier (s/nilable :blaze.db.search-param/modifier)
+               :compiled-values (s/coll-of some? :min-count 1))
+  :ret (s/or :estimated-scan-size nat-int? :anomaly ::anom/anomaly))
+
+(s/fdef search-param/sorted-index-handles
   :args (s/cat :search-param :blaze.db/search-param
                :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :direction :blaze.db.query/sort-direction
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (cs/coll-of :blaze.db/resource-handle))
+  :ret (cs/coll-of ::index/handle))
 
-(s/fdef search-param/chunked-resource-handles
-  :args (s/cat :search-param :blaze.db/search-param
+(s/fdef search-param/ordered-index-handles
+  :args (s/cat :search-param :blaze.db/search-param-with-ordered-index-handles
                :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
-               :values (s/coll-of some? :min-count 1))
-  :ret (cs/coll-of (cs/coll-of :blaze.db/resource-handle)))
+               :compiled-values (s/coll-of some? :min-count 1)
+               :start-id (s/? :blaze.db/id-byte-string))
+  :ret (cs/coll-of ::index/handle))
 
-(s/fdef search-param/compartment-resource-handles
+(s/fdef search-param/ordered-compartment-index-handles
   :args (s/cat :search-param :blaze.db/search-param
                :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :compiled-values (s/coll-of some? :min-count 1))
-  :ret (cs/coll-of :blaze.db/resource-handle))
+               :compiled-values (s/coll-of some? :min-count 1)
+               :start-id (s/? :blaze.db/id-byte-string))
+  :ret (cs/coll-of ::index/handle))
 
 (s/fdef search-param/matcher
   :args (s/cat :search-param :blaze.db/search-param
                :batch-db :blaze.db.impl/batch-db
+               :modifier (s/nilable :blaze.db.search-param/modifier)
+               :compiled-values (s/coll-of some? :min-count 1))
+  :ret fn?)
+
+(s/fdef search-param/single-version-id-matcher
+  :args (s/cat :search-param :blaze.db/search-param
+               :batch-db :blaze.db.impl/batch-db
+               :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
   :ret fn?)

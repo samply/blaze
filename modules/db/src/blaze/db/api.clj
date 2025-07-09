@@ -326,6 +326,11 @@
   [query]
   (p/-query-clauses query))
 
+(defn explain-query
+  "Returns the plan of `query`."
+  [db query]
+  (p/-explain-query db query))
+
 ;; ---- Common Matcher Functions ----------------------------------------------
 
 (defn matches? [db matcher resource-handle]

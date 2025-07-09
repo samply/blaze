@@ -1,10 +1,12 @@
 (ns blaze.db.impl.search-param.quantity-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string-spec]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.quantity :as spq]
@@ -37,16 +39,16 @@
   (testing "non matching op"
     ;; although a non-matching op isn't allowed in the spec, it could happen at
     ;; runtime, and we have to test that case
-    (st/unstrument `spq/resource-keys)
+    (st/unstrument `spq/index-handles)
 
     (try
-      (spq/resource-keys {} (codec/c-hash "value-quantity") 0 0 {:op :foo})
+      (spq/index-handles {} (codec/c-hash "value-quantity") 0 0 {:op :foo})
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))
 
     (testing "with start-id"
       (try
-        (spq/resource-keys {} (codec/c-hash "value-quantity") 0 0 {:op :foo} 0)
+        (spq/index-handles {} (codec/c-hash "value-quantity") 0 0 {:op :foo} 0)
         (catch Exception e
           (is (= "No matching clause: :foo" (ex-message e))))))))
 
@@ -144,6 +146,18 @@
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))))
 
+(deftest estimated-scan-size-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (value-quantity-param search-param-registry)]
+      (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
+
+(deftest ordered-compartment-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (value-quantity-param search-param-registry)]
+      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))
+
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
 
@@ -163,7 +177,7 @@
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
-               (sr/get search-param-registry "value-quantity" "Observation")
+               (value-quantity-param search-param-registry)
                [] hash observation)]
 
           (testing "first SearchParamValueResource key is about `value`"
@@ -226,7 +240,7 @@
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (index-entries
-               (sr/get search-param-registry "value-quantity" "Observation")
+               (value-quantity-param search-param-registry)
                [] hash observation)]
 
           (testing "first SearchParamValueResource key is about `value`"
@@ -274,7 +288,7 @@
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (index-entries
-               (sr/get search-param-registry "value-quantity" "Observation")
+               (value-quantity-param search-param-registry)
                [] hash observation)]
 
           (testing "first SearchParamValueResource key is about `value`"
@@ -322,7 +336,7 @@
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
-               (sr/get search-param-registry "value-quantity" "Observation")
+               (value-quantity-param search-param-registry)
                [] hash observation)]
 
           (testing "first SearchParamValueResource key is about `value`"
@@ -385,7 +399,7 @@
               hash (hash/generate observation)]
 
           (is (empty? (index-entries
-                       (sr/get search-param-registry "value-quantity" "Observation")
+                       (value-quantity-param search-param-registry)
                        [] hash observation)))))
 
       (testing "without value"
@@ -396,7 +410,7 @@
               hash (hash/generate observation)]
 
           (is (empty? (index-entries
-                       (sr/get search-param-registry "value-quantity" "Observation")
+                       (value-quantity-param search-param-registry)
                        [] hash observation))))))
 
     (testing "FHIRPath evaluation problem"
@@ -405,7 +419,7 @@
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
-                  (sr/get search-param-registry "value-quantity" "Observation")
+                  (value-quantity-param search-param-registry)
                   [] hash resource)
             ::anom/category := ::anom/fault))))
 

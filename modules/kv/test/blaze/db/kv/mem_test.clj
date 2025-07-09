@@ -596,6 +596,12 @@
 
     (is (= 1 (kv/estimate-num-keys kv-store :default)))))
 
+(deftest estimate-storage-scan-test
+  (with-system [{kv-store ::kv/mem} config]
+    (given (kv/estimate-scan-size kv-store :foo [#blaze/byte-string"00" #blaze/byte-string"FF"])
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "In-Memory KV Store doesn't support estimating the scan size.")))
+
 (deftest compact-test
   (with-system [{kv-store ::kv/mem} config]
     (is (nil? @(kv/compact! kv-store :default)))

@@ -24,7 +24,6 @@
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
-   [blaze.db.impl.search-param.all :as search-param-all]
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
@@ -40,8 +39,8 @@
 
 (defn- rev-include [db snapshot reference source-tid code]
   (coll/eduction
-   (u/resource-handle-mapper db source-tid)
-   (sp-vr/prefix-keys snapshot code source-tid (bs/size reference) reference)))
+   (u/resource-handle-xf db source-tid)
+   (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
 
 (defn- sp-total
   [db {:keys [base]}]
@@ -70,7 +69,7 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
-(defrecord BatchDb [node snapshot basis-t t]
+(defrecord BatchDb [node kv-store snapshot basis-t t]
   p/Db
   (-node [_]
     node)
@@ -132,6 +131,9 @@
 
   (-execute-query [db query arg1]
     (p/-execute query db arg1))
+
+  (-explain-query [db query]
+    (p/-query-plan query db))
 
   (-matcher-transducer [db matcher]
     (p/-transducer matcher db))
@@ -281,12 +283,8 @@
    []
    (keep
     (fn [[search-param modifier values]]
-      (cond
-        (= search-param-all/search-param search-param)
-        nil
-        (#{"asc" "desc"} modifier)
+      (if (#{"asc" "desc"} modifier)
         [:sort (:code search-param) (keyword modifier)]
-        :else
         (into [(cond-> (:code search-param) modifier (str ":" modifier))] values))))
    clauses))
 
@@ -299,9 +297,17 @@
   (-execute [_ batch-db start-id]
     (index/type-query batch-db tid clauses (codec/id-byte-string start-id)))
   (-query-clauses [_]
-    (decode-clauses clauses)))
+    (decode-clauses clauses))
+  (-query-plan [_ batch-db]
+    (index/type-query-plan batch-db tid clauses)))
 
-(def ^:private ^:const ^long patient-c-hash (codec/c-hash "Patient"))
+(def ^:private ^:const ^long patient-compartment-hash (codec/c-hash "Patient"))
+(def ^:private ^:const ^long patient-code-hash (codec/c-hash "patient"))
+
+(defn- start-patient-id [batch-db tid start-id]
+  (let [start-handle (p/-resource-handle batch-db tid start-id)
+        start-patient-handle (coll/first (spc/targets batch-db start-handle patient-code-hash))]
+    (codec/id-byte-string (rh/id start-patient-handle))))
 
 (defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses]
   p/Query
@@ -309,22 +315,25 @@
     (ac/completed-future (count (p/-execute query batch-db))))
   (-execute [_ batch-db]
     (coll/eduction
-     (mapcat
-      #(index/compartment-query
-        batch-db [patient-c-hash (codec/id-byte-string %)] tid
-        clauses))
+     (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses))
      patient-ids))
   (-execute [_ batch-db start-id]
-    (coll/eduction
-     (comp
-      (mapcat
-       #(index/compartment-query
-         batch-db [patient-c-hash (codec/id-byte-string %)] tid
-         clauses))
-      (drop-while #(not= start-id (rh/id %))))
-     patient-ids))
+    (let [start-id (codec/id-byte-string start-id)
+          start-patient-id (start-patient-id batch-db tid start-id)]
+      (coll/eduction
+       cat
+       [(index/compartment-query
+         batch-db [patient-compartment-hash start-patient-id] tid clauses
+         start-id)
+        (coll/eduction
+         (comp (drop-while #(not= start-patient-id %))
+               (drop 1)
+               (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses)))
+         patient-ids)])))
   (-query-clauses [_]
-    (decode-clauses (into [compartment-clause] clauses))))
+    (decode-clauses (into [compartment-clause] clauses)))
+  (-query-plan [_ _]
+    (index/compartment-query-plan clauses)))
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
@@ -335,7 +344,9 @@
     (rao/type-list batch-db tid))
   (-execute [_ batch-db start-id]
     (rao/type-list batch-db tid (codec/id-byte-string start-id)))
-  (-query-clauses [_]))
+  (-query-clauses [_])
+  (-query-plan [_ _]
+    {:query-type :type}))
 
 (defrecord SystemQuery [clauses]
   p/Query
@@ -348,18 +359,22 @@
     (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
                              tid clauses))
   (-query-clauses [_]
-    (decode-clauses clauses)))
+    (decode-clauses clauses))
+  (-query-plan [_ _]
+    (index/compartment-query-plan clauses)))
 
 (defrecord EmptyCompartmentQuery [c-hash tid]
   p/Query
   (-execute [_ batch-db arg1]
     (cr/resource-handles batch-db [c-hash (codec/id-byte-string arg1)] tid))
-  (-query-clauses [_]))
+  (-query-clauses [_])
+  (-query-plan [_ _]
+    {:query-type :compartment}))
 
 (defrecord Matcher [clauses]
   p/Matcher
   (-transducer [_ batch-db]
-    (index/other-clauses-filter batch-db clauses))
+    (index/other-clauses-resource-handle-filter batch-db clauses))
   (-matcher-clauses [_]
     (decode-clauses clauses)))
 
@@ -372,4 +387,4 @@
   ^AutoCloseable
   [{:keys [kv-store] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node snapshot basis-t t)))
+    (->BatchDb node kv-store snapshot basis-t t)))

@@ -1,11 +1,11 @@
 (ns blaze.db.impl.search-param
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
-   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.protocols :as p]
@@ -17,13 +17,10 @@
    [blaze.db.impl.search-param.quantity]
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
-   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]))
-
-(set! *warn-on-reflection* true)
 
 (defn compile-values
   "Compiles `values` according to `search-param`.
@@ -38,69 +35,102 @@
    []
    values))
 
-(defn resource-handles
-  "Returns a reducible collection of resource handles from `batch-db` of type
-  with `tid` that satisfy at least one of the `values` at `search-param`
-  with `modifier`, optionally starting with `start-id`."
-  ([search-param batch-db tid modifier values]
-   (if (= 1 (count values))
-     (p/-resource-handles search-param batch-db tid modifier (first values))
+(defn estimated-scan-size
+  "Returns a relative estimation of the amount of work to do while scanning the
+  index of `search-param` with `compiled-values` under `tid`.
+
+  The metric is relative and unitless. It can be only used to compare the amount
+  of scan work between different search params.
+
+  Returns an anomaly on errors."
+  [search-param batch-db tid modifier compiled-values]
+  (transduce
+   (comp (map #(p/-estimated-scan-size search-param batch-db tid modifier %))
+         (halt-when ba/anomaly?))
+   + compiled-values))
+
+(defn index-handles
+  "Returns a reducible collection of index handles from `batch-db` of type
+  with `tid` that satisfy at least one of the `compiled-values` at
+  `search-param` with `modifier`, starting with `start-id` (optional).
+
+  The `start-id` can be only used if there is only one single compiled value.
+
+  The index handles are not distinct and not ordered by id."
+  ([search-param batch-db tid modifier compiled-values]
+   (if (= 1 (count compiled-values))
+     (p/-index-handles search-param batch-db tid modifier (first compiled-values))
      (coll/eduction
-      (comp
-       (mapcat (partial p/-resource-handles search-param batch-db tid modifier))
-       (distinct))
-      values)))
-  ([search-param context tid modifier values start-id]
-   (if (= 1 (count values))
-     (p/-resource-handles search-param context tid modifier (first values)
-                          start-id)
-     (let [start-id (codec/id-string start-id)]
-       (coll/eduction
-        (drop-while #(not= start-id (rh/id %)))
-        (resource-handles search-param context tid modifier values))))))
+      (mapcat #(p/-index-handles search-param batch-db tid modifier %))
+      compiled-values)))
+  ([search-param batch-db tid modifier compiled-values start-id]
+   (assert (= 1 (count compiled-values)))
+   (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)))
 
-(defn sorted-resource-handles
-  "Returns a reducible collection of distinct resource handles sorted by
-  `search-param` in `direction`.
+(defn sorted-index-handles
+  "Returns a reducible collection of index handles sorted by `search-param` in
+  `direction`, starting with `start-id` (optional).
 
-  Optionally starts at `start-id`"
+  The index handles are not distinct and not ordered by id."
   ([search-param batch-db tid direction]
-   (p/-sorted-resource-handles search-param batch-db tid direction))
+   (p/-sorted-index-handles search-param batch-db tid direction))
   ([search-param batch-db tid direction start-id]
-   (p/-sorted-resource-handles search-param batch-db tid direction start-id)))
+   (p/-sorted-index-handles search-param batch-db tid direction start-id)))
 
-(defn chunked-resource-handles
-  "Returns an reducible collection of chunks of resource handles.
+(defn- union-index-handles [index-handles]
+  (apply coll/union ih/id-comp ih/union index-handles))
 
-  Each chunk is a CompletableFuture that will complete with reducible
-  collection of matching resource handles."
-  [search-param batch-db tid modifier values]
-  (if (= 1 (count values))
-    (p/-chunked-resource-handles search-param batch-db tid modifier (first values))
-    [(coll/eduction
-      (comp
-       (mapcat (partial p/-resource-handles search-param batch-db tid modifier))
-       (distinct))
-      values)]))
+(defn ordered-index-handles
+  "Returns an iterable of index handles from `batch-db` of type with `tid` that
+  satisfy at least one of the `compiled-values` at `search-param` with
+  `modifier`, starting with `start-id` (optional).
 
-(defn- compartment-keys
-  "Returns a reducible collection of single-version-ids."
-  [search-param batch-db compartment tid compiled-values]
-  (coll/eduction
-   (mapcat #(p/-compartment-keys search-param batch-db compartment tid %))
-   compiled-values))
+  The index handles are distinct and ordered by id."
+  ([search-param batch-db tid modifier compiled-values]
+   (if (= 1 (count compiled-values))
+     (p/-index-handles search-param batch-db tid modifier (first compiled-values))
+     (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+       (union-index-handles (map index-handles compiled-values)))))
+  ([search-param batch-db tid modifier compiled-values start-id]
+   (if (= 1 (count compiled-values))
+     (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
+     (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+       (union-index-handles (map index-handles compiled-values))))))
 
-(defn compartment-resource-handles
-  [search-param batch-db compartment tid compiled-values]
-  (coll/eduction
-   (u/resource-handle-mapper batch-db tid)
-   (compartment-keys search-param batch-db compartment tid compiled-values)))
+(defn ordered-compartment-index-handles
+  "Returns an iterable of index handles from `batch-db` in `compartment` of type
+  with `tid` that satisfy at least one of the `compiled-values` at
+  `search-param`.
+
+  The index handles are distinct and ordered by id."
+  ([search-param batch-db compartment tid compiled-values]
+   (if (= 1 (count compiled-values))
+     (p/-ordered-compartment-index-handles
+      search-param batch-db compartment tid (first compiled-values))
+     (->> (map #(p/-ordered-compartment-index-handles
+                 search-param batch-db compartment tid %)
+               compiled-values)
+          (apply coll/union ih/id-comp ih/union))))
+  ([search-param batch-db compartment tid compiled-values start-id]
+   (if (= 1 (count compiled-values))
+     (p/-ordered-compartment-index-handles
+      search-param batch-db compartment tid (first compiled-values) start-id)
+     (->> (map #(p/-ordered-compartment-index-handles
+                 search-param batch-db compartment tid % start-id)
+               compiled-values)
+          (apply coll/union ih/id-comp ih/union)))))
 
 (defn matcher
   "Returns a stateful transducer that filters resource handles depending on
   having one of `compiled-values` for `search-param` with `modifier`."
   [search-param batch-db modifier compiled-values]
   (p/-matcher search-param batch-db modifier compiled-values))
+
+(defn single-version-id-matcher
+  "Returns a stateful transducer that filters single-version-ids depending on
+  having one of `compiled-values` for `search-param` with `modifier`."
+  [search-param batch-db tid modifier compiled-values]
+  (p/-single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
 (def ^:private stub-resolver
   "A resolver which only returns a resource stub with type and id from the local

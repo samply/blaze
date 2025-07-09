@@ -1368,7 +1368,7 @@ jobs:
     - name: Check Total-Number of Resources are 1099779
       run: .github/scripts/check-total-number-of-resources.sh 1099779
 
-    - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
+    - name: Count the Number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
       run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 13
 
     - name: Download Observation Resources with special LOINC Codes
@@ -1408,11 +1408,23 @@ jobs:
     - name: Download Vital Sign Resources
       run: .github/scripts/download-resources-query.sh Observation "category=vital-signs" 152877
 
+    - name: Download Vital Sign Resources Plan
+      run: |
+        .github/scripts/explain-type-query.sh Observation "category=vital-signs" "SCANS: category; SEEKS: NONE"
+
     - name: Download Observation Resources of the Year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=2020" 71236
 
+    - name: Download Observation Resources of the Year 2020 Plan
+      run: |
+        .github/scripts/explain-type-query.sh Observation "date=2020" "SCANS: date; SEEKS: NONE"
+
     - name: Download Observation Resources of the Year 2020 from patient with SSN 999-89-9294
       run: .github/scripts/download-resources-query.sh Observation "date=2020&patient=$(.github/scripts/patient-ids.sh "999-89-9294")" 20
+
+    - name: Download Observation Resources of the Year 2020 from patient with SSN 999-89-9294 Plan
+      run: |
+        .github/scripts/explain-type-query.sh Observation "date=2020&patient=$(.github/scripts/patient-ids.sh "999-89-9294")" "TYPE: compartment; SCANS: NONE; SEEKS: date"
 
     - name: Download Observation Resources of the Year 2020 from multiple patients
       env:
@@ -1425,6 +1437,24 @@ jobs:
 
     - name: Download Vital Sign Resources of the Year 2020
       run: .github/scripts/download-resources-query.sh Observation "category=vital-signs&date=2020" 17060
+
+    - name: Download Vital Sign Resources of the Year 2020 Plan
+      run: |
+        .github/scripts/explain-type-query.sh Observation "category=vital-signs&date=2020" "SCANS: category; SEEKS: date"
+
+    - name: Male Patient Query
+      run: .github/scripts/download-resources-query.sh Patient "gender=male" 467
+
+    - name: Male Patient Query Plan
+      run: |
+        .github/scripts/explain-type-query.sh Patient "gender=male" "SCANS: gender; SEEKS: NONE"
+
+    - name: Specific Male Patient Query
+      run: .github/scripts/download-resources-query.sh Patient "_id=$(.github/scripts/patient-ids.sh "999-89-9294")&gender=male" 1
+
+    - name: Specific Male Patient Query Plan
+      run: |
+        .github/scripts/explain-type-query.sh Patient "_id=$(.github/scripts/patient-ids.sh "999-89-9294")&gender=male" "SCANS: _id; SEEKS: gender"
 
     - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using CQL
       run: .github/scripts/evaluate-measure-blazectl.sh inpatient-stress 13
@@ -2665,7 +2695,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
 
-    - name: Install cosign
+    - name: Install Cosign
       uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
     - name: Login to GHCR

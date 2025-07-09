@@ -9,34 +9,59 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.iterators :as i]
+   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir.hash :as hash]))
 
 (set! *unchecked-math* :warn-on-boxed)
 
-(defn- key-size ^long [co-res-id value]
+(defn- key-size
+  ^long [co-res-id value]
   (+ codec/c-hash-size (bs/size co-res-id) 1
      codec/c-hash-size codec/tid-size (bs/size value)))
 
 (defn- encode-seek-key
-  [co-c-hash co-res-id sp-c-hash tid value]
-  (-> (bb/allocate (key-size co-res-id value))
-      (bb/put-int! co-c-hash)
-      (bb/put-null-terminated-byte-string! co-res-id)
-      (bb/put-int! sp-c-hash)
-      (bb/put-int! tid)
-      (bb/put-byte-string! value)
-      bb/flip!
-      bs/from-byte-buffer!))
+  ([co-c-hash co-res-id sp-c-hash tid value]
+   (-> (bb/allocate (key-size co-res-id value))
+       (bb/put-int! co-c-hash)
+       (bb/put-null-terminated-byte-string! co-res-id)
+       (bb/put-int! sp-c-hash)
+       (bb/put-int! tid)
+       (bb/put-byte-string! value)
+       bb/flip!
+       bs/from-byte-buffer!))
+  ([co-c-hash co-res-id sp-c-hash tid value prefix-length id]
+   (-> (bb/allocate (+ (long prefix-length) 2 (bs/size id)))
+       (bb/put-int! co-c-hash)
+       (bb/put-null-terminated-byte-string! co-res-id)
+       (bb/put-int! sp-c-hash)
+       (bb/put-int! tid)
+       (bb/put-null-terminated-byte-string! value)
+       (bb/put-byte-string! id)
+       (bb/put-byte! (bs/size id))
+       bb/flip!
+       bs/from-byte-buffer!)))
 
-(defn prefix-keys
-  "Returns a reducible collection of single-version-ids starting at
-  `value` and ending when `value` is no longer the prefix of the values
-  processed."
-  {:arglists '([snapshot compartment c-hash tid value])}
-  [snapshot [co-c-hash co-res-id] c-hash tid value]
-  (let [seek-key (encode-seek-key co-c-hash co-res-id c-hash tid value)]
-    (i/prefix-keys snapshot :compartment-search-param-value-index
-                   sp-vr/decode-single-version-id (bs/size seek-key) seek-key)))
+(defn- index-handles* [snapshot prefix-length start-key]
+  (coll/eduction
+   u/by-id-grouper
+   (i/prefix-keys
+    snapshot
+    :compartment-search-param-value-index
+    sp-vr/decode-single-version-id
+    prefix-length
+    start-key)))
+
+(defn index-handles
+  "Returns a reducible collection of index handles from keys of `value`,
+  starting with `start-id` (optional)."
+  ([snapshot [co-c-hash co-res-id] c-hash tid value]
+   (let [seek-key (encode-seek-key co-c-hash co-res-id c-hash tid value)]
+     (index-handles* snapshot (bs/size seek-key) seek-key)))
+  ([snapshot [co-c-hash co-res-id] c-hash tid value start-id]
+   (let [prefix-length (key-size co-res-id value)
+         seek-key (encode-seek-key co-c-hash co-res-id c-hash tid value
+                                   prefix-length start-id)]
+     (index-handles* snapshot prefix-length seek-key))))
 
 (defn- encode-key
   [compartment sp-c-hash tid value id hash]
