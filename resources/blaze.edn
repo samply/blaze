@@ -332,6 +332,7 @@
 
   :blaze.db.node/duration-seconds {}
   :blaze.db.node/transaction-sizes {}
+  :blaze.db.node/index-scan-bytes {}
 
   ;;
   ;; Main Resource Indexer

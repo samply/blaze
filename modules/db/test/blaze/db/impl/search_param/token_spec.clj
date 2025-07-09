@@ -11,7 +11,7 @@
    [blaze.db.spec]
    [clojure.spec.alpha :as s]))
 
-(s/fdef spt/resource-keys
+(s/fdef spt/index-handles
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid

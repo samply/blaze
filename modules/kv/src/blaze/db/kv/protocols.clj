@@ -47,4 +47,6 @@
 
   (-estimate-num-keys [store column-family])
 
+  (-estimate-storage-size [store column-family key-range])
+
   (-compact [store column-family]))

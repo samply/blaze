@@ -39,7 +39,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [blaze.db.impl.batch_db PatientTypeQuery TypeQuery]
+   [blaze.db.impl.batch_db PatientTypeQuery]
    [com.google.common.base CaseFormat]
    [java.time Instant]
    [java.util.concurrent TimeUnit]))
@@ -3670,25 +3670,25 @@
       (given-type-query node "Condition" [["code" "0" "1"]]
         count := 5
         [0 :id] := "0"
-        [1 :id] := "3"
-        [2 :id] := "4"
-        [3 :id] := "1"
-        [4 :id] := "2")
+        [1 :id] := "1"
+        [2 :id] := "2"
+        [3 :id] := "3"
+        [4 :id] := "4")
 
       (testing "it is possible to start with the second condition"
-        (given (pull-type-query node "Condition" [["code" "0" "1"]] "3")
+        (given (pull-type-query node "Condition" [["code" "0" "1"]] "1")
           count := 4
-          [0 :id] := "3"
-          [1 :id] := "4"
-          [2 :id] := "1"
-          [3 :id] := "2"))
+          [0 :id] := "1"
+          [1 :id] := "2"
+          [2 :id] := "3"
+          [3 :id] := "4"))
 
       (testing "it is possible to start with the third condition"
-        (given (pull-type-query node "Condition" [["code" "0" "1"]] "4")
+        (given (pull-type-query node "Condition" [["code" "0" "1"]] "2")
           count := 3
-          [0 :id] := "4"
-          [1 :id] := "1"
-          [2 :id] := "2"))))
+          [0 :id] := "2"
+          [1 :id] := "3"
+          [2 :id] := "4"))))
 
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Condition :id "0"
@@ -5220,8 +5220,8 @@
       (given-type-query node "Observation" [["status" "final" "preliminary"] ["code" "94564-2" "8462-4"]]
         count := 4
         [0 :id] := "0"
-        [1 :id] := "2"
-        [2 :id] := "1"
+        [1 :id] := "1"
+        [2 :id] := "2"
         [3 :id] := "3")))
 
   (testing "with one token and one date search param"
@@ -5268,8 +5268,8 @@
       (given-type-query node "Observation" [["status" "final" "preliminary"] ["date" "2025" "2026"]]
         count := 4
         [0 :id] := "0"
-        [1 :id] := "2"
-        [2 :id] := "1"
+        [1 :id] := "1"
+        [2 :id] := "2"
         [3 :id] := "3"))))
 
 (deftest type-query-date-equal-test
@@ -6302,9 +6302,6 @@
 (defn- patient-type-query? [x]
   (instance? PatientTypeQuery x))
 
-(defn- type-query? [x]
-  (instance? TypeQuery x))
-
 (deftest compile-type-query-test
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -6346,18 +6343,12 @@
                         "Procedure"]
                   subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
 
-            (doseq [clauses [[["code" "system|code"]
-                              (into ["patient"] subjects)]
-                             [(into ["patient"] subjects)
-                              ["code" "system|code"]]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))
-
-            (doseq [value ["code" "|code"]
+            (doseq [value ["system|code" "code" "|code"]
                     clauses [[["code" value]
                               (into ["patient"] subjects)]
                              [(into ["patient"] subjects)
                               ["code" value]]]]
-              (is (type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
 
         (testing "patient and category"
           (doseq [target [node (d/db node)]
@@ -6556,78 +6547,171 @@
           (= n (count-type-query node "Patient" [["active" "true"]])))))))
 
 (deftest compile-type-matcher-test
-  (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"
-             :active true :gender #fhir/code"male"}]
-      [:put {:fhir/type :fhir/Patient :id "1"
-             :gender #fhir/code"male"}]
-      [:put {:fhir/type :fhir/Patient :id "2"
-             :active true :gender #fhir/code"female"}]
-      [:put {:fhir/type :fhir/Patient :id "3"
-             :gender #fhir/code"female"}]]]
+  (testing "token search params"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :active true :gender #fhir/code"male"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :active true :gender #fhir/code"female"}]
+        [:put {:fhir/type :fhir/Patient :id "3"
+               :gender #fhir/code"female"}]]]
 
-    (testing "one clause"
-      (with-open-db [db node]
-        (doseq [target [node db]]
-          (let [matcher (d/compile-type-matcher target "Patient" [["active" "true"]])
-                xform (d/matcher-transducer db matcher)]
-            (given (into [] xform (d/type-list db "Patient"))
-              count := 2
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "0"
-              [1 :fhir/type] := :fhir/Patient
-              [1 :id] := "2"))
-
-          (let [matcher (d/compile-type-matcher target "Patient" [["gender" "male"]])
-                xform (d/matcher-transducer db matcher)]
-            (given (into [] xform (d/type-list db "Patient"))
-              count := 2
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "0"
-              [1 :fhir/type] := :fhir/Patient
-              [1 :id] := "1")))))
-
-    (testing "two clauses"
-      (with-open-db [db node]
-        (doseq [target [node db]]
-          (doseq [clauses [[["active" "true"] ["gender" "male"]]
-                           [["gender" "male"] ["active" "true"]]]]
-            (let [matcher (d/compile-type-matcher target "Patient" clauses)
+      (testing "one clause"
+        (with-open-db [db node]
+          (doseq [target [node db]]
+            (let [matcher (d/compile-type-matcher target "Patient" [["active" "true"]])
                   xform (d/matcher-transducer db matcher)]
               (given (into [] xform (d/type-list db "Patient"))
-                count := 1
+                count := 2
                 [0 :fhir/type] := :fhir/Patient
-                [0 :id] := "0")))
+                [0 :id] := "0"
+                [1 :fhir/type] := :fhir/Patient
+                [1 :id] := "2"))
 
-          (doseq [clauses [[["active" "true"] ["gender" "female"]]
-                           [["gender" "female"] ["active" "true"]]]]
-            (let [matcher (d/compile-type-matcher target "Patient" clauses)
+            (let [matcher (d/compile-type-matcher target "Patient" [["gender" "male"]])
                   xform (d/matcher-transducer db matcher)]
               (given (into [] xform (d/type-list db "Patient"))
-                count := 1
+                count := 2
                 [0 :fhir/type] := :fhir/Patient
-                [0 :id] := "2"))))))
+                [0 :id] := "0"
+                [1 :fhir/type] := :fhir/Patient
+                [1 :id] := "1")))))
 
-    (testing "clauses can be read back"
-      (given (-> (d/compile-type-matcher node "Patient" [["active" "true"] ["gender" "female"]])
-                 (d/matcher-clauses))
-        count := 2
-        [0] := ["active" "true"]
-        [1] := ["gender" "female"]))
+      (testing "two clauses"
+        (with-open-db [db node]
+          (doseq [target [node db]]
+            (doseq [clauses [[["active" "true"] ["gender" "male"]]
+                             [["gender" "male"] ["active" "true"]]]]
+              (let [matcher (d/compile-type-matcher target "Patient" clauses)
+                    xform (d/matcher-transducer db matcher)]
+                (given (into [] xform (d/type-list db "Patient"))
+                  count := 1
+                  [0 :fhir/type] := :fhir/Patient
+                  [0 :id] := "0")))
 
-    (testing "an unknown search-param errors"
+            (doseq [clauses [[["active" "true"] ["gender" "female"]]
+                             [["gender" "female"] ["active" "true"]]]]
+              (let [matcher (d/compile-type-matcher target "Patient" clauses)
+                    xform (d/matcher-transducer db matcher)]
+                (given (into [] xform (d/type-list db "Patient"))
+                  count := 1
+                  [0 :fhir/type] := :fhir/Patient
+                  [0 :id] := "2"))))))
+
+      (testing "clauses can be read back"
+        (given (-> (d/compile-type-matcher node "Patient" [["active" "true"] ["gender" "female"]])
+                   (d/matcher-clauses))
+          count := 2
+          [0] := ["active" "true"]
+          [1] := ["gender" "female"]))
+
+      (testing "an unknown search-param errors"
+        (with-open-db [db node]
+          (doseq [target [node db]]
+            (given (d/compile-type-matcher target "Patient" [["foo" "bar"]])
+              ::anom/category := ::anom/not-found
+              ::anom/message := "The search-param with code `foo` and type `Patient` was not found."))))
+
+      (testing "invalid date"
+        (with-open-db [db node]
+          (doseq [target [node db]]
+            (given (d/compile-type-matcher target "Patient" [["birthdate" "invalid"]])
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
+
+  (testing "token identifier search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :identifier [#fhir/Identifier{:value "foo"}]}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :identifier [#fhir/Identifier{:value "bar"}]}]]]
+
+      (with-open-db [db node]
+        (doseq [target [node db]
+                [value id] [["foo" "0"]
+                            ["bar" "1"]]]
+          (let [matcher (d/compile-type-matcher target "Patient" [["identifier" value]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Patient"))
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := id))))))
+
+  (testing "date search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2025"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2023"}]]]
+
+      (with-open-db [db node]
+        (doseq [target [node db]
+                [value id] [["2025" "0"]
+                            ["ne2025" "1"]
+                            ["lt2025" "1"]
+                            ["le2024" "1"]
+                            ["gt2023" "0"]
+                            ["ge2024" "0"]
+                            ["sa2023" "0"]
+                            ["eb2025" "1"]
+                            ["ap2025" "0"]]]
+          (let [matcher (d/compile-type-matcher target "Patient" [["birthdate" value]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Patient"))
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := id))))))
+
+  (testing "quantity search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :value
+               #fhir/Quantity
+                {:code #fhir/code"kg/m2"
+                 :unit #fhir/string"kg/m²"
+                 :system #fhir/uri"http://unitsofmeasure.org"
+                 :value 42M}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :value
+               #fhir/Quantity
+                {:code #fhir/code"kg/m2"
+                 :unit #fhir/string"kg/m²"
+                 :system #fhir/uri"http://unitsofmeasure.org"
+                 :value 23M}}]]]
+
+      (with-open-db [db node]
+        (doseq [target [node db]
+                [value id] [["23" "1"]
+                            ["gt23" "0"]
+                            ["lt42" "1"]]]
+          (let [matcher (d/compile-type-matcher target "Observation" [["value-quantity" value]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Observation"))
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := id))))))
+
+  (testing "chained search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"female"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/1"}}]]]
+
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given (d/compile-type-matcher target "Patient" [["foo" "bar"]])
-            ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Patient` was not found."))))
-
-    (testing "invalid date"
-      (with-open-db [db node]
-        (doseq [target [node db]]
-          (given (d/compile-type-matcher target "Patient" [["birthdate" "invalid"]])
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
+          (let [matcher (d/compile-type-matcher target "Observation" [["patient.gender" "male"]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Observation"))
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "0")))))))
 
 (deftest compile-system-matcher-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -7056,6 +7140,23 @@
       (testing "only returns the condition"
         (given @(pull-compartment-query node "Patient" "0" "Condition"
                                         [["code" "system|code-a"]])
+          count := 1
+          [0 :fhir/type] := :fhir/Condition
+          [0 :id] := "1"))))
+
+  (testing "works with date search params"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Condition :id "1"
+               :onset #fhir/dateTime"2025-07-25"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Condition :id "2"
+               :onset #fhir/dateTime"2025-07-26"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (testing "only returns the condition with onset <= 2025-07-25"
+        (given @(pull-compartment-query node "Patient" "0" "Condition"
+                                        [["onset-date" "le2025-07-25"]])
           count := 1
           [0 :fhir/type] := :fhir/Condition
           [0 :id] := "1")))))

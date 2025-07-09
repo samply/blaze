@@ -12,12 +12,13 @@
    [blaze.fhir.hash.spec]
    [clojure.spec.alpha :as s]))
 
-(s/fdef c-sp-vr/prefix-keys
+(s/fdef c-sp-vr/index-handles
   :args (s/cat :snapshot :blaze.db.kv/snapshot
                :compartment :blaze.db/compartment
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
-               :value byte-string?))
+               :value byte-string?
+               :start-id (s/? :blaze.db/id-byte-string)))
 
 (s/fdef c-sp-vr/index-entry
   :args (s/cat :compartment :blaze.db/compartment
