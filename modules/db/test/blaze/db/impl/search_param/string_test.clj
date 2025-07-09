@@ -1,10 +1,12 @@
 (ns blaze.db.impl.search-param.string-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string-spec]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.string :as sps]
@@ -42,6 +44,18 @@
       :name := "phonetic"
       :code := "phonetic"
       :c-hash := (codec/c-hash "phonetic"))))
+
+(deftest estimated-scan-size-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (phonetic-param search-param-registry)]
+      (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
+
+(deftest ordered-compartment-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (phonetic-param search-param-registry)]
+      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))
 
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))

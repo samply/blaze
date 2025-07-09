@@ -64,40 +64,49 @@
   [{:keys [snapshot t]} c-hash tid id]
   (r-sp-v/next-value snapshot (rao/resource-handle snapshot tid id t) c-hash))
 
-(defn- resource-keys
-  "Returns a reducible collection of single-version-ids starting at
-  `start-id` (optional)."
+(defn- index-handles
+  "Returns a reducible collection of index handles starting at `start-id`
+  (optional)."
   {:arglists '([context c-hash tid value] [context c-hash tid value start-id])}
   ([{:keys [snapshot]} c-hash tid value]
-   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value))
+   (sp-vr/index-handles snapshot c-hash tid (bs/size value) value))
   ([{:keys [snapshot] :as context} c-hash tid _value start-id]
    (let [start-value (resource-value context c-hash tid start-id)]
      (assert start-value)
-     (sp-vr/prefix-keys snapshot c-hash tid (bs/size start-value) start-value
-                        start-id))))
+     (sp-vr/index-handles snapshot c-hash tid (bs/size start-value) start-value
+                          start-id))))
 
 (defrecord SearchParamString [name type base code c-hash expression normalize]
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/string (normalize value)))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value)))
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
 
-  (-resource-handles [_ batch-db tid _ value start-id]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value start-id)))
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (index-handles batch-db c-hash tid compiled-value))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value)))
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (index-handles batch-db c-hash tid compiled-value start-id))
 
-  (-matcher [_ batch-db _ values]
-    (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash values))
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-matcher [_ batch-db _ compled-values]
+    (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash compled-values))
+
+  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+    (r-sp-v/single-version-id-value-prefix-filter
+     (:snapshot batch-db) tid c-hash compiled-values))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

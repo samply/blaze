@@ -21,7 +21,7 @@
                :seek (s/? fn?)
                :encode fn?
                :matches? fn?
-               :value-prefix-length (s/? nat-int?)
+               :value-prefix-length (s/? fn?)
                :values (s/coll-of some? :min-count 1))
   :ret fn?)
 

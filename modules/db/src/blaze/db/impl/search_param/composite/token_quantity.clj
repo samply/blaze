@@ -1,6 +1,6 @@
 (ns blaze.db.impl.search-param.composite.token-quantity
   (:require
-   [blaze.anomaly :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -45,23 +45,32 @@
                      code (::spq/unsupported-prefix %)))
              %)))))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid prefix-length value)))
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
 
-  (-resource-handles [_ batch-db tid _ value start-id]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid prefix-length value start-id)))
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (spq/index-handles batch-db c-hash tid prefix-length compiled-value))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid prefix-length value)))
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (spq/index-handles batch-db c-hash tid prefix-length compiled-value start-id))
 
-  (-matcher [_ batch-db _ values]
-    (spq/matcher batch-db c-hash prefix-length values))
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-matcher [_ batch-db _ compiled-values]
+    (spq/matcher batch-db c-hash prefix-length compiled-values))
+
+  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+    (spq/single-version-id-matcher batch-db tid c-hash prefix-length
+                                   compiled-values))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

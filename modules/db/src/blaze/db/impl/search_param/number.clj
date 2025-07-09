@@ -63,23 +63,31 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid 0 value)))
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
 
-  (-resource-handles [_ batch-db tid _ value start-id]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid 0 value start-id)))
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (spq/index-handles batch-db c-hash tid 0 compiled-value))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid 0 value)))
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (spq/index-handles batch-db c-hash tid 0 compiled-value start-id))
 
-  (-matcher [_ batch-db _ values]
-    (spq/matcher batch-db c-hash 0 values))
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-matcher [_ batch-db _ compiled-values]
+    (spq/matcher batch-db c-hash 0 compiled-values))
+
+  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+    (spq/single-version-id-matcher batch-db tid c-hash 0 compiled-values))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

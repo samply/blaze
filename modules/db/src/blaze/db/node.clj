@@ -41,7 +41,6 @@
    [blaze.spec]
    [blaze.util :refer [conj-vec str]]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -217,15 +216,7 @@
 
 (defn- clause-with-code-fn? [codes]
   (fn [[search-param]]
-    (codes (:code search-param))))
-
-(defn- has-system? [value]
-  (let [idx (str/index-of value "|")]
-    (and idx (< 0 idx (count value)))))
-
-(defn- token-clause? [[search-param _ values]]
-  (and (= "token" (:type search-param))
-       (every? has-system? values)))
+    (contains? codes (:code search-param))))
 
 (defn- compartment-clause-patient-ids [[{:keys [code]} _ values]]
   (transduce
@@ -242,7 +233,8 @@
          (when-let [[type id] (fsr/split-literal-ref value)]
            (when (= "Patient" type)
              id)))))
-    (halt-when nil?))
+    (halt-when nil?)
+    (map codec/id-byte-string))
    conj
    []
    values))
@@ -252,16 +244,16 @@
   possible."
   [search-param-registry type clauses]
   (when-some [codes (sr/patient-compartment-search-param-codes search-param-registry type)]
-    (let [[compartment-clause :as all] (filterv (clause-with-code-fn? codes) clauses)]
-      (when (= 1 (count all))
-        (let [[token-clause] (filterv token-clause? clauses)
-              patient-ids (compartment-clause-patient-ids compartment-clause)]
-          (when (and token-clause patient-ids)
+    (let [{[compartment-clause :as compartment-clauses] true other-clauses false}
+          (group-by (clause-with-code-fn? codes) clauses)]
+      (when (and (= 1 (count compartment-clauses)) (seq other-clauses))
+        (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
+          (when (seq patient-ids)
             (batch-db/->PatientTypeQuery
              (codec/tid type)
              patient-ids
              compartment-clause
-             (into [token-clause] (remove (clause-with-code-fn? (conj codes (:code (first token-clause))))) clauses))))))))
+             other-clauses)))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses

@@ -17,7 +17,8 @@
   (Longs/toByteArray (inst-ms instant)))
 
 (defn t-by-instant
-  "Returns the `t` of the database that was created at or before `instant` or
+  "Returns the logical timestamp `t` of the database that was created at or
+  before `instant` orÔ
   nil if there is none."
   [snapshot instant]
   (i/seek-value snapshot :t-by-instant-index bb/get-long! 0

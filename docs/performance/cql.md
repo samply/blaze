@@ -6,7 +6,7 @@ For the CQL queries analyzed here, the relative performance of query evaluation 
 
 ## Systems
 
-The following systems with rising resources were used for performance evaluation:
+The following systems, with increasing resources, were used for the performance evaluation:
 
 | System | Provider | CPU         | Cores |     RAM |  SSD |
 |--------|----------|-------------|------:|--------:|-----:|
@@ -108,9 +108,9 @@ The third bar chart shows the results for the 1M dataset. For the two bigger sys
 | 1M      | LEA58  | 17861-6 |   25 k |     0.52 |  0.012 | 1.930 M |
 | 1M      | LEA58  | 8310-5  |  603 k |     0.66 |  0.007 | 1.505 M | 
 | 1M      | LEA58  | 72514-3 |  998 k |     0.78 |  0.019 | 1.287 M |
-| 1M      | A5N46  | 17861-6 |   25 k |     0.23 |  0.009 | 4.353 M |
-| 1M      | A5N46  | 8310-5  |  603 k |     0.38 |  0.003 | 2.660 M | 
-| 1M      | A5N46  | 72514-3 |  998 k |     1.61 |  0.006 | 622.8 k |
+| 1M      | A5N46  | 17861-6 |   25 k |     0.22 |  0.008 | 4.514 M |
+| 1M      | A5N46  | 8310-5  |  603 k |     0.39 |  0.001 | 2.545 M | 
+| 1M      | A5N46  | 72514-3 |  998 k |     1.71 |  0.008 | 586.3 k |
 
 ### Example CQL Query
 
@@ -177,9 +177,9 @@ The second chart shows the results for the 1M dataset. Here the performance of t
 | 1M      | LEA58  | 29463-7 | 13.6 kg |   99 k |     0.59 |  0.007 | 1.709 M |  
 | 1M      | LEA58  | 29463-7 | 75.3 kg |  500 k |     1.01 |  0.013 | 993.3 k | 
 | 1M      | LEA58  | 29463-7 |  185 kg |  998 k |     1.42 |  0.026 | 702.4 k |
-| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.28 |  0.007 | 3.584 M | 
-| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.46 |  0.032 | 2.160 M | 
-| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.66 |  0.002 | 601.8 k |
+| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.26 |  0.006 | 3.865 M | 
+| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.47 |  0.032 | 2.114 M |
+| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.78 |  0.047 | 560.7 k |
 
 ### CQL Query
 
@@ -249,8 +249,8 @@ The third chart shows the results for the 1M dataset. As with the Code Value Sea
 | 1M      | LEA47  |  954 k |     0.97 |  0.016 | 1.029 M |
 | 1M      | LEA58  |    4 k |     0.56 |  0.013 | 1.800 M |
 | 1M      | LEA58  |  954 k |     0.84 |  0.007 | 1.191 M |
-| 1M      | A5N46  |    4 k |     0.25 |  0.010 | 4.001 M |
-| 1M      | A5N46  |  954 k |     0.46 |  0.002 | 2.181 M |
+| 1M      | A5N46  |    4 k |     0.23 |  0.003 | 4.385 M |
+| 1M      | A5N46  |  954 k |     0.53 |  0.003 | 1.875 M |
 
 ### CQL Query Frequent
 
@@ -328,7 +328,7 @@ cql/search.sh condition-ten-rare
 | 1M      | LEA36  |  995 k |     5.96 |  0.015 | 167.7 k |
 | 1M      | LEA47  |  995 k |     1.05 |  0.008 | 952.9 k |
 | 1M      | LEA58  |  995 k |     0.86 |  0.006 | 1.164 M |
-| 1M      | A5N46  |  995 k |     0.48 |  0.002 | 2.071 M |
+| 1M      | A5N46  |  995 k |     0.56 |  0.001 | 1.777 M |
 
 ### CQL Query
 
@@ -356,7 +356,7 @@ cql/search.sh condition-all
 | 1M      | LEA36  |   16 k |     3.90 |  0.041 | 256.7 k |
 | 1M      | LEA47  |   16 k |     1.88 |  0.025 | 531.2 k |
 | 1M      | LEA58  |   16 k |     1.21 |  0.014 | 823.8 k |
-| 1M      | A5N46  |   16 k |     0.75 |  0.058 | 1.333 M |
+| 1M      | A5N46  |   16 k |     0.74 |  0.047 | 1.347 M |
 
 ### CQL Query
 

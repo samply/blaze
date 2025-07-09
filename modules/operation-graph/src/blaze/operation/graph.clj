@@ -104,7 +104,7 @@
                      :id (m/luid context)
                      :type #fhir/code"searchset"
                      :total (type/unsignedInt (count resources))
-                     :entry (mapv (partial search-util/entry request) resources)}))))))
+                     :entry (mapv (partial search-util/match-entry request) resources)}))))))
         (ac/completed-future (ba/incorrect "Missing param `graph`")))
       ac/completed-future)))
 

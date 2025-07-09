@@ -11,6 +11,9 @@
 (s/def :blaze.db/search-param
   #(satisfies? p/SearchParam %))
 
+(s/def :blaze.db/search-param-with-ordered-index-handles
+  (s/and :blaze.db/search-param #(satisfies? p/WithOrderedIndexHandles %)))
+
 (s/def ::search-param/modifier
   string?)
 

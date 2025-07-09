@@ -56,11 +56,14 @@
   (r-sp-v/next-value snapshot (rao/resource-handle snapshot tid id t) c-hash))
 
 (defn- all-keys
+  "Returns a reducible collection of `[value single-version-id]` tuples of the
+  whole range prefixed with `c-hash` and `tid` starting with `start-id`
+  (optional)."
   ([{:keys [snapshot]} c-hash tid]
    (sp-vr/all-keys snapshot c-hash tid))
   ([{:keys [snapshot] :as context} c-hash tid start-id]
-   (sp-vr/all-keys snapshot c-hash tid (resource-value context c-hash tid start-id)
-                   start-id)))
+   (let [start-value (resource-value context c-hash tid start-id)]
+     (sp-vr/all-keys snapshot c-hash tid start-value start-id))))
 
 (defn- all-keys-prev
   ([{:keys [snapshot]} c-hash tid]
@@ -89,21 +92,23 @@
    (fn [[value]]
      (not (bs/< param-ub (codec-date/lower-bound-bytes value))))))
 
-(defn- eq-keys
-  "Returns a reducible collection of single-version-ids of all keys were
-  the parameter value interval `[param-lb param-ub]` fully contains the
-  resource value interval starting at `start-id` (optional)."
+(defn- eq-handles
+  "Returns a reducible collection of index handles of all keys were the
+  parameter value interval `[param-lb param-ub]` fully contains the resource
+  value interval starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (eq-stop param-ub)
           (eq-filter param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (sp-vr/prefix-keys-value snapshot c-hash tid param-lb)))
   ([context c-hash tid _param-lb param-ub start-id]
    (coll/eduction
     (comp (eq-stop param-ub)
           (eq-filter param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
 (defn- not-equal? [value param-lb param-ub]
@@ -114,16 +119,19 @@
    (fn [[value]]
      (not-equal? value param-lb param-ub))))
 
-(defn- ne-keys
+(defn- ne-handles
+  "Returns a reducible collection of index handles."
   ([context c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (ne-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid)))
   ([context c-hash tid param-lb param-ub start-id]
    (coll/eduction
     (comp (ne-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
 (defn- greater-than? [param-ub value]
@@ -134,35 +142,39 @@
    (fn [[value]]
      (greater-than? param-ub value))))
 
-(defn- gt-keys
-  "Returns a reducible collection of single-version-ids of all
-  keys with overlapping date/time intervals with the interval specified by
-  `param-ub` and an infinite upper bound starting at `start-id` (optional)."
+(defn- gt-handles
+  "Returns a reducible collection of index handles of all keys with overlapping
+  date/time intervals with the interval specified by `param-ub` and an infinite
+  upper bound starting at `start-id` (optional)."
   ([context c-hash tid param-ub]
    (coll/eduction
     (comp (gt-filter param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid)))
   ([context c-hash tid param-ub start-id]
    (coll/eduction
     (comp (gt-filter param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
 (defn- less-than? [value param-lb]
   (bs/< (codec-date/lower-bound-bytes value) param-lb))
 
-(defn- lt-keys
-  "Returns a reducible collection of single-version-ids of all
-  keys with overlapping date/time intervals with the interval specified by
-  an infinite lower bound and `param-lb` starting at `start-id` (optional)."
+(defn- lt-handles
+  "Returns a reducible collection of index handles of all keys with overlapping
+  date/time intervals with the interval specified by an infinite lower bound and
+  `param-lb` starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid param-lb]
    (coll/eduction
-    drop-value
+    (comp drop-value
+          u/by-id-grouper)
     (sp-vr/prefix-keys-value-prev snapshot c-hash tid param-lb)))
   ([context c-hash tid _param-lb start-id]
    (coll/eduction
-    drop-value
+    (comp drop-value
+          u/by-id-grouper)
     (all-keys-prev context c-hash tid start-id))))
 
 (defn- greater-equal?
@@ -178,19 +190,21 @@
    (fn [[value]]
      (greater-equal? param-lb param-ub value))))
 
-(defn- ge-keys
-  "Returns a reducible collection of single-version-ids of all
-  keys with overlapping date/time intervals with the interval specified by
-  `param-lb` and an infinite upper bound starting at `start-id` (optional)."
+(defn- ge-handles
+  "Returns a reducible collection of index handles of all keys with overlapping
+  date/time intervals with the interval specified by `param-lb` and an infinite
+  upper bound starting at `start-id` (optional)."
   ([context c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (ge-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid)))
   ([context c-hash tid param-lb param-ub start-id]
    (coll/eduction
     (comp (ge-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
 (defn- less-equal? [value param-lb param-ub]
@@ -202,32 +216,37 @@
    (fn [[value]]
      (less-equal? value param-lb param-ub))))
 
-(defn- le-keys
-  "Returns a reducible collection of single-version-ids of all
-  keys with overlapping date/time intervals with the interval specified by
-  an infinite lower bound and `param-ub` starting at `start-id` (optional)."
+(defn- le-handles
+  "Returns a reducible collection of index handles of all keys with overlapping
+  date/time intervals with the interval specified by an infinite lower bound and
+  `param-ub` starting at `start-id` (optional)."
   ([context c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (le-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid)))
   ([context c-hash tid param-lb param-ub start-id]
    (coll/eduction
     (comp (le-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
 (defn- starts-after? [param-ub value]
   (bs/<= param-ub (codec-date/lower-bound-bytes value)))
 
-(defn- sa-keys
+(defn- sa-handles
+  "Returns a reducible collection of index handles."
   ([{:keys [snapshot]} c-hash tid param-ub]
    (coll/eduction
-    drop-value
+    (comp drop-value
+          u/by-id-grouper)
     (sp-vr/prefix-keys-value snapshot c-hash tid param-ub)))
   ([context c-hash tid _param-ub start-id]
    (coll/eduction
-    drop-value
+    (comp drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
 (defn- ends-before? [value param-lb]
@@ -238,16 +257,19 @@
    (fn [[value]]
      (ends-before? value param-lb))))
 
-(defn- eb-keys
+(defn- eb-handles
+  "Returns a reducible collection of index handles."
   ([context c-hash tid param-lb]
    (coll/eduction
     (comp (eb-filter param-lb)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid)))
   ([context c-hash tid param-lb start-id]
    (coll/eduction
     (comp (eb-filter param-lb)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
 (defn- approximately?
@@ -264,51 +286,70 @@
    (fn [[value]]
      (approximately? value param-lb a-lb))))
 
-(defn- ap-keys
-  "Returns a reducible collection of single-version-ids of all
-  keys with overlapping date/time intervals with the interval specified by
-  `param-lb` and `param-ub` starting at `start-id` (optional)."
+(defn- ap-handles
+  "Returns a reducible collection of index handles of all keys with overlapping
+  date/time intervals with the interval specified by `param-lb` and `param-ub`
+  starting at `start-id` (optional)."
   ([context c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (ap-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid)))
   ([context c-hash tid param-lb param-ub start-id]
    (coll/eduction
     (comp (ap-filter param-lb param-ub)
-          drop-value)
+          drop-value
+          u/by-id-grouper)
     (all-keys context c-hash tid start-id))))
 
-(defn- resource-keys
+(defn- index-handles
+  "Returns a reducible collection of index handles."
   ([context c-hash tid
     {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
    (case op
-     :eq (eq-keys context c-hash tid param-lb param-ub)
-     :ne (ne-keys context c-hash tid param-lb param-ub)
-     :gt (gt-keys context c-hash tid param-ub)
-     :lt (lt-keys context c-hash tid param-lb)
-     :ge (ge-keys context c-hash tid param-lb param-ub)
-     :le (le-keys context c-hash tid param-lb param-ub)
-     :sa (sa-keys context c-hash tid param-ub)
-     :eb (eb-keys context c-hash tid param-lb)
-     :ap (ap-keys context c-hash tid param-lb param-ub)))
+     :eq (eq-handles context c-hash tid param-lb param-ub)
+     :ne (ne-handles context c-hash tid param-lb param-ub)
+     :gt (gt-handles context c-hash tid param-ub)
+     :lt (lt-handles context c-hash tid param-lb)
+     :ge (ge-handles context c-hash tid param-lb param-ub)
+     :le (le-handles context c-hash tid param-lb param-ub)
+     :sa (sa-handles context c-hash tid param-ub)
+     :eb (eb-handles context c-hash tid param-lb)
+     :ap (ap-handles context c-hash tid param-lb param-ub)))
   ([context c-hash tid
     {:keys [op] param-lb :lower-bound param-ub :upper-bound}
     start-id]
    (case op
-     :eq (eq-keys context c-hash tid param-lb param-ub start-id)
-     :ne (ne-keys context c-hash tid param-lb param-ub start-id)
-     :gt (gt-keys context c-hash tid param-ub start-id)
-     :lt (lt-keys context c-hash tid param-lb start-id)
-     :ge (ge-keys context c-hash tid param-lb param-ub start-id)
-     :le (le-keys context c-hash tid param-lb param-ub start-id)
-     :sa (sa-keys context c-hash tid param-ub start-id)
-     :eb (eb-keys context c-hash tid param-lb start-id)
-     :ap (ap-keys context c-hash tid param-lb param-ub start-id))))
+     :eq (eq-handles context c-hash tid param-lb param-ub start-id)
+     :ne (ne-handles context c-hash tid param-lb param-ub start-id)
+     :gt (gt-handles context c-hash tid param-ub start-id)
+     :lt (lt-handles context c-hash tid param-lb start-id)
+     :ge (ge-handles context c-hash tid param-lb param-ub start-id)
+     :le (le-handles context c-hash tid param-lb param-ub start-id)
+     :sa (sa-handles context c-hash tid param-ub start-id)
+     :eb (eb-handles context c-hash tid param-lb start-id)
+     :ap (ap-handles context c-hash tid param-lb param-ub start-id))))
 
 (defn- matcher [{:keys [snapshot]} c-hash values]
   (r-sp-v/value-filter
-   snapshot (r-sp-v/resource-search-param-encoder c-hash)
+   snapshot (r-sp-v/resource-handle-search-param-encoder c-hash)
+   (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
+     (case op
+       :eq (equal? value param-lb param-ub)
+       :ne (not-equal? value param-lb param-ub)
+       :gt (greater-than? param-ub value)
+       :lt (less-than? value param-lb)
+       :ge (greater-equal? param-lb param-ub value)
+       :le (less-equal? value param-lb param-ub)
+       :sa (starts-after? param-ub value)
+       :eb (ends-before? value param-lb)
+       :ap (approximately? value param-lb param-ub)))
+   values))
+
+(defn- single-version-id-matcher [{:keys [snapshot]} tid c-hash values]
+  (r-sp-v/value-filter
+   snapshot (r-sp-v/single-version-id-search-param-encoder tid c-hash)
    (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
      (case op
        :eq (equal? value param-lb param-ub)
@@ -353,39 +394,47 @@
           (ba/unsupported (u/unsupported-prefix-msg code op)))
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value)))
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
 
-  (-resource-handles [_ batch-db tid _ value start-id]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value start-id)))
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (index-handles batch-db c-hash tid compiled-value))
 
-  (-sorted-resource-handles [_ batch-db tid direction]
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (index-handles batch-db c-hash tid compiled-value start-id))
+
+  (-sorted-index-handles [_ batch-db tid direction]
     (coll/eduction
      (comp drop-value
-           (u/resource-handle-mapper batch-db tid))
+           u/by-id-grouper)
      (if (= :asc direction)
        (all-keys batch-db c-hash tid)
        (all-keys-prev batch-db c-hash tid))))
 
-  (-sorted-resource-handles [_ batch-db tid direction start-id]
+  (-sorted-index-handles [_ batch-db tid direction start-id]
     (coll/eduction
      (comp drop-value
-           (u/resource-handle-mapper batch-db tid))
+           u/by-id-grouper)
      (if (= :asc direction)
        (all-keys batch-db c-hash tid start-id)
        (all-keys-prev batch-db c-hash tid start-id))))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value)))
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
 
   (-matcher [_ batch-db _ values]
     (matcher batch-db c-hash values))
+
+  (-single-version-id-matcher [_ batch-db tid _ values]
+    (single-version-id-matcher batch-db tid c-hash values))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

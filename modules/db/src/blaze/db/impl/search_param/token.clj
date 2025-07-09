@@ -7,9 +7,11 @@
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+   [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
@@ -18,6 +20,7 @@
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]
+   [clojure.string :as str]
    [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
@@ -138,20 +141,25 @@
   [url value]
   (log/warn (u/format-skip-indexing-msg value url "token")))
 
-(defn c-hash-w-modifier [c-hash code modifier]
+(defn- c-hash-w-modifier [c-hash code modifier]
   (if modifier
     (codec/c-hash (str code ":" modifier))
     c-hash))
 
-(defn resource-keys
-  "Returns a reducible collection of single-version-ids that have `value`
-  starting at `start-id` (optional)."
+(defn index-handles
+  "Returns a reducible collection of index handles that have `value` starting at
+  `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid value]
-   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value))
+   (sp-vr/index-handles snapshot c-hash tid (bs/size value) value))
   ([{:keys [snapshot]} c-hash tid value start-id]
-   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value start-id)))
+   (sp-vr/index-handles snapshot c-hash tid (bs/size value) value start-id)))
+
+(defn- has-system? [value]
+  (let [idx (str/index-of value "|")]
+    (and idx (< 0 idx (count value)))))
 
 (defrecord SearchParamToken [name url type base code target c-hash expression]
+  p/WithOrderedIndexHandles
   p/SearchParam
   (-compile-value [_ _ value]
     (if (= "reference" type)
@@ -162,30 +170,39 @@
           (codec/v-hash value)))
       (codec/v-hash value)))
 
-  (-resource-handles [_ batch-db tid modifier value]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid
-                    value)))
+  (-estimated-scan-size [_ batch-db tid modifier compiled-value]
+    (let [c-hash (c-hash-w-modifier c-hash code modifier)]
+      (sp-vr/estimated-scan-size (:kv-store batch-db) c-hash tid compiled-value)))
 
-  (-resource-handles [_ batch-db tid modifier value start-id]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid value
-                    start-id)))
+  (-index-handles [_ batch-db tid modifier compiled-value]
+    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+                   compiled-value))
 
-  (-chunked-resource-handles [_ batch-db tid modifier value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid
-                    value)))
+  (-index-handles [_ batch-db tid modifier compiled-value start-id]
+    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+                   compiled-value start-id))
 
-  (-compartment-keys [_ context compartment tid value]
-    (c-sp-vr/prefix-keys (:snapshot context) compartment c-hash tid value))
+  (-supports-ordered-compartment-index-handles [_ values]
+   ;; the CompartmentSearchParamValueResource index only contains values with systems
+    (every? has-system? values))
 
-  (-matcher [_ batch-db modifier values]
-    (r-sp-v/value-prefix-filter (:snapshot batch-db)
-                                (c-hash-w-modifier c-hash code modifier) values))
+  (-ordered-compartment-index-handles [_ batch-db compartment tid compiled-value]
+    (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value))
+
+  (-ordered-compartment-index-handles [_ batch-db compartment tid compiled-value start-id]
+    (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value start-id))
+
+  (-matcher [_ batch-db modifier compiled-values]
+    (r-sp-v/value-prefix-filter
+     (:snapshot batch-db) (c-hash-w-modifier c-hash code modifier)
+     compiled-values))
+
+  (-single-version-id-matcher [_ batch-db tid modifier compiled-values]
+    (r-sp-v/single-version-id-value-prefix-filter
+     (:snapshot batch-db) tid (c-hash-w-modifier c-hash code modifier)
+     compiled-values))
+
+  (-second-pass-filter [_ _ _])
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -205,18 +222,6 @@
 
   (-index-value-compiler [_]
     (mapcat (partial index-entries url))))
-
-(defn- resource-handles
-  ([batch-db c-hash tid value]
-   (into
-    []
-    (u/resource-handle-mapper batch-db tid)
-    (resource-keys batch-db c-hash tid (codec/v-hash value))))
-  ([batch-db c-hash tid value start-id]
-   (into
-    []
-    (u/resource-handle-mapper batch-db tid)
-    (resource-keys batch-db c-hash tid (codec/v-hash value) start-id))))
 
 (def ^:private noop-resolver
   (reify fhir-path/Resolver (-resolve [_ _])))
@@ -241,31 +246,43 @@
     (some value-set (mapcat identifier-values values))))
 
 (defrecord SearchParamTokenIdentifier [name url type base code target c-hash expression]
+  p/WithOrderedIndexHandles
   p/SearchParam
   (-compile-value [_ _ value]
-    value)
+    (codec/v-hash value))
 
-  (-resource-handles [_ batch-db tid modifier value]
-    (let [c-hash (c-hash-w-modifier c-hash code modifier)
-          resource-handles (resource-handles batch-db c-hash tid value)]
-      (filterv (partial matches-identifier-values? batch-db expression #{value}) resource-handles)))
+  (-estimated-scan-size [_ _ _ _ _]
+    1)
 
-  (-resource-handles [_ batch-db tid modifier value start-id]
-    (let [c-hash (c-hash-w-modifier c-hash code modifier)
-          resource-handles (resource-handles batch-db c-hash tid value start-id)]
-      (filterv (partial matches-identifier-values? batch-db expression #{value}) resource-handles)))
+  (-index-handles [_ batch-db tid modifier compiled-value]
+    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+                   compiled-value))
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
+  (-index-handles [_ batch-db tid modifier compiled-value start-id]
+    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+                   compiled-value start-id))
 
-  (-compartment-keys [_ _ _ _ _])
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
 
-  (-matcher [_ batch-db modifier values]
-    (comp
-     (r-sp-v/value-prefix-filter (:snapshot batch-db)
-                                 (c-hash-w-modifier c-hash code modifier)
-                                 (mapv codec/v-hash values))
-     (filter (partial matches-identifier-values? batch-db expression (set values)))))
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-matcher [_ batch-db modifier compiled-values]
+    (r-sp-v/value-prefix-filter
+     (:snapshot batch-db) (c-hash-w-modifier c-hash code modifier)
+     compiled-values))
+
+  (-single-version-id-matcher [_ batch-db tid modifier compiled-values]
+    (r-sp-v/single-version-id-value-prefix-filter
+     (:snapshot batch-db) tid (c-hash-w-modifier c-hash code modifier)
+     compiled-values))
+
+  (-second-pass-filter [_ batch-db values]
+    (filter (partial matches-identifier-values? batch-db expression (set values))))
 
   (-compartment-ids [_ _ _])
 
@@ -277,25 +294,46 @@
     (mapcat (partial index-entries url))))
 
 (defrecord SearchParamId [name type code]
+  p/WithOrderedIndexHandles
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (some-> (u/non-deleted-resource-handle batch-db tid value) vector))
+  (-estimated-scan-size [_ _ _ _ _]
+    1)
 
-  (-resource-handles [sp batch-db tid modifier value start-id]
-    (when (= value start-id)
-      (p/-resource-handles sp batch-db tid modifier value)))
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (or (some-> (u/non-deleted-resource-handle batch-db tid compiled-value)
+                (svi/from-resource-handle)
+                (ih/from-single-version-id)
+                (vector))
+        []))
 
-  (-sorted-resource-handles [_ batch-db tid _]
-    (rao/type-list batch-db tid))
+  (-index-handles [sp batch-db tid modifier compiled-value start-id]
+    (if (= compiled-value start-id)
+      (p/-index-handles sp batch-db tid modifier compiled-value)
+      []))
 
-  (-sorted-resource-handles [_ batch-db tid _ start-id]
-    (rao/type-list batch-db tid start-id))
+  (-sorted-index-handles [_ batch-db tid _]
+    (coll/eduction
+     (map ih/from-resource-handle)
+     (rao/type-list batch-db tid)))
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
+  (-sorted-index-handles [_ batch-db tid _ start-id]
+    (coll/eduction
+     (map ih/from-resource-handle)
+     (rao/type-list batch-db tid start-id)))
+
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [_ _ _]))
 
@@ -316,20 +354,24 @@
     (if expression
       (when-ok [expression (fhir-path/compile (fix-expr url expression))]
         (if (= "identifier" code)
-          (->SearchParamTokenIdentifier name url type base code target (codec/c-hash code) expression)
-          (->SearchParamToken name url type base code target (codec/c-hash code) expression)))
+          (->SearchParamTokenIdentifier name url type base code target
+                                        (codec/c-hash code) expression)
+          (->SearchParamToken name url type base code target (codec/c-hash code)
+                              expression)))
       (ba/unsupported (u/missing-expression-msg url)))))
 
 (defmethod sc/search-param "reference"
   [_ {:keys [name url type base code target expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code target (codec/c-hash code) expression))
+      (->SearchParamToken name url type base code target (codec/c-hash code)
+                          expression))
     (ba/unsupported (u/missing-expression-msg url))))
 
 (defmethod sc/search-param "uri"
   [_ {:keys [name url type base code target expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code target (codec/c-hash code) expression))
+      (->SearchParamToken name url type base code target (codec/c-hash code)
+                          expression))
     (ba/unsupported (u/missing-expression-msg url))))

@@ -14,7 +14,8 @@
    [blaze.db.kv :as kv])
   (:import
    [clojure.lang Counted IReduceInit]
-   [java.lang AutoCloseable]))
+   [java.lang AutoCloseable]
+   [java.util ArrayDeque Iterator Queue]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -149,8 +150,12 @@
 
 (defn prefix-length-matcher
   "Returns a matcher that can be used with `seek-key-filter` that calls the
-  `matches?` function if a prefix of `prefix-length` of the target byte buffer
-  is a prefix of the key byte buffer.
+  `matches?` function if a prefix of prefix-length determined by the
+  `prefix-length` function of the target byte buffer is a prefix of the key
+  byte buffer.
+
+  The `prefix-length` function gets the input from the `seek-key-filter`
+  transducer.
 
   The `matches?` function gets the key byte buffer, the input and the value. So
   the target byte buffer will be skipped."
@@ -167,6 +172,37 @@
           (rf @ret)
           (do (advance-fn iter) (recur ret))))
       (rf ret))))
+
+(deftype CollIterator [rf iter ^Queue buffer ^:volatile-mutable completed]
+  Iterator
+  (hasNext [_]
+    (loop []
+      (if (.isEmpty buffer)
+        (cond
+          completed false
+
+          (kv/valid? iter)
+          (let [res (rf nil iter)]
+            (if (reduced? res)
+              (do
+                (rf nil)
+                (set! completed true))
+              (kv/next! iter))
+            (recur))
+
+          :else
+          (do
+            (rf nil)
+            (set! completed true)
+            (recur)))
+        true)))
+  (next [_]
+    (.remove buffer))
+  AutoCloseable
+  (close [_]
+    (when-not completed
+      (rf nil))
+    (.close ^AutoCloseable iter)))
 
 (defn- coll
   ([snapshot column-family xform]
@@ -188,7 +224,14 @@
          (reduce-iter! iter kv/next! (xform (completing rf)) init)))
      Counted
      (count [coll]
-       (.reduce coll coll/inc-rf 0)))))
+       (.reduce coll coll/inc-rf 0))
+     Iterable
+     (iterator [_]
+       (let [iter (kv/new-iterator snapshot column-family)
+             buffer (ArrayDeque.)
+             rf (xform (fn ([r] r) ([r x] (.add buffer x) r)))]
+         (kv/seek! iter (bs/to-byte-array start-key))
+         (->CollIterator rf iter buffer false))))))
 
 (defn- coll-prev [snapshot column-family xform start-key]
   (reify IReduceInit

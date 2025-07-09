@@ -1,9 +1,11 @@
 (ns blaze.db.impl.search-param.list
   "https://www.hl7.org/fhir/search.html#list"
   (:require
-   [blaze.byte-string :as bs]
+   [blaze.anomaly :as ba]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.index-handle :as ih]
+   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.special :as special]
@@ -15,8 +17,14 @@
 (def ^:private list-tid (codec/tid "List"))
 (def ^:private item-c-hash (codec/c-hash "item"))
 
-(defn- referenced-resource-handles
-  "Returns a reducible collection of resource handles of type `tid` that are
+(defn- list-handle [batch-db list-id]
+  (u/non-deleted-resource-handle batch-db list-tid list-id))
+
+(defn- list-hash [batch-db list-id]
+  (some-> (list-handle batch-db list-id) rh/hash))
+
+(defn- referenced-index-handles
+  "Returns a reducible collection of index handles of type `tid` that are
   referenced by the list with `list-id` and `list-hash`, starting with
   `start-id` (optional)."
   {:arglists
@@ -24,33 +32,46 @@
      [context list-id list-hash tid start-id])}
   ([{:keys [snapshot] :as context} list-id list-hash tid]
    (coll/eduction
-    (u/reference-resource-handle-mapper context)
-    (let [start-value (codec/tid-byte-string tid)]
-      (r-sp-v/prefix-keys snapshot list-tid list-id list-hash item-c-hash
-                          (bs/size start-value) start-value))))
+    (comp (u/reference-resource-handle-mapper context)
+          (map ih/from-resource-handle))
+    (r-sp-v/prefix-keys snapshot list-tid list-id list-hash item-c-hash
+                        codec/tid-size (codec/tid-byte-string tid))))
   ([{:keys [snapshot] :as context} list-id list-hash tid start-id]
    (coll/eduction
-    (u/reference-resource-handle-mapper context)
+    (comp (u/reference-resource-handle-mapper context)
+          (map ih/from-resource-handle))
     (r-sp-v/prefix-keys snapshot list-tid list-id list-hash item-c-hash
                         codec/tid-size (codec/tid-id tid start-id)))))
 
 (defrecord SearchParamList [name type code]
+  p/WithOrderedIndexHandles
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
-  (-resource-handles [_ batch-db tid _ list-id]
-    (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                               batch-db list-tid list-id)]
-      (referenced-resource-handles batch-db list-id hash tid)))
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
 
-  (-resource-handles [_ batch-db tid _ list-id start-id]
-    (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                               batch-db list-tid list-id)]
-      (referenced-resource-handles batch-db list-id hash tid start-id)))
+  (-index-handles [_ batch-db tid _ list-id]
+    (if-let [hash (list-hash batch-db list-id)]
+      (referenced-index-handles batch-db list-id hash tid)
+      []))
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
+  (-index-handles [_ batch-db tid _ list-id start-id]
+    (if-let [hash (list-hash batch-db list-id)]
+      (referenced-index-handles batch-db list-id hash tid start-id)
+      []))
+
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [_ _ _]
     []))

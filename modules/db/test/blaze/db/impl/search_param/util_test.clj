@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [hash])
   (:require
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.multi-version-id :as mvi]
-   [blaze.db.impl.index.multi-version-id-spec]
+   [blaze.db.impl.index.index-handle :as ih]
+   [blaze.db.impl.index.index-handle-spec]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.index.single-version-id-spec]
    [blaze.db.impl.search-param.util :as u]
@@ -86,7 +86,7 @@
       (let [id (codec/id-byte-string "0")]
         (is (= (transduce
                 u/by-id-grouper
-                (completing (fn [_ x] (reduced (mvi/id x))))
+                (completing (fn [_ x] (reduced (ih/id x))))
                 nil
                 [(svi/single-version-id id hash)])
                id))))
@@ -96,7 +96,7 @@
             id-1 (codec/id-byte-string "1")]
         (is (= (transduce
                 u/by-id-grouper
-                (completing (fn [_ x] (reduced (mvi/id x))))
+                (completing (fn [_ x] (reduced (ih/id x))))
                 nil
                 [(svi/single-version-id id-0 hash)
                  (svi/single-version-id id-1 hash)])

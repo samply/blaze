@@ -2,7 +2,7 @@
 
 ## Systems
 
-The following systems were used for performance evaluation:
+The following system was used for the performance evaluation:
 
 | System | Provider | CPU         | Cores |     RAM |  SSD |
 |--------|----------|-------------|------:|--------:|-----:|

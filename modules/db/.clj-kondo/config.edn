@@ -18,7 +18,8 @@
 
   :consistent-alias
   {:aliases
-   {blaze.db.impl.index.rts-as-of rts
+   {blaze.db.impl.index.index-handle ih
+    blaze.db.impl.index.rts-as-of rts
     blaze.db.impl.protocols p
     blaze.db.node.tx-indexer.expand expand
     blaze.db.node.tx-indexer.verify verify}}}}

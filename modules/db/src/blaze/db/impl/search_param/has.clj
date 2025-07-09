@@ -5,8 +5,10 @@
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+   [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.special :as special]
    [blaze.db.impl.search-param.util :as u]
@@ -75,8 +77,9 @@
   [context tid [search-param chain-search-param join-tid value]]
   (into
    (sorted-set-by id-cmp)
-   (mapcat (partial resolve-resource-handles context chain-search-param tid))
-   (p/-resource-handles search-param context join-tid nil value)))
+   (comp (u/resource-handle-xf context join-tid)
+         (mapcat (partial resolve-resource-handles context chain-search-param tid)))
+   (p/-index-handles search-param context join-tid nil value)))
 
 ;; TODO: make this cache public and configurable?
 (def ^:private ^Cache resource-handles-cache
@@ -110,19 +113,39 @@
        (codec/tid type)
        (p/-compile-value search-param nil value)]))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (resource-handles batch-db tid value))
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
 
-  (-resource-handles [_ batch-db tid _ value start-id]
+  (-index-handles [_ batch-db tid _ compiled-value]
     (coll/eduction
-     (drop-lesser-ids (codec/id-string start-id))
-     (resource-handles batch-db tid value)))
+     (map ih/from-resource-handle)
+     (resource-handles batch-db tid compiled-value)))
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (coll/eduction
+     (comp (drop-lesser-ids (codec/id-string start-id))
+           (map ih/from-resource-handle))
+     (resource-handles batch-db tid compiled-value)))
 
-  (-matcher [_ batch-db _ values]
-    (filter #(matches? batch-db % values)))
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-matcher [_ batch-db _ compiled-values]
+    (filter #(matches? batch-db % compiled-values)))
+
+  (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
+    (comp (map ih/from-single-version-id)
+          (u/resource-handle-xf batch-db tid)
+          (p/-matcher search-param batch-db modifier compiled-values)
+          (map svi/from-resource-handle)))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [_ _ _]
     []))

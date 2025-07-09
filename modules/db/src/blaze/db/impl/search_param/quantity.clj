@@ -6,8 +6,10 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+   [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
@@ -79,87 +81,89 @@
 (def ^:private drop-value
   (map #(nth % 1)))
 
-(defn- eq-keys
-  "Returns a reducible collection of single-version-ids of values between
+(defn- eq-handles
+  "Returns a reducible collection of index handles of values between
   `lower-bound` and `upper-bound` starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid lower-bound upper-bound]
    (coll/eduction
     (comp
      (take-while-less-equal c-hash tid upper-bound)
-     drop-value)
+     drop-value
+     u/by-id-grouper)
     (sp-vr/keys snapshot (sp-vr/encode-seek-key c-hash tid lower-bound))))
   ([{:keys [snapshot] :as context} c-hash tid lower-bound-prefix upper-bound
     start-id]
    (coll/eduction
     (comp
      (take-while-less-equal c-hash tid upper-bound)
-     drop-value)
+     drop-value
+     u/by-id-grouper)
     (sp-vr/keys snapshot (id-start-key context c-hash tid lower-bound-prefix
                                        start-id)))))
 
-(defn- gt-keys
-  "Returns a reducible collection of single-version-ids of values greater
+(defn- gt-handles
+  "Returns a reducible collection of index handles of values greater
   than `value` starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
-   (sp-vr/prefix-keys' snapshot c-hash tid prefix-length value))
+   (sp-vr/index-handles' snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
    (let [start-value (resource-value context c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
-     (sp-vr/prefix-keys snapshot c-hash tid prefix-length start-value
-                        start-id))))
+     (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
+                          start-id))))
 
-(defn- lt-keys
-  "Returns a reducible collection of single-version-ids of values less
-  than `value` starting at `start-id` (optional).
+(defn- lt-handles
+  "Returns a reducible collection of index handles of values less than `value`
+  starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
-   (sp-vr/prefix-keys-prev' snapshot c-hash tid prefix-length value))
+   (sp-vr/index-handles-prev' snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
    (let [start-value (resource-value context c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
-     (sp-vr/prefix-keys-prev snapshot c-hash tid prefix-length start-value
-                             start-id))))
+     (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
+                               start-id))))
 
-(defn- ge-keys
-  "Returns a reducible collection of single-version-ids of values greater
-  or equal `value` starting at `start-id` (optional).
+(defn- ge-handles
+  "Returns a reducible collection of index handles of values greater or equal
+  `value` starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
-   (sp-vr/prefix-keys snapshot c-hash tid prefix-length value))
+   (sp-vr/index-handles snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
    (let [start-value (resource-value context c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
-     (sp-vr/prefix-keys snapshot c-hash tid prefix-length start-value
-                        start-id))))
+     (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
+                          start-id))))
 
-(defn- le-keys
-  "Returns a reducible collection of single-version-ids of values less
-  or equal `value` starting at `start-id` (optional).
+(defn- le-handles
+  "Returns a reducible collection of index handles of values less or equal
+  `value` starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
-   (sp-vr/prefix-keys-prev snapshot c-hash tid prefix-length value))
+   (sp-vr/index-handles-prev snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
    (let [start-value (resource-value context c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
-     (sp-vr/prefix-keys-prev snapshot c-hash tid prefix-length start-value
-                             start-id))))
+     (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
+                               start-id))))
 
-(defn resource-keys
-  "Returns a reducible collection of single-version-ids of values
-  according to `op` and values starting at `start-id` (optional).
+(defn index-handles
+  "Returns a reducible collection of index handles of values according to `op`
+  and values starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
   values have to have."
@@ -169,24 +173,24 @@
   ([batch-db c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}]
    (case op
-     :eq (eq-keys batch-db c-hash tid lower-bound upper-bound)
-     :gt (gt-keys batch-db c-hash tid prefix-length exact-value)
-     :lt (lt-keys batch-db c-hash tid prefix-length exact-value)
-     :ge (ge-keys batch-db c-hash tid prefix-length exact-value)
-     :le (le-keys batch-db c-hash tid prefix-length exact-value)))
+     :eq (eq-handles batch-db c-hash tid lower-bound upper-bound)
+     :gt (gt-handles batch-db c-hash tid prefix-length exact-value)
+     :lt (lt-handles batch-db c-hash tid prefix-length exact-value)
+     :ge (ge-handles batch-db c-hash tid prefix-length exact-value)
+     :le (le-handles batch-db c-hash tid prefix-length exact-value)))
   ([batch-db c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}
     start-id]
    (case op
-     :eq (eq-keys batch-db c-hash tid (bs/subs lower-bound 0 prefix-length)
-                  upper-bound start-id)
-     :gt (gt-keys batch-db c-hash tid prefix-length exact-value start-id)
-     :lt (lt-keys batch-db c-hash tid prefix-length exact-value start-id)
-     :ge (ge-keys batch-db c-hash tid prefix-length exact-value start-id)
-     :le (le-keys batch-db c-hash tid prefix-length exact-value start-id))))
+     :eq (eq-handles batch-db c-hash tid (bs/subs lower-bound 0 prefix-length)
+                     upper-bound start-id)
+     :gt (gt-handles batch-db c-hash tid prefix-length exact-value start-id)
+     :lt (lt-handles batch-db c-hash tid prefix-length exact-value start-id)
+     :ge (ge-handles batch-db c-hash tid prefix-length exact-value start-id)
+     :le (le-handles batch-db c-hash tid prefix-length exact-value start-id))))
 
-(defn- resource-search-param-value-encoder [c-hash]
-  (let [encoder (r-sp-v/resource-search-param-value-encoder c-hash)]
+(defn- resource-handle-search-param-value-encoder [c-hash]
+  (let [encoder (r-sp-v/resource-handle-search-param-value-encoder c-hash)]
     (fn [target-buf resource-handle {:keys [op] :as value}]
       (encoder target-buf resource-handle
                (value (if (identical? :eq op) :lower-bound :exact-value))))))
@@ -196,14 +200,38 @@
    snapshot
    (fn [{:keys [op]}]
      (case op (:lt :le) kv/seek-for-prev-buffer! kv/seek-buffer!))
-   (resource-search-param-value-encoder c-hash)
+   (resource-handle-search-param-value-encoder c-hash)
    (fn [value {:keys [op exact-value upper-bound]}]
      (case op
        :eq (bs/<= value upper-bound)
        :gt (bs/> value exact-value)
        :lt (bs/< value exact-value)
        true))
-   prefix-length
+   (fn [resource-handle]
+     (+ (r-sp-v/key-size (codec/id-byte-string (rh/id resource-handle)))
+        (long prefix-length)))
+   values))
+
+(defn- single-version-id-search-param-value-encoder [tid c-hash]
+  (let [encoder (r-sp-v/single-version-id-search-param-value-encoder tid c-hash)]
+    (fn [target-buf single-version-id {:keys [op] :as value}]
+      (encoder target-buf single-version-id
+               (value (if (identical? :eq op) :lower-bound :exact-value))))))
+
+(defn single-version-id-matcher [{:keys [snapshot]} tid c-hash prefix-length values]
+  (r-sp-v/value-filter
+   snapshot
+   (fn [{:keys [op]}]
+     (case op (:lt :le) kv/seek-for-prev-buffer! kv/seek-buffer!))
+   (single-version-id-search-param-value-encoder tid c-hash)
+   (fn [value {:keys [op exact-value upper-bound]}]
+     (case op
+       :eq (bs/<= value upper-bound)
+       :gt (bs/> value exact-value)
+       :lt (bs/< value exact-value)
+       true))
+   (fn [single-version-id]
+     (+ (r-sp-v/key-size (svi/id single-version-id)) (long prefix-length)))
    values))
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
@@ -225,23 +253,33 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid codec/v-hash-size value)))
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
 
-  (-resource-handles [_ batch-db tid _ value start-id]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid codec/v-hash-size value start-id)))
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (index-handles batch-db c-hash tid codec/v-hash-size compiled-value))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid codec/v-hash-size value)))
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (index-handles batch-db c-hash tid codec/v-hash-size compiled-value
+                   start-id))
+
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
 
   (-matcher [_ batch-db _ values]
     (matcher batch-db c-hash codec/v-hash-size values))
+
+  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+    (single-version-id-matcher batch-db tid c-hash codec/v-hash-size
+                               compiled-values))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

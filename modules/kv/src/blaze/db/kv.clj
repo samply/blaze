@@ -188,6 +188,15 @@
   [store column-family]
   (p/-estimate-num-keys store column-family))
 
+(defn estimate-scan-size
+  "Returns a relative estimation of the amount of work to do while scanning the
+  `key-range` in `column-family`.
+
+  The metric is relative and unitless. It can be only used to compare the amount
+  of scan work between different column families and key ranges."
+  [store column-family key-range]
+  (p/-estimate-scan-size store column-family key-range))
+
 (defn compact!
   "Compacts the storage of `column-family` of `store`.
 

@@ -42,7 +42,7 @@
   (comp
    (drop page-offset)
    (take (inc page-size))
-   (map (partial search-util/entry context))))
+   (map (partial search-util/match-entry context))))
 
 (defn- entries [context resources]
   (into [] (entries-xf context) resources))
