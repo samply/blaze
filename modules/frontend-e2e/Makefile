@@ -3,6 +3,9 @@ install:
 	npx playwright install --with-deps
 	$(MAKE) -C test-data install
 
+lint: install
+	npm run lint
+
 test:
 	npx playwright test
 
