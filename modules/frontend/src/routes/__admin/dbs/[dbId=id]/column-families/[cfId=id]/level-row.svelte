@@ -1,20 +1,20 @@
 <script lang="ts">
-	import prettyBytes from 'pretty-bytes';
+  import prettyBytes from 'pretty-bytes';
 
-	interface Props {
-		level: number;
-		fileSize: number;
-		numFiles: number;
-	}
+  interface Props {
+    level: number;
+    fileSize: number;
+    numFiles: number;
+  }
 
-	let { level, fileSize, numFiles }: Props = $props();
+  let { level, fileSize, numFiles }: Props = $props();
 </script>
 
 <tr>
-	<td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{level}</td
-	>
-	<td class="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-500">{numFiles}</td>
-	<td class="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-500"
-		>{prettyBytes(fileSize, { binary: true, maximumFractionDigits: 1 })}</td
-	>
+  <td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{level}</td
+  >
+  <td class="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-500">{numFiles}</td>
+  <td class="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-500"
+    >{prettyBytes(fileSize, { binary: true, maximumFractionDigits: 1 })}</td
+  >
 </tr>

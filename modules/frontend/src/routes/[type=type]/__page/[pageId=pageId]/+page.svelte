@@ -1,88 +1,88 @@
 <script lang="ts">
-	import type { PageProps } from './$types';
+  import type { PageProps } from './$types';
 
-	import { onMount } from 'svelte';
-	import { page } from '$app/state';
-	import { fade, slide } from 'svelte/transition';
+  import { onMount } from 'svelte';
+  import { page } from '$app/state';
+  import { fade, slide } from 'svelte/transition';
 
-	import Breadcrumb from '$lib/breadcrumb.svelte';
-	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-	import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
+  import Breadcrumb from '$lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
 
-	import SearchForm from '../../search-form.svelte';
-	import TotalCard from '$lib/total-card.svelte';
-	import TotalBadge from '$lib/total-badge.svelte';
-	import DurationBadge from '$lib/duration-badge.svelte';
-	import EntryCard from '$lib/history/entry-card.svelte';
-	import NoResultsCard from '../../no-results-card.svelte';
-	import ErrorCard from '$lib/error-card.svelte';
+  import SearchForm from '../../search-form.svelte';
+  import TotalCard from '$lib/total-card.svelte';
+  import TotalBadge from '$lib/total-badge.svelte';
+  import DurationBadge from '$lib/duration-badge.svelte';
+  import EntryCard from '$lib/history/entry-card.svelte';
+  import NoResultsCard from '../../no-results-card.svelte';
+  import ErrorCard from '$lib/error-card.svelte';
 
-	let { data }: PageProps = $props();
+  let { data }: PageProps = $props();
 
-	let duration = $state(0);
+  let duration = $state(0);
 
-	onMount(() => {
-		const interval = setInterval(() => {
-			duration = Date.now() - data.streamed.start;
-		}, 100);
-		return () => clearInterval(interval);
-	});
+  onMount(() => {
+    const interval = setInterval(() => {
+      duration = Date.now() - data.streamed.start;
+    }, 100);
+    return () => clearInterval(interval);
+  });
 </script>
 
 <svelte:head>
-	<title>{page.params.type} - Blaze</title>
+  <title>{page.params.type} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-	<Breadcrumb>
-		<BreadcrumbEntryHome />
-		<BreadcrumbEntryType />
-		<BreadcrumbEntryPage />
-	</Breadcrumb>
+  <Breadcrumb>
+    <BreadcrumbEntryHome />
+    <BreadcrumbEntryType />
+    <BreadcrumbEntryPage />
+  </Breadcrumb>
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
-	<SearchForm searchParams={data.searchParams} />
-	{#await data.streamed.bundle}
-		{#if duration > 300}
-			<div
-				in:fade|global={{ duration: 200 }}
-				out:slide|global={{ duration: 200 }}
-				class="text-center px-4 py-5 sm:px-6 text-gray-700"
-			>
-				<code>
-					loading...
-					{(duration / 1000).toLocaleString(undefined, {
-						minimumFractionDigits: 1,
-						maximumFractionDigits: 1
-					})}
-					s
-				</code>
-			</div>
-		{/if}
-	{:then bundleWithDuration}
-		{@const bundle = bundleWithDuration.bundle}
+  <SearchForm searchParams={data.searchParams} />
+  {#await data.streamed.bundle}
+    {#if duration > 300}
+      <div
+        in:fade|global={{ duration: 200 }}
+        out:slide|global={{ duration: 200 }}
+        class="text-center px-4 py-5 sm:px-6 text-gray-700"
+      >
+        <code>
+          loading...
+          {(duration / 1000).toLocaleString(undefined, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1
+          })}
+          s
+        </code>
+      </div>
+    {/if}
+  {:then bundleWithDuration}
+    {@const bundle = bundleWithDuration.bundle}
 
-		<TotalCard {bundle}>
-			<p class="py-1.5 text-gray-900">
-				{#if bundle.total !== undefined}
-					<TotalBadge total={bundle.total} />
-				{/if}
-			</p>
-			<p class="ml-2 flex-grow py-1.5 text-gray-900">
-				<DurationBadge duration={bundleWithDuration.duration} />
-			</p>
-		</TotalCard>
+    <TotalCard {bundle}>
+      <p class="py-1.5 text-gray-900">
+        {#if bundle.total !== undefined}
+          <TotalBadge total={bundle.total} />
+        {/if}
+      </p>
+      <p class="ml-2 flex-grow py-1.5 text-gray-900">
+        <DurationBadge duration={bundleWithDuration.duration} />
+      </p>
+    </TotalCard>
 
-		{#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
-			{#each bundle.fhirObjectEntry as entry (entry.fullUrl)}
-				<EntryCard {entry} />
-			{/each}
-		{:else if bundle.total === undefined}
-			<NoResultsCard />
-		{/if}
-	{:catch error}
-		<ErrorCard status={error.status} error={error.body} />
-	{/await}
+    {#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
+      {#each bundle.fhirObjectEntry as entry (entry.fullUrl)}
+        <EntryCard {entry} />
+      {/each}
+    {:else if bundle.total === undefined}
+      <NoResultsCard />
+    {/if}
+  {:catch error}
+    <ErrorCard status={error.status} error={error.body} />
+  {/await}
 </main>

@@ -3,5 +3,5 @@
 @tailwind utilities;
 
 .wm-v-rl {
-	writing-mode: vertical-rl;
+  writing-mode: vertical-rl;
 }

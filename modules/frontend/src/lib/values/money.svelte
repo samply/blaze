@@ -1,16 +1,16 @@
 <script lang="ts">
-	import type { Money } from 'fhir/r4';
+  import type { Money } from 'fhir/r4';
 
-	interface Props {
-		value: Money;
-	}
+  interface Props {
+    value: Money;
+  }
 
-	let { value }: Props = $props();
+  let { value }: Props = $props();
 </script>
 
 {#if value.value}
-	{value.value}
-	{#if value.currency}{value.currency}{/if}
+  {value.value}
+  {#if value.currency}{value.currency}{/if}
 {:else}
-	unknown
+  unknown
 {/if}
