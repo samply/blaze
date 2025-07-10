@@ -1,14 +1,14 @@
 <script lang="ts">
-	import type { Quantity } from 'fhir/r4';
+  import type { Quantity } from 'fhir/r4';
 
-	interface Props {
-		value: Quantity;
-	}
+  interface Props {
+    value: Quantity;
+  }
 
-	let { value }: Props = $props();
+  let { value }: Props = $props();
 </script>
 
 <p>
-	{value.value}
-	{#if value.unit}{value.unit}{:else}{value.code}{/if}
+  {value.value}
+  {#if value.unit}{value.unit}{:else}{value.code}{/if}
 </p>

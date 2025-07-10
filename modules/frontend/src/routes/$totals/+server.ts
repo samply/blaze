@@ -2,6 +2,6 @@ import type { RequestHandler } from './$types';
 import { base } from '$app/paths';
 
 export const GET: RequestHandler = async ({ fetch }) => {
-	const res = await fetch(`${base}/$totals`, { headers: { Accept: 'application/fhir+json' } });
-	return new Response(await res.blob(), res);
+  const res = await fetch(`${base}/$totals`, { headers: { Accept: 'application/fhir+json' } });
+  return new Response(await res.blob(), res);
 };
