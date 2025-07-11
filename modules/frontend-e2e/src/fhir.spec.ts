@@ -1,4 +1,4 @@
-import type { Page, Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
 test.beforeEach('Sign In', async ({ page }) => {
@@ -33,8 +33,9 @@ async function expectInActiveNavLink(page: Page, name: string): Promise<void> {
 
 async function expectBadge(badge: Locator): Promise<void> {
   await expect(badge).toBeVisible();
-  await expect(badge).toHaveCSS('background-color', /rgb\(.*\)/);
-  await expect(badge).toHaveCSS('border-radius', /\d+px/);
+  await expect(badge, 'toHaveBgColor').toHaveCSS('background-color', /rgba?\(.*\)/);
+  await expect(badge, 'toHaveRoundedBorders').toHaveCSS('border-radius', /\d+px/);
+  await expect(badge, 'toHaveTooltip').toHaveAttribute('title');
 }
 
 test('Home Page', async ({ page }) => {
@@ -49,7 +50,7 @@ test('History Page', async ({ page }) => {
   await page.getByRole('link', { name: 'History', exact: true }).click();
 
   await expect(page).toHaveTitle('History - Blaze');
-  await expect(page.getByText('Total:')).toBeVisible();
+  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
   await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
 });
 
@@ -78,7 +79,7 @@ test('Metadata Page', async ({ page }) => {
   await page.getByRole('link', { name: 'Resources' }).click();
 
   await expect(page).toHaveTitle('Encounter - Blaze');
-  await expect(page.getByText('Total:')).toBeVisible();
+  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
 });
 
 test.describe('Admin', () => {
@@ -260,7 +261,8 @@ test('Patients Page', async ({ page }) => {
   await expect(page.getByTitle('Patient History')).toBeVisible();
   await expect(page.getByTitle('Patient Metadata')).toBeVisible();
   await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
-  await expect(page.getByText('Total:')).toBeVisible();
+  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
+  await expectBadge(page.getByRole('note').filter({ hasText: 'Time:' }));
 
   await page.getByTitle('Patient Metadata').click();
   await expect(page).toHaveTitle('Patient - Metadata - Blaze');
@@ -274,13 +276,25 @@ test('Patients Page', async ({ page }) => {
   await expect(page.getByText('Non-First Page')).toBeVisible();
 });
 
+test('Patient Page', async ({ page }) => {
+  await page.getByRole('link', { name: 'Patient' }).click();
+  await page.getByRole('link', { name: 'Patient/', exact: false }).first().click();
+
+  await expect(page).toHaveTitle(/Patient\/\w+ - Blaze/);
+  await expect(page.getByTitle('Go to resource history')).toBeVisible();
+
+  await expectBadge(page.getByRole('note').filter({ hasText: 'official' }));
+  await expectBadge(page.getByRole('note').filter({ hasText: 'phone' }));
+  await expectBadge(page.getByRole('note').filter({ hasText: 'home' }));
+});
+
 test('Patients History Page', async ({ page }) => {
   await page.getByRole('link', { name: 'Patient' }).click();
   await expect(page).toHaveTitle('Patient - Blaze');
   await page.getByTitle('Patient History').click();
 
   await expect(page).toHaveTitle('History - Patient - Blaze');
-  await expect(page.getByText('Total:')).toBeVisible();
+  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
   await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
 });
 

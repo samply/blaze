@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { FhirObjectBundleEntry } from '$lib/resource/resource-card.js';
+  import type { FhirObjectBundleEntry } from '$lib/resource/resource-card';
   import ResourceCard from '$lib/resource/resource-card.svelte';
-  import SearchModeBadge from './search-mode-badge.svelte';
+  import SearchModeBadge from '$lib/history/search-mode-badge.svelte';
 
   interface Props {
     entry: FhirObjectBundleEntry;
@@ -13,7 +13,7 @@
 {#if entry.fhirObject}
   <ResourceCard resource={entry.fhirObject} embedded={true}>
     {#snippet header()}
-      <SearchModeBadge searchMode={entry.search?.mode || 'unknown'} />
+      <SearchModeBadge mode={entry.search?.mode || 'unknown'} />
     {/snippet}
   </ResourceCard>
 {/if}

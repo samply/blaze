@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FhirObjectBundleEntry } from '$lib/resource/resource-card';
+  import Badge from '$lib/tailwind/badge.svelte';
 
   interface Props {
     entry: FhirObjectBundleEntry;
@@ -17,12 +18,6 @@
 
 {#if isSubsetted(entry)}
   <div class="ml-2 flex flex-shrink-0">
-    <p
-      role="note"
-      title="Some information has been removed from the resource."
-      class="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-700"
-    >
-      subsetted
-    </p>
+    <Badge value="subsetted" title="Resource is incomplete" color="orange" />
   </div>
 {/if}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Period } from 'fhir/r4';
   import DateTime from './date-time.svelte';
-  import UseBadge from './util/gray-badge.svelte';
+  import Badge from '$lib/tailwind/badge.svelte';
 
   interface Props {
     value: Period;
@@ -21,11 +21,11 @@
 {:else if value.start}
   <p>
     <DateTime value={value.start} />
-    <UseBadge value="start" />
+    <Badge value="start" />
   </p>
 {:else if value.end}
   <p>
     <DateTime value={value.end} />
-    <UseBadge value="end" />
+    <Badge value="end" />
   </p>
 {/if}
