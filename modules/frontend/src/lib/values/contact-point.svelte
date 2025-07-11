@@ -11,6 +11,21 @@
   let { values }: Props = $props();
 
   let contactPoints = $derived(values.map((v) => v.object) as ContactPoint[]);
+
+  function useTitle(use: string): string {
+    switch (use) {
+      case 'home':
+        return 'A communication contact point at a home.';
+      case 'work':
+        return 'An office contact point.';
+      case 'temp':
+        return 'A temporary contact point.';
+      case 'old':
+        return 'This contact point is no longer in use (or was never correct).';
+      default:
+        return 'A telecommunication device that moves and stays with its owner.';
+    }
+  }
 </script>
 
 {#if contactPoints.length > 1}
@@ -31,9 +46,9 @@
 {:else if contactPoints.length === 1}
   {contactPoints[0].value}
   {#if contactPoints[0].system}
-    <GrayBadge value={contactPoints[0].system} />
+    <GrayBadge value={contactPoints[0].system} title="Telecommunications form for contact point." />
   {/if}
   {#if contactPoints[0].use}
-    <GrayBadge value={contactPoints[0].use} />
+    <GrayBadge value={contactPoints[0].use} title={useTitle(contactPoints[0].use)} />
   {/if}
 {/if}
