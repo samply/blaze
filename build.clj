@@ -102,10 +102,13 @@
             "^HISTORY-JAVA.md"
             "^dse_protocol_v\\d.spec"
             "^native_protocol_v\\d.spec"
-            ".*-musl.so$"
             ".*-ppc64le.so$"
+            ".*-ppc64le-musl.so$"
             ".*-s390x.so$"
+            ".*-s390x-musl.so$"
             ".*-linux32.so$"
+            ".*-linux32-musl.so$"
+            ".*-riscv64.so$"
             ".*.dll$"
             ".*.jnilib$"]
            :conflict-handlers

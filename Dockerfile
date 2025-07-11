@@ -1,12 +1,6 @@
-FROM eclipse-temurin:21.0.7_6-jre-noble@sha256:862bb9fb9cf8272e02d07b44bf0812ed765c090aec572a18ab9d2e94be8d4bfd
+FROM eclipse-temurin:21.0.7_6-jre-alpine@sha256:8728e354e012e18310faa7f364d00185277dec741f4f6d593af6c61fc0eb15fd
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && \
-    apt-get install libjemalloc2 -y && \
-    apt-get purge wget libncurses6 -y && \
-    apt-get autoremove -y && apt-get clean && \
-    rm -rf /var/lib/apt/lists/
+RUN apk add jemalloc
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-1.0.3-standalone.jar /app/
@@ -21,5 +15,7 @@ ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 ENV ADMIN_INDEX_DB_DIR="/app/data/admin-index"
 ENV ADMIN_TRANSACTION_DB_DIR="/app/data/admin-transaction"
+
+HEALTHCHECK --start-period=30s CMD wget --spider http://localhost:8080/health
 
 CMD ["java", "-jar",  "blaze-1.0.3-standalone.jar"]
