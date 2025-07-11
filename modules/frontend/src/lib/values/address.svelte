@@ -3,7 +3,7 @@
   import type { FhirObject } from '$lib/resource/resource-card.js';
   import { joinStrings } from '$lib/util.js';
   import Single from './address/single.svelte';
-  import GrayBadge from './util/gray-badge.svelte';
+  import Badge from '$lib/tailwind/badge.svelte';
 
   interface Props {
     values: FhirObject<Address>[];
@@ -32,6 +32,6 @@
 {:else if values.length === 1}
   <Single value={values[0].object} />
   {#if values[0].object.use}
-    <GrayBadge value={values[0].object.use} />
+    <Badge value={values[0].object.use} />
   {/if}
 {/if}

@@ -1,39 +1,38 @@
 <script lang="ts">
+  import type { Color } from '$lib/tailwind/badge.svelte';
+  import type { SearchMode } from '$lib/fhir';
+  import Badge from '$lib/tailwind/badge.svelte';
+
   interface Props {
-    mode: 'match' | 'include' | 'outcome';
+    mode: SearchMode | 'unknown';
   }
 
   let { mode }: Props = $props();
 
-  function modeBgColor(mode: string): string {
+  // See https://www.hl7.org/fhir/R4B/valueset-search-entry-mode.html
+  function modeColor(mode: SearchMode | 'unknown'): Color {
     switch (mode) {
       case 'match':
-        return 'bg-green-100';
+        return 'green';
       case 'include':
-        return 'bg-fuchsia-100';
+        return 'fuchsia';
       default:
-        return 'bg-red-100';
+        return 'red';
     }
   }
 
-  function modeTextColor(mode: string): string {
+  function modeTitle(mode: SearchMode | 'unknown'): string | undefined {
     switch (mode) {
       case 'match':
-        return 'text-green-800';
+        return 'Direct match';
       case 'include':
-        return 'text-fuchsia-800';
+        return 'Included resource';
       default:
-        return 'text-red-800';
+        return undefined;
     }
   }
 </script>
 
 <div class="ml-2 flex flex-shrink-0">
-  <p
-    class="inline-flex items-center rounded-full {modeBgColor(
-      mode
-    )} px-2.5 py-0.5 text-xs font-medium {modeTextColor(mode)}"
-  >
-    {mode}
-  </p>
+  <Badge value={mode} title={modeTitle(mode)} color={modeColor(mode)} />
 </div>

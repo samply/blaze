@@ -1,39 +1,26 @@
 <script lang="ts">
+  import type { HttpMethod } from '$lib/fhir';
+  import type { Color } from '$lib/tailwind/badge.svelte';
+  import Badge from '$lib/tailwind/badge.svelte';
+
   interface Props {
-    method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+    method: HttpMethod;
   }
 
   let { method }: Props = $props();
 
-  function modeBgColor(mode: string): string {
-    switch (mode) {
+  function methodColor(method: HttpMethod): Color {
+    switch (method) {
       case 'POST':
-        return 'bg-green-100';
+        return 'green';
       case 'PUT':
-        return 'bg-fuchsia-100';
+        return 'fuchsia';
       default:
-        return 'bg-red-100';
-    }
-  }
-
-  function modeTextColor(mode: string): string {
-    switch (mode) {
-      case 'POST':
-        return 'text-green-800';
-      case 'PUT':
-        return 'text-fuchsia-800';
-      default:
-        return 'text-red-800';
+        return 'red';
     }
   }
 </script>
 
 <div class="ml-2 flex flex-shrink-0">
-  <p
-    class="inline-flex items-center rounded-full {modeBgColor(
-      method
-    )} px-2.5 py-0.5 text-xs font-medium {modeTextColor(method)}"
-  >
-    {method}
-  </p>
+  <Badge value={method} color={methodColor(method)} title="Request method" />
 </div>

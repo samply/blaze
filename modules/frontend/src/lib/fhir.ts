@@ -42,3 +42,7 @@ export function coding(concept: CodeableConcept, system: string): Coding | undef
 export function parameter(concept: Parameters, name: string): ParametersParameter | undefined {
   return concept.parameter?.filter((c) => c.name == name)[0];
 }
+
+export type HttpMethod = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+
+export type SearchMode = 'match' | 'include' | 'outcome';

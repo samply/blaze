@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { FhirObject } from '$lib/resource/resource-card.js';
   import type { HumanName } from 'fhir/r4';
-  import GrayBadge from './util/gray-badge.svelte';
+  import Badge from '$lib/tailwind/badge.svelte';
 
   interface Props {
     values: FhirObject[];
@@ -19,6 +19,28 @@
   }
 
   let humanNames = $derived(values.map((v) => v.object) as HumanName[]);
+
+  // See https://hl7.org/fhir/R4B/valueset-name-use.html
+  type Use = 'usual' | 'official' | 'temp' | 'nickname' | 'anonymous' | 'old' | 'maiden';
+
+  function useTitle(use: Use): string {
+    switch (use) {
+      case 'usual':
+        return 'Normally used name';
+      case 'official':
+        return 'Formal/Registered/Legal name';
+      case 'temp':
+        return 'Temporary name, see Name.period';
+      case 'nickname':
+        return 'Informal/Chosen name';
+      case 'anonymous':
+        return 'Anonymous assigned name/alias/pseudonym';
+      case 'old':
+        return 'No longer in use';
+      case 'maiden':
+        return 'Prior-marriage name';
+    }
+  }
 </script>
 
 {#if humanNames.length > 1}
@@ -39,6 +61,6 @@
 {:else if humanNames.length === 1}
   {display(humanNames[0])}
   {#if humanNames[0].use}
-    <GrayBadge value={humanNames[0].use} />
+    <Badge value={humanNames[0].use} title={useTitle(humanNames[0].use)} />
   {/if}
 {/if}
