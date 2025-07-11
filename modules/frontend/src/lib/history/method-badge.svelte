@@ -30,9 +30,10 @@
 
 <div class="ml-2 flex flex-shrink-0">
   <p
-    class="inline-flex items-center rounded-full {modeBgColor(
-      method
-    )} px-2.5 py-0.5 text-xs font-medium {modeTextColor(method)}"
+    role="note"
+    title="The method of the request producing the resource was '{method}'."
+    class="inline-flex items-center rounded-full {modeBgColor(method)}
+    px-2.5 py-0.5 text-xs font-medium {modeTextColor(method)}"
   >
     {method}
   </p>

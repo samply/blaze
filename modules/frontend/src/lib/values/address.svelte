@@ -32,6 +32,6 @@
 {:else if values.length === 1}
   <Single value={values[0].object} />
   {#if values[0].object.use}
-    <GrayBadge value={values[0].object.use} />
+    <GrayBadge value={values[0].object.use} title="What to use here?" />
   {/if}
 {/if}
