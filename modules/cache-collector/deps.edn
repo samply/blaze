@@ -6,7 +6,7 @@
   {:local/root "../module-base"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "3.2.1"
+  {:mvn/version "3.2.2"
    :exclusions
    [org.jspecify/jspecify
     com.google.errorprone/error_prone_annotations]}}
