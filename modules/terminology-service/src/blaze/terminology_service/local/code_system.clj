@@ -15,6 +15,7 @@
    [blaze.terminology-service.local.code-system.sct]
    [blaze.terminology-service.local.code-system.ucum]
    [blaze.terminology-service.local.graph :as graph]
+   [blaze.terminology-service.local.lookup :as l]
    [blaze.terminology-service.local.validate-code :as vc]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]))
 
@@ -89,16 +90,19 @@
   (c/enhance context code-system))
 
 (defn- find-code [code-system {:keys [clause] :as params}]
+  (prn "b.t.l.c-s find-code code-system:" code-system clause)
   (or (c/find-complete code-system params)
       (vc/issue-anom-clause clause (issue/invalid-code clause))))
 
 (defn- validate-code** [code-system {{:keys [display]} :clause :as params}]
+  (prn "b.t.l.c-s validate-code** code-system:" code-system)
   (when-ok [concept (find-code code-system params)]
     (cond->> concept
       display (vc/check-display {} params))))
 
 (defn validate-code*
   [code-system params]
+  (prn "b.t.l.c-s validate-code* code-system:" code-system)
   (if-ok [concept (validate-code** code-system params)]
     (vc/parameters-from-concept concept params)
     #(vc/fail-parameters-from-anom % params)))
@@ -112,8 +116,31 @@
   "Returns a Parameters resource that contains the response of the validation
   `params`."
   [code-system params]
+  (prn "b.t.l.c-s validate-code code-system:" code-system)
   (validate-code* code-system (update params :clause assoc-system-info code-system)))
 
+(defn- lookup** [code-system {{:keys [display]} :clause :as params}]
+  (prn "b.t.l.c-s lookup** code-system:" code-system)
+  (when-ok [concept (find-code code-system params)]
+    (cond->> concept
+             display (l/check-display {} params))))
+
+(defn lookup*
+  [code-system params]
+  (prn "b.t.l.c-s lookup* code-system:" code-system)
+  (if-ok [concept (lookup** code-system params)]
+         (l/parameters-from-concept concept params)
+         #(l/fail-parameters-from-anom % params)))
+
+(defn lookup
+  "Returns a Parameters resource that contains the response of the validation
+  `params`."
+  [code-system params]
+  (prn "b.t.l.c-s lookup code-system:" code-system)
+  (lookup* code-system (update params :clause assoc-system-info code-system)))
+
+;; we need a lookup fn similar to validate-code
+;;
 (defn expand-complete
   "Returns a list of all concepts as expansion of `code-system`."
   [code-system params]

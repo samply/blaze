@@ -59,6 +59,7 @@
   "Returns the concept according to `params` if it exists in `code-system`."
   {:arglists '([code-system params])}
   (fn [{:keys [url]} _]
+    (prn "b.t.l.c.core find-complete:" url)
     (condp = (type/value url)
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct

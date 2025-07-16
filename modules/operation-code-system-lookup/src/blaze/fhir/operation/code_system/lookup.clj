@@ -15,16 +15,14 @@
    [taoensso.timbre :as log]))
 
 (def ^:private parameter-specs
-  {"url" {:action :copy :coerce type/uri}
-   "codeSystem" {:action :complex}
-   "code" {:action :copy :coerce type/code}
+  {"code" {:action :copy :coerce type/code}
+   "system" {:action :copy :coerce type/uri}
    "version" {:action :copy :coerce type/string}
-   "display" {:action :copy :coerce type/string}
    "coding" {:action :complex}
-   "codeableConcept" {:action :complex}
    "date" {}
-   "abstract" {}
    "displayLanguage" {:action :copy :coerce type/code}
+   "property" {:action :copy :coerce type/code}
+   ;; useSupplement is remaining
    "tx-resource" {:action :complex}})
 
 (defn- parameter [name value]
@@ -33,6 +31,7 @@
    :value value})
 
 (defn- validate-query-params [params]
+  (prn "b.f.o.c.l validate-query-params")
   (reduce-kv
    (fn [new-params name value]
      (if-let [{:keys [action coerce]} (parameter-specs name)]
@@ -51,12 +50,14 @@
    params))
 
 (defn- validate-params* [{:keys [request-method body query-params]}]
+  (prn "b.f.o.c.l validate-params*")
   (if (= :post request-method)
     body
     (when-ok [params (validate-query-params query-params)]
              {:fhir/type :fhir/Parameters :parameter params})))
 
 (defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
+  (prn "b.f.o.c.l validate-params")
   (if-ok [params (validate-params* request)]
          (if id
            (do-sync [{:keys [url]} (fhir-util/pull db "CodeSystem" id :summary)]
@@ -65,12 +66,14 @@
          ac/completed-future))
 
 (defn- lookup* [terminology-service params]
-  (-> (ts/code-system-validate-code terminology-service params)
+  (prn "b.f.o.c.l lookup*")
+  (-> (ts/code-system-lookup terminology-service params)
       (ac/exceptionally
        (fn [{::anom/keys [category] :as anomaly}]
          (cond-> anomaly (= ::anom/not-found category) (assoc :http/status 400))))))
 
 (defn- lookup [terminology-service request]
+  (prn "b.f.o.c.l lookup")
   (-> (validate-params request)
       (ac/then-compose (partial lookup* terminology-service))))
 

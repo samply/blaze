@@ -63,6 +63,7 @@
                     blaze.db.kv.mem
                     blaze.metrics.handler
                     blaze.openid-auth
+                    blaze.fhir.operation.code-system.lookup
                     blaze.fhir.operation.code-system.validate-code
                     blaze.fhir.operation.compact
                     blaze.fhir.operation.graphql

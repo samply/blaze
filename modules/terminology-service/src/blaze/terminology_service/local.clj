@@ -48,6 +48,7 @@
     (assoc params (keyword (camel->kebab name)) value)))
 
 (defn- validate-params [specs {params :parameter}]
+  (prn "b.t.l validate-params: " params)
   (reduce
    (fn [new-params {:keys [name] :as param}]
      (let [name (type/value name)]
@@ -101,9 +102,25 @@
       (type/value display) (assoc :display (type/value display)))
     (ba/incorrect "Missing required parameter `coding.code`.")))
 
+(defn- cs-lookup-more
+  "Tries to extract :code, :system :coding and others from `params`."
+  [{:keys [code system] :as params}]
+  ;; version, date, abstract, displayLanguage not needed
+  ;; this should go in the cond (it will be either code & system or coding)
+  (prn "b.t.l cs-lookup-more:" code system)
+  (cond
+    code
+    (if (and code system)
+      (assoc params :clause (cond-> {:code code}))
+      (ba/incorrect "Missing one of the parameters `code` or `system`."))
+
+    :else
+    (ba/incorrect "Missing one of the parameters `code`, `system` or `coding`.")))
+
 (defn- cs-validate-code-more
   "Tries to extract :url, :version and :clause from `params`."
   [{:keys [url code-system code coding codeable-concept display] :as params}]
+  (prn "b.t.l cs-validate-code-more:" url code-system code coding codeable-concept display)
   (if-not (and url code-system)
     (cond
       code
@@ -174,7 +191,14 @@
     :else
     (ba/incorrect "Missing both parameters `url` and `valueSet`.")))
 
+(defn- lookup-code-system [context {:keys [code system]}]
+  (prn "b.t.l lookup-code-system code:" code ", system:" system)
+  (if system
+    (cs/find context code system)
+    (cs/find context code)))
+
 (defn- find-code-system [context {:keys [url version code-system]}]
+  (prn "b.t.l find-code-system code-system:" code-system ", url:" url ", version:" version)
   (if code-system
     (ac/completed-future (cs/enhance context code-system))
     (if version
@@ -228,6 +252,16 @@
     @(cs/list (d/db node))
     (log/info "Successfully loaded all code systems in"
               (format "%.1f" (u/duration-s start)) "seconds")))
+
+(def ^:private cs-lookup-param-specs
+  {"code" {:action :copy}
+   "system" {:action :copy}
+   "version" {:action :copy}
+   "coding" {:action :copy-complex-type}
+   "date" {}
+   "displayLanguage" {:action :copy}
+   "property" {:action :copy}
+   "tx-resource" {:action :copy-resource :cardinality :many}})
 
 (def ^:private cs-validate-code-param-specs
   {"url" {:action :copy}
@@ -298,14 +332,16 @@
     (-code-systems [_]
       (c/code-systems (d/db node)))
     (-code-system-lookup [_ params]
-      (if-ok [params (validate-params cs-validate-code-param-specs params)
-              params (cs-validate-code-more params)]
+      (prn "b.t.l -c-s-l params: " params)
+      (if-ok [params (validate-params cs-lookup-param-specs params)
+              params (cs-lookup-more params)]
              (let [db (d/new-batch-db (d/db node))]
-               (-> (find-code-system (context-with-db context db params) params)
-                   (ac/then-apply #(cs/validate-code % params))
+               (-> (lookup-code-system (context-with-db context db params) params)
+                   (ac/then-apply #(cs/lookup % params))
                    (handle-close db)))
              ac/completed-future))
     (-code-system-validate-code [_ params]
+      (prn "b.t.l -c-s-v-c params: " params)
       (if-ok [params (validate-params cs-validate-code-param-specs params)
               params (cs-validate-code-more params)]
         (let [db (d/new-batch-db (d/db node))]

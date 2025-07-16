@@ -1,10 +1,15 @@
-(ns blaze.terminology-service.local.validate-code
+(ns blaze.terminology-service.local.lookup
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]
    [cognitect.anomalies :as anom]))
+
+;; for preparing the result
+;; anom is related to issues
+;; we may not need this
+;; don't do designation and properties yet
 
 (defn issue-anom-clause [{:keys [code system version]} issue]
   (let [{{:keys [text]} :details :as issue} issue]
@@ -39,7 +44,6 @@
   [{{:keys [display] :as clause} :clause languages :display-languages
     :keys [lenient-display-validation]}
    {designations :designation :as concept}]
-  (prn "b.t.l.v-c check-display*")
   (if (= display (type/value (:display concept)))
     (assoc concept ::found-display (:display concept))
     (let [pred (if languages
@@ -55,7 +59,6 @@
   (update concept :designation (fnil into []) designations))
 
 (defn- enhance-concept [supplements concept]
-  (prn "b.t.l.v-c enhance-concept")
   (reduce
    (fn [{:keys [code] :as concept} {{:keys [concepts]} :default/graph}]
      (let [concept-supplement (concepts (type/value code))]
@@ -66,7 +69,6 @@
 (defn check-display
   {:arglists '([context params concept])}
   [{:keys [supplements]} params concept]
-  (prn "b.t.l.v-c check-display")
   (check-display* params (enhance-concept supplements concept)))
 
 (defn- display [{::keys [found-display] :keys [display] designations :designation}]
@@ -78,7 +80,6 @@
   {:arglists '([concept params])}
   [{:keys [code system version inactive] :as concept}
    {{:keys [origin] :as clause} :clause}]
-  (prn "b.t.l.v-c parameters-from-concept" code system version inactive)
   (fu/parameters
    "result" #fhir/boolean true
    "code" code
@@ -92,8 +93,8 @@
       {:coding
        [(type/map->Coding
          (cond->
-          {:system (type/uri (:system clause))
-           :code (type/code (:code clause))}
+           {:system (type/uri (:system clause))
+            :code (type/code (:code clause))}
            (:version clause) (assoc :version (type/string (:version clause)))
            (:display clause) (assoc :display (type/string (:display clause)))))]}))))
 
@@ -116,7 +117,7 @@
       {:coding
        [(type/map->Coding
          (cond->
-          {:system (type/uri (:system clause))
-           :code (type/code (:code clause))}
+           {:system (type/uri (:system clause))
+            :code (type/code (:code clause))}
            (:version clause) (assoc :version (type/string (:version clause)))
            (:display clause) (assoc :display (type/string (:display clause)))))]}))))

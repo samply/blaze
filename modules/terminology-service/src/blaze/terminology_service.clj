@@ -11,10 +11,12 @@
 
 (defn code-system-lookup
   [terminology-service params]
+  (prn "b.t-s code-system-lookup")
   (p/-code-system-lookup terminology-service params))
 
 (defn code-system-validate-code
   [terminology-service params]
+  (prn "b.t-s code-system-validate-code")
   (p/-code-system-validate-code terminology-service params))
 
 (defn expand-value-set
