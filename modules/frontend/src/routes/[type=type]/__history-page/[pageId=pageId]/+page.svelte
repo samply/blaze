@@ -29,9 +29,9 @@
   </Breadcrumb>
 </header>
 
-<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+<main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
   <TotalCard bundle={data.bundle}>
-    <p class="flex-grow py-1.5">
+    <p class="grow py-1.5">
       {#if data.bundle.total !== undefined}
         <TotalBadge total={data.bundle.total} />
       {/if}

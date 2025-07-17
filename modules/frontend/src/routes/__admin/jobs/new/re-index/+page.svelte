@@ -20,7 +20,7 @@
   <form method="POST">
     <div class="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
       <div class="col-span-full">
-        <label for="search-param-url" class="block text-sm font-medium leading-6 text-gray-900"
+        <label for="search-param-url" class="block text-sm/6 font-medium leading-6 text-gray-900"
           >Search Param URL</label
         >
         {#if form?.incorrect}

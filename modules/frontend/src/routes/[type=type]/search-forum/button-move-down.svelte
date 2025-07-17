@@ -17,7 +17,7 @@
 <button
   type="button"
   {disabled}
-  class="rounded-md bg-white p-2 text-sm font-semibold text-gray-900 disabled:opacity-50 ring-1 ring-inset ring-gray-300 enabled:hover:bg-gray-50"
+  class="rounded-md bg-white p-2 text-sm font-semibold text-gray-900 disabled:opacity-50 ring-1 ring-inset ring-gray-300 enabled:hover:bg-gray-50 enabled:cursor-pointer"
   aria-label="move search param up"
   onclick={click}
 >

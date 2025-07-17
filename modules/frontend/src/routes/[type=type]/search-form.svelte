@@ -123,7 +123,7 @@
 </script>
 
 <form class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200" onsubmit={preventDefault(send)}>
-  <div class="flex-grow flex flex-col gap-2">
+  <div class="grow flex flex-col gap-2">
     {#each queryParams as queryParam, index (queryParam.id)}
       <div in:fade={{ duration: 200, easing: quintIn }} class="flex gap-2">
         <CheckboxActive
@@ -178,7 +178,7 @@
   <div>
     <button
       type="submit"
-      class="w-20 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+      class="w-20 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 enabled:cursor-pointer"
       >Search
     </button>
   </div>

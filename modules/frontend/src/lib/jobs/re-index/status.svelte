@@ -28,7 +28,7 @@
   >
 {:else if job.status === 'in-progress'}
   <span
-    class="inline-flex items-center rounded-md bg-gradient-to-r from-blue-200 to-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
+    class="inline-flex items-center rounded-md bg-linear-to-r from-blue-200 to-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
     style="--tw-gradient-from-position: {progress(job)}%; --tw-gradient-to-position: {progress(
       job
     ) + 5}%">in-progress</span

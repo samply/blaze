@@ -76,7 +76,7 @@
     <div class="relative flex-none">
       <button
         type="button"
-        class="-m-2.5 block p-2.5 text-gray-500 hover:text-gray-900"
+        class="-m-2.5 block p-2.5 text-gray-500 hover:text-gray-900 enabled:cursor-pointer"
         id="options-menu-0-button"
         aria-expanded="false"
         aria-haspopup="true"
@@ -115,7 +115,7 @@
               <input type="hidden" name="job-id" value={job.id} />
               <button
                 type="submit"
-                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50"
+                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50 enabled:cursor-pointer"
                 role="menuitem"
                 tabindex="-1"
                 id="options-menu-0-item-0"
@@ -127,7 +127,7 @@
               <input type="hidden" name="job-id" value={job.id} />
               <button
                 type="submit"
-                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50"
+                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50 enabled:cursor-pointer"
                 role="menuitem"
                 tabindex="-1"
                 id="options-menu-0-item-0"
@@ -141,7 +141,7 @@
             <input type="hidden" name="job-id" value={job.id} />
             <button
               type="submit"
-              class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50"
+              class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50 enabled:cursor-pointer"
               role="menuitem"
               tabindex="-1"
               id="options-menu-0-item-0"

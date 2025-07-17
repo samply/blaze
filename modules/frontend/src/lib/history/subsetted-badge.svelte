@@ -17,7 +17,7 @@
 </script>
 
 {#if isSubsetted(entry)}
-  <div class="ml-2 flex flex-shrink-0">
+  <div class="ml-2 flex shrink-0">
     <Badge value="subsetted" title="Resource is incomplete" color="orange" />
   </div>
 {/if}

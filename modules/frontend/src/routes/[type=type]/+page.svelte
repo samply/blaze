@@ -82,7 +82,7 @@
           <TotalBadge total={bundle.total} />
         {/if}
       </p>
-      <p class="flex-grow py-1.5">
+      <p class="grow py-1.5">
         <DurationBadge duration={bundleWithDuration.duration} />
       </p>
     </TotalCard>

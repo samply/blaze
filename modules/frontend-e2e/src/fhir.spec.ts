@@ -20,20 +20,20 @@ test.beforeEach('Sign In', async ({ page }) => {
 async function expectActiveNavLink(page: Page, name: string): Promise<void> {
   const overviewLink = page.getByRole('link', { name: name });
   await expect(overviewLink).toBeVisible();
-  await expect(overviewLink).toHaveCSS('border-bottom-color', 'rgb(99, 102, 241)');
+  await expect(overviewLink).toContainClass('border-indigo-500');
   await expect(overviewLink).toHaveAttribute('aria-current', 'page');
 }
 
 async function expectInActiveNavLink(page: Page, name: string): Promise<void> {
   const overviewLink = page.getByRole('link', { name: name });
   await expect(overviewLink).toBeVisible();
-  await expect(overviewLink).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
+  await expect(overviewLink).toContainClass('border-transparent');
   await expect(overviewLink).not.toHaveAttribute('aria-current', 'page');
 }
 
 async function expectBadge(badge: Locator): Promise<void> {
   await expect(badge).toBeVisible();
-  await expect(badge, 'toHaveBgColor').toHaveCSS('background-color', /rgba?\(.*\)/);
+  await expect(badge, 'toHaveBgColor').toHaveClass(/bg-.+/);
   await expect(badge, 'toHaveRoundedBorders').toHaveCSS('border-radius', /\d+px/);
   await expect(badge, 'toHaveTooltip').toHaveAttribute('title');
 }

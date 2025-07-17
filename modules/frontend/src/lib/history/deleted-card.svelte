@@ -14,7 +14,7 @@
 <div class="overflow-hidden">
   <div class="px-4 py-5 sm:px-6">
     <div class="flex">
-      <h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
+      <h3 class="grow text-base font-semibold leading-6 text-gray-900">
         {request.url}
       </h3>
       <MethodBadge method="DELETE" />
