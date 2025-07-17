@@ -7,21 +7,25 @@
   let { name, value }: Props = $props();
 </script>
 
-<div class="relative mt-2 rounded-md shadow-sm">
+<div class="mt-2 grid grid-cols-1">
   <input
     type="text"
     id={name}
     {name}
     {value}
-    class="block w-full rounded-md border-0 py-1.5 pr-10 text-red-900 ring-1 ring-inset ring-red-300 placeholder:text-red-300 focus:ring-2 focus:ring-inset focus:ring-red-500 sm:text-sm sm:leading-6"
+    class="col-start-1 row-start-1 block w-full rounded-md bg-white py-1.5 pr-10 pl-3 text-red-900 outline-1 -outline-offset-1 outline-red-300 placeholder:text-red-300 focus:outline-2 focus:-outline-offset-2 focus:outline-red-600 sm:pr-9 sm:text-sm/6 sm:leading-6"
   />
-  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-    <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-      <path
-        fill-rule="evenodd"
-        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z"
-        clip-rule="evenodd"
-      />
-    </svg>
-  </div>
+  <svg
+    viewBox="0 0 16 16"
+    fill="currentColor"
+    data-slot="icon"
+    aria-hidden="true"
+    class="pointer-events-none col-start-1 row-start-1 mr-3 size-5 self-center justify-self-end text-red-500 sm:size-4"
+  >
+    <path
+      d="M8 15A7 7 0 1 0 8 1a7 7 0 0 0 0 14ZM8 4a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+      clip-rule="evenodd"
+      fill-rule="evenodd"
+    />
+  </svg>
 </div>

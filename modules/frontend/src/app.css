@@ -1,7 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
 .wm-v-rl {
   writing-mode: vertical-rl;
+}
+
+@theme {
+  --font-sans: 'Lexend Variable';
 }

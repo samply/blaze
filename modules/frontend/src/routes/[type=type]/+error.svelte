@@ -20,7 +20,7 @@
   </Breadcrumb>
 </header>
 
-<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col">
   <SearchForm searchParams={page.data.searchParams || []} />
   <ErrorCard />
 </main>

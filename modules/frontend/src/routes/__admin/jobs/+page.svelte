@@ -28,7 +28,7 @@
     <h1 class="flex-1 text-base font-semibold leading-6 text-gray-900">All Jobs</h1>
     <div class="flex md:ml-4">
       <a
-        class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white text-nowrap hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white text-nowrap hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
         href="{base}/__admin/jobs/new"
       >
         New Job
