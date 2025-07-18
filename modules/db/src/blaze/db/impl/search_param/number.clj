@@ -63,11 +63,6 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid 0 value)))
-
   (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
@@ -77,6 +72,11 @@
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
      (spq/resource-keys batch-db c-hash tid 0 value start-id)))
+
+  (-chunked-resource-handles [_ batch-db tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid 0 value)))
 
   (-matcher [_ batch-db _ values]
     (spq/matcher batch-db c-hash 0 values))

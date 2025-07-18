@@ -81,11 +81,6 @@
   (-compile-value [_ _ value]
     (codec/string (normalize value)))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value)))
-
   (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
@@ -95,6 +90,11 @@
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
      (resource-keys batch-db c-hash tid value start-id)))
+
+  (-chunked-resource-handles [_ batch-db tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid value)))
 
   (-matcher [_ batch-db _ values]
     (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash values))

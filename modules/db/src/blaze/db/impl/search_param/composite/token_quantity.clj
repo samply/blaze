@@ -45,11 +45,6 @@
                      code (::spq/unsupported-prefix %)))
              %)))))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (spq/resource-keys batch-db c-hash tid prefix-length value)))
-
   (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
@@ -59,6 +54,11 @@
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
      (spq/resource-keys batch-db c-hash tid prefix-length value start-id)))
+
+  (-chunked-resource-handles [_ batch-db tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid prefix-length value)))
 
   (-matcher [_ batch-db _ values]
     (spq/matcher batch-db c-hash prefix-length values))

@@ -162,12 +162,6 @@
           (codec/v-hash value)))
       (codec/v-hash value)))
 
-  (-chunked-resource-handles [_ batch-db tid modifier value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid
-                    value)))
-
   (-resource-handles [_ batch-db tid modifier value]
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
@@ -179,6 +173,12 @@
      (u/resource-handle-mapper batch-db tid)
      (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid value
                     start-id)))
+
+  (-chunked-resource-handles [_ batch-db tid modifier value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid
+                    value)))
 
   (-compartment-keys [_ context compartment tid value]
     (c-sp-vr/prefix-keys (:snapshot context) compartment c-hash tid value))
@@ -245,9 +245,6 @@
   (-compile-value [_ _ value]
     value)
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
-
   (-resource-handles [_ batch-db tid modifier value]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)
           resource-handles (resource-handles batch-db c-hash tid value)]
@@ -257,6 +254,9 @@
     (let [c-hash (c-hash-w-modifier c-hash code modifier)
           resource-handles (resource-handles batch-db c-hash tid value start-id)]
       (filterv (partial matches-identifier-values? batch-db expression #{value}) resource-handles)))
+
+  (-chunked-resource-handles [search-param batch-db tid modifier value]
+    [(p/-resource-handles search-param batch-db tid modifier value)])
 
   (-compartment-keys [_ _ _ _ _])
 
@@ -281,9 +281,6 @@
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
-
   (-resource-handles [_ batch-db tid _ value]
     (some-> (u/non-deleted-resource-handle batch-db tid value) vector))
 
@@ -296,6 +293,9 @@
 
   (-sorted-resource-handles [_ batch-db tid _ start-id]
     (rao/type-list batch-db tid start-id))
+
+  (-chunked-resource-handles [search-param batch-db tid modifier value]
+    [(p/-resource-handles search-param batch-db tid modifier value)])
 
   (-index-values [_ _ _]))
 

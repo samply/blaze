@@ -5173,6 +5173,125 @@
           count := 1
           [0 :id] := "1")))))
 
+(deftest type-query-multiple-clauses-test
+  (testing "with two token search params"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code"final"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri"http://loinc.org"
+                          :code #fhir/code"94564-2"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code"preliminary"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri"http://loinc.org"
+                          :code #fhir/code"94564-2"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :status #fhir/code"final"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri"http://loinc.org"
+                          :code #fhir/code"8462-4"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :status #fhir/code"preliminary"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri"http://loinc.org"
+                          :code #fhir/code"8462-4"}]}}]]]
+
+      (given (pull-type-query node "Observation" [["status" "final"] ["code" "94564-2"]])
+        count := 1
+        [0 :id] := "0")
+
+      (given (pull-type-query node "Observation" [["status" "preliminary"] ["code" "94564-2"]])
+        count := 1
+        [0 :id] := "1")
+
+      (given (pull-type-query node "Observation" [["status" "final"] ["code" "8462-4"]])
+        count := 1
+        [0 :id] := "2")
+
+      (given (pull-type-query node "Observation" [["status" "preliminary"] ["code" "8462-4"]])
+        count := 1
+        [0 :id] := "3")
+
+      (testing "first clause with multiple values"
+        (given (pull-type-query node "Observation" [["status" "final" "preliminary"] ["code" "94564-2"]])
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1")
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" [["status" "final" "preliminary"] ["code" "94564-2"]] "1")
+            count := 1
+            [0 :id] := "1")))
+
+      (given (pull-type-query node "Observation" [["status" "final"] ["code" "94564-2" "8462-4"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "2")
+
+      (given (pull-type-query node "Observation" [["status" "final" "preliminary"] ["code" "94564-2" "8462-4"]])
+        count := 4
+        [0 :id] := "0"
+        [1 :id] := "2"
+        [2 :id] := "1"
+        [3 :id] := "3")))
+
+  (testing "with one token and one date search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"2025"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code"preliminary"
+               :effective #fhir/dateTime"2025"}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"2026"}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :status #fhir/code"preliminary"
+               :effective #fhir/dateTime"2026"}]]]
+
+      (given (pull-type-query node "Observation" [["status" "final"] ["date" "2025"]])
+        count := 1
+        [0 :id] := "0")
+
+      (given (pull-type-query node "Observation" [["status" "preliminary"] ["date" "2025"]])
+        count := 1
+        [0 :id] := "1")
+
+      (given (pull-type-query node "Observation" [["status" "final"] ["date" "2026"]])
+        count := 1
+        [0 :id] := "2")
+
+      (given (pull-type-query node "Observation" [["status" "preliminary"] ["date" "2026"]])
+        count := 1
+        [0 :id] := "3")
+
+      (given (pull-type-query node "Observation" [["status" "final" "preliminary"] ["date" "2025"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1")
+
+      (given (pull-type-query node "Observation" [["status" "final"] ["date" "2025" "2026"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "2")
+
+      (given (pull-type-query node "Observation" [["status" "final" "preliminary"] ["date" "2025" "2026"]])
+        count := 4
+        [0 :id] := "0"
+        [1 :id] := "2"
+        [2 :id] := "1"
+        [3 :id] := "3"))))
+
 (deftest type-query-date-equal-test
   (testing "with second precision"
     (with-system-data [{:blaze.db/keys [node]} config]

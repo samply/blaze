@@ -1392,6 +1392,15 @@ jobs:
           999-11-7186,999-58-3121,999-48-7111,999-24-3722
       run: .github/scripts/download-resources-query.sh Condition "code=$SNOMED_CODES&patient=$(.github/scripts/patient-ids.sh "$PATIENT_SSNS")" 144
 
+    - name: Download Vital Sign Resources
+      run: .github/scripts/download-resources-query.sh Observation "category=vital-signs" 152877
+
+    - name: Download Observation Resources of the Year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=2020" 71236
+
+    - name: Download Vital Sign Resources of the Year 2020
+      run: .github/scripts/download-resources-query.sh Observation "category=vital-signs&date=2020" 17060
+
     - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using CQL
       run: .github/scripts/evaluate-measure-blazectl.sh inpatient-stress 13
 

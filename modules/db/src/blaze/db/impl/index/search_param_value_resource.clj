@@ -94,9 +94,9 @@
                     decode-value-single-version-id base-key-size start-key))))
 
 (defn all-keys-prev
-  "Returns a reducible collection of `[value SingleVersionId]` tuples of the
-  whole range prefixed with `c-hash` and `tid` starting with `start-value` and
-  `start-id` (optional), iterating in reverse."
+  "Returns a reducible collection of decoded `[value SingleVersionId]` tuples of
+  the whole range prefixed with `c-hash` and `tid` starting with `start-value`
+  and `start-id` (optional), iterating in reverse."
   ([snapshot c-hash tid]
    (i/prefix-keys-prev
     snapshot
@@ -112,7 +112,11 @@
     base-key-size
     (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
-(defn prefix-keys-value [snapshot c-hash tid value-prefix]
+(defn prefix-keys-value
+  "Returns a reducible collection of decoded `[value SingleVersionId]` tuples
+  from keys starting at a key with `value-prefix` and ending when `c-hash` and
+  `tid` no longer match."
+  [snapshot c-hash tid value-prefix]
   (let [start-key (encode-seek-key c-hash tid value-prefix)]
     (i/prefix-keys snapshot :search-param-value-index
                    decode-value-single-version-id base-key-size start-key)))

@@ -39,9 +39,9 @@
    values))
 
 (defn resource-handles
-  "Returns a reducible collection of distinct resource handles.
-
-  Concatenates resource handles of each value in compiled `values`."
+  "Returns a reducible collection of resource handles from `batch-db` of type
+  with `tid` that satisfy at least one of the `values` at `search-param`
+  with `modifier`, optionally starting with `start-id`."
   ([search-param batch-db tid modifier values]
    (if (= 1 (count values))
      (p/-resource-handles search-param batch-db tid modifier (first values))
