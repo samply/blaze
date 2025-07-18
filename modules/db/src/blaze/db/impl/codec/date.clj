@@ -6,12 +6,14 @@
    [blaze.fhir.spec.type.system :as system]))
 
 (defn encode-lower-bound
-  "Encodes the lower bound of the implicit range of `date-time`."
+  "Encodes the lower bound of the implicit range of `date-time` as number
+  representing the seconds since epoch."
   [date-time]
   (number (system/date-time-lower-bound date-time)))
 
 (defn encode-upper-bound
-  "Encodes the upper bound of the implicit range of `date-time`."
+  "Encodes the upper bound of the implicit range of `date-time` as number
+  representing the seconds since epoch."
   [date-time]
   (number (system/date-time-upper-bound date-time)))
 

@@ -226,6 +226,44 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 ¹ time in seconds per 1 million resources, ² block cache hit ratio is near zero
 
+## Code and Date Search
+
+In this section, FHIR Search for selecting Observation resources with a certain code at a certain date.
+
+### Counting
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&date=$DATE&_summary=count"
+```
+
+| System | Dataset | Code   | Date | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|--------|-----:|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      | 8310-5 | 2013 |   50 k |     0.58 |  0.003 |  86.6 k |
+| LEA47  | 1M      | 8310-5 | 2019 |   85 k |     0.59 |  0.003 | 145.3 k |
+| LEA47  | 1M      | 8310-5 | 2020 |  273 k |     0.59 |  0.003 | 465.8 k |
+
+¹ resources per second
+
+### Download of Resources
+
+All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=$DATE&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Code   | Date | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|--------|-----:|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      | 8310-5 | 2013 |   50 k |     8.45 |  0.014 |   6.0 k |
+| LEA47  | 1M      | 8310-5 | 2019 |   85 k |     9.10 |  0.031 |   9.4 k |
+| LEA47  | 1M      | 8310-5 | 2020 |  273 k |    12.20 |  0.111 |  22.4 k |
+
+¹ resources per second
+
 ## Code and Patient Search
 
 In this section, FHIR Search for selecting Observation resources with a certain code and 1000 Patients is used.

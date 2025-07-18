@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.byte-string-spec]
+   [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]

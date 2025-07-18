@@ -225,11 +225,6 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid codec/v-hash-size value)))
-
   (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
@@ -239,6 +234,11 @@
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
      (resource-keys batch-db c-hash tid codec/v-hash-size value start-id)))
+
+  (-chunked-resource-handles [_ batch-db tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid codec/v-hash-size value)))
 
   (-matcher [_ batch-db _ values]
     (matcher batch-db c-hash codec/v-hash-size values))

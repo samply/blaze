@@ -110,9 +110,6 @@
        (codec/tid type)
        (p/-compile-value search-param nil value)]))
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
-
   (-resource-handles [_ batch-db tid _ value]
     (resource-handles batch-db tid value))
 
@@ -120,6 +117,9 @@
     (coll/eduction
      (drop-lesser-ids (codec/id-string start-id))
      (resource-handles batch-db tid value)))
+
+  (-chunked-resource-handles [search-param batch-db tid modifier value]
+    [(p/-resource-handles search-param batch-db tid modifier value)])
 
   (-matcher [_ batch-db _ values]
     (filter #(matches? batch-db % values)))

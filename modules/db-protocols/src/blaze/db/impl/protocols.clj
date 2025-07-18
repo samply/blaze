@@ -100,8 +100,6 @@
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
-  (-chunked-resource-handles
-    [search-param batch-db tid modifier compiled-value])
   (-resource-handles
     [search-param batch-db tid modifier compiled-value]
     [search-param batch-db tid modifier compiled-value start-id]
@@ -110,6 +108,8 @@
     [search-param batch-db tid direction]
     [search-param batch-db tid direction start-id]
     "Returns a reducible collection.")
+  (-chunked-resource-handles
+    [search-param batch-db tid modifier compiled-value])
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matcher [_ batch-db modifier values])
   (-compartment-ids [_ resolver resource])

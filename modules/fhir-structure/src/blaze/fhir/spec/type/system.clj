@@ -470,7 +470,11 @@
 (defprotocol LowerBound
   (-lower-bound [date-time]))
 
-(defn date-time-lower-bound [date-time]
+(defn date-time-lower-bound
+  "Returns the lower bound of `date-time` as seconds since epoch.
+
+  In case of local dates the UTC time zone is used."
+  [date-time]
   (-lower-bound date-time))
 
 (extend-protocol LowerBound
@@ -510,7 +514,11 @@
 (defprotocol UpperBound
   (-upper-bound [date-time]))
 
-(defn date-time-upper-bound [date-time]
+(defn date-time-upper-bound
+  "Returns the upper bound of `date-time` as seconds since epoch.
+
+  In case of local dates the UTC time zone is used."
+  [date-time]
   (-upper-bound date-time))
 
 (extend-protocol UpperBound

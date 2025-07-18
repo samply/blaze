@@ -105,6 +105,8 @@
                                     start-id))))
 
 (defn type-query
+  "Returns a reducible collection of resource handles from `batch-db` of type
+  with `tid` that satisfy `clauses`, optionally starting with `start-id`."
   ([batch-db tid clauses]
    (let [[[search-param modifier _ values] & other-clauses] clauses]
      (if (seq other-clauses)
@@ -131,8 +133,8 @@
    0
    chunk))
 
-(defn- resource-handle-chunk-counter-mapper [context other-clauses]
-  (map #(ac/supply-async (fn [] (resource-handle-chunk-counter context other-clauses %)))))
+(defn- resource-handle-chunk-counter-mapper [batch-db other-clauses]
+  (map #(ac/supply-async (fn [] (resource-handle-chunk-counter batch-db other-clauses %)))))
 
 (defn- count-resource-handles [xform chunked-resource-handles]
   (let [futures (into [] xform chunked-resource-handles)]

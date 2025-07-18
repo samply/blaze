@@ -149,7 +149,9 @@ The way the `SearchParamValueResource` index is used, depends on the type of the
 
 ##### Date/DateTime
 
-Search parameters of type `date` are used to search in data elements with date/time and period data types. All date types stand for an interval of a start point in time up to an end point in time. So date search uses interval arithmetic to find hits. For each value of a resource, both the lower bound and the upper bound are stored in the index with different prefixes. For the different modifier, the search works the following way:
+Search parameters of type `date` are used to search in data elements with date/time and period data types. All date types stand for an interval of a start point in time up to an end point in time. So date search uses interval arithmetic to find hits. For each value of a resource, the lower bound is encoded followed by the upper bound. Both bounds are encodes as numbers representing the seconds since epoch. UTC is used for local dates. The lower bound is separated by an null byte from the upper bound so that all resources are sorted by the lower bound first and the upper bound second.  
+
+For the different modifier, the search works the following way:
 
 ###### Equal (eq)
 
@@ -157,7 +159,7 @@ The value interval `v` has to intersect with the query interval `q`. In order to
 * the lower bound or upper bound of `v` is in `q`, or
 * `v` completely encloses `q`.
 
-We start by scanning through the index with the lower bound prefix, starting at the lower bound of `q` and ending at the upper bound of `q`. After that, we repeat the same process with the upper bound prefix, not adding any duplicates.
+We start by scanning through the index starting at the lower bound of `q` and ending at the upper bound of `q`. After that, we repeat the same process with the upper bound prefix, not adding any duplicates.
 
 ###### Less Than or Equal
 

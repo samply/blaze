@@ -85,11 +85,9 @@
      (bs/<= (codec-date/upper-bound-bytes value) param-ub))))
 
 (defn- eq-stop [param-ub]
-  (halt-when
+  (take-while
    (fn [[value]]
-     (bs/< param-ub (codec-date/lower-bound-bytes value)))
-   (fn [result _]
-     result)))
+     (not (bs/< param-ub (codec-date/lower-bound-bytes value))))))
 
 (defn- eq-keys
   "Returns a reducible collection of `SingleVersionId` instances of all keys were
@@ -355,11 +353,6 @@
           (ba/unsupported (u/unsupported-prefix-msg code op)))
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (resource-keys batch-db c-hash tid value)))
-
   (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
      (u/resource-handle-mapper batch-db tid)
@@ -385,6 +378,11 @@
      (if (= :asc direction)
        (all-keys batch-db c-hash tid start-id)
        (all-keys-prev batch-db c-hash tid start-id))))
+
+  (-chunked-resource-handles [_ batch-db tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid value)))
 
   (-matcher [_ batch-db _ values]
     (matcher batch-db c-hash values))

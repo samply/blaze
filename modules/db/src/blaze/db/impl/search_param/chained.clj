@@ -34,9 +34,6 @@
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
 
-  (-chunked-resource-handles [this batch-db tid modifier value]
-    [(p/-resource-handles this batch-db tid modifier value)])
-
   (-resource-handles [_ batch-db tid modifier compiled-value]
     (coll/eduction
      (comp (map #(p/-compile-value ref-search-param ref-modifier (rh/reference %)))
@@ -49,6 +46,9 @@
       (coll/eduction
        (drop-while #(not= start-id (rh/id %)))
        (p/-resource-handles this batch-db tid modifier compiled-value))))
+
+  (-chunked-resource-handles [this batch-db tid modifier value]
+    [(p/-resource-handles this batch-db tid modifier value)])
 
   (-matcher [_ batch-db modifier values]
     (filter

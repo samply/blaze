@@ -39,9 +39,6 @@
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
-  (-chunked-resource-handles [search-param batch-db tid modifier value]
-    [(p/-resource-handles search-param batch-db tid modifier value)])
-
   (-resource-handles [_ batch-db tid _ list-id]
     (when-let [{:keys [hash]} (u/non-deleted-resource-handle
                                batch-db list-tid list-id)]
@@ -51,6 +48,9 @@
     (when-let [{:keys [hash]} (u/non-deleted-resource-handle
                                batch-db list-tid list-id)]
       (referenced-resource-handles batch-db list-id hash tid start-id)))
+
+  (-chunked-resource-handles [search-param batch-db tid modifier value]
+    [(p/-resource-handles search-param batch-db tid modifier value)])
 
   (-index-values [_ _ _]
     []))
