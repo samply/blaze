@@ -13,6 +13,7 @@ make build-all
 In this module dir:
 
 ```sh
+make install
 docker compose up -d
 ./upload.sh
 ```
@@ -34,5 +35,5 @@ make test-dev
 Run test in dev mode with UI:
 
 ```sh
-make test-ui-dev
+make test-dev-ui
 ```
