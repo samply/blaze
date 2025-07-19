@@ -50,7 +50,7 @@ test('History Page', async ({ page }) => {
   await page.getByRole('link', { name: 'History', exact: true }).click();
 
   await expect(page).toHaveTitle('History - Blaze');
-  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
+  await expectBadge(page.getByRole('note').filter({ hasText: /Total: \d+/ }));
   await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
 });
 
@@ -79,7 +79,7 @@ test('Metadata Page', async ({ page }) => {
   await page.getByRole('link', { name: 'Resources' }).click();
 
   await expect(page).toHaveTitle('Encounter - Blaze');
-  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
+  await expectBadge(page.getByRole('note').filter({ hasText: /Total: \d+/ }));
 });
 
 test.describe('Admin', () => {
@@ -261,7 +261,7 @@ test('Patients Page', async ({ page }) => {
   await expect(page.getByTitle('Patient History')).toBeVisible();
   await expect(page.getByTitle('Patient Metadata')).toBeVisible();
   await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
-  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
+  await expectBadge(page.getByRole('note').filter({ hasText: /Total: \d+/ }));
   await expectBadge(page.getByRole('note').filter({ hasText: 'Time:' }));
 
   await page.getByTitle('Patient Metadata').click();
@@ -278,6 +278,14 @@ test('Patients Page', async ({ page }) => {
 
 test('Patient Page', async ({ page }) => {
   await page.getByRole('link', { name: 'Patient' }).click();
+
+  await expect(page).toHaveTitle('Patient - Blaze');
+  await expectBadge(page.getByRole('note').filter({ hasText: /Total: \d+/ }));
+  await page.getByLabel('Search Param', { exact: true }).selectOption('identifier');
+  await page.getByLabel('Search Value').fill('fcd31792-91d8-982e-8e28-ef1eb284e260');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+
+  await expectBadge(page.getByRole('note').filter({ hasText: /Total: 1$/ }));
   await page.getByRole('link', { name: 'Patient/', exact: false }).first().click();
 
   await expect(page).toHaveTitle(/Patient\/\w+ - Blaze/);
@@ -294,7 +302,7 @@ test('Patients History Page', async ({ page }) => {
   await page.getByTitle('Patient History').click();
 
   await expect(page).toHaveTitle('History - Patient - Blaze');
-  await expectBadge(page.getByRole('note').filter({ hasText: 'Total:' }));
+  await expectBadge(page.getByRole('note').filter({ hasText: /Total: \d+/ }));
   await expectBadge(page.getByRole('note').filter({ hasText: 'subsetted' }).first());
 });
 
