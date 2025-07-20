@@ -8,10 +8,10 @@
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
-   [blaze.db.impl.util :as u]
    [blaze.db.kv :as kv])
   (:import
-   [java.io Writer]))
+   [java.io Writer]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -98,8 +98,15 @@
       (p/-execute-query batch-db query arg1)))
 
   (-matcher-transducer [_ clauses]
-    (let [batch-db (batch-db/new-batch-db node basis-t t)]
-      (comp (p/-matcher-transducer batch-db clauses) (u/closer batch-db))))
+    (fn [rf]
+      (let [batch-db (batch-db/new-batch-db node basis-t t)
+            rf ((p/-matcher-transducer batch-db clauses) rf)]
+        (fn
+          ([result]
+           (.close ^AutoCloseable batch-db)
+           (rf result))
+          ([result input]
+           (rf result input))))))
 
   ;; ---- History Functions ---------------------------------------------------
 
