@@ -11,10 +11,10 @@
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
-   [blaze.db.impl.util :as u]
    [blaze.db.kv :as kv])
   (:import
-   [clojure.lang Counted IReduceInit]))
+   [clojure.lang Counted IReduceInit]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -110,25 +110,30 @@
   There are two helper functions that can be used to create matchers: the
   `target-length-matcher` and the `prefix-length-matcher`."
   [snapshot column-family seek matches? encode values]
-  (let [iter (kv/new-iterator snapshot column-family)
-        encode (fn [target-buf input value]
-                 (bb/clear! target-buf)
-                 (encode target-buf input value))
-        target-buf-state (volatile! (bb/allocate buffer-size))
-        key-buf-state (volatile! (bb/allocate buffer-size))]
-    (comp
-     (filter
-      #(some
-        (fn [value]
-          (let [target-buf (vswap! target-buf-state encode % value)]
-            (bb/flip! target-buf)
-            ((seek value) iter target-buf)
-            (when (kv/valid? iter)
-              (bb/rewind! target-buf)
-              (let [key-buf (vswap! key-buf-state read-key! iter)]
-                (matches? target-buf key-buf % value)))))
-        values))
-     (u/closer iter))))
+  (fn [rf]
+    (let [iter (kv/new-iterator snapshot column-family)
+          encode (fn [target-buf input value]
+                   (bb/clear! target-buf)
+                   (encode target-buf input value))
+          target-buf-state (volatile! (bb/allocate buffer-size))
+          key-buf-state (volatile! (bb/allocate buffer-size))]
+      (fn
+        ([result]
+         (.close ^AutoCloseable iter)
+         (rf result))
+        ([result input]
+         (if (some
+              (fn [value]
+                (let [target-buf (vswap! target-buf-state encode input value)]
+                  (bb/flip! target-buf)
+                  ((seek value) iter target-buf)
+                  (when (kv/valid? iter)
+                    (bb/rewind! target-buf)
+                    (let [key-buf (vswap! key-buf-state read-key! iter)]
+                      (matches? target-buf key-buf input value)))))
+              values)
+           (rf result input)
+           result))))))
 
 (defn target-length-matcher
   "Returns a matcher that can be used with `seek-key-filter` that calls the
@@ -196,8 +201,12 @@
   "Returns a stateful transducer that will read the key from a downstream
   iterator and keeps track of the buffer used."
   []
-  (let [buf-state (volatile! (bb/allocate buffer-size))]
-    (map #(vswap! buf-state read-key! %))))
+  (fn [rf]
+    (let [buf-state (volatile! (bb/allocate buffer-size))]
+      (fn
+        ([result] (rf result))
+        ([result input]
+         (rf result (vswap! buf-state read-key! input)))))))
 
 (defn- key-decoder [decode]
   (comp
@@ -261,12 +270,14 @@
   "Returns a stateful transducer that will read the key and value from a
   downstream iterator and keeps track of the buffers used."
   []
-  (let [kb-state (volatile! (bb/allocate buffer-size))
-        vb-state (volatile! (bb/allocate buffer-size))]
-    (map
-     (fn [iter]
-       [(vswap! kb-state read-key! iter)
-        (vswap! vb-state read-value! iter)]))))
+  (fn [rf]
+    (let [kb-state (volatile! (bb/allocate buffer-size))
+          vb-state (volatile! (bb/allocate buffer-size))]
+      (fn
+        ([result] (rf result))
+        ([result iter]
+         (rf result [(vswap! kb-state read-key! iter)
+                     (vswap! vb-state read-value! iter)]))))))
 
 (defn- entries-xf [xform]
   (comp

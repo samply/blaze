@@ -120,13 +120,12 @@
   "Returns a stateful transducer which takes flags from `id-marker` and supplies
   resource handle entries to the reduce function after id changes happen."
   [id-marker entry-creator]
-  (let [state (volatile! nil)
-        search-entry! (fn [kb vb]
-                        (when-let [e (entry-creator kb vb)]
-                          (vreset! state e)))]
-    (fn [rf]
+  (fn [rf]
+    (let [state (volatile! nil)
+          search-entry! (fn [kb vb]
+                          (when-let [e (entry-creator kb vb)]
+                            (vreset! state e)))]
       (fn
-        ([] (rf))
         ([result]
          (let [result (if-let [e @state]
                         (do
@@ -357,31 +356,26 @@
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
       (resource-handle* iter target-buf key-buf value-buf tid id t))))
 
-(defn- closer [iter]
-  (fn [rf]
-    (fn
-      ([] (rf))
-      ([result]
-       (.close ^AutoCloseable iter)
-       (rf result))
-      ([result input]
-       (rf result input)))))
-
 (defn resource-handle-xf
   "Returns a stateful transducer that receives `[tid id]` tuples and emits
   resource handles when found in `snapshot` at `t`.
 
   Can only be used by a single thread."
   [snapshot t]
-  (let [target-buf (bb/allocate max-key-size)
-        key-buf (bb/allocate max-key-size)
-        value-buf (bb/allocate max-value-size)
-        iter (kv/new-iterator snapshot :resource-as-of-index)]
-    (comp
-     (keep
-      (fn [[tid id]]
-        (resource-handle* iter target-buf key-buf value-buf tid id t)))
-     (closer iter))))
+  (fn [rf]
+    (let [target-buf (bb/allocate max-key-size)
+          key-buf (bb/allocate max-key-size)
+          value-buf (bb/allocate max-value-size)
+          iter (kv/new-iterator snapshot :resource-as-of-index)]
+      (fn
+        ([result]
+         (.close ^AutoCloseable iter)
+         (rf result))
+        ([result [tid id]]
+         (if-let [handle (resource-handle* iter target-buf key-buf value-buf
+                                           tid id t)]
+           (rf result handle)
+           result))))))
 
 (defn resource-handle-type-xf
   "Returns a stateful transducer that receives input and emits resource handles
@@ -393,15 +387,19 @@
   ([snapshot t tid]
    (resource-handle-type-xf snapshot t tid identity (fn [_ _] true)))
   ([snapshot t tid id-extractor matcher]
-   (let [target-buf (bb/allocate max-key-size)
-         key-buf (bb/allocate max-key-size)
-         value-buf (bb/allocate max-value-size)
-         iter (kv/new-iterator snapshot :resource-as-of-index)]
-     (comp
-      (keep
-       (fn [input]
-         (when-let [handle (resource-handle* iter target-buf key-buf value-buf
-                                             tid (id-extractor input) t)]
-           (when (matcher input handle)
-             handle))))
-      (closer iter)))))
+   (fn [rf]
+     (let [target-buf (bb/allocate max-key-size)
+           key-buf (bb/allocate max-key-size)
+           value-buf (bb/allocate max-value-size)
+           iter (kv/new-iterator snapshot :resource-as-of-index)]
+       (fn
+         ([result]
+          (.close ^AutoCloseable iter)
+          (rf result))
+         ([result input]
+          (if-let [handle (resource-handle* iter target-buf key-buf value-buf
+                                            tid (id-extractor input) t)]
+            (if (matcher input handle)
+              (rf result handle)
+              result)
+            result)))))))

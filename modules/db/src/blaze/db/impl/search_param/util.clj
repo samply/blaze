@@ -34,8 +34,9 @@
           (str value) (fhir-spec/fhir-type value) url type))
 
 (def by-id-grouper
-  "Transducer which partitions multiple consecutive `SingleVersionId` instances
-  by id, emitting one `MultiVersionId` instance per partition."
+  "Returns a stateful transducer which partitions multiple consecutive
+  `SingleVersionId` instances by id, emitting one `MultiVersionId` instance per
+  partition."
   (fn [rf]
     (let [acc (volatile! nil)]
       (fn
