@@ -3,7 +3,7 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
-  (:refer-clojure :exclude [comparator str])
+  (:refer-clojure :exclude [comparator sort-by str])
   (:require
    [blaze.anomaly :refer [if-ok]]
    [blaze.coll.core :as coll]
@@ -195,31 +195,33 @@
 (deftype AscComparator []
   Comparator
   (compare [_ x y]
-    (let [c (p/less x y)]
-      (cond
-        (true? c) -1
-        (false? c) 1
-        (nil? x) -1
-        (nil? y) 1
-        :else 0))))
+    [x y]
+    (cond
+      (p/less x y) -1
+      (p/greater x y) 1
+      (and (nil? x) (some? y)) -1
+      (and (nil? y) (some? x)) 1
+      :else 0)))
 
 (def asc-comparator (->AscComparator))
 
 (deftype DescComparator []
   Comparator
   (compare [_ x y]
-    (let [c (p/less x y)]
-      (cond
-        (true? c) 1
-        (false? c) -1
-        (nil? x) 1
-        (nil? y) -1
-        :else 0))))
+    (cond
+      (p/less x y) 1
+      (p/greater x y) -1
+      (and (nil? x) (some? y)) 1
+      (and (nil? y) (some? x)) -1
+      :else 0)))
 
 (def ^:private desc-comparator (->DescComparator))
 
 (defn comparator [direction]
   (if (#{"desc" "descending"} direction) desc-comparator asc-comparator))
+
+(defn sort-by [f direction coll]
+  (clojure.core/sort-by f (comparator direction) coll))
 
 (defn sort-by-item-form [sort-by-item]
   (if-let [expr (:expression sort-by-item)]
@@ -246,7 +248,7 @@
             (if-let [expr (:expression sort-by-item)]
               (partial core/-eval expr context resource)
               identity)
-            (comparator (:direction sort-by-item)))
+            (:direction sort-by-item))
            (vec)))
     (-form [_]
       `(~'sorted-vector-query ~(-form xform-factory) ~(core/-form source)

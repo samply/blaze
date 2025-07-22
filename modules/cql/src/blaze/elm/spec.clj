@@ -571,14 +571,11 @@
   (s/keys :req-un [:elm.sort-by-item/direction]))
 
 ;; 10.6. ByExpression
-(s/def :elm.sort-by-item.by-expression/expression
-  :elm/expression)
-
 (defmethod sort-by-item "ByExpression" [_]
   (s/keys
    :req-un
    [:elm.sort-by-item/direction
-    :elm.sort-by-item.by-expression/expression]))
+    :elm/expression]))
 
 ;; 10.7 IdentifierRef
 (defmethod expression :elm.spec.type/identifier-ref [_]

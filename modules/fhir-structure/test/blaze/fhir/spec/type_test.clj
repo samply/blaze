@@ -26,7 +26,8 @@
    [com.fasterxml.jackson.databind.ser.std StdSerializer]
    [com.google.common.hash Hashing]
    [java.nio.charset StandardCharsets]
-   [java.time Instant OffsetDateTime ZoneOffset]))
+   [java.time Instant OffsetDateTime ZoneOffset]
+   [java.time.format DateTimeFormatter]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
@@ -1496,7 +1497,12 @@
       (are [date-time json] (= json (gen-json-string date-time))
         #fhir/dateTime"0001" "\"0001\""
         #fhir/dateTime"9999" "\"9999\""
-        #fhir/dateTime"2020" "\"2020\""))
+        #fhir/dateTime"2020" "\"2020\"")
+
+      (satisfies-prop 100
+        (prop/for-all [date-time (gen/fmap type/create-date-time (s/gen :system/date-time))]
+          (= (format "\"%s\"" (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
+             (gen-json-string date-time)))))
 
     (testing "to-xml"
       (are [date-time xml] (= (sexp-value xml) (type/to-xml date-time))

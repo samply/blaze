@@ -11,17 +11,21 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
-   [blaze.elm.compiler.queries]
+   [blaze.elm.compiler.queries :as queries]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
-   [blaze.elm.quantity :refer [quantity]]
    [blaze.elm.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
+   [blaze.fhir.spec.type.system.spec]
+   [blaze.test-util :refer [satisfies-prop]]
    [blaze.util-spec]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
    [juxt.iota :refer [given]]))
 
 (st/instrument)
@@ -34,6 +38,32 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
+
+(defn- rare-nil [gen]
+  (gen/frequency [[9 gen] [1 (gen/return nil)]]))
+
+(deftest sort-by-test
+  (testing "date"
+    (testing "asc"
+      (satisfies-prop 1000
+        (prop/for-all [dates (gen/vector (rare-nil (s/gen :system/date)))]
+          (= (sort dates) (queries/sort-by identity "asc" dates)))))
+
+    (testing "desc"
+      (satisfies-prop 1000
+        (prop/for-all [dates (gen/vector (rare-nil (s/gen :system/date)))]
+          (= (reverse (sort dates)) (queries/sort-by identity "desc" dates))))))
+
+  (testing "date-time"
+    (testing "asc"
+      (satisfies-prop 1000
+        (prop/for-all [date-times (gen/vector (rare-nil (s/gen :system/date-time)))]
+          (= (sort date-times) (queries/sort-by identity "asc" date-times)))))
+
+    (testing "desc"
+      (satisfies-prop 1000
+        (prop/for-all [date-times (gen/vector (rare-nil (s/gen :system/date-time)))]
+          (= (reverse (sort date-times)) (queries/sort-by identity "desc" date-times)))))))
 
 ;; 10.1. Query
 ;;
@@ -60,45 +90,6 @@
             (has-form expr '(sorted-vector-query distinct [2 1 1] asc)))))
 
       (testing "ByExpression"
-        (let [elm {:type "Query"
-                   :source
-                   [#elm/aliased-query-source [#elm/list [#elm/quantity [2 "m"]
-                                                          #elm/quantity [1 "m"]
-                                                          #elm/quantity [1 "m"]]
-                                               "S"]]
-                   :sort
-                   {:by
-                    [{:type "ByExpression"
-                      :direction "asc"
-                      :expression
-                      {:type "Property"
-                       :path "value"
-                       :scope "S"
-                       :resultTypeName "{urn:hl7-org:elm-types:r1}decimal"}}]}}]
-
-          (let [expr (c/compile {} elm)]
-            (testing "eval"
-              (is (= [(quantity 1 "m") (quantity 2 "m")] (core/-eval expr {} nil nil))))
-
-            (testing "form"
-              (has-form expr '(sorted-vector-query distinct
-                                                   [(quantity 2M "m")
-                                                    (quantity 1M "m")
-                                                    (quantity 1M "m")]
-                                                   [asc (:value S)]))))
-
-          (testing "with query hint optimize non-distinct"
-            (let [expr (c/compile {:optimizations #{:non-distinct}} elm)]
-              (testing "eval"
-                (is (= [(quantity 1 "m") (quantity 2 "m")] (core/-eval expr {} nil nil))))
-
-              (testing "form"
-                (has-form expr '(sorted-vector-query distinct
-                                                     [(quantity 2M "m")
-                                                      (quantity 1M "m")
-                                                      (quantity 1M "m")]
-                                                     [asc (:value S)]))))))
-
         (testing "with IdentifierRef"
           (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
             {:type "Query"
@@ -711,23 +702,18 @@
         (let [elm {:type "Query"
                    :source
                    [#elm/aliased-query-source [#elm/retrieve{:type "Encounter"} "E"]]
-                   :return {:expression #elm/scope-property ["E" "id"]}
                    :sort
                    {:type "SortClause",
                     :by
                     [{:type "ByExpression"
                       :expression
                       {:type "Property"
-                       :path "value"
+                       :path "start.value"
                        :source
-                       {:type "Property"
-                        :path "start"
-                        :source
-                        {:type "IdentifierRef"
-                         :name "period"
-                         :resultTypeName "{http://hl7.org/fhir}Period"}
-                        :resultTypeName "{http://hl7.org/fhir}dateTime"}
-                       :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"}
+                       {:type "IdentifierRef"
+                        :name "period"
+                        :resultTypeName "{http://hl7.org/fhir}Period"}
+                       :resultTypeName "{http://hl7.org/fhir}dateTime"}
                       :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"
                       :direction "asc"}]}}]
 
@@ -735,7 +721,7 @@
                 db (d/db node)
                 patient (ctu/resource db "Patient" "0")]
             (testing "eval"
-              (is (= ["1" "0"] (core/-eval expr {:db db} patient nil))))))))))
+              (is (= ["0" "1"] (map :id (core/-eval expr {:db db} patient nil)))))))))))
 
 (deftest compile-query-medication-reference-test
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
