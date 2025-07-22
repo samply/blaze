@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.4
+
+### Bugfixes
+
+* Fix Query Sort in CQL ([#1315](https://github.com/samply/blaze/issues/1315))
+* Mark Resources in Normal UI View as Subsetted ([#2756](https://github.com/samply/blaze/issues/2756))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/109?closed=1).
+
 ## v1.0.3
 
 ### Minor Enhancements
