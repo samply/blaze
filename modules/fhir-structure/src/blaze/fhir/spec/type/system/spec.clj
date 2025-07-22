@@ -14,7 +14,18 @@
        (s/gen (s/int-in 1 13))
        (s/gen (s/int-in 1 29))))))
 
-(s/def :system/date-time system/date-time?)
+(s/def :system/date-time
+  (s/with-gen
+    system/date-time?
+    #(sg/fmap
+      (partial apply system/date-time)
+      (sg/tuple
+       (s/gen (s/int-in 1 10000))
+       (s/gen (s/int-in 1 13))
+       (s/gen (s/int-in 1 29))
+       (s/gen (s/int-in 0 24))
+       (s/gen (s/int-in 0 60))
+       (s/gen (s/int-in 0 60))))))
 
 (s/def :system/date-or-date-time
   (s/or :date :system/date :date-time :system/date-time))

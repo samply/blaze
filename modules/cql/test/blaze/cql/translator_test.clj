@@ -108,6 +108,22 @@
       [0 :expression :operand :where :operand 0 :operand 0 :type] := "As"
       [0 :expression :operand :where :operand 0 :operand 0 :asType] := "{http://hl7.org/fhir}Period"))
 
+  (testing "Sort - ByExpression"
+    (given-translation
+      "library Test
+      using FHIR version '4.0.0'
+      include FHIRHelpers version '4.0.0'
+
+      define FirstMatchingCondition:
+        from [Condition] C sort by recordedDate.value"
+      [0 :name] := "FirstMatchingCondition"
+      [0 :context] := "Patient"
+      [0 :expression :type] := "Query"
+      [0 :expression :sort :by 0 :type] := "ByExpression"
+      [0 :expression :sort :by 0 :expression :source :type] := "IdentifierRef"
+      [0 :expression :sort :by 0 :expression :source :name] := "recordedDate"
+      [0 :expression :sort :by 0 :expression :path] := "value"))
+
   (testing "Returns a valid :elm/library"
     (are [cql] (s/valid? :elm/library (translate cql))
       "library Test
