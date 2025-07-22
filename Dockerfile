@@ -9,7 +9,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
-COPY target/blaze-1.0.3-standalone.jar /app/
+COPY target/blaze-1.0.4-standalone.jar /app/
 
 WORKDIR /app
 USER 1001
@@ -22,4 +22,4 @@ ENV RESOURCE_DB_DIR="/app/data/resource"
 ENV ADMIN_INDEX_DB_DIR="/app/data/admin-index"
 ENV ADMIN_TRANSACTION_DB_DIR="/app/data/admin-transaction"
 
-CMD ["java", "-jar",  "blaze-1.0.3-standalone.jar"]
+CMD ["java", "-jar",  "blaze-1.0.4-standalone.jar"]
