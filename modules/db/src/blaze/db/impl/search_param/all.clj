@@ -8,6 +8,8 @@
   will return resources more than once if multiple updates with the same hash
   are index with different lastUpdate times."
   (:require
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.protocols :as p]))
 
@@ -15,13 +17,28 @@
   (reify p/SearchParam
     (-compile-value [_ _ _])
 
-    (-resource-handles [_ batch-db tid _ _]
-      (rao/type-list batch-db tid))
+    (-index-handles [_ batch-db tid _ _]
+      (coll/eduction
+       (map ih/from-resource-handle)
+       (rao/type-list batch-db tid)))
 
-    (-resource-handles [_ batch-db tid _ _ start-id]
-      (rao/type-list batch-db tid start-id))
+    (-index-handles [_ batch-db tid _ _ start-id]
+      (coll/eduction
+       (map ih/from-resource-handle)
+       (rao/type-list batch-db tid start-id)))
 
-    (-chunked-resource-handles [search-param batch-db tid modifier value]
-      [(p/-resource-handles search-param batch-db tid modifier value)])
+    (-supports-ordered-index-handles [_]
+      true)
+
+    (-ordered-index-handles [search-param batch-db tid modifier compiled-value]
+      (p/-index-handles search-param batch-db tid modifier compiled-value))
+
+    (-ordered-index-handles [search-param batch-db tid modifier compiled-value start-id]
+      (p/-index-handles search-param batch-db tid modifier compiled-value start-id))
+
+    (-supports-ordered-compartment-index-handles [_ _]
+      false)
+
+    (-second-pass-filter [_ _ _])
 
     (-index-values [_ _ _])))

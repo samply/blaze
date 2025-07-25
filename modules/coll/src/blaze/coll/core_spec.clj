@@ -1,6 +1,7 @@
 (ns blaze.coll.core-spec
   (:require
    [blaze.coll.core :as coll]
+   [blaze.coll.core.spec]
    [clojure.spec.alpha :as s])
   (:import
    [clojure.lang IReduceInit]))
@@ -28,3 +29,11 @@
 (s/fdef coll/nth
   :args (s/cat :coll #(instance? IReduceInit %) :i nat-int? :not-found (s/? any?))
   :ret nat-int?)
+
+(s/fdef coll/intersection
+  :args (s/cat :merge ifn? :colls (s/+ :blaze/sorted-iterable))
+  :ret :blaze/sorted-iterable)
+
+(s/fdef coll/union
+  :args (s/cat :merge ifn? :colls (s/+ :blaze/sorted-iterable))
+  :ret :blaze/sorted-iterable)

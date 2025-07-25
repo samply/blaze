@@ -1,11 +1,17 @@
 (ns blaze.coll.core-test
+  (:refer-clojure :exclude [merge])
   (:require
    [blaze.coll.core :as coll :refer [with-open-coll]]
+   [blaze.coll.core-spec]
    [blaze.test-util :as tu]
+   [clojure.set :as set]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]])
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop])
   (:import
-   [java.lang AutoCloseable]))
+   [java.lang AutoCloseable]
+   [java.util Iterator]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -68,7 +74,36 @@
     (is (= [2 3] (reduce conj [] (coll/eduction (map inc) [1 2])))))
 
   (testing "eductions are counted"
-    (is (= 2 (count (coll/eduction identity [1 2]))))))
+    (is (= 2 (count (coll/eduction identity [1 2])))))
+
+  (testing "eductions can be converted into a sequence"
+    (is (= [] (sequence (coll/eduction (map inc) []))))
+    (is (= [2] (sequence (coll/eduction (map inc) [1]))))
+    (is (= [2 3] (sequence (coll/eduction (map inc) [1 2])))))
+
+  (testing "filter works with sequence"
+    (is (= [1] (sequence (coll/eduction (filter odd?) [1]))))
+    (is (= [] (sequence (coll/eduction (filter odd?) [2]))))
+    (is (= [1 3] (sequence (coll/eduction (filter odd?) [1 2 3 4]))))
+    (is (= [2 4] (sequence (coll/eduction (filter even?) [1 2 3 4])))))
+
+  (testing "mapcat works with sequence"
+    (is (= [0 0 1] (sequence (coll/eduction (mapcat range) [1 2])))))
+
+  (testing "halt-when works with sequence"
+    (is (= [] (sequence (coll/eduction (halt-when odd?) [1 2]))))
+    (is (= [1] (sequence (coll/eduction (halt-when even?) [1 2])))))
+
+  (testing "iterators can be closed"
+    (let [closed (volatile! false)]
+      (->> (reify Iterable
+             (iterator [_]
+               (reify Iterator AutoCloseable
+                 (close [_] (vreset! closed true)))))
+           ^Iterable (coll/eduction identity)
+           ^AutoCloseable (.iterator)
+           (.close))
+      (is @closed))))
 
 (deftest count-test
   (are [coll n] (and (= n (coll/count coll))
@@ -104,3 +139,95 @@
     (is (= 10 (count coll)))
     (is (= (range 1 11) (vec coll)))
     (is (true? @state))))
+
+(def ^:private merge (fn [x _] x))
+
+(deftest intersection-test
+  (testing "one collection"
+    (tu/satisfies-prop 1000
+      (prop/for-all [c1 (gen/vector gen/small-integer)]
+        (let [res (vec (coll/intersection merge (sort c1)))]
+          (and (= res (sort res))
+               (= (set res) (set/intersection (set c1))))))))
+
+  (testing "two collections"
+    (are [c1 c2 r] (= r (vec (coll/intersection merge (sort c1) (sort c2))))
+      [] [] []
+      [1] [] []
+      [] [1] []
+      [1] [1] [1]
+      [1 2] [1 2] [1 2]
+      [1] [1 2] [1]
+      [1 2] [1] [1]
+      [1 2 3] [2 4 5] [2])
+
+    (tu/satisfies-prop 1000
+      (prop/for-all [c1 (gen/vector gen/small-integer)
+                     c2 (gen/vector gen/small-integer)]
+        (let [res (vec (coll/intersection merge (sort c1) (sort c2)))]
+          (and (= res (sort res))
+               (every? (set c1) res)
+               (every? (set c2) res))))))
+
+  (testing "three collections"
+    (tu/satisfies-prop 1000
+      (prop/for-all [c1 (gen/vector gen/small-integer)
+                     c2 (gen/vector gen/small-integer)
+                     c3 (gen/vector gen/small-integer)]
+        (let [res (vec (coll/intersection merge (sort c1) (sort c2) (sort c3)))]
+          (and (= res (sort res))
+               (every? (set c1) res)
+               (every? (set c2) res)
+               (every? (set c3) res))))))
+
+  (testing "many collections"
+    (tu/satisfies-prop 1000
+      (prop/for-all [colls (gen/vector (gen/vector gen/small-integer) 2 100)]
+        (let [res (vec (apply coll/intersection merge (map sort colls)))]
+          (and (= res (sort res))
+               (= (set res) (apply set/intersection (map set colls)))))))))
+
+(deftest union-test
+  (testing "one collection"
+    (tu/satisfies-prop 1000
+      (prop/for-all [c1 (gen/vector gen/small-integer)]
+        (let [res (vec (coll/union merge (sort c1)))]
+          (and (= res (sort res))
+               (= (set res) (set/union (set c1))))))))
+
+  (testing "two collections"
+    (are [c1 c2 r] (= r (vec (coll/union merge (sort c1) (sort c2))))
+      [] [] []
+      [1] [] [1]
+      [] [1] [1]
+      [1] [1] [1]
+      [1 2] [1 2] [1 2]
+      [1] [1 2] [1 2]
+      [1 2] [1] [1 2]
+      [1 2 3] [2 4 5] [1 2 3 4 5])
+
+    (tu/satisfies-prop 1000
+      (prop/for-all [c1 (gen/vector gen/small-integer)
+                     c2 (gen/vector gen/small-integer)]
+        (let [res (vec (coll/union merge (sort c1) (sort c2)))]
+          (and (= res (sort res))
+               (= (set res) (set/union (set c1) (set c2))))))))
+
+  (testing "three collections"
+    (tu/satisfies-prop 1000
+      (prop/for-all [c1 (gen/vector gen/small-integer)
+                     c2 (gen/vector gen/small-integer)
+                     c3 (gen/vector gen/small-integer)]
+        (let [res (vec (coll/union merge (sort c1) (sort c2) (sort c3)))]
+          (and (= res (sort res))
+               (= (set res) (set/union (set c1) (set c2) (set c3))))))))
+
+  (testing "many collections"
+    (tu/satisfies-prop 1000
+      (prop/for-all [colls (gen/vector (gen/vector gen/small-integer) 2 100)]
+        (let [res (vec (apply coll/union merge (map sort colls)))]
+          (and (= res (sort res))
+               (= (set res) (apply set/union (map set colls)))))))))
+
+(deftest reducible-coll-test
+  (is (= 1 (count (coll/reducible-coll [1])))))

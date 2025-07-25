@@ -7,4 +7,4 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 BASE="http://localhost:8080/fhir"
 PATIENT_IDENTIFIERS="${1//[[:space:]]/}"
-curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIERS" | jq -r '.entry[].resource.id' | paste -sd, -
+curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIERS&_count=1000" | jq -r '.entry[].resource.id' | paste -sd, -

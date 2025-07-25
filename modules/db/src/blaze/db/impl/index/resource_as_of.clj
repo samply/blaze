@@ -381,9 +381,9 @@
   "Returns a stateful transducer that receives input and emits resource handles
   when found.
 
-  The input depends
-
-  Can only be used by a single thread."
+  The `id-extractor` is used to extract the resource id as byte-string from the
+  input. The `matcher` is given the input and the resource handle to decide
+  whether to emit the resource handle or not."
   ([snapshot t tid]
    (resource-handle-type-xf snapshot t tid identity (fn [_ _] true)))
   ([snapshot t tid id-extractor matcher]

@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.async.comp-spec]
+   [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
    [blaze.db.api :as d]
    [blaze.db.spec]

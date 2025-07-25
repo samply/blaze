@@ -20,7 +20,7 @@ total_count() {
 test "_summary=count count" "$(summary_count)" "$EXPECTED_SIZE"
 test "_total=accurate count" "$(total_count)" "$EXPECTED_SIZE"
 
-blazectl --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson" 2> /dev/null
+blazectl --server "$BASE" download "$TYPE" -q "$QUERY&_count=$(shuf -i 50-500 -n 1)" -o "$FILE_NAME_PREFIX-get.ndjson" 2> /dev/null
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-get.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then

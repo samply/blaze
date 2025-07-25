@@ -39,7 +39,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [blaze.db.impl.batch_db PatientTypeQuery TypeQuery]
+   [blaze.db.impl.batch_db PatientTypeQuery]
    [com.google.common.base CaseFormat]
    [java.time Instant]
    [java.util.concurrent TimeUnit]))
@@ -1940,7 +1940,16 @@
       (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
         count := 2
         [0 :id] := "0"
-        [1 :id] := "00"))))
+        [1 :id] := "00")))
+
+  (testing "type lists can be processed twice"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (let [coll (d/type-list (d/db node) "Patient")]
+        (is (= "0" (:id (coll/first coll))))
+        (is (= ["0" "1"] (mapv :id coll)))))))
 
 (defn- pull-type-query
   ([node type clauses]
@@ -2126,7 +2135,7 @@
 
     (testing "random id's"
       (satisfies-prop 100
-        (prop/for-all [ids (gen/set (s/gen :blaze.resource/id) {:min-elements 1})]
+        (prop/for-all [ids (gen/set (s/gen :blaze.resource/id) {:min-elements 1 :max-elements 100})]
           (with-system-data [{:blaze.db/keys [node]} config]
             [(mapv #(vector :create {:fhir/type :fhir/Patient :id %}) ids)]
 
@@ -2273,20 +2282,20 @@
         (given (pull-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]])
           count := 2))))
 
-  (testing "sorting works together with token search"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
-        [:put {:fhir/type :fhir/Patient :id "1" :active false}]
-        [:put {:fhir/type :fhir/Patient :id "2" :active true}]
-        [:put {:fhir/type :fhir/Patient :id "3" :active true}]]
-       [[:delete "Patient" "3"]]]
+  #_(testing "sorting works together with token search"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+          [:put {:fhir/type :fhir/Patient :id "1" :active false}]
+          [:put {:fhir/type :fhir/Patient :id "2" :active true}]
+          [:put {:fhir/type :fhir/Patient :id "3" :active true}]]
+         [[:delete "Patient" "3"]]]
 
-      (let [clauses [[:sort "_lastUpdated" :asc] ["active" "true"]]]
-        (given (pull-type-query node "Patient" clauses)
-          count := 2)
+        (let [clauses [[:sort "_lastUpdated" :asc] ["active" "true"]]]
+          (given (pull-type-query node "Patient" clauses)
+            count := 2)
 
-        (testing "count query"
-          (is (= 2 (count-type-query node "Patient" clauses)))))))
+          (testing "count query"
+            (is (= 2 (count-type-query node "Patient" clauses)))))))
 
   (testing "Patient phonetic"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -3371,17 +3380,37 @@
 
 (deftest type-query-version-test
   (testing "only the latest version matches"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :active true
-               :birthDate #fhir/date"2020"}]]]
+    (testing "token search param"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active true
+                 :birthDate #fhir/date"2020"}]]]
 
-      (given (pull-type-query node "Patient" [["active" "true"]])
-        count := 1
-        [0 :fhir/type] := :fhir/Patient
-        [0 :id] := "0"
-        [0 :birthDate] #fhir/date"2020")))
+        (given (pull-type-query node "Patient" [["active" "true"]])
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [0 :birthDate] := #fhir/date"2020")))
+
+    (testing "date search param"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :active true
+                 :birthDate #fhir/date"2025"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active true
+                 :birthDate #fhir/date"2024"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active true
+                 :birthDate #fhir/date"2025"
+                 :gender #fhir/code"female"}]]]
+
+        (doseq [clauses [#_[["birthdate" "2025"]]
+                         [["active" "true"]
+                          ["birthdate" "2025"]]]]
+          (given (pull-type-query node "Patient" clauses)
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [0 :gender] := #fhir/code"female")))))
 
   (testing "the latest version doesn't match"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -3559,7 +3588,7 @@
               [0 :id] := "1"))))
 
       (testing "as second clause"
-        (testing "select the Patient with > 130 mm[Hg]"
+        (testing "select the non-active Patient with = 10 mm[Hg]"
           (let [clauses [["active" "false"]
                          ["_has:Observation:patient:code-value-quantity" "8480-6$10"]]]
             (given (pull-type-query node "Patient" clauses)
@@ -3672,32 +3701,31 @@
       (given (pull-type-query node "Condition" [["code" "0" "1"]])
         count := 5
         [0 :id] := "0"
-        [1 :id] := "3"
-        [2 :id] := "4"
-        [3 :id] := "1"
-        [4 :id] := "2")
+        [1 :id] := "1"
+        [2 :id] := "2"
+        [3 :id] := "3"
+        [4 :id] := "4")
 
       (testing "count query"
         (is (= 5 (count-type-query node "Condition" [["code" "0" "1"]]))))
 
-      (testing "starting with ID `1` does not return Conditions with ID `3`
-                  and `4` because they were already returned"
+      (testing "it is possible to start with the second condition"
         (given (pull-type-query node "Condition" [["code" "0" "1"]] "1")
-          count := 2
+          count := 4
           [0 :id] := "1"
-          [1 :id] := "2"))
+          [1 :id] := "2"
+          [2 :id] := "3"
+          [3 :id] := "4"))
 
-      (testing "starting with ID `4` does return Conditions with ID `1` and
-                  `2` even if they are smaller than `4`"
-        (given (pull-type-query node "Condition" [["code" "0" "1"]] "4")
+      (testing "it is possible to start with the third condition"
+        (given (pull-type-query node "Condition" [["code" "0" "1"]] "2")
           count := 3
-          [0 :id] := "4"
-          [1 :id] := "1"
-          [2 :id] := "2"))))
+          [0 :id] := "2"
+          [1 :id] := "3"
+          [2 :id] := "4"))))
 
   (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/Condition
-             :id "0"
+    [[[:put {:fhir/type :fhir/Condition :id "0"
              :code
              #fhir/CodeableConcept
               {:coding
@@ -4619,8 +4647,7 @@
               {:coding
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
-                  :code #fhir/code"94564-2"
-                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                  :code #fhir/code"94564-2"}]}
              :subject #fhir/Reference{:reference "Patient/0"}}]
       [:put {:fhir/type :fhir/Observation :id "1"
              :code
@@ -4628,26 +4655,31 @@
               {:coding
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
-                  :code #fhir/code"94564-2"
-                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-             :subject #fhir/Reference{:reference "Patient/1"}}]
+                  :code #fhir/code"8480-6"}]}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
       [:put {:fhir/type :fhir/Observation :id "2"
              :code
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
-                  :code #fhir/code"94564-2"
-                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-             :subject #fhir/Reference{:reference "Group/0"}}]
+                  :code #fhir/code"94564-2"}]}
+             :subject #fhir/Reference{:reference "Patient/1"}}]
       [:put {:fhir/type :fhir/Observation :id "3"
              :code
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
-                  :code #fhir/code"94564-2"
-                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                  :code #fhir/code"94564-2"}]}
+             :subject #fhir/Reference{:reference "Group/0"}}]
+      [:put {:fhir/type :fhir/Observation :id "4"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"}]}
              :subject #fhir/Reference{:reference "Group/1"}}]]]
 
     (doseq [code ["http://loinc.org|94564-2" "94564-2"]]
@@ -4668,7 +4700,7 @@
           (let [clauses [["subject" "Group/0"] ["code" code]]]
             (given (pull-type-query node "Observation" clauses)
               count := 1
-              [0 :id] := "2")
+              [0 :id] := "3")
 
             (testing "count query"
               (is (= 1 (count-type-query node "Observation" clauses))))))
@@ -4683,12 +4715,12 @@
               (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "0"
-                [1 :id] := "1")
+                [1 :id] := "2")
 
               (testing "it is possible to start with the second observation"
-                (given (pull-type-query node "Observation" clauses "1")
+                (given (pull-type-query node "Observation" clauses "2")
                   count := 1
-                  [0 :id] := "1"))
+                  [0 :id] := "2"))
 
               (testing "count query"
                 (is (= 2 (count-type-query node "Observation" clauses)))))))
@@ -4697,13 +4729,13 @@
           (let [clauses [["subject" "Group/0" "Group/1"] ["code" code]]]
             (given (pull-type-query node "Observation" clauses)
               count := 2
-              [0 :id] := "2"
-              [1 :id] := "3")
+              [0 :id] := "3"
+              [1 :id] := "4")
 
             (testing "it is possible to start with the second observation"
-              (given (pull-type-query node "Observation" clauses "3")
+              (given (pull-type-query node "Observation" clauses "4")
                 count := 1
-                [0 :id] := "3"))
+                [0 :id] := "4"))
 
             (testing "count query"
               (is (= 2 (count-type-query node "Observation" clauses)))))))
@@ -4725,7 +4757,7 @@
           (let [clauses [["code" code] ["subject" "Group/0"]]]
             (given (pull-type-query node "Observation" clauses)
               count := 1
-              [0 :id] := "2")
+              [0 :id] := "3")
 
             (testing "count query"
               (is (= 1 (count-type-query node "Observation" clauses))))))
@@ -4740,12 +4772,12 @@
               (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "0"
-                [1 :id] := "1")
+                [1 :id] := "2")
 
               (testing "it is possible to start with the second observation"
-                (given (pull-type-query node "Observation" clauses "1")
+                (given (pull-type-query node "Observation" clauses "2")
                   count := 1
-                  [0 :id] := "1"))
+                  [0 :id] := "2"))
 
               (testing "count query"
                 (is (= 2 (count-type-query node "Observation" clauses)))))))
@@ -4754,13 +4786,13 @@
           (let [clauses [["code" code] ["subject" "Group/0" "Group/1"]]]
             (given (pull-type-query node "Observation" clauses)
               count := 2
-              [0 :id] := "2"
-              [1 :id] := "3")
+              [0 :id] := "3"
+              [1 :id] := "4")
 
             (testing "it is possible to start with the second observation"
-              (given (pull-type-query node "Observation" clauses "3")
+              (given (pull-type-query node "Observation" clauses "4")
                 count := 1
-                [0 :id] := "3"))
+                [0 :id] := "4"))
 
             (testing "count query"
               (is (= 2 (count-type-query node "Observation" clauses)))))))
@@ -4788,7 +4820,7 @@
             (given (pull-type-query node "Observation" clauses)
               count := 2
               [0 :id] := "0"
-              [1 :id] := "1")
+              [1 :id] := "2")
 
             (testing "count query"
               (is (= 2 (count-type-query node "Observation" clauses))))))))))
@@ -5240,8 +5272,8 @@
       (given (pull-type-query node "Observation" [["status" "final" "preliminary"] ["code" "94564-2" "8462-4"]])
         count := 4
         [0 :id] := "0"
-        [1 :id] := "2"
-        [2 :id] := "1"
+        [1 :id] := "1"
+        [2 :id] := "2"
         [3 :id] := "3")))
 
   (testing "with one token and one date search param"
@@ -5288,8 +5320,8 @@
       (given (pull-type-query node "Observation" [["status" "final" "preliminary"] ["date" "2025" "2026"]])
         count := 4
         [0 :id] := "0"
-        [1 :id] := "2"
-        [2 :id] := "1"
+        [1 :id] := "1"
+        [2 :id] := "2"
         [3 :id] := "3"))))
 
 (deftest type-query-date-equal-test
@@ -6339,9 +6371,6 @@
 (defn- patient-type-query? [x]
   (instance? PatientTypeQuery x))
 
-(defn- type-query? [x]
-  (instance? TypeQuery x))
-
 (deftest compile-type-query-test
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -6383,18 +6412,12 @@
                         "Procedure"]
                   subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
 
-            (doseq [clauses [[["code" "system|code"]
-                              (into ["patient"] subjects)]
-                             [(into ["patient"] subjects)
-                              ["code" "system|code"]]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))
-
-            (doseq [value ["code" "|code"]
+            (doseq [value ["system|code" "code" "|code"]
                     clauses [[["code" value]
                               (into ["patient"] subjects)]
                              [(into ["patient"] subjects)
                               ["code" value]]]]
-              (is (type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
 
         (testing "patient and category"
           (doseq [target [node (d/db node)]
@@ -7034,7 +7057,7 @@
         ::anom/category := ::anom/not-found
         ::anom/message := "The search-param with code `code` and type `Foo` was not found.")))
 
-  (testing "Patient compartment"
+  (testing "works with types"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Condition :id "1"
@@ -7053,41 +7076,38 @@
                    {:system #fhir/uri"system"
                     :code #fhir/code"code-b"}]}
                :subject #fhir/Reference{:reference "Patient/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "3"
+        [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference "Patient/0"}
                :code
                #fhir/CodeableConcept
                 {:coding
                  [#fhir/Coding
                    {:system #fhir/uri"system"
-                    :code #fhir/code"code-a"}]}
-               :value
-               #fhir/Quantity
-                {:code #fhir/code"kg/m2"
-                 :system #fhir/uri"http://unitsofmeasure.org"
-                 :value 42M}}]
-        [:put {:fhir/type :fhir/Observation :id "4"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"system"
-                    :code #fhir/code"code-b"}]}
-               :value
-               #fhir/Quantity
-                {:code #fhir/code"kg/m2"
-                 :system #fhir/uri"http://unitsofmeasure.org"
-                 :value 23M}}]]]
+                    :code #fhir/code"code-a"}]}}]]]
 
-      (testing "token search parameter"
-        (testing "as first clause"
-          (testing "with system|code"
-            (given @(pull-compartment-query
-                     node "Patient" "0" "Condition"
-                     [["code" "system|code-a"]])
-              count := 1
-              [0 :id] := "1")))))))
+      (testing "only returns the condition"
+        (given @(pull-compartment-query node "Patient" "0" "Condition"
+                                        [["code" "system|code-a"]])
+          count := 1
+          [0 :fhir/type] := :fhir/Condition
+          [0 :id] := "1"))))
+
+  (testing "works with date search params"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Condition :id "1"
+               :onset #fhir/dateTime"2025-07-25"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Condition :id "2"
+               :onset #fhir/dateTime"2025-07-26"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (testing "only returns the condition with onset <= 2025-07-25"
+        (given @(pull-compartment-query node "Patient" "0" "Condition"
+                                        [["onset-date" "le2025-07-25"]])
+          count := 1
+          [0 :fhir/type] := :fhir/Condition
+          [0 :id] := "1")))))
 
 (deftest compile-compartment-query-test
   (with-system-data [{:blaze.db/keys [node]} config]

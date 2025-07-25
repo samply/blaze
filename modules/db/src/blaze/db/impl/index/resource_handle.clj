@@ -121,7 +121,9 @@
   [rh]
   (.-op ^ResourceHandle rh))
 
-(defn reference [rh]
+(defn reference
+  "Returns the reference `<type>/<id>` of `rh`."
+  [rh]
   (str (codec/tid->type (tid rh)) "/" (id rh)))
 
 (defn local-ref-tuple [rh]
