@@ -94,7 +94,12 @@ download-resources-raw() {
 
   # this are 5 tests of which 3 will be taken for the statistics
   for i in {0..4}; do
-    $TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" "$RESOURCE_TYPE" -q "$SEARCH_PARAMS&_count=1000" >/dev/null 2>/dev/null
+    DOWNLOAD_COUNT=$($TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" "$RESOURCE_TYPE" -q "$SEARCH_PARAMS&_count=1000" 2>/dev/null | wc -l | xargs)
+
+    if [ "$COUNT" != "$DOWNLOAD_COUNT" ]; then
+      echo "🆘 the number of downloaded resources ($DOWNLOAD_COUNT) doesn't match the count of $COUNT"
+      exit 1
+    fi
   done
 
   calc-print-stats "$TIMES_FILE" "$COUNT"
@@ -110,7 +115,12 @@ download-resources-raw-post() {
 
   # this are 5 tests of which 3 will be taken for the statistics
   for i in {0..4}; do
-    $TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" "$RESOURCE_TYPE" -p -q "$SEARCH_PARAMS&_count=1000" >/dev/null 2>/dev/null
+    DOWNLOAD_COUNT=$($TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" "$RESOURCE_TYPE" -p -q "$SEARCH_PARAMS&_count=1000" 2>/dev/null | wc -l | xargs)
+
+    if [ "$COUNT" != "$DOWNLOAD_COUNT" ]; then
+      echo "🆘 the number of downloaded resources ($DOWNLOAD_COUNT) doesn't match the count of $COUNT"
+      exit 1
+    fi
   done
 
   calc-print-stats "$TIMES_FILE" "$COUNT"
