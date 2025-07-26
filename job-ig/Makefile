@@ -1,5 +1,5 @@
 install:
-	npm install fsh-sushi
+	npm install
 
 build: install
 	node_modules/.bin/sushi build -s .

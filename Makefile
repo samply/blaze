@@ -22,7 +22,7 @@ build-job-ig:
 build-byte-buffer:
 	$(MAKE) -C modules/byte-buffer build
 
-prep: build-job-ig build-byte-buffer
+prep: build-byte-buffer
 	clojure -X:deps prep
 
 test-root: prep
