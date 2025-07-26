@@ -71,21 +71,29 @@ Blaze is written in Clojure, a modern LISP for the JVM.
 
 #### Steps
 
-1. Create FHIR profiles:
+1. Install SUSHI:
 
-```make -C job-ig build```
+   ```sh
+   make build-job-ig
+   ```
 
 2. Create the uberjar in the `target` directory:
 
-```make uberjar```
+   ```sh
+   make uberjar
+   ```
 
 3. Build the Blaze Docker image:
 
-```docker build -t blaze:latest .```
+   ```sh
+   docker build -t blaze:latest .
+   ```
 
 4. Build the frontend Docker image:
 
-```make build-frontend```
+   ```sh
+   make build-frontend
+   ```
 
 ## Developing Blaze
 
@@ -151,7 +159,7 @@ Blaze is primarily implemented using pure functions. Pure functions depend only 
 
 ### Error Handling
 
-Blaze uses [anomalies][3] for error handling, instead of exceptions. Anomalies separate the error context from the error itself without interrupting the execution flow. For more information, see the [anomaly module](modules/anomaly/).
+Blaze uses [anomalies][3] for error handling, instead of exceptions. Anomalies separate the error context from the error itself without interrupting the execution flow. For more information, see the [anomaly module](modules/anomaly/README.md).
 
 ### Components
 
