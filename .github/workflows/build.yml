@@ -1361,6 +1361,9 @@ jobs:
     - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
       run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 13
 
+    - name: Download Observation Resources with special LOINC Codes
+      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9" 19181
+
     - name: Download Condition Resources of common disorders from multiple patients
       env:
         SNOMED_CODES: >-
@@ -1397,6 +1400,18 @@ jobs:
 
     - name: Download Observation Resources of the Year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=2020" 71236
+
+    - name: Download Observation Resources of the Year 2020 from patient with SSN 999-89-9294
+      run: .github/scripts/download-resources-query.sh Observation "date=2020&patient=$(.github/scripts/patient-ids.sh "999-89-9294")" 20
+
+    - name: Download Observation Resources of the Year 2020 from multiple patients
+      env:
+        PATIENT_SSNS: >-
+          999-89-9294,999-60-3949,999-40-8052,999-86-7721,999-31-6940,999-37-5253,
+          999-14-4781,999-71-5798,999-85-9014,999-88-9231,999-51-2985,999-14-2168,
+          999-51-2170,999-52-2914,999-45-6374,999-58-8110,999-92-6349,999-14-7569,
+          999-58-5645,999-89-6440,999-94-8430,999-90-6541,999-36-1192,999-30-5696
+      run: .github/scripts/download-resources-query.sh Observation "date=2020&patient=$(.github/scripts/patient-ids.sh "$PATIENT_SSNS")" 741
 
     - name: Download Vital Sign Resources of the Year 2020
       run: .github/scripts/download-resources-query.sh Observation "category=vital-signs&date=2020" 17060
