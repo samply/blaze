@@ -1390,7 +1390,7 @@ jobs:
           999-84-6431,999-53-9409,999-57-9047,999-98-1131,999-23-9506,999-79-6781,
           999-10-3828,999-31-2101,999-42-5310,999-46-3927,999-68-3132,999-45-8011,
           999-11-7186,999-58-3121,999-48-7111,999-24-3722
-      run: .github/scripts/download-resources-query.sh Condition "code=$SNOMED_CODES&patient=$(.github/scripts/patient-ids.sh "$PATIENT_SSNS")" 144
+      run: .github/scripts/download-resources-query.sh Condition "code=$SNOMED_CODES&patient=$(.github/scripts/patient-ids.sh "$PATIENT_SSNS")" 281
 
     - name: Download Vital Sign Resources
       run: .github/scripts/download-resources-query.sh Observation "category=vital-signs" 152877
