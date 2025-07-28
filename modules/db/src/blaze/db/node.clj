@@ -99,9 +99,9 @@
          (remove-watch state future))))
     future))
 
-(defn- index-tx [db-before tx-data]
+(defn- index-tx [context tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
-    (tx-indexer/index-tx db-before tx-data)))
+    (tx-indexer/index-tx context tx-data)))
 
 (defn- advance-t! [state t]
   (log/trace "advance state to t =" t)
@@ -146,12 +146,12 @@
   "This is the main transaction handling function.
 
   If indexes resources and transaction data and commits either success or error."
-  [{:keys [resource-indexer kv-store] :as node}
+  [{:keys [resource-indexer kv-store read-only-matcher] :as node}
    {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (let [timer (prom/timer duration-seconds "index-resources")
         future (resource-indexer/index-resources resource-indexer tx-data)
-        result (index-tx (np/-db node) tx-data)]
+        result (index-tx {:db-before (np/-db node) :read-only-matcher read-only-matcher} tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
       (do
@@ -292,9 +292,14 @@
   (with-open [db (batch-db/new-batch-db node t t)]
     (into [] (take-while #(= t (rh/t %))) (d/type-history db type))))
 
+(defn- compile-system-matcher [search-param-registry clauses]
+  (when-ok [clauses (index/resolve-search-params search-param-registry
+                                                 "Resource" clauses false)]
+    (batch-db/->Matcher clauses)))
+
 (defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
-                 search-param-registry resource-indexer state run? poll-timeout
-                 finished]
+                 search-param-registry resource-indexer read-only-matcher
+                 state run? poll-timeout finished]
   np/Node
   (-db [node]
     (db/db node (:t @state)))
@@ -361,12 +366,15 @@
   (-compile-type-matcher [_ type clauses]
     (when-ok [clauses (index/resolve-search-params search-param-registry type
                                                    clauses false)]
-      (batch-db/->TypeMatcher clauses)))
+      (batch-db/->Matcher clauses)))
 
   (-compile-system-query [_ clauses]
     (when-ok [clauses (index/resolve-search-params search-param-registry
                                                    "Resource" clauses false)]
       (batch-db/->SystemQuery clauses)))
+
+  (-compile-system-matcher [_ clauses]
+    (compile-system-matcher search-param-registry clauses))
 
   (-compile-compartment-query [_ code type clauses]
     (compile-compartment-query search-param-registry code type clauses false))
@@ -495,6 +503,11 @@
       (store-tx-entries! kv-store (initial-plc-index-entries node))
       (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))))
 
+(defn- compile-read-only-matcher [search-param-registry]
+  (compile-system-matcher
+   search-param-registry
+   [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]]))
+
 (defmethod m/pre-init-spec :blaze.db/node [_]
   (s/keys
    :req-un
@@ -519,6 +532,7 @@
   (check-version! kv-store)
   (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
                      (sync-fn storage) search-param-registry resource-indexer
+                     (compile-read-only-matcher search-param-registry)
                      (atom (initial-state kv-store))
                      (volatile! true)
                      poll-timeout

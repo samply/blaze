@@ -1,10 +1,20 @@
 (ns blaze.db.node.tx-indexer.verify.spec
   (:require
    [blaze.db.node.tx-indexer.verify :as-alias verify]
+   [blaze.db.spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash.spec]
    [blaze.fhir.spec.spec]
    [clojure.spec.alpha :as s]))
+
+(s/def ::verify/db-before
+  :blaze.db/db)
+
+(s/def ::verify/read-only-matcher
+  :blaze.db/matcher)
+
+(s/def ::verify/context
+  (s/keys :req-un [::verify/db-before ::verify/read-only-matcher]))
 
 (s/def ::verify/op
   #{"create" "hold" "put" "keep" "delete" "delete-history" "purge"})

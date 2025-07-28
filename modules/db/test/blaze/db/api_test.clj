@@ -47,7 +47,7 @@
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
-(tu/set-default-locale-english!)                ; important for the thousands separator in 10,000
+(tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
@@ -6628,6 +6628,34 @@
           (given (d/compile-type-matcher target "Patient" [["birthdate" "invalid"]])
             ::anom/category := ::anom/incorrect
             ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
+
+(deftest compile-system-matcher-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"
+             :meta (type/map->Meta {:tag [read-only-tag]})}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+    (with-open-db [db node]
+      (doseq [target [node db]]
+        (let [matcher (d/compile-system-matcher target [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
+              xform (d/matcher-transducer db matcher)]
+          (given (into [] xform (d/type-list db "Patient"))
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"))))
+
+    (testing "clauses can be read back"
+      (given (-> (d/compile-system-matcher node [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
+                 (d/matcher-clauses))
+        count := 1
+        [0] := ["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]))
+
+    (testing "an unknown search-param errors"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (given (d/compile-system-matcher target [["foo" "bar"]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Resource` was not found."))))))
 
 ;; ---- System-Level Functions ------------------------------------------------
 

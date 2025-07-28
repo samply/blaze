@@ -69,9 +69,11 @@
 
   (-compile-type-query-lenient [compiler type clauses])
 
-  (-compile-type-matcher [_ type clauses])
+  (-compile-type-matcher [compiler type clauses])
 
   (-compile-system-query [compiler clauses])
+
+  (-compile-system-matcher [compiler clauses])
 
   (-compile-compartment-query [compiler code type clauses])
 

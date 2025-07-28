@@ -248,6 +248,9 @@
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))
 
+  (-compile-system-matcher [_ clauses]
+    (p/-compile-system-matcher node clauses))
+
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
 
@@ -353,7 +356,7 @@
     (cr/resource-handles batch-db [c-hash (codec/id-byte-string arg1)] tid))
   (-query-clauses [_]))
 
-(defrecord TypeMatcher [clauses]
+(defrecord Matcher [clauses]
   p/Matcher
   (-transducer [_ batch-db]
     (index/other-clauses-filter batch-db clauses))

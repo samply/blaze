@@ -9,10 +9,11 @@
    [taoensso.timbre :as log]))
 
 (defn index-tx
-  [db-before {:keys [t tx-cmds]}]
+  {:arglists '([context tx-data])}
+  [{:keys [db-before] :as context} {:keys [t tx-cmds]}]
   (log/trace "verify transaction commands with t =" t
              "based on db with t =" (d/basis-t db-before))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-tx-cmds")
               db-before (d/new-batch-db db-before)]
     (when-ok [tx-cmds (expand/expand-tx-cmds db-before tx-cmds)]
-      (verify/verify-tx-cmds db-before t tx-cmds))))
+      (verify/verify-tx-cmds (assoc context :db-before db-before) t tx-cmds))))
