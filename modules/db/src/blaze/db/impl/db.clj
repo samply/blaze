@@ -212,6 +212,9 @@
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))
 
+  (-compile-system-matcher [_ clauses]
+    (p/-compile-system-matcher node clauses))
+
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
 

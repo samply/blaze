@@ -114,6 +114,11 @@
                :clauses :blaze.db.query/clauses)
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
+(s/fdef d/compile-system-matcher
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :clauses :blaze.db.query/clauses)
+  :ret (s/or :matcher :blaze.db/matcher :anomaly ::anom/anomaly))
+
 ;; ---- Compartment-Level Functions -------------------------------------------
 
 (s/fdef d/list-compartment-resource-handles

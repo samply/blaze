@@ -49,9 +49,11 @@
 (def allergy-intolerance-0 {:fhir/type :fhir/AllergyIntolerance :id "0"
                             :patient #fhir/Reference{:reference "Patient/0"}})
 
-(defn- verify-tx-cmds [node t tx-cmds]
+(defn- verify-tx-cmds [{:keys [read-only-matcher] :as node} t tx-cmds]
   (with-open [db (d/new-batch-db (d/db node))]
-    (verify/verify-tx-cmds db t tx-cmds)))
+    (verify/verify-tx-cmds
+     {:db-before db :read-only-matcher read-only-matcher}
+     t tx-cmds)))
 
 (deftest verify-tx-cmds-test
   (testing "two commands with the same identity aren't allowed"

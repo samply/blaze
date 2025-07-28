@@ -56,8 +56,8 @@
   the transaction outcome.
 
   Throws an anomaly on conflicts."
-  {:arglists '([db-before t res command])}
-  (fn [_db-before _t _res {:keys [op]}] op))
+  {:arglists '([context t res command])}
+  (fn [_context _t _res {:keys [op]}] op))
 
 (defn- verify-tx-cmd-create-msg [type id]
   (format "verify-tx-cmd :create %s/%s" type id))
@@ -91,7 +91,8 @@
   (-> (update stat :num-changes inc-0)
       (update :total inc-0)))
 
-(defmethod verify "create" [db-before t res {:keys [type id hash refs]}]
+(defmethod verify "create"
+  [{:keys [db-before]} t res {:keys [type id hash refs]}]
   (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
@@ -101,7 +102,7 @@
           (update-in [:stats tid] inc-num-changes-and-total)))))
 
 (defmethod verify "hold"
-  [_db-before _t res _tx-cmd]
+  [_context _t res _tx-cmd]
   res)
 
 (defn- print-etags [ts]
@@ -135,14 +136,11 @@
 (defn- precondition-version-failed-anomaly [type id if-none-match]
   (ba/conflict (precondition-version-failed-msg type id if-none-match) :http/status 412))
 
-(defn- compile-read-only-matcher [db type]
-  (d/compile-type-matcher db type [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]]))
-
-(defn- read-only? [db type resource-handle]
-  (d/matches? db (compile-read-only-matcher db type) resource-handle))
+(defn- read-only? [{:keys [db-before read-only-matcher]} resource-handle]
+  (d/matches? db-before read-only-matcher resource-handle))
 
 (defmethod verify "put"
-  [db-before t res
+  [{:keys [db-before] :as context} t res
    {:keys [type id hash if-match if-none-match refs] :as tx-cmd}]
   (log/trace (verify-tx-cmd-put-msg type id (u/to-seq if-match) if-none-match))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-put")]
@@ -165,7 +163,7 @@
         (= old-hash hash)
         res
 
-        (some->> old-resource-handle (read-only? db-before type))
+        (some->> old-resource-handle (read-only? context))
         (throw-anom (ba/conflict (format "Can't update the read-only resource `%s/%s`." type id)))
 
         :else
@@ -182,7 +180,7 @@
     (format "verify-tx-cmd :keep %s/%s" type id)))
 
 (defmethod verify "keep"
-  [db-before _ res {:keys [type id hash if-match] :as tx-cmd}]
+  [{:keys [db-before]} _ res {:keys [type id hash if-match] :as tx-cmd}]
   (log/trace (verify-tx-cmd-keep-msg type id (u/to-seq if-match)))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-keep")]
     (let [if-match (u/to-seq if-match)
@@ -209,7 +207,7 @@
    (sr/compartment-resources search-param-registry "Patient" type)))
 
 (defmethod verify "delete"
-  [db-before t res {:keys [type id]}]
+  [{:keys [db-before] :as context} t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete")]
     (let [tid (codec/tid type)
@@ -219,7 +217,7 @@
       (cond
         (identical? :delete op) res
 
-        (some->> old-resource-handle (read-only? db-before type))
+        (some->> old-resource-handle (read-only? context))
         (throw-anom (ba/conflict (format "Can't delete the read-only resource `%s/%s`." type id)))
 
         :else
@@ -249,7 +247,7 @@
       (update-in [:stats tid :num-changes] minus-0 (count resource-handles))))
 
 (defmethod verify "delete-history"
-  [db-before t res {:keys [type id]}]
+  [{:keys [db-before]} t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete-history" (str type "/" id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history")]
     (let [tid (codec/tid type)
@@ -266,7 +264,7 @@
 
 ;; like delete-history but also purges the current version
 (defmethod verify "purge"
-  [db-before t res {:keys [type id]}]
+  [{:keys [db-before]} t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :purge" (str type "/" id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-purge")]
     (let [tid (codec/tid type)
@@ -284,9 +282,9 @@
           (-> (update :del-resources conj [type id])
               (update-in [:stats tid :total] dec-0)))))))
 
-(defn- verify-tx-cmds* [db-before t tx-cmds]
+(defn- verify-tx-cmds* [context t tx-cmds]
   (reduce
-   (partial verify db-before t)
+   (partial verify context t)
    {:entries []
     :new-resources #{}
     :del-resources #{}}
@@ -371,10 +369,11 @@
   if it is successful or an anomaly if it fails.
 
   The `t` is for the new transaction to commit."
-  [db-before t tx-cmds]
+  {:arglists '([context t tx-cmds])}
+  [{:keys [db-before] :as context} t tx-cmds]
   (prom/observe! transaction-sizes (count tx-cmds))
   (ba/try-anomaly
    (detect-duplicate-commands! tx-cmds)
-   (let [res (verify-tx-cmds* db-before t tx-cmds)]
+   (let [res (verify-tx-cmds* context t tx-cmds)]
      (check-referential-integrity! db-before res tx-cmds)
      (post-process-res db-before t res))))

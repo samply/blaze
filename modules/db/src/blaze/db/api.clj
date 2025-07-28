@@ -224,6 +224,14 @@
   [node-or-db clauses]
   (p/-compile-system-query node-or-db clauses))
 
+(defn compile-system-matcher
+  "Returns a matcher that can be later used in `matcher-transducer` to obtain
+  a transducer that will filter resource handles matching `clauses`.
+
+  Returns an anomaly if search parameters in clauses can't be resolved."
+  [node-or-db clauses]
+  (p/-compile-system-matcher node-or-db clauses))
+
 ;; ---- Compartment-Level Functions -------------------------------------------
 
 (defn- compartment [code id]
