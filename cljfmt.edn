@@ -1,6 +1,7 @@
 {:extra-indents
  {given-failed-future [[:block 1]]
   given-failed-system [[:block 1]]
+  given-type-query [[:block 3]]
   given-thrown [[:block 1]]
   given [[:block 1]]
   given-translation [[:block 0]]
