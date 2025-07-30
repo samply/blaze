@@ -188,6 +188,20 @@
   [store column-family]
   (p/-estimate-num-keys store column-family))
 
+(defn estimate-storage-size
+  "Returns an estimation of the storage size in bytes for all keys of
+  `column-family` in `key-range`.
+
+  Key range is a tuple of two byte strings.
+
+  Returns an anomaly if `column-family` was not found or estimating the storage
+  size isn't supported.
+
+  Note: depending on the key-value store used, the storage size may include
+  compression."
+  [store column-family key-range]
+  (p/-estimate-storage-size store column-family key-range))
+
 (defn compact!
   "Compacts the storage of `column-family` of `store`.
 

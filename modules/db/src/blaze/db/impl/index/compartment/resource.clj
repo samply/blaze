@@ -62,10 +62,10 @@
   (-> (encode-key-buf compartment tid id) bb/flip! bs/from-byte-buffer!))
 
 (defn resource-handles
-  "Returns a reducible collection of all resource handles of type with `tid`
-  linked to `compartment`.
+  "Returns a reducible collection of resource handles from `batch-db` in
+  `compartment` of type with `tid`, starting with `start-id` (optional).
 
-  An optional `start-id` can be given."
+  The resource handles are distinct and ordered by id."
   {:arglists
    '([batch-db compartment tid]
      [batch-db compartment tid start-id])}

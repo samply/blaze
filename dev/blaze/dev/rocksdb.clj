@@ -1,9 +1,12 @@
 (ns blaze.dev.rocksdb
   (:require
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.codec :as codec]
    [blaze.db.kv :as kv]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.db.kv.rocksdb-spec]
    [blaze.dev :refer [system]]
+   [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [clojure.spec.test.alpha :as st])
   (:import
    [org.rocksdb Env ThreadStatus]))
@@ -56,3 +59,12 @@
   (rocksdb/column-family-meta-data (index-kv-store) :compartment-search-param-value-index)
   (rocksdb/column-family-meta-data (index-kv-store) :resource-as-of-index)
   (rocksdb/column-family-meta-data (index-kv-store) :patient-last-change-index))
+
+(comment
+  (time (let [seek-key (sp-vr/encode-seek-key
+                  (codec/c-hash "code")
+                  (codec/tid "Observation")
+                  (codec/v-hash "http://loinc.org|49765-1" #_"http://loinc.org|9843-4" ))]
+    (kv/estimate-storage-size (index-kv-store) :search-param-value-index
+                              [seek-key (bs/concat seek-key (bs/from-hex "FF"))])))
+  )

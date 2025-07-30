@@ -33,8 +33,8 @@
 
 (defn wrap-decrypt-page-id
   "Wraps a middleware round `handler` that decrypts the :page-id path param from
-  the request using `page-id-cipher` and overrides :params of the request with
-  the result."
+  the request using `page-id-cipher` and overrides :params and :query-params of
+  the request with the result."
   {:arglists '([handler page-id-cipher])}
   [handler page-id-cipher]
   (fn [{{:keys [page-id]} :path-params :as request}]

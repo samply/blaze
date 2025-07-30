@@ -82,9 +82,10 @@
 
 (defn- rev-include [batch-db resource-handle start end]
   (fn [source-type code]
-    (if-let [filter (date-filter batch-db source-type start end)]
-      (coll/eduction filter (p/-rev-include batch-db resource-handle source-type code))
-      (p/-rev-include batch-db resource-handle source-type code))))
+    (let [filter (date-filter batch-db source-type start end)]
+      (cond->> (p/-rev-include batch-db resource-handle source-type code)
+        filter
+        (coll/eduction filter)))))
 
 (defn patient-everything
   {:arglists '([batch-db patient-handle start end])}

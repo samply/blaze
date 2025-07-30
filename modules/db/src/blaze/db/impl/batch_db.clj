@@ -40,8 +40,8 @@
 
 (defn- rev-include [db snapshot reference source-tid code]
   (coll/eduction
-   (u/resource-handle-mapper db source-tid)
-   (sp-vr/prefix-keys snapshot code source-tid (bs/size reference) reference)))
+   (u/resource-handle-xf db source-tid)
+   (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
 
 (defn- sp-total
   [db {:keys [base]}]
@@ -70,7 +70,7 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
-(defrecord BatchDb [node snapshot basis-t t]
+(defrecord BatchDb [node kv-store snapshot basis-t t]
   p/Db
   (-node [_]
     node)
@@ -301,7 +301,13 @@
   (-query-clauses [_]
     (decode-clauses clauses)))
 
-(def ^:private ^:const ^long patient-c-hash (codec/c-hash "Patient"))
+(def ^:private ^:const ^long patient-compartment-hash (codec/c-hash "Patient"))
+(def ^:private ^:const ^long patient-code-hash (codec/c-hash "patient"))
+
+(defn- start-patient-id [batch-db tid start-id]
+  (let [start-handle (p/-resource-handle batch-db tid start-id)
+        start-patient-handle (coll/first (spc/targets batch-db start-handle patient-code-hash))]
+    (codec/id-byte-string (rh/id start-patient-handle))))
 
 (defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses]
   p/Query
@@ -309,20 +315,21 @@
     (ac/completed-future (count (p/-execute query batch-db))))
   (-execute [_ batch-db]
     (coll/eduction
-     (mapcat
-      #(index/compartment-query
-        batch-db [patient-c-hash (codec/id-byte-string %)] tid
-        clauses))
+     (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses))
      patient-ids))
   (-execute [_ batch-db start-id]
-    (coll/eduction
-     (comp
-      (mapcat
-       #(index/compartment-query
-         batch-db [patient-c-hash (codec/id-byte-string %)] tid
-         clauses))
-      (drop-while #(not= start-id (rh/id %))))
-     patient-ids))
+    (let [start-id (codec/id-byte-string start-id)
+          start-patient-id (start-patient-id batch-db tid start-id)]
+      (coll/eduction
+       cat
+       [(index/compartment-query
+         batch-db [patient-compartment-hash start-patient-id] tid clauses
+         start-id)
+        (coll/eduction
+         (comp (drop-while #(not= start-patient-id %))
+               (drop 1)
+               (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses)))
+         patient-ids)])))
   (-query-clauses [_]
     (decode-clauses (into [compartment-clause] clauses))))
 
@@ -372,4 +379,4 @@
   ^AutoCloseable
   [{:keys [kv-store] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node snapshot basis-t t)))
+    (->BatchDb node kv-store snapshot basis-t t)))

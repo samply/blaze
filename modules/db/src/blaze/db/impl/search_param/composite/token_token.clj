@@ -4,14 +4,14 @@
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+   [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.composite.common :as cc]
    [blaze.db.impl.search-param.token :as spt]
-   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]))
 
-(defrecord SearchParamCompositeTokenToken
-           [name url type base code c-hash main-expression c1 c2]
+(defrecord SearchParamCompositeTokenToken [name url type base code c-hash
+                                           main-expression c1 c2]
   p/SearchParam
   (-compile-value [_ _ value]
     (when-ok [[v1 v2] (cc/split-value value)]
@@ -19,23 +19,31 @@
             v2 (cc/compile-component-value c1 v2)]
         (bs/concat v1 v2))))
 
-  (-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (spt/resource-keys batch-db c-hash tid value)))
+  (-estimated-storage-size [_ batch-db tid _ compiled-value]
+    (sp-vr/estimated-storage-size (:kv-store batch-db) c-hash tid compiled-value))
 
-  (-resource-handles [_ batch-db tid _ value start-id]
-    (coll/eduction
-     (u/resource-handle-mapper batch-db tid)
-     (spt/resource-keys batch-db c-hash tid value start-id)))
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (spt/index-handles batch-db c-hash tid compiled-value))
 
-  (-chunked-resource-handles [_ batch-db tid _ value]
-    (coll/eduction
-     (u/resource-handle-chunk-mapper batch-db tid)
-     (spt/resource-keys batch-db c-hash tid value)))
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (spt/index-handles batch-db c-hash tid compiled-value start-id))
 
-  (-matcher [_ batch-db _ values]
-    (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash values))
+  (-supports-ordered-index-handles [_]
+    true)
+
+  (-ordered-index-handles [search-param batch-db tid modifier compiled-value]
+    (p/-index-handles search-param batch-db tid modifier compiled-value))
+
+  (-ordered-index-handles [search-param batch-db tid modifier compiled-value start-id]
+    (p/-index-handles search-param batch-db tid modifier compiled-value start-id))
+
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-matcher [_ batch-db _ compiled-values]
+    (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash compiled-values))
+
+  (-second-pass-filter [_ _ _])
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
