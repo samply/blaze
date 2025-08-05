@@ -3,7 +3,8 @@
   "extends": [
     "config:recommended",
     "helpers:pinGitHubActionDigests",
-    "docker:pinDigests"
+    "docker:pinDigests",
+    "customManagers:githubActionsVersions"
   ],
   "labels": ["dependencies"],
   "packageRules": [

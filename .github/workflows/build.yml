@@ -19,6 +19,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  # renovate: datasource=github-releases depName=samply/blazectl
+  BLAZECTL_VERSION: 1.1.0
+
 jobs:
   fmt:
     runs-on: ubuntu-24.04
@@ -513,6 +517,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -692,6 +698,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Install xq
@@ -1311,6 +1319,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -1440,6 +1450,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -1487,6 +1499,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Install xq
@@ -1551,6 +1565,8 @@ jobs:
         node-version-file: .nvmrc
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Install xq
@@ -1627,6 +1643,8 @@ jobs:
         node-version-file: .nvmrc
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Install Validator
@@ -1753,6 +1771,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -1797,6 +1817,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -1842,6 +1864,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -1883,6 +1907,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -1918,6 +1944,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -2016,6 +2044,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -2185,6 +2215,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -2278,6 +2310,8 @@ jobs:
         node-version-file: .nvmrc
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
@@ -2405,6 +2439,8 @@ jobs:
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
