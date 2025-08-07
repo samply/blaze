@@ -84,7 +84,7 @@
       values)]))
 
 (defn- compartment-keys
-  "Returns a reducible collection of `SingleVersionId` instances."
+  "Returns a reducible collection of single-version-ids."
   [search-param batch-db compartment tid compiled-values]
   (coll/eduction
    (mapcat #(p/-compartment-keys search-param batch-db compartment tid %))

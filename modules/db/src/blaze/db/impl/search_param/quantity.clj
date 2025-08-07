@@ -80,7 +80,7 @@
   (map #(nth % 1)))
 
 (defn- eq-keys
-  "Returns a reducible collection of `SingleVersionId` instances of values between
+  "Returns a reducible collection of single-version-ids of values between
   `lower-bound` and `upper-bound` starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid lower-bound upper-bound]
    (coll/eduction
@@ -98,7 +98,7 @@
                                        start-id)))))
 
 (defn- gt-keys
-  "Returns a reducible collection of `SingleVersionId` instances of values greater
+  "Returns a reducible collection of single-version-ids of values greater
   than `value` starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
@@ -113,7 +113,7 @@
                         start-id))))
 
 (defn- lt-keys
-  "Returns a reducible collection of `SingleVersionId` instances of values less
+  "Returns a reducible collection of single-version-ids of values less
   than `value` starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
@@ -128,7 +128,7 @@
                              start-id))))
 
 (defn- ge-keys
-  "Returns a reducible collection of `SingleVersionId` instances of values greater
+  "Returns a reducible collection of single-version-ids of values greater
   or equal `value` starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
@@ -143,7 +143,7 @@
                         start-id))))
 
 (defn- le-keys
-  "Returns a reducible collection of `SingleVersionId` instances of values less
+  "Returns a reducible collection of single-version-ids of values less
   or equal `value` starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found
@@ -158,7 +158,7 @@
                              start-id))))
 
 (defn resource-keys
-  "Returns a reducible collection of `SingleVersionId` instances of values
+  "Returns a reducible collection of single-version-ids of values
   according to `op` and values starting at `start-id` (optional).
 
   The `prefix-length` is the length of the prefix of `value` that all found

@@ -69,7 +69,9 @@
 
 (defn value-filter
   "Returns a stateful transducer that filters resource handles depending on
-  having one of the `values` match via `matches?`."
+  having one of the `values` match via `matches?`.
+
+  Inputs will be given to `encode`."
   ([snapshot encode matches? values]
    (i/seek-key-filter
     snapshot

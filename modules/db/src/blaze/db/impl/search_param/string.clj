@@ -65,7 +65,7 @@
   (r-sp-v/next-value snapshot (rao/resource-handle snapshot tid id t) c-hash))
 
 (defn- resource-keys
-  "Returns a reducible collection of `SingleVersionId` instances starting at
+  "Returns a reducible collection of single-version-ids starting at
   `start-id` (optional)."
   {:arglists '([context c-hash tid value] [context c-hash tid value start-id])}
   ([{:keys [snapshot]} c-hash tid value]
