@@ -15,15 +15,15 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn decode-key
-  "Returns a tuple of `[prefix SingleVersionId]`.
+  "Returns a tuple of `[prefix single-version-id]`.
 
   The prefix contains the c-hash, tid and value parts as encoded byte string."
   [buf]
   (SearchParamValueResource/decodeKey buf))
 
 (defn keys
-  "Returns a reducible collection of `[prefix SingleVersionId]` tuples starting
-  at `start-key`.
+  "Returns a reducible collection of `[prefix single-version-id]` tuples
+  starting at `start-key`.
 
   The prefix contains the c-hash, tid and value parts as encoded byte string."
   [snapshot start-key]
@@ -76,12 +76,12 @@
    (bs/concat (encode-seek-key c-hash tid value id) max-hash-prefix)))
 
 (defn decode-value-single-version-id
-  "Decodes a tuple of `[value SingleVersionId]` from `buf`."
+  "Decodes a tuple of `[value single-version-id]` from `buf`."
   [buf]
   (SearchParamValueResource/decodeValueSingleVersionId buf))
 
 (defn all-keys
-  "Returns a reducible collection of `[value SingleVersionId]` tuples of the
+  "Returns a reducible collection of `[value single-version-id]` tuples of the
   whole range prefixed with `c-hash` and `tid` starting with `start-value` and
   `start-id` (optional)."
   ([snapshot c-hash tid]
@@ -94,9 +94,9 @@
                     decode-value-single-version-id base-key-size start-key))))
 
 (defn all-keys-prev
-  "Returns a reducible collection of decoded `[value SingleVersionId]` tuples of
-  the whole range prefixed with `c-hash` and `tid` starting with `start-value`
-  and `start-id` (optional), iterating in reverse."
+  "Returns a reducible collection of decoded `[value single-version-id]` tuples
+  of the whole range prefixed with `c-hash` and `tid` starting with
+  `start-value` and `start-id` (optional), iterating in reverse."
   ([snapshot c-hash tid]
    (i/prefix-keys-prev
     snapshot
@@ -113,7 +113,7 @@
     (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
 (defn prefix-keys-value
-  "Returns a reducible collection of decoded `[value SingleVersionId]` tuples
+  "Returns a reducible collection of decoded `[value single-version-id]` tuples
   from keys starting at a key with `value-prefix` and ending when `c-hash` and
   `tid` no longer match."
   [snapshot c-hash tid value-prefix]
@@ -130,12 +130,12 @@
    (encode-seek-key c-hash tid value-prefix)))
 
 (defn decode-single-version-id
-  "Decodes a `SingleVersionId` instance from `buf`."
+  "Decodes a single-version-id from `buf`."
   [buf]
   (SearchParamValueResource/decodeSingleVersionId buf))
 
 (defn prefix-keys
-  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
+  "Returns a reducible collection of decoded single-version-ids from keys
   starting at `start-value` and optional `start-id` and ending when
   `prefix-length` bytes of `start-value` is no longer a prefix of the values
   processed."
@@ -155,7 +155,7 @@
     (encode-seek-key c-hash tid start-value start-id))))
 
 (defn prefix-keys'
-  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
+  "Returns a reducible collection of decoded single-version-ids from keys
   starting at `start-value` and ending when `prefix-length` bytes of
   `start-value` is no longer a prefix of the values processed."
   [snapshot c-hash tid prefix-length start-value]
@@ -167,7 +167,7 @@
    (encode-seek-key-for-prev c-hash tid start-value)))
 
 (defn prefix-keys-prev
-  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
+  "Returns a reducible collection of decoded single-version-ids from keys
   starting at `start-value` and optional `start-id` and ending when
   `prefix-length` bytes of `start-value` is no longer a prefix of the values
   processed, iterating in reverse."
@@ -187,7 +187,7 @@
     (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
 (defn prefix-keys-prev'
-  "Returns a reducible collection of decoded `SingleVersionId` instances from keys
+  "Returns a reducible collection of decoded single-version-ids from keys
   starting at `start-value` and ending when `prefix-length` bytes of
   `start-value` is no longer a prefix of the values processed, iterating in
   reverse."

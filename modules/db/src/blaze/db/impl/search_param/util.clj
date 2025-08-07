@@ -35,7 +35,7 @@
 
 (def by-id-grouper
   "Returns a stateful transducer which partitions multiple consecutive
-  `SingleVersionId` instances by id, emitting one `MultiVersionId` instance per
+  single-version-ids by id, emitting one `MultiVersionId` instance per
   partition."
   (fn [rf]
     (let [acc (volatile! nil)]
@@ -77,9 +77,9 @@
    (fn [mvi handle] (mvi/matches-hash? mvi (rh/hash handle)))))
 
 (defn resource-handle-mapper
-  "Returns a transducer which partitions multiple consecutive `SingleVersionId`
-  instances by `id` and maps them to a resource handle with `tid` if there is a
-  current one with matching hash."
+  "Returns a transducer which partitions multiple consecutive single-version-ids
+  by `id` and maps them to a resource handle with `tid` if there is a current
+  one with matching hash."
   [batch-db tid]
   (comp
    by-id-grouper

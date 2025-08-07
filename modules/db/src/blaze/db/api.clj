@@ -306,7 +306,7 @@
   (p/-count-query db query))
 
 (defn execute-query
-  "Executes a pre-compiled `query` with `args`.
+  "Executes a pre-compiled `query` with `args` on `db`.
 
   Returns a reducible collection of all matching resource handles.
 

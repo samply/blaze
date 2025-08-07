@@ -144,7 +144,7 @@
     c-hash))
 
 (defn resource-keys
-  "Returns a reducible collection of `SingleVersionId` instances that have `value`
+  "Returns a reducible collection of single-version-ids that have `value`
   starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid value]
    (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value))
