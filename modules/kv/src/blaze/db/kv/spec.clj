@@ -1,5 +1,6 @@
 (ns blaze.db.kv.spec
   (:require
+   [blaze.byte-string :as bs]
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as p]
    [clojure.spec.alpha :as s])
@@ -39,3 +40,6 @@
 
 (s/def ::kv/column-families
   (s/map-of keyword (s/nilable map?)))
+
+(s/def ::kv/key-range
+  (s/tuple bs/byte-string? bs/byte-string?))

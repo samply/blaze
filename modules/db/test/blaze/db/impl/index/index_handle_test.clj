@@ -1,9 +1,9 @@
-(ns blaze.db.impl.index.multi-version-id-test
+(ns blaze.db.impl.index.index-handle-test
   (:require
    [blaze.byte-string]
    [blaze.db.impl.index-spec]
-   [blaze.db.impl.index.multi-version-id :as mvi]
-   [blaze.db.impl.index.multi-version-id-spec]
+   [blaze.db.impl.index.index-handle :as ih]
+   [blaze.db.impl.index.index-handle-spec]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.index.single-version-id-spec]
    [blaze.db.kv.mem]
@@ -28,14 +28,17 @@
   (svi/single-version-id #blaze/byte-string"00" (hash/from-hex (str "00000003" (str/join (repeat 56 "0"))))))
 
 (deftest conj-hash-prefix-from-test
-  (let [set (mvi/from-single-version-id one)]
-    (is (= (str (mvi/conj set two))
-           "MultiVersionId{id=0x00, hashPrefixes=[0x1,0x2]}")))
+  (let [svi (ih/from-single-version-id one)
+        mvi (ih/conj svi two)]
+    (is (= #blaze/byte-string"00" (ih/id mvi)))
+    (is (= [1 2] (ih/hash-prefixes mvi))))
 
-  (let [set (mvi/from-single-version-id two)]
-    (is (= (str (mvi/conj set one))
-           "MultiVersionId{id=0x00, hashPrefixes=[0x1,0x2]}")))
+  (let [svi (ih/from-single-version-id two)
+        mvi (ih/conj svi one)]
+    (is (= #blaze/byte-string"00" (ih/id mvi)))
+    (is (= [1 2] (ih/hash-prefixes mvi))))
 
-  (let [set (mvi/from-single-version-id one)]
-    (is (= (str (mvi/conj (mvi/conj set three) two))
-           "MultiVersionId{id=0x00, hashPrefixes=[0x1,0x2,0x3]}"))))
+  (let [svi (ih/from-single-version-id one)
+        mvi (ih/conj (ih/conj svi three) two)]
+    (is (= #blaze/byte-string"00" (ih/id mvi)))
+    (is (= [1 2 3] (ih/hash-prefixes mvi)))))

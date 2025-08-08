@@ -62,7 +62,7 @@
              (str base-url))})
 
 (defn- bundle [context request resources start end page-size next-offset]
-  (let [entries (mapv (partial search-util/entry request) resources)]
+  (let [entries (mapv (partial search-util/match-entry request) resources)]
     (cond->
      {:fhir/type :fhir/Bundle
       :id (m/luid context)

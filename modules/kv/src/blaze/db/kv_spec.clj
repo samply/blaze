@@ -80,3 +80,11 @@
 (s/fdef kv/estimate-num-keys
   :args (s/cat :kv-store :blaze.db/kv-store :column-family simple-keyword?)
   :ret (s/or :estimate-num-keys nat-int? :anomaly ::anom/anomaly))
+
+(s/fdef kv/estimate-scan-size
+  :args (s/cat :kv-store :blaze.db/kv-store :column-family simple-keyword?
+               :key-range ::kv/key-range)
+  :ret (s/or :estimate-storage-size nat-int? :anomaly ::anom/anomaly))
+
+(s/fdef kv/compact!
+  :args (s/cat :kv-store :blaze.db/kv-store :column-family simple-keyword?))

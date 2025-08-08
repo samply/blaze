@@ -4,11 +4,16 @@
    [blaze.db.impl.index :as-alias index]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.index.single-version-id.spec]
+   [blaze.db.spec]
    [blaze.fhir.hash.spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef svi/single-version-id
   :args (s/cat :id bs/byte-string? :hash :blaze.resource/hash)
+  :ret ::index/single-version-id)
+
+(s/fdef svi/from-resource-handle
+  :args (s/cat :resource-handle :blaze.db/resource-handle)
   :ret ::index/single-version-id)
 
 (s/fdef svi/id

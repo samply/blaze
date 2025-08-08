@@ -45,6 +45,11 @@
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
+(s/fdef index/type-query-plan
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
+               :tid :blaze.db/tid
+               :clauses :blaze.db.index.query/clauses))
+
 (s/fdef index/type-query-total
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
@@ -60,5 +65,9 @@
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :clauses :blaze.db.index.query/clauses)
+               :clauses :blaze.db.index.query/clauses
+               :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
+
+(s/fdef index/compartment-query-plan
+  :args (s/cat :clauses :blaze.db.index.query/clauses))

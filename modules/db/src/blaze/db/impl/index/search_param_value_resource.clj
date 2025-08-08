@@ -4,9 +4,12 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.iterators :as i]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.db.kv :as kv]
    [blaze.fhir.hash :as hash])
   (:import
    [blaze.db.impl.index SearchParamValueResource]))
@@ -86,12 +89,19 @@
   `start-id` (optional)."
   ([snapshot c-hash tid]
    (let [prefix (encode-seek-key c-hash tid)]
-     (i/prefix-keys snapshot :search-param-value-index
-                    decode-value-single-version-id (bs/size prefix) prefix)))
+     (i/prefix-keys
+      snapshot
+      :search-param-value-index
+      decode-value-single-version-id
+      (bs/size prefix)
+      prefix)))
   ([snapshot c-hash tid start-value start-id]
-   (let [start-key (encode-seek-key c-hash tid start-value start-id)]
-     (i/prefix-keys snapshot :search-param-value-index
-                    decode-value-single-version-id base-key-size start-key))))
+   (i/prefix-keys
+    snapshot
+    :search-param-value-index
+    decode-value-single-version-id
+    base-key-size
+    (encode-seek-key c-hash tid start-value start-id))))
 
 (defn all-keys-prev
   "Returns a reducible collection of decoded `[value single-version-id]` tuples
@@ -118,8 +128,12 @@
   `tid` no longer match."
   [snapshot c-hash tid value-prefix]
   (let [start-key (encode-seek-key c-hash tid value-prefix)]
-    (i/prefix-keys snapshot :search-param-value-index
-                   decode-value-single-version-id base-key-size start-key)))
+    (i/prefix-keys
+     snapshot
+     :search-param-value-index
+     decode-value-single-version-id
+     base-key-size
+     start-key)))
 
 (defn prefix-keys-value-prev [snapshot c-hash tid value-prefix]
   (i/prefix-keys-prev
@@ -134,70 +148,78 @@
   [buf]
   (SearchParamValueResource/decodeSingleVersionId buf))
 
-(defn prefix-keys
-  "Returns a reducible collection of decoded single-version-ids from keys
-  starting at `start-value` and optional `start-id` and ending when
-  `prefix-length` bytes of `start-value` is no longer a prefix of the values
-  processed."
-  ([snapshot c-hash tid prefix-length start-value]
+(defn- index-handles* [snapshot prefix-length seek-key]
+  (coll/eduction
+   u/by-id-grouper
    (i/prefix-keys
     snapshot
     :search-param-value-index
     decode-single-version-id
     (+ base-key-size (long prefix-length))
-    (encode-seek-key c-hash tid start-value)))
-  ([snapshot c-hash tid prefix-length start-value start-id]
-   (i/prefix-keys
-    snapshot
-    :search-param-value-index
-    decode-single-version-id
-    (+ base-key-size (long prefix-length))
-    (encode-seek-key c-hash tid start-value start-id))))
+    seek-key)))
 
-(defn prefix-keys'
-  "Returns a reducible collection of decoded single-version-ids from keys
-  starting at `start-value` and ending when `prefix-length` bytes of
-  `start-value` is no longer a prefix of the values processed."
+(defn index-handles
+  "Returns a reducible collection of index handles from keys starting at
+  `start-value` and optional `start-id` and ending when `prefix-length` bytes
+  of `start-value` is no longer a prefix of the values processed."
+  ([snapshot c-hash tid prefix-length start-value]
+   (let [seek-key (encode-seek-key c-hash tid start-value)]
+     (index-handles* snapshot prefix-length seek-key)))
+  ([snapshot c-hash tid prefix-length start-value start-id]
+   (let [seek-key (encode-seek-key c-hash tid start-value start-id)]
+     (index-handles* snapshot prefix-length seek-key))))
+
+(defn index-handles'
+  "Returns a reducible collection of index handles from keys starting at
+  `start-value` and ending when `prefix-length` bytes of `start-value` is no
+  longer a prefix of the values processed."
   [snapshot c-hash tid prefix-length start-value]
-  (i/prefix-keys
-   snapshot
-   :search-param-value-index
-   decode-single-version-id
-   (+ base-key-size (long prefix-length))
-   (encode-seek-key-for-prev c-hash tid start-value)))
-
-(defn prefix-keys-prev
-  "Returns a reducible collection of decoded single-version-ids from keys
-  starting at `start-value` and optional `start-id` and ending when
-  `prefix-length` bytes of `start-value` is no longer a prefix of the values
-  processed, iterating in reverse."
-  ([snapshot c-hash tid prefix-length start-value]
-   (i/prefix-keys-prev
+  (coll/eduction
+   u/by-id-grouper
+   (i/prefix-keys
     snapshot
     :search-param-value-index
     decode-single-version-id
     (+ base-key-size (long prefix-length))
-    (encode-seek-key-for-prev c-hash tid start-value)))
-  ([snapshot c-hash tid prefix-length start-value start-id]
-   (i/prefix-keys-prev
-    snapshot
-    :search-param-value-index
-    decode-single-version-id
-    (+ base-key-size (long prefix-length))
-    (encode-seek-key-for-prev c-hash tid start-value start-id))))
+    (encode-seek-key-for-prev c-hash tid start-value))))
 
-(defn prefix-keys-prev'
-  "Returns a reducible collection of decoded single-version-ids from keys
-  starting at `start-value` and ending when `prefix-length` bytes of
-  `start-value` is no longer a prefix of the values processed, iterating in
+(defn index-handles-prev
+  "Returns a reducible collection of index handles from keys starting at
+  `start-value` and optional `start-id` and ending when `prefix-length` bytes
+  of `start-value` is no longer a prefix of the values processed, iterating in
   reverse."
+  ([snapshot c-hash tid prefix-length start-value]
+   (coll/eduction
+    u/by-id-grouper
+    (i/prefix-keys-prev
+     snapshot
+     :search-param-value-index
+     decode-single-version-id
+     (+ base-key-size (long prefix-length))
+     (encode-seek-key-for-prev c-hash tid start-value))))
+  ([snapshot c-hash tid prefix-length start-value start-id]
+   (coll/eduction
+    u/by-id-grouper
+    (i/prefix-keys-prev
+     snapshot
+     :search-param-value-index
+     decode-single-version-id
+     (+ base-key-size (long prefix-length))
+     (encode-seek-key-for-prev c-hash tid start-value start-id)))))
+
+(defn index-handles-prev'
+  "Returns a reducible collection of index handles from keys starting at
+  `start-value` and ending when `prefix-length` bytes of `start-value` is no
+  longer a prefix of the values processed, iterating in reverse."
   [snapshot c-hash tid prefix-length start-value]
-  (i/prefix-keys-prev
-   snapshot
-   :search-param-value-index
-   decode-single-version-id
-   (+ base-key-size (long prefix-length))
-   (encode-seek-key c-hash tid start-value)))
+  (coll/eduction
+   u/by-id-grouper
+   (i/prefix-keys-prev
+    snapshot
+    :search-param-value-index
+    decode-single-version-id
+    (+ base-key-size (long prefix-length))
+    (encode-seek-key c-hash tid start-value))))
 
 (defn encode-key [c-hash tid value id hash]
   (-> (bb/allocate (unchecked-add-int (key-size value id) hash/prefix-size))
@@ -214,3 +236,17 @@
   `tid`, `value`, `id` and `hash`."
   [c-hash tid value id hash]
   [:search-param-value-index (encode-key c-hash tid value id hash) bytes/empty])
+
+(defn estimated-scan-size
+  "Returns a relative estimation of the amount of work to do while scanning the
+  SearchParamValueResource index with the prefix consisting of `c-hash`, `tid`
+  and `value`.
+
+  The metric is relative and unitless. It can be only used to compare the amount
+  of scan work between different prefixes.
+
+  Returns an anomaly if estimating the scan size isn't supported by `kv-store`."
+  [kv-store c-hash tid value]
+  (let [seek-key (encode-seek-key c-hash tid value)
+        key-range [seek-key (bs/concat seek-key (bs/from-hex "FF"))]]
+    (kv/estimate-scan-size kv-store :search-param-value-index key-range)))

@@ -97,6 +97,10 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-execute-query batch-db query arg1)))
 
+  (-explain-query [_ query]
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-explain-query batch-db query)))
+
   (-matcher-transducer [_ clauses]
     (fn [rf]
       (let [batch-db (batch-db/new-batch-db node basis-t t)

@@ -15,7 +15,7 @@ set title "Simple Code Search - Download - Dataset 1M"
 set xlabel 'System'
 set ylabel 'Resources/s'
 set format y "%.0f k"
-set yrange [0:100]
+set yrange [0:150]
 
 # Define grid
 set grid ytics

@@ -3,9 +3,8 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
-   [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.multi-version-id :as mvi]
+   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.single-version-id :as svi]
@@ -35,8 +34,7 @@
 
 (def by-id-grouper
   "Returns a stateful transducer which partitions multiple consecutive
-  single-version-ids by id, emitting one `MultiVersionId` instance per
-  partition."
+  single-version-ids by id, emitting one index handle instance per partition."
   (fn [rf]
     (let [acc (volatile! nil)]
       (fn
@@ -53,17 +51,17 @@
            (cond
              (nil? mvi)
              (do
-               (vreset! acc (mvi/from-single-version-id svi))
+               (vreset! acc (ih/from-single-version-id svi))
                result)
 
-             (= id (mvi/id mvi))
+             (= id (ih/id mvi))
              (do
-               (vreset! acc (mvi/conj mvi svi))
+               (vreset! acc (ih/conj mvi svi))
                result)
 
              :else
              (let [ret (rf result mvi)]
-               (vreset! acc (if (reduced? ret) nil (mvi/from-single-version-id svi)))
+               (vreset! acc (if (reduced? ret) nil (ih/from-single-version-id svi)))
                ret))))))))
 
 (defn non-deleted-resource-handle [{:keys [snapshot t]} tid id]
@@ -71,30 +69,13 @@
     (when-not (rh/deleted? handle)
       handle)))
 
-(defn- resource-handle-xf [{:keys [snapshot t]} tid]
+(defn resource-handle-xf
+  "Returns a stateful transducer that receives index handles and emits resource
+  handles when found."
+  [{:keys [snapshot t]} tid]
   (rao/resource-handle-type-xf
-   snapshot t tid mvi/id
-   (fn [mvi handle] (mvi/matches-hash? mvi (rh/hash handle)))))
-
-(defn resource-handle-mapper
-  "Returns a transducer which partitions multiple consecutive single-version-ids
-  by `id` and maps them to a resource handle with `tid` if there is a current
-  one with matching hash."
-  [batch-db tid]
-  (comp
-   by-id-grouper
-   (resource-handle-xf batch-db tid)))
-
-(defn resource-handle-chunk-mapper
-  "Like `resource-handle-mapper` but emits chunks of reducible collections of
-  matching resource handles.
-
-  That chunks can be used to process the resource handle mapping in parallel."
-  [batch-db tid]
-  (comp
-   by-id-grouper
-   (partition-all 1000)
-   (map #(coll/eduction (resource-handle-xf batch-db tid) %))))
+   snapshot t tid ih/id
+   (fn [mvi handle] (ih/matches-hash? mvi (rh/hash handle)))))
 
 (defn missing-expression-msg [url]
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."
