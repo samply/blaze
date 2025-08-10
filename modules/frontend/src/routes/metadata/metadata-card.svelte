@@ -3,7 +3,7 @@
   import { RestfulInteraction } from '$lib/fhir.js';
   import type { FhirObject } from '$lib/resource/resource-card.js';
   import { isTabActive } from '$lib/util.js';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
   import DateTime from '$lib/values/date-time.svelte';
@@ -73,13 +73,14 @@
       {#each capabilityStatement.rest?.at(0)?.resource || [] as resource (resource.type)}
         <tr>
           <td class="whitespace-nowrap py-2 pl-4 text-sm sm:pl-0 text-gray-900"
-            ><a href="{base}/metadata/{resource.type}" class="hover:text-gray-500"
-              >{resource.type}</a
+            ><a
+              href={resolve('/metadata/[type=type]', { type: resource.type })}
+              class="hover:text-gray-500">{resource.type}</a
             ></td
           >
           <td class="py-2 text-sm text-gray-900">
             <a
-              href="{base}/StructureDefinition?url={resource.profile}&_format=json"
+              href="{resolve('/StructureDefinition')}?url={resource.profile}&_format=json"
               download="{resource.type}.json"><Download /></a
             >
           </td>

@@ -12,7 +12,7 @@
 
   import { title } from '$lib/resource.js';
 
-  let { data }: PageProps = $props();
+  let { data, params }: PageProps = $props();
 
   let resource = $derived(data.resource.object as FhirResource);
 </script>
@@ -26,12 +26,12 @@
     <nav class="flex flex-auto" aria-label="Breadcrumb">
       <ol class="flex items-center py-0.5 space-x-4">
         <BreadcrumbEntryHome />
-        <BreadcrumbEntryType />
-        <BreadcrumbEntryResource {resource} last />
+        <BreadcrumbEntryType {...params} />
+        <BreadcrumbEntryResource {...params} {resource} last />
       </ol>
     </nav>
-    <OperationDropdown />
-    <HistoryButton />
+    <OperationDropdown {...params} />
+    <HistoryButton {...params} />
   </div>
 </header>
 

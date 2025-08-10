@@ -1,11 +1,10 @@
 import type { PageServerLoad } from './$types';
-import { toJob } from '$lib/jobs/compact';
-
-import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
+import { toJob } from '$lib/jobs/compact';
+
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const res = await fetch(`${base}/__admin/Task/${params.id}`, {
+  const res = await fetch(`/fhir/__admin/Task/${params.id}`, {
     headers: { Accept: 'application/fhir+json' }
   });
 

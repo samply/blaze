@@ -1,15 +1,18 @@
 import type { PageLoad } from './$types';
 import type { Bundle, ValueSet } from 'fhir/r4';
 
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ fetch, params }) => {
-  const res = await fetch(`${base}/ValueSet?_id=${params.id}&_elements=version,title,description`, {
-    headers: {
-      Accept: 'application/fhir+json'
+  const res = await fetch(
+    `${resolve('/ValueSet')}?_id=${params.id}&_elements=version,title,description`,
+    {
+      headers: {
+        Accept: 'application/fhir+json'
+      }
     }
-  });
+  );
 
   if (!res.ok) {
     error(res.status as NumericRange<400, 599>, {

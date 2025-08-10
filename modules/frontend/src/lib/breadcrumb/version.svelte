@@ -1,12 +1,20 @@
 <script lang="ts">
-  import { base } from '$app/paths';
-  import { page } from '$app/state';
+  import { resolve } from '$app/paths';
+
   import Entry from './entry.svelte';
+
+  interface Props {
+    type: string;
+    id: string;
+    vid: string;
+  }
+
+  let props: Props = $props();
 </script>
 
 <Entry>
   <a
-    href="{base}/{page.params.type}/{page.params.id}/_history/{page.params.vid}"
-    class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">Version-{page.params.vid}</a
+    href={resolve('/[type=type]/[id=id]/_history/[vid=vid]', props)}
+    class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">Version-{props.vid}</a
   >
 </Entry>

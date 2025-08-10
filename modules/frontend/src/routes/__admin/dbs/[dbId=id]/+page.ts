@@ -1,6 +1,6 @@
-import type { PageLoad } from './$types';
+import type { PageLoad, RouteParams } from './$types';
 
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { toTitleCase } from '$lib/util.js';
 
@@ -31,8 +31,8 @@ export interface ColumnFamilyData {
   sizeAllMemTables: number;
 }
 
-async function loadStats(fetch: Fetch, dbId: string): Promise<Stats> {
-  const res = await fetch(`${base}/__admin/dbs/${dbId}/stats`, {
+async function loadStats(fetch: Fetch, params: RouteParams): Promise<Stats> {
+  const res = await fetch(resolve('/__admin/dbs/[dbId=id]/stats', params), {
     headers: { Accept: 'application/json' }
   });
 
@@ -41,9 +41,9 @@ async function loadStats(fetch: Fetch, dbId: string): Promise<Stats> {
       short: res.status == 404 ? 'Not Found' : undefined,
       message:
         res.status == 404
-          ? `The ${toTitleCase(dbId)} database stats were not found.`
+          ? `The ${toTitleCase(params.dbId)} database stats were not found.`
           : `An error happened while loading the ${toTitleCase(
-              dbId
+              params.dbId
             )} database stats. Please try again later.`
     });
   }
@@ -51,8 +51,8 @@ async function loadStats(fetch: Fetch, dbId: string): Promise<Stats> {
   return await res.json();
 }
 
-async function loadColumnFamilies(fetch: Fetch, dbId: string): Promise<ColumnFamilyData[]> {
-  const res = await fetch(`${base}/__admin/dbs/${dbId}/column-families`, {
+async function loadColumnFamilies(fetch: Fetch, params: RouteParams): Promise<ColumnFamilyData[]> {
+  const res = await fetch(resolve('/__admin/dbs/[dbId=id]/column-families', params), {
     headers: { Accept: 'application/json' }
   });
 
@@ -61,9 +61,9 @@ async function loadColumnFamilies(fetch: Fetch, dbId: string): Promise<ColumnFam
       short: res.status == 404 ? 'Not Found' : undefined,
       message:
         res.status == 404
-          ? `The ${toTitleCase(dbId)} database column families were not found.`
+          ? `The ${toTitleCase(params.dbId)} database column families were not found.`
           : `An error happened while loading the ${toTitleCase(
-              dbId
+              params.dbId
             )} database column families. Please try again later.`
     });
   }
@@ -73,7 +73,7 @@ async function loadColumnFamilies(fetch: Fetch, dbId: string): Promise<ColumnFam
 
 export const load: PageLoad = async ({ fetch, params }) => {
   return {
-    stats: await loadStats(fetch, params.dbId),
-    columnFamilies: await loadColumnFamilies(fetch, params.dbId)
+    stats: await loadStats(fetch, params),
+    columnFamilies: await loadColumnFamilies(fetch, params)
   };
 };

@@ -13,7 +13,7 @@
     updateAtIndex
   } from '$lib/util.js';
   import { afterNavigate, goto } from '$app/navigation';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
   import CheckboxActive from './search-forum/checkbox-active.svelte';
@@ -31,12 +31,13 @@
 
   interface Props {
     searchParams: CapabilityStatementRestResourceSearchParam[];
+    type: string;
   }
 
-  let { searchParams }: Props = $props();
+  let { searchParams, type }: Props = $props();
 
   async function loadSearchIncludes(type: string): Promise<string[]> {
-    const res = await fetch(`${base}/${type}/__search-includes`, {
+    const res = await fetch(resolve('/[type=type]/__search-rev-includes', { type: type }), {
       headers: { Accept: 'application/json' }
     });
 
@@ -48,7 +49,7 @@
   }
 
   async function loadSearchRevIncludes(type: string): Promise<string[]> {
-    const res = await fetch(`${base}/${type}/__search-rev-includes`, {
+    const res = await fetch(resolve('/[type=type]/__search-rev-includes', { type: type }), {
       headers: { Accept: 'application/json' }
     });
 
@@ -77,10 +78,7 @@
     };
   }
 
-  function initQueryParams(
-    searchParams: CapabilityStatementRestResourceSearchParam[],
-    urlSearchParams: URLSearchParams
-  ): QueryParam[] {
+  function initQueryParams(urlSearchParams: URLSearchParams): QueryParam[] {
     const queryParams: QueryParam[] = [];
     for (const [name, value] of urlSearchParams) {
       if (name.startsWith('__')) {
@@ -104,11 +102,11 @@
     return queryParams;
   }
 
-  let queryParams = $state(initQueryParams(searchParams, page.url.searchParams));
+  let queryParams = $state(initQueryParams(page.url.searchParams));
 
   afterNavigate((nav) => {
     if (nav.to) {
-      queryParams = initQueryParams(searchParams, nav.to.url.searchParams);
+      queryParams = initQueryParams(nav.to.url.searchParams);
     }
   });
 
@@ -118,7 +116,7 @@
       .map((p) => ({ ...p, value: p.value.trim() }))
       .filter((p) => p.value.length != 0)
       .map((p) => [p.active ? p.name : p.name + ':inactive', p.value]) as string[][];
-    goto(`${base}/${page.params.type}/?${new URLSearchParams(params)}`);
+    goto(`${resolve('/[type=type]', { type: type })}/?${new URLSearchParams(params)}`);
   }
 </script>
 
@@ -138,13 +136,13 @@
 
         <SearchParamComboBox {searchParams} {index} bind:selected={queryParam.name} />
         {#if queryParam.name === '_include'}
-          {#await loadSearchIncludes(page.params.type)}
+          {#await loadSearchIncludes(type)}
             <ValueComboBox {index} bind:selected={queryParam.value} />
           {:then searchIncludes}
             <ValueComboBox options={searchIncludes} {index} bind:selected={queryParam.value} />
           {/await}
         {:else if queryParam.name === '_revinclude'}
-          {#await loadSearchRevIncludes(page.params.type)}
+          {#await loadSearchRevIncludes(type)}
             <ValueComboBox {index} bind:selected={queryParam.value} />
           {:then searchRevIncludes}
             <ValueComboBox options={searchRevIncludes} {index} bind:selected={queryParam.value} />

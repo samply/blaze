@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { invalidateAll } from '$app/navigation';
   import TaskRow from './task-row.svelte';
 
@@ -29,7 +29,7 @@
     <div class="flex md:ml-4">
       <a
         class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white text-nowrap hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-        href="{base}/__admin/jobs/new"
+        href={resolve('/__admin/jobs/new')}
       >
         New Job
       </a>

@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import type { CapabilityStatement } from 'fhir/r4';
 
 export const GET: RequestHandler = async ({ params, fetch }) => {
-  const res = await fetch(`${base}/metadata`, { headers: { Accept: 'application/fhir+json' } });
+  const res = await fetch(resolve('/metadata'), { headers: { Accept: 'application/fhir+json' } });
 
   if (!res.ok) {
     return json({ msg: 'error while loading the CapabilityStatement' });

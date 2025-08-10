@@ -14,7 +14,7 @@
   import { title } from '$lib/resource.js';
   import type { FhirResource } from 'fhir/r4';
 
-  let { data }: PageProps = $props();
+  let { data, params }: PageProps = $props();
 
   let resource = $derived(data.resource.object as FhirResource);
 </script>
@@ -26,8 +26,8 @@
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
   <Breadcrumb>
     <BreadcrumbEntryHome />
-    <BreadcrumbEntryType />
-    <BreadcrumbEntryResource {resource} />
+    <BreadcrumbEntryType {...params} />
+    <BreadcrumbEntryResource {...params} {resource} />
     <BreadcrumbEntry>
       <span class="ml-4 text-sm font-medium text-gray-500">$graph</span>
     </BreadcrumbEntry>

@@ -1,9 +1,9 @@
 import type { RequestHandler } from './$types';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 
 export const GET: RequestHandler = async ({ params, fetch, url }) => {
   const res = await fetch(
-    `${base}/${params.type}/${params.id}/$graph?graph=${url.searchParams.get('graph')}`,
+    `${resolve('/[type=type]/[id=id]/$graph', params)}?graph=${url.searchParams.get('graph')}`,
     {
       headers: { Accept: 'application/fhir+json' }
     }

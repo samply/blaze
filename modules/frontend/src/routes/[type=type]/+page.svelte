@@ -2,7 +2,6 @@
   import type { PageProps } from './$types';
 
   import { onMount } from 'svelte';
-  import { page } from '$app/state';
   import { fade, slide } from 'svelte/transition';
 
   import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
@@ -20,7 +19,7 @@
   import CodeSystemOperationDropdown from '../CodeSystem/operation-dropdown.svelte';
   import ValueSetOperationDropdown from '../ValueSet/operation-dropdown.svelte';
 
-  let { data }: PageProps = $props();
+  let { data, params }: PageProps = $props();
 
   let duration = $state(0);
 
@@ -33,7 +32,7 @@
 </script>
 
 <svelte:head>
-  <title>{page.params.type} - Blaze</title>
+  <title>{params.type} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -41,21 +40,21 @@
     <nav class="flex flex-auto" aria-label="Breadcrumb">
       <ol class="flex items-center py-0.5 space-x-4">
         <BreadcrumbEntryHome />
-        <BreadcrumbEntryType last />
+        <BreadcrumbEntryType {...params} last />
       </ol>
     </nav>
-    {#if page.params.type === 'CodeSystem'}
+    {#if params.type === 'CodeSystem'}
       <CodeSystemOperationDropdown />
-    {:else if page.params.type === 'ValueSet'}
+    {:else if params.type === 'ValueSet'}
       <ValueSetOperationDropdown />
     {/if}
-    <HistoryButton />
-    <MetadataButton />
+    <HistoryButton {...params} />
+    <MetadataButton {...params} />
   </div>
 </header>
 
 <main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
-  <SearchForm searchParams={data.searchParams} />
+  <SearchForm searchParams={data.searchParams} type={params.type} />
   {#await data.streamed.bundle}
     {#if duration > 300}
       <div

@@ -1,10 +1,10 @@
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { fhirObject } from '$lib/resource/resource-card.js';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ fetch, params }) => {
-  const res = await fetch(`${base}/${params.type}/${params.id}`, {
+  const res = await fetch(resolve('/[type=type]/[id=id]', params), {
     headers: {
       Accept: 'application/fhir+json'
     }
