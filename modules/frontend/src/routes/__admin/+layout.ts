@@ -1,6 +1,6 @@
 import type { LayoutLoad } from './$types';
 
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 export interface Setting {
@@ -23,7 +23,7 @@ export interface Data {
 }
 
 export const load: LayoutLoad = async ({ fetch }) => {
-  const res = await fetch(`${base}/__admin`, {
+  const res = await fetch(resolve('/__admin'), {
     headers: { Accept: 'application/json' }
   });
 

@@ -4,10 +4,11 @@
   import type { ColumnFamilyData } from './+page.js';
 
   interface Props {
+    dbId: string;
     columnFamilies: ColumnFamilyData[];
   }
 
-  let { columnFamilies }: Props = $props();
+  let { dbId, columnFamilies }: Props = $props();
 </script>
 
 <Table clazz="mt-4">
@@ -36,6 +37,6 @@
   {/snippet}
 
   {#each columnFamilies as columnFamily (columnFamily.name)}
-    <ColumnFamilyRow {...columnFamily} />
+    <ColumnFamilyRow {dbId} {...columnFamily} />
   {/each}
 </Table>

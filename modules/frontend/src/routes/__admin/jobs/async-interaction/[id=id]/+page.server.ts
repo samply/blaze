@@ -1,13 +1,12 @@
 import type { PageServerLoad } from './$types';
-import { toJob } from '$lib/jobs/async-interaction';
-
-import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
+
 import type { Bundle, Task } from 'fhir/r4';
+import { toJob } from '$lib/jobs/async-interaction';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
   const res = await fetch(
-    `${base}/__admin/Task?_id=${params.id}&_include=Task:input&_include=Task:output`,
+    `/fhir/__admin/Task?_id=${params.id}&_include=Task:input&_include=Task:output`,
     {
       headers: { Accept: 'application/fhir+json' }
     }

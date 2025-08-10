@@ -1,12 +1,12 @@
 import type { PageLoad } from './$types';
 import type { Bundle, CodeSystem } from 'fhir/r4';
 
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 export const load: PageLoad = async ({ fetch, params }) => {
   const res = await fetch(
-    `${base}/CodeSystem?_id=${params.id}&_elements=version,title,description`,
+    `${resolve('/CodeSystem')}?_id=${params.id}&_elements=version,title,description`,
     {
       headers: {
         Accept: 'application/fhir+json'

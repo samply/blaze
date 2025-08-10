@@ -1,6 +1,6 @@
 import type { OperationOutcome } from 'fhir/r4';
 import type { RouteParams } from './$types.js';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '$lib/util.js';
 import { transformBundle } from '$lib/resource/resource-card.js';
@@ -41,7 +41,7 @@ export async function fetchBundleWithDuration(
 ) {
   const start = Date.now();
 
-  const res = await fetch(`${base}/${params.type}?${processParams(url.searchParams)}`, {
+  const res = await fetch(`${resolve('/[type=type]', params)}?${processParams(url.searchParams)}`, {
     headers: { Accept: 'application/fhir+json' }
   });
 
@@ -62,9 +62,12 @@ export async function fetchPageBundleWithDuration(
 ) {
   const start = Date.now();
 
-  const res = await fetch(`${base}/${params.type}/__page/${pageId}`, {
-    headers: { Accept: 'application/fhir+json' }
-  });
+  const res = await fetch(
+    resolve('/[type=type]/__page/[pageId=pageId]', { type: params.type, pageId: pageId }),
+    {
+      headers: { Accept: 'application/fhir+json' }
+    }
+  );
 
   if (!res.ok) {
     error(res.status as NumericRange<400, 599>, await appError(params, res));

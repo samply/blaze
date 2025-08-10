@@ -1,5 +1,5 @@
 import type { Actions, PageServerLoad } from './$types';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
 import { pascalCase } from 'change-case';
 import { type Job, toJob } from '$lib/jobs';
@@ -64,7 +64,7 @@ function toSummaryJob(job: Task, includes: BundleEntry[]): SummaryJob | undefine
 
 async function loadJobs(fetch: typeof window.fetch, status?: string): Promise<SummaryJob[]> {
   const query = (status ? `?status=${status}&` : '?') + '_sort=-_lastUpdated&_include=Task:input';
-  const res = await fetch(`${base}/__admin/Task${query}`, {
+  const res = await fetch(`/fhir/__admin/Task${query}`, {
     headers: { Accept: 'application/fhir+json' }
   });
 
@@ -94,7 +94,7 @@ export const actions = {
     const data = await request.formData();
     const jobId = data.get('job-id');
 
-    const res = await fetch(`${base}/__admin/Task/${jobId}/$pause`, {
+    const res = await fetch(`/fhir/__admin/Task/${jobId}/$pause`, {
       method: 'POST',
       headers: { Accept: 'application/fhir+json' }
     });
@@ -103,13 +103,13 @@ export const actions = {
       return fail(400);
     }
 
-    redirect(303, `${base}/__admin/jobs`);
+    redirect(303, resolve('/__admin/jobs'));
   },
   resume: async ({ request, fetch }) => {
     const data = await request.formData();
     const jobId = data.get('job-id');
 
-    const res = await fetch(`${base}/__admin/Task/${jobId}/$resume`, {
+    const res = await fetch(`/fhir/__admin/Task/${jobId}/$resume`, {
       method: 'POST',
       headers: { Accept: 'application/fhir+json' }
     });
@@ -118,13 +118,13 @@ export const actions = {
       return fail(400);
     }
 
-    redirect(303, `${base}/__admin/jobs`);
+    redirect(303, resolve('/__admin/jobs'));
   },
   cancel: async ({ request, fetch }) => {
     const data = await request.formData();
     const jobId = data.get('job-id');
 
-    const res = await fetch(`${base}/__admin/Task/${jobId}/$cancel`, {
+    const res = await fetch(`/fhir/__admin/Task/${jobId}/$cancel`, {
       method: 'POST',
       headers: { Accept: 'application/fhir+json' }
     });
@@ -133,6 +133,6 @@ export const actions = {
       return fail(400);
     }
 
-    redirect(303, `${base}/__admin/jobs`);
+    redirect(303, resolve('/__admin/jobs'));
   }
 } satisfies Actions;

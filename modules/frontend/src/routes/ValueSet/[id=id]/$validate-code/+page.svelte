@@ -16,7 +16,7 @@
 
   import { title } from '$lib/resource.js';
 
-  let { data, form }: PageProps = $props();
+  let { data, form, params }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -27,7 +27,7 @@
   <Breadcrumb>
     <BreadcrumbEntryHome />
     <BreadcrumbEntryType type="ValueSet" />
-    <BreadcrumbEntryResource type="ValueSet" resource={data.valueSet} />
+    <BreadcrumbEntryResource type="ValueSet" {...params} resource={data.valueSet} />
     <BreadcrumbEntry>
       <span class="ml-4 text-sm font-medium text-gray-500">$validate-code</span>
     </BreadcrumbEntry>

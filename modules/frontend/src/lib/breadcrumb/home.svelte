@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
 </script>
 
 <li>
   <div>
-    <a href={base} class="text-gray-400 hover:text-gray-500">
+    <a href={resolve('/')} class="text-gray-400 hover:text-gray-500">
       <svg class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <path
           fill-rule="evenodd"

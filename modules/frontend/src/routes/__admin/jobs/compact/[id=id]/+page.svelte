@@ -8,7 +8,7 @@
   import DateTime from '$lib/values/date-time.svelte';
   import Row from '$lib/tailwind/description/left-aligned/row-3-2.svelte';
   import humanizeDuration from 'humanize-duration';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
 
   let { data }: PageProps = $props();
 
@@ -47,15 +47,19 @@
       <DateTime value={data.job.authoredOn} />
     </Row>
     <Row title="Database">
-      <a class="text-indigo-600 hover:text-indigo-900" href="{base}/__admin/dbs/{data.job.database}"
+      <a
+        class="text-indigo-600 hover:text-indigo-900"
+        href={resolve('/__admin/dbs/[dbId=id]', { dbId: data.job.database })}
         >{pascalCase(data.job.database)}</a
       >
     </Row>
     <Row title="Column Family">
       <a
         class="text-indigo-600 hover:text-indigo-900"
-        href="{base}/__admin/dbs/{data.job.database}/column-families/{data.job.columnFamily}"
-        >{pascalCase(data.job.columnFamily)}</a
+        href={resolve('/__admin/dbs/[dbId=id]/column-families/[cfId=id]', {
+          dbId: data.job.database,
+          cfId: data.job.columnFamily
+        })}>{pascalCase(data.job.columnFamily)}</a
       >
     </Row>
     {#if data.job.error}

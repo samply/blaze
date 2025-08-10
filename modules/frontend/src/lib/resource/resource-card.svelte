@@ -3,7 +3,7 @@
   import type { Element, FhirResource, Meta, Resource } from 'fhir/r4';
   import type { FhirObject } from './resource-card.js';
 
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { fade } from 'svelte/transition';
   import { quintIn } from 'svelte/easing';
@@ -32,9 +32,19 @@
   }
 
   function href(resource: FhirObject) {
-    const href = `${base}/${resource.type.code}/${resource.object.id}`;
-    const versionId = (resource.object as Resource).meta?.versionId;
-    return versionLink && versionId !== undefined ? href + `/_history/${versionId}` : href;
+    const type = resource.type.code;
+    const id = resource.object.id;
+    const vid = (resource.object as Resource).meta?.versionId;
+
+    if (id === undefined) {
+      return resolve('/[type=type]', { type: type });
+    }
+
+    if (!versionLink || vid === undefined) {
+      return resolve('/[type=type]/[id=id]', { type: type, id: id });
+    }
+
+    return resolve('/[type=type]/[id=id]/_history/[vid=vid]', { type: type, id: id, vid: vid });
   }
 
   function title1(resource: FhirObject) {

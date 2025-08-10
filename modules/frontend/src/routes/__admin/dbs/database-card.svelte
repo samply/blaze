@@ -3,7 +3,7 @@
   import Row from '$lib/tailwind/logo-card/row.svelte';
   import type { Stats } from './[dbId=id]/+page.js';
   import { toTitleCase } from '$lib/util.js';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import prettyBytes from 'pretty-bytes';
 
   interface Props {
@@ -13,7 +13,10 @@
   let { stats }: Props = $props();
 </script>
 
-<Card href="{base}/__admin/dbs/{stats.name}" title={toTitleCase(stats.name)}>
+<Card
+  href={resolve('/__admin/dbs/[dbId=id]', { dbId: stats.name })}
+  title={toTitleCase(stats.name)}
+>
   {#snippet logo()}
     <svg
       xmlns="http://www.w3.org/2000/svg"

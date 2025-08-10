@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { base } from '$app/paths';
-  import { page } from '$app/state';
+  import type { RouteParams } from './$types';
+
+  import { resolve } from '$app/paths';
+
+  let params: RouteParams = $props();
 </script>
 
 <a
-  href="{base}/{page.params.type}/{page.params.id}/_history"
+  href={resolve('/[type=type]/[id=id]/_history', params)}
   class="flex-none rounded-md bg-white px-2 py-1 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
   title="Go to resource history">History</a
 >

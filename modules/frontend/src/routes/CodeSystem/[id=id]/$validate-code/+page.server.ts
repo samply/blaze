@@ -1,6 +1,6 @@
 import type { Actions } from './$types';
 import type { OperationOutcome, Parameters, ParametersParameter } from 'fhir/r4';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { fail } from '@sveltejs/kit';
 
 export const actions = {
@@ -31,7 +31,7 @@ export const actions = {
       });
     }
 
-    const res = await fetch(`${base}/CodeSystem/${params.id}/$validate-code`, {
+    const res = await fetch(resolve('/CodeSystem/[id=id]/$validate-code', params), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({

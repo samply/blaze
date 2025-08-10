@@ -2,14 +2,14 @@ import type { PageLoad } from './$types';
 import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
 
 import { fetchBundleWithDuration } from './util.js';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 async function loadSearchParams(
   fetch: typeof window.fetch,
   type: string
 ): Promise<CapabilityStatementRestResourceSearchParam[]> {
-  const res = await fetch(`${base}/${type}/__search-params`, {
+  const res = await fetch(resolve('/[type=type]/__search-params', { type: type }), {
     headers: { Accept: 'application/json' }
   });
 

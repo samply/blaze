@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
 </script>
 
@@ -9,7 +9,7 @@
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
   <div class="flex justify-center mt-10">
-    <form class="w-full max-w-sm mt-6" method="POST" action="{base}/__sign-in">
+    <form class="w-full max-w-sm mt-6" method="POST" action={resolve('/__sign-in')}>
       <input type="hidden" name="providerId" value="keycloak" />
       <input type="hidden" name="redirectTo" value={page.url.searchParams.get('redirect')} />
       <button

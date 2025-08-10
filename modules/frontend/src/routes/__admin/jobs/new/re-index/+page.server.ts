@@ -1,6 +1,6 @@
 import type { Actions } from './$types';
 import type { OperationOutcome, Task } from 'fhir/r4';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { fail, redirect } from '@sveltejs/kit';
 
 export const actions = {
@@ -8,7 +8,7 @@ export const actions = {
     const data = await request.formData();
     const searchParamUrl = data.get('search-param-url') as string;
 
-    const res = await fetch(`${base}/__admin/Task`, {
+    const res = await fetch('/fhir/__admin/Task', {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({
@@ -54,6 +54,11 @@ export const actions = {
     }
 
     const task: Task = await res.json();
-    redirect(303, `${base}/__admin/jobs/re-index/${task.id}`);
+    redirect(
+      303,
+      task.id === undefined
+        ? resolve('/__admin/jobs')
+        : resolve('/__admin/jobs/re-index/[id=id]', { id: task.id })
+    );
   }
 } satisfies Actions;

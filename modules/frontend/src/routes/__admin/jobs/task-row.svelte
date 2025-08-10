@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { type Job } from '$lib/jobs';
   import Status from '$lib/jobs/status-round.svelte';
   import TimeAgo from '$lib/time-ago.svelte';
@@ -23,8 +23,9 @@
     <Status {job} />
     <div class="min-w-0 flex-auto">
       <p class="text-sm font-semibold leading-6 text-gray-900">
-        <a href="{base}/__admin/jobs/{job.type.code}/{job.id}" class="hover:underline"
-          >{job.type.display}</a
+        <a
+          href={resolve('/__admin/jobs/[type]/[id=id]', { type: job.type.code, id: job.id })}
+          class="hover:underline">{job.type.display}</a
         >
       </p>
       <p class="mt-1 flex text-xs leading-5 text-gray-500">

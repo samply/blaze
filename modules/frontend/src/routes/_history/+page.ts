@@ -1,12 +1,12 @@
 import type { PageLoad } from './$types';
 
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '$lib/util.js';
 import { transformBundle } from '$lib/resource/resource-card.js';
 
 export const load: PageLoad = async ({ fetch, url }) => {
-  const res = await fetch(`${base}/_history?${processParams(url.searchParams)}`, {
+  const res = await fetch(`${resolve('/_history')}?${processParams(url.searchParams)}`, {
     headers: { Accept: 'application/fhir+json' }
   });
 

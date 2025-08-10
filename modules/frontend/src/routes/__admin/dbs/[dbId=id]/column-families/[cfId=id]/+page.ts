@@ -1,6 +1,6 @@
 import type { PageLoad } from './$types';
 
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { toTitleCase } from '$lib/util.js';
 import { pascalCase } from 'change-case';
@@ -20,8 +20,10 @@ export interface Data {
 
 export const load: PageLoad = async ({ fetch, params }) => {
   const res = await fetch(
-    `${base}/__admin/dbs/${params.dbId}/column-families/${params.cfId}/metadata`,
-    { headers: { Accept: 'application/json' } }
+    resolve('/__admin/dbs/[dbId=id]/column-families/[cfId=id]/metadata', params),
+    {
+      headers: { Accept: 'application/json' }
+    }
   );
 
   if (!res.ok) {

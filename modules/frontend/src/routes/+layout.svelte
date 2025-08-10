@@ -8,7 +8,7 @@
   import { onNavigate } from '$app/navigation';
   import { signOut } from '@auth/sveltekit/client';
   import NavItem from '$lib/nav-item.svelte';
-  import { base } from '$app/paths';
+  import { asset } from '$app/paths';
 
   interface Props {
     children?: Snippet;
@@ -47,7 +47,7 @@
       <div class="flex h-16 justify-between">
         <div class="flex">
           <div class="flex shrink-0 items-center">
-            <img class="h-8 w-auto" src="{base}/blaze-logo.svg" alt="Blaze" />
+            <img class="h-8 w-auto" src={asset('/blaze-logo.svg')} alt="Blaze" />
           </div>
           <!-- Navigation Menu -->
           <div class="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
