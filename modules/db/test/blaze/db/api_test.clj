@@ -2151,7 +2151,15 @@
       (testing "family"
         (given-type-query node "Patient" [["phonetic" "Day"]]
           count := 1
-          [0 :id] := "0"))
+          [0 :id] := "0")
+
+        (testing "with matcher"
+          (let [matcher (d/compile-type-matcher node "Patient" [["phonetic" "Day"]])
+                db (d/db node)
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Patient"))
+              count := 1
+              [0 :id] := "0"))))
 
       (testing "given"
         (given-type-query node "Patient" [["phonetic" "Jane"]]
@@ -3189,7 +3197,16 @@
                                                            ["probability" "ge0.5"]]
                                     "id-2")
               count := 1
-              [0 :id] := "id-2")))))
+              [0 :id] := "id-2")))
+
+        (testing "with matcher"
+          (let [matcher (d/compile-type-matcher node "RiskAssessment" [["probability" "ge0.5"]])
+                db (d/db node)
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "RiskAssessment"))
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2")))))
 
     (testing "Integer"
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -3481,11 +3498,27 @@
                    :item #fhir/Reference {:reference "Patient/3"}}]}]]
          [[:delete "Patient" "2"]]]
 
-        (testing "it is possible to start with the second patient"
+        (given-type-query node "Patient" [["_list" "0"]]
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "3")))
+
+    (testing "a deleted list"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/List :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/0"}}]}]]
+         [[:delete "List" "0"]]]
+
+        (testing "doesn't reference anything"
           (given-type-query node "Patient" [["_list" "0"]]
-            count := 2
-            [0 :id] := "0"
-            [1 :id] := "3"))))))
+            count := 0)
+
+          (testing "it is possible to start with some patient"
+            (given (pull-type-query node "Patient" [["_list" "0"]] "0")
+              count := 0)))))))
 
 (deftest type-query-has-test
   (testing "Special Search Parameter _has"
@@ -4262,6 +4295,14 @@
         count := 1
         [0 :id] := "id-1"))
 
+    (testing "with matcher"
+      (let [matcher (d/compile-type-matcher node "Observation" [["code-value-quantity" "8480-6$ge140"]])
+            db (d/db node)
+            xform (d/matcher-transducer db matcher)]
+        (given (into [] xform (d/type-list db "Observation"))
+          count := 1
+          [0 :id] := "id-1")))
+
     (testing "with individual code and value-quantity clauses"
       (given-type-query node "Observation" [["code" "http://loinc.org|8480-6"]
                                             ["value-quantity" "ge140|mm[Hg]"]]
@@ -4576,7 +4617,16 @@
                                                 ["code-value-concept" "94564-2$260373001"]]
             count := 2
             [0 :id] := "id-0"
-            [1 :id] := "id-2"))))))
+            [1 :id] := "id-2"))))
+
+    (testing "with matcher"
+      (let [matcher (d/compile-type-matcher node "Observation" [["code-value-concept" "94564-2$260373001"]])
+            db (d/db node)
+            xform (d/matcher-transducer db matcher)]
+        (given (into [] xform (d/type-list db "Observation"))
+          count := 2
+          [0 :id] := "id-0"
+          [1 :id] := "id-2")))))
 
 (deftest type-query-observation-code-subject-test
   (with-system-data [{:blaze.db/keys [node]} config]
