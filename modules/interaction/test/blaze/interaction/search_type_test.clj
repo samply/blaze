@@ -2838,7 +2838,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"information"
               [:issue 0 :code] := #fhir/code"informational"
-              [:issue 0 :diagnostics] := #fhir/string"SCANS: status; SEEKS: NONE"))
+              [:issue 0 :diagnostics] := #fhir/string"SCANS(ordered): status; SEEKS: NONE"))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
@@ -2867,7 +2867,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"information"
               [:issue 0 :code] := #fhir/code"informational"
-              [:issue 0 :diagnostics] := #fhir/string"SCANS: status; SEEKS: NONE"))))
+              [:issue 0 :diagnostics] := #fhir/string"SCANS(ordered): status; SEEKS: NONE"))))
 
       (testing "with modifier"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2891,7 +2891,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"information"
               [:issue 0 :code] := #fhir/code"informational"
-              [:issue 0 :diagnostics] := #fhir/string"SCANS: _profile:below; SEEKS: NONE")))))
+              [:issue 0 :diagnostics] := #fhir/string"SCANS(ordered): _profile:below; SEEKS: NONE")))))
 
     (testing "two token search params"
       (testing "with match"
@@ -2916,7 +2916,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"information"
               [:issue 0 :code] := #fhir/code"informational"
-              [:issue 0 :diagnostics] := #fhir/string"SCANS: status, code; SEEKS: NONE"))
+              [:issue 0 :diagnostics] := #fhir/string"SCANS(ordered): status, code; SEEKS: NONE"))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
@@ -2945,7 +2945,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"information"
             [:issue 0 :code] := #fhir/code"informational"
-            [:issue 0 :diagnostics] := #fhir/string"SCANS: status; SEEKS: date"))
+            [:issue 0 :diagnostics] := #fhir/string"SCANS(ordered): status; SEEKS: date"))
 
         (testing "the second entry has the right resource"
           (given (:resource second-entry)
@@ -2975,7 +2975,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"information"
               [:issue 0 :code] := #fhir/code"informational"
-              [:issue 0 :diagnostics] := #fhir/string"TYPE: compartment; SCANS: code; SEEKS: NONE"))
+              [:issue 0 :diagnostics] := #fhir/string"TYPE: compartment; SCANS(ordered): code; SEEKS: NONE"))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
@@ -3033,7 +3033,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"information"
               [:issue 0 :code] := #fhir/code"informational"
-              [:issue 0 :diagnostics] := #fhir/string"TYPE: compartment; SCANS: code; SEEKS: date"))
+              [:issue 0 :diagnostics] := #fhir/string"TYPE: compartment; SCANS(ordered): code; SEEKS: date"))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
