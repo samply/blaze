@@ -58,23 +58,22 @@ Here the `Patient/` prefix in the reference ensures that the `id` is a patient I
 
 ### Query Plan
 
-If the `__explain` search result parameter is set to `true`, the server returns an `OperationOutcome` as the first entry in the result bundle. That `OperationOutcome` contains a query plan in its `diagnostics` field.
+To understand how Blaze executes a search, you can request a query plan by setting the `__explain` search parameter to `true`. The server will then return an `OperationOutcome` as the first entry in the result bundle, with the query plan contained in its `diagnostics` field.
 
-The query plan has the following format:
+The query plan follows this format:
 
 ```
-[TYPE: <type>;] SCANS: <scans>; SEEKS: <seeks>
+[TYPE: <type>;] SCANS(<ordering>): <scans>; SEEKS: <seeks>
 ```
 
-Where:
+Here's what each part means:
 
-*   `TYPE`: (Optional) The type of query execution. The only possible value is `compartment`.
-*   `SCANS`: A list of search parameters that will be resolved by index scanning.
-*   `SEEKS`: A list of search parameters that will be resolved by index seeking.
+*   **TYPE**: (Optional) The query execution type. Currently, the only possible value is `compartment`.
+*   **SCANS**: A list of search parameters that will be resolved by the more performant index scanning method.
+*   **ordering**: Specifies if the scans are `ordered` (the default) or `unordered`. Unordered scans are a fallback.
+*   **SEEKS**: A list of search parameters that will be resolved by index seeking.
 
-Generally, `token` type search parameters are placed in `SCANS`, while others are placed in `SEEKS`. If a query has multiple `token` search parameters, the most specific one (the one with the smallest index segment) is chosen for `SCANS`, and the rest are placed in `SEEKS`. Blaze uses internal statistics to determine the size of the index segments.
-
-A `scan` is more performant than a `seek`. The query execution will scan the index for the parameter in `SCANS` and then filter those results by seeking for the parameters in `SEEKS`.
+Blaze's query optimizer generally places `token` type search parameters in `SCANS` and all other types in `SEEKS`. If a query has multiple `token` parameters, the optimizer uses internal statistics to pick the most specific one (with the smallest index segment) for the `SCANS` part to ensure the best performance. The query engine will first perform the scan and then filter the results using the seeks.
 
 **Example 1**
 

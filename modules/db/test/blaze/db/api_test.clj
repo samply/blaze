@@ -3282,6 +3282,7 @@
             [0 :id] := "0")
 
           (given (explain-type-query node "Patient" clauses)
+            :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_id"
             [:seek-clauses count] := 1
@@ -3305,6 +3306,7 @@
             [1 :id] := "1")
 
           (given (explain-type-query node "Patient" clauses)
+            :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_id"
             [:seek-clauses count] := 0)
@@ -3334,6 +3336,7 @@
             [1 :id] := "1")
 
           (given (explain-type-query node "Patient" clauses)
+            :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_lastUpdated"
             [:seek-clauses count] := 0)))
@@ -3346,6 +3349,7 @@
             [1 :id] := "0")
 
           (given (explain-type-query node "Patient" clauses)
+            :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_lastUpdated"
             [:seek-clauses count] := 0)))))
@@ -3868,6 +3872,7 @@
             [3 :id] := "id-3")
 
           (given (explain-type-query node "Observation" clauses)
+            :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_profile"
             [:scan-clauses 0 :modifier] := "below"
@@ -4750,6 +4755,7 @@
             (when (= "http://loinc.org|94564-2" code)
               (given (explain-type-query node "Observation" clauses)
                 :query-type := :compartment
+                :scan-type := :ordered
                 [:scan-clauses count] := 1
                 [:scan-clauses 0 :code] := "code"
                 [:scan-clauses 0 :values] := ["http://loinc.org|94564-2"]
@@ -4758,7 +4764,8 @@
             (when (= "94564-2" code)
               (given (explain-type-query node "Observation" clauses)
                 :query-type := :compartment
-                [:scan-clauses count] := 0
+                :scan-type := nil
+                :scan-clauses := nil
                 [:seek-clauses count] := 1
                 [:seek-clauses 0 :code] := "code"
                 [:seek-clauses 0 :values] := ["94564-2"]))))
@@ -5344,6 +5351,7 @@
           [0 :id] := "0")
 
         (given (explain-type-query node "Observation" clauses)
+          :scan-type := :ordered
           [:scan-clauses count] := 2
           [:scan-clauses 0 :code] := "status"
           [:scan-clauses 1 :code] := "code"))
@@ -5404,6 +5412,7 @@
           [0 :id] := "0")
 
         (given (explain-type-query node "Observation" clauses)
+          :scan-type := :ordered
           [:scan-clauses count] := 1
           [:scan-clauses 0 :code] := "status"
           [:seek-clauses count] := 1
@@ -5465,6 +5474,7 @@
           [2 :id] := "3")
 
         (given (explain-type-query node "Observation" clauses)
+          :scan-type := :unordered
           [:scan-clauses count] := 1
           [:scan-clauses 0 :code] := "date"
           [:seek-clauses count] := 0)
@@ -5484,6 +5494,7 @@
             [2 :id] := "3")
 
           (given (explain-type-query node "Observation" clauses)
+            :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "status"
             [:seek-clauses count] := 1
@@ -6698,6 +6709,7 @@
 
               (testing "explain query"
                 (given (d/explain-query db query)
+                  :scan-type := nil
                   [:scan-clauses count] := 0
                   [:seek-clauses count] := 0))
 
@@ -7105,7 +7117,8 @@
 
         (given (explain-compartment-query node "Patient" "Observation" clauses)
           :query-type := :compartment
-          [:scan-clauses count] := 0
+          :scan-type := nil
+          :scan-clauses := nil
           [:seek-clauses count] := 1
           [:seek-clauses 0 :code] := "code"))))
 
@@ -7129,6 +7142,7 @@
 
         (given (explain-compartment-query node "Patient" "Observation" clauses)
           :query-type := :compartment
+          :scan-type := :ordered
           [:scan-clauses count] := 1
           [:scan-clauses 0 :code] := "code"
           [:seek-clauses count] := 0))))
@@ -7302,6 +7316,7 @@
 
           (given (explain-compartment-query node "Patient" "Observation" clauses)
             :query-type := :compartment
+            :scan-type := :ordered
             [:scan-clauses count] := 2
             [:scan-clauses 0 :code] := "code"
             [:scan-clauses 1 :code] := "category"
@@ -7319,6 +7334,7 @@
 
           (given (explain-compartment-query node "Patient" "Observation" clauses)
             :query-type := :compartment
+            :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "code"
             [:seek-clauses count] := 1
@@ -7452,6 +7468,7 @@
 
             (given (d/explain-query db query)
               :query-type := :compartment
+              :scan-type := :ordered
               [:scan-clauses count] := 1
               [:scan-clauses 0 :code] := "code"
               [:seek-clauses count] := 0)))))
@@ -7471,7 +7488,8 @@
 
             (given (d/explain-query db query)
               :query-type := :compartment
-              [:scan-clauses count] := 0
+              :scan-type := nil
+              :scan-clauses := nil
               [:seek-clauses count] := 0)))))))
 
 (deftest patient-compartment-last-change-t-test

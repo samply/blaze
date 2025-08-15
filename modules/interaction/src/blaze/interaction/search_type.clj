@@ -73,11 +73,12 @@
 (defn- render-search-param-code [{:keys [code modifier]}]
   (cond-> code modifier (str ":" modifier)))
 
-(defn- stats-msg [{:keys [query-type scan-clauses seek-clauses]}]
+(defn- stats-msg [{:keys [query-type scan-type scan-clauses seek-clauses]}]
   (format
-   (cond->> "SCANS: %s; SEEKS: %s"
+   (cond->> "SCANS%s: %s; SEEKS: %s"
      (= :compartment query-type)
      (str "TYPE: compartment; "))
+   (if scan-type (format "(%s)" (name scan-type)) "")
    (if (seq scan-clauses)
      (str/join ", " (map render-search-param-code scan-clauses))
      "NONE")

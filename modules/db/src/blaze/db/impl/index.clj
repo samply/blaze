@@ -142,6 +142,9 @@
   [batch-db tid [search-param modifier _ compiled-values]]
   (search-param/estimated-scan-size search-param batch-db tid modifier compiled-values))
 
+(defn- attach-estimated-scan-size [batch-db tid clause]
+  (with-meta clause {:estimated-scan-size (estimated-scan-size batch-db tid clause)}))
+
 (def ^:private ^:const ^long scan-factor
   "The factor to calculate maximum difference between the search-param/values
   combination with the smallest scan size and the largest scan size to allow.
@@ -153,15 +156,18 @@
 (defn- group-by-estimated-scan-size
   "Returns two groups, :small and :large."
   [batch-db tid clauses]
-  (let [sized-clauses (mapv #(with-meta % {:estimated-size (estimated-scan-size batch-db tid %)}) clauses)
-        estimated-sizes (sort (remove ba/anomaly? (map (comp :estimated-size meta) sized-clauses)))]
+  (let [sized-clauses (mapv #(attach-estimated-scan-size batch-db tid %) clauses)
+        estimated-sizes (->> (map (comp :estimated-scan-size meta) sized-clauses)
+                             (remove ba/anomaly?)
+                             (remove zero?)
+                             (sort))]
     (if (seq estimated-sizes)
       (let [threshold (* scan-factor (first estimated-sizes))]
         (group-by
          (fn [clause]
-           (let [{:keys [estimated-size]} (meta clause)]
-             (if (and (not (ba/anomaly? estimated-size))
-                      (< estimated-size threshold))
+           (let [{:keys [estimated-scan-size]} (meta clause)]
+             (if (and (not (ba/anomaly? estimated-scan-size))
+                      (< estimated-scan-size threshold))
                :small
                :large)))
          sized-clauses))
@@ -176,11 +182,17 @@
   [batch-db tid clauses]
   (let [{ordered-support-clauses true other-clauses false}
         (group-by-ordered-index-handle-support clauses)]
-    (if (seq ordered-support-clauses)
+    (cond
+      (= 1 (count ordered-support-clauses))
+      [ordered-support-clauses other-clauses]
+
+      (seq ordered-support-clauses)
       (let [{small-clauses :small large-clauses :large}
             (group-by-estimated-scan-size batch-db tid ordered-support-clauses)]
         [small-clauses
          (into large-clauses other-clauses)])
+
+      :else
       [nil other-clauses])))
 
 (defn- resource-handle-mapper*
@@ -202,14 +214,14 @@
    :values values})
 
 (defn- ordered-resource-handles
-  ([batch-db tid clauses other-clauses]
+  ([batch-db tid scan-clauses other-clauses]
    (coll/eduction
-    (resource-handle-mapper batch-db tid clauses other-clauses)
-    (ordered-index-handles batch-db tid clauses)))
-  ([batch-db tid clauses other-clauses start-id]
+    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
+    (ordered-index-handles batch-db tid scan-clauses)))
+  ([batch-db tid scan-clauses other-clauses start-id]
    (coll/eduction
-    (resource-handle-mapper batch-db tid clauses other-clauses)
-    (ordered-index-handles batch-db tid clauses start-id))))
+    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
+    (ordered-index-handles batch-db tid scan-clauses start-id))))
 
 (defn- unordered-resource-handles
   ([batch-db tid [first-clause & other-clauses :as clauses]]
@@ -258,14 +270,17 @@
   (if (sort-clause? (first clauses))
     (let [[first-clause & other-clauses] clauses]
       {:query-type :type
+       :scan-type :ordered
        :scan-clauses (mapv clause-stats [first-clause])
        :seek-clauses (mapv clause-stats other-clauses)})
     (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid clauses)]
       (if (seq scan-clauses)
         {:query-type :type
+         :scan-type :ordered
          :scan-clauses (mapv clause-stats scan-clauses)
          :seek-clauses (mapv clause-stats other-clauses)}
         {:query-type :type
+         :scan-type :unordered
          :scan-clauses (mapv clause-stats [(first other-clauses)])
          :seek-clauses (mapv clause-stats (rest other-clauses))}))))
 
@@ -305,12 +320,12 @@
   ;; TODO: implement
   [])
 
+(defn- supports-ordered-compartment-index-handles [[search-param _ values]]
+  (p/-supports-ordered-compartment-index-handles search-param values))
+
 (defn- compartment-query-plan* [clauses]
   (let [{scan-clauses true other-clauses false}
-        (group-by
-         (fn [[search-param _ values]]
-           (p/-supports-ordered-compartment-index-handles search-param values))
-         clauses)]
+        (group-by supports-ordered-compartment-index-handles clauses)]
     [scan-clauses other-clauses]))
 
 (defn- ordered-compartment-index-handles*
@@ -366,6 +381,9 @@
 
 (defn compartment-query-plan [clauses]
   (let [[scan-clauses other-clauses] (compartment-query-plan* clauses)]
-    {:query-type :compartment
-     :scan-clauses (mapv clause-stats scan-clauses)
-     :seek-clauses (mapv clause-stats other-clauses)}))
+    (cond->
+     {:query-type :compartment
+      :seek-clauses (mapv clause-stats other-clauses)}
+      (seq scan-clauses)
+      (assoc :scan-type :ordered
+             :scan-clauses (mapv clause-stats scan-clauses)))))
