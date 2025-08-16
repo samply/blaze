@@ -1,22 +1,20 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+BASE="http://localhost:8080/fhir"
 
-"$SCRIPT_DIR/compact.sh" index search-param-value-index
-"$SCRIPT_DIR/compact.sh" index resource-value-index
-"$SCRIPT_DIR/compact.sh" index compartment-search-param-value-index
-"$SCRIPT_DIR/compact.sh" index compartment-resource-type-index
-"$SCRIPT_DIR/compact.sh" index active-search-params
-"$SCRIPT_DIR/compact.sh" index tx-success-index
-"$SCRIPT_DIR/compact.sh" index tx-error-index
-"$SCRIPT_DIR/compact.sh" index t-by-instant-index
-"$SCRIPT_DIR/compact.sh" index resource-as-of-index
-"$SCRIPT_DIR/compact.sh" index type-as-of-index
-"$SCRIPT_DIR/compact.sh" index system-as-of-index
-"$SCRIPT_DIR/compact.sh" index patient-last-change-index
-"$SCRIPT_DIR/compact.sh" index type-stats-index
-"$SCRIPT_DIR/compact.sh" index system-stats-index
-"$SCRIPT_DIR/compact.sh" index cql-bloom-filter
-"$SCRIPT_DIR/compact.sh" index cql-bloom-filter-by-t
-"$SCRIPT_DIR/compact.sh" transaction default
-"$SCRIPT_DIR/compact.sh" resource default
+blazectl --server "$BASE" compact index search-param-value-index
+blazectl --server "$BASE" compact index resource-value-index
+blazectl --server "$BASE" compact index compartment-search-param-value-index
+blazectl --server "$BASE" compact index compartment-resource-type-index
+blazectl --server "$BASE" compact index active-search-params
+blazectl --server "$BASE" compact index tx-success-index
+blazectl --server "$BASE" compact index tx-error-index
+blazectl --server "$BASE" compact index t-by-instant-index
+blazectl --server "$BASE" compact index resource-as-of-index
+blazectl --server "$BASE" compact index type-as-of-index
+blazectl --server "$BASE" compact index system-as-of-index
+blazectl --server "$BASE" compact index patient-last-change-index
+blazectl --server "$BASE" compact index type-stats-index
+blazectl --server "$BASE" compact index system-stats-index
+blazectl --server "$BASE" compact index cql-bloom-filter
+blazectl --server "$BASE" compact index cql-bloom-filter-by-t
