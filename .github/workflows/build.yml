@@ -1368,6 +1368,12 @@ jobs:
     - name: Compact All Column Families
       run: .github/scripts/compact-all.sh
 
+    - name: Restart Blaze
+      run: docker restart blaze
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
     - name: Check Total-Number of Resources are 1099779
       run: .github/scripts/check-total-number-of-resources.sh 1099779
 

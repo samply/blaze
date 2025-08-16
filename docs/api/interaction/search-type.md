@@ -80,7 +80,7 @@ Blaze's query optimizer generally places `token` type search parameters in `SCAN
 A `GET` request to `/Observation?status=final&date=2025&__explain=true` will result in the following `diagnostics` string in the `OperationOutcome`:
 
 ```
-SCANS: status; SEEKS: date
+SCANS: status(ordered); SEEKS: date
 ```
 
 The `status` search parameter is of type `token`, while the `date` search parameter is of type `date`. Therefore, `status` is used for scanning the index. The query execution will scan the `status` index for all Observation resources with a status of `final` and then check if the `effectiveDateTime` is in `2025` for each of those resources. This allows for efficient pagination, as subsequent pages can be retrieved quickly by seeking to the correct starting point in the `status` index.
@@ -90,7 +90,7 @@ The `status` search parameter is of type `token`, while the `date` search parame
 A `GET` request to `/Observation?status=final&code=http://loinc.org|9843-4&__explain=true` will result in the following `diagnostics` string in the `OperationOutcome`:
 
 ```
-SCANS: code; SEEKS: status
+SCANS: code(ordered); SEEKS: status
 ```
 
 Both the `status` and `code` search parameters are of type `token`. However, the index segment for the LOINC code `9843-4` is much smaller than for the status `final`, because fewer Observation resources contain that LOINC code. The query execution will scan the `code` index for all Observation resources with the code `http://loinc.org|9843-4` and then check for each of those resources if the `status` is `final`. This allows for efficient pagination, as subsequent pages can be retrieved quickly by seeking to the correct starting point in the `code` index.   
