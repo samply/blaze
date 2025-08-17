@@ -178,8 +178,9 @@
           (Slice. ^bytes (bs/to-byte-array end))))
 
 (def ^:private approximation-flags
-  (doto ^objects (make-array SizeApproximationFlag 1)
-    (aset 0 SizeApproximationFlag/INCLUDE_FILES)))
+  (doto ^objects (make-array SizeApproximationFlag 2)
+    (aset 0 SizeApproximationFlag/INCLUDE_FILES)
+    (aset 1 SizeApproximationFlag/INCLUDE_MEMTABLES)))
 
 (defn- estimate-scan-size [^RocksDB db cfh key-range]
   (-> (.getApproximateSizes db cfh [(range key-range)] approximation-flags)
