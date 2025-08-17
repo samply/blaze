@@ -396,6 +396,27 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 ¹ resources per second
 
+## Category and Date Search
+
+This section evaluates the performance of FHIR Search for selecting Observation resources with a specific category and date.
+
+### Counting
+
+Counting was performed using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Observation?category=$CATEGORY&date=$DATE&_summary=count"
+```
+
+| System | Dataset | Code        | Date | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------------|-----:|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      | laboratory  | 2013 | 19.6 M |   101.11 |  0.148 | 194.1 k | 
+| A5N46  | 1M      | laboratory  | 2019 | 38.4 M |   103.22 |  0.188 | 372.0 k | 
+| A5N46  | 1M      | laboratory  | 2020 | 44.9 M |   103.57 |  0.344 | 433.5 k |
+| A5N46  | 1M      | vital-signs | 2013 |  7.6 M |    70.43 |  1.011 | 107.9 k | 
+| A5N46  | 1M      | vital-signs | 2019 | 14.3 M |    71.14 |  0.904 | 201.4 k | 
+| A5N46  | 1M      | vital-signs | 2020 | 15.8 M |    72.11 |  0.678 | 219.0 k |
+
 ## Code and Patient Search
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific code for 1000 patients.
