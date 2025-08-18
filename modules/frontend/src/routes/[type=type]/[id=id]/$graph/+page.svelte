@@ -8,7 +8,7 @@
   import BreadcrumbEntry from '$lib/breadcrumb/entry.svelte';
   import Section from '$lib/tailwind/form/section.svelte';
   import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
-  import EntryCard from '$lib/history/entry-card.svelte';
+  import EntryCard from '$lib/resource/entry-card.svelte';
   import NoResultsCard from '../../no-results-card.svelte';
 
   import { title } from '$lib/resource.js';
