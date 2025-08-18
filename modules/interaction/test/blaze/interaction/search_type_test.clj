@@ -2786,6 +2786,28 @@
              :subject #fhir/Reference{:reference "Patient/0"}
              :effective #fhir/dateTime"2025"}]]]
 
+    (testing "no search param"
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
+            @(handler
+              {::reitit/match (match-of "Observation")
+               :params {"__explain" "true"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 1 (count (:entry body)))))
+
+        (testing "the first entry has the right resource"
+          (given (:resource first-entry)
+            :fhir/type := :fhir/Observation
+            :id := "0"))))
+
     (testing "one unknown search param"
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
             @(handler
@@ -2813,7 +2835,22 @@
         (testing "the second entry has the right resource"
           (given (:resource second-entry)
             :fhir/type := :fhir/Observation
-            :id := "0"))))
+            :id := "0")))
+
+      (testing "with strict handling"
+        (let [{:keys [status] body :body}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :headers {"prefer" "handling=strict"}
+                 :params {"foo" "bar" "__explain" "true"}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-found"
+            [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Observation` was not found."))))
 
     (testing "one token search param"
       (testing "with match"
