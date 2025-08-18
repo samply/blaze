@@ -28,6 +28,7 @@
   import { fade } from 'svelte/transition';
   import { quintIn } from 'svelte/easing';
   import { error, type NumericRange } from '@sveltejs/kit';
+  import Dropdown from '$lib/tailwind/dropdown.svelte';
 
   interface Props {
     searchParams: CapabilityStatementRestResourceSearchParam[];
@@ -35,6 +36,7 @@
   }
 
   let { searchParams, type }: Props = $props();
+  let queryPlan = $state(false);
 
   async function loadSearchIncludes(type: string): Promise<string[]> {
     const res = await fetch(resolve('/[type=type]/__search-rev-includes', { type: type }), {
@@ -81,6 +83,10 @@
   function initQueryParams(urlSearchParams: URLSearchParams): QueryParam[] {
     const queryParams: QueryParam[] = [];
     for (const [name, value] of urlSearchParams) {
+      if (name == '__explain') {
+        queryPlan = value == 'true';
+        continue;
+      }
       if (name.startsWith('__')) {
         continue;
       }
@@ -116,8 +122,11 @@
       .map((p) => ({ ...p, value: p.value.trim() }))
       .filter((p) => p.value.length != 0)
       .map((p) => [p.active ? p.name : p.name + ':inactive', p.value]) as string[][];
+    if (queryPlan) params.push(['__explain', 'true']);
     goto(`${resolve('/[type=type]', { type: type })}/?${new URLSearchParams(params)}`);
   }
+
+  let openSearchSettings = $state(false);
 </script>
 
 <form class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200" onsubmit={preventDefault(send)}>
@@ -173,11 +182,62 @@
       </div>
     {/each}
   </div>
-  <div>
-    <button
-      type="submit"
-      class="w-20 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 enabled:cursor-pointer"
-      >Search
-    </button>
+  <div class="inline-flex rounded-md shadow-xs">
+    <Dropdown name="search-settings" bind:open={openSearchSettings}>
+      {#snippet trigger(toggle)}
+        <div class="inline-flex rounded-md">
+          <button
+            type="submit"
+            onclick={() => (openSearchSettings = false)}
+            class="w-20 rounded-l-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 enabled:cursor-pointer"
+            >Search
+          </button>
+          <button
+            type="button"
+            class="relative inline-flex items-center rounded-r-md bg-indigo-600 px-2 py-2 text-white border-l-1 border-indigo-800 hover:bg-indigo-500 focus-visible:outline-indigo-600 enabled:cursor-pointer"
+            onclick={toggle}
+          >
+            <span class="sr-only">Search Options</span>
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              data-slot="icon"
+              aria-hidden="true"
+              class="size-5"
+            >
+              <path
+                d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                clip-rule="evenodd"
+                fill-rule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
+      {/snippet}
+      <div class="p-1">
+        <div class="flex items-center gap-3">
+          <div
+            class="group relative inline-flex w-11 shrink-0 rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-indigo-600 transition-colors duration-200 ease-in-out has-checked:bg-indigo-600 has-focus-visible:outline-2"
+          >
+            <span
+              class="size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5"
+            ></span>
+            <input
+              id="query-plan"
+              type="checkbox"
+              name="query-plan"
+              aria-labelledby="query-plan-label"
+              class="absolute inset-0 appearance-none focus:outline-hidden"
+              bind:checked={queryPlan}
+            />
+          </div>
+          <div class="text-sm">
+            <label id="query-plan-label" class="font-medium text-gray-900" for="query-plan"
+              >Show Plan</label
+            >
+          </div>
+        </div>
+      </div>
+    </Dropdown>
   </div>
 </form>

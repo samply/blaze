@@ -7,7 +7,7 @@
   import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
   import BreadcrumbEntryHistory from '$lib/breadcrumb/resource-history.svelte';
 
-  import EntryCard from '$lib/history/entry-card.svelte';
+  import EntryCard from '$lib/resource/entry-card.svelte';
 
   let { data, params }: PageProps = $props();
 </script>

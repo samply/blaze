@@ -3,7 +3,7 @@
 
   import TotalCard from '$lib/total-card.svelte';
   import TotalBadge from '$lib/total-badge.svelte';
-  import EntryCard from '$lib/history/entry-card.svelte';
+  import EntryCard from '$lib/resource/entry-card.svelte';
 
   let { data }: PageProps = $props();
 </script>

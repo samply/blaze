@@ -317,3 +317,61 @@ test('Signing in after sign out goes to the Keycloak Sign-In Page', async ({ pag
   // Keycloak Sign-In Page
   await expect(page).toHaveTitle('Sign in to Keycloak');
 });
+
+test('Query Plan', async ({ page }) => {
+  await page.getByRole('link', { name: 'Encounter' }).click();
+
+  await expect(page).toHaveTitle('Encounter - Blaze');
+  await expectBadge(page.getByRole('note').filter({ hasText: /Total: \d+/ }));
+
+  // Conduct search with query: status=finished
+  await page.getByLabel('Search Param', { exact: true }).selectOption('status');
+  await page.getByLabel('Search Value').fill('finished');
+  await page.getByRole('button', { name: 'Search Options' }).click();
+  await page.getByLabel('Show Plan', { exact: true }).click();
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+
+  // assert type query with scan by status and no seeks
+  await expect(page.getByText('Query Plan')).toBeVisible({ timeout: 30000 });
+  {
+    const typeItem = page.locator('li', { hasText: 'Query Type' });
+    await expect(typeItem).toBeVisible();
+    await expect(typeItem).toContainText('type');
+
+    const scansItem = page.locator('li', { hasText: 'Scans (ordered)' });
+    await expect(scansItem).toBeVisible();
+    await expect(scansItem).toContainText('status');
+
+    const seeksItem = page.locator('li', { hasText: 'Seeks' });
+    await expect(seeksItem).toBeVisible();
+    await expect(seeksItem).toContainText('-');
+  }
+
+  // Conduct search with query: status=finished, date=2021 and patient=Foo
+  await page.getByRole('button', { name: 'add new search param' }).click();
+  await page.getByLabel('Search Param', { exact: true }).nth(1).selectOption('date');
+  await page.getByLabel('Search Value').nth(1).fill('2021');
+
+  await page.getByRole('button', { name: 'add new search param' }).nth(1).click();
+  await page.getByLabel('Search Param', { exact: true }).nth(2).selectOption('patient');
+  await page.getByLabel('Search Value').nth(2).fill('Foo');
+
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+
+  // assert compartment query plan with no scans and two seeks
+  await expect(page.getByText('Query Plan')).toBeVisible({ timeout: 30000 });
+  {
+    const typeItem = page.locator('li', { hasText: 'Query Type' });
+    await expect(typeItem).toBeVisible();
+    await expect(typeItem).toContainText('compartment');
+
+    const scansItem = page.locator('li', { hasText: 'Scans' });
+    await expect(scansItem).toBeVisible();
+    await expect(scansItem).toContainText('-');
+
+    const seeksItem = page.locator('li', { hasText: 'Seeks' });
+    await expect(seeksItem).toBeVisible();
+    await expect(seeksItem).toContainText('status');
+    await expect(seeksItem).toContainText('date');
+  }
+});
