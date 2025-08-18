@@ -101,7 +101,7 @@
 (defn- entries
   [{{:keys [explain?]} :params :as context} query match-futures include-futures]
   (log/trace "build entries")
-  (-> (cond-> [] explain? (conj (query-plan-entry context query)))
+  (-> (cond-> [] (and explain? query) (conj (query-plan-entry context query)))
       (into (match-xf context) match-futures)
       (into (include-xf context) include-futures)))
 

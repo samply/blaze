@@ -321,15 +321,15 @@
   ([db query arg1]
    (p/-execute-query db query arg1)))
 
-(defn query-clauses
-  "Returns the clauses used in `query`."
-  [query]
-  (p/-query-clauses query))
-
 (defn explain-query
   "Returns the plan of `query`."
   [db query]
   (p/-explain-query db query))
+
+(defn query-clauses
+  "Returns the clauses used in `query`."
+  [query]
+  (p/-query-clauses query))
 
 ;; ---- Common Matcher Functions ----------------------------------------------
 

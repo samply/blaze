@@ -1481,6 +1481,9 @@ jobs:
     - name: Patient Everything Paged
       run: .github/scripts/patient-everything-paged-1000.sh
 
+    - name: Explain without Query Works
+      run: .github/scripts/explain-type-list.sh Observation
+
     - name: Docker Stats
       run: docker stats --no-stream
 
