@@ -362,6 +362,20 @@
     "Patient.name[0]"
     []))
 
+;; 5.3.3. first() : collection
+(deftest first-test
+  (are [resource expr result] (= result (eval expr resource))
+    {:fhir/type :fhir/Patient
+     :name
+     [#fhir/HumanName{:family "Doe"}
+      #fhir/HumanName{:family "Bolton"}]}
+    "Patient.name.first()"
+    [#fhir/HumanName{:family "Doe"}]
+
+    {:fhir/type :fhir/Patient}
+    "Patient.name.first()"
+    []))
+
 ;; 5.4. Combining
 
 ;; 5.4.1. union(other : collection)
