@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Meta } from 'fhir/r4';
+  import type { Meta } from 'fhir/r5';
   import ExternalLink from './util/external-link.svelte';
 
   interface Props {

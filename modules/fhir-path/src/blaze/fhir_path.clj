@@ -116,25 +116,35 @@
 (deftype StartExpression []
   Expression
   (-eval [_ _ coll]
-    coll))
+    coll)
+  Object
+  (toString [_]
+    "Resource"))
 
-(deftype TypedStartExpression [rf]
+(deftype TypedStartExpression [type-name rf]
   Expression
   (-eval [_ _ coll]
-    (.reduce ^IReduceInit coll rf [])))
+    (.reduce ^IReduceInit coll rf []))
+  Object
+  (toString [_]
+    type-name))
 
 (defn- typed-start-expression [type-name]
   (let [fhir-type (keyword "fhir" type-name)
         pred #(identical? fhir-type (fhir-spec/fhir-type %))]
-    (->TypedStartExpression ((filter pred) conj))))
+    (->TypedStartExpression type-name ((filter pred) conj))))
 
-(deftype GetChildrenExpression [f]
+(deftype GetChildrenExpression [key f]
   Expression
   (-eval [_ _ coll]
-    (.reduce ^IReduceInit coll f [])))
+    (.reduce ^IReduceInit coll f []))
+  Object
+  (toString [_]
+    (name key)))
 
 (defn- get-children-expression [key]
   (->GetChildrenExpression
+   key
    (fn [res item]
      (let [val (get item key)]
        (cond
@@ -145,7 +155,10 @@
 (deftype InvocationExpression [expression invocation]
   Expression
   (-eval [_ context coll]
-    (-eval invocation context (-eval expression context coll))))
+    (-eval invocation context (-eval expression context coll)))
+  Object
+  (toString [_]
+    (str expression "." invocation)))
 
 (deftype PlusExpression [left-expr right-expr]
   Expression
@@ -201,7 +214,10 @@
             0 c1
             1 (if (= c1 c2) c1 (conj c1 (coll/nth c2 0)))
             (vec (conj (set c2) (coll/nth c1 0))))
-        (vec (.reduce ^IReduceInit c2 conj (set c1)))))))
+        (vec (.reduce ^IReduceInit c2 conj (set c1))))))
+  Object
+  (toString [_]
+    (str e1 " | " e2)))
 
 (deftype EqualExpression [left-expr right-expr]
   Expression
@@ -272,7 +288,10 @@
 (deftype ExistsFunctionExpression []
   Expression
   (-eval [_ _ coll]
-    [(if (empty? coll) false true)]))
+    [(if (empty? coll) false true)])
+  Object
+  (toString [_]
+    "exists()"))
 
 (deftype ExistsWithCriteriaFunctionExpression [criteria]
   Expression

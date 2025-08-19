@@ -5,7 +5,7 @@ import type {
   Coding,
   Parameters,
   ParametersParameter
-} from 'fhir/r4';
+} from 'fhir/r5';
 
 export enum SearchParamType {
   number = 'number',

@@ -501,7 +501,9 @@
                     (sp-vr-tu/decode-index-entries
                      kv-store :type :id :hash-prefix)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
-               [["patient" (codec/v-hash "id-151354")]
+               [["has-recurrence-template" (codec/v-hash "false")]
+                ["is-recurring" (codec/v-hash "false")]
+                ["patient" (codec/v-hash "id-151354")]
                 ["patient" (codec/tid-id
                             (codec/tid "Patient")
                             (codec/id-byte-string "id-151354"))]

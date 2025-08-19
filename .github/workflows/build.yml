@@ -96,7 +96,6 @@ jobs:
         - cache-collector
         - cassandra
         - coll
-        - cql
         - db
         - db-resource-store
         - db-resource-store-cassandra
@@ -124,7 +123,6 @@ jobs:
         - operation-compact
         - operation-graph
         - operation-graphql
-        - operation-measure-evaluate-measure
         - operation-patient-everything
         - operation-patient-purge
         - operation-totals
@@ -443,6 +441,17 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+    - name: Setup Java
+      uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
+      with:
+        cli: '1.12.0.1479'
+
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
@@ -509,181 +518,6 @@ jobs:
       with:
         sarif_file: trivy-results.sarif
 
-  cql-expr-cache-test:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-    - name: Install Blazectl
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-      with:
-        name: blaze-image
-        path: /tmp
-
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
-
-    - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e CQL_EXPR_CACHE_SIZE=1000 -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
-
-    - name: Docker Logs
-      run: docker logs blaze
-
-    - name: Check Capability Statement
-      run: .github/scripts/check-capability-statement.sh
-
-    - name: Ensure that the State of PatientLastChange Index is Current
-      run: .github/scripts/check-patient-last-change-index-state.sh current
-
-    - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
-
-    - name: Prometheus Metrics
-      run: .github/scripts/test-cql-expr-cache-metrics.sh
-
-    - name: Check Total-Number of Resources are 92299
-      run: .github/scripts/check-total-number-of-resources.sh 92299
-
-    - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q1 56
-
-    - name: Evaluate CQL Query 1 on Individual Patients
-      run: .github/scripts/evaluate-patient-q1-measure.sh
-
-    - name: Evaluate CQL Query 2
-      run: .github/scripts/evaluate-measure.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q2 42
-
-    - name: Evaluate CQL Query 4
-      run: .github/scripts/evaluate-measure.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q4 0
-
-    - name: Evaluate CQL Query 7
-      run: .github/scripts/evaluate-measure.sh q7 81
-
-    - name: Evaluate CQL Query 7 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
-
-    - name: Evaluate CQL Query 7 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
-
-    - name: Evaluate CQL Query 7 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q7 81
-
-    - name: Evaluate CQL Query 14
-      run: .github/scripts/evaluate-measure.sh q14 96
-
-    - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh a08d0235112a8033c36c5d33564aaa00f4190281e4db8f7ec1d8d55cd7f4c56f 96
-
-    - name: Evaluate CQL Query 14 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
-
-    - name: Evaluate CQL Query 14 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
-
-    - name: Evaluate CQL Query 14 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q14 96
-
-    - name: Evaluate CQL Query 17
-      run: .github/scripts/evaluate-measure.sh q17 120
-
-    - name: Evaluate CQL Query 17 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
-
-    - name: Evaluate CQL Query 17 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
-
-    - name: Evaluate CQL Query 17 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q17 120
-
-    - name: Evaluate CQL Query 20 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
-
-    - name: Evaluate CQL Query 21 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
-
-    - name: Evaluate CQL Query 26 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
-
-    - name: Evaluate CQL Query 27 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
-
-    - name: Evaluate CQL Query 32 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
-
-    - name: Evaluate CQL Query 36
-      run: .github/scripts/evaluate-measure.sh q36-parameter 86
-
-    - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh fbb79d85457069c8e1926c949690deecd60d751942d5b0cd0b61c08e6029224c 86
-
-    - name: Evaluate CQL Query 36 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
-
-    - name: Evaluate CQL Query 36 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q36-parameter 86
-
-    - name: Evaluate CQL Query 37
-      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
-
-    - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh 9fe779d821d7647831331b490939aa0cdf314d76c9b2a9518ffaf559353db043 24
-
-    - name: Evaluate CQL Query 37 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 37 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 37 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 46
-      run: .github/scripts/evaluate-measure.sh q46-between-date 19
-
-    - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh 237bcfac3e879272f508e143095e4a0025e1b54505bbb2cf36fbda83dec237f2 19
-
-    - name: Evaluate CQL Query 46 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
-
   integration-test:
     needs: build
     runs-on: ubuntu-24.04
@@ -716,12 +550,24 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -e ENABLE_INTERACTION_DELETE_HISTORY=true -e ENABLE_OPERATION_PATIENT_PURGE=true -e ENABLE_OPERATION_GRAPH=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -e ENABLE_INTERACTION_DELETE_HISTORY=true -e ENABLE_OPERATION_PATIENT_PURGE=true -e ENABLE_OPERATION_GRAPH=true -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Run Kafka, Cassandra and Blaze
       run: docker compose -f .github/distributed-test/docker-compose.yml up -d
       if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -778,16 +624,13 @@ jobs:
       run: .github/scripts/check-resource-read-only.sh StructureDefinition "http://hl7.org/fhir/StructureDefinition/Patient"
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
-    - name: Check Total-Number of Resources are 92299
-      run: .github/scripts/check-total-number-of-resources.sh 92299
+    - name: Check Total-Number of Resources are 91819
+      run: .github/scripts/check-total-number-of-resources.sh 91819
 
     - name: Check Resource Totals
       run: .github/scripts/check-resource-totals.sh
-
-    - name: Count Resources
-      run: blazectl count-resources --server http://localhost:8080/fhir
 
     - name: Download All Resources
       run: .github/scripts/download-all-resources.sh
@@ -814,7 +657,7 @@ jobs:
       run: .github/scripts/check-summary-mode.sh Observation category
 
     - name: Check that Encounter Resources don't contain Periods in Summary Mode
-      run: .github/scripts/check-summary-mode.sh Encounter period
+      run: .github/scripts/check-summary-mode.sh Encounter actualPeriod
 
     - name: Download Observation Resources with special LOINC Codes
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9" 2399
@@ -984,144 +827,6 @@ jobs:
     - name: Search Compartment
       run: .github/scripts/search-compartment.sh
 
-    - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Batch
-      run: .github/scripts/evaluate-measure-as-batch.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Async
-      run: .github/scripts/evaluate-measure-async.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Subject List - Batch
-      run: .github/scripts/evaluate-measure-subject-list-as-batch.sh q1 56
-
-    - name: Evaluate CQL Query 1 on Individual Patients
-      run: .github/scripts/evaluate-patient-q1-measure.sh
-
-    - name: Evaluate CQL Query 2
-      run: .github/scripts/evaluate-measure.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Async
-      run: .github/scripts/evaluate-measure-async.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Batch
-      run: .github/scripts/evaluate-measure-as-batch.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Subject List - Batch
-      run: .github/scripts/evaluate-measure-subject-list-as-batch.sh q2 42
-
-    - name: Evaluate CQL Query 4
-      run: .github/scripts/evaluate-measure.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Async
-      run: .github/scripts/evaluate-measure-async.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q4 0
-
-    - name: Evaluate CQL Query 7
-      run: .github/scripts/evaluate-measure.sh q7 81
-
-    - name: Evaluate CQL Query 7 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
-
-    - name: Evaluate CQL Query 7 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
-
-    - name: Evaluate CQL Query 7 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q7 81
-
-    - name: Evaluate CQL Query 14
-      run: .github/scripts/evaluate-measure.sh q14 96
-
-    - name: Evaluate CQL Query 14 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
-
-    - name: Evaluate CQL Query 14 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
-
-    - name: Evaluate CQL Query 14 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q14 96
-
-    - name: Evaluate CQL Query 17
-      run: .github/scripts/evaluate-measure.sh q17 120
-
-    - name: Evaluate CQL Query 17 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
-
-    - name: Evaluate CQL Query 17 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
-
-    - name: Evaluate CQL Query 17 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q17 120
-
-    - name: Evaluate CQL Query 20 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
-
-    - name: Evaluate CQL Query 21 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
-
-    - name: Evaluate CQL Query 26 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
-
-    - name: Evaluate CQL Query 27 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
-
-    - name: Evaluate CQL Query 32 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
-
-    - name: Evaluate CQL Query 36
-      run: .github/scripts/evaluate-measure.sh q36-parameter 86
-
-    - name: Evaluate CQL Query 36 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
-
-    - name: Evaluate CQL Query 36 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q36-parameter 86
-
-    - name: Evaluate CQL Query 34
-      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 34 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 34 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 34 - Subject List - Async
-      run: .github/scripts/evaluate-measure-subject-list-async.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 46
-      run: .github/scripts/evaluate-measure.sh q46-between-date 19
-
-    - name: Evaluate CQL Query 46 - Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
-
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https
 
@@ -1287,18 +992,6 @@ jobs:
     - name: Chaining on DocumentReference
       run: .github/scripts/chaining-document-reference.sh
 
-    - name: Download Modul Person
-      run: wget --content-disposition https://packages.simplifier.net/de.medizininformatikinitiative.kerndatensatz.person/2025.0.0
-
-    - name: Unpack Modul Person
-      run: tar xzf de.medizininformatikinitiative.kerndatensatz.person-2025.0.0.tgz
-
-    - name: Upload StructureDefinition Person
-      run: .github/scripts/upload-profile.sh package/StructureDefinition-mii-pr-person-patient.json
-
-    - name: Check Capability Statement Supported Profiles
-      run: .github/scripts/check-capability-statement-supported-profiles.sh
-
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}
@@ -1337,19 +1030,19 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e ENABLE_ADMIN_API=true -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Download Synthea Test Data
       uses: ./.github/actions/speicherwolke-download
       with:
-        token: kDsa2ifeMFdqK35
-        filename: synthea-1000.tar
+        token: 6LySF9A44ezPs6t
+        filename: synthea-r6-1000.tar
 
     - name: Create Synthea Test Data Dir
       run: mkdir test-data-synthea-1000
 
     - name: Unpack Synthea Test Data
-      run: tar -C test-data-synthea-1000 -xf synthea-1000.tar
+      run: tar -C test-data-synthea-1000 -xf synthea-r6-1000.tar
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1375,8 +1068,8 @@ jobs:
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
-    - name: Check Total-Number of Resources are 1099779
-      run: .github/scripts/check-total-number-of-resources.sh 1099779
+    - name: Check Total-Number of Resources are 1098782
+      run: .github/scripts/check-total-number-of-resources.sh 1098782
 
     - name: Count the Number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
       run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 13
@@ -1470,12 +1163,6 @@ jobs:
     - name: Specific Male Patient Query
       run: .github/scripts/download-resources-query.sh Patient "_id=$(.github/scripts/patient-ids.sh "999-89-9294")&gender=male" 1
 
-    - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using CQL
-      run: .github/scripts/evaluate-measure-blazectl.sh inpatient-stress 13
-
-    - name: Condition Code Stratifier
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh stratifier-condition-code 51599
-
     - name: Patient Everything Too Costly
       run: .github/scripts/patient-everything-too-costly.sh
 
@@ -1487,55 +1174,6 @@ jobs:
 
     - name: Docker Stats
       run: docker stats --no-stream
-
-  integration-test-kds:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-    - name: Install Blazectl
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-      with:
-        name: blaze-image
-        path: /tmp
-
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
-
-    - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
-
-    - name: Download and Unzip MII Test Data
-      run: make -C .github/test-data kds-testdata-2024.0.1/tx
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
-
-    - name: Check Capability Statement
-      run: .github/scripts/check-capability-statement.sh
-
-    - name: Check Referential Integrity Enforced
-      run: .github/scripts/check-referential-integrity-enforced.sh
-
-    - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/kds-testdata-2024.0.1/tx
-
-    - name: Check Total-Number of Resources are 345
-      run: .github/scripts/check-total-number-of-resources.sh 345
-
-    - name: Download MedicationStatement Resources with ATC Code B01AC06
-      run: .github/scripts/download-resources-query.sh MedicationStatement "medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
-
-    - name: Download MedicationStatement Resources with ATC Code B01AC06
-      run: .github/scripts/download-resources-query.sh MedicationStatement "patient=mii-exa-test-data-patient-1&medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
 
   integration-test-patient-purge:
     needs: build
@@ -1563,7 +1201,19 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ALLOW_MULTIPLE_DELETE=true -e ENABLE_OPERATION_PATIENT_PURGE=true -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1578,10 +1228,13 @@ jobs:
       run: .github/scripts/check-referential-integrity-enforced.sh
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
-    - name: Check Total-Number of Resources are 92299
-      run: .github/scripts/check-total-number-of-resources.sh 92299
+    - name: Check Total-Number of Resources are 91819
+      run: .github/scripts/check-total-number-of-resources.sh 91819
+
+    - name: Delete All Provenance Resources, because in their current translation from R4, they are no longer in the Patient Compartment
+      run: .github/scripts/conditional-delete-type/delete-all-resources-of-type.sh "Provenance"
 
     - name: Patient Purge all
       run: .github/scripts/patient-purge-all.sh
@@ -1597,153 +1250,6 @@ jobs:
 
     - name: Docker Stats
       run: docker stats --no-stream
-
-  integration-test-value-set-expand:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-    - name: Setup Node
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-      with:
-        node-version-file: .nvmrc
-
-    - name: Install Blazectl
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Install xq
-      run: .github/scripts/install-xq.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-      with:
-        name: blaze-image
-        path: /tmp
-
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
-
-    - name: Download SNOMED CT Release
-      uses: ./.github/actions/speicherwolke-download
-      with:
-        token: ${{ secrets.SCT_DOWNLOAD_TOKEN }}
-        filename: SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
-
-    - name: Unzip SNOMED CT Release
-      run: unzip SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
-
-    - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z:/app/sct-release blaze:latest
-
-    - name: Install All KDS Terminology Resources
-      run: make -C .github/value-set-expand install
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
-
-    - name: Check Capability Statement
-      run: .github/scripts/check-capability-statement-terminology-service.sh
-
-    - name: Prometheus Metrics
-      run: .github/scripts/test-terminology-service-graph-cache-metrics.sh
-
-    - name: Upload KDS Terminology Resources
-      run: .github/value-set-expand/upload-all.sh
-
-    - name: Check Terminology Capabilities
-      run: .github/scripts/check-terminology-capabilities.sh
-
-    - name: Read CodeSystem Translations (tests extended primitives in JSON and XML)
-      run: .github/scripts/read-code-system-translations.sh
-
-    - name: Expand KDS Terminology Resources
-      run: .github/value-set-expand/expand.sh
-
-    - name: Expand KDS SNOMED CT Terminology Resources
-      run: .github/value-set-expand/expand-sct.sh
-
-    - name: Expand Most KDS Terminology Resources
-      run: .github/value-set-expand/expand-most.sh
-
-  integration-test-validation:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Setup Java
-      uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
-      with:
-        distribution: 'temurin'
-        java-version: '21'
-
-    - name: Check out Git repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-    - name: Setup Node
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-      with:
-        node-version-file: .nvmrc
-
-    - name: Install Blazectl
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Install Validator
-      run: .github/scripts/install-validator.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-      with:
-        name: blaze-image
-        path: /tmp
-
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
-
-    - name: Download SNOMED CT Release
-      uses: ./.github/actions/speicherwolke-download
-      with:
-        token: ${{ secrets.SCT_DOWNLOAD_TOKEN }}
-        filename: SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
-
-    - name: Unzip SNOMED CT Release
-      run: unzip SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
-
-    - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z:/app/sct-release blaze:latest
-
-    - name: Install All KDS Terminology Resources
-      run: make -C .github/value-set-expand install
-
-    - name: Download and Unzip MII Test Data
-      run: make -C .github/test-data kds-testdata-2024.0.1
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
-
-    - name: Docker Logs
-      run: docker logs blaze
-
-    - name: Check Capability Statement
-      run: .github/scripts/check-capability-statement-terminology-service.sh
-
-    - name: Upload KDS Terminology Resources
-      run: .github/value-set-expand/upload-all.sh
-
-    - name: Check Terminology Capabilities
-      run: .github/scripts/check-terminology-capabilities.sh
-
-    - name: Validate Resources
-      run: .github/validation/validate.sh
-
-    - name: SNOMED CT Validate Code
-      run: .github/scripts/snomed-ct-validate-code.sh
 
   terminology-tests:
     needs: build
@@ -1777,7 +1283,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1832,7 +1338,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1849,8 +1355,8 @@ jobs:
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload -c1 .github/test-data/etl
 
-    - name: Check Total-Number of Resources are 190
-      run: .github/scripts/check-total-number-of-resources.sh 190
+    - name: Check Total-Number of Resources are 209
+      run: .github/scripts/check-total-number-of-resources.sh 209
 
     - name: Check Referential Integrity Not Enforced For Delete
       run: .github/scripts/check-referential-integrity-for-delete.sh 204
@@ -1878,7 +1384,19 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1893,7 +1411,7 @@ jobs:
       run: .github/scripts/admin-api/async-job.sh
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
     - name: Compact Unknown Database
       run: .github/scripts/compact-unknown-database.sh
@@ -1925,7 +1443,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1968,44 +1486,19 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
-
-    - name: Docker Logs
-      run: docker logs blaze
-
-    - name: Check Capability Statement
-      run: .github/scripts/check-capability-statement.sh
-
-    - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/big-tx
-
-  evaluate-measure-timeout-test:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-    - name: Install Blazectl
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
       with:
-        name: blaze-image
-        path: /tmp
+        token: HJTK4pH2YBD6jGJ
+        filename: big-tx-r6.tar
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-big-tx
 
-    - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-big-tx -xf big-tx-r6.tar
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2017,10 +1510,7 @@ jobs:
       run: .github/scripts/check-capability-statement.sh
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
-
-    - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure-timeout.sh q1
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-big-tx
 
   include-without-referential-integrity-test:
     needs: build
@@ -2040,7 +1530,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2069,7 +1559,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2105,7 +1595,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2163,7 +1653,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_INTERACTION_DELETE_HISTORY=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_INTERACTION_DELETE_HISTORY=true -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2278,11 +1768,23 @@ jobs:
     - name: Run Test Setup
       run: docker compose -f docs/data-sync/copy/docker-compose.yml -f .github/doc-copy-data-test/docker-compose.override.yml up -d
 
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
     - name: Wait for Source Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Load Data Into Source Blaze
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
     - name: Wait for Destination Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8082/health
@@ -2323,7 +1825,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_CACHE_SIZE=0 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_CACHE_SIZE=0 -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2397,8 +1899,20 @@ jobs:
     - name: Run Everything Else
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d
 
-    - name: Sleep 30 Seconds
-      run: sleep 30
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8081/metrics
 
     - name: Docker Logs
       run: docker compose -f modules/frontend-e2e/docker-compose.yml logs
@@ -2417,14 +1931,6 @@ jobs:
 
     - name: Download Patient Resources
       run: modules/frontend-e2e/download-patient-resources.sh
-
-    - name: Run Playwright Tests
-      run: make -C modules/frontend-e2e test
-
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-      with:
-        name: playwright-report
-        path: modules/frontend-e2e/playwright-report/
 
   missing-resource-content-test:
     needs: build
@@ -2447,7 +1953,7 @@ jobs:
       run: mkdir data
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v "$(pwd)/data:/app/data" blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_VERSION=6.0.0-ballot3 -p 8080:8080 --read-only --tmpfs /tmp:exec -v "$(pwd)/data:/app/data" blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2474,57 +1980,6 @@ jobs:
     #       of the page ID cipher at startup.
     #- name: Fetch Patient Expecting an Error
     #  run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
-
-  # This test ensures that older versions of Blaze will migrate successfully to
-  # the new database schema especially building the PatientLastChange index.
-  build-patient-last-change-index-test:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-    - name: Install Blazectl
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-      with:
-        name: blaze-image
-        path: /tmp
-
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
-
-    - name: Run Blaze in the Version 0.27 before Introduction of the PatientLastChange Index
-      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
-
-    - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
-
-    - name: Ensure that the PatientLastChange Index does not exist
-      run: .github/scripts/check-patient-last-change-index-missing.sh
-
-    - name: Shut down Blaze
-      run: docker stop blaze
-
-    - name: Run Latest Blaze with the PatientLastChange Index
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
-
-    - name: Docker Logs
-      run: docker logs blaze
-
-    - name: Ensure that the State of PatientLastChange Index is Current
-      run: .github/scripts/check-patient-last-change-index-state.sh current
 
   jepsen-distributed-test:
     needs: build
@@ -2621,19 +2076,14 @@ jobs:
     - test-slow
     - test-root
     - image-scan
-    - cql-expr-cache-test
     - integration-test
     - integration-test-synthea-1000
-    - integration-test-kds
     - integration-test-patient-purge
-    - integration-test-value-set-expand
-    - integration-test-validation
     - terminology-tests
     - not-enforcing-referential-integrity-test
     - admin-api-test
     - small-transactions-test
     - big-transaction-test
-    - evaluate-measure-timeout-test
     - include-without-referential-integrity-test
     - chaining-without-referential-integrity-test
     - bundle-with-references-test
@@ -2645,7 +2095,6 @@ jobs:
     - frontend-test
     - missing-resource-content-test
     - custom-search-parameters-test
-    - build-patient-last-change-index-test
     runs-on: ubuntu-24.04
     if: always()
     steps:

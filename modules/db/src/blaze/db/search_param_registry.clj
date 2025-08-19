@@ -161,7 +161,7 @@
      #{"http://hl7.org/fhir/SearchParameter/Bundle-message"
        "http://hl7.org/fhir/SearchParameter/Bundle-composition"}
      :fullUrl))
-   (:entry (read-classpath-json-resource "blaze/db/search-parameters.json"))))
+   (:entry (read-classpath-json-resource "blaze/fhir/search-parameters.json"))))
 
 (defn- read-bundle-entries [extra-bundle-file]
   (cond-> (read-standard-entries)
@@ -350,7 +350,7 @@
 (defmethod ig/init-key :blaze.db/search-param-registry
   [_ {:keys [extra-bundle-file]}]
   (log/info
-   (cond-> "Init in-memory fixed R4 search parameter registry"
+   (cond-> "Init in-memory fixed R6 search parameter registry"
      extra-bundle-file
      (str " including extra search parameters from file: " extra-bundle-file)))
   (let [entries (read-bundle-entries extra-bundle-file)

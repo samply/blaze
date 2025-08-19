@@ -44,7 +44,7 @@
         (sdr/primitive-types structure-definition-repo)))
 
 (deftest primitive-type->spec-defs-test
-  (testing "Boolean"
+  (testing "boolean"
     (is (= (-> (primitive-type "boolean")
                impl/primitive-type->spec-defs
                regexes->str)
@@ -59,7 +59,7 @@
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Boolean type/to-xml))}])))
 
-  (testing "Integer"
+  (testing "integer"
     (is (= (-> (primitive-type "integer")
                impl/primitive-type->spec-defs
                regexes->str)
@@ -69,10 +69,25 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "-?([0]|([1-9][0-9]*))" ~'e))
+               (fn [~'e] (xml/value-matches? "[0]|[-+]?[1-9][0-9]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Integer type/to-xml))}])))
+
+  (testing "integer64"
+    (is (= (-> (primitive-type "integer64")
+               impl/primitive-type->spec-defs
+               regexes->str)
+           [{:key :fhir/integer64
+             :spec-form `type/integer64?}
+            {:key :fhir.xml/integer64
+             :spec-form
+             `(s2/and
+               xml/element?
+               (fn [~'e] (xml/value-matches? "[0]|[-+]?[1-9][0-9]*" ~'e))
+               (s2/conformer xml/remove-character-content xml/set-extension-tag)
+               (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
+               (s2/conformer type/xml->Integer64 type/to-xml))}])))
 
   (testing "string"
     (is (= (-> (primitive-type "string")
@@ -89,7 +104,7 @@
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->String type/to-xml))}])))
 
-  (testing "Decimal"
+  (testing "decimal"
     (is (= (-> (primitive-type "decimal")
                impl/primitive-type->spec-defs
                regexes->str)
@@ -99,7 +114,7 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?" ~'e))
+               (fn [~'e] (xml/value-matches? "-?(0|[1-9][0-9]{0,17})(\\.[0-9]{1,17})?([eE][+-]?[0-9]{1,9})?" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Decimal type/to-xml))}])))

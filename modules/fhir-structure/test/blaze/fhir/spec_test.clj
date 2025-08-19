@@ -1223,6 +1223,59 @@
                                          [(type/extension {:url extension-url})]
                                          :value value})))))))))
 
+(deftest fhir-integer64-test
+  (testing "parsing"
+    (testing "XML"
+      (testing "valid"
+        (satisfies-prop 1000
+          (prop/for-all [value fg/integer64-value]
+            (= (type/integer64 value) (s2/conform :fhir.xml/integer64 (sexp-value (str value))))))
+
+        (testing "with extension"
+          (satisfies-prop 100
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/integer64-value (gen/return nil)])
+                           character-content gen/string-ascii]
+              (= (type/integer64 {:id id
+                                  :extension
+                                  [(type/extension {:url extension-url})]
+                                  :value value})
+                 (s2/conform :fhir.xml/integer64
+                             (sexp
+                              [nil (cond-> {} id (assoc :id id) (some? value) (assoc :value (str value)))
+                               character-content [::f/extension {:url extension-url}]])))))))
+
+      (testing "invalid"
+        (are [v] (s2/invalid? (s2/conform :fhir.xml/integer64 (sexp-value v)))
+          "a"))))
+
+  (testing "writing"
+    (testing "XML"
+      (testing "value only"
+        (satisfies-prop 1000
+          (prop/for-all [value fg/integer64-value]
+            (= (sexp-value (str value)) (s2/unform :fhir.xml/integer64 (type/integer64 value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/integer64-value]
+              (emit (s2/unform :fhir.xml/integer64 (type/integer64 value)))))))
+
+      (testing "with extension"
+        (satisfies-prop 100
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/integer64-value (gen/return nil)])]
+            (= (sexp
+                [nil (cond-> {} id (assoc :id id) (some? value) (assoc :value (str value)))
+                 [::f/extension {:url extension-url}]])
+               (s2/unform :fhir.xml/integer64
+                          (type/integer64 {:id id
+                                           :extension
+                                           [(type/extension {:url extension-url})]
+                                           :value value})))))))))
+
 (deftest fhir-string-test
   (testing "parsing"
     (testing "XML"
@@ -2209,11 +2262,11 @@
         #fhir/Attachment{:url #fhir/url{:extension [#fhir/Extension{:url "url-130143"}]}}
 
         {:_size {:extension [{:url "url-130946"}]}}
-        #fhir/Attachment{:size #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-130946"}]}}
+        #fhir/Attachment{:size #fhir/integer64{:extension [#fhir/Extension{:url "url-130946"}]}}
 
         {:size 204737
          :_size {:extension [{:url "url-131115"}]}}
-        #fhir/Attachment{:size #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-131115"}] :value 204737}}
+        #fhir/Attachment{:size #fhir/integer64{:extension [#fhir/Extension{:url "url-131115"}] :value 204737}}
 
         {:_creation {:extension [{:url "url-132312"}]}}
         #fhir/Attachment{:creation #fhir/dateTime{:extension [#fhir/Extension{:url "url-132312"}]}})
@@ -2272,10 +2325,10 @@
         #fhir/Attachment{:url #fhir/url{:extension [#fhir/Extension{:url "url-130143"}]}}
 
         (sexp [::f/Attachment {} [::f/size {:value "204742"}]])
-        #fhir/Attachment{:size #fhir/unsignedInt 204742}
+        #fhir/Attachment{:size #fhir/integer64 204742}
 
         (sexp [::f/Attachment {} [::f/size {} [::f/extension {:url "url-130946"}]]])
-        #fhir/Attachment{:size #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-130946"}]}})))
+        #fhir/Attachment{:size #fhir/integer64{:extension [#fhir/Extension{:url "url-130946"}]}})))
 
   (testing "writing"
     (testing "JSON"
@@ -2440,6 +2493,7 @@
              (fg/id)
              (fg/instant)
              (fg/integer)
+             (fg/integer64)
              (fg/markdown)
              (fg/oid)
              (fg/positiveInt)
@@ -2799,6 +2853,80 @@
 
         #fhir/CodeableConcept{:text #fhir/string"text-223528"}
         {:text "text-223528"}))))
+
+(deftest codeable-reference-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-reference)]
+          (s2/valid? :fhir/CodeableReference x))))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/CodeableReference x))
+        #fhir/CodeableReference{:reference 1})))
+
+  (testing "round-trip"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-reference)]
+          (= (->> (write-json x)
+                  (parse-json "CodeableReference"))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-reference)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/CodeableReference))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-reference)]
+          (= (->> (write-cbor x)
+                  (parse-cbor "CodeableReference"))
+             x)))))
+
+  (testing "parsing"
+    (testing "JSON"
+      (are [json fhir] (= fhir (write-parse-json "CodeableReference" json))
+        {}
+        #fhir/CodeableReference{}
+        {:concept {:coding [{}]}}
+        #fhir/CodeableReference{:concept #fhir/CodeableConcept{:coding [#fhir/Coding{}]}}
+        {:reference {:reference "ref-142059"}}
+        #fhir/CodeableReference{:reference #fhir/Reference{:reference #fhir/string"ref-142059"}}))
+
+    (testing "CBOR"
+      (are [json fhir] (= fhir (write-parse-cbor "CodeableReference" json))
+        {}
+        #fhir/CodeableReference{}
+        {:concept {:coding [{}]}}
+        #fhir/CodeableReference{:concept #fhir/CodeableConcept{:coding [#fhir/Coding{}]}}
+        {:reference {:reference "ref-142059"}}
+        #fhir/CodeableReference{:reference #fhir/Reference{:reference #fhir/string"ref-142059"}})))
+
+  (testing "writing"
+    (testing "JSON"
+      (are [fhir json] (= json (write-read-json fhir))
+        #fhir/CodeableReference{}
+        {}
+
+        #fhir/CodeableReference{:id "id-134927"}
+        {:id "id-134927"}
+
+        #fhir/CodeableReference{:extension [#fhir/Extension{}]}
+        {:extension [{}]}
+
+        #fhir/CodeableReference{:extension [#fhir/Extension{} #fhir/Extension{}]}
+        {:extension [{} {}]}
+
+        #fhir/CodeableReference{:concept #fhir/CodeableConcept{:coding [#fhir/Coding{}]}}
+        {:concept {:coding [{}]}}
+
+        #fhir/CodeableReference{:reference #fhir/Reference{:reference #fhir/string"ref-142059"}}
+        {:reference {:reference "ref-142059"}}))))
 
 (deftest quantity-test
   (testing "FHIR spec"
@@ -4196,14 +4324,20 @@
     (testing "JSON"
       (are [json fhir] (= fhir (write-parse-json "Consent" json))
         {:resourceType "Consent"
-         :policyRule {}}
+         :policyBasis
+         {:uri "foo"}}
         {:fhir/type :fhir/Consent
-         :policyRule #fhir/CodeableConcept{}})))
+         :policyBasis
+         {:fhir/type :fhir.Consent/policyBasis
+          :uri #fhir/uri"foo"}})))
 
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
               {:fhir/type :fhir/Consent
-               :policyRule #fhir/CodeableConcept{}})
+               :policyBasis
+               {:fhir/type :fhir.Consent/policyBasis
+                :uri #fhir/uri"foo"}})
              {:resourceType "Consent"
-              :policyRule {}})))))
+              :policyBasis
+              {:uri "foo"}})))))

@@ -10,7 +10,7 @@ test "status" "$(echo "$CAPABILITY_STATEMENT" | jq -r .status)" "active"
 test "kind" "$(echo "$CAPABILITY_STATEMENT" | jq -r .kind)" "instance"
 test "software name" "$(echo "$CAPABILITY_STATEMENT" | jq -r .software.name)" "Blaze"
 test "URL" "$(echo "$CAPABILITY_STATEMENT" | jq -r .implementation.url)" "http://localhost:8080/fhir"
-test "FHIR version" "$(echo "$CAPABILITY_STATEMENT" | jq -r .fhirVersion)" "4.0.1"
+test "FHIR version" "$(echo "$CAPABILITY_STATEMENT" | jq -r .fhirVersion)" "6.0.0-ballot3"
 test "format" "$(echo "$CAPABILITY_STATEMENT" | jq -r '.format | join(",")')" "application/fhir+json,application/fhir+xml"
 
 test "Patient Profile" "$(echo "$CAPABILITY_STATEMENT" | jq -r '.rest[0].resource[] | select(.type == "Patient") .profile')" "http://hl7.org/fhir/StructureDefinition/Patient"

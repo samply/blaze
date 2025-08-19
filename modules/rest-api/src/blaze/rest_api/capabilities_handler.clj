@@ -149,6 +149,7 @@
      transaction-handler-active?
      history-system-handler
      operations]
+    fhir-version :fhir/version
     :as config}]
   (let [operations (into
                     []
@@ -178,7 +179,7 @@
      :implementation
      {:fhir/type :fhir.CapabilityStatement/implementation
       :description "Blaze"}
-     :fhirVersion #fhir/code"4.0.1"
+     :fhirVersion (type/code fhir-version)
      :format
      [#fhir/code"application/fhir+json"
       #fhir/code"application/fhir+xml"]
@@ -355,6 +356,7 @@
 
 (defmethod m/pre-init-spec ::rest-api/capabilities-handler [_]
   (s/keys
+   :req [:fhir/version]
    :req-un
    [:blaze/version
     :blaze/release-date

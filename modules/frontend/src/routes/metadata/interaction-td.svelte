@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CapabilityStatementRestResource } from 'fhir/r4';
+  import type { CapabilityStatementRestResource } from 'fhir/r5';
   import type { RestfulInteraction } from '$lib/fhir.js';
   import { Check, XMark } from 'svelte-heros-v2';
 

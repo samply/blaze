@@ -14,7 +14,7 @@
     ContactPoint,
     Reference,
     Dosage
-  } from 'fhir/r4';
+  } from 'fhir/r5';
 
   import PrimitiveValue from './primitive-value.svelte';
   import ComplexValue from './complex-value.svelte';

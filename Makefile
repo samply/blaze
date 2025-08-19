@@ -38,7 +38,10 @@ clean-root:
 clean: $(MODULES) clean-root
 	$(MAKE) -C job-ig clean
 
-build-frontend:
+build-fhir-structure:
+	$(MAKE) -C modules/fhir-structure build
+
+build-frontend: build-fhir-structure
 	$(MAKE) -C modules/frontend build
 
 build-frontend-image: build-frontend

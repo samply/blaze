@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FhirObject } from '$lib/resource/resource-card.js';
-  import type { ContactPoint } from 'fhir/r4';
+  import type { ContactPoint } from 'fhir/r5';
   import { joinStrings } from '$lib/util.js';
   import Badge from '$lib/tailwind/badge.svelte';
 

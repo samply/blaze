@@ -26,7 +26,7 @@
   :args (s/cat :value (s/alt :value int? :extended map?))
   :ret (s/or :value type/integer? :invalid s2/invalid?))
 
-(s/fdef type/long
+(s/fdef type/integer64
   :args (s/cat :value (s/alt :value int? :extended map?))
   :ret (s/or :value type/integer? :invalid s2/invalid?))
 

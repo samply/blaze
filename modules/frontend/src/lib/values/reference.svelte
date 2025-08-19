@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FhirObject } from '$lib/resource/resource-card.js';
-  import type { Reference } from 'fhir/r4';
+  import type { Reference } from 'fhir/r5';
   import { base } from '$app/paths';
 
   interface Props {

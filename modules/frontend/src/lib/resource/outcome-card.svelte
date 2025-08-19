@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { OperationOutcome, OperationOutcomeIssue } from 'fhir/r4';
+  import type { OperationOutcome, OperationOutcomeIssue } from 'fhir/r5';
   import QueryPlanCard from './query-plan-card.svelte';
 
   interface Props {

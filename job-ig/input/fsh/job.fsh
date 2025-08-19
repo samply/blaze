@@ -66,12 +66,12 @@ Parent: Task
 * identifier contains jobNumber 0..1
 * identifier[jobNumber] ^short = "Job Number"
 * identifier[jobNumber].system = "https://samply.github.io/blaze/fhir/sid/JobNumber"
-* statusReason.coding ^slicing.discriminator.type = #pattern
-* statusReason.coding ^slicing.discriminator.path = "system"
-* statusReason.coding ^slicing.rules = #open
-* statusReason.coding contains jobStatusReason 0..1
-* statusReason.coding[jobStatusReason] ^short = "Job Status Reason"
-* statusReason.coding[jobStatusReason].system = "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"
+* statusReason.concept.coding ^slicing.discriminator.type = #pattern
+* statusReason.concept.coding ^slicing.discriminator.path = "system"
+* statusReason.concept.coding ^slicing.rules = #open
+* statusReason.concept.coding contains jobStatusReason 0..1
+* statusReason.concept.coding[jobStatusReason] ^short = "Job Status Reason"
+* statusReason.concept.coding[jobStatusReason].system = "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"
 * businessStatus.coding ^slicing.discriminator.type = #pattern
 * businessStatus.coding ^slicing.discriminator.path = "system"
 * businessStatus.coding ^slicing.rules = #open
@@ -79,6 +79,7 @@ Parent: Task
 * businessStatus.coding[jobCancelledSubStatus] ^short = "Job Cancelled Sub Status"
 * businessStatus.coding[jobCancelledSubStatus].system = "https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus"
 * code 1..1
+* intent = #order
 * authoredOn 1..1
 * output ^slicing.discriminator.type = #pattern
 * output ^slicing.discriminator.path = "type"
@@ -98,12 +99,12 @@ Parent: Task
 Invariant: status-reason-in-progress
 Description: "Assigns possible reasons to the 'in-progress' status."
 Severity: #error
-Expression: "status = 'in-progress' implies statusReason.coding.where(system = 'https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason' and (code = 'started' or code = 'incremented' or code = 'resumed'))"
+Expression: "status = 'in-progress' implies statusReason.concept.coding.where(system = 'https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason' and (code = 'started' or code = 'incremented' or code = 'resumed'))"
 
 Invariant: status-reason-on-hold
 Description: "Assigns possible reasons to the 'on-hold' status."
 Severity: #error
-Expression: "status = 'on-hold' implies statusReason.coding.where(system = 'https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason' and (code = 'paused' or code = 'orderly-shutdown'))"
+Expression: "status = 'on-hold' implies statusReason.concept.coding.where(system = 'https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason' and (code = 'paused' or code = 'orderly-shutdown'))"
 
 Invariant: sub-status-cancelled
 Description: "Assigns possible reasons to the 'on-hold' status."

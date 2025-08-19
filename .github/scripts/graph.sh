@@ -14,7 +14,7 @@ BUNDLE=$(curl -sH 'Accept: application/fhir+json' "$BASE/Patient/$PATIENT_ID/\$g
 ACTUAL_SIZE=$(echo "$BUNDLE" | jq -r .total)
 IDS="$(echo "$BUNDLE" | jq -r '.entry[].resource.id')"
 
-test "size" "$ACTUAL_SIZE" "195"
+test "size" "$ACTUAL_SIZE" "150"
 
 test "no duplicates" "$(echo "$IDS" | sort -u | wc -l | xargs)" "$(echo "$IDS" | wc -l | xargs)"
 

@@ -1,5 +1,5 @@
 import type { Actions } from './$types';
-import type { OperationOutcome, Parameters, ParametersParameter } from 'fhir/r4';
+import type { OperationOutcome, Parameters, ParametersParameter } from 'fhir/r5';
 import { resolve } from '$app/paths';
 import { fail } from '@sveltejs/kit';
 

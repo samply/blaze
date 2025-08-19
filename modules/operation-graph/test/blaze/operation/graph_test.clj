@@ -3,7 +3,6 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.util-spec]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
@@ -14,7 +13,6 @@
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.operation.graph :as graph]
    [blaze.operation.graph.compiler-spec]
-   [blaze.operation.graph.test-util :as g-tu]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
    [blaze.util.clauses-spec]
@@ -196,16 +194,14 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])]
                :url #fhir/uri"151647"
                :name #fhir/string"patient-only"
                :status #fhir/code"active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})}]]]
+               :start #fhir/id"patient"
+               :node
+               [{:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"patient"
+                 :type #fhir/code"Patient"}]}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {:path-params {:id "145711"}
@@ -248,26 +244,22 @@
         [:put {:fhir/type :fhir/Observation :id "144115"
                :subject #fhir/Reference{:reference "Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Observation"}])]
                :url #fhir/uri"144200"
-               :name #fhir/string"patient-observation"
+               :name #fhir/string"patient-observation-encounter"
                :status #fhir/code"active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+               :start #fhir/id"patient"
+               :node
+               [{:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"patient"
+                 :type #fhir/code"Patient"}
+                {:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"observation"
+                 :type #fhir/code"Observation"}]
                :link
                [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"observation")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}]}]]]
+                 :sourceId #fhir/id"patient"
+                 :targetId #fhir/id"observation"
+                 :params #fhir/string"patient={ref}"}]}]]]
 
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
             @(handler {:path-params {:id "145711"}
@@ -329,35 +321,29 @@
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
                :subject #fhir/Reference{:reference "Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Observation"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Encounter"}])]
                :url #fhir/uri"144200"
                :name #fhir/string"patient-observation-encounter"
                :status #fhir/code"active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+               :start #fhir/id"patient"
+               :node
+               [{:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"patient"
+                 :type #fhir/code"Patient"}
+                {:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"observation"
+                 :type #fhir/code"Observation"}
+                {:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"encounter"
+                 :type #fhir/code"Encounter"}]
                :link
                [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"observation")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}
+                 :sourceId #fhir/id"patient"
+                 :targetId #fhir/id"observation"
+                 :params #fhir/string"patient={ref}"}
                 {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"observation")
-                  (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}]}]]]
+                 :sourceId #fhir/id"observation"
+                 :path "encounter"
+                 :targetId #fhir/id"encounter"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -437,35 +423,29 @@
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
                :subject #fhir/Reference{:reference "Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Observation"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Encounter"}])]
                :url #fhir/uri"144200"
                :name #fhir/string"patient-observation-encounter"
                :status #fhir/code"active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+               :start #fhir/id"patient"
+               :node
+               [{:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"patient"
+                 :type #fhir/code"Patient"}
+                {:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"observation"
+                 :type #fhir/code"Observation"}
+                {:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"encounter"
+                 :type #fhir/code"Encounter"}]
                :link
                [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"observation")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}
+                 :sourceId #fhir/id"patient"
+                 :targetId #fhir/id"observation"
+                 :params #fhir/string"patient={ref}"}
                 {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"observation")
-                  (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}]}]]]
+                 :sourceId #fhir/id"observation"
+                 :path "encounter"
+                 :targetId #fhir/id"encounter"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry fourth-entry] :entry
@@ -556,42 +536,35 @@
                :subject #fhir/Reference{:reference "Patient/145711"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
-                 :condition #fhir/Reference{:reference "Condition/191241"}}]}]
+                 :condition [#fhir/CodeableReference{:reference #fhir/Reference{:reference "Condition/191241"}}]}]}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"condition"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Condition"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Encounter"}])]
                :url #fhir/uri"144200"
-               :name #fhir/string"patient-condition-encounter"
+               :name #fhir/string"patient-observation-encounter"
                :status #fhir/code"active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+               :start #fhir/id"patient"
+               :node
+               [{:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"patient"
+                 :type #fhir/code"Patient"}
+                {:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"condition"
+                 :type #fhir/code"Condition"}
+                {:fhir/type :fhir.GraphDefinition/node
+                 :nodeId #fhir/id"encounter"
+                 :type #fhir/code"Encounter"}]
                :link
                [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"condition")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}
+                 :sourceId #fhir/id"patient"
+                 :targetId #fhir/id"condition"
+                 :params #fhir/string"patient={ref}"}
                 {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"condition")
-                  (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}
+                 :sourceId #fhir/id"condition"
+                 :path "encounter"
+                 :targetId #fhir/id"encounter"}
                 {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"encounter")
-                  (g-tu/extension-link-target-id :value #fhir/id"condition")]
-                 :path "diagnosis.condition"}]}]]]
+                 :sourceId #fhir/id"encounter"
+                 :path "diagnosis.condition.reference"
+                 :targetId #fhir/id"condition"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}

@@ -12,7 +12,7 @@
   import NoResultsCard from '../../no-results-card.svelte';
 
   import { title } from '$lib/resource.js';
-  import type { FhirResource } from 'fhir/r4';
+  import type { FhirResource } from 'fhir/r5';
 
   import { ChevronDown } from 'svelte-heros-v2';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { preventDefault } from 'svelte/legacy';
 
-  import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
+  import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r5';
   import { SearchParamType } from '$lib/fhir.js';
   import type { QueryParam } from './query-param.js';
   import {

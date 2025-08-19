@@ -3,7 +3,7 @@ import type { LayoutLoad } from './$types';
 
 import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import type { CapabilityStatement } from 'fhir/r4';
+import type { CapabilityStatement } from 'fhir/r5';
 
 export const load: LayoutLoad = async ({ fetch }) => {
   const res = await fetch(resolve('/metadata'), { headers: { Accept: 'application/fhir+json' } });

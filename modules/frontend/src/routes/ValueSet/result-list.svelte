@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Parameters } from 'fhir/r4';
+  import type { Parameters } from 'fhir/r5';
 
   import { parameter } from '$lib/fhir';
   import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';

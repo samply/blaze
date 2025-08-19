@@ -72,7 +72,7 @@ InstanceOf: ReIndexJob
 Instance: ReIndexJobInProgressExample
 InstanceOf: ReIndexJob
 * status = #in-progress
-* statusReason = $JSR#started "Started"
+* statusReason.concept.coding[jobStatusReason] = $JSR#started "Started"
 * intent = #order
 * code = $JT#re-index "(Re)Index a Search Parameter"
 * authoredOn = "2024-04-13T10:05:20.927Z"

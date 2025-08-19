@@ -1,242 +1,84 @@
 {
   "resourceType": "GraphDefinition",
-  "extension": [
-    {
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.start",
-      "valueId": "patient"
-    },
-    {
-      "extension": [
-        {
-          "url": "nodeId",
-          "valueId": "patient"
-        },
-        {
-          "url": "type",
-          "valueCode": "Patient"
-        }
-      ],
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
-    },
-    {
-      "extension": [
-        {
-          "url": "nodeId",
-          "valueId": "viral-sinusitis"
-        },
-        {
-          "url": "type",
-          "valueCode": "Condition"
-        }
-      ],
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
-    },
-    {
-      "extension": [
-        {
-          "url": "nodeId",
-          "valueId": "cisplatin-reason"
-        },
-        {
-          "url": "type",
-          "valueCode": "Condition"
-        }
-      ],
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
-    },
-    {
-      "extension": [
-        {
-          "url": "nodeId",
-          "valueId": "leukocytes"
-        },
-        {
-          "url": "type",
-          "valueCode": "Observation"
-        }
-      ],
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
-    },
-    {
-      "extension": [
-        {
-          "url": "nodeId",
-          "valueId": "erythrocytes"
-        },
-        {
-          "url": "type",
-          "valueCode": "Observation"
-        }
-      ],
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
-    },
-    {
-      "extension": [
-        {
-          "url": "nodeId",
-          "valueId": "cisplatin"
-        },
-        {
-          "url": "type",
-          "valueCode": "MedicationAdministration"
-        }
-      ],
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
-    },
-    {
-      "extension": [
-        {
-          "url": "nodeId",
-          "valueId": "encounter"
-        },
-        {
-          "url": "type",
-          "valueCode": "Encounter"
-        }
-      ],
-      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
-    }
-  ],
   "url": "patient-observation-encounter",
   "name": "patient-observation-encounter",
   "status": "active",
-  "_start": {
-    "extension": [
-      {
-        "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-        "valueCode": "unsupported"
-      }
-    ]
-  },
+  "start": "patient",
+  "node": [
+    {
+      "nodeId": "patient",
+      "type": "Patient"
+    },
+    {
+      "nodeId": "viral-sinusitis",
+      "type": "Condition"
+    },
+    {
+      "nodeId": "cisplatin-reason",
+      "type": "Condition"
+    },
+    {
+      "nodeId": "leukocytes",
+      "type": "Observation"
+    },
+    {
+      "nodeId": "erythrocytes",
+      "type": "Observation"
+    },
+    {
+      "nodeId": "cisplatin",
+      "type": "MedicationAdministration"
+    },
+    {
+      "nodeId": "encounter",
+      "type": "Encounter"
+    }
+  ],
   "link": [
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "patient"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "viral-sinusitis"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
-          "valueString": "patient={ref}&code=http://snomed.info/sct|444814009"
-        }
-      ]
+      "sourceId": "patient",
+      "targetId": "viral-sinusitis",
+      "params": "patient={ref}&code=http://snomed.info/sct|444814009"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "patient"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "leukocytes"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
-          "valueString": "patient={ref}&code=http://loinc.org|6690-2"
-        }
-      ]
+      "sourceId": "patient",
+      "targetId": "leukocytes",
+      "params": "patient={ref}&code=http://loinc.org|6690-2"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "patient"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "erythrocytes"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
-          "valueString": "patient={ref}&code=http://loinc.org|789-8"
-        }
-      ]
+      "sourceId": "patient",
+      "targetId": "erythrocytes",
+      "params": "patient={ref}&code=http://loinc.org|789-8"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "patient"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "cisplatin"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
-          "valueString": "patient={ref}&code=http://www.nlm.nih.gov/research/umls/rxnorm|1736854"
-        }
-      ]
+      "sourceId": "patient",
+      "targetId": "cisplatin",
+      "params": "patient={ref}&code=http://www.nlm.nih.gov/research/umls/rxnorm|1736854"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "viral-sinusitis"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "encounter"
-        }
-      ],
-      "path": "encounter"
+      "sourceId": "viral-sinusitis",
+      "path": "encounter",
+      "targetId": "encounter"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "leukocytes"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "encounter"
-        }
-      ],
-      "path": "encounter"
+      "sourceId": "leukocytes",
+      "path": "encounter",
+      "targetId": "encounter"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "erythrocytes"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "encounter"
-        }
-      ],
-      "path": "encounter"
+      "sourceId": "erythrocytes",
+      "path": "encounter",
+      "targetId": "encounter"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "cisplatin"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "encounter"
-        }
-      ],
-      "path": "context"
+      "sourceId": "cisplatin",
+      "path": "context",
+      "targetId": "encounter"
     },
     {
-      "extension": [
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
-          "valueId": "cisplatin"
-        },
-        {
-          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
-          "valueId": "cisplatin-reason"
-        }
-      ],
-      "path": "reason"
+      "sourceId": "cisplatin",
+      "path": "reason",
+      "targetId": "cisplatin-reason"
     }
   ]
 }
