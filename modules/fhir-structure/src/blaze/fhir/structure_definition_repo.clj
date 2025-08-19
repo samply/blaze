@@ -9,22 +9,21 @@
    [taoensso.timbre :as log]))
 
 (defn primitive-types
-  "Returns a list of all StructureDefinition resources of FHIR R4 primitive
-  types.
+  "Returns a list of all StructureDefinition resources of FHIR primitive types.
 
   Loads them from directly classpath. Doesn't store them in memory."
   [repo]
   (p/-primitive-types repo))
 
 (defn complex-types
-  "Returns a list of all StructureDefinition resources of FHIR R4 complex types.
+  "Returns a list of all StructureDefinition resources of FHIR complex types.
 
   Loads them from directly classpath. Doesn't store them in memory."
   [repo]
   (p/-complex-types repo))
 
 (defn resources
-  "Returns a list of all StructureDefinition resources of FHIR R4 resources.
+  "Returns a list of all StructureDefinition resources of FHIR resources.
 
   Loads them from directly classpath. Doesn't store them in memory."
   [repo]
@@ -63,7 +62,7 @@
        []
        (comp (map :resource)
              (filter (comp #{"primitive-type"} :kind)))
-       (:entry (read-bundle "blaze/fhir/r4/profiles-types.json"))))
+       (:entry (read-bundle "blaze/fhir/profiles-types.json"))))
     (-complex-types [_]
       (into
        []
@@ -72,7 +71,7 @@
              (remove :abstract)
              ;; TODO: look into how to handle this special quantity types
              (remove (comp #{"MoneyQuantity" "SimpleQuantity"} :name)))
-       (:entry (read-bundle "blaze/fhir/r4/profiles-types.json"))))
+       (:entry (read-bundle "blaze/fhir/profiles-types.json"))))
     (-resources [_]
       (into
        []
@@ -80,7 +79,7 @@
              (filter (comp #{"resource"} :kind))
              (remove :abstract)
              (remove :experimental))
-       (:entry (read-bundle "blaze/fhir/r4/profiles-resources.json"))))))
+       (:entry (read-bundle "blaze/fhir/profiles-resources.json"))))))
 
 (defmethod ig/init-key :blaze.fhir/structure-definition-repo
   [_ _]

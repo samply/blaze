@@ -310,36 +310,4 @@
             :id := "id-094518"
             :hash-prefix := (hash/prefix hash)
             :code := "rank"
-            :v-hash := (codec/number (BigDecimal/valueOf 94656))))))
-
-    (testing "Appointment priority"
-      (let [resource {:fhir/type :fhir/Appointment :id "id-102236"
-                      :priority #fhir/unsignedInt 102229}
-            hash (hash/generate resource)
-            [[_ k0] [_ k1]]
-            (index-entries
-             (sc/search-param
-              {}
-              {:type "number"
-               :name "priority"
-               :code "priority"
-               :base ["Appointment"]
-               :url "Appointment-priority",
-               :expression "Appointment.priority"})
-             [] hash resource)]
-
-        (testing "SearchParamValueResource key"
-          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
-            :code := "priority"
-            :type := "Appointment"
-            :v-hash := (codec/number (BigDecimal/valueOf 102229))
-            :id := "id-102236"
-            :hash-prefix := (hash/prefix hash)))
-
-        (testing "ResourceSearchParamValue key"
-          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
-            :type := "Appointment"
-            :id := "id-102236"
-            :hash-prefix := (hash/prefix hash)
-            :code := "priority"
-            :v-hash := (codec/number (BigDecimal/valueOf 102229))))))))
+            :v-hash := (codec/number (BigDecimal/valueOf 94656))))))))

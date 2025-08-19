@@ -178,7 +178,7 @@
      :implementation
      {:fhir/type :fhir.CapabilityStatement/implementation
       :description "Blaze"}
-     :fhirVersion #fhir/code"4.0.1"
+     :fhirVersion #fhir/code"6.0.0-ballot3"
      :format
      [#fhir/code"application/fhir+json"
       #fhir/code"application/fhir+xml"]

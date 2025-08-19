@@ -49,11 +49,13 @@
 (deftest status-reason-test
   (is (= (job-util/status-reason
           {:fhir/type :fhir/Task
-           :statusReason #fhir/CodeableConcept
-                          {:coding
-                           [#fhir/Coding
-                             {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"
-                              :code #fhir/code"reason-175220"}]}})
+           :statusReason
+           #fhir/CodeableReference
+            {:concept #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"
+                           :code #fhir/code"reason-175220"}]}}})
          "reason-175220")))
 
 (deftest cancelled-sub-status-test

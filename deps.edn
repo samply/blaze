@@ -124,6 +124,9 @@
    {blaze/db-stub
     {:local/root "modules/db-stub"}
 
+    ca.uhn.hapi.fhir/org.hl7.fhir.convertors
+    {:mvn/version "6.6.3"}
+
     criterium/criterium
     {:mvn/version "0.4.6"}
 

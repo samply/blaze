@@ -127,7 +127,7 @@
         [:software :name] := "Blaze"
         [:software :version] := "version-131640"
         [:implementation :url] := #fhir/url"base-url-131713"
-        :fhirVersion := #fhir/code"4.0.1"
+        :fhirVersion := #fhir/code"6.0.0-ballot3"
         :format := [#fhir/code"application/fhir+json"
                     #fhir/code"application/fhir+xml"]
         [:rest 0 :searchParam 0 :name] := "_id"

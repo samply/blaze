@@ -694,10 +694,10 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
                  :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2025-05-15"}}]
+                 :actualPeriod #fhir/Period{:start #fhir/dateTime"2025-05-15"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
                  :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2025-05-16"}}]]]
+                 :actualPeriod #fhir/Period{:start #fhir/dateTime"2025-05-16"}}]]]
 
         (let [elm {:type "Query"
                    :source
@@ -727,16 +727,16 @@
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
+             :medication #fhir/CodeableReference{:reference #fhir/Reference{:reference "Medication/0"}}
              :subject #fhir/Reference{:reference "Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
+             :medication #fhir/CodeableReference{:reference #fhir/Reference{:reference "Medication/1"}}
              :subject #fhir/Reference{:reference "Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
+             :medication #fhir/CodeableReference{:reference #fhir/Reference{:reference "Medication/0"}}
              :subject #fhir/Reference{:reference "Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
+             :medication #fhir/CodeableReference{:reference #fhir/Reference{:reference "Medication/1"}}
              :subject #fhir/Reference{:reference "Patient/0"}}]
       [:put {:fhir/type :fhir/Medication :id "0"}]
       [:put {:fhir/type :fhir/Medication :id "1"}]]]

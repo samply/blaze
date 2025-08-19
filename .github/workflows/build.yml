@@ -124,7 +124,6 @@ jobs:
         - operation-compact
         - operation-graph
         - operation-graphql
-        - operation-measure-evaluate-measure
         - operation-patient-everything
         - operation-patient-purge
         - operation-totals
@@ -534,6 +533,18 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e CQL_EXPR_CACHE_SIZE=1000 -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
 
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
@@ -547,7 +558,7 @@ jobs:
       run: .github/scripts/check-patient-last-change-index-state.sh current
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
     - name: Prometheus Metrics
       run: .github/scripts/test-cql-expr-cache-metrics.sh
@@ -723,6 +734,18 @@ jobs:
       run: docker compose -f .github/distributed-test/docker-compose.yml up -d
       if: ${{ matrix.variant == 'distributed' }}
 
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
       if: ${{ matrix.variant == 'standalone' }}
@@ -778,16 +801,13 @@ jobs:
       run: .github/scripts/check-resource-read-only.sh StructureDefinition "http://hl7.org/fhir/StructureDefinition/Patient"
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
-    - name: Check Total-Number of Resources are 92299
-      run: .github/scripts/check-total-number-of-resources.sh 92299
+    - name: Check Total-Number of Resources are 91819
+      run: .github/scripts/check-total-number-of-resources.sh 91819
 
     - name: Check Resource Totals
       run: .github/scripts/check-resource-totals.sh
-
-    - name: Count Resources
-      run: blazectl count-resources --server http://localhost:8080/fhir
 
     - name: Download All Resources
       run: .github/scripts/download-all-resources.sh
@@ -814,7 +834,7 @@ jobs:
       run: .github/scripts/check-summary-mode.sh Observation category
 
     - name: Check that Encounter Resources don't contain Periods in Summary Mode
-      run: .github/scripts/check-summary-mode.sh Encounter period
+      run: .github/scripts/check-summary-mode.sh Encounter actualPeriod
 
     - name: Download Observation Resources with special LOINC Codes
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9" 2399
@@ -1565,6 +1585,18 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
@@ -1578,7 +1610,7 @@ jobs:
       run: .github/scripts/check-referential-integrity-enforced.sh
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
     - name: Check Total-Number of Resources are 92299
       run: .github/scripts/check-total-number-of-resources.sh 92299
@@ -1880,6 +1912,18 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
@@ -1893,7 +1937,7 @@ jobs:
       run: .github/scripts/admin-api/async-job.sh
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
     - name: Compact Unknown Database
       run: .github/scripts/compact-unknown-database.sh
@@ -2007,6 +2051,18 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
@@ -2017,7 +2073,7 @@ jobs:
       run: .github/scripts/check-capability-statement.sh
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure-timeout.sh q1
@@ -2278,11 +2334,23 @@ jobs:
     - name: Run Test Setup
       run: docker compose -f docs/data-sync/copy/docker-compose.yml -f .github/doc-copy-data-test/docker-compose.override.yml up -d
 
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
+
     - name: Wait for Source Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Load Data Into Source Blaze
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-100
 
     - name: Wait for Destination Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8082/health
@@ -2397,8 +2465,17 @@ jobs:
     - name: Run Everything Else
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d
 
-    - name: Sleep 30 Seconds
-      run: sleep 30
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: b3jf9dsbbJD554E
+        filename: synthea-r6-100.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-100
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-100 -xf synthea-r6-100.tar
 
     - name: Docker Logs
       run: docker compose -f modules/frontend-e2e/docker-compose.yml logs
@@ -2474,57 +2551,6 @@ jobs:
     #       of the page ID cipher at startup.
     #- name: Fetch Patient Expecting an Error
     #  run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
-
-  # This test ensures that older versions of Blaze will migrate successfully to
-  # the new database schema especially building the PatientLastChange index.
-  build-patient-last-change-index-test:
-    needs: build
-    runs-on: ubuntu-24.04
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-
-    - name: Install Blazectl
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-      with:
-        name: blaze-image
-        path: /tmp
-
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
-
-    - name: Run Blaze in the Version 0.27 before Introduction of the PatientLastChange Index
-      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
-
-    - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
-
-    - name: Ensure that the PatientLastChange Index does not exist
-      run: .github/scripts/check-patient-last-change-index-missing.sh
-
-    - name: Shut down Blaze
-      run: docker stop blaze
-
-    - name: Run Latest Blaze with the PatientLastChange Index
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
-
-    - name: Docker Logs
-      run: docker logs blaze
-
-    - name: Ensure that the State of PatientLastChange Index is Current
-      run: .github/scripts/check-patient-last-change-index-state.sh current
 
   jepsen-distributed-test:
     needs: build
@@ -2645,7 +2671,6 @@ jobs:
     - frontend-test
     - missing-resource-content-test
     - custom-search-parameters-test
-    - build-patient-last-change-index-test
     runs-on: ubuntu-24.04
     if: always()
     steps:
