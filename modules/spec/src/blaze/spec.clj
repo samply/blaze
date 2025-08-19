@@ -44,8 +44,11 @@
 
 ;; ---- DB ------------------------------------------------------------------
 
+(s/def :blaze.db.query.clause/code
+  string?)
+
 (s/def :blaze.db.query/search-clause
-  (s/coll-of string? :kind vector? :min-count 2))
+  (s/cat :code :blaze.db.query.clause/code :values (s/+ string?)))
 
 (s/def :blaze.db.query/search-clauses
   (s/coll-of :blaze.db.query/search-clause :kind vector?))
@@ -54,7 +57,7 @@
   #{:asc :desc})
 
 (s/def :blaze.db.query/sort-clause
-  (s/tuple #{:sort} string? :blaze.db.query/sort-direction))
+  (s/tuple #{:sort} :blaze.db.query.clause/code :blaze.db.query/sort-direction))
 
 (s/def :blaze.db.query/clause
   (s/or :search-clause :blaze.db.query/search-clause

@@ -157,7 +157,8 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/explain-query
-  :args (s/cat :db :blaze.db/db :query :blaze.db/query))
+  :args (s/cat :db :blaze.db/db :query :blaze.db/query)
+  :ret :blaze.db.query/plan)
 
 (s/fdef d/query-clauses
   :args (s/cat :query :blaze.db/query)

@@ -48,7 +48,8 @@
 (s/fdef index/type-query-plan
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
-               :clauses :blaze.db.index.query/clauses))
+               :clauses :blaze.db.index.query/clauses)
+  :ret :blaze.db.query/plan)
 
 (s/fdef index/type-query-total
   :args (s/cat :batch-db :blaze.db.impl/batch-db
@@ -70,4 +71,5 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/compartment-query-plan
-  :args (s/cat :clauses :blaze.db.index.query/clauses))
+  :args (s/cat :clauses :blaze.db.index.query/clauses)
+  :ret :blaze.db.query/plan)
