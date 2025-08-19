@@ -12,6 +12,7 @@
    [blaze.interaction.search.include :as include]
    [blaze.interaction.search.nav :as nav]
    [blaze.interaction.search.params :as params]
+   [blaze.interaction.search.query-plan :as query-plan]
    [blaze.interaction.search.util :as search-util]
    [blaze.job.async-interaction.request :as req]
    [blaze.module :as m]
@@ -20,7 +21,6 @@
    [blaze.page-store.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [reitit.core :as reitit]
@@ -70,22 +70,6 @@
 (defn- include-xf [context]
   (comp (mapcat ac/join) (map (partial search-util/include-entry context))))
 
-(defn- render-search-param-code [{:keys [code modifier]}]
-  (cond-> code modifier (str ":" modifier)))
-
-(defn- stats-msg [{:keys [query-type scan-type scan-clauses seek-clauses]}]
-  (format
-   (cond->> "SCANS%s: %s; SEEKS: %s"
-     (= :compartment query-type)
-     (str "TYPE: compartment; "))
-   (if scan-type (format "(%s)" (name scan-type)) "")
-   (if (seq scan-clauses)
-     (str/join ", " (map render-search-param-code scan-clauses))
-     "NONE")
-   (if (seq seek-clauses)
-     (str/join ", " (map render-search-param-code seek-clauses))
-     "NONE")))
-
 (defn- query-plan-outcome [{:blaze/keys [db]} query]
   (let [plan (d/explain-query db query)]
     {:fhir/type :fhir/OperationOutcome
@@ -93,7 +77,7 @@
      [{:fhir/type :fhir.OperationOutcome/issue
        :severity #fhir/code"information"
        :code #fhir/code"informational"
-       :diagnostics (type/string (stats-msg plan))}]}))
+       :diagnostics (type/string (query-plan/render plan))}]}))
 
 (defn- query-plan-entry [context query]
   (search-util/outcome-entry context (query-plan-outcome context query)))

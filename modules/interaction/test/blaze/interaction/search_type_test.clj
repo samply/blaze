@@ -6,6 +6,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.query.plan.spec]
    [blaze.db.resource-store :as rs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]

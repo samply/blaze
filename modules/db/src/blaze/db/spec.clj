@@ -3,6 +3,7 @@
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.protocols :as p]
    [blaze.db.node.protocols :as np]
+   [blaze.db.query.spec]
    [blaze.db.resource-store.spec]
    [blaze.db.tx-log.spec]
    [blaze.spec]
