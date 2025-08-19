@@ -379,6 +379,17 @@
           res (coll/nth coll idx nil)]
       (if (nil? res) [] [res]))))
 
+;; 5.3.3. first() : collection
+
+(deftype FirstFunctionExpression []
+  Expression
+  (-eval [_ _ coll]
+    (if (empty? coll) [] [(first coll)])))
+
+(defmethod function-expression "first"
+  [_ _]
+  (->FirstFunctionExpression))
+
 ;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
 
 (deftype ExtensionFunctionExpression [rf]
