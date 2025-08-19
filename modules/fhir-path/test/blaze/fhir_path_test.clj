@@ -336,17 +336,31 @@
 
 ;; 5.3.1. [ index : Integer ] : collection
 (deftest indexer-test
-  (given (eval
-          "Bundle.entry[0].resource"
-          {:fhir/type :fhir/Bundle
-           :id "id-110914"
-           :entry
-           [{:fhir/type :fhir.Bundle/entry
-             :resource
-             {:fhir/type :fhir/Patient
-              :id "id-111004"}}]})
-    identity := [{:fhir/type :fhir/Patient
-                  :id "id-111004"}]))
+  (are [resource expr result] (= result (eval expr resource))
+    {:fhir/type :fhir/Patient
+     :name
+     [#fhir/HumanName{:family "Doe"}
+      #fhir/HumanName{:family "Bolton"}]}
+    "Patient.name[0]"
+    [#fhir/HumanName{:family "Doe"}]
+
+    {:fhir/type :fhir/Patient
+     :name
+     [#fhir/HumanName{:family "Doe"}
+      #fhir/HumanName{:family "Bolton"}]}
+    "Patient.name[1]"
+    [#fhir/HumanName{:family "Bolton"}]
+
+    {:fhir/type :fhir/Patient
+     :name
+     [#fhir/HumanName{:family "Doe"}
+      #fhir/HumanName{:family "Bolton"}]}
+    "Patient.name[2]"
+    []
+
+    {:fhir/type :fhir/Patient}
+    "Patient.name[0]"
+    []))
 
 ;; 5.4. Combining
 

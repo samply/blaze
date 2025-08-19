@@ -147,13 +147,6 @@
   (-eval [_ context coll]
     (-eval invocation context (-eval expression context coll))))
 
-(deftype IndexerExpression [expression index]
-  Expression
-  (-eval [_ context coll]
-    (let [coll (-eval expression context coll)
-          idx (singleton :fhir/integer (-eval index context coll))]
-      [(coll/nth coll idx [])])))
-
 (deftype PlusExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
@@ -373,6 +366,18 @@
   (if-let [criteria-ctx (some-> paramsCtx (.expression 0))]
     (->ExistsWithCriteriaFunctionExpression (-compile criteria-ctx))
     (->ExistsFunctionExpression)))
+
+;; 5.3. Subsetting
+
+;; 5.3.1. [ index : Integer ] : collection
+
+(deftype IndexerExpression [expression index]
+  Expression
+  (-eval [_ context coll]
+    (let [coll (-eval expression context coll)
+          idx (singleton :fhir/integer (-eval index context coll))
+          res (coll/nth coll idx nil)]
+      (if (nil? res) [] [res]))))
 
 ;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
 
