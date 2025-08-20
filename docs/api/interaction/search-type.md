@@ -56,7 +56,7 @@ Here the `Patient/` prefix in the reference ensures that the `id` is a patient I
 [base]/[type]?[token-param]=[system]|[code]&[reference-param]=Patient/[id]
 ```
 
-### Query Plan
+### Query Plan <Badge type="warning" text="Since 1.1"/>
 
 To understand how Blaze executes a search, you can request a query plan by setting the `__explain` search parameter to `true`. The server will then return an `OperationOutcome` as the first entry in the result bundle, with the query plan contained in its `diagnostics` field.
 
