@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.0
+
+### Enhancements
+
+* Improve FHIR Search Performance for Multiple Params and Values ([#799](https://github.com/samply/blaze/issues/799))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/110?closed=1).
+
 ## v1.0.4
 
 ### Bugfixes
