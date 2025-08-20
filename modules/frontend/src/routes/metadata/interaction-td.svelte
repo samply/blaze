@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { CapabilityStatementRestResource } from 'fhir/r4';
   import type { RestfulInteraction } from '$lib/fhir.js';
-  import Check from './check.svelte';
-  import XMark from './x-mark.svelte';
+  import { Check, XMark } from 'svelte-heros-v2';
 
   interface Props {
     resource: CapabilityStatementRestResource;
@@ -21,8 +20,8 @@
 
 <td class="py-2">
   {#if hasInteraction(resource, interaction)}
-    <Check />
+    <Check class="mx-auto w-5 h-5 text-green-600" />
   {:else}
-    <XMark />
+    <XMark class="mx-auto w-5 h-5 text-red-600" />
   {/if}
 </td>
