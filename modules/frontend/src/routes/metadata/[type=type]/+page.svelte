@@ -54,7 +54,7 @@
             {#each resource?.supportedProfile as profile}
               <li>
                 <a
-                  class="hover:text-gray-500"
+                  class="hover:text-gray-500 dark:text-gray-400"
                   href="{resolve('/StructureDefinition')}?url={profile}">{profile}</a
                 >
               </li>

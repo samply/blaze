@@ -17,9 +17,9 @@
     </div>
   {/if}
   <div class="min-w-0 flex-1">
-    <div class="text-sm font-medium text-gray-900">{title}</div>
+    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</div>
     {#if subtitle}
-      <p class="text-sm text-gray-500">{subtitle}</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
     {/if}
   </div>
 </div>

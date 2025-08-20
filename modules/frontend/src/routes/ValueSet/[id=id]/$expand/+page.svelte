@@ -28,13 +28,13 @@
     <BreadcrumbEntryType type="ValueSet" />
     <BreadcrumbEntryResource type="ValueSet" {...params} resource={data.valueSet} />
     <BreadcrumbEntry>
-      <span class="ml-4 text-sm font-medium text-gray-500">$expand</span>
+      <span class="ml-4 text-sm font-medium text-gray-500 dark:text-gray-400">$expand</span>
     </BreadcrumbEntry>
   </Breadcrumb>
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
-  <h2 class="text-base/7 font-semibold text-gray-900">
+  <h2 class="text-base/7 font-semibold text-gray-900 dark:text-gray-100">
     {title(data.valueSet)}
   </h2>
   {#if data.valueSet.description}
@@ -68,7 +68,7 @@
     {#snippet buttons()}
       <div class="flex gap-4">
         {#if form?.incorrect}
-          <p class="text-sm text-red-600">{form.msg}</p>
+          <p class="text-sm text-red-600 dark:text-red-400">{form.msg}</p>
         {/if}
         <SubmitButton name="Submit" />
       </div>
@@ -76,14 +76,14 @@
   </Form>
 
   {#if form?.valueSet?.expansion?.contains}
-    <ul role="list" class="divide-y divide-gray-100">
+    <ul role="list" class="divide-y divide-gray-100 dark:divide-gray-700">
       {#each form.valueSet.expansion.contains as contains ([contains.system, contains.version, contains.code])}
         <li class="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 py-5 sm:flex-nowrap">
           <div>
-            <p class="text-sm/6 font-semibold text-gray-900">
+            <p class="text-sm/6 font-semibold text-gray-900 dark:text-gray-100">
               {contains.display}
             </p>
-            <div class="mt-1 flex items-center gap-x-2 text-xs/5 text-gray-500">
+            <div class="mt-1 flex items-center gap-x-2 text-xs/5 text-gray-500 dark:text-gray-400">
               <p>{contains.system}</p>
               •
               {#if contains.version}

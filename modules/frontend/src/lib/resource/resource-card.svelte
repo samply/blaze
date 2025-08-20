@@ -67,7 +67,7 @@
 </script>
 
 <div in:fade|global={fadeParams} class="overflow-hidden">
-  <div class="border-b border-gray-200 px-8">
+  <div class="border-b border-gray-200 dark:border-gray-600 px-8">
     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
       {#if embedded}
         <TabItemEmbedded name="default" label="Normal" bind:selected={selectedTab} />
@@ -81,27 +81,30 @@
   {#if embedded ? selectedTab === 'default' : isTabActive(page.url, 'default')}
     <div in:fade|global={fadeParams} class="px-4 py-5 sm:px-6">
       <div class="flex">
-        <h3 class="grow text-base font-semibold leading-6 text-gray-900">
+        <h3 class="grow text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
           <a href={href(resource)}>{title1(resource)}</a>
         </h3>
         {@render header?.()}
       </div>
       {#if hasMeta(resource.object) && resource.object.meta.lastUpdated !== undefined}
-        <p class="mt-1 max-w-2xl text-sm text-gray-500">
+        <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
           Last Updated&nbsp;<DateTime value={resource.object.meta.lastUpdated} />
         </p>
       {/if}
     </div>
-    <div in:fade|global={fadeParams} class="border-t border-gray-200 px-4 py-5 sm:p-0">
-      <dl class="sm:divide-y sm:divide-gray-200" role="list">
+    <div
+      in:fade|global={fadeParams}
+      class="border-t border-gray-200 dark:border-gray-600 px-4 py-5 sm:p-0"
+    >
+      <dl class="sm:divide-y sm:divide-gray-200 dark:divide-gray-600" role="list">
         {#each properties as property (property.name)}
           <Property {property} />
         {/each}
       </dl>
     </div>
   {:else}
-    <pre in:fade|global={fadeParams} class="flex overflow-auto text-sm"><code class="p-4"
-        ><Object object={resource} /></code
+    <pre in:fade|global={fadeParams} class="flex overflow-auto text-sm dark:text-gray-200"><code
+        class="p-4"><Object object={resource} /></code
       ></pre>
   {/if}
 </div>

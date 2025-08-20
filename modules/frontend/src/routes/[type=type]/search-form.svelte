@@ -129,7 +129,10 @@
   let openSearchSettings = $state(false);
 </script>
 
-<form class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200" onsubmit={preventDefault(send)}>
+<form
+  class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-600"
+  onsubmit={preventDefault(send)}
+>
   <div class="grow flex flex-col gap-2">
     {#each queryParams as queryParam, index (queryParam.id)}
       <div in:fade={{ duration: 200, easing: quintIn }} class="flex gap-2">
@@ -220,7 +223,7 @@
             class="group relative inline-flex w-11 shrink-0 rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-indigo-600 transition-colors duration-200 ease-in-out has-checked:bg-indigo-600 has-focus-visible:outline-2"
           >
             <span
-              class="size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5"
+              class="size-5 rounded-full bg-white dark:bg-gray-800 shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5"
             ></span>
             <input
               id="query-plan"
@@ -232,8 +235,10 @@
             />
           </div>
           <div class="text-sm">
-            <label id="query-plan-label" class="font-medium text-gray-900" for="query-plan"
-              >Show Plan</label
+            <label
+              id="query-plan-label"
+              class="font-medium text-gray-900 dark:text-gray-100"
+              for="query-plan">Show Plan</label
             >
           </div>
         </div>

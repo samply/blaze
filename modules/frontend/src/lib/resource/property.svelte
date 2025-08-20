@@ -82,10 +82,10 @@
 </script>
 
 <div class="py-4 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6 sm:py-5" role="listitem">
-  <dt class="text-sm font-medium text-gray-500">
+  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
     {toTitleCase(property.humanName ?? property.name)}
   </dt>
-  <dd class="mt-1 text-sm text-gray-900 sm:col-span-3 sm:mt-0">
+  <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:col-span-3 sm:mt-0">
     {#if singlePrimitiveValue}
       <PrimitiveValue value={singlePrimitiveValue} />
     {:else if multiplePrimitiveValues}
@@ -108,17 +108,19 @@
       {:else if property.type.code === 'Dosage'}
         <DosageValues values={asDosageValues(property)} />
       {:else if property.type.code === 'Element'}
-        <p class="text-gray-500">{multipleComplexValues.length > 0 ? '<elements>' : '<element>'}</p>
+        <p class="text-gray-500 dark:text-gray-400">
+          {multipleComplexValues.length > 0 ? '<elements>' : '<element>'}
+        </p>
       {:else if property.type.code === 'BackboneElement'}
-        <p class="text-gray-500">
+        <p class="text-gray-500 dark:text-gray-400">
           {multipleComplexValues.length > 0 ? '<backbone-elements>' : '<backbone-element>'}
         </p>
       {:else if property.type.code === 'Extension'}
-        <p class="text-gray-500">
+        <p class="text-gray-500 dark:text-gray-400">
           {multipleComplexValues.length > 0 ? '<extensions>' : '<extension>'}
         </p>
       {:else if property.type.code === 'Resource'}
-        <p class="text-gray-500">
+        <p class="text-gray-500 dark:text-gray-400">
           {multipleComplexValues.length > 0 ? '<resources>' : '<resource>'}
         </p>
       {:else}

@@ -20,8 +20,8 @@
 
 <td class="py-2">
   {#if hasInteraction(resource, interaction)}
-    <Check class="mx-auto w-5 h-5 text-green-600" />
+    <Check class="mx-auto w-5 h-5 text-green-600 dark:text-green-400" />
   {:else}
-    <XMark class="mx-auto w-5 h-5 text-red-600" />
+    <XMark class="mx-auto w-5 h-5 text-red-600 dark:text-red-400" />
   {/if}
 </td>

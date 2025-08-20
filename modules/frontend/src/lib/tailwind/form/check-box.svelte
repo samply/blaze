@@ -16,7 +16,7 @@
         name={id}
         type="checkbox"
         {checked}
-        class="col-start-1 row-start-1 appearance-none rounded-sm border border-gray-300 bg-white checked:border-indigo-600 checked:bg-indigo-600 indeterminate:border-indigo-600 indeterminate:bg-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:border-gray-300 disabled:bg-gray-100 disabled:checked:bg-gray-100 forced-colors:appearance-auto"
+        class="col-start-1 row-start-1 appearance-none rounded-sm border border-gray-300 bg-white dark:bg-gray-800 checked:border-indigo-600 checked:bg-indigo-600 indeterminate:border-indigo-600 indeterminate:bg-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:border-gray-300 disabled:bg-gray-100 disabled:checked:bg-gray-100 forced-colors:appearance-auto"
       />
       <svg
         viewBox="0 0 14 14"
@@ -41,6 +41,6 @@
     </div>
   </div>
   <div class="text-sm/6">
-    <label for={id} class="font-medium text-gray-900">{label}</label>
+    <label for={id} class="font-medium text-gray-900 dark:text-gray-100">{label}</label>
   </div>
 </div>

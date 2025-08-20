@@ -16,8 +16,10 @@
   <Table>
     {#snippet caption()}
       <div>
-        <h1 class="text-base font-semibold leading-6 text-gray-900">Settings</h1>
-        <p class="mt-2 text-sm text-gray-700">A list of all environment variables used by Blaze</p>
+        <h1 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">Settings</h1>
+        <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
+          A list of all environment variables used by Blaze
+        </p>
       </div>
     {/snippet}
 
@@ -25,17 +27,17 @@
       <tr>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
           >Name
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
           >Value
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
           >Default
         </th>
       </tr>
@@ -48,8 +50,8 @@
   <Table clazz="mt-8">
     {#snippet caption()}
       <div>
-        <h1 class="text-base font-semibold leading-6 text-gray-900">Features</h1>
-        <p class="mt-2 text-sm text-gray-700">Status of optional features</p>
+        <h1 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">Features</h1>
+        <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Status of optional features</p>
       </div>
     {/snippet}
 
@@ -57,17 +59,17 @@
       <tr>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
           >Name
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
           >Toggle
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
+          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
           >Enabled
         </th>
       </tr>

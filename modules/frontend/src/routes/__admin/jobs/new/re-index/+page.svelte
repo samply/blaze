@@ -20,12 +20,14 @@
   <form method="POST">
     <div class="mt-6 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
       <div class="col-span-full">
-        <label for="search-param-url" class="block text-sm/6 font-medium leading-6 text-gray-900"
+        <label
+          for="search-param-url"
+          class="block text-sm/6 font-medium leading-6 text-gray-900 dark:text-gray-100"
           >Search Param URL</label
         >
         {#if form?.incorrect}
           <InputTextError name="search-param-url" value={form?.searchParamUrl ?? ''} />
-          <p class="mt-2 text-sm text-red-600">{form.msg}</p>
+          <p class="mt-2 text-sm text-red-600 dark:text-red-400">{form.msg}</p>
         {:else}
           <InputText name="search-param-url" value={form?.searchParamUrl ?? ''} />
         {/if}

@@ -22,7 +22,7 @@
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-  <div class="flex gap-2 pl-8 pr-4 sm:pr-6 py-3.5 border-b border-gray-200">
+  <div class="flex gap-2 pl-8 pr-4 sm:pr-6 py-3.5 border-b border-gray-200 dark:border-gray-600">
     <nav class="flex flex-auto" aria-label="Breadcrumb">
       <ol class="flex items-center py-0.5 space-x-4">
         <BreadcrumbEntryHome />

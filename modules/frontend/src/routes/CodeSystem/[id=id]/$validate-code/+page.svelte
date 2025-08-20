@@ -27,13 +27,13 @@
     <BreadcrumbEntryType type="CodeSystem" />
     <BreadcrumbEntryResource type="CodeSystem" {...params} resource={data.codeSystem} />
     <BreadcrumbEntry>
-      <span class="ml-4 text-sm font-medium text-gray-500">$validate-code</span>
+      <span class="ml-4 text-sm font-medium text-gray-500 dark:text-gray-400">$validate-code</span>
     </BreadcrumbEntry>
   </Breadcrumb>
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
-  <h2 class="text-base/7 font-semibold text-gray-900">
+  <h2 class="text-base/7 font-semibold text-gray-900 dark:text-gray-100">
     {title(data.codeSystem)}
   </h2>
   {#if data.codeSystem.description}
@@ -52,7 +52,7 @@
   </Form>
 
   {#if form?.incorrect}
-    <p class="text-red-600">{form.msg}</p>
+    <p class="text-red-600 dark:text-red-400">{form.msg}</p>
   {/if}
 
   {#if form?.result}

@@ -19,7 +19,7 @@
   title={toTitleCase(stats.name)}
 >
   {#snippet logo()}
-    <CircleStack class="size-7" />
+    <CircleStack class="size-7 text-gray-900 dark:text-gray-100" />
   {/snippet}
 
   <Row title="File System Usage">

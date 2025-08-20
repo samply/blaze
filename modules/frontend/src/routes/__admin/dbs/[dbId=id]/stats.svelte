@@ -11,7 +11,7 @@
 </script>
 
 <dl
-  class="mx-auto grid grid-cols-1 gap-px bg-gray-900/5 sm:grid-cols-2 lg:grid-cols-4 border-y border-gray-200"
+  class="mx-auto grid grid-cols-1 gap-px bg-gray-900/5 sm:grid-cols-2 lg:grid-cols-4 border-y border-gray-200 dark:border-gray-600"
 >
   <SimpleStats title="File System Usage">
     {prettyBytes(stats.estimateLiveDataSize, { binary: true, maximumFractionDigits: 1 })}
