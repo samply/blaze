@@ -5,6 +5,7 @@
   import TimeAgo from '$lib/time-ago.svelte';
   import type { SummaryJob } from './+page.server';
   import humanizeDuration from 'humanize-duration';
+  import { Calendar, Clock, EllipsisVertical } from 'svelte-heros-v2';
 
   function actionsAvailable(job: Job) {
     return job.status === 'in-progress' || job.status === 'on-hold';
@@ -37,38 +38,11 @@
   <div class="flex shrink-0 items-center gap-x-6">
     <div class="hidden sm:flex sm:flex-col sm:items-end">
       <p class="text-xs leading-6 text-gray-500">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1"
-          stroke="currentColor"
-          class="inline w-4 h-4"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
-          />
-        </svg>
+        <Calendar class="inline size-4" />
         <TimeAgo value={job.authoredOn} />
       </p>
       <p class="text-xs leading-6 text-gray-500">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1"
-          stroke="currentColor"
-          class="inline w-4 h-4"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-          />
-        </svg>
-
+        <Clock class="inline size-4" />
         {#if job.processingDuration}
           {humanizeDuration(job.processingDuration * 1000, { round: true })}
         {/if}
@@ -85,11 +59,7 @@
         disabled={!actionsAvailable(job)}
       >
         <span class="sr-only">Open options</span>
-        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path
-            d="M10 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM10 8.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM11.5 15.5a1.5 1.5 0 10-3 0 1.5 1.5 0 003 0z"
-          />
-        </svg>
+        <EllipsisVertical variation="mini" class="inline size-5" />
       </button>
 
       <!--

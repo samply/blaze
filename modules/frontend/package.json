@@ -45,7 +45,8 @@
   "dependencies": {
     "@auth/sveltekit": "^1.0.0",
     "@fontsource-variable/lexend": "^5.0.0",
-    "@tailwindcss/forms": "^0.5.3"
+    "@tailwindcss/forms": "^0.5.3",
+    "svelte-heros-v2": "^2.0.2"
   },
   "overrides": {
     "@sveltejs/kit": {

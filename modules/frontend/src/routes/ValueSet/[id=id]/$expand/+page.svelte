@@ -66,17 +66,18 @@
       </CheckBoxes>
     </Section>
     {#snippet buttons()}
-      <SubmitButton name="Submit" />
+      <div class="flex gap-4">
+        {#if form?.incorrect}
+          <p class="text-sm text-red-600">{form.msg}</p>
+        {/if}
+        <SubmitButton name="Submit" />
+      </div>
     {/snippet}
   </Form>
 
-  {#if form?.incorrect}
-    <p class="text-red-600">{form.msg}</p>
-  {/if}
-
   {#if form?.valueSet?.expansion?.contains}
     <ul role="list" class="divide-y divide-gray-100">
-      {#each form.valueSet.expansion.contains as contains}
+      {#each form.valueSet.expansion.contains as contains ([contains.system, contains.version, contains.code])}
         <li class="flex flex-wrap items-center justify-between gap-x-6 gap-y-4 py-5 sm:flex-nowrap">
           <div>
             <p class="text-sm/6 font-semibold text-gray-900">
@@ -84,20 +85,16 @@
             </p>
             <div class="mt-1 flex items-center gap-x-2 text-xs/5 text-gray-500">
               <p>{contains.system}</p>
-              <svg viewBox="0 0 2 2" class="size-0.5 fill-current">
-                <circle cx="1" cy="1" r="1" />
-              </svg>
+              •
               {#if contains.version}
                 <p>{contains.version}</p>
-                <svg viewBox="0 0 2 2" class="size-0.5 fill-current">
-                  <circle cx="1" cy="1" r="1" />
-                </svg>
+                •
               {/if}
               <p>{contains.code}</p>
             </div>
             {#if contains.designation}
               <ul>
-                {#each contains.designation as designation}
+                {#each contains.designation as designation ([designation.language, designation.use, designation.value])}
                   <li>{designation.value}</li>
                 {/each}
               </ul>

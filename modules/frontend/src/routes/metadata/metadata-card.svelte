@@ -7,9 +7,7 @@
   import { page } from '$app/state';
 
   import DateTime from '$lib/values/date-time.svelte';
-  import Download from './download.svelte';
-  import Check from './check.svelte';
-  import XMark from './x-mark.svelte';
+  import { Check, ArrowDownTray, XMark } from 'svelte-heros-v2';
   import Object from '$lib/resource/json/object.svelte';
   import TabItem from '$lib/tab-item.svelte';
   import InteractionTh from './interaction-th.svelte';
@@ -81,7 +79,7 @@
           <td class="py-2 text-sm text-gray-900">
             <a
               href="{resolve('/StructureDefinition')}?url={resource.profile}&_format=json"
-              download="{resource.type}.json"><Download /></a
+              download="{resource.type}.json"><ArrowDownTray class="mx-auto w-5 h-5" /></a
             >
           </td>
           <InteractionTd {resource} interaction={RestfulInteraction.read} />
@@ -95,44 +93,46 @@
           <InteractionTd {resource} interaction={RestfulInteraction.delete} />
           <td class="py-2">
             {#if resource.readHistory}
-              <Check />
+              <Check class="mx-auto w-5 h-5 text-green-600" />
             {:else}
-              <XMark />
+              <XMark class="mx-auto w-5 h-5 text-red-600" />
             {/if}
           </td>
           <td class="py-2">
             {#if resource.updateCreate}
-              <Check />
+              <Check class="mx-auto w-5 h-5 text-green-600" />
             {:else}
-              <XMark />
+              <XMark class="mx-auto w-5 h-5 text-red-600" />
             {/if}
           </td>
           <td class="py-2">
             {#if resource.conditionalCreate}
-              <Check />
+              <Check class="mx-auto w-5 h-5 text-green-600" />
             {:else}
-              <XMark />
+              <XMark class="mx-auto w-5 h-5 text-red-600" />
             {/if}
           </td>
           <td class="py-2">
             {#if resource.conditionalRead}
-              <Check />
+              <Check class="mx-auto w-5 h-5 text-green-600" />
             {:else}
-              <XMark />
+              <XMark class="mx-auto w-5 h-5 text-red-600" />
             {/if}
           </td>
           <td class="py-2">
             {#if resource.conditionalUpdate}
-              <Check />
+              <Check class="mx-auto w-5 h-5 text-green-600" />
             {:else}
-              <XMark />
+              <XMark class="mx-auto w-5 h-5 text-red-600" />
             {/if}
           </td>
           <td class="py-2">
             {#if resource.conditionalDelete !== 'not-supported'}
-              <span title={resource.conditionalDelete}><Check /></span>
+              <span title={resource.conditionalDelete}
+                ><Check class="mx-auto size-5 text-green-600" /></span
+              >
             {:else}
-              <XMark />
+              <XMark class="mx-auto w-5 h-5 text-red-600" />
             {/if}
           </td>
         </tr>
