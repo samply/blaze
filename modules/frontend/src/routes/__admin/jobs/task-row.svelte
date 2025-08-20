@@ -23,13 +23,13 @@
   <div class="flex min-w-0 gap-x-4">
     <Status {job} />
     <div class="min-w-0 flex-auto">
-      <p class="text-sm font-semibold leading-6 text-gray-900">
+      <p class="text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100">
         <a
           href={resolve('/__admin/jobs/[type]/[id=id]', { type: job.type.code, id: job.id })}
           class="hover:underline">{job.type.display}</a
         >
       </p>
-      <p class="mt-1 flex text-xs leading-5 text-gray-500">
+      <p class="mt-1 flex text-xs leading-5 text-gray-500 dark:text-gray-400">
         #{job.number}
         {job.detail}
       </p>
@@ -37,11 +37,11 @@
   </div>
   <div class="flex shrink-0 items-center gap-x-6">
     <div class="hidden sm:flex sm:flex-col sm:items-end">
-      <p class="text-xs leading-6 text-gray-500">
+      <p class="text-xs leading-6 text-gray-500 dark:text-gray-400">
         <Calendar class="inline size-4" />
         <TimeAgo value={job.authoredOn} />
       </p>
-      <p class="text-xs leading-6 text-gray-500">
+      <p class="text-xs leading-6 text-gray-500 dark:text-gray-400">
         <Clock class="inline size-4" />
         {#if job.processingDuration}
           {humanizeDuration(job.processingDuration * 1000, { round: true })}
@@ -51,7 +51,7 @@
     <div class="relative flex-none">
       <button
         type="button"
-        class="-m-2.5 block p-2.5 text-gray-500 hover:text-gray-900 enabled:cursor-pointer"
+        class="-m-2.5 block p-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 hover:dark:text-gray-100 enabled:cursor-pointer"
         id="options-menu-0-button"
         aria-expanded="false"
         aria-haspopup="true"
@@ -73,7 +73,7 @@
 					To: "transform opacity-0 scale-95"
 			-->
       <div
-        class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
+        class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
         class:hidden={!actionMenuOpen}
         role="menu"
         aria-orientation="vertical"
@@ -86,7 +86,7 @@
               <input type="hidden" name="job-id" value={job.id} />
               <button
                 type="submit"
-                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50 enabled:cursor-pointer"
+                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 dark:text-gray-100 hover:bg-gray-50 hover:dark:bg-gray-700 enabled:cursor-pointer"
                 role="menuitem"
                 tabindex="-1"
                 id="options-menu-0-item-0"
@@ -98,7 +98,7 @@
               <input type="hidden" name="job-id" value={job.id} />
               <button
                 type="submit"
-                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50 enabled:cursor-pointer"
+                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 dark:text-gray-100 hover:bg-gray-50 hover:dark:bg-gray-700 enabled:cursor-pointer"
                 role="menuitem"
                 tabindex="-1"
                 id="options-menu-0-item-0"
@@ -112,7 +112,7 @@
             <input type="hidden" name="job-id" value={job.id} />
             <button
               type="submit"
-              class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50 enabled:cursor-pointer"
+              class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 dark:text-gray-100 hover:bg-gray-50 hover:dark:bg-gray-700 enabled:cursor-pointer"
               role="menuitem"
               tabindex="-1"
               id="options-menu-0-item-0"

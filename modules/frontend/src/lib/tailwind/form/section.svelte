@@ -11,7 +11,7 @@
 </script>
 
 <div>
-  <h2 class="text-base/7 font-semibold text-gray-900">{name}</h2>
+  <h2 class="text-base/7 font-semibold text-gray-900 dark:text-gray-100">{name}</h2>
   {#if description}
     <p class="mt-1 max-w-2xl text-sm/6 text-gray-600">{description}</p>
   {/if}

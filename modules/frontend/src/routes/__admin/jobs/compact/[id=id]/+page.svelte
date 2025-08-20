@@ -48,14 +48,14 @@
     </Row>
     <Row title="Database">
       <a
-        class="text-indigo-600 hover:text-indigo-900"
+        class="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 hover:dark:text-indigo-500"
         href={resolve('/__admin/dbs/[dbId=id]', { dbId: data.job.database })}
         >{pascalCase(data.job.database)}</a
       >
     </Row>
     <Row title="Column Family">
       <a
-        class="text-indigo-600 hover:text-indigo-900"
+        class="text-indigo-600 dark:text-indigo-300 hover:text-indigo-900 hover:dark:text-indigo-500"
         href={resolve('/__admin/dbs/[dbId=id]/column-families/[cfId=id]', {
           dbId: data.job.database,
           cfId: data.job.columnFamily

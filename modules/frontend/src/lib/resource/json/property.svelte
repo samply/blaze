@@ -22,7 +22,7 @@
       : undefined;
 </script>
 
-{' '.repeat(indent)}<span class="text-orange-700">"{property.name}"</span
+{' '.repeat(indent)}<span class="text-orange-700 dark:text-orange-200">"{property.name}"</span
 >{': '}{#if Array.isArray(property.value)}<ArrayValue
     {indent}
     values={property.value}
@@ -30,7 +30,7 @@
     {indent}
     value={property.value}
   />{/if}{#if primitiveExtensions !== undefined}{',\n'}{' '.repeat(indent)}<span
-    class="text-orange-700">"_{property.name}"</span
+    class="text-orange-700 dark:text-orange-200">"_{property.name}"</span
   >{': '}<Value {indent} value={wrapPrimitiveExtensions(primitiveExtensions)} />{/if}{isLast
   ? '\n'
   : ',\n'}

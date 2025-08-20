@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { FhirObjectBundleEntry } from '$lib/resource/resource-card';
-  import MethodBadge from './method-badge.svelte';
-  import SearchModeBadge from './search-mode-badge.svelte';
-  import SubsettedBadge from './subsetted-badge.svelte';
+  import MethodBadge from '../history/method-badge.svelte';
+  import SearchModeBadge from '../history/search-mode-badge.svelte';
+  import SubsettedBadge from '../history/subsetted-badge.svelte';
 
   interface Props {
     entry: FhirObjectBundleEntry;

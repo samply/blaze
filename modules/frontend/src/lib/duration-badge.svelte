@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Badge from '$lib/tailwind/badge.svelte';
+
   interface Props {
     duration: number;
   }
@@ -15,9 +17,8 @@
   let { duration }: Props = $props();
 </script>
 
-<span
-  role="note"
+<Badge
+  color="green"
   title="Request completed in {printDuration(duration)}."
-  class="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800}"
-  >Time: {printDuration(duration)}</span
->
+  value="Time: {printDuration(duration)}"
+/>

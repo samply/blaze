@@ -21,7 +21,7 @@
   {:else}
     <button
       type="button"
-      class="inline-flex w-full justify-center gap-x-1.5 rounded-md bg-white px-2 py-1 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 enabled:cursor-pointer"
+      class="inline-flex w-full justify-center gap-x-1.5 rounded-md bg-white dark:bg-gray-800 px-2 py-1 text-sm font-semibold text-gray-900 dark:text-gray-100 ring-1 ring-gray-300 dark:ring-gray-500 ring-inset hover:bg-gray-50 hover:dark:bg-gray-700 enabled:cursor-pointer"
       id="menu-button"
       onclick={toggle}
       aria-expanded="true"
@@ -44,7 +44,7 @@
 	-->
   {#if open}
     <div
-      class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none"
+      class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black/5 focus:outline-none"
       role="menu"
       aria-orientation="vertical"
       aria-labelledby="menu-button"

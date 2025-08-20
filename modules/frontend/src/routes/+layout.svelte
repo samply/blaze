@@ -43,12 +43,17 @@
 </script>
 
 <div class="min-h-full">
-  <nav class="border-b border-gray-200 bg-white">
+  <nav class="border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-16 justify-between">
         <div class="flex">
           <div class="flex shrink-0 items-center">
-            <img class="h-8 w-auto" src={asset('/blaze-logo.svg')} alt="Blaze" />
+            <img class="inline dark:hidden h-8 w-auto" src={asset('/blaze-logo.svg')} alt="Blaze" />
+            <img
+              class="dark:inline hidden h-8 w-auto"
+              src={asset('/blaze-logo-bright.svg')}
+              alt="Blaze"
+            />
           </div>
           <!-- Navigation Menu -->
           <div class="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
@@ -74,7 +79,7 @@
             <div>
               <button
                 type="button"
-                class="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 enabled:cursor-pointer"
+                class="relative flex max-w-xs items-center rounded-full bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 enabled:cursor-pointer"
                 id="user-menu-button"
                 aria-expanded="false"
                 aria-haspopup="true"
@@ -85,7 +90,9 @@
                 <span class="sr-only">Open user menu</span>
                 <span
                   class:text-gray-900={page.data.session}
+                  class:dark:text-gray-100={page.data.session}
                   class:text-gray-500={!page.data.session}
+                  class:dark:text-gray-400={!page.data.session}
                 >
                   <UserCircle class="size-8" /></span
                 >
@@ -103,17 +110,19 @@
                         -->
             {#if userProfileOpen}
               <div
-                class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+                class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
                 role="menu"
                 aria-orientation="vertical"
                 aria-labelledby="user-menu-button"
                 tabindex="-1"
                 transition:fade={{ duration: 100 }}
               >
-                <p class="block px-4 py-2 text-sm text-gray-900">{page.data.session?.user?.name}</p>
+                <p class="block px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
+                  {page.data.session?.user?.name}
+                </p>
                 <button
                   onclick={() => signOut()}
-                  class="block px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 enabled:cursor-pointer"
+                  class="block px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 hover:dark:bg-gray-600 enabled:cursor-pointer"
                   role="menuitem"
                   tabindex="-1"
                   id="user-menu-item-sign-out"

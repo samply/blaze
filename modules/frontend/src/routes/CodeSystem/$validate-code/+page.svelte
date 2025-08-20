@@ -23,7 +23,7 @@
     <BreadcrumbEntryHome />
     <BreadcrumbEntryType type="CodeSystem" />
     <BreadcrumbEntry>
-      <span class="ml-4 text-sm font-medium text-gray-500">$validate-code</span>
+      <span class="ml-4 text-sm font-medium text-gray-500 dark:text-gray-400">$validate-code</span>
     </BreadcrumbEntry>
   </Breadcrumb>
 </header>
@@ -43,7 +43,7 @@
   </Form>
 
   {#if form?.incorrect}
-    <p class="text-red-600">{form.msg}</p>
+    <p class="text-red-600 dark:text-red-400">{form.msg}</p>
   {/if}
 
   {#if form?.result}

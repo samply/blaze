@@ -29,13 +29,15 @@
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
   <ErrorCard>
     {#if page.status === 404}
-      <a href={resolve('/[type=type]', params)} class="text-sm font-semibold text-gray-900"
+      <a
+        href={resolve('/[type=type]', params)}
+        class="text-sm font-semibold text-gray-900 dark:text-gray-100"
         >Go to {params.type}s <span aria-hidden="true">&rarr;</span></a
       >
     {:else if page.status === 410}
       <a
         href={resolve('/[type=type]/[id=id]/_history', params)}
-        class="text-sm font-semibold text-gray-900"
+        class="text-sm font-semibold text-gray-900 dark:text-gray-100"
         >Go to History <span aria-hidden="true">&rarr;</span></a
       >
     {/if}

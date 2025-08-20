@@ -25,7 +25,9 @@
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
   <div class="md:flex md:items-center md:justify-between">
-    <h1 class="flex-1 text-base font-semibold leading-6 text-gray-900">All Jobs</h1>
+    <h1 class="flex-1 text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+      All Jobs
+    </h1>
     <div class="flex md:ml-4">
       <a
         class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white text-nowrap hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
@@ -36,7 +38,7 @@
     </div>
   </div>
 
-  <ul role="list" class="divide-y divide-gray-100 mt-4">
+  <ul role="list" class="divide-y divide-gray-100 dark:divide-gray-700 mt-4">
     {#each data.all as job (job.id)}
       <TaskRow {job} />
     {/each}

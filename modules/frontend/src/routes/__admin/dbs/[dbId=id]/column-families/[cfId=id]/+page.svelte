@@ -20,16 +20,18 @@
 
 <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
   <div class="mt-4 pb-5">
-    <h3 class="text-base font-semibold leading-7 text-gray-900">
+    <h3 class="text-base font-semibold leading-7 text-gray-900 dark:text-gray-100">
       <a href={resolve('/__admin/dbs/[dbId=id]', params)}>{toTitleCase(params.dbId)}</a> -
       {pascalCase(params.cfId)}
     </h3>
-    <p class="mt-1 max-w-4xl text-sm leading-6 text-gray-500">
+    <p class="mt-1 max-w-4xl text-sm leading-6 text-gray-500 dark:text-gray-400">
       {descriptions[params.dbId][params.cfId]}
     </p>
   </div>
 
-  <dl class="mx-auto grid grid-cols-1 gap-px bg-gray-900/5 sm:grid-cols-2 border-y border-gray-200">
+  <dl
+    class="mx-auto grid grid-cols-1 gap-px bg-gray-900/5 sm:grid-cols-2 border-y border-gray-200 dark:border-gray-600"
+  >
     <SimpleStats title="File System Usage">
       {prettyBytes(data.fileSize, { binary: true, maximumFractionDigits: 1 })}
     </SimpleStats>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ReIndexJob } from '$lib/jobs/re-index';
+  import Badge from '$lib/tailwind/badge.svelte';
 
   function progress(job: ReIndexJob) {
     const total = job.totalResources;
@@ -17,42 +18,24 @@
 </script>
 
 {#if job.status === 'completed'}
-  <span
-    class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20"
-    >completed</span
-  >
+  <Badge color="green" value="completed" />
 {:else if job.status === 'failed'}
-  <span
-    class="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20"
-    >failed</span
-  >
+  <Badge color="red" value="failed" />
 {:else if job.status === 'in-progress'}
-  <span
-    class="inline-flex items-center rounded-md bg-linear-to-r from-blue-200 to-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
-    style="--tw-gradient-from-position: {progress(job)}%; --tw-gradient-to-position: {progress(
-      job
-    ) + 5}%">in-progress</span
-  >
+  <Badge
+    value="in-progress"
+    class="bg-linear-to-r from-blue-200 to-blue-50 dark:from-blue-800 dark:to-blue-600"
+    style="--tw-gradient-from-position: {progress(job)}%;
+           --tw-gradient-to-position: {progress(job) + 5}%"
+  />
 {:else if job.status === 'on-hold'}
   {#if job.statusReason === 'paused'}
-    <span
-      class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
-      >paused</span
-    >
+    <Badge color="blue" value="paused" />
   {:else if job.statusReason === 'orderly-shutdown'}
-    <span
-      class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20"
-      >orderly-shutdown</span
-    >
+    <Badge color="yellow" value="orderly-shutdown" />
   {:else}
-    <span
-      class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20"
-      >on-hold</span
-    >
+    <Badge color="yellow" value="on-hold" />
   {/if}
 {:else}
-  <span
-    class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-600/20"
-    >{job.status}</span
-  >
+  <Badge color="gray" value={job.status} />
 {/if}

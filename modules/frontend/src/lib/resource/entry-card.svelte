@@ -3,7 +3,7 @@
   import ResourceCard from '$lib/resource/resource-card.svelte';
   import DeletedCard from '../history/deleted-card.svelte';
   import OutcomeCard from './outcome-card.svelte';
-  import Badge from '../history/badge.svelte';
+  import EntryBadges from './entry-badges.svelte';
 
   interface Props {
     entry: FhirObjectBundleEntry;
@@ -18,7 +18,7 @@
   {:else}
     <ResourceCard resource={entry.fhirObject} embedded={true}>
       {#snippet header()}
-        <Badge {entry} />
+        <EntryBadges {entry} />
       {/snippet}
     </ResourceCard>
   {/if}
