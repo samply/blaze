@@ -150,7 +150,7 @@
    handle-error))
 
 (defn- next-url [page]
-  (type/value (:url (first (filter (comp #{"next"} :relation) (:link page))))))
+  (type/value (:url (first (filter (comp #{"next"} type/value :relation) (:link page))))))
 
 (deftype PagingSubscription
          [^Flow$Subscriber subscriber volatile-uri opts]
