@@ -14,6 +14,7 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
+   [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
@@ -1964,29 +1965,34 @@
         (is (= "0" (:id (coll/first coll))))
         (is (= ["0" "1"] (mapv :id coll)))))))
 
+(defn- ensure-db [node-or-db]
+  (cond-> node-or-db
+    (satisfies? np/Node node-or-db)
+    d/db))
+
 (defn- pull-type-query
-  ([node type clauses]
-   (when-ok [handles (d/type-query (d/db node) type clauses)]
-     @(d/pull-many node handles)))
-  ([node type clauses start-id]
-   (when-ok [handles (d/type-query (d/db node) type clauses start-id)]
-     @(d/pull-many node handles))))
+  ([node-or-db type clauses]
+   (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses)]
+     @(d/pull-many node-or-db handles)))
+  ([node-or-db type clauses start-id]
+   (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses start-id)]
+     @(d/pull-many node-or-db handles))))
 
-(defn- count-type-query [node type clauses]
-  (when-ok [query (d/compile-type-query node type clauses)]
-    @(d/count-query (d/db node) query)))
+(defn- count-type-query [node-or-db type clauses]
+  (when-ok [query (d/compile-type-query node-or-db type clauses)]
+    @(d/count-query (ensure-db node-or-db) query)))
 
-(defn- explain-type-query [node type clauses]
-  (when-ok [query (d/compile-type-query node type clauses)]
-    (d/explain-query (d/db node) query)))
+(defn- explain-type-query [node-or-db type clauses]
+  (when-ok [query (d/compile-type-query node-or-db type clauses)]
+    (d/explain-query (ensure-db node-or-db) query)))
 
 (defmacro given-type-query
   "Combines `pull-type-query` with `count-type-query`. Assumes that the first
   line of assertions is `count := x` because it takes the count from it."
-  [node type clauses & [_count-sym _eq-sym count :as body]]
-  `(do (given (pull-type-query ~node ~type ~clauses)
+  [node-or-db type clauses & [_count-sym _eq-sym count :as body]]
+  `(do (given (pull-type-query ~node-or-db ~type ~clauses)
          ~@body)
-       (is (= ~count (count-type-query ~node ~type ~clauses)))))
+       (is (= ~count (count-type-query ~node-or-db ~type ~clauses)))))
 
 (def system-clock-config
   (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
@@ -9009,3 +9015,129 @@
                                   "Observation" "09999")
                 :num-resources := 1
                 :next := nil))))))))
+
+(deftest since-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
+     [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
+      [:put {:fhir/type :fhir/Condition :id "2"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"system"
+                  :code #fhir/code"code-a"}]}
+             :subject #fhir/Reference{:reference "Patient/1"}}]]
+     [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"female"}]]]
+
+    (let [db (d/db node)]
+      (testing "since 0 behaves like normal db"
+        (let [since-db (d/since db 0)]
+          ; TODO property-based check equal to normal db?
+          (is (= 4 (d/t since-db)))
+          (is (= 4 (d/basis-t since-db)))
+          (is (= 3 (d/system-total since-db)))
+          (is (= 2 (d/type-total since-db "Patient")))
+          (is (= 3 (count @(d/pull-many node (d/system-list since-db)))))
+          (given @(d/pull-many node (d/type-list since-db "Patient"))
+            count := 2
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [0 :meta :versionId] := #fhir/id"2"
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "1"
+            [1 :meta :versionId] := #fhir/id"4")
+          (given @(d/pull node (d/resource-handle since-db "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta fhir-spec/fhir-type] := :fhir/Meta
+            [:meta :versionId] := #fhir/id"2")
+          (given @(pull-instance-history since-db "Patient" "0")
+            count := 2
+            [0 :gender] := #fhir/code"female"
+            [0 :meta :versionId] := #fhir/id"2"
+            [1 :gender] := #fhir/code"male"
+            [1 :meta :versionId] := #fhir/id"1")
+          (given @(pull-instance-history since-db "Patient" "1")
+            count := 2
+            [0 :gender] := #fhir/code"female"
+            [0 :meta :versionId] := #fhir/id"4"
+            [1 :gender] := #fhir/code"male"
+            [1 :meta :versionId] := #fhir/id"3")))
+
+      (testing "since 2 has 1 patient"
+        (let [since-db (d/since db 2)]
+          (is (= 4 (d/t since-db)))
+          (is (= 4 (d/basis-t since-db)))
+          (is (= 1 (d/type-total since-db "Patient")))
+          (given @(d/pull-many node (d/type-list since-db "Patient"))
+            count := 1
+            [0 :id] := "1"
+            [0 :meta :versionId] := #fhir/id"4")
+          (is (nil? (d/resource-handle since-db "Patient" "0")))
+          (given @(d/pull node (d/resource-handle since-db "Patient" "1"))
+            :id := "1"
+            [:meta :versionId] := #fhir/id"4")
+          (given @(d/pull-many node (d/system-history since-db))
+            count := 3
+            [0 :id] := "1"
+            [0 :fhir/type] := :fhir/Patient
+            [0 :gender] := #fhir/code"female"
+            [0 :meta :versionId] := #fhir/id"4"
+            [1 :id] := "2"
+            [1 :fhir/type] := :fhir/Condition
+            [1 :meta :versionId] := #fhir/id"3"
+            [2 :id] := "1"
+            [2 :fhir/type] := :fhir/Patient
+            [2 :gender] := #fhir/code"male"
+            [2 :meta :versionId] := #fhir/id"3")
+          (given @(d/pull-many node (d/system-list since-db))
+            count := 2
+            [0 :id] := "2"
+            [0 :fhir/type] := :fhir/Condition
+            [0 :meta :versionId] := #fhir/id"3"
+            [1 :id] := "1"
+            [1 :fhir/type] := :fhir/Patient
+            [1 :gender] := #fhir/code"female"
+            [1 :meta :versionId] := #fhir/id"4")
+          (is (= 2 (d/system-total since-db)))
+          (given-type-query since-db "Patient" [["gender" "female"]]
+            count := 1
+            [0 :id] := "1")
+          (given @(d/pull-many node (d/type-history since-db "Patient"))
+            count := 2
+            [0 :id] := "1"
+            [0 :gender] := #fhir/code"female"
+            [0 :meta :versionId] := #fhir/id"4"
+            [1 :id] := "1"
+            [1 :gender] := #fhir/code"male"
+            [1 :meta :versionId] := #fhir/id"3")
+          (given @(pull-instance-history since-db "Patient" "1")
+            count := 2
+            [0 :gender] := #fhir/code"female"
+            [0 :meta :versionId] := #fhir/id"4"
+            [1 :gender] := #fhir/code"male"
+            [1 :meta :versionId] := #fhir/id"3")
+          (let [clauses [["code" "system|code-a"]]]
+            (given (pull-compartment-query node "Patient" "1" "Condition" clauses)
+              count := 1
+              [0 :fhir/type] := :fhir/Condition
+              [0 :id] := "2"
+              [0 :meta :versionId] := #fhir/id"3"))))
+
+      (testing "db since its current t is empty"
+        ; TODO property-based check equal to empty db?
+        (let [since-db (d/since db (d/t db))]
+          (is (= 4 (d/t since-db)))
+          (is (= 4 (d/basis-t since-db)))
+          (is (zero? (d/type-total since-db "Patient")))
+          (is (coll/empty? @(d/pull-many node (d/type-list since-db "Patient"))))
+          (is (coll/empty? @(d/pull-many node (d/type-history since-db "Patient"))))
+          (is (coll/empty? @(pull-instance-history since-db "Patient" "0")))
+          (is (coll/empty? @(pull-instance-history since-db "Patient" "1")))
+          (is (zero? (d/system-total since-db)))
+          (is (coll/empty? @(d/pull-many node (d/system-list since-db))))
+          (is (coll/empty? @(d/pull-many node (d/system-history since-db))))
+          (is (nil? (d/resource-handle since-db "Patient" "0")))
+          (is (nil? (d/resource-handle since-db "Patient" "1"))))))))
