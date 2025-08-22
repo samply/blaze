@@ -62,6 +62,12 @@
       :delete
       :put)))
 
+(defn- no-purged-at? [vb]
+  (< (bb/remaining vb) 8))
+
+(defn- not-purged?! [base-t vb]
+  (< (long base-t) (bb/get-long! vb)))
+
 (defn resource-handle!
   "Creates a new resource handle when not purged at `base-t`.
 
@@ -69,7 +75,7 @@
   [tid id t base-t vb]
   (let [hash (hash/from-byte-buffer! vb)
         state (bb/get-long! vb)]
-    (when (or (< (bb/remaining vb) 8) (< (long base-t) (bb/get-long! vb)))
+    (when (or (no-purged-at? vb) (not-purged?! base-t vb))
       (ResourceHandle.
        tid
        id

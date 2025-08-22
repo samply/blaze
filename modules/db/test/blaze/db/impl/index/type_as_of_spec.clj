@@ -3,6 +3,7 @@
    [blaze.byte-buffer-spec]
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
+   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.resource-handle-spec]
    [blaze.db.impl.index.type-as-of :as tao]
@@ -13,9 +14,8 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef tao/type-history
-  :args (s/cat :snapshot :blaze.db.kv/snapshot
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
-               :t :blaze.db/t
                :start-t :blaze.db/t
                :start-id (s/nilable :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
