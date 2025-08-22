@@ -37,7 +37,7 @@
    :num-changes (bb/get-long! buf)})
 
 (defn seek-value
-  "Returns the value of `tid` which is most recent according to `t` if there is
+  "Returns the value of `tid,` which is most recent, according to `t,` if there is
   any."
   [snapshot tid t]
   (i/seek-value snapshot :type-stats-index decode-value! codec/tid-size
