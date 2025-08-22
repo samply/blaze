@@ -64,13 +64,13 @@
   and so more than one value per search parameter. Different unit
   representations and other possible prefixes from composite search parameters
   are responsible for the multiple values."
-  {:arglists '([context c-hash tid id prefix])}
-  [{:keys [snapshot t]} c-hash tid id prefix]
-  (r-sp-v/next-value snapshot (rao/resource-handle snapshot tid id t) c-hash
+  {:arglists '([batch-db c-hash tid id prefix])}
+  [{:keys [snapshot] :as batch-db} c-hash tid id prefix]
+  (r-sp-v/next-value snapshot (p/-resource-handle batch-db tid id) c-hash
                      (bs/size prefix) prefix))
 
-(defn- id-start-key [context c-hash tid prefix start-id]
-  (let [start-value (resource-value context c-hash tid start-id prefix)]
+(defn- id-start-key [batch-db c-hash tid prefix start-id]
+  (let [start-value (resource-value batch-db c-hash tid start-id prefix)]
     (assert start-value)
     (sp-vr/encode-seek-key c-hash tid start-value start-id)))
 
@@ -91,14 +91,14 @@
      drop-value
      u/by-id-grouper)
     (sp-vr/keys snapshot (sp-vr/encode-seek-key c-hash tid lower-bound))))
-  ([{:keys [snapshot] :as context} c-hash tid lower-bound-prefix upper-bound
+  ([{:keys [snapshot] :as batch-db} c-hash tid lower-bound-prefix upper-bound
     start-id]
    (coll/eduction
     (comp
      (take-while-less-equal c-hash tid upper-bound)
      drop-value
      u/by-id-grouper)
-    (sp-vr/keys snapshot (id-start-key context c-hash tid lower-bound-prefix
+    (sp-vr/keys snapshot (id-start-key batch-db c-hash tid lower-bound-prefix
                                        start-id)))))
 
 (defn- gt-handles
@@ -109,8 +109,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles' snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value context c-hash tid start-id
+  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value batch-db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
@@ -124,8 +124,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles-prev' snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value context c-hash tid start-id
+  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value batch-db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
@@ -139,8 +139,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value context c-hash tid start-id
+  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value batch-db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
@@ -154,8 +154,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles-prev snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as context} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value context c-hash tid start-id
+  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value batch-db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
