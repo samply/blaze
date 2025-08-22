@@ -28,17 +28,17 @@
   referenced by the list with `list-id` and `list-hash`, starting with
   `start-id` (optional)."
   {:arglists
-   '([context list-id list-hash tid]
-     [context list-id list-hash tid start-id])}
-  ([{:keys [snapshot] :as context} list-id list-hash tid]
+   '([batch-db list-id list-hash tid]
+     [batch-db list-id list-hash tid start-id])}
+  ([{:keys [snapshot] :as batch-db} list-id list-hash tid]
    (coll/eduction
-    (comp (u/reference-resource-handle-mapper context)
+    (comp (u/reference-resource-handle-mapper batch-db)
           (map ih/from-resource-handle))
     (r-sp-v/prefix-keys snapshot list-tid list-id list-hash item-c-hash
                         codec/tid-size (codec/tid-byte-string tid))))
-  ([{:keys [snapshot] :as context} list-id list-hash tid start-id]
+  ([{:keys [snapshot] :as batch-db} list-id list-hash tid start-id]
    (coll/eduction
-    (comp (u/reference-resource-handle-mapper context)
+    (comp (u/reference-resource-handle-mapper batch-db)
           (map ih/from-resource-handle))
     (r-sp-v/prefix-keys snapshot list-tid list-id list-hash item-c-hash
                         codec/tid-size (codec/tid-id tid start-id)))))
