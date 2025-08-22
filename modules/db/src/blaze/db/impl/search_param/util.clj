@@ -1,17 +1,18 @@
 (ns blaze.db.impl.search-param.util
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.byte-buffer :as bb]
-   [blaze.byte-string :as bs]
-   [blaze.coll.core :as coll]
+    [blaze.byte-buffer :as bb]
+    [blaze.byte-string :as bs]
+    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.index-handle :as ih]
-   [blaze.db.impl.index.resource-as-of :as rao]
-   [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.index.single-version-id :as svi]
-   [blaze.fhir.spec :as fhir-spec]
-   [blaze.util :refer [str]]
-   [clojure.string :as str])
+    [blaze.db.impl.index.index-handle :as ih]
+    [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.db.impl.index.single-version-id :as svi]
+    [blaze.db.impl.protocols :as p]
+    [blaze.fhir.spec :as fhir-spec]
+    [blaze.util :refer [str]]
+    [clojure.string :as str])
   (:import
    [org.apache.commons.codec.language Soundex]))
 
@@ -65,8 +66,8 @@
                (vreset! acc (if (reduced? ret) nil (ih/from-single-version-id svi)))
                ret))))))))
 
-(defn non-deleted-resource-handle [{:keys [snapshot t]} tid id]
-  (when-let [handle (rao/resource-handle snapshot tid id t)]
+(defn non-deleted-resource-handle [batch-db tid id]
+  (when-let [handle (p/-resource-handle batch-db tid id)]
     (when-not (rh/deleted? handle)
       handle)))
 
