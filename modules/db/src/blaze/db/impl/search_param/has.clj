@@ -56,10 +56,10 @@
    * `tid`             - Patient
    * `resource-handle` - an Encounter
    * result            - a coll with one Patient"
-  {:arglists '([context search-param tid resource-handle])}
-  [{:keys [snapshot] :as context} {:keys [c-hash]} tid resource-handle]
+  {:arglists '([batch-db search-param tid resource-handle])}
+  [{:keys [snapshot] :as batch-db} {:keys [c-hash]} tid resource-handle]
   (coll/eduction
-   (u/reference-resource-handle-mapper context)
+   (u/reference-resource-handle-mapper batch-db)
    (let [tid-byte-string (codec/tid-byte-string tid)
          {:keys [tid id hash]} resource-handle]
      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
@@ -74,12 +74,12 @@
   (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
 
 (defn- resource-handles*
-  [context tid [search-param chain-search-param join-tid value]]
+  [batch-db tid [search-param chain-search-param join-tid value]]
   (into
    (sorted-set-by id-cmp)
-   (comp (u/resource-handle-xf context join-tid)
-         (mapcat (partial resolve-resource-handles context chain-search-param tid)))
-   (p/-index-handles search-param context join-tid nil value)))
+   (comp (u/resource-handle-xf batch-db join-tid)
+         (mapcat (partial resolve-resource-handles batch-db chain-search-param tid)))
+   (p/-index-handles search-param batch-db join-tid nil value)))
 
 ;; TODO: make this cache public and configurable?
 (def ^:private ^Cache resource-handles-cache
@@ -92,15 +92,15 @@
   "Returns a sorted set of resource handles of resources of type `tid`,
   referenced from resources of the type `join-tid` by `chain-search-param` that
   have `value` according to `search-param`."
-  {:arglists '([context tid [search-param chain-search-param join-tid value]])}
-  [{:keys [t] :as context} tid
+  {:arglists '([batch-db tid [search-param chain-search-param join-tid value]])}
+  [{:keys [t] :as batch-db} tid
    [{:keys [c-hash]} {chain-c-hash :c-hash} join-tid value :as data]]
   (let [key [t tid join-tid chain-c-hash c-hash value]]
-    (.get resource-handles-cache key (fn [_] (resource-handles* context tid data)))))
+    (.get resource-handles-cache key (fn [_] (resource-handles* batch-db tid data)))))
 
 (defn- matches?
-  [context {:keys [tid] :as resource-handle} values]
-  (some #(contains? (resource-handles context tid %) resource-handle) values))
+  [batch-db {:keys [tid] :as resource-handle} values]
+  (some #(contains? (resource-handles batch-db tid %) resource-handle) values))
 
 (defrecord SearchParamHas [index name type code]
   p/SearchParam
