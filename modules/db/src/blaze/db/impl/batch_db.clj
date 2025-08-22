@@ -69,7 +69,7 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
-(defrecord BatchDb [node kv-store snapshot basis-t t]
+(defrecord BatchDb [node kv-store snapshot basis-t t since-t]
   p/Db
   (-node [_]
     node)
@@ -83,7 +83,7 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (rao/resource-handle snapshot tid id t))
+    (rao/resource-handle snapshot tid id t since-t))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -387,4 +387,4 @@
   ^AutoCloseable
   [{:keys [kv-store] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node kv-store snapshot basis-t t)))
+    (->BatchDb node kv-store snapshot basis-t t 0)))

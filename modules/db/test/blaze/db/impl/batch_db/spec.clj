@@ -7,4 +7,4 @@
    [clojure.spec.alpha :as s]))
 
 (s/def :blaze.db.impl/batch-db
-  (s/keys :req-un [:blaze.db/node ::kv/snapshot :blaze.db/t]))
+  (s/keys :req-un [:blaze.db/node ::kv/snapshot :blaze.db/t :blaze.db/since-t]))

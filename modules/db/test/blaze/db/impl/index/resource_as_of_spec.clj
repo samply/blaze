@@ -47,12 +47,12 @@
 
 (s/fdef rao/resource-handle-xf
   :args (s/cat :snapshot ::kv/snapshot
-               :t :blaze.db/t)
+               :t :blaze.db/t
+               :since-t :blaze.db/t)
   :ret fn?)
 
 (s/fdef rao/resource-handle-type-xf
-  :args (s/cat :snapshot ::kv/snapshot
-               :t :blaze.db/t
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :id-extractor (s/? fn?)
                :matcher (s/? fn?))

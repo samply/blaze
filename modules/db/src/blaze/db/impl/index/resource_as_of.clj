@@ -309,22 +309,22 @@
      (keep (decoder tid (codec/id-string id) tid-id-size t))
      tid-id-size (start-key tid id start-t))))
 
-(defn- resource-handle* [iter target-buf key-buf value-buf tid id t]
+(defn- resource-handle* [iter target-buf key-buf value-buf tid id base-t since-t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))
         key-size (+ tid-id-size codec/t-size)]
     (bb/clear! target-buf)
     (bb/put-int! target-buf tid)
     (bb/put-byte-string! target-buf id)
-    (bb/put-long! target-buf (codec/descending-long t))
+    (bb/put-long! target-buf (codec/descending-long base-t))
     (bb/flip! target-buf)
     (kv/seek-buffer! iter target-buf)
     (when (kv/valid? iter)
       ;; it's important to clear key-buf before reading, because otherwise
-      ;; the limit could be to small
+      ;; the limit could be too small
       (bb/clear! key-buf)
       (kv/key! iter key-buf)
       ;; we have to check that we are still on target, because otherwise we
-      ;; would find the next resource. First the length of the found key has
+      ;; would find the next resource. First, the length of the found key has
       ;; to equal our key size
       (when (= key-size (bb/limit key-buf))
         ;; focus target buffer on tid and id
@@ -333,35 +333,37 @@
         ;; focus key buffer on tid and id
         (bb/set-limit! key-buf tid-id-size)
         (when (= target-buf key-buf)
-          ;; focus key buffer on t
+          ;; focus key buffer on base-t
           (bb/set-limit! key-buf key-size)
           ;; read value
           (bb/clear! value-buf)
           (kv/value! iter value-buf)
           ;; build resource handle
-          (rh/resource-handle!
-           tid
-           (codec/id-string id)
-           (codec/descending-long (bb/get-long! key-buf tid-id-size))
-           t
-           value-buf))))))
+          (let [resource-t (codec/descending-long (bb/get-long! key-buf tid-id-size))]
+            (when (<= (long since-t) resource-t)
+              (rh/resource-handle!
+               tid
+               (codec/id-string id)
+               resource-t
+               base-t
+               value-buf))))))))
 
 (defn resource-handle
   "Returns the resource handle with `tid` and `id` at `t` in `snapshot` when
   found."
-  [snapshot tid id t]
+  [snapshot tid id t since-t]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
         value-buf (bb/allocate max-value-size)]
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
-      (resource-handle* iter target-buf key-buf value-buf tid id t))))
+      (resource-handle* iter target-buf key-buf value-buf tid id t since-t))))
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives `[tid id]` tuples and emits
   resource handles when found in `snapshot` at `t`.
 
   Can only be used by a single thread."
-  [snapshot t]
+  [snapshot t since-t]
   (fn [rf]
     (let [target-buf (bb/allocate max-key-size)
           key-buf (bb/allocate max-key-size)
@@ -373,7 +375,7 @@
          (rf result))
         ([result [tid id]]
          (if-let [handle (resource-handle* iter target-buf key-buf value-buf
-                                           tid id t)]
+                                           tid id t since-t)]
            (rf result handle)
            result))))))
 
@@ -384,9 +386,9 @@
   The `id-extractor` is used to extract the resource id as byte-string from the
   input. The `matcher` is given the input and the resource handle to decide
   whether to emit the resource handle or not."
-  ([snapshot t tid]
-   (resource-handle-type-xf snapshot t tid identity (fn [_ _] true)))
-  ([snapshot t tid id-extractor matcher]
+  ([batch-db tid]
+   (resource-handle-type-xf batch-db tid identity (fn [_ _] true)))
+  ([{:keys [snapshot t since-t]} tid id-extractor matcher]
    (fn [rf]
      (let [target-buf (bb/allocate max-key-size)
            key-buf (bb/allocate max-key-size)
@@ -398,7 +400,7 @@
           (rf result))
          ([result input]
           (if-let [handle (resource-handle* iter target-buf key-buf value-buf
-                                            tid (id-extractor input) t)]
+                                            tid (id-extractor input) t since-t)]
             (if (matcher input handle)
               (rf result handle)
               result)

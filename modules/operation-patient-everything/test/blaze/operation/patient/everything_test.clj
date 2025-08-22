@@ -26,7 +26,7 @@
    [java.time Instant]))
 
 (st/instrument)
-(log/set-min-level! :trace)
+(log/set-min-level! :info)
 (tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
@@ -198,6 +198,22 @@
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"invalid"
           [:issue 0 :diagnostics] := "The value `invalid` of the query param `end` is no valid date."))))
+
+  (testing "invalid _since date"                            ; TODO
+    (with-handler [handler]
+                  [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+                  (let [{:keys [status body]}
+                        @(handler {:path-params {:id "0"}
+                                   :query-params {"_since" "invalid"}})]
+
+                    (is (= 400 status))
+
+                    (given body
+                           :fhir/type := :fhir/OperationOutcome
+                           [:issue 0 :severity] := #fhir/code"error"
+                           [:issue 0 :code] := #fhir/code"invalid"
+                           [:issue 0 :diagnostics] := "The value `invalid` of the query param `_since` is no valid instant."))))
 
   (testing "Patient only"
     (with-handler [handler]
@@ -500,6 +516,69 @@
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
             :mode := #fhir/code"match")))))
+
+  (testing "with since"                                     ; TODO
+    (with-handler [handler]
+                  [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                    [:put {:fhir/type :fhir/Observation :id "0"
+                           :subject #fhir/Reference{:reference "Patient/0"}}]
+                    [:put {:fhir/type :fhir/Observation :id "1"
+                           :subject #fhir/Reference{:reference "Patient/0"}
+                           :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]]]
+
+                  (let [{:keys [status]
+                         {[first-entry second-entry] :entry :as body} :body}
+                        @(handler {:path-params {:id "0"}
+                                   :query-params {"end" "2024"}})]
+
+                    (is (= 200 status))
+
+                    (testing "the body contains a bundle"
+                      (is (= :fhir/Bundle (:fhir/type body))))
+
+                    (testing "the bundle id is an LUID"
+                      (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+                    (testing "the bundle type is searchset"
+                      (is (= #fhir/code"searchset" (:type body))))
+
+                    (testing "the total count is 2"
+                      (is (= #fhir/unsignedInt 2 (:total body))))
+
+                    (testing "the bundle contains two entries"
+                      (is (= 2 (count (:entry body)))))
+
+                    (testing "the first entry has the right fullUrl"
+                      (is (= (str base-url context-path "/Patient/0")
+                             (:fullUrl first-entry))))
+
+                    (testing "the first entry has the right resource"
+                      (given (:resource first-entry)
+                             :fhir/type := :fhir/Patient
+                             :id := "0"
+                             [:meta :versionId] := #fhir/id"1"
+                             [:meta :lastUpdated] := Instant/EPOCH))
+
+                    (testing "the first entry has the right search mode"
+                      (given (:search first-entry)
+                             fhir-spec/fhir-type := :fhir.Bundle.entry/search
+                             :mode := #fhir/code"match"))
+
+                    (testing "the second entry has the right fullUrl"
+                      (is (= (str base-url context-path "/Observation/1")
+                             (:fullUrl second-entry))))
+
+                    (testing "the second entry has the right resource"
+                      (given (:resource second-entry)
+                             :fhir/type := :fhir/Observation
+                             :id := "1"
+                             [:meta :versionId] := #fhir/id"1"
+                             [:meta :lastUpdated] := Instant/EPOCH))
+
+                    (testing "the second entry has the right search mode"
+                      (given (:search second-entry)
+                             fhir-spec/fhir-type := :fhir.Bundle.entry/search
+                             :mode := #fhir/code"match")))))
 
   (testing "Patient with various resources"
     (with-handler [handler]
@@ -933,7 +1012,115 @@
 
             (testing "the entry has the right fullUrl"
               (is (= (str base-url context-path "/Observation/2")
-                     (:fullUrl first-entry)))))))))
+                     (:fullUrl first-entry))))))))
+
+    (testing "with since"                                   ; TODO
+      (with-handler [handler _ page-id-cipher]
+                    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                      [:put {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                      [:put {:fhir/type :fhir/Observation :id "1"
+                             :subject #fhir/Reference{:reference "Patient/0"}
+                             :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]
+                      [:put {:fhir/type :fhir/Observation :id "2"
+                             :subject #fhir/Reference{:reference "Patient/0"}
+                             :effective #fhir/dateTime"2024-01-05T23:45:50Z"}]
+                      [:put {:fhir/type :fhir/Observation :id "3"
+                             :subject #fhir/Reference{:reference "Patient/0"}
+                             :effective #fhir/dateTime"2026-01-05T23:45:50Z"}]]]
+
+                    (let [{:keys [status]
+                           {[first-entry second-entry] :entry :as body} :body}
+                          @(handler {:path-params {:id "0"}
+                                     :query-params {"start" "2024" "end" "2025" "_count" "2"}})]
+
+                      (is (= 200 status))
+
+                      (testing "the body contains a bundle"
+                        (is (= :fhir/Bundle (:fhir/type body))))
+
+                      (testing "the bundle id is an LUID"
+                        (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+                      (testing "the bundle type is searchset"
+                        (is (= #fhir/code"searchset" (:type body))))
+
+                      (testing "the total count is not given"
+                        (is (nil? (:total body))))
+
+                      (testing "has a next link"
+                        (is (= (page-url page-id-cipher {"_count" "2" "__t" "1" "__page-offset" "2"
+                                                         "start" "2024" "end" "2025"})
+                               (link-url body "next"))))
+
+                      (testing "the bundle contains two entries"
+                        (is (= 2 (count (:entry body)))))
+
+                      (testing "the first entry has the right fullUrl"
+                        (is (= (str base-url context-path "/Patient/0")
+                               (:fullUrl first-entry))))
+
+                      (testing "the first entry has the right resource"
+                        (given (:resource first-entry)
+                               :fhir/type := :fhir/Patient
+                               :id := "0"
+                               [:meta :versionId] := #fhir/id"1"
+                               [:meta :lastUpdated] := Instant/EPOCH))
+
+                      (testing "the first entry has the right search mode"
+                        (given (:search first-entry)
+                               fhir-spec/fhir-type := :fhir.Bundle.entry/search
+                               :mode := #fhir/code"match"))
+
+                      (testing "the second entry has the right fullUrl"
+                        (is (= (str base-url context-path "/Observation/1")
+                               (:fullUrl second-entry))))
+
+                      (testing "the second entry has the right resource"
+                        (given (:resource second-entry)
+                               :fhir/type := :fhir/Observation
+                               :id := "1"
+                               [:meta :versionId] := #fhir/id"1"
+                               [:meta :lastUpdated] := Instant/EPOCH))
+
+                      (testing "the second entry has the right search mode"
+                        (given (:search second-entry)
+                               fhir-spec/fhir-type := :fhir.Bundle.entry/search
+                               :mode := #fhir/code"match")))
+
+                    (testing "following the next link"
+                      (let [{:keys [status] {[first-entry] :entry :as body} :body}
+                            @(handler
+                               {::reitit/match page-match
+                                :path-params
+                                (page-path-params
+                                  page-id-cipher
+                                  {"_count" "2" "__t" "1" "__page-offset" "2"
+                                   "start" "2024" "end" "2025"})})]
+
+                        (is (= 200 status))
+
+                        (testing "the body contains a bundle"
+                          (is (= :fhir/Bundle (:fhir/type body))))
+
+                        (testing "the bundle id is an LUID"
+                          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+                        (testing "the bundle type is searchset"
+                          (is (= #fhir/code"searchset" (:type body))))
+
+                        (testing "the total count is not given"
+                          (is (nil? (:total body))))
+
+                        (testing "has no next link"
+                          (is (nil? (link-url body "next"))))
+
+                        (testing "the bundle contains one entry"
+                          (is (= 1 (count (:entry body)))))
+
+                        (testing "the entry has the right fullUrl"
+                          (is (= (str base-url context-path "/Observation/2")
+                                 (:fullUrl first-entry)))))))))
 
   (testing "page size of 10,000"
     (with-handler [handler _ page-id-cipher]

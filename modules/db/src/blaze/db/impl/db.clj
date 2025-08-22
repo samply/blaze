@@ -16,20 +16,23 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-(defrecord Db [node kv-store basis-t t]
+(defrecord Db [node kv-store basis-t t since-t]
   p/Db
   (-node [_]
     node)
 
   (-as-of [_ t]
     (assert (<= ^long t ^long basis-t) (format "(<= %d %d)" t basis-t))
-    (Db. node kv-store basis-t t))
+    (Db. node kv-store basis-t t 0))
 
   (-basis-t [_]
     basis-t)
 
   (-as-of-t [_]
     (when (not= basis-t t) t))
+
+  ;(-since [_ since-t]
+  ;  (Db. node kv-store basis-t t since-t))
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
@@ -170,6 +173,9 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-rev-include batch-db resource-handle source-type code)))
 
+  ; Possible solutions:
+  ; * Create a db that only contains resources between t (now) and since-t (might be a good idea)
+  ; * Filter by _lastUpdated after pulling resources from db (might be slower)
   (-patient-everything [_ patient-handle start end]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-patient-everything batch-db patient-handle start end)))
@@ -243,4 +249,4 @@
 (defn db
   "Creates a database on `node` based on `t`."
   [node t]
-  (->Db node (:kv-store node) t t))
+  (->Db node (:kv-store node) t t 0))

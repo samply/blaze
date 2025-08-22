@@ -22,6 +22,9 @@
 (s/def :blaze.db/t
   (s/and int? #(<= 0 % 0xFFFFFFFFFFFFFF)))
 
+(s/def :blaze.db/since-t
+  :blaze.db/t)
+
 (s/def :blaze.db.tx-cmd/if-none-exist
   (s/coll-of :blaze.db.query/search-clause :kind vector? :min-count 1))
 

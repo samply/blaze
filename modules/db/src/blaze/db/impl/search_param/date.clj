@@ -105,11 +105,11 @@
     (sp-vr/prefix-keys-value snapshot c-hash tid param-lb)))
   ([batch-db c-hash tid _param-lb param-ub start-id]
    (coll/eduction
-     (comp (eq-stop param-ub)
+    (comp (eq-stop param-ub)
           (eq-filter param-ub)
           drop-value
           u/by-id-grouper)
-     (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-id))))
 
 (defn- not-equal? [value param-lb param-ub]
   (not (equal? value param-lb param-ub)))
