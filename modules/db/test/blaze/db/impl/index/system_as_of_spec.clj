@@ -3,6 +3,7 @@
    [blaze.byte-buffer-spec]
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
+   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.resource-handle-spec]
    [blaze.db.impl.index.system-as-of :as sao]
@@ -14,8 +15,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef sao/system-history
-  :args (s/cat :snapshot :blaze.db.kv/snapshot
-               :t :blaze.db/t
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :start-t :blaze.db/t
                :start-tid (s/nilable :blaze.db/tid)
                :start-id (s/nilable :blaze.db/id-byte-string))

@@ -78,6 +78,11 @@
   [db t]
   (p/-as-of db t))
 
+(defn since
+  "Returns the value of `db` since some point `t`, inclusive."
+  [db t]
+  (p/-since db t))
+
 (defn t
   "Returns the effective `t` of `db`."
   [db]
@@ -202,6 +207,15 @@
   "Returns the number of all resources in `db`."
   [db]
   (p/-system-total db))
+
+(defn total-since
+  "Returns the num changes number of resources since `since-t`, using `seek-fn` to determine
+  the total number of `t` and `since-t`. `seek-fn` is a fn with one argument, which will
+  receive `t` and `since-t`"
+  {:arglists '([db seek-fn])}
+  [{:keys [t since-t]} seek-fn]
+  (- (:total (seek-fn t) 0)
+     (:total (when-not (zero? since-t) (seek-fn since-t)) 0)))
 
 (defn system-query
   "Returns a reducible collection of all resource handles in `db` matching `clauses`.
