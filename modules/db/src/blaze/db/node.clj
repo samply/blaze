@@ -280,7 +280,7 @@
           add-subsetted-xf)))
 
 (defn- changed-handles [node type t]
-  (with-open [db (batch-db/new-batch-db node t t)]
+  (with-open [db (batch-db/new-batch-db node t t 0)]
     (into [] (take-while #(= t (rh/t %))) (d/type-history db type))))
 
 (defn- compile-system-matcher [search-param-registry clauses]

@@ -16,7 +16,7 @@
   (+ codec/t-size codec/tid-size))
 
 (defn- decoder
-  "Returns a function which decodes an resource handle out of a key and a value
+  "Returns a function which decodes a resource handle out of a key and a value
   byte buffers from the SystemAsOf index if not purged at `base-t`.
 
   Closes over a shared byte array for id decoding, because the String
@@ -25,16 +25,17 @@
 
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
-  [base-t]
+  [base-t since-t]
   (let [ib (byte-array codec/max-id-size)]
     (fn [[kb vb]]
-      (let [t (codec/descending-long (bb/get-long! kb))]
-        (rh/resource-handle!
-         (bb/get-int! kb)
-         (let [id-size (bb/remaining kb)]
-           (bb/copy-into-byte-array! kb ib 0 id-size)
-           (codec/id ib 0 id-size))
-         t base-t vb)))))
+      (let [resource-t (codec/descending-long (bb/get-long! kb))]
+        (when (< (long since-t) resource-t)
+          (rh/resource-handle!
+           (bb/get-int! kb)
+           (let [id-size (bb/remaining kb)]
+             (bb/copy-into-byte-array! kb ib 0 id-size)
+             (codec/id ib 0 id-size))
+           resource-t base-t vb))))))
 
 (defn encode-key
   "Encodes the key of the SystemAsOf index from `t`, `tid` and `id`."
@@ -63,17 +64,18 @@
     (Longs/toByteArray (codec/descending-long ^long start-t))))
 
 (defn system-history
-  "Returns a reducible collection of all historic resource handles of the
-  database with the point in time `t` between `start-t` (inclusive), `start-tid`
-  (optional, inclusive) and `start-id` (optional, inclusive)."
-  [snapshot t start-t start-tid start-id]
+  "Returns a reducible collection of all historic resource handles of `batch-db`
+  between `start-t` (inclusive), `start-tid` (optional, inclusive) and
+  `start-id` (optional, inclusive)."
+  {:arglists '([batch-db start-t start-tid start-id])}
+  [{:keys [snapshot t since-t]} start-t start-tid start-id]
   (i/entries
    snapshot :system-as-of-index
-   (keep (decoder t))
+   (keep (decoder t since-t))
    (bs/from-byte-array (start-key start-t start-tid start-id))))
 
 (defn changes
   "Returns a reducible collection of all resource handles changed at `t`."
   [snapshot t]
-  (i/prefix-entries snapshot :system-as-of-index (keep (decoder t)) codec/t-size
+  (i/prefix-entries snapshot :system-as-of-index (keep (decoder t 0)) codec/t-size
                     (bs/from-byte-array (start-key t nil nil))))

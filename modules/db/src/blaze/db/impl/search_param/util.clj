@@ -1,18 +1,18 @@
 (ns blaze.db.impl.search-param.util
   (:refer-clojure :exclude [str])
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.index-handle :as ih]
-    [blaze.db.impl.index.resource-as-of :as rao]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.index.single-version-id :as svi]
-    [blaze.db.impl.protocols :as p]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.util :refer [str]]
-    [clojure.string :as str])
+   [blaze.db.impl.index.index-handle :as ih]
+   [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.single-version-id :as svi]
+   [blaze.db.impl.protocols :as p]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.util :refer [str]]
+   [clojure.string :as str])
   (:import
    [org.apache.commons.codec.language Soundex]))
 
@@ -74,9 +74,9 @@
 (defn resource-handle-xf
   "Returns a stateful transducer that receives index handles and emits resource
   handles when found."
-  [{:keys [snapshot t]} tid]
+  [batch-db tid]
   (rao/resource-handle-type-xf
-   snapshot t tid ih/id
+   batch-db tid ih/id
    (fn [mvi handle] (ih/matches-hash? mvi (rh/hash handle)))))
 
 (defn missing-expression-msg [url]
@@ -87,13 +87,13 @@
   "Returns a transducer that filters all upstream byte-string values for
   reference tid-id values, returning the non-deleted resource handles of the
   referenced resources."
-  [{:keys [snapshot t]}]
+  [batch-db]
   (comp
    ;; there has to be at least some bytes for the id
    (filter #(< codec/tid-size (bs/size %)))
    (map bs/as-read-only-byte-buffer)
    (map (fn [buf] [(bb/get-int! buf) (bs/from-byte-buffer! buf)]))
-   (rao/resource-handle-xf snapshot t)
+   (rao/resource-handle-xf batch-db)
    (remove rh/deleted?)))
 
 (defn invalid-decimal-value-msg [code value]

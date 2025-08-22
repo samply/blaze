@@ -14,6 +14,7 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
+   [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
@@ -1691,7 +1692,240 @@
         (is (= 1 (d/t (d/as-of db 1)))))
 
       (testing "the as-of-t of a DB as of 1 is 1"
-        (is (= 1 (d/as-of-t (d/as-of db 1))))))))
+        (is (= 1 (d/as-of-t (d/as-of db 1))))))
+
+    (with-open [batch-db (d/new-batch-db (d/db node))]
+      (is (ba/anomaly? (d/as-of batch-db 0))))))
+
+(def system-clock-config
+  (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
+
+(defn- ensure-db [node-or-db]
+  (cond-> node-or-db
+    (satisfies? np/Node node-or-db)
+    d/db))
+
+(defn- count-type-query [node-or-db type clauses]
+  (when-ok [query (d/compile-type-query node-or-db type clauses)]
+    @(d/count-query (ensure-db node-or-db) query)))
+
+(defn- pull-type-query
+  ([node-or-db type clauses]
+   (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses)]
+     @(d/pull-many node-or-db handles)))
+  ([node-or-db type clauses start-id]
+   (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses start-id)]
+     @(d/pull-many node-or-db handles))))
+
+(defmacro given-type-query
+  "Combines `pull-type-query` with `count-type-query`. Assumes that the first
+  line of assertions is `count := x` because it takes the count from it."
+  [node-or-db type clauses & [_count-sym _eq-sym count :as body]]
+  `(do (given (pull-type-query ~node-or-db ~type ~clauses)
+         ~@body)
+       (is (= ~count (count-type-query ~node-or-db ~type ~clauses)))))
+
+(defn- pull-compartment-query [node code id type clauses]
+  (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
+    @(d/pull-many node handles)))
+
+(deftest since-test
+  (testing "with one patient only"
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
+                       system-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (is (ba/anomaly? (d/since batch-db Instant/EPOCH))))
+
+      (let [_ (Thread/sleep 200)
+            inst-1 (time/instant system-clock)
+            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
+            db-2 (d/db node)]
+
+        (testing "since-t"
+          (is (= 0 (d/since-t db-2)))
+          (is (= 0 (d/since-t (d/since db-2 Instant/EPOCH))))
+          (is (= 1 (d/since-t (d/since db-2 inst-1))))
+          (with-open [batch-db (d/new-batch-db (d/since db-2 inst-1))]
+            (is (= 1 (d/since-t batch-db)))))
+
+        (testing "multiple calls to since"
+          (st/unstrument)
+          (is (= 1 (-> db-2 (d/since Instant/EPOCH) (d/since inst-1) d/since-t))))
+
+        (let [db-1->2 (d/since db-2 inst-1)
+              dbs [db-1->2 db-2]]
+          (testing "since db looks the same as db"
+            (doseq [db dbs]
+              (given @(d/pull node (d/resource-handle db "Patient" "0"))
+                :id := "0"
+                [:meta :versionId] := #fhir/id "2"
+                :gender := #fhir/code "female"))
+            (is (apply = (map d/t dbs)))
+            (is (apply = (map d/basis-t dbs))))
+
+          (testing "total on since-db is not implemented"
+            (is (ba/anomaly? (d/type-total db-1->2 "Patient")))
+            (is (ba/anomaly? (d/system-total db-1->2))))
+
+          (testing "since-db history is truncated"
+            (is (apply < (map d/total-num-of-system-changes dbs)))
+            (is (apply < (map #(d/total-num-of-type-changes % "Patient") dbs)))
+            (is (apply < (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
+            (doseq [val [@(pull-instance-history db-1->2 "Patient" "0")
+                         @(d/pull-many node (d/type-history db-1->2 "Patient"))
+                         @(d/pull-many node (d/system-history db-1->2))]]
+              (given val
+                count := 1
+                [0 :gender] := #fhir/code "female"
+                [0 :meta :versionId] := #fhir/id "2"))
+            (is (= (d/total-num-of-system-changes db-1->2) 1))
+            (is (= (d/total-num-of-type-changes db-1->2 "Patient") 1))
+            (is (= (d/total-num-of-instance-changes db-1->2 "Patient" "0") 1)))))))
+
+  (testing "with multiple resources"
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
+                       system-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
+      (let [inst-2 (time/instant system-clock)
+            _ (Thread/sleep 200)
+            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+                                 [:put {:fhir/type :fhir/Condition :id "2"
+                                        :code
+                                        #fhir/CodeableConcept
+                                         {:coding
+                                          [#fhir/Coding
+                                            {:system #fhir/uri "system"
+                                             :code #fhir/code "code-a"}]}
+                                        :subject #fhir/Reference{:reference "Patient/1"}}]])
+            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]])
+            _ (Thread/sleep 200)
+            inst-4 (time/instant system-clock)
+            db-4 (d/db node)]
+
+        (testing "since-t"
+          (is (= 0 (d/since-t db-4)))
+          (is (= 0 (d/since-t (d/since db-4 Instant/EPOCH))))
+          (is (= 2 (d/since-t (d/since db-4 inst-2))))
+          (is (= 4 (d/since-t (d/since db-4 inst-4)))))
+
+        (testing "multiple calls to since"
+          (is (= 0 (-> db-4 (d/since inst-4) (d/since Instant/EPOCH) d/since-t)))
+          (is (= 2 (-> db-4 (d/since inst-4) (d/since inst-2) d/since-t)))
+          (is (= 2 (-> db-4 (d/since Instant/EPOCH) (d/since inst-2) d/since-t)))
+          (is (= 4 (-> db-4 (d/since Instant/EPOCH) (d/since inst-4) d/since-t))))
+
+        (testing "db since EPOCH is same as db"
+          (let [db-0->4 (d/since db-4 Instant/EPOCH)
+                dbs [db-4 db-0->4]]
+            (is (apply = (map d/t dbs)))
+            (is (apply = (map d/basis-t dbs)))
+            (is (apply = (map d/since-t dbs)))
+            (is (apply = (map d/system-total dbs)))
+            (is (apply = (map #(d/type-total % "Patient") dbs)))
+            (is (apply = (map #(->> (d/type-list % "Patient") (d/pull-many node) deref) dbs)))
+            (is (apply = (map #(->> (d/type-history % "Patient") (d/pull-many node) deref) dbs)))
+            (is (apply = (map #(->> (pull-instance-history % "Patient" "0") deref) dbs)))
+            (is (apply = (map #(->> (pull-instance-history % "Patient" "1") deref) dbs)))
+            (is (apply = (map #(->> (d/system-list %) (d/pull-many node) deref) dbs)))
+            (is (apply = (map #(->> (d/system-history %) (d/pull-many node) deref) dbs)))
+            (is (apply = (map #(d/resource-handle % "Patient" "0") dbs)))
+            (is (apply = (map #(d/resource-handle % "Patient" "1") dbs)))
+            (is (apply = (map d/total-num-of-system-changes dbs)))
+            (is (apply = (map #(d/total-num-of-type-changes % "Patient") dbs)))
+            (is (apply = (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
+            (is (apply = (map #(d/total-num-of-instance-changes % "Patient" "1") dbs)))))
+
+        (let [db2->4 (d/since db-4 inst-2)
+              dbs [db2->4 db-4]]
+          (testing "since db looks the same as db for changed instances"
+            (doseq [db dbs]
+              (given @(d/pull node (d/resource-handle db "Patient" "1"))
+                :id := "1"
+                [:meta :versionId] := #fhir/id "4"
+                :gender := #fhir/code "female"))
+            (is (apply = (map d/t dbs)))
+            (is (apply = (map d/basis-t dbs)))
+            (is (apply = (map #(d/total-num-of-instance-changes % "Patient" "1") dbs))))
+
+          (testing "since db has limited view"
+            (is (apply < (map d/total-num-of-system-changes dbs)))
+            (is (apply < (map #(d/total-num-of-type-changes % "Patient") dbs)))
+            (is (apply < (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
+            (given @(d/pull-many node (d/type-list db2->4 "Patient"))
+              count := 1
+              [0 :id] := "1"
+              [0 :meta :versionId] := #fhir/id "4")
+            (is (nil? (d/resource-handle db2->4 "Patient" "0")))
+            (given @(d/pull node (d/resource-handle db2->4 "Patient" "1"))
+              :id := "1"
+              [:meta :versionId] := #fhir/id "4")
+            (given @(d/pull-many node (d/system-history db2->4))
+              count := 3
+              [0 :id] := "1"
+              [0 :fhir/type] := :fhir/Patient
+              [0 :meta :versionId] := #fhir/id "4"
+              [0 :gender] := #fhir/code "female"
+              [1 :id] := "2"
+              [1 :fhir/type] := :fhir/Condition
+              [1 :meta :versionId] := #fhir/id "3"
+              [2 :id] := "1"
+              [2 :fhir/type] := :fhir/Patient
+              [2 :meta :versionId] := #fhir/id "3"
+              [2 :gender] := #fhir/code "male")
+            (given @(d/pull-many node (d/system-list db2->4))
+              count := 2
+              [0 :id] := "2"
+              [0 :fhir/type] := :fhir/Condition
+              [0 :meta :versionId] := #fhir/id "3"
+              [1 :id] := "1"
+              [1 :fhir/type] := :fhir/Patient
+              [1 :meta :versionId] := #fhir/id "4"
+              [1 :gender] := #fhir/code "female")
+            (given-type-query db2->4 "Patient" [["gender" "female"]]
+              count := 1
+              [0 :id] := "1")
+            (given @(d/pull-many node (d/type-history db2->4 "Patient"))
+              count := 2
+              [0 :id] := "1"
+              [0 :meta :versionId] := #fhir/id "4"
+              [0 :gender] := #fhir/code "female"
+              [1 :id] := "1"
+              [1 :meta :versionId] := #fhir/id "3"
+              [1 :gender] := #fhir/code "male")
+            (given @(pull-instance-history db2->4 "Patient" "1")
+              count := 2
+              [0 :meta :versionId] := #fhir/id "4"
+              [0 :gender] := #fhir/code "female"
+              [1 :meta :versionId] := #fhir/id "3"
+              [1 :gender] := #fhir/code "male")
+            (let [clauses [["code" "system|code-a"]]]
+              (given (pull-compartment-query node "Patient" "1" "Condition" clauses)
+                count := 1
+                [0 :fhir/type] := :fhir/Condition
+                [0 :id] := "2"
+                [0 :meta :versionId] := #fhir/id "3"))))
+
+        (testing "db since now is empty"
+          (let [db-4->4 (d/since db-4 inst-4)
+                dbs [db-4->4 db-4]]
+            (is (apply = (map d/t dbs)))
+            (is (apply = (map d/basis-t dbs)))
+            (is (empty? @(d/pull-many node (d/type-list db-4->4 "Patient"))))
+            (is (empty? @(d/pull-many node (d/type-history db-4->4 "Patient"))))
+            (is (empty? @(pull-instance-history db-4->4 "Patient" "0")))
+            (is (empty? @(pull-instance-history db-4->4 "Patient" "1")))
+            (is (empty? @(d/pull-many node (d/system-list db-4->4))))
+            (is (empty? @(d/pull-many node (d/system-history db-4->4))))
+            (is (nil? (d/resource-handle db-4->4 "Patient" "0")))
+            (is (nil? (d/resource-handle db-4->4 "Patient" "1")))
+            (is (zero? (d/total-num-of-instance-changes db-4->4 "Patient" "0")))
+            (is (zero? (d/total-num-of-instance-changes db-4->4 "Patient" "1")))
+            (is (zero? (d/total-num-of-type-changes db-4->4 "Patient")))
+            (is (zero? (d/total-num-of-type-changes db-4->4 "Patient")))
+            (is (zero? (d/total-num-of-system-changes db-4->4)))
+            (is (zero? (d/total-num-of-system-changes db-4->4)))))))))
 
 (deftest t-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -1965,32 +2199,9 @@
         (is (= "0" (:id (coll/first coll))))
         (is (= ["0" "1"] (mapv :id coll)))))))
 
-(defn- pull-type-query
-  ([node type clauses]
-   (when-ok [handles (d/type-query (d/db node) type clauses)]
-     @(d/pull-many node handles)))
-  ([node type clauses start-id]
-   (when-ok [handles (d/type-query (d/db node) type clauses start-id)]
-     @(d/pull-many node handles))))
-
-(defn- count-type-query [node type clauses]
-  (when-ok [query (d/compile-type-query node type clauses)]
-    @(d/count-query (d/db node) query)))
-
-(defn- explain-type-query [node type clauses]
-  (when-ok [query (d/compile-type-query node type clauses)]
-    (d/explain-query (d/db node) query)))
-
-(defmacro given-type-query
-  "Combines `pull-type-query` with `count-type-query`. Assumes that the first
-  line of assertions is `count := x` because it takes the count from it."
-  [node type clauses & [_count-sym _eq-sym count :as body]]
-  `(do (given (pull-type-query ~node ~type ~clauses)
-         ~@body)
-       (is (= ~count (count-type-query ~node ~type ~clauses)))))
-
-(def system-clock-config
-  (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
+(defn- explain-type-query [node-or-db type clauses]
+  (when-ok [query (d/compile-type-query node-or-db type clauses)]
+    (d/explain-query (ensure-db node-or-db) query)))
 
 (deftest type-query-test
   (with-system [{:blaze.db/keys [node]} config]
@@ -6605,7 +6816,7 @@
                [#fhir/Identifier{:value #fhir/string "2404351199702_20240422094702_DELTA-HE"}]}]]
        [[:put {:fhir/type :fhir/Observation :id "1"
                :identifier
-               [#fhir/Identifier{:value #fhir/string  "2404351199702_20240422094702_DELTA-HE"}]}]]]
+               [#fhir/Identifier{:value #fhir/string "2404351199702_20240422094702_DELTA-HE"}]}]]]
 
       (is (empty? (pull-type-query node "Observation" [["identifier" "2410301332030_20241009113701_FDP-D"]] "1"))))
 
@@ -6614,7 +6825,7 @@
         [[[:put {:fhir/type :fhir/Observation :id "0"
                  :status #fhir/code "final"
                  :identifier
-                 [#fhir/Identifier{:value #fhir/string  "2404351199702_20240422094702_DELTA-HE"}]}]]]
+                 [#fhir/Identifier{:value #fhir/string "2404351199702_20240422094702_DELTA-HE"}]}]]]
 
         (is (empty? (pull-type-query node "Observation" [["status" "final"]
                                                          ["identifier" "2410301332030_20241009113701_FDP-D"]]))))))
@@ -6950,9 +7161,9 @@
   (testing "token identifier search param"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :identifier [#fhir/Identifier{:value #fhir/string  "foo"}]}]
+               :identifier [#fhir/Identifier{:value #fhir/string "foo"}]}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :identifier [#fhir/Identifier{:value #fhir/string  "bar"}]}]]]
+               :identifier [#fhir/Identifier{:value #fhir/string "bar"}]}]]]
 
       (with-open-db [db node]
         (doseq [target [node db]
@@ -7237,10 +7448,6 @@
 (defn- explain-compartment-query [node code type clauses]
   (when-ok [query (d/compile-compartment-query node code type clauses)]
     (d/explain-query (d/db node) query)))
-
-(defn- pull-compartment-query [node code id type clauses]
-  (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
-    @(d/pull-many node handles)))
 
 (deftest compartment-query-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"

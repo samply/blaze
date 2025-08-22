@@ -9,6 +9,10 @@
 
   (-as-of-t [db])
 
+  (-since [db since])
+
+  (-since-t [db])
+
   (-resource-handle [db tid id])
 
   (-type-list [db tid] [db tid start-id])

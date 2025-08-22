@@ -5,7 +5,6 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.codec.date :as codec-date]
-   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.protocols :as p]
@@ -105,11 +104,11 @@
     (sp-vr/prefix-keys-value snapshot c-hash tid param-lb)))
   ([batch-db c-hash tid _param-lb param-ub start-id]
    (coll/eduction
-     (comp (eq-stop param-ub)
+    (comp (eq-stop param-ub)
           (eq-filter param-ub)
           drop-value
           u/by-id-grouper)
-     (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-id))))
 
 (defn- not-equal? [value param-lb param-ub]
   (not (equal? value param-lb param-ub)))
