@@ -78,6 +78,16 @@
   [db t]
   (p/-as-of db t))
 
+(defn since
+  "Returns the value of `db` since some point `t`, inclusive."
+  [db t]
+  (p/-since db t))
+
+(defn since-t
+  "Returns the value of `db` since some point `t`, inclusive."
+  [db]
+  (p/-since-t db))
+
 (defn t
   "Returns the effective `t` of `db`."
   [db]

@@ -37,9 +37,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- rev-include [db snapshot reference source-tid code]
+(defn- rev-include [batch-db snapshot reference source-tid code]
   (coll/eduction
-   (u/resource-handle-xf db source-tid)
+   (u/resource-handle-xf batch-db source-tid)
    (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
 
 (defn- sp-total
@@ -69,7 +69,7 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
-(defrecord BatchDb [node kv-store snapshot basis-t t]
+(defrecord BatchDb [node kv-store snapshot basis-t t since-t]
   p/Db
   (-node [_]
     node)
@@ -77,13 +77,22 @@
   (-basis-t [_]
     basis-t)
 
+  (-as-of [_ _]
+    (ba/unsupported "As of is not supported on batch-db."))
+
   (-as-of-t [_]
     (when (not= basis-t t) t))
+
+  (-since [_ _]
+    (ba/unsupported "Since is not supported on batch-db."))
+
+  (-since-t [_]
+    since-t)
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (rao/resource-handle snapshot tid id t))
+    (rao/resource-handle snapshot t since-t tid id))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -94,7 +103,9 @@
     (rao/type-list db tid start-id))
 
   (-type-total [_ tid]
-    (:total (type-stats/seek-value snapshot tid t) 0))
+    (if (zero? since-t)
+      (:total (type-stats/seek-value snapshot tid t) 0)
+      (ba/unsupported "Total is not supported on since-dbs.")))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
@@ -105,7 +116,9 @@
     (rao/system-list db start-tid start-id))
 
   (-system-total [_]
-    (:total (system-stats/seek-value snapshot t) 0))
+    (if (zero? since-t)
+      (:total (system-stats/seek-value snapshot t) 0)
+      (ba/unsupported "Total is not supported on since-dbs.")))
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
@@ -150,19 +163,18 @@
 
   (-instance-history [_ tid id start-t]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (rao/instance-history snapshot tid id t start-t)))
+      (rao/instance-history snapshot t since-t tid id start-t)))
 
   (-total-num-of-instance-changes [db tid id since]
-    (count
-     (cond->> (rao/instance-history snapshot tid id t t)
-       since
-       (coll/eduction (p/-stop-history-at db since)))))
+    (-> (if since (p/-since db (t-by-instant/t-by-instant snapshot since)) db)
+        (rao/instance-history tid id t)
+        (count)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
   (-type-history [_ tid start-t start-id]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (tao/type-history snapshot tid t start-t start-id)))
+      (tao/type-history snapshot t since-t tid start-t start-id)))
 
   (-total-num-of-type-changes [_ type since]
     (let [tid (codec/tid type)
@@ -172,9 +184,9 @@
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id]
+  (-system-history [db start-t start-tid start-id]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (sao/system-history snapshot t start-t start-tid start-id)))
+      (sao/system-history db start-t start-tid start-id)))
 
   (-total-num-of-system-changes [_ since]
     (let [end-t (some->> since (t-by-instant/t-by-instant snapshot))]
@@ -394,6 +406,6 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^AutoCloseable
-  [{:keys [kv-store] :as node} basis-t t]
+  [{:keys [kv-store] :as node} basis-t t since-t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node kv-store snapshot basis-t t)))
+    (->BatchDb node kv-store snapshot basis-t t since-t)))

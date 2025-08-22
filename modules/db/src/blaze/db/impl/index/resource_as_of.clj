@@ -102,19 +102,20 @@
 
 (defn- type-entry-creator
   "Returns a function which creates a new resource handle entry if the `t` in
-  `kb` at the time of invocation is less than or equal `base-t`."
-  [tid ib base-t]
+  `kb` at the time of invocation is less than or equal `base-t` and greater than
+  `since-t`."
+  [tid ib base-t since-t]
   (fn [kb vb]
-    (let [t (codec/descending-long (bb/get-long! kb))]
-      (when (<= t ^long base-t)
-        (new-entry! tid ib vb t base-t)))))
+    (let [resource-t (codec/descending-long (bb/get-long! kb))]
+      (when (and (< (long since-t) resource-t) (<= resource-t (long base-t)))
+        (new-entry! tid ib vb resource-t base-t)))))
 
 (defn- system-entry-creator
-  [tid-box ib base-t]
+  [tid-box ib base-t since-t]
   (fn [kb vb]
-    (let [t (codec/descending-long (bb/get-long! kb))]
-      (when (<= t ^long base-t)
-        (new-entry! @tid-box ib vb t base-t)))))
+    (let [resource-t (codec/descending-long (bb/get-long! kb))]
+      (when (and (< (long since-t) resource-t) (<= resource-t (long base-t)))
+        (new-entry! @tid-box ib vb resource-t base-t)))))
 
 (defn- group-by-id
   "Returns a stateful transducer which takes flags from `id-marker` and supplies
@@ -167,9 +168,9 @@
 (def ^:private remove-deleted-xf
   (remove rh/deleted?))
 
-(defn- type-list-xf [t tid]
+(defn- type-list-xf [tid base-t since-t]
   (let [ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)
-        entry-creator (type-entry-creator tid ib t)]
+        entry-creator (type-entry-creator tid ib base-t since-t)]
     (comp
      (take-while (starts-with-tid? tid))
      (group-by-id (id-marker ib) entry-creator)
@@ -261,19 +262,20 @@
   iteration. The state and t which are both longs are read from the off-heap key
   and value buffer. The hash and state which are read from the value buffer are
   only read once for each resource handle."
-  ([{:keys [snapshot t]} tid]
-   (i/entries snapshot :resource-as-of-index (type-list-xf t tid)
+  {:arglists '([batch-db tid] [batch-db tid start-id])}
+  ([{:keys [snapshot t since-t]} tid]
+   (i/entries snapshot :resource-as-of-index (type-list-xf tid t since-t)
               (start-key tid)))
-  ([{:keys [snapshot t]} tid start-id]
-   (i/entries snapshot :resource-as-of-index (type-list-xf t tid)
+  ([{:keys [snapshot t since-t]} tid start-id]
+   (i/entries snapshot :resource-as-of-index (type-list-xf tid t since-t)
               (start-key tid start-id t))))
 
-(defn- system-list-xf [t start-tid]
+(defn- system-list-xf [t since-t start-tid]
   (let [tid-box (volatile! start-tid)
         ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)]
     (comp
      (group-by-id (tid-marker tid-box ib (id-marker ib))
-                  (system-entry-creator tid-box ib t))
+                  (system-entry-creator tid-box ib t since-t))
      remove-deleted-xf)))
 
 (defn system-list
@@ -281,50 +283,51 @@
   tid and resource id.
 
   The list starts at the optional `start-tid` and `start-id`."
-  ([{:keys [snapshot t]}]
-   (i/entries snapshot :resource-as-of-index (system-list-xf t nil)))
-  ([{:keys [snapshot t]} start-tid start-id]
-   (i/entries snapshot :resource-as-of-index (system-list-xf t start-tid)
+  ([{:keys [snapshot t since-t]}]
+   (i/entries snapshot :resource-as-of-index (system-list-xf t since-t nil)))
+  ([{:keys [snapshot t since-t]} start-tid start-id]
+   (i/entries snapshot :resource-as-of-index (system-list-xf t since-t start-tid)
               (start-key start-tid start-id t))))
 
 (defn- decoder
-  "Returns a function which decodes an resource handle out of a key and a value
+  "Returns a function which decodes a resource handle out of a key and a value
   byte buffers from the ResourceAsOf index if not purged at `t`.
 
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
-  [tid id tid-id-size t]
+  [tid id tid-id-size base-t since-t]
   (fn [[kb vb]]
-    (rh/resource-handle! tid id (codec/descending-long (bb/get-long! kb tid-id-size))
-                         t vb)))
+    (let [resource-t (codec/descending-long (bb/get-long! kb tid-id-size))]
+      (when (< (long since-t) resource-t)
+        (rh/resource-handle! tid id resource-t base-t vb)))))
 
 (defn instance-history
   "Returns a reducible collection of all historic resource handles of the
   resource with `tid` and `id` of the database with the point in time `t`
   starting at `start-t`."
-  [snapshot tid id t start-t]
+  [snapshot t since-t tid id start-t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))]
     (i/prefix-entries
      snapshot :resource-as-of-index
-     (keep (decoder tid (codec/id-string id) tid-id-size t))
+     (keep (decoder tid (codec/id-string id) tid-id-size t since-t))
      tid-id-size (start-key tid id start-t))))
 
-(defn- resource-handle* [iter target-buf key-buf value-buf tid id t]
+(defn- resource-handle* [iter target-buf key-buf value-buf tid id base-t since-t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))
         key-size (+ tid-id-size codec/t-size)]
     (bb/clear! target-buf)
     (bb/put-int! target-buf tid)
     (bb/put-byte-string! target-buf id)
-    (bb/put-long! target-buf (codec/descending-long t))
+    (bb/put-long! target-buf (codec/descending-long base-t))
     (bb/flip! target-buf)
     (kv/seek-buffer! iter target-buf)
     (when (kv/valid? iter)
       ;; it's important to clear key-buf before reading, because otherwise
-      ;; the limit could be to small
+      ;; the limit could be too small
       (bb/clear! key-buf)
       (kv/key! iter key-buf)
       ;; we have to check that we are still on target, because otherwise we
-      ;; would find the next resource. First the length of the found key has
+      ;; would find the next resource. First, the length of the found key has
       ;; to equal our key size
       (when (= key-size (bb/limit key-buf))
         ;; focus target buffer on tid and id
@@ -333,35 +336,38 @@
         ;; focus key buffer on tid and id
         (bb/set-limit! key-buf tid-id-size)
         (when (= target-buf key-buf)
-          ;; focus key buffer on t
+          ;; focus key buffer on base-t
           (bb/set-limit! key-buf key-size)
           ;; read value
           (bb/clear! value-buf)
           (kv/value! iter value-buf)
           ;; build resource handle
-          (rh/resource-handle!
-           tid
-           (codec/id-string id)
-           (codec/descending-long (bb/get-long! key-buf tid-id-size))
-           t
-           value-buf))))))
+          (let [resource-t (codec/descending-long (bb/get-long! key-buf tid-id-size))]
+            (when (< (long since-t) resource-t)
+              (rh/resource-handle!
+               tid
+               (codec/id-string id)
+               resource-t
+               base-t
+               value-buf))))))))
 
 (defn resource-handle
   "Returns the resource handle with `tid` and `id` at `t` in `snapshot` when
   found."
-  [snapshot tid id t]
+  [snapshot t since-t tid id]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
         value-buf (bb/allocate max-value-size)]
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
-      (resource-handle* iter target-buf key-buf value-buf tid id t))))
+      (resource-handle* iter target-buf key-buf value-buf tid id t since-t))))
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives `[tid id]` tuples and emits
   resource handles when found in `snapshot` at `t`.
 
   Can only be used by a single thread."
-  [snapshot t]
+  {:arglists '([batch-db])}
+  [{:keys [snapshot t since-t]}]
   (fn [rf]
     (let [target-buf (bb/allocate max-key-size)
           key-buf (bb/allocate max-key-size)
@@ -373,7 +379,7 @@
          (rf result))
         ([result [tid id]]
          (if-let [handle (resource-handle* iter target-buf key-buf value-buf
-                                           tid id t)]
+                                           tid id t since-t)]
            (rf result handle)
            result))))))
 
@@ -384,9 +390,10 @@
   The `id-extractor` is used to extract the resource id as byte-string from the
   input. The `matcher` is given the input and the resource handle to decide
   whether to emit the resource handle or not."
-  ([snapshot t tid]
-   (resource-handle-type-xf snapshot t tid identity (fn [_ _] true)))
-  ([snapshot t tid id-extractor matcher]
+  {:arglists '([batch-db tid] [batch-db tid id-extractor matcher])}
+  ([batch-db tid]
+   (resource-handle-type-xf batch-db tid identity (fn [_ _] true)))
+  ([{:keys [snapshot t since-t]} tid id-extractor matcher]
    (fn [rf]
      (let [target-buf (bb/allocate max-key-size)
            key-buf (bb/allocate max-key-size)
@@ -398,7 +405,7 @@
           (rf result))
          ([result input]
           (if-let [handle (resource-handle* iter target-buf key-buf value-buf
-                                            tid (id-extractor input) t)]
+                                            tid (id-extractor input) t since-t)]
             (if (matcher input handle)
               (rf result handle)
               result)

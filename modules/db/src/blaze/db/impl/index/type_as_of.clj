@@ -23,17 +23,18 @@
 
   Both buffers are changed during decoding and have to be reset accordingly
   after decoding."
-  [tid base-t]
+  [tid base-t since-t]
   (let [ib (byte-array codec/max-id-size)]
     (fn [[kb vb]]
       (bb/set-position! kb codec/tid-size)
-      (let [t (codec/descending-long (bb/get-long! kb))]
-        (rh/resource-handle!
-         tid
-         (let [id-size (bb/remaining kb)]
-           (bb/copy-into-byte-array! kb ib 0 id-size)
-           (codec/id ib 0 id-size))
-         t base-t vb)))))
+      (let [resource-t (codec/descending-long (bb/get-long! kb))]
+        (when (< (long since-t) resource-t)
+          (rh/resource-handle!
+           tid
+           (let [id-size (bb/remaining kb)]
+             (bb/copy-into-byte-array! kb ib 0 id-size)
+             (codec/id ib 0 id-size))
+           resource-t base-t vb))))))
 
 (defn encode-key
   "Encodes the key of the TypeAsOf index from `tid`, `t` and `id`."
@@ -57,8 +58,8 @@
   "Returns a reducible collection of all historic resource handles with type
   `tid` of the database with the point in time `t` between `start-t` (inclusive)
   and `start-id` (optional, inclusive)."
-  [snapshot tid t start-t start-id]
+  [snapshot t since-t tid start-t start-id]
   (i/prefix-entries
    snapshot :type-as-of-index
-   (keep (decoder tid t))
+   (keep (decoder tid t since-t))
    codec/tid-size (start-key tid start-t start-id)))
