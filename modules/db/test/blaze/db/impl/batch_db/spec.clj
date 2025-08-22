@@ -1,10 +1,9 @@
 (ns blaze.db.impl.batch-db.spec
   (:require
-   [blaze.db.kv :as-alias kv]
-   [blaze.db.kv.spec]
-   [blaze.db.spec]
-   [blaze.db.tx-log.spec]
-   [clojure.spec.alpha :as s]))
+   [blaze.db.impl.batch-db]
+   [clojure.spec.alpha :as s])
+  (:import
+   [blaze.db.impl.batch_db BatchDb]))
 
 (s/def :blaze.db.impl/batch-db
-  (s/keys :req-un [:blaze.db/node ::kv/snapshot :blaze.db/t]))
+  #(instance? BatchDb %))

@@ -28,9 +28,9 @@
     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
     (bs/from-byte-buffer! buf)))
 
-(defn- resource-handle-xf [snapshot t tid]
+(defn- resource-handle-xf [batch-db tid]
   (comp
-   (rao/resource-handle-type-xf snapshot t tid)
+   (rao/resource-handle-type-xf batch-db tid)
    (remove rh/deleted?)))
 
 (defn- encode-seek-key
@@ -69,15 +69,15 @@
   {:arglists
    '([batch-db compartment tid]
      [batch-db compartment tid start-id])}
-  ([{:keys [snapshot t]} compartment tid]
+  ([{:keys [snapshot] :as batch-db} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
-      (resource-handle-xf snapshot t tid)
+      (resource-handle-xf batch-db tid)
       (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
                      (bs/size seek-key) seek-key))))
-  ([{:keys [snapshot t]} compartment tid start-id]
+  ([{:keys [snapshot] :as batch-db} compartment tid start-id]
    (coll/eduction
-    (resource-handle-xf snapshot t tid)
+    (resource-handle-xf batch-db tid)
     (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
                    (key-prefix-size (coll/nth compartment 1))
                    (encode-key compartment tid start-id)))))
