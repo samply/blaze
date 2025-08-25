@@ -39,7 +39,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation
-  {:mvn/version "8.2.1"
+  {:mvn/version "8.4.0"
    :exclusions
    [com.nimbusds/nimbus-jose-jwt
     commons-beanutils/commons-beanutils
@@ -58,19 +58,24 @@
     org.unbescape/unbescape
     org.xerial/sqlite-jdbc
     org.apache.commons/commons-collections4
-    org.apache.httpcomponents/httpclient]}
+    org.apache.httpcomponents/httpclient
+    com.google.errorprone/error_prone_annotations
+    org.apache.santuario/xmlsec
+    org.commonmark/commonmark
+    org.commonmark/commonmark-ext-gfm-tables]}
 
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
-  {:mvn/version "8.2.1"
+  {:mvn/version "8.4.0"
    :exclusions
    [com.google.code.findbugs/jsr305
     commons-net/commons-net
     io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
     ;; Remove after https://github.com/hapifhir/hapi-fhir/issues/7005 is fixed
-    org.apache.jena/jena-shex]}
+    org.apache.jena/jena-shex
+    net.sf.saxon/Saxon-HE]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
-  {:mvn/version "8.2.1"
+  {:mvn/version "8.4.0"
    :exclusions
    [com.google.code.findbugs/jsr305
     io.opentelemetry/opentelemetry-api
@@ -78,7 +83,7 @@
     org.slf4j/jcl-over-slf4j]}
 
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
-  {:mvn/version "8.2.1"
+  {:mvn/version "8.4.0"
    :exclusions
    [io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
