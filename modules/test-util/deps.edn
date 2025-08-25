@@ -1,6 +1,6 @@
 {:deps
  {com.taoensso/timbre
-  {:mvn/version "6.7.1"}
+  {:mvn/version "6.8.0"}
 
   org.clojars.akiel/iota
   {:mvn/version "0.1"}

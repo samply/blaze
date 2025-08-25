@@ -11,7 +11,7 @@
   {:local/root "../util"}
 
   com.taoensso/timbre
-  {:mvn/version "6.7.1"}
+  {:mvn/version "6.8.0"}
 
   integrant/integrant
   {:mvn/version "0.13.1"}
