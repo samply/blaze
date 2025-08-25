@@ -37,9 +37,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- rev-include [db snapshot reference source-tid code]
+(defn- rev-include [batch-db snapshot reference source-tid code]
   (coll/eduction
-   (u/resource-handle-xf db source-tid)
+   (u/resource-handle-xf batch-db source-tid)
    (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
 
 (defn- sp-total

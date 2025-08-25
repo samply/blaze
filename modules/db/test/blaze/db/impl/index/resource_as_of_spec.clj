@@ -42,7 +42,8 @@
   :args (s/cat :snapshot ::kv/snapshot
                :tid :blaze.db/tid
                :id :blaze.db/id-byte-string
-               :t :blaze.db/t)
+               :t :blaze.db/t
+               :since-t :blaze.db/t)
   :ret (s/nilable :blaze.db/resource-handle))
 
 (s/fdef rao/resource-handle-xf

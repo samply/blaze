@@ -423,8 +423,7 @@
 (defn- execute [node executor]
   (-> (CompletableFuture/runAsync node executor)
       (ac/exceptionally
-       (fn [{::anom/keys [message] :as anom}]
-         #p anom
+       (fn [{::anom/keys [message]}]
          (log/error "Error while indexing:" message)))))
 
 (defn- initial-state [kv-store]

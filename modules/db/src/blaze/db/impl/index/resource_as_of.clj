@@ -386,6 +386,7 @@
   The `id-extractor` is used to extract the resource id as byte-string from the
   input. The `matcher` is given the input and the resource handle to decide
   whether to emit the resource handle or not."
+  {:arglists '([batch-db tid] [batch-db tid id-extractor matcher])}
   ([batch-db tid]
    (resource-handle-type-xf batch-db tid identity (fn [_ _] true)))
   ([{:keys [snapshot t since-t]} tid id-extractor matcher]
