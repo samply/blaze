@@ -53,6 +53,22 @@
       ]
     }
   ],
+  "customManagers": [
+    {
+      "description": [
+        "Like customManagers:githubActionsVersions, but also finds the digest for github-release-attachments datasource."
+      ],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)(workflow-templates|\\.(?:github|gitea|forgejo)/(?:workflows|actions))/.+\\.ya?ml$/",
+        "/(^|/)action\\.ya?ml$/"
+      ],
+      "datasourceTemplate": "github-release-attachments",
+      "matchStrings": [
+        "# renovate: datasource=github-release-attachments depName=(?<depName>\\S+?)(?: (?:lookupName|packageName)=(?<packageName>\\S+?))?(?: versioning=(?<versioning>\\S+?))?(?: extractVersion=(?<extractVersion>\\S+?))?\\s+\\w+?_VERSION\\s*:\\s*[\"']?(?<currentValue>.+?)[\"']?\\s+(\\w+?_CHECKSUM\\s*:\\s*[\"']?(?<currentDigest>\\w+)[\"']?)?"
+      ]
+    }
+  ],
   "ignorePaths": [
     "docs"
   ],
