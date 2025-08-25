@@ -228,12 +228,14 @@
       "resource": {
         "collection": {
           "bodySite": {
-            "coding": [
-              {
-                "code": "C26.1",
-                "system": "urn:oid:2.16.840.1.113883.6.43.1"
-              }
-            ]
+            "concept": {
+              "coding": [
+                {
+                  "code": "C26.1",
+                  "system": "urn:oid:2.16.840.1.113883.6.43.1"
+                }
+              ]
+            }
           },
           "collectedDateTime": "2005-06-17",
           "fastingStatusCodeableConcept": {

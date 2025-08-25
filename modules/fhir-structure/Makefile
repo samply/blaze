@@ -8,7 +8,7 @@ prep:
 	clojure -X:deps prep
 
 build: prep
-	clojure -T:build compile
+	clojure -T:build all
 
 test: build
 	clojure -M:test:kaocha --profile :ci
@@ -29,6 +29,6 @@ cloc-test:
 	cloc test
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target
+	rm -rf .clj-kondo/.cache .cpcache target resources/blaze/fhir/*.json
 
 .PHONY: fmt lint prep build test test-coverage deps-tree deps-list cloc-prod cloc-test clean

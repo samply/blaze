@@ -134,7 +134,7 @@
       (testing "date"
         (let [encounter
               {:fhir/type :fhir/Encounter :id "id-160224"
-               :period
+               :actualPeriod
                #fhir/Period
                 {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"
                  :end #fhir/dateTime"2019-11-17T00:44:29+01:00"}}
@@ -157,7 +157,7 @@
         (testing "without start"
           (let [encounter
                 {:fhir/type :fhir/Encounter :id "id-160224"
-                 :period
+                 :actualPeriod
                  #fhir/Period
                   {:end #fhir/dateTime"2019-11-17"}}
                 hash (hash/generate encounter)
@@ -179,7 +179,7 @@
         (testing "Encounter date without end"
           (let [encounter
                 {:fhir/type :fhir/Encounter :id "id-160224"
-                 :period
+                 :actualPeriod
                  #fhir/Period
                   {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"}}
                 hash (hash/generate encounter)

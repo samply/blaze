@@ -1,7 +1,9 @@
 (ns build
   (:require
-   [hato.client :as hc]
-   [clojure.tools.build.api :as b]))
+   [clojure.tools.build.api :as b]
+   [hato.client :as hc]))
+
+(set! *warn-on-reflection* true)
 
 (defn download-file [url output-path]
   (let [http-client (hc/build-http-client {:redirect-policy :normal})

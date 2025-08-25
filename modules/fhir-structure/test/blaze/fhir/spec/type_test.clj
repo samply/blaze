@@ -312,90 +312,90 @@
       #fhir/integer 0
       nil)))
 
-(deftest long-test
-  (testing "long?"
-    (are [x] (type/long? x)
-      #fhir/long 1
-      #fhir/long{:id "foo"}))
+(deftest integer64-test
+  (testing "integer64?"
+    (are [x] (type/integer64? x)
+      #fhir/integer64 1
+      #fhir/integer64{:id "foo"}))
 
   (testing "invalid"
-    (is (s2/invalid? (st/with-instrument-disabled (type/long "a")))))
+    (is (s2/invalid? (st/with-instrument-disabled (type/integer64 "a")))))
 
   (testing "type"
-    (are [x] (= :fhir/long (type/type x))
-      #fhir/long 1
-      #fhir/long{:id "foo"}))
+    (are [x] (= :fhir/integer64 (type/type x))
+      #fhir/integer64 1
+      #fhir/integer64{:id "foo"}))
 
   (testing "Long"
-    (is (= #fhir/long{:value 1} #fhir/long 1)))
+    (is (= #fhir/integer64{:value 1} #fhir/integer64 1)))
 
   (testing "interned"
-    (is (not-interned? #fhir/long 165519 #fhir/long 165519))
+    (is (not-interned? #fhir/integer64 165519 #fhir/integer64 165519))
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
-        (type/long {:extension [internable-extension]
-                    :value 165519})
-        (type/long {:extension [internable-extension]
-                    :value 165519})
+        (type/integer64 {:extension [internable-extension]
+                         :value 165519})
+        (type/integer64 {:extension [internable-extension]
+                         :value 165519})
 
-        (type/long {:id "id-162329" :extension [internable-extension]})
-        (type/long {:id "id-162329" :extension [internable-extension]}))
+        (type/integer64 {:id "id-162329" :extension [internable-extension]})
+        (type/integer64 {:id "id-162329" :extension [internable-extension]}))
 
       (are [x y] (interned? x y)
-        (type/long {:extension [internable-extension]})
-        (type/long {:extension [internable-extension]}))))
+        (type/integer64 {:extension [internable-extension]})
+        (type/integer64 {:extension [internable-extension]}))))
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/long 1 "id-111030")
-             #fhir/long{:id "id-111030" :value 1})))
+      (is (= (type/assoc-id #fhir/integer64 1 "id-111030")
+             #fhir/integer64{:id "id-111030" :value 1})))
 
     (testing "already extended"
-      (is (= (type/assoc-id #fhir/long{:id "foo"} "bar")
-             #fhir/long{:id "bar"}))
-      (is (= (type/assoc-id #fhir/long{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/long{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/integer64{:id "foo"} "bar")
+             #fhir/integer64{:id "bar"}))
+      (is (= (type/assoc-id #fhir/integer64{:extension #fhir/Extension{:url "foo"}} "id-111902")
+             #fhir/integer64{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/long 1 #fhir/Extension{:url "foo"})
-             #fhir/long{:extension #fhir/Extension{:url "foo"} :value 1})))
+      (is (= (type/assoc-extension #fhir/integer64 1 #fhir/Extension{:url "foo"})
+             #fhir/integer64{:extension #fhir/Extension{:url "foo"} :value 1})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/long{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/long{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/long{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/long{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/integer64{:id "id-111953"} #fhir/Extension{:url "foo"})
+             #fhir/integer64{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
+      (is (= (type/assoc-extension #fhir/integer64{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
+             #fhir/integer64{:extension #fhir/Extension{:url "bar"}}))))
 
   (testing "value"
     (are [x] (= 1 (type/value x))
-      #fhir/long 1
-      #fhir/long{:id "foo" :value 1}))
+      #fhir/integer64 1
+      #fhir/integer64{:id "foo" :value 1}))
 
   (testing "assoc value"
-    (is (= #fhir/long 2 (type/assoc-value #fhir/long 1 2)))
+    (is (= #fhir/integer64 2 (type/assoc-value #fhir/integer64 1 2)))
 
     (testing "invalid"
-      (is (s2/invalid? (st/with-instrument-disabled (type/assoc-value #fhir/long 1 "a"))))))
+      (is (s2/invalid? (st/with-instrument-disabled (type/assoc-value #fhir/integer64 1 "a"))))))
 
   (testing "to-json"
-    (is (= "1" (gen-json-string #fhir/long 1))))
+    (is (= "1" (gen-json-string #fhir/integer64 1))))
 
   (testing "to-xml"
-    (is (= (sexp-value "1") (type/to-xml #fhir/long 1))))
+    (is (= (sexp-value "1") (type/to-xml #fhir/integer64 1))))
 
   (testing "hash-into"
     (are [i hex] (= hex (murmur3 i))
-      #fhir/long 0 "9bc977cc"
-      #fhir/long 1 "fac0175c"
-      #fhir/long{:id "foo"} "943aa9b2"
-      #fhir/long{:id "foo" :value 0} "a5e71473"
-      #fhir/long{:extension [#fhir/Extension{:url "foo"}]} "589558b6"))
+      #fhir/integer64 0 "9bc977cc"
+      #fhir/integer64 1 "fac0175c"
+      #fhir/integer64{:id "foo"} "943aa9b2"
+      #fhir/integer64{:id "foo" :value 0} "a5e71473"
+      #fhir/integer64{:extension [#fhir/Extension{:url "foo"}]} "589558b6"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      #fhir/long 0
+      #fhir/integer64 0
       nil)))
 
 (deftest string-test

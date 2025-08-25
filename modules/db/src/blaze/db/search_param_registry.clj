@@ -161,7 +161,7 @@
      #{"http://hl7.org/fhir/SearchParameter/Bundle-message"
        "http://hl7.org/fhir/SearchParameter/Bundle-composition"}
      :fullUrl))
-   (:entry (read-classpath-json-resource "blaze/db/search-parameters.json"))))
+   (:entry (read-classpath-json-resource "blaze/fhir/search-parameters.json"))))
 
 (defn- read-bundle-entries [extra-bundle-file]
   (cond-> (read-standard-entries)

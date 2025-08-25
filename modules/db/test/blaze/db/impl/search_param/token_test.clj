@@ -548,72 +548,73 @@
                       :collection
                       {:fhir/type :fhir.Specimen/collection
                        :bodySite
-                       #fhir/CodeableConcept
-                        {:coding
-                         [#fhir/Coding
-                           {:system #fhir/uri"system-103824"
-                            :code #fhir/code"code-103812"}]}}}
+                       #fhir/CodeableReference
+                        {:reference #fhir/Reference{:reference "Specimen/0"}}}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
              (sr/get search-param-registry "bodysite" "Specimen")
              [] hash specimen)]
 
-        (testing "first SearchParamValueResource key is about `code`"
+        (testing "first SearchParamValueResource key is about `id`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "bodysite"
             :type := "Specimen"
-            :v-hash := (codec/v-hash "code-103812")
+            :v-hash := (codec/v-hash "0")
             :id := "id-105153"
             :hash-prefix := (hash/prefix hash)))
 
-        (testing "first ResourceSearchParamValue key is about `code`"
+        (testing "first ResourceSearchParamValue key is about `id`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Specimen"
             :id := "id-105153"
             :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
-            :v-hash := (codec/v-hash "code-103812")))
+            :v-hash := (codec/v-hash "0")))
 
-        (testing "second SearchParamValueResource key is about `system|`"
+        (testing "second SearchParamValueResource key is about `type/id` hash"
           (given (sp-vr-tu/decode-key-human (bb/wrap k2))
             :code := "bodysite"
             :type := "Specimen"
-            :v-hash := (codec/v-hash "system-103824|")
+            :v-hash := (codec/v-hash "Specimen/0")
             :id := "id-105153"
             :hash-prefix := (hash/prefix hash)))
 
-        (testing "second ResourceSearchParamValue key is about `system|`"
+        (testing "second ResourceSearchParamValue key is about `type/id` hash"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Specimen"
             :id := "id-105153"
             :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
-            :v-hash := (codec/v-hash "system-103824|")))
+            :v-hash := (codec/v-hash "Specimen/0")))
 
-        (testing "third SearchParamValueResource key is about `system|code`"
+        (testing "third SearchParamValueResource key is about `type/id` literal"
           (given (sp-vr-tu/decode-key-human (bb/wrap k4))
             :code := "bodysite"
             :type := "Specimen"
-            :v-hash := (codec/v-hash "system-103824|code-103812")
+            :v-hash := (codec/tid-id (codec/tid "Specimen")
+                                     (codec/id-byte-string "0"))
             :id := "id-105153"
             :hash-prefix := (hash/prefix hash)))
 
-        (testing "third ResourceSearchParamValue key is about `system|code`"
+        (testing "third ResourceSearchParamValue key is about `type/id` literal"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Specimen"
             :id := "id-105153"
             :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
-            :v-hash := (codec/v-hash "system-103824|code-103812")))))
+            :v-hash := (codec/tid-id (codec/tid "Specimen")
+                                     (codec/id-byte-string "0"))))))
 
     (testing "Encounter class"
       (let [specimen
             {:fhir/type :fhir/Encounter :id "id-105153"
              :class
-             #fhir/Coding
-              {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
-               :code #fhir/code"AMB"}}
+             [#fhir/CodeableConcept
+               {:coding
+                [#fhir/Coding
+                  {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                   :code #fhir/code"AMB"}]}]}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries

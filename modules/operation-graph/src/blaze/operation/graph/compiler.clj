@@ -10,53 +10,9 @@
    [blaze.operation.graph.spec]
    [blaze.util :refer [str]]
    [blaze.util.clauses :as uc]
-   [clojure.string :as str]
-   [ring.util.codec :as ring-codec])
-  (:import
-   [com.google.common.base CaseFormat]))
+   [ring.util.codec :as ring-codec]))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private extension-base
-  "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition")
-
-(defn- extension-value [url]
-  #(when (= url (:url %)) (type/value (:value %))))
-
-(defn- camel->kebab [s]
-  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
-
-(defn- extension-key [url]
-  (let [idx (str/last-index-of url \.)
-        name (cond-> url idx (subs (inc idx)))]
-    (keyword (camel->kebab name))))
-
-(defn assoc-extension-value
-  ([m url extensions]
-   (assoc-extension-value m url (extension-key url) extensions))
-  ([m url key extensions]
-   (let [value (some (extension-value url) extensions)]
-     (cond-> m value (assoc key value)))))
-
-(defn- start [{extensions :extension}]
-  (some (extension-value (str extension-base ".start")) extensions))
-
-(defn- nodes [{extensions :extension}]
-  (into
-   {}
-   (comp
-    (filter
-     (fn [{:keys [url]}]
-       (= (str extension-base ".node") url)))
-    (map
-     (fn [{extensions :extension}]
-       (let [id (some (extension-value "nodeId") extensions)]
-         [id (assoc-extension-value {:id id} "type" extensions)]))))
-   extensions))
-
-(defn- base-link [extensions]
-  (-> (assoc-extension-value {} (str extension-base ".link.sourceId") extensions)
-      (assoc-extension-value (str extension-base ".link.targetId") extensions)))
 
 (def ^:private noop-resolver
   (reify fhir-path/Resolver (-resolve [_ _])))
@@ -85,9 +41,9 @@
     (let [ref (str (name type) "/" id)]
       (d/type-query db (:type target-node) (mapv #(% ref) clauses)))))
 
-(defn- link [{:keys [path] extensions :extension}]
-  (let [link (base-link extensions)
-        params (some (extension-value (str extension-base ".link.params")) extensions)]
+(defn- link [{:keys [sourceId path targetId params]}]
+  (let [link {:source-id (type/value sourceId)
+              :target-id (type/value targetId)}]
     (cond
       (and path params)
       (ba/incorrect "Invalid link with path and params.")
@@ -106,10 +62,17 @@
   (when-ok [links (transduce link-xf conj [] links)]
     (group-by :source-id links)))
 
+(defn- node [{:keys [nodeId type]}]
+  (let [id (type/value nodeId)]
+    [id {:id id :type (type/value type)}]))
+
+(defn- nodes [nodes]
+  (into {} (map node) nodes))
+
 (defn compile
   "Compiles `graph-def` returning a compiled graph."
   [graph-def]
   (when-ok [links (links graph-def)]
-    {:start-node-id (start graph-def)
-     :nodes (nodes graph-def)
+    {:start-node-id (type/value (:start graph-def))
+     :nodes (nodes (:node graph-def))
      :links links}))

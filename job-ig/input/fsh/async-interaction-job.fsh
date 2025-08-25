@@ -7,6 +7,7 @@ Alias: $BT = http://hl7.org/fhir/bundle-type
 Alias: $HV = http://hl7.org/fhir/http-verb
 Alias: $SEM = http://hl7.org/fhir/search-entry-mode
 Alias: $LOINC = http://loinc.org
+Alias: $REL = http://hl7.org/fhir/CodeSystem/iana-link-relations
 
 CodeSystem: AsyncInteractionJobParameter
 Id: AsyncInteractionJobParameter
@@ -85,20 +86,22 @@ InstanceOf: AsyncInteractionJob
 Instance: AsyncInteractionJobSearchObservationRequestBundleExample
 InstanceOf: AsyncInteractionRequestBundle
 * type = $BT#batch
-* entry.request.method = $HV#GET
-* entry.request.url = "Observation?code=http://loinc.org|8310-5&_summary=count"
+* entry[0].request.method = $HV#GET
+* entry[0].request.url = "Observation?code=http://loinc.org|8310-5&_summary=count"
 
 Instance: SearchObservationBundle
 InstanceOf: Bundle
 Usage: #inline
 * type = $BT#searchset
 * total = 1287
+* link[0].relation = $REL#self
+* link[0].url = "http://example.com"
 
 Instance: AsyncInteractionJobSearchObservationResponseBundleExample
 InstanceOf: AsyncInteractionResponseBundle
 * type = $BT#batch-response
-* entry.resource = SearchObservationBundle
-* entry.response.status = "200"
+* entry[0].resource = SearchObservationBundle
+* entry[0].response.status = "200"
 
 Instance: AsyncInteractionJobSearchObservationCancellationRequestedExample
 InstanceOf: AsyncInteractionJob

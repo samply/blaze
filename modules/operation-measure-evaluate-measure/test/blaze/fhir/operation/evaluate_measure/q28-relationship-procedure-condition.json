@@ -36,12 +36,14 @@
         },
         "bodySite": [
           {
-            "coding": [
-              {
-                "system": "urn:oid:2.16.840.1.113883.6.43.1",
-                "code": "C44.6"
-              }
-            ]
+            "concept": {
+              "coding": [
+                {
+                  "system": "urn:oid:2.16.840.1.113883.6.43.1",
+                  "code": "C44.6"
+                }
+              ]
+            }
           }
         ],
         "subject": {
@@ -67,12 +69,14 @@
         },
         "bodySite": [
           {
-            "coding": [
-              {
-                "system": "urn:oid:2.16.840.1.113883.6.43.1",
-                "code": "C44.6"
-              }
-            ]
+            "concept": {
+              "coding": [
+                {
+                  "system": "urn:oid:2.16.840.1.113883.6.43.1",
+                  "code": "C44.6"
+                }
+              ]
+            }
           }
         ],
         "subject": {
@@ -124,12 +128,14 @@
         },
         "bodySite": [
           {
-            "coding": [
-              {
-                "system": "urn:oid:2.16.840.1.113883.6.43.1",
-                "code": "C44.6"
-              }
-            ]
+            "concept": {
+              "coding": [
+                {
+                  "system": "urn:oid:2.16.840.1.113883.6.43.1",
+                  "code": "C44.6"
+                }
+              ]
+            }
           }
         ],
         "subject": {
