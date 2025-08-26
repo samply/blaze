@@ -8,6 +8,8 @@
    [blaze.db.spec]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.history.util :as history-util]
+   [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.search.util.spec]
    [blaze.module :as m]
    [blaze.page-id-cipher.spec]
    [blaze.spec]
@@ -19,12 +21,12 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
-(defn- next-link [context query-params resource-handle]
-  {:fhir/type :fhir.Bundle/link
-   :relation "next"
-   :url (history-util/page-nav-url context query-params
-                                   (:t resource-handle)
-                                   (:id resource-handle))})
+(defn- next-link
+  [{::search-util/keys [link] :as context} query-params resource-handle]
+  (->> (history-util/page-nav-url context query-params
+                                  (:t resource-handle)
+                                  (:id resource-handle))
+       (link "next")))
 
 (defn- build-response
   [{:blaze/keys [db] :as context} query-params total version-handles since]
@@ -52,7 +54,8 @@
               (update :link conj-vec (next-link (peek paged-version-handles))))))))))
 
 (defmethod m/pre-init-spec :blaze.interaction.history/type [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
+  (s/keys :req [::search-util/link]
+          :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.interaction.history/type [_ context]
   (log/info "Init FHIR history type interaction handler")

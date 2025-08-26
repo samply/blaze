@@ -11,6 +11,7 @@
    [blaze.interaction.search-compartment]
    [blaze.interaction.search.nav-spec]
    [blaze.interaction.search.params-spec]
+   [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util-spec]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.middleware.fhir.db :as db]
@@ -67,10 +68,12 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-compartment
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze.page-store/local)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/fixed-rng-fn {}
    :blaze.page-store/local {}
    :blaze.test/fixed-rng {}
@@ -87,10 +90,18 @@
     (given-failed-system {:blaze.interaction/search-compartment {}}
       :key := :blaze.interaction/search-compartment
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% ::search-util/link))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "invalid link function"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-compartment ::search-util/link] ::invalid)
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::search-util/link]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid clock"
     (given-failed-system (assoc-in config [:blaze.interaction/search-compartment :clock] ::invalid)

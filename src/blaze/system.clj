@@ -8,6 +8,7 @@
   (:require
    [blaze.log]
    [blaze.path :refer [dir? path]]
+   [blaze.spec]
    [blaze.util :as u :refer [str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]

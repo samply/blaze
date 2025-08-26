@@ -4,6 +4,7 @@
    [blaze.handler.fhir.util-spec]
    [blaze.http.spec]
    [blaze.interaction.history.util :as util]
+   [blaze.interaction.search.util :as-alias search-util]
    [blaze.module-spec]
    [blaze.spec]
    [blaze.util-spec]
@@ -21,7 +22,7 @@
 (s/fdef util/self-link
   :args
   (s/cat
-   :context (s/keys :req [:blaze/base-url ::reitit/match])
+   :context (s/keys :req [::search-util/link :blaze/base-url ::reitit/match])
    :query-params (s/nilable :ring.request/query-params)))
 
 (s/fdef util/page-nav-url
@@ -37,3 +38,9 @@
 (s/fdef util/build-entry
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
                :resource :fhir/Resource))
+
+(s/fdef util/build-bundle
+  :args (s/cat
+         :context (s/keys :req [::search-util/link :blaze/base-url ::reitit/match])
+         :total nat-int?
+         :query-params (s/nilable :ring.request/query-params)))

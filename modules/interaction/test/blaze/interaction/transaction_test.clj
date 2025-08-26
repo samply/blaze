@@ -21,6 +21,7 @@
    [blaze.interaction.delete]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
+   [blaze.interaction.search.util :as search-util]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.interaction.transaction]
    [blaze.interaction.update]
@@ -135,7 +136,7 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
    :blaze.interaction/search-type
-   {:job-scheduler (ig/ref :blaze/job-scheduler)
+   {::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze.page-store/local)
@@ -180,6 +181,7 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
+   ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/fixed-rng-fn {}
    :blaze.page-store/local {}
    :blaze.test/fixed-rng {}
