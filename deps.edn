@@ -71,7 +71,7 @@
   {:mvn/version "0.4.0"}
 
   org.clojure/clojure
-  {:mvn/version "1.12.1"}
+  {:mvn/version "1.12.2"}
 
   org.clojure/tools.reader
   {:mvn/version "1.5.2"}
