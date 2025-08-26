@@ -1,6 +1,11 @@
 (ns blaze.interaction.search.util
   (:require
-   [blaze.handler.fhir.util :as fhir-util]))
+   [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
+   [blaze.module :as m]
+   [blaze.spec]
+   [clojure.spec.alpha :as s]
+   [integrant.core :as ig]))
 
 (def ^:const match
   #fhir/BundleEntrySearch{:mode #fhir/code"match"})
@@ -30,3 +35,23 @@
   {:fhir/type :fhir.Bundle/entry
    :resource resource
    :search outcome})
+
+(defmethod m/pre-init-spec ::link [_]
+  (s/keys :req [:fhir/version]))
+
+;; A component that depends on the FHIR version and once initialized, is a
+;; function that creates bundle links.
+;;
+;; The function takes a `relation` and a `url` as strings.
+(defmethod ig/init-key ::link
+  [_ {:fhir/keys [version]}]
+  (condp = version
+    "4.0.1"
+    (fn link [relation url]
+      {:fhir/type :fhir.Bundle/link
+       :relation (type/string relation)
+       :url (type/uri url)})
+    (fn link [relation url]
+      {:fhir/type :fhir.Bundle/link
+       :relation (type/code relation)
+       :url (type/uri url)})))

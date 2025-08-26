@@ -14,6 +14,7 @@
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.query-plan :as query-plan]
    [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.search.util.spec]
    [blaze.job.async-interaction.request :as req]
    [blaze.module :as m]
    [blaze.page-id-cipher.spec]
@@ -162,22 +163,19 @@
                (assoc :clauses (d/query-clauses query)))))))
     ac/completed-future))
 
-(defn- link [relation url]
-  {:fhir/type :fhir.Bundle/link
-   :relation relation
-   :url (type/uri url)})
-
-(defn- self-link [{:keys [self-link-url-fn]} clauses]
+(defn- self-link
+  [{::search-util/keys [link] :keys [self-link-url-fn]} clauses]
   (link "self" (self-link-url-fn clauses)))
 
-(defn- first-link [{:keys [first-link-url-fn]} token clauses]
+(defn- first-link
+  [{::search-util/keys [link] :keys [first-link-url-fn]} token clauses]
   (link "first" (first-link-url-fn token clauses)))
 
 (defn- next-link-offset [next-handle]
   {"__page-id" (:id next-handle)})
 
 (defn- next-link
-  [{:keys [next-link-url-fn]} token clauses next-handle]
+  [{::search-util/keys [link] :keys [next-link-url-fn]} token clauses next-handle]
   (->> (next-link-url-fn token clauses (next-link-offset next-handle))
        (link "next")))
 
@@ -325,7 +323,8 @@
         (assoc :blaze.preference/respond-async true)))))
 
 (defmethod m/pre-init-spec :blaze.interaction/search-type [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
+  (s/keys :req [::search-util/link]
+          :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
                    :blaze/page-id-cipher]
           :opt-un [:blaze/context-path]))
 

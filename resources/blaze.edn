@@ -123,17 +123,20 @@
   ;; which provides read and write access to the actual resources.
   ;;
   :blaze.interaction.history/system
-  {:clock #blaze/ref :blaze/clock
+  {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
+   :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
   :blaze.interaction.history/type
-  {:clock #blaze/ref :blaze/clock
+  {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
+   :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
   :blaze.interaction.history/instance
-  {:clock #blaze/ref :blaze/clock
+  {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
+   :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
@@ -155,20 +158,23 @@
   :blaze.interaction/vread {}
 
   :blaze.interaction/search-system
-  {:clock #blaze/ref :blaze/clock
+  {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
+   :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-store #blaze/ref :blaze/page-store
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
   :blaze.interaction/search-type
-  {:clock #blaze/ref :blaze/clock
+  {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
+   :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-store #blaze/ref :blaze/page-store
    :page-id-cipher #blaze/ref :blaze/page-id-cipher
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
   :blaze.interaction/search-compartment
-  {:clock #blaze/ref :blaze/clock
+  {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
+   :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-store #blaze/ref :blaze/page-store
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
@@ -209,6 +215,9 @@
 
   :blaze.rest-api/async-status-cancel-handler
   {:job-scheduler #blaze/ref :blaze/job-scheduler}
+
+  :blaze.interaction.search.util/link
+  {:fhir/version #blaze/cfg ["FHIR_VERSION" :fhir/version "4.0.1"]}
 
   ;;
   ;; CQL Evaluation Engine
@@ -255,7 +264,8 @@
   ;; FHIR Operation Patient Everything
   ;;
   :blaze.operation.patient/everything
-  {:clock #blaze/ref :blaze/clock
+  {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
+   :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 

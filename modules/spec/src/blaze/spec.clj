@@ -17,6 +17,9 @@
 (s/def :blaze/release-date
   string?)
 
+(s/def :fhir/version
+  #{"4.0.1" "6.0.0-ballot3"})
+
 ;; The context path of Blaze that is appended to the :blaze/base-url
 (s/def :blaze/context-path
   (s/and

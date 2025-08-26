@@ -4,6 +4,7 @@
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.interaction.search.util :as search-util]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
    [blaze.util :as u :refer [str]]
@@ -48,10 +49,8 @@
   (let [path (reitit/match->path match (select-keys query-params ["_count"]))]
     (str base-url path)))
 
-(defn self-link [context query-params]
-  {:fhir/type :fhir.Bundle/link
-   :relation "self"
-   :url (nav-url context query-params)})
+(defn self-link [{::search-util/keys [link] :as context} query-params]
+  (link "self" (nav-url context query-params)))
 
 (defn page-nav-url
   "Returns a nav URL which points to a page with it's first entry described by

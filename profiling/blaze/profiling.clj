@@ -9,6 +9,7 @@
    [blaze.elm.expression.cache :as ec]
    [blaze.system :as system]
    [blaze.util :refer [str]]
+   [clojure.repl :refer [pst]]
    [clojure.tools.namespace.repl :refer [refresh]]
    [taoensso.timbre :as log]))
 

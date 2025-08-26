@@ -64,7 +64,7 @@
    (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 (defn link-url [body link-relation]
-  (->> body :link (filter (comp #{link-relation} :relation)) first :url type/value))
+  (->> body :link (filter (comp #{link-relation} type/value :relation)) first :url type/value))
 
 (defmethod ig/init-key :blaze.test/page-id-cipher
   [_ _]
