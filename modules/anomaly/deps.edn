@@ -4,8 +4,8 @@
  {blaze/spec
   {:local/root "../spec"}
 
-  io.aviso/pretty
-  {:mvn/version "1.4.4"}}
+  org.clj-commons/pretty
+  {:mvn/version "3.6.3"}}
 
  :aliases
  {:test

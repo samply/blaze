@@ -1,8 +1,8 @@
 (ns blaze.anomaly
   (:refer-clojure :exclude [map])
   (:require
-   [cognitect.anomalies :as anom]
-   [io.aviso.exception :as aviso])
+   [clj-commons.format.exceptions :as e]
+   [cognitect.anomalies :as anom])
   (:import
    [clojure.lang APersistentMap ExceptionInfo]
    [java.util Map]
@@ -141,8 +141,8 @@
 
   Used to output stack traces in OperationOutcome's."
   [e]
-  (binding [aviso/*fonts* nil]
-    (aviso/format-exception e)))
+  (binding [e/*fonts* nil]
+    (e/format-exception e)))
 
 (defprotocol ToAnomaly
   (-anomaly [x]))

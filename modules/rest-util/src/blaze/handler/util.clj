@@ -7,9 +7,9 @@
    [blaze.fhir.spec.type :as type]
    [blaze.http.util :as hu]
    [blaze.util :refer [str]]
+   [clj-commons.format.exceptions :as e]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
-   [io.aviso.exception :as aviso]
    [reitit.ring]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
@@ -110,8 +110,8 @@
 
   Used to output stack traces in OperationOutcome's."
   [e]
-  (binding [aviso/*fonts* nil]
-    (aviso/format-exception e)))
+  (binding [e/*fonts* nil]
+    (e/format-exception e)))
 
 (defn- headers [response {:http/keys [headers]}]
   (reduce #(apply ring/header %1 %2) response headers))
