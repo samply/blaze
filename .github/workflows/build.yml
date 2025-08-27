@@ -2392,7 +2392,7 @@ jobs:
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d keycloak
 
     - name: Install Dependencies
-      run: make -C modules/frontend-e2e install
+      run: make -C modules/frontend-e2e install-playwright
 
     - name: Run Everything Else
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d
