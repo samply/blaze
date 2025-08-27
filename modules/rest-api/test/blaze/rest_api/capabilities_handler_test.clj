@@ -39,7 +39,8 @@
   (assoc
    mem-node-config
    ::rest-api/capabilities-handler
-   {:version "version-131640"
+   {:fhir/version "4.0.1"
+    :version "version-131640"
     :release-date "2024-01-07"
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)}))
@@ -55,10 +56,18 @@
     (given-failed-system {::rest-api/capabilities-handler {}}
       :key := ::rest-api/capabilities-handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :fhir/version))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+
+  (testing "invalid FHIR version"
+    (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :fhir/version] ::invalid)
+      :key := ::rest-api/capabilities-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:fhir/version]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid version"
     (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :version] ::invalid)
@@ -268,20 +277,20 @@
       [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"single"
       [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"})
       [:rest 0 :resource 0 :searchParam 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/searchParam
-      [:rest 0 :resource 0 :searchParam 0 :name] := "address-use"
-      [:rest 0 :resource 0 :searchParam 0 :type] := #fhir/code"token"
-      [:rest 0 :resource 0 :searchParam 1 :name] := "address-country"
-      [:rest 0 :resource 0 :searchParam 1 :type] := #fhir/code"string"
-      [:rest 0 :resource 0 :searchParam 2 :name] := "death-date"
-      [:rest 0 :resource 0 :searchParam 2 :type] := #fhir/code"date"
-      [:rest 0 :resource 0 :searchInclude 0] := "Patient:general-practitioner"
-      [:rest 0 :resource 0 :searchInclude 1] := "Patient:general-practitioner:Practitioner"
-      [:rest 0 :resource 0 :searchInclude 2] := "Patient:general-practitioner:Organization"
-      [:rest 0 :resource 0 :searchInclude 3] := "Patient:general-practitioner:PractitionerRole"
-      [:rest 0 :resource 0 :searchInclude 4] := "Patient:link"
-      [:rest 0 :resource 0 :searchRevInclude 0] := "Account:patient"
-      [:rest 0 :resource 0 :searchRevInclude 1] := "Account:subject"
-      [:rest 0 :resource 0 :searchRevInclude 2] := "ActivityDefinition:composed-of"))
+      [:rest 0 :resource 0 :searchParam 0 :name] := "contact-address-postalcode"
+      [:rest 0 :resource 0 :searchParam 0 :type] := #fhir/code"string"
+      [:rest 0 :resource 0 :searchParam 1 :name] := "_language"
+      [:rest 0 :resource 0 :searchParam 1 :type] := #fhir/code"token"
+      [:rest 0 :resource 0 :searchParam 2 :name] := "member"
+      [:rest 0 :resource 0 :searchParam 2 :type] := #fhir/code"reference"
+      [:rest 0 :resource 0 :searchInclude 0] := "Patient:member"
+      [:rest 0 :resource 0 :searchInclude 1] := "Patient:owned-by"
+      [:rest 0 :resource 0 :searchInclude 2] := "Patient:owned-by:Organization"
+      [:rest 0 :resource 0 :searchInclude 3] := "Patient:encounter"
+      [:rest 0 :resource 0 :searchInclude 4] := "Patient:encounter:Encounter"
+      [:rest 0 :resource 0 :searchRevInclude 0] := "Account:guarantor"
+      [:rest 0 :resource 0 :searchRevInclude 1] := "Account:patient"
+      [:rest 0 :resource 0 :searchRevInclude 2] := "AdverseEvent:patient"))
 
   (testing "with disabled referential integrity check"
     (with-handler [handler (assoc-in patient-read-interaction-config

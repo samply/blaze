@@ -65,7 +65,7 @@
 
 (defn id-string-spec [modifier]
   (case modifier
-    nil `(s/and string? ~id-matcher-form)
+    (nil :xmlAttr) `(s/and string? ~id-matcher-form)
     :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~id-matcher-form)))
 
 (defn uri-string-spec [modifier]
@@ -200,16 +200,16 @@
    (fn [{:keys [url] :as extension}]
      (cond-> extension
        (= "http://hl7.org/fhir/StructureDefinition/structuredefinition-fhir-type" url)
-       (assoc :valueUrl "id")))
+       (assoc :valueUrl "string")))
    extensions))
 
 (defn- fix-fhir-type-extension [types]
   (mapv #(update % :extension fix-fhir-type-extension*) types))
 
 (defn- fix-fhir-25274
-  "https://jira.hl7.org/browse/FHIR-25274"
-  [{{base-path :path} :base :as elem-def}]
-  (if (= "Resource.id" base-path)
+  "https://jira.hl7.org/browse/FHIR-41183"
+  [{:keys [path] :as elem-def}]
+  (if (= "ElementDefinition.id" path)
     (update elem-def :type fix-fhir-type-extension)
     elem-def))
 
@@ -262,6 +262,7 @@
         :fhir/Extension
         :fhir/Coding
         :fhir/CodeableConcept
+        :fhir/CodeableReference
         :fhir/Quantity
         :fhir/Ratio
         :fhir/Period
@@ -425,6 +426,7 @@
         :fhir.xml/Extension
         :fhir.xml/Coding
         :fhir.xml/CodeableConcept
+        :fhir.xml/CodeableReference
         :fhir.xml/Quantity
         :fhir.xml/Ratio
         :fhir.xml/Period
@@ -481,6 +483,7 @@
   (case name
     "boolean" `type/boolean?
     "integer" `type/integer?
+    "integer64" `type/integer64?
     "string" `type/string?
     "decimal" `type/decimal?
     "uri" `type/uri?
@@ -514,6 +517,7 @@
       "canonical" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Canonical)
       "code" (xml/primitive-xml-form #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" `type/xml->Code)
       "markdown" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->Markdown)
+      "decimal" (xml/primitive-xml-form #"-?(0|[1-9][0-9]{0,17})(\.[0-9]{1,17})?([eE][+-]?[0-9]{1,9})?" `type/xml->Decimal)
       "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
       (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" constructor)))))
 

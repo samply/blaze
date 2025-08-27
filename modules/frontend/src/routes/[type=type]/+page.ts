@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
+import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r5';
 
 import { fetchBundleWithDuration } from './util.js';
 import { resolve } from '$app/paths';

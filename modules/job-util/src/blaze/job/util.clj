@@ -22,11 +22,13 @@
   "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput")
 
 (defn- mk-status-reason [reason]
-  (type/codeable-concept
-   {:coding
-    [(type/coding
-      {:system (type/uri status-reason-url)
-       :code (type/code reason)})]}))
+  (type/codeable-reference
+   {:concept
+    (type/codeable-concept
+     {:coding
+      [(type/coding
+        {:system (type/uri status-reason-url)
+         :code (type/code reason)})]})}))
 
 (defn- mk-sub-status [system-url code]
   (type/codeable-concept
@@ -66,8 +68,8 @@
 (defn status-reason
   "Returns the status reason of `job`."
   {:arglists '([job])}
-  [{:keys [statusReason]}]
-  (code-value status-reason-url statusReason))
+  [{{:keys [concept]} :statusReason}]
+  (code-value status-reason-url concept))
 
 (defn cancelled-sub-status
   "Returns the business/sub status with system `.../JobCancelledSubStatus` of

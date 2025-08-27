@@ -10,10 +10,4 @@ blazectl --no-progress \
   --server "$BASE" \
   --certificate-authority "$CA_CERT" \
   --token "$TOKEN" \
-  upload "$SCRIPT_DIR/../../.github/test-data/synthea"
-
-echo "Upload KDS Fall Profile..."
-curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$CA_CERT" --oauth2-bearer "$TOKEN" -d @"$SCRIPT_DIR/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.fall/StructureDefinition-mii-pr-fall-kontakt-gesundheitseinrichtung.json" "$BASE/StructureDefinition"
-
-echo "Upload one Value Set..."
-curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$CA_CERT" --oauth2-bearer "$TOKEN" -d @"$SCRIPT_DIR/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.laborbefund/ValueSet-mii-vs-labor-laborbereich.json" "$BASE/ValueSet"
+  upload "$SCRIPT_DIR/../../test-data-synthea-100"

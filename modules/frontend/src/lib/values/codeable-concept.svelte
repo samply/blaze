@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CodeableConcept } from 'fhir/r4';
+  import type { CodeableConcept } from 'fhir/r5';
   import Coding from './coding.svelte';
 
   interface Props {

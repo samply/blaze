@@ -8,6 +8,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.search.util.spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
    [blaze.spec]
@@ -44,22 +45,21 @@
                         {:id id :page-id page-id}))
 
 (defn- next-link
-  [{:keys [page-id-cipher]} {:blaze/keys [base-url db] :as request}
-   start end page-size offset]
-  {:fhir/type :fhir.Bundle/link
-   :relation "next"
-   :url (->> (cond->
-              {"_count" (str page-size)
-               "__t" (str (d/t db))
-               "__page-offset" (str offset)}
-               start
-               (assoc "start" (str start))
-               end
-               (assoc "end" (str end)))
-             (decrypt-page-id/encrypt page-id-cipher)
-             (page-match request)
-             (reitit/match->path)
-             (str base-url))})
+  [{::search-util/keys [link] :keys [page-id-cipher]}
+   {:blaze/keys [base-url db] :as request} start end page-size offset]
+  (->> (cond->
+        {"_count" (str page-size)
+         "__t" (str (d/t db))
+         "__page-offset" (str offset)}
+         start
+         (assoc "start" (str start))
+         end
+         (assoc "end" (str end)))
+       (decrypt-page-id/encrypt page-id-cipher)
+       (page-match request)
+       (reitit/match->path)
+       (str base-url)
+       (link "next")))
 
 (defn- bundle [context request resources start end page-size next-offset]
   (let [entries (mapv (partial search-util/match-entry request) resources)]
@@ -90,7 +90,8 @@
                                  next-offset)))))))
 
 (defmethod m/pre-init-spec :blaze.operation.patient/everything [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
+  (s/keys :req [::search-util/link]
+          :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.operation.patient/everything [_ context]
   (log/info "Init FHIR Patient $everything operation handler")

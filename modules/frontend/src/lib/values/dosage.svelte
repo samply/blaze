@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FhirObject } from '$lib/resource/resource-card.js';
-  import type { Dosage } from 'fhir/r4';
+  import type { Dosage } from 'fhir/r5';
 
   interface Props {
     values: FhirObject[];

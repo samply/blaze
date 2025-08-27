@@ -1,4 +1,4 @@
-import type { Parameters } from 'fhir/r4';
+import type { Parameters } from 'fhir/r5';
 import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import type { PageLoad } from './$types';

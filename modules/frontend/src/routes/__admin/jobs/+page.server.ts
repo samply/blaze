@@ -16,7 +16,7 @@ import {
   extractSearchParamUrl,
   extractProcessingDuration as extractReIndexProcessingDuration
 } from '$lib/jobs/re-index';
-import type { Bundle, BundleEntry, Task } from 'fhir/r4';
+import type { Bundle, BundleEntry, Task } from 'fhir/r5';
 
 export interface SummaryJob extends Job {
   detail: string;

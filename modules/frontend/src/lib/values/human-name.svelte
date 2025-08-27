@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FhirObject } from '$lib/resource/resource-card.js';
-  import type { HumanName } from 'fhir/r4';
+  import type { HumanName } from 'fhir/r5';
   import Badge from '$lib/tailwind/badge.svelte';
 
   interface Props {

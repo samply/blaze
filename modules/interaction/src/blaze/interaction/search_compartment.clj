@@ -10,6 +10,7 @@
    [blaze.interaction.search.nav :as nav]
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.search.util.spec]
    [blaze.module :as m]
    [blaze.page-store.spec]
    [blaze.spec]
@@ -48,21 +49,19 @@
   (into [] (entries-xf context) resources))
 
 (defn- self-link
-  [{:keys [match params] :blaze/keys [base-url]} clauses]
-  {:fhir/type :fhir.Bundle/link
-   :relation "self"
-   :url (nav/url base-url match params clauses)})
+  [{::search-util/keys [link] :keys [match params] :blaze/keys [base-url]}
+   clauses]
+  (link "self" (nav/url base-url match params clauses)))
 
 (defn- next-link-offset [{:keys [page-offset]} entries]
   {"__page-offset" (str (+ page-offset (dec (count entries))))})
 
 (defn- next-link
-  [{:keys [page-match params] :blaze/keys [db] :as context} clauses entries]
+  [{::search-util/keys [link] :keys [page-match params]
+    :blaze/keys [db] :as context} clauses entries]
   (do-sync [url (nav/token-url! context page-match params clauses (d/t db)
                                 (next-link-offset params entries))]
-    {:fhir/type :fhir.Bundle/link
-     :relation "next"
-     :url url}))
+    (link "next" url)))
 
 (defn- bundle* [context handles clauses]
   {:fhir/type :fhir/Bundle
@@ -144,7 +143,8 @@
           (assoc :blaze.preference/handling handling))))))
 
 (defmethod m/pre-init-spec :blaze.interaction/search-compartment [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
+  (s/keys :req [::search-util/link]
+          :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
                    :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.interaction/search-compartment [_ context]

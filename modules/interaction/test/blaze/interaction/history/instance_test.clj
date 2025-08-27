@@ -14,6 +14,8 @@
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.history.instance]
    [blaze.interaction.history.util-spec]
+   [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.search.util-spec]
    [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
@@ -90,10 +92,12 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction.history/instance
-   {:node (ig/ref :blaze.db/node)
+   {::search-util/link (ig/ref ::search-util/link)
+    :node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}))
 
@@ -108,9 +112,17 @@
     (given-failed-system {:blaze.interaction.history/instance {}}
       :key := :blaze.interaction.history/instance
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% ::search-util/link))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "invalid link function"
+    (given-failed-system (assoc-in config [:blaze.interaction.history/instance ::search-util/link] ::invalid)
+      :key := :blaze.interaction.history/instance
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::search-util/link]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid clock"
     (given-failed-system (assoc-in config [:blaze.interaction.history/instance :clock] ::invalid)

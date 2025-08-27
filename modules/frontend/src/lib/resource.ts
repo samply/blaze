@@ -1,4 +1,4 @@
-import type { CodeSystem, FhirResource, ValueSet } from 'fhir/r4';
+import type { CodeSystem, FhirResource, ValueSet } from 'fhir/r5';
 
 export function title(resource: FhirResource) {
   if (resource.resourceType === 'CodeSystem') {

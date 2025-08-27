@@ -6,12 +6,9 @@
 "DocumentReference",78
 "Encounter",78
 "ExplanationOfBenefit",78
-"ImagingStudy",45
 "Immunization",13
 "Medication",90
-"MedicationAdministration",90
 "MedicationRequest",98
 "Observation",2265
 "Patient",1
 "Procedure",150
-"Provenance",1

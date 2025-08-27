@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CapabilityStatement } from 'fhir/r4';
+  import type { CapabilityStatement } from 'fhir/r5';
   import { RestfulInteraction } from '$lib/fhir.js';
   import type { FhirObject } from '$lib/resource/resource-card.js';
   import { isTabActive } from '$lib/util.js';

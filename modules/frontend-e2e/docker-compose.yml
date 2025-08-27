@@ -44,6 +44,8 @@ services:
       OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"
       OPENID_CLIENT_TRUST_STORE: "/app/keycloak-trust-store.p12"
       OPENID_CLIENT_TRUST_STORE_PASS: "insecure"
+    ports:
+    - "8081:8081"
     extra_hosts:
     - "keycloak.localhost:host-gateway"
     volumes:

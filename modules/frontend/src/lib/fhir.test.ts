@@ -1,4 +1,4 @@
-import type { Bundle } from 'fhir/r4';
+import type { Bundle } from 'fhir/r5';
 
 import { describe, expect, it } from 'vitest';
 import { bundleLink } from './fhir.js';

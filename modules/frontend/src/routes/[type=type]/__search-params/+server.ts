@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { resolve } from '$app/paths';
-import type { CapabilityStatement } from 'fhir/r4';
+import type { CapabilityStatement } from 'fhir/r5';
 import { sortByProperty } from '$lib/util';
 
 export const GET: RequestHandler = async ({ params, fetch }) => {

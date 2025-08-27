@@ -32,13 +32,19 @@
 (defn- write-string [gen s]
   `(.writeString ~(with-meta gen {:tag `JsonGenerator}) ~(with-meta s {:tag `String})))
 
+(defn- primitive-tag [value]
+  (cond
+    (= 'Integer (:tag (meta value))) (with-meta value {:tag 'int})
+    (= 'Long (:tag (meta value))) (with-meta value {:tag 'long})
+    :else value))
+
 (defn- write-value [gen value]
   (cond
     (#{'Boolean 'boolean} (:tag (meta value)))
     `(.writeBoolean ~(with-meta gen {:tag `JsonGenerator}) ~value)
 
-    (#{'Integer 'int 'BigDecimal} (:tag (meta value)))
-    `(.writeNumber ~(with-meta gen {:tag `JsonGenerator}) ~value)
+    (#{'Integer 'Long 'int 'BigDecimal} (:tag (meta value)))
+    `(.writeNumber ~(with-meta gen {:tag `JsonGenerator}) ~(primitive-tag value))
 
     (#{'String} (:tag (meta value)))
     `(.writeString ~(with-meta gen {:tag `JsonGenerator}) ~value)
@@ -74,17 +80,13 @@
 (def ^:private value-tag 2)
 
 (defn- parse-value [value form]
-  (if (#{'Integer 'int} (:tag (meta value)))
-    `(Integer/parseInt ~form)
-    form))
-
-(defn- primitive-tag [value]
-  (if (= 'Integer (:tag (meta value)))
-    (with-meta value {:tag 'int})
-    value))
+  (cond
+    (#{'Integer 'int} (:tag (meta value))) `(Integer/parseInt ~form)
+    (#{'Long 'long} (:tag (meta value))) `(Long/parseLong ~form)
+    :else form))
 
 (defn- gen-equals-sym [value-sym]
-  (if (= 'int (:tag (meta value-sym)))
+  (if (#{'int 'long} (:tag (meta value-sym)))
     '=
     '.equals))
 

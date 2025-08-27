@@ -265,7 +265,7 @@
   (testing "success"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-      @(js/create-job job-scheduler (job-async/job #fhir/dateTime"2024-05-30T10:26:00" "0" 0)
+      @(js/create-job job-scheduler (job-async/job #system/date-time"2024-05-30T10:26:00" "0" 0)
                       (job-async/request-bundle "0" "GET" "Observation"))
 
       (testing "the job is completed"
@@ -294,7 +294,7 @@
     (testing "unknown FHIR type"
       (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-        @(js/create-job job-scheduler (job-async/job #fhir/dateTime"2024-05-30T10:26:00" "0" 0)
+        @(js/create-job job-scheduler (job-async/job #system/date-time"2024-05-30T10:26:00" "0" 0)
                         (job-async/request-bundle "0" "GET" "Error"))
 
         (testing "the job is completed"
@@ -345,7 +345,7 @@
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
       @(js/create-job
         job-scheduler
-        (-> (job-async/job #fhir/dateTime"2024-05-30T10:26:00" "0" 0)
+        (-> (job-async/job #system/date-time"2024-05-30T10:26:00" "0" 0)
             (update :input (partial take 1)))
         (job-async/request-bundle "0" "GET" "Error"))
 
@@ -362,7 +362,7 @@
 (deftest cancellation-test
   (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-    @(js/create-job job-scheduler (job-async/job #fhir/dateTime"2024-05-30T10:26:00" "0" 0)
+    @(js/create-job job-scheduler (job-async/job #system/date-time"2024-05-30T10:26:00" "0" 0)
                     (job-async/request-bundle "0" "GET" "Observation"))
 
     @(jtu/pull-job system :in-progress/started)

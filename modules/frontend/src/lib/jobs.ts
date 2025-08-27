@@ -1,5 +1,5 @@
 import { coding } from '$lib/fhir';
-import type { Task, TaskInput, TaskOutput } from 'fhir/r4';
+import type { Task, TaskInput, TaskOutput } from 'fhir/r5';
 
 const numberUrl = 'https://samply.github.io/blaze/fhir/sid/JobNumber';
 const typeUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/JobType';

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Address } from 'fhir/r4';
+  import type { Address } from 'fhir/r5';
   import type { FhirObject } from '$lib/resource/resource-card.js';
   import { joinStrings } from '$lib/util.js';
   import Single from './address/single.svelte';

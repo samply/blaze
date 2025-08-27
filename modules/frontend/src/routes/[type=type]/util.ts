@@ -1,4 +1,4 @@
-import type { OperationOutcome } from 'fhir/r4';
+import type { OperationOutcome } from 'fhir/r5';
 import type { RouteParams } from './$types.js';
 import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';

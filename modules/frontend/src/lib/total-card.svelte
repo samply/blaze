@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { Bundle } from 'fhir/r4';
+  import type { Bundle } from 'fhir/r5';
   import { bundleLink } from './fhir.js';
   import { fade } from 'svelte/transition';
   import { quintIn } from 'svelte/easing';

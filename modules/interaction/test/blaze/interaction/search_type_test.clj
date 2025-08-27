@@ -14,6 +14,7 @@
    [blaze.interaction.search-type]
    [blaze.interaction.search.nav-spec]
    [blaze.interaction.search.params-spec]
+   [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util-spec]
    [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
    [blaze.job-scheduler-spec]
@@ -100,15 +101,19 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-type
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze.page-store/local)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :context-path context-path}
+
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+   ::search-util/link {:fhir/version "4.0.1"}
    :blaze.page-store/local {}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/fixed-rng {}
@@ -125,10 +130,18 @@
     (given-failed-system {:blaze.interaction/search-type {}}
       :key := :blaze.interaction/search-type
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% ::search-util/link))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "invalid link function"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-type ::search-util/link] ::invalid)
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::search-util/link]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid clock"
     (given-failed-system (assoc-in config [:blaze.interaction/search-type :clock] ::invalid)
@@ -1174,13 +1187,13 @@
     (testing "with additional _profile search param"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-095443"]}}]]]
+                 :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-091902"]}}]]]
 
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
                 @(handler
                   {:headers {"prefer" (str "handling=" handling)}
-                   :params {"_id" "0" "_profile" "profile-uri-095443"}})]
+                   :params {"_id" "0" "_profile" "http://example.com/profile-uri-091902"}})]
 
             (is (= 200 status))
 
@@ -1194,7 +1207,7 @@
               (is (= #fhir/unsignedInt 1 (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_id=0&_profile=profile-uri-095443&_count=50")
+              (is (= (str base-url context-path "/Patient?_id=0&_profile=http%3A%2F%2Fexample.com%2Fprofile-uri-091902&_count=50")
                      (link-url body "self"))))
 
             (testing "the bundle contains one entry"
@@ -1476,13 +1489,13 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put
          {:fhir/type :fhir/Patient :id "1"
-          :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-151511"]}}]]]
+          :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-151511"]}}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
                 {:headers {"prefer" (str "handling=" handling)}
-                 :params {"_profile" "profile-uri-151511"}})]
+                 :params {"_profile" "http://example.com/profile-uri-151511"}})]
 
           (is (= 200 status))
 
@@ -1505,7 +1518,7 @@
           (testing "the entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
-              [:meta :profile 0] := #fhir/canonical"profile-uri-151511"
+              [:meta :profile 0] := #fhir/canonical"http://example.com/profile-uri-151511"
               :id := "1"))))))
 
   (testing "_tag search"
@@ -2169,16 +2182,16 @@
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/0"}}
+                 [#fhir/CodeableReference{:reference #fhir/Reference{:reference "Condition/0"}}]}
                 {:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/2"}}]}]
+                 [#fhir/CodeableReference{:reference #fhir/Reference{:reference "Condition/2"}}]}]}]
         [:put {:fhir/type :fhir/Encounter
                :id "1"
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/1"}}]}]
+                 [#fhir/CodeableReference{:reference #fhir/Reference{:reference "Condition/1"}}]}]}]
         [:put {:fhir/type :fhir/Condition
                :id "0"
                :code
@@ -2202,7 +2215,7 @@
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
                 {::reitit/match (match-of "Encounter")
-                 :params {"diagnosis:Condition.code" "foo"}})]
+                 :params {"diagnosis-reference.code" "foo"}})]
 
           (is (= 200 status))
 
@@ -2224,7 +2237,7 @@
               @(handler
                 {::reitit/match (match-of "Encounter")
                  :headers {"prefer" "handling=strict"}
-                 :params {"diagnosis.code" "foo"}})]
+                 :params {"subject.gender" "foo"}})]
 
           (is (= 400 status))
 
@@ -2232,7 +2245,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Ambiguous target types `Condition, Procedure` in the chain `diagnosis.code`. Please use a modifier to constrain the type.")))))
+            [:issue 0 :diagnostics] := "Ambiguous target types `Group, Patient` in the chain `subject.gender`. Please use a modifier to constrain the type.")))))
 
   (testing "Include Resources"
     (testing "direct include"
@@ -2499,10 +2512,11 @@
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                  :medication
-                 #fhir/Reference
-                  {:reference "Medication/0"}}]
+                 #fhir/CodeableReference
+                  {:reference #fhir/Reference
+                               {:reference "Medication/0"}}}]
           [:put {:fhir/type :fhir/Medication :id "0"
-                 :manufacturer
+                 :marketingAuthorizationHolder
                  #fhir/Reference
                   {:reference "Organization/0"}}]
           [:put {:fhir/type :fhir/Organization :id "0"}]]]
@@ -2512,7 +2526,7 @@
                 {::reitit/match (match-of "MedicationStatement")
                  :params
                  {"_include" "MedicationStatement:medication"
-                  "_include:iterate" "Medication:manufacturer"}})]
+                  "_include:iterate" "Medication:marketingauthorizationholder"}})]
 
           (is (= 200 status))
 
@@ -2550,10 +2564,11 @@
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                  :medication
-                 #fhir/Reference
-                  {:reference "Medication/0"}}]
+                 #fhir/CodeableReference
+                  {:reference #fhir/Reference
+                               {:reference "Medication/0"}}}]
           [:put {:fhir/type :fhir/Medication :id "0"
-                 :manufacturer
+                 :marketingAuthorizationHolder
                  #fhir/Reference
                   {:reference "Organization/0"}}]
           [:put {:fhir/type :fhir/Organization :id "0"}]]]
@@ -2563,7 +2578,7 @@
                 {::reitit/match (match-of "MedicationStatement")
                  :params
                  {"_include"
-                  ["MedicationStatement:medication" "Medication:manufacturer"]}})]
+                  ["MedicationStatement:medication" "Medication:marketingauthorizationholder"]}})]
 
           (is (= 200 status))
 

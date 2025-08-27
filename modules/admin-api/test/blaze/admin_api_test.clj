@@ -22,6 +22,7 @@
    [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
+   [blaze.interaction.search.util :as search-util]
    [blaze.job-scheduler :as js]
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.output-spec]
@@ -227,16 +228,20 @@
      :blaze.interaction/read {}
 
      :blaze.interaction.history/instance
-     {:clock (ig/ref :blaze.test/fixed-clock)
+     {::search-util/link (ig/ref ::search-util/link)
+      :clock (ig/ref :blaze.test/fixed-clock)
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
       :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
 
      :blaze.interaction/search-type
-     {:clock (ig/ref :blaze.test/fixed-clock)
+     {::search-util/link (ig/ref ::search-util/link)
+      :clock (ig/ref :blaze.test/fixed-clock)
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
       :page-store (ig/ref :blaze/page-store)
       :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
       :context-path "/fhir"}
+
+     ::search-util/link {:fhir/version "4.0.1"}
 
      :blaze.page-store/local {}
 

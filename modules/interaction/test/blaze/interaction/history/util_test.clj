@@ -4,6 +4,8 @@
    [blaze.fhir.test-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.interaction.history.util-spec]
+   [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.search.util-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -142,10 +144,12 @@
 
 (def ^:private config
   {::context
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :blaze/base-url ""
     :reitit.core/match (reitit/map->Match {})}
+   ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}})
 

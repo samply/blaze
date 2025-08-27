@@ -224,18 +224,18 @@
 (defn integer? [x]
   (identical? :fhir/integer (type x)))
 
-;; ---- long ---------------------------------------------------------------
+;; ---- integer64 ---------------------------------------------------------------
 
-(declare long)
+(declare integer64)
 
 (extend-protocol p/FhirType
   Long
-  (-type [_] :fhir/long)
+  (-type [_] :fhir/integer64)
   (-interned [_] false)
-  (-assoc-id [l id] (long {:id id :value l}))
-  (-assoc-extension [l extension] (long {:extension extension :value l}))
+  (-assoc-id [l id] (integer64 {:id id :value l}))
+  (-assoc-extension [l extension] (integer64 {:extension extension :value l}))
   (-value [l] l)
-  (-assoc-value [_ value] (long value))
+  (-assoc-value [_ value] (integer64 value))
   (-has-primary-content [_] true)
   (-serialize-json [l generator]
     (.writeNumber ^JsonGenerator generator (unchecked-long l)))
@@ -246,29 +246,29 @@
     (xml-node/element nil {:value (str l)}))
   (-hash-into [l sink]
     (doto ^PrimitiveSink sink
-      (.putByte (byte 2))                                   ; :fhir/long
+      (.putByte (byte 2))                                   ; :fhir/integer64
       (.putByte (byte 2)))                                  ; :value
     (system/-hash-into l sink))
   (-references [_]))
 
-(defextended ExtendedLong [id extension ^Long value]
-  :fhir-type :fhir/long :hash-num 2)
+(defextended ExtendedInteger64 [id extension ^Long value]
+  :fhir-type :fhir/integer64 :hash-num 2)
 
-(def ^{:arglists '([x])} long
-  (create-fn (intern/intern-value map->ExtendedLong) ->ExtendedLong
+(def ^{:arglists '([x])} integer64
+  (create-fn (intern/intern-value map->ExtendedInteger64) ->ExtendedInteger64
              #(if (clojure.core/int? %) (clojure.core/long %) ::s2/invalid)))
 
-(defn xml->Long
+(defn xml->Integer64
   {:arglists '([element])}
   [{{:keys [id value]} :attrs content :content}]
   (let [extension (seq content)
         value (some-> ^String value (Long/valueOf))]
     (if (or id extension)
-      (long {:id id :extension extension :value value})
-      (long value))))
+      (integer64 {:id id :extension extension :value value})
+      (integer64 value))))
 
-(defn long? [x]
-  (identical? :fhir/long (type x)))
+(defn integer64? [x]
+  (identical? :fhir/integer64 (type x)))
 
 ;; ---- string ----------------------------------------------------------------
 
@@ -1336,13 +1336,14 @@
 (def-complex-type Extension
   [^String id extension ^String url ^:polymorph ^:primitive
    ^{:types [base64Binary boolean canonical code date dateTime decimal id
-             instant integer markdown oid positiveInt string time unsignedInt
-             uri url uuid Address Age Annotation Attachment CodeableConcept
-             Coding ContactPoint Count Distance Duration HumanName Identifier
-             Money Period Quantity Range Ratio Reference SampledData Signature
-             Timing ContactDetail Contributor DataRequirement Expression
-             ParameterDefinition RelatedArtifact TriggerDefinition UsageContext
-             Dosage Meta]} value]
+             instant integer integer64 markdown oid positiveInt string time
+             unsignedInt uri url uuid Address Age Annotation Attachment
+             CodeableConcept CodeableReference Coding ContactPoint Count
+             Distance Duration HumanName Identifier Money Period Quantity Range
+             Ratio Reference SampledData Signature Timing ContactDetail
+             Contributor DataRequirement Expression ParameterDefinition
+             RelatedArtifact TriggerDefinition UsageContext Dosage Meta]}
+   value]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension) (p/-interned value)))
 
@@ -1360,6 +1361,12 @@
   [^String id extension coding ^:primitive-string text]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension)))
+
+(declare codeable-reference)
+
+(def-complex-type CodeableReference
+  [^String id extension concept reference]
+  :hash-num 46)
 
 (declare quantity)
 

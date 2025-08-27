@@ -128,13 +128,13 @@
                     (sr/list-by-target-type search-param-registry "Patient"))))
 
       (given (sr/list-by-target-type search-param-registry "Patient")
-        count := 210
+        count := 183
         [0 :base] := ["Account"]
-        [0 :code] := "patient"
-        [1 :base] := ["Account"]
-        [1 :code] := "subject"
-        [2 :base] := ["ActivityDefinition"]
-        [2 :code] := "composed-of"))
+        [0 :code] := "guarantor"
+        [1 :base 0] := "Account"
+        [1 :code] := "patient"
+        [2 :base] := ["Account"]
+        [2 :code] := "subject"))
 
     (testing "Encounter"
       (testing "every search param is of type reference"
@@ -142,8 +142,8 @@
                     (sr/list-by-target-type search-param-registry "Encounter"))))
 
       (given (sr/list-by-target-type search-param-registry "Encounter")
-        count := 100
-        [0 :base] := ["ActivityDefinition"]
+        count := 60
+        [0 :base 0] := "ActivityDefinition"
         [0 :code] := "composed-of"))))
 
 (deftest linked-compartments-test
@@ -178,29 +178,6 @@
         count := 1
         [0] := ["Patient" "1"]))
 
-    (testing "MedicationAdministration subject and performer"
-      (given (sr/linked-compartments
-              search-param-registry
-              {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference "Patient/1"}
-               :performer
-               [{:fhir/type :fhir.MedicationAdministration/performer
-                 :actor #fhir/Reference{:reference "Patient/2"}}]})
-        count := 2
-        [0] := ["Patient" "2"]
-        [1] := ["Patient" "1"]))
-
-    (testing "MedicationAdministration identical subject and performer"
-      (given (sr/linked-compartments
-              search-param-registry
-              {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference "Patient/1"}
-               :performer
-               [{:fhir/type :fhir.MedicationAdministration/performer
-                 :actor #fhir/Reference{:reference "Patient/1"}}]})
-        count := 1
-        [0] := ["Patient" "1"]))
-
     (testing "a simple Patient has no compartments"
       (is (empty? (sr/linked-compartments
                    search-param-registry
@@ -230,12 +207,12 @@
     (with-system [{:blaze.db/keys [search-param-registry]} config]
       (testing "all resource types"
         (given (sr/compartment-resources search-param-registry "Patient")
-          count := 66
+          count := 74
           [0] := ["Account" ["subject"]]
           [1] := ["AdverseEvent" ["subject"]]
-          [2] := ["AllergyIntolerance" ["patient" "recorder" "asserter"]]
+          [2] := ["AllergyIntolerance" ["patient" "asserter"]]
           [3] := ["Appointment" ["actor"]]
-          [65] := ["VisionPrescription" ["patient"]]))
+          [73] := ["VisionPrescription" ["patient"]]))
 
       (testing "only Observation codes"
         (is (= (sr/compartment-resources search-param-registry "Patient" "Observation")

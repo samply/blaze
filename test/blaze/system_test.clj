@@ -13,6 +13,7 @@
    [blaze.interaction.search-compartment]
    [blaze.interaction.search-system]
    [blaze.interaction.search-type]
+   [blaze.interaction.search.util :as search-util]
    [blaze.interaction.transaction]
    [blaze.interaction.vread]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
@@ -178,22 +179,26 @@
    :blaze.interaction/conditional-delete-type
    {:node (ig/ref :blaze.db/node)}
    :blaze.interaction/search-system
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction/search-type
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction/search-compartment
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction.history/type
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    ::rest-api/async-status-handler
@@ -201,7 +206,8 @@
    ::rest-api/async-status-cancel-handler
    {:job-scheduler (ig/ref :blaze/job-scheduler)}
    ::rest-api/capabilities-handler
-   {:version "0.1.0"
+   {:fhir/version "4.0.1"
+    :version "0.1.0"
     :release-date "2024-01-07"
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
@@ -245,6 +251,7 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :graph-cache (ig/ref ::ts-local/graph-cache)}
+   ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}

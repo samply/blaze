@@ -58,7 +58,3 @@ CONTENT_TYPE_HEADER=$(echo "$HEADERS" | grep -iv 'X-Content-Type-Options' | grep
 
 test "status code" "$STATUS_CODE" "200"
 test "Content-Type header" "$CONTENT_TYPE_HEADER" "application/fhir+xml;charset=utf-8"
-
-echo "check Encounter supported profile..."
-CAPABILITY_STATEMENT=$(curl -sL --cacert "$CA_CERT_BLAZE" --oauth2-bearer "$ACCESS_TOKEN" -H 'Accept: application/fhir+json' "$BASE/metadata")
-test "Encounter Supported Profile" "$(echo "$CAPABILITY_STATEMENT" | jq -r '.rest[0].resource[] | select(.type == "Encounter") .supportedProfile[0]')" "https://www.medizininformatik-initiative.de/fhir/core/modul-fall/StructureDefinition/KontaktGesundheitseinrichtung|2025.0.0"

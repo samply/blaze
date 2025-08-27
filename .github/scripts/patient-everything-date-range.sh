@@ -10,7 +10,7 @@ BUNDLE=$(curl -s "$BASE/Patient/$PATIENT_ID/\$everything?start=2013&end=2014")
 ACTUAL_SIZE=$(echo "$BUNDLE" | jq -r .total)
 IDS="$(echo "$BUNDLE" | jq -r '.entry[].resource.id')"
 
-test "size" "$ACTUAL_SIZE" "1997"
+test "size" "$ACTUAL_SIZE" "1806"
 
 test "no duplicates" "$(echo "$IDS" | sort -u | wc -l | xargs)" "$(echo "$IDS" | wc -l | xargs)"
 

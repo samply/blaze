@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Attachment } from 'fhir/r4';
+  import type { Attachment } from 'fhir/r5';
   import type { FhirObject } from '$lib/resource/resource-card.js';
 
   interface Props {

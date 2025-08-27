@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Money } from 'fhir/r4';
+  import type { Money } from 'fhir/r5';
 
   interface Props {
     value: Money;

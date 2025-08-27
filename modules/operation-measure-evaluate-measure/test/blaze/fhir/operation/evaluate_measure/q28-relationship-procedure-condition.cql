@@ -14,7 +14,7 @@ define EwingSarkomMitStrahlentherapie:
     from [Condition: Code 'C41.9' from icd10] C
       with Strahlentherapien P
         such that P.reasonReference.reference = 'Condition/' + C.id
-    where exists from C.bodySite BS where BS as CodeableConcept ~ Code 'C44.6' from idco3
+    where exists from C.concept.bodySite BS where BS as CodeableConcept ~ Code 'C44.6' from idco3
 
 define InInitialPopulation:
   EwingSarkomMitStrahlentherapie

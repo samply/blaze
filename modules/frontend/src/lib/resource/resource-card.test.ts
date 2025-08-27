@@ -1,4 +1,4 @@
-import type { Bundle, ElementDefinition, StructureDefinition } from 'fhir/r4';
+import type { Bundle, ElementDefinition, StructureDefinition } from 'fhir/r5';
 import { describe, expect, it } from 'vitest';
 import { calcPropertiesDeep, type FhirObject, getTypeElements } from './resource-card.js';
 import { readFileSync } from 'fs';
@@ -16,7 +16,7 @@ function readBundle(name: string): Bundle {
 }
 
 function readStructureDefinitionFrom(file: string, name: string): StructureDefinition | undefined {
-  const bundle = readBundle(`../fhir-structure/resources/blaze/fhir/r4/profiles-${file}.json`);
+  const bundle = readBundle(`../fhir-structure/resources/blaze/fhir/profiles-${file}.json`);
   return bundle.entry?.find((e) => e.resource?.id === name)?.resource as StructureDefinition;
 }
 
@@ -280,8 +280,10 @@ describe('calcPropertiesDeep test', () => {
       {
         resourceType: 'MedicationAdministration',
         status: 'unknown',
-        medicationCodeableConcept: {
-          text: 'text-131123'
+        medication: {
+          concept: {
+            text: 'text-131123'
+          }
         },
         subject: {}
       }
@@ -290,16 +292,26 @@ describe('calcPropertiesDeep test', () => {
     expect(result).toHaveProperty('properties');
     expect(result.properties).toHaveLength(4);
     const thirdProperty = result.properties[2];
-    expect(thirdProperty).toHaveProperty('name', 'medicationCodeableConcept');
+    expect(thirdProperty).toHaveProperty('name', 'medication');
     expect(thirdProperty).toHaveProperty('value');
-    expect(thirdProperty.value).toHaveProperty('type', { code: 'CodeableConcept' });
+    expect(thirdProperty.value).toHaveProperty('type', { code: 'CodeableReference' });
     expect(thirdProperty.value).toHaveProperty('properties');
     const thirdPropertyValue = thirdProperty.value as FhirObject;
     expect(thirdPropertyValue.properties).toHaveLength(1);
-    expect(thirdPropertyValue.properties[0]).toHaveProperty('name', 'text');
+    expect(thirdPropertyValue.properties[0]).toHaveProperty('name', 'concept');
     expect(thirdPropertyValue.properties[0]).toHaveProperty('value', {
-      type: { code: 'string' },
-      value: 'text-131123'
+      type: { code: 'CodeableConcept' },
+      object: { text: 'text-131123' },
+      properties: [
+        {
+          name: 'text',
+          type: { code: 'string' },
+          value: {
+            type: { code: 'string' },
+            value: 'text-131123'
+          }
+        }
+      ]
     });
   });
   it('backbone element', () => {
@@ -432,13 +444,7 @@ describe('calcPropertiesDeep test', () => {
       structureDefinitionCarePlan,
       {
         resourceType: 'CarePlan',
-        activity: [
-          {
-            detail: {
-              status: 'completed'
-            }
-          }
-        ],
+        activity: [{}],
         status: 'unknown',
         intent: 'proposal',
         subject: {}
@@ -479,43 +485,15 @@ describe('calcPropertiesDeep test', () => {
           value: [
             {
               type: { code: 'BackboneElement' },
-              properties: [
-                {
-                  name: 'detail',
-                  type: { code: 'BackboneElement' },
-                  value: {
-                    type: { code: 'BackboneElement' },
-                    properties: [
-                      {
-                        name: 'status',
-                        type: { code: 'code' },
-                        value: { type: { code: 'code' }, value: 'completed' }
-                      }
-                    ],
-                    object: {
-                      status: 'completed'
-                    }
-                  }
-                }
-              ],
-              object: {
-                detail: {
-                  status: 'completed'
-                }
-              }
+              properties: [],
+              object: {}
             }
           ]
         }
       ],
       object: {
         resourceType: 'CarePlan',
-        activity: [
-          {
-            detail: {
-              status: 'completed'
-            }
-          }
-        ],
+        activity: [{}],
         status: 'unknown',
         intent: 'proposal',
         subject: {}
@@ -529,16 +507,12 @@ describe('calcPropertiesDeep test', () => {
       readStructureDefinition('Consent'),
       {
         resourceType: 'Consent',
-        provision: {
-          type: 'deny',
-          provision: [
-            {
-              type: 'permit'
-            }
-          ]
-        },
+        provision: [
+          {
+            provision: [{}]
+          }
+        ],
         category: [{}],
-        scope: {},
         status: 'draft'
       }
     );
@@ -556,15 +530,6 @@ describe('calcPropertiesDeep test', () => {
           value: { type: { code: 'code' }, value: 'draft' }
         },
         {
-          name: 'scope',
-          type: { code: 'CodeableConcept' },
-          value: {
-            type: { code: 'CodeableConcept' },
-            properties: [],
-            object: {}
-          }
-        },
-        {
           name: 'category',
           type: { code: 'CodeableConcept' },
           value: [
@@ -578,57 +543,37 @@ describe('calcPropertiesDeep test', () => {
         {
           name: 'provision',
           type: { code: 'BackboneElement' },
-          value: {
-            type: { code: 'BackboneElement' },
-            properties: [
-              {
-                name: 'type',
-                type: { code: 'code' },
-                value: { type: { code: 'code' }, value: 'deny' }
-              },
-              {
-                name: 'provision',
-                type: { code: 'BackboneElement' },
-                value: [
-                  {
-                    type: { code: 'BackboneElement' },
-                    properties: [
-                      {
-                        name: 'type',
-                        type: { code: 'code' },
-                        value: { type: { code: 'code' }, value: 'permit' }
-                      }
-                    ],
-                    object: {
-                      type: 'permit'
-                    }
-                  }
-                ]
-              }
-            ],
-            object: {
-              type: 'deny',
-              provision: [
+          value: [
+            {
+              type: { code: 'BackboneElement' },
+              properties: [
                 {
-                  type: 'permit'
+                  name: 'provision',
+                  type: { code: 'BackboneElement' },
+                  value: [
+                    {
+                      type: { code: 'BackboneElement' },
+                      properties: [],
+                      object: {}
+                    }
+                  ]
                 }
-              ]
+              ],
+              object: {
+                provision: [{}]
+              }
             }
-          }
+          ]
         }
       ],
       object: {
         resourceType: 'Consent',
-        provision: {
-          type: 'deny',
-          provision: [
-            {
-              type: 'permit'
-            }
-          ]
-        },
+        provision: [
+          {
+            provision: [{}]
+          }
+        ],
         category: [{}],
-        scope: {},
         status: 'draft'
       }
     });

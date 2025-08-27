@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BundleEntryRequest } from 'fhir/r4';
+  import type { BundleEntryRequest } from 'fhir/r5';
   import DateTime from '$lib/values/date-time.svelte';
   import MethodBadge from './method-badge.svelte';
 

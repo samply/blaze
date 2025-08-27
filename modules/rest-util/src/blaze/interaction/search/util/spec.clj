@@ -8,3 +8,6 @@
 
 (s/def ::search-util/context
   (s/keys :req [:blaze/base-url ::reitit/router]))
+
+(s/def ::search-util/link
+  fn?)
