@@ -9,7 +9,9 @@
 
   (-as-of-t [db])
 
-  (-since [db since-t])
+  (-since [db since])
+
+  (-since-t [db])
 
   (-resource-handle [db tid id])
 
@@ -37,19 +39,17 @@
 
   (-matcher-transducer [db matcher])
 
-  (-stop-history-at [db instant])
-
   (-instance-history [db tid id start-t])
 
-  (-total-num-of-instance-changes [_ tid id since])
+  (-total-num-of-instance-changes [db tid id])
 
   (-type-history [db type start-t start-id])
 
-  (-total-num-of-type-changes [db type since])
+  (-total-num-of-type-changes [db type])
 
   (-system-history [db start-t start-tid start-id])
 
-  (-total-num-of-system-changes [db since])
+  (-total-num-of-system-changes [db])
 
   (-changes [db])
 
