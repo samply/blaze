@@ -3,11 +3,8 @@
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :refer [with-open-coll]]
-   [blaze.db.api :as d]
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.index.patient-last-change :as plc]
-   [blaze.db.impl.index.system-stats :as system-stats]
-   [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv])
   (:import
@@ -23,7 +20,7 @@
 
   (-as-of [_ t]
     (assert (<= ^long t ^long basis-t) (format "(<= %d %d)" t basis-t))
-    (Db. node kv-store basis-t t 0))
+    (Db. node kv-store basis-t t since-t))
 
   (-basis-t [_]
     basis-t)
@@ -31,8 +28,9 @@
   (-as-of-t [_]
     (when (not= basis-t t) t))
 
-  (-since [_ since-t]
-    (Db. node kv-store basis-t t since-t))
+  (-since [_ since]
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
+      (p/-since batch-db since)))
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
@@ -50,9 +48,9 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-type-list batch-db tid start-id)))
 
-  (-type-total [db tid]
-    (with-open [snapshot (kv/new-snapshot kv-store)]
-      (d/total-since db #(type-stats/seek-value snapshot tid %))))
+  (-type-total [_ tid]
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
+      (p/-type-total batch-db tid)))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
@@ -64,9 +62,9 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-system-list batch-db start-tid start-id)))
 
-  (-system-total [db]
-    (with-open [snapshot (kv/new-snapshot kv-store)]
-      (d/total-since db #(system-stats/seek-value snapshot %))))
+  (-system-total [_]
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
+      (p/-system-total batch-db)))
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
@@ -115,21 +113,15 @@
           ([result input]
            (rf result input))))))
 
-  ;; ---- History Functions ---------------------------------------------------
-
-  (-stop-history-at [_ instant]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-stop-history-at batch-db instant)))
-
   ;; ---- Instance-Level History Functions ------------------------------------
 
   (-instance-history [_ tid id start-t]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-instance-history batch-db tid id start-t)))
 
-  (-total-num-of-instance-changes [_ tid id since]
+  (-total-num-of-instance-changes [_ tid id]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-total-num-of-instance-changes batch-db tid id since)))
+      (p/-total-num-of-instance-changes batch-db tid id)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
@@ -137,9 +129,9 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-type-history batch-db tid start-t start-id)))
 
-  (-total-num-of-type-changes [_ type since]
+  (-total-num-of-type-changes [_ type]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-total-num-of-type-changes batch-db type since)))
+      (p/-total-num-of-type-changes batch-db type)))
 
   ;; ---- System-Level History Functions --------------------------------------
 
@@ -147,9 +139,9 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-system-history batch-db start-t start-tid start-id)))
 
-  (-total-num-of-system-changes [_ since]
+  (-total-num-of-system-changes [_]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-total-num-of-system-changes batch-db since)))
+      (p/-total-num-of-system-changes batch-db)))
 
   (-changes [_]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
@@ -173,9 +165,6 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-rev-include batch-db resource-handle source-type code)))
 
-  ; Possible solutions:
-  ; * Create a db that only contains resources between t (now) and since-t (might be a good idea)
-  ; * Filter by _lastUpdated after pulling resources from db (might be slower)
   (-patient-everything [_ patient-handle start end]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-patient-everything batch-db patient-handle start end)))
