@@ -7880,10 +7880,10 @@
                                          :active true}]])]
 
         (testing "has one history entry"
-          (is (= 1 (d/total-num-of-instance-changes db "Patient" "0" since))))
+          (is (= 1 (d/total-num-of-instance-changes (d/since db since) "Patient" "0"))))
 
         (testing "contains the patient"
-          (given (into [] (d/stop-history-at db since) (d/instance-history db "Patient" "0"))
+          (given @(pull-instance-history db "Patient" "0")
             count := 1
             [0 :id] := "0")))))
 
@@ -8010,10 +8010,10 @@
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 
         (testing "has one history entry"
-          (is (= 1 (d/total-num-of-type-changes db "Patient" since))))
+          (is (= 1 (d/total-num-of-type-changes (d/since db since) "Patient"))))
 
         (testing "contains the patient"
-          (given (into [] (d/stop-history-at db since) (d/type-history db "Patient"))
+          (given @(d/pull-many db (d/type-history db "Patient"))
             count := 1
             [0 :id] := "1")))))
 
@@ -8169,10 +8169,10 @@
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 
         (testing "has one history entry"
-          (is (= 1 (d/total-num-of-system-changes db since))))
+          (is (= 1 (d/total-num-of-system-changes (d/since db since)))))
 
         (testing "contains the patient"
-          (given (into [] (d/stop-history-at db since) (d/system-history db))
+          (given @(d/pull-many node (d/system-history db))
             count := 1
             [0 :id] := "1")))))
 
@@ -8922,23 +8922,29 @@
                 :next := nil))))))))
 
 (deftest since-test
-  (with-system-data [{:blaze.db/keys [node]} config]
+  (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]} config]
     [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
-     [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
-     [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
-      [:put {:fhir/type :fhir/Condition :id "2"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri"system"
-                  :code #fhir/code"code-a"}]}
-             :subject #fhir/Reference{:reference "Patient/1"}}]]
-     [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"female"}]]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
+    (Thread/sleep 200)
+    (let [before (time/instant system-clock)
+          _ (Thread/sleep 200)
+          between (time/instant system-clock)
+          _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
+                               [:put {:fhir/type :fhir/Condition :id "2"
+                                      :code
+                                      #fhir/CodeableConcept
+                                       {:coding
+                                        [#fhir/Coding
+                                          {:system #fhir/uri"system"
+                                           :code #fhir/code"code-a"}]}
+                                      :subject #fhir/Reference{:reference "Patient/1"}}]])
+          _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"female"}]])
+          _ (Thread/sleep 200)
+          after (time/instant system-clock)
+          db (d/db node)]
 
-    (let [db (d/db node)]
       (testing "since 0 behaves like normal db"
-        (let [since-db (d/since db 0)]
+        (let [since-db (d/since db before)]
           ; TODO property-based check equal to normal db?
           (is (= 4 (d/t since-db)))
           (is (= 4 (d/basis-t since-db)))
@@ -8972,7 +8978,7 @@
             [1 :meta :versionId] := #fhir/id"3")))
 
       (testing "since 2 has 1 patient"
-        (let [since-db (d/since db 2)]
+        (let [since-db (d/since db between)]
           (is (= 4 (d/t since-db)))
           (is (= 4 (d/basis-t since-db)))
           (is (= 1 (d/type-total since-db "Patient")))
@@ -9033,7 +9039,7 @@
 
       (testing "db since its current t is empty"
         ; TODO property-based check equal to empty db?
-        (let [since-db (d/since db (d/t db))]
+        (let [since-db (d/since db after)]
           (is (= 4 (d/t since-db)))
           (is (= 4 (d/basis-t since-db)))
           (is (zero? (d/type-total since-db "Patient")))
