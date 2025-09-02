@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Period } from 'fhir/r4';
+  import type { Period } from 'fhir/r5';
   import DateTime from './date-time.svelte';
   import Badge from '$lib/tailwind/badge.svelte';
 

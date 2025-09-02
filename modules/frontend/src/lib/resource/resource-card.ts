@@ -20,7 +20,7 @@ import type {
   Quantity,
   Resource,
   StructureDefinition
-} from 'fhir/r4';
+} from 'fhir/r5';
 import { startsWithUpperCase, toTitleCase } from '$lib/util.js';
 import { fetchStructureDefinition } from '../metadata.js';
 

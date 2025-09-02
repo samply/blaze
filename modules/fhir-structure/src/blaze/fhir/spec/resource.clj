@@ -442,9 +442,9 @@
 
 (defn- primitive-integer-handler
   "Returns a property-handler for integer properties."
-  [def constructor]
+  [def constructor expected-type]
   (->> (primitive-value-handler def constructor JsonToken/VALUE_NUMBER_INT
-                                get-long "integer")
+                                get-long expected-type)
        (primitive-handler def constructor)))
 
 (defn- primitive-decimal-handler
@@ -545,7 +545,10 @@
     (primitive-handler def type/boolean (primitive-boolean-value-handler def))
 
     :primitive/integer
-    (primitive-integer-handler def type/integer)
+    (primitive-integer-handler def type/integer "integer")
+
+    :primitive/integer64
+    (primitive-integer-handler def type/integer64 "integer64")
 
     :primitive/string
     (primitive-string-handler def type/string identity "string"
@@ -600,10 +603,10 @@
                               #"[\r\n\t\u0020-\uFFFF]+" use-regex)
 
     :primitive/unsignedInt
-    (primitive-integer-handler def type/unsignedInt)
+    (primitive-integer-handler def type/unsignedInt "unsignedInt")
 
     :primitive/positiveInt
-    (primitive-integer-handler def type/positiveInt)
+    (primitive-integer-handler def type/positiveInt "positiveInt")
 
     :primitive/uuid
     (primitive-string-handler def type/uuid identity "uuid"
@@ -617,19 +620,21 @@
       (ba/unsupported (format "unsupported type: %s" (name type))))))
 
 (defn- create-property-handlers
-  "Returns a map of JSON property names to property handlers."
+  "Returns a map of JSON property names to property handlers or an anomaly in
+  case of errors."
   [type {:keys [summary-only] :as opts} element-definitions]
   (transduce
    (mapcat (partial property-handler-definitions type summary-only))
    (fn
-     ([m]
-      (let [s (sort-by first (seq m))
-            names (object-array (map first s))
-            handlers (object-array (map second s))]
-        (fn find-property-handler [field-name]
-          (let [idx (Arrays/binarySearch names field-name)]
-            (when-not (neg? idx)
-              (aget handlers idx))))))
+     ([x]
+      (when-ok [handlers x]
+        (let [s (sort-by first (seq handlers))
+              names (object-array (map first s))
+              handlers (object-array (map second s))]
+          (fn find-property-handler [field-name]
+            (let [idx (Arrays/binarySearch names field-name)]
+              (when-not (neg? idx)
+                (aget handlers idx)))))))
      ([handlers property-handler-definition]
       (if-ok [handler (create-property-handlers* opts property-handler-definition)]
         (into handlers handler)
@@ -646,6 +651,7 @@
     "Address" (type/address (persistent! value))
     "Attachment" (type/attachment (persistent! value))
     "CodeableConcept" (type/codeable-concept (persistent! value))
+    "CodeableReference" (type/codeable-reference (persistent! value))
     "Coding" (type/coding (persistent! value))
     "Extension" (type/extension (persistent! value))
     "HumanName" (type/human-name (persistent! value))

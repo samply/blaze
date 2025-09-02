@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FhirResource } from 'fhir/r4';
+  import type { FhirResource } from 'fhir/r5';
 
   import { resolve } from '$app/paths';
 

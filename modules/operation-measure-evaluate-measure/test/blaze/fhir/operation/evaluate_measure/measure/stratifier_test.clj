@@ -319,19 +319,19 @@
           [:put {:fhir/type :fhir/Encounter :id "1"
                  :status #fhir/code"finished"
                  :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2020"}}]
+                 :actualPeriod #fhir/Period{:start #fhir/dateTime"2020"}}]
           [:put {:fhir/type :fhir/Encounter :id "2"
                  :status #fhir/code"planned"
                  :subject #fhir/Reference{:reference "Patient/1"}
-                 :period #fhir/Period{:start #fhir/dateTime"2021"}}]
+                 :actualPeriod #fhir/Period{:start #fhir/dateTime"2021"}}]
           [:put {:fhir/type :fhir/Encounter :id "3"
                  :status #fhir/code"finished"
                  :subject #fhir/Reference{:reference "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime"2022"}}]
+                 :actualPeriod #fhir/Period{:start #fhir/dateTime"2022"}}]
           [:put {:fhir/type :fhir/Encounter :id "4"
                  :status #fhir/code"finished"
                  :subject #fhir/Reference{:reference "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime"2022"}}]]]
+                 :actualPeriod #fhir/Period{:start #fhir/dateTime"2022"}}]]]
 
         (let [{:keys [db] :as context} (context system library-encounter-status-age)
               handles [{:population-handle (em-tu/resource db "Encounter" "0")

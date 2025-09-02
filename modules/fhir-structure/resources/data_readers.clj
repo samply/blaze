@@ -3,7 +3,7 @@
  blaze/field-name blaze.fhir.spec.type.json/field-name
  fhir/boolean blaze.fhir.spec.type/boolean
  fhir/integer blaze.fhir.spec.type/integer
- fhir/long blaze.fhir.spec.type/long
+ fhir/integer64 blaze.fhir.spec.type/integer64
  fhir/string blaze.fhir.spec.type/string
  fhir/decimal blaze.fhir.spec.type/decimal
  fhir/uri blaze.fhir.spec.type/uri
@@ -35,6 +35,7 @@
  fhir/Reference blaze.fhir.spec.type/reference
  fhir/Meta blaze.fhir.spec.type/meta
  fhir/BundleEntrySearch blaze.fhir.spec.type/bundle-entry-search
+ fhir/CodeableReference blaze.fhir.spec.type/codeable-reference
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time
  system/time blaze.fhir.spec.type.system/parse-time}

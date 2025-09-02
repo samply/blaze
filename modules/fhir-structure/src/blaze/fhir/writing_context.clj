@@ -106,9 +106,9 @@
       (recur more))))
 
 (def ^:private record-types
-  #{"Attachment" "Extension" "Coding" "CodeableConcept" "Quantity" "Ratio"
-    "Period" "Identifier" "HumanName" "Address" "Reference" "Meta"
-    "Bundle.entry.search"})
+  #{"Attachment" "Extension" "Coding" "CodeableConcept" "CodeableReference"
+    "Quantity" "Ratio" "Period" "Identifier" "HumanName" "Address" "Reference"
+    "Meta" "Bundle.entry.search"})
 
 (defn- create-type-handler
   "Creates a handler for `type` using `element-definitions`.

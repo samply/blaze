@@ -48,11 +48,14 @@
   (fhir-spec/parse-json parsing-context "StructureDefinition"
                         (j/write-value-as-string resource)))
 
+(defn- remove-text [resource]
+  (dissoc resource :text))
+
 (defn- append-read-only-tag [resource]
   (update-in resource [:meta :tag] (fnil conj []) read-only-tag))
 
 (defn- resources-and-types [parsing-context structure-definition-repo]
-  (let [f (comp append-read-only-tag (partial conform parsing-context))]
+  (let [f (comp append-read-only-tag remove-text (partial conform parsing-context))]
     (into (mapv f (sdr/resources structure-definition-repo))
           (map f) (sdr/complex-types structure-definition-repo))))
 

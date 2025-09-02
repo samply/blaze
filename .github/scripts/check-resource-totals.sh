@@ -11,16 +11,13 @@ EXPECTED_TOTALS="$(cat <<END
 "CareTeam",540
 "Claim",9856
 "Condition",1597
-"Device",28
 "DiagnosticReport",8229
 "DocumentReference",4769
 "Encounter",4769
 "ExplanationOfBenefit",4769
-"ImagingStudy",145
 "Immunization",1616
 "Location",194
 "Medication",326
-"MedicationAdministration",326
 "MedicationRequest",5087
 "Observation",42929
 "Organization",194
@@ -29,7 +26,7 @@ EXPECTED_TOTALS="$(cat <<END
 "PractitionerRole",195
 "Procedure",3608
 "Provenance",120
-"StructureDefinition",185
+"StructureDefinition",204
 "SupplyDelivery",1886
 END
 )"

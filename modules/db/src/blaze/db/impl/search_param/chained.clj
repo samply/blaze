@@ -114,7 +114,7 @@
   * ref-type         - the type of the resources referenced by the first search
                        param
   * ref-modifier     - the modifier of `ref-search-param`
-  * original-code    - the original code like diagnosis:Condition.code or
+  * original-code    - the original code like diagnosis-reference.code or
                        subject:Patient.gender
   * modifier         - modifier of `search-param`"
   [search-param ref-search-param ref-type ref-modifier original-code modifier]

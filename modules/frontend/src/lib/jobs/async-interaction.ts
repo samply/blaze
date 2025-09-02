@@ -1,5 +1,5 @@
 import { input, type Job, output, toJob as toBaseJob } from '$lib/jobs';
-import type { Bundle, BundleEntry, Task, TaskInput, TaskOutput } from 'fhir/r4';
+import type { Bundle, BundleEntry, Task, TaskInput, TaskOutput } from 'fhir/r5';
 
 export interface AsyncInteractionJob extends Job {
   request: string;

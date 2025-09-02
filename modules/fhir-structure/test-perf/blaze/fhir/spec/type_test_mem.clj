@@ -13,7 +13,7 @@
   (are [x size] (= (mem/total-size x) size)
     #fhir/integer 1 16
 
-    #fhir/long 1 24
+    #fhir/integer64 1 24
 
     #fhir/string"" 40
     #fhir/string"a" 48

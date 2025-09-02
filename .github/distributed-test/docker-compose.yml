@@ -110,6 +110,7 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       STORAGE: "distributed"
+      FHIR_VERSION: "6.0.0-ballot3"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
       DB_KAFKA_SECURITY_PROTOCOL: "SSL"
@@ -144,6 +145,7 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       STORAGE: "distributed"
+      FHIR_VERSION: "6.0.0-ballot3"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
       DB_KAFKA_SECURITY_PROTOCOL: "SSL"

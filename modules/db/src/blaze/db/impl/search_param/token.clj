@@ -96,6 +96,16 @@
   [_ {:keys [coding]}]
   (coll/eduction (mapcat token-coding-entries) coding))
 
+(defmethod index-entries :fhir/CodeableReference
+  [url {:keys [concept reference]}]
+  (coll/eduction
+   cat
+   (cond-> []
+     concept
+     (conj (index-entries url concept))
+     reference
+     (conj (index-entries url reference)))))
+
 (defn- identifier-entries [modifier {:keys [value system]}]
   (let [value (type/value value)
         system (type/value system)]
@@ -362,11 +372,13 @@
 
 (defmethod sc/search-param "reference"
   [_ {:keys [name url type base code target expression]}]
-  (if expression
-    (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code target (codec/c-hash code)
-                          expression))
-    (ba/unsupported (u/missing-expression-msg url))))
+  (if (= "_in" code)
+    (ba/unsupported "Unsupported _in search parameter.")
+    (if expression
+      (when-ok [expression (fhir-path/compile expression)]
+        (->SearchParamToken name url type base code target (codec/c-hash code)
+                            expression))
+      (ba/unsupported (u/missing-expression-msg url)))))
 
 (defmethod sc/search-param "uri"
   [_ {:keys [name url type base code target expression]}]

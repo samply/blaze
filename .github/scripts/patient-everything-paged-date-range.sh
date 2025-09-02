@@ -13,4 +13,4 @@ SECOND_PAGE="$(curl -sH "Accept: application/fhir+json" "$NEXT_LINK")"
 SECOND_PAGE_SIZE=$(echo "$SECOND_PAGE" | jq -r '.entry | length')
 
 test "first page size" "$FIRST_PAGE_SIZE" "1000"
-test "second page size" "$SECOND_PAGE_SIZE" "996"
+test "second page size" "$SECOND_PAGE_SIZE" "806"

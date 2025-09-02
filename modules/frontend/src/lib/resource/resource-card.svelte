@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { Element, FhirResource, Meta, Resource } from 'fhir/r4';
+  import type { Element, FhirResource, Meta, Resource } from 'fhir/r5';
   import type { FhirObject } from './resource-card.js';
 
   import { resolve } from '$app/paths';

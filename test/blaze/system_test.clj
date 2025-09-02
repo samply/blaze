@@ -206,7 +206,8 @@
    ::rest-api/async-status-cancel-handler
    {:job-scheduler (ig/ref :blaze/job-scheduler)}
    ::rest-api/capabilities-handler
-   {:version "0.1.0"
+   {:fhir/version "4.0.1"
+    :version "0.1.0"
     :release-date "2024-01-07"
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)

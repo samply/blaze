@@ -753,7 +753,7 @@
                   :gender (if (even? id) #fhir/code"female" #fhir/code"male")}]]
     (zero? (rem id 4))
     (conj [:put {:fhir/type :fhir/MedicationStatement :id (str id)
-                 :medication #fhir/Reference{:reference "Medication/0"}
+                 :medication #fhir/CodeableReference{:reference #fhir/Reference{:reference "Medication/0"}}
                  :subject (type/reference {:reference (str "Patient/" id)})}])))
 
 (deftest evaluate-measure-cache-test

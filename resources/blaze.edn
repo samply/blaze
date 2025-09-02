@@ -197,7 +197,8 @@
    :operations #blaze/ref :blaze.rest-api/operations}
 
   :blaze.rest-api/capabilities-handler
-  {:version #blaze/ref :blaze/version
+  {:fhir/version #blaze/cfg ["FHIR_VERSION" string? "4.0.1"]
+   :version #blaze/ref :blaze/version
    :release-date #blaze/ref :blaze/release-date
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
    :structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo

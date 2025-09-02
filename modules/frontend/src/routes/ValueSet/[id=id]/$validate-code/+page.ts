@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import type { Bundle, ValueSet } from 'fhir/r4';
+import type { Bundle, ValueSet } from 'fhir/r5';
 
 import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';

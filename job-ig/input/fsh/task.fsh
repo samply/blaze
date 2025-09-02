@@ -1,3 +1,5 @@
+Alias: $PM = http://hl7.org/fhir/search-processingmode
+
 Instance: TaskInput
 InstanceOf: SearchParameter
 Usage: #definition
@@ -8,6 +10,7 @@ Usage: #definition
 * base = #Task
 * type = #reference
 * expression = "Task.input.value.ofType(Reference)"
+* processingMode = $PM#normal
 
 Instance: TaskOutput
 InstanceOf: SearchParameter
@@ -19,6 +22,7 @@ Usage: #definition
 * base = #Task
 * type = #reference
 * expression = "Task.output.value.ofType(Reference)"
+* processingMode = $PM#normal
 
 Instance: JobSearchParameterBundle
 InstanceOf: Bundle

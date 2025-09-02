@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FhirObject } from './resource-card.js';
-  import type { CodeableConcept, Coding, Meta, Money, Period, Quantity } from 'fhir/r4';
+  import type { CodeableConcept, Coding, Meta, Money, Period, Quantity } from 'fhir/r5';
 
   import CodeableConceptValue from '$lib/values/codeable-concept.svelte';
   import CodingValue from '$lib/values/coding.svelte';

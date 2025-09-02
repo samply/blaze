@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { error, type NumericRange } from '@sveltejs/kit';
 
-import type { Bundle, Task } from 'fhir/r4';
+import type { Bundle, Task } from 'fhir/r5';
 import { toJob } from '$lib/jobs/async-interaction';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {

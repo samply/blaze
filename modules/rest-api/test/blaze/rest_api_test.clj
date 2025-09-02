@@ -131,7 +131,8 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    ::rest-api/capabilities-handler
-   {:version "version-131640"
+   {:fhir/version "4.0.1"
+    :version "version-131640"
     :release-date "2024-05-23"
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)

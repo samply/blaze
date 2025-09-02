@@ -1,4 +1,4 @@
-import type { Bundle, StructureDefinition } from 'fhir/r4';
+import type { Bundle, StructureDefinition } from 'fhir/r5';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 

@@ -1,5 +1,5 @@
 import { input, output, type Job, toJob as toBaseJob } from '$lib/jobs';
-import type { Task } from 'fhir/r4';
+import type { Task } from 'fhir/r5';
 
 export interface CompactJob extends Job {
   database: string;

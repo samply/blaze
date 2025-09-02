@@ -26,6 +26,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 
@@ -105,63 +106,32 @@
 
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
-    (testing "RiskAssessment probability"
-      (let [risk-assessment
-            {:fhir/type :fhir/RiskAssessment
-             :id "id-163630"
-             :prediction
-             [{:fhir/type :fhir.RiskAssessment/prediction
-               :probability 0.9M}]}
-            hash (hash/generate risk-assessment)
+    (testing "ResearchStudy recruitment-actual"
+      (let [resource {:fhir/type :fhir/ResearchStudy :id "id-102236"
+                      :recruitment
+                      {:fhir/type :fhir.ResearchStudy/recruitment
+                       :actualNumber #fhir/unsignedInt 102229}}
+            hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
-             (sr/get search-param-registry "probability" "RiskAssessment")
-             [] hash risk-assessment)]
+             (sr/get search-param-registry "recruitment-actual" "ResearchStudy")
+             [] hash resource)]
 
-        (testing "first SearchParamValueResource key is about `value`"
+        (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
-            :code := "probability"
-            :type := "RiskAssessment"
-            :v-hash := (codec/number 0.9M)
-            :id := "id-163630"
+            :code := "recruitment-actual"
+            :type := "ResearchStudy"
+            :v-hash := (codec/number (BigDecimal/valueOf 102229))
+            :id := "id-102236"
             :hash-prefix := (hash/prefix hash)))
 
-        (testing "first ResourceSearchParamValue key is about `value`"
+        (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
-            :type := "RiskAssessment"
-            :id := "id-163630"
+            :type := "ResearchStudy"
+            :id := "id-102236"
             :hash-prefix := (hash/prefix hash)
-            :code := "probability"
-            :v-hash := (codec/number 0.9M)))))
-
-    (testing "MolecularSequence variant-start"
-      (let [risk-assessment
-            {:fhir/type :fhir/MolecularSequence
-             :id "id-170736"
-             :variant
-             [{:fhir/type :fhir.MolecularSequence/variant
-               :start #fhir/integer 1}]}
-            hash (hash/generate risk-assessment)
-            [[_ k0] [_ k1]]
-            (index-entries
-             (sr/get search-param-registry "variant-start" "MolecularSequence")
-             [] hash risk-assessment)]
-
-        (testing "first SearchParamValueResource key is about `value`"
-          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
-            :code := "variant-start"
-            :type := "MolecularSequence"
-            :v-hash := (codec/number 1M)
-            :id := "id-170736"
-            :hash-prefix := (hash/prefix hash)))
-
-        (testing "first ResourceSearchParamValue key is about `value`"
-          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
-            :type := "MolecularSequence"
-            :id := "id-170736"
-            :hash-prefix := (hash/prefix hash)
-            :code := "variant-start"
-            :v-hash := (codec/number 1M)))))
+            :code := "recruitment-actual"
+            :v-hash := (codec/number (BigDecimal/valueOf 102229))))))
 
     (testing "FHIRPath evaluation problem"
       (let [resource {:fhir/type :fhir/RiskAssessment :id "foo"}
