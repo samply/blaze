@@ -4,10 +4,10 @@
   (:import
    [com.github.benmanes.caffeine.cache Cache]))
 
-(defn ^Cache resource-cache []
+(defn resource-cache ^Cache []
   (.synchronous (.-cache (:blaze.db/resource-cache system))))
 
-(defn ^Cache tx-cache []
+(defn tx-cache ^Cache []
   (:blaze.db/tx-cache system))
 
 (defn node []

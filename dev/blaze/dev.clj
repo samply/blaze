@@ -2,7 +2,6 @@
   (:require
    [blaze.byte-string :as bs]
    [blaze.cache-collector.protocols :as ccp]
-   [blaze.cache-collector.protocols :as ccp]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
    [blaze.db.resource-cache :as resource-cache]
