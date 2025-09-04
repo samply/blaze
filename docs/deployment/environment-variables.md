@@ -523,6 +523,10 @@ keytool -importcert -storetype PKCS12 -keystore "trust-store.p12" \
 
 The password for the PKCS #12 trust store.
 
+#### `ENABLE_VALIDATION_ON_INGEST` <Badge type="warning" text="Since unreleased"/>
+
+Enable [Validation](../validation.md).
+
 [1]: <https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies>
 [2]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [3]: <https://github.com/facebook/rocksdb/wiki/Thread-Pool>

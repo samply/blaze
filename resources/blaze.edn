@@ -288,6 +288,7 @@
    :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
    :writing-context #blaze/ref :blaze.fhir/writing-context
    :job-scheduler #blaze/ref :blaze/job-scheduler
+   :validator #blaze/ref :blaze/validator
    :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
    :read-job-handler #blaze/ref :blaze.interaction/read
    :history-job-handler #blaze/ref :blaze.interaction.history/instance
@@ -466,6 +467,13 @@
   :blaze/clock {}
 
   :blaze/rng-fn {}
+
+  ;;
+  ;; Validator
+  ;;
+  :blaze/validator
+  {:node #blaze/ref :blaze.db.main/node
+   :writing-context #blaze/ref :blaze.fhir/writing-context}
 
   :blaze/page-id-cipher
   {:node #blaze/ref :blaze.db.admin/node
@@ -1554,4 +1562,11 @@
      :rng-fn #blaze/ref :blaze/rng-fn}
 
     :blaze.fhir.operation.cql/compile-duration-seconds {}
-    :blaze.fhir.operation.cql/evaluate-duration-seconds {}}}]}
+    :blaze.fhir.operation.cql/evaluate-duration-seconds {}}}
+
+  {:key :validation
+   :name "Validation"
+   :toggle "ENABLE_VALIDATION_ON_INGEST"
+   :config
+   {:blaze/rest-api
+    {:validator #blaze/ref :blaze/validator}}}]}
