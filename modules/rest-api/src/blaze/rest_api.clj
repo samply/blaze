@@ -15,6 +15,7 @@
    [blaze.rest-api.spec]
    [blaze.rest-api.structure-definitions :as structure-definitions]
    [blaze.spec]
+   [blaze.validator.spec]
    [buddy.auth.middleware :refer [wrap-authentication]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -67,6 +68,7 @@
     :blaze/page-id-cipher]
    :opt-un
    [:blaze/context-path
+    :blaze/validator
     ::auth-backends
     ::search-system-handler
     ::transaction-handler

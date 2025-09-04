@@ -205,6 +205,7 @@
       :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
       :writing-context (ig/ref :blaze.fhir/writing-context)
       :job-scheduler (ig/ref :blaze/job-scheduler)
+      :validator (ig/ref :blaze/validator)
       :read-job-handler (ig/ref :blaze.interaction/read)
       :history-job-handler (ig/ref :blaze.interaction.history/instance)
       :search-type-job-handler (ig/ref :blaze.interaction/search-type)
@@ -219,6 +220,10 @@
      {:node (ig/ref :blaze.db.admin/node)
       :clock (ig/ref :blaze.test/fixed-clock)
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+     :blaze/validator
+     {:node (ig/ref :blaze.db.main/node)
+      :writing-context (ig/ref :blaze.fhir/writing-context)}
 
      :blaze.interaction/create
      {:node (ig/ref :blaze.db.admin/node)
@@ -270,11 +275,12 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :validator))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "invalid context path"
     (given-failed-system (assoc-in (config!) [:blaze/admin-api :context-path] ::invalid)
@@ -302,6 +308,20 @@
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid job-scheduler"
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :job-scheduler] ::invalid)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/job-scheduler]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid validator"
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :validator] ::invalid)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/validator]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid settings"

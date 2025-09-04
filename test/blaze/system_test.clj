@@ -3,9 +3,11 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.interaction.conditional-delete-type]
+   [blaze.interaction.create]
    [blaze.interaction.delete]
    [blaze.interaction.delete-history]
    [blaze.interaction.history.type]
@@ -31,6 +33,7 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
+   [blaze.validator]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -159,6 +162,7 @@
       {:code "Patient"
        :search-handler (ig/ref :blaze.interaction/search-compartment)}]
     :job-scheduler (ig/ref :blaze/job-scheduler)
+    :validator (ig/ref :blaze/validator)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.db/search-param-registry
@@ -170,6 +174,10 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :db-sync-timeout 10000}
+   :blaze.interaction/create
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.interaction/read {}
    :blaze.interaction/vread {}
    :blaze.interaction/delete
@@ -222,6 +230,9 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze/validator
+   {:node (ig/ref :blaze.db/node)
+    :writing-context (ig/ref :blaze.fhir/writing-context)}
    ::rest-api/resource-patterns
    {:default
     {:read
@@ -230,6 +241,9 @@
      :vread
      #:blaze.rest-api.interaction
       {:handler (ig/ref :blaze.interaction/vread)}
+     :create
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/create)}
      :delete
      #:blaze.rest-api.interaction
       {:handler (ig/ref :blaze.interaction/delete)}
@@ -426,6 +440,115 @@
       :status := 200
       [:body json-parser :entry 0 :resource :fhir/type] := :fhir/CapabilityStatement
       [:body json-parser :entry 0 :response :status] := "200")))
+
+(defn- transaction-bundle [{:fhir/keys [type] :as resource}]
+  {:fhir/type :fhir/Bundle
+   :type #fhir/code"transaction"
+   :entry
+   [{:fhir/type :fhir.Bundle/entry
+     :resource resource
+     :request
+     {:fhir/type :fhir.Bundle.entry/request
+      :method #fhir/code"POST"
+      :url (type/uri (str "/" (name type)))}}]})
+
+(deftest transaction-test
+  (testing "with validator"
+    (testing "with valid Patient"
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+        (given (call rest-api {:request-method :post :uri ""
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (json-writer (transaction-bundle {:fhir/type :fhir/Patient})))})
+          :status := 200
+          [:body json-parser :fhir/type] := :fhir/Bundle)))
+
+    (testing "with invalid Observation"
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+        (given (call rest-api {:request-method :post :uri ""
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (json-writer (transaction-bundle {:fhir/type :fhir/Observation
+                                                                                     :status #fhir/code "registered"})))})
+          :status := 400
+          [:body json-parser :fhir/type] := :fhir/OperationOutcome
+          [:body json-parser :issue 0 :diagnostics] := "Observation.code: minimum required = 1, but only found 0 (from http://hl7.org/fhir/StructureDefinition/Observation|4.0.1)")))
+
+    (testing "with valid Observation"
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+        (given (call rest-api {:request-method :post :uri ""
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (json-writer (transaction-bundle {:fhir/type :fhir/Observation
+                                                                                     :status #fhir/code "registered"
+                                                                                     :code #fhir/CodeableConcept{:text #fhir/string "loinc"}})))})
+          :status := 200
+          [:body json-parser :fhir/type] := :fhir/Bundle))))
+
+  (testing "without validator"
+    (let [config (update config :blaze/rest-api dissoc :validator)]
+      (testing "with valid Patient"
+        (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+          (given (call rest-api {:request-method :post :uri ""
+                                 :headers {"content-type" "application/fhir+json"}
+                                 :body (input-stream (json-writer (transaction-bundle {:fhir/type :fhir/Patient})))})
+            :status := 200
+            [:body json-parser :fhir/type] := :fhir/Bundle)))
+
+      (testing "with invalid Observation"
+        (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+          (given (call rest-api {:request-method :post :uri ""
+                                 :headers {"content-type" "application/fhir+json"}
+                                 :body (input-stream (json-writer (transaction-bundle {:fhir/type :fhir/Observation
+                                                                                       :status #fhir/code "registered"})))})
+            :status := 200
+            [:body json-parser :fhir/type] := :fhir/Bundle))))))
+
+(deftest create-test
+  (testing "with validator"
+    (testing "with valid Patient"
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+        (given (call rest-api {:request-method :post :uri "/Patient"
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (json-writer {:fhir/type :fhir/Patient}))})
+          :status := 201
+          [:body json-parser :fhir/type] := :fhir/Patient)))
+
+    (testing "with invalid Observation"
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+        (given (call rest-api {:request-method :post :uri "/Observation"
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (json-writer {:fhir/type :fhir/Observation
+                                                                 :status #fhir/code "registered"}))})
+          :status := 400
+          [:body json-parser :fhir/type] := :fhir/OperationOutcome
+          [:body json-parser :issue 0 :diagnostics] := "Observation.code: minimum required = 1, but only found 0 (from http://hl7.org/fhir/StructureDefinition/Observation|4.0.1)")))
+
+    (testing "with valid Observation"
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+        (given (call rest-api {:request-method :post :uri "/Observation"
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (json-writer {:fhir/type :fhir/Observation
+                                                                 :status #fhir/code "registered"
+                                                                 :code #fhir/CodeableConcept{:text #fhir/string "loinc"}}))})
+          :status := 201
+          [:body json-parser :fhir/type] := :fhir/Observation))))
+
+  (testing "without validator"
+    (let [config (update config :blaze/rest-api dissoc :validator)]
+      (testing "with valid Patient"
+        (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+          (given (call rest-api {:request-method :post :uri "/Patient"
+                                 :headers {"content-type" "application/fhir+json"}
+                                 :body (input-stream (json-writer {:fhir/type :fhir/Patient}))})
+            :status := 201
+            [:body json-parser :fhir/type] := :fhir/Patient)))
+
+      (testing "with invalid Observation"
+        (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
+          (given (call rest-api {:request-method :post :uri "/Observation"
+                                 :headers {"content-type" "application/fhir+json"}
+                                 :body (input-stream (json-writer {:fhir/type :fhir/Observation
+                                                                   :status #fhir/code "registered"}))})
+            :status := 201
+            [:body json-parser :fhir/type] := :fhir/Observation))))))
 
 (deftest delete-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
