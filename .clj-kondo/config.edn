@@ -15,4 +15,4 @@
   :redundant-str-call
   {:level :warning}}
 
- :skip-comments true}
+ :skip-comments false}

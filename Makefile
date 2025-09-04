@@ -12,7 +12,7 @@ lint-workflows:
 	actionlint
 
 lint-root: lint-workflows
-	clj-kondo --lint src test deps.edn
+	clj-kondo --lint dev src test deps.edn
 
 lint: $(MODULES) lint-root
 
