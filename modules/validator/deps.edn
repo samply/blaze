@@ -1,0 +1,91 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/db
+  {:local/root "../db"}
+
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  blaze/job-scheduler
+  {:local/root "../job-scheduler"}
+
+  blaze/job-async-interaction
+  {:local/root "../job-async-interaction"}
+
+  blaze/job-compact
+  {:local/root "../job-compact"}
+
+  blaze/job-re-index
+  {:local/root "../job-re-index"}
+
+  ca.uhn.hapi.fhir/hapi-fhir-validation
+  {:mvn/version "8.4.0"
+   :exclusions
+   [commons-beanutils/commons-beanutils
+    info.cqframework/cql
+    info.cqframework/qdm
+    info.cqframework/quick
+    info.cqframework/cql-to-elm
+    info.cqframework/elm
+    info.cqframework/model
+    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
+    net.sf.saxon/Saxon-HE
+    net.sourceforge.plantuml/plantuml-mit
+    org.ogce/xpp3
+    ognl/ognl
+    org.attoparser/attoparser
+    org.unbescape/unbescape
+    org.xerial/sqlite-jdbc
+    org.apache.commons/commons-collections4
+    org.apache.httpcomponents/httpclient
+    com.google.errorprone/error_prone_annotations
+    org.apache.santuario/xmlsec
+    org.commonmark/commonmark
+    org.commonmark/commonmark-ext-gfm-tables]}
+
+  ca.uhn.hapi.fhir/hapi-fhir-structures-r4
+  {:mvn/version "8.4.0"
+   :exclusions
+   [com.google.code.findbugs/jsr305
+    commons-net/commons-net
+    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
+      ;; Remove after https://github.com/hapifhir/hapi-fhir/issues/7005 is fixed
+    org.apache.jena/jena-shex
+    net.sf.saxon/Saxon-HE]}
+
+  ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
+  {:mvn/version "8.4.0"
+   :exclusions
+   [com.google.code.findbugs/jsr305
+    io.opentelemetry/opentelemetry-api
+    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
+    org.slf4j/jcl-over-slf4j]}
+
+  ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
+  {:mvn/version "8.4.0"
+   :exclusions
+   [io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.91.1392"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {lambdaisland/kaocha-cloverage
+    {:mvn/version "1.1.89"}}
+
+   :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}
