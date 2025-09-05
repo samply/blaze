@@ -3,6 +3,7 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-as-of :as rao]
@@ -128,3 +129,6 @@
   [canonical]
   (let [[url version] (str/split canonical #"\|")]
     [(or url "") (some-> version version-parts)]))
+
+(defn union-index-handles [index-handles]
+  (apply coll/union ih/id-comp ih/union index-handles))

@@ -136,7 +136,9 @@
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))
 
-(defprotocol WithOrderedIndexHandles)
+(defprotocol WithOrderedIndexHandles
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values start-id]))
 
 (defprotocol SearchParamRegistry
   (-parse [_ type s])

@@ -1137,16 +1137,18 @@
               :id := "0")))))
 
     (testing "multiple id's"
-      (with-handler [handler]
+      (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Patient :id "2"}]]]
+          [:put {:fhir/type :fhir/Patient :id "2"}]
+          [:put {:fhir/type :fhir/Patient :id "3"}]
+          [:put {:fhir/type :fhir/Patient :id "4"}]]]
 
         (doseq [handling ["strict" "lenient"]]
-          (let [{:keys [status] {[first-entry] :entry :as body} :body}
+          (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
                 @(handler
                   {:headers {"prefer" (str "handling=" handling)}
-                   :params {"_id" "0,2"}})]
+                   :params {"_id" "0,2,3,4" "_count" "2"}})]
 
             (is (= 200 status))
 
@@ -1156,12 +1158,21 @@
             (testing "the bundle type is searchset"
               (is (= #fhir/code"searchset" (:type body))))
 
-            (testing "the total count is 2"
-              (is (= #fhir/unsignedInt 2 (:total body))))
+            (testing "there is no total count because we have clauses and we
+                        have more hits than page-size"
+              (is (nil? (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_id=0%2C2&_count=50")
+              (is (= (str base-url context-path "/Patient?_id=0%2C2%2C3%2C4&_count=2")
                      (link-url body "self"))))
+
+            (testing "has a first link"
+              (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1"})
+                     (link-url body "first"))))
+
+            (testing "has a next link"
+              (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1" "__page-id" "3"})
+                     (link-url body "next"))))
 
             (testing "the bundle contains two entries"
               (is (= 2 (count (:entry body)))))
@@ -1172,7 +1183,7 @@
 
             (testing "the second entry has the right fullUrl"
               (is (= (str base-url context-path "/Patient/2")
-                     (-> body :entry second :fullUrl))))
+                     (-> :fullUrl second-entry))))
 
             (testing "the first entry has the right resource"
               (given (:resource first-entry)
@@ -1180,9 +1191,50 @@
                 :id := "0"))
 
             (testing "the second entry has the right resource"
-              (given (-> body :entry second :resource)
+              (given (:resource second-entry)
                 :fhir/type := :fhir/Patient
-                :id := "2"))))))
+                :id := "2")))
+
+          (testing "following the next link"
+            (let [{{[first-entry second-entry] :entry :as body} :body}
+                  @(handler
+                    {::reitit/match patient-page-match
+                     :path-params (page-path-params page-id-cipher {"_id" ["0,2,3,4"] "_count" "2" "__t" "1" "__page-id" "3"})})]
+
+              (testing "there is no total count because we have clauses and we
+                        have more hits than page-size"
+                (is (nil? (:total body))))
+
+              (testing "has no self link"
+                (is (nil? (link-url body "self"))))
+
+              (testing "has a first link"
+                (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1"})
+                       (link-url body "first"))))
+
+              (testing "has no next link"
+                (is (nil? (link-url body "next"))))
+
+              (testing "the bundle contains two entries"
+                (is (= 2 (count (:entry body)))))
+
+              (testing "the first entry has the right fullUrl"
+                (is (= (str base-url context-path "/Patient/3")
+                       (:fullUrl first-entry))))
+
+              (testing "the second entry has the right fullUrl"
+                (is (= (str base-url context-path "/Patient/4")
+                       (-> :fullUrl second-entry))))
+
+              (testing "the first entry has the right resource"
+                (given (:resource first-entry)
+                  :fhir/type := :fhir/Patient
+                  :id := "3"))
+
+              (testing "the second entry has the right resource"
+                (given (:resource second-entry)
+                  :fhir/type := :fhir/Patient
+                  :id := "4")))))))
 
     (testing "with additional _profile search param"
       (with-handler [handler]
