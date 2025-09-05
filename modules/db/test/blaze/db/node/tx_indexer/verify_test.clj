@@ -43,11 +43,11 @@
 (def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def observation-0 {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}})
+                    :subject #fhir/Reference{:reference #fhir/string"Patient/0"}})
 (def observation-1 {:fhir/type :fhir/Observation :id "1"
-                    :subject #fhir/Reference{:reference "Patient/0"}})
+                    :subject #fhir/Reference{:reference #fhir/string"Patient/0"}})
 (def allergy-intolerance-0 {:fhir/type :fhir/AllergyIntolerance :id "0"
-                            :patient #fhir/Reference{:reference "Patient/0"}})
+                            :patient #fhir/Reference{:reference #fhir/string"Patient/0"}})
 
 (defn- verify-tx-cmds [{:keys [read-only-matcher] :as node} t tx-cmds]
   (with-open [db (d/new-batch-db (d/db node))]

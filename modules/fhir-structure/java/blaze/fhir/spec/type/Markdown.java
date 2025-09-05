@@ -1,0 +1,96 @@
+package blaze.fhir.spec.type;
+
+import blaze.fhir.spec.type.system.Strings;
+import clojure.lang.ISeq;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentList;
+import clojure.lang.PersistentVector;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.io.SerializedString;
+import com.google.common.hash.PrimitiveSink;
+
+import java.io.IOException;
+import java.util.Objects;
+
+import static blaze.fhir.spec.type.Base.appendElement;
+
+public final class Markdown extends Element {
+
+    private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "markdown");
+
+    private static final byte HASH_MARKER = 16;
+
+    private final java.lang.String value;
+    private final SerializedString jsonValue;
+
+    public Markdown(java.lang.String id, PersistentVector extension, java.lang.String value) {
+        super(id, extension);
+        this.value = value;
+        jsonValue = value == null ? null : new SerializedString(value);
+    }
+
+    @Override
+    public Keyword fhirType() {
+        return FHIR_TYPE;
+    }
+
+    public java.lang.String value() {
+        return value;
+    }
+
+    @Override
+    public Object valAt(Object key, Object notFound) {
+        if (key == VALUE) return value;
+        if (key == EXTENSION) return extension;
+        if (key == ID) return id;
+        return notFound;
+    }
+
+    @Override
+    public ISeq seq() {
+        ISeq seq = PersistentList.EMPTY;
+        seq = appendElement(seq, VALUE, value);
+        return appendBase(seq);
+    }
+
+    @Override
+    public void serializeJson(JsonGenerator generator) throws IOException {
+        if (jsonValue != null) {
+            generator.writeString(jsonValue);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("UnstableApiUsage")
+    public void hashInto(PrimitiveSink sink) {
+        sink.putByte(HASH_MARKER);
+        hashIntoBase(sink);
+        if (value != null) {
+            sink.putByte((byte) 2);
+            Strings.hashInto(value, sink);
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Markdown c = (Markdown) o;
+        return Objects.equals(id, c.id) &&
+                Objects.equals(extension, c.extension) &&
+                Objects.equals(value, c.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, extension, value);
+    }
+
+    @Override
+    public java.lang.String toString() {
+        return "Markdown{"
+                + "id=" + (id == null ? null : '\'' + id + '\'') +
+                ", extension=" + extension +
+                ", value='" + value + "'" +
+                '}';
+    }
+}

@@ -57,7 +57,7 @@
                                   :code #fhir/code"39156-5"
                                   :display #fhir/string"Body Mass Index"}]
             :text "Body Mass Index"}
-    :subject #fhir/Reference{:reference "Patient/DACG22233TWT7CKL"}
+    :subject #fhir/Reference{:reference #fhir/string"Patient/DACG22233TWT7CKL"}
     :effective #fhir/dateTime"2013-01-04T23:45:50Z"
     :issued #fhir/instant"2013-01-04T23:45:50.072Z"
     :value #fhir/Quantity
@@ -90,7 +90,7 @@
                                    :code #fhir/code"39156-5"
                                    :display #fhir/string"Body Mass Index"}]
              :text "Body Mass Index"}
-     :subject #fhir/Reference{:reference "Patient/DACG22233TWT7CKL"}
+     :subject #fhir/Reference{:reference #fhir/string"Patient/DACG22233TWT7CKL"}
      :effective #fhir/dateTime"2013-01-04T23:45:50Z"
      :issued #fhir/instant"2013-01-04T23:45:50.072Z"
      :value #fhir/Quantity

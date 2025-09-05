@@ -137,7 +137,7 @@
       {:coding
        [#fhir/Coding
          {:code #fhir/code"39156-5" :system #fhir/uri"http://loinc.org"}]}
-     :subject #fhir/Reference{:reference "Patient/0"}})
+     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}})
 
   ;; 418
   (count (fhir-spec/unform-cbor observation)))

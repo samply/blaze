@@ -35,6 +35,7 @@
  fhir/Reference blaze.fhir.spec.type/reference
  fhir/Meta blaze.fhir.spec.type/meta
  fhir/BundleEntrySearch blaze.fhir.spec.type/bundle-entry-search
+ fhir/Annotation blaze.fhir.spec.type/annotation
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time
  system/time blaze.fhir.spec.type.system/parse-time}

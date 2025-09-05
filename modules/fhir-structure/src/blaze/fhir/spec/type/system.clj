@@ -9,7 +9,7 @@
    * DateTime
    * Time
    * Quantity"
-  (:refer-clojure :exclude [boolean? decimal? integer? str string? time type])
+  (:refer-clojure :exclude [boolean? decimal? integer? str string? time type parse-boolean])
   (:require
    [blaze.anomaly :as ba]
    [blaze.util :refer [str]]
@@ -69,6 +69,11 @@
 (defn boolean? [x]
   (identical? :system/boolean (-type x)))
 
+(defn parse-boolean [s]
+  (if (#{"true" "false"} s)
+    (clojure.core/parse-boolean s)
+    (ba/incorrect (format "Invalid boolean value `%s`." s))))
+
 ;; ---- System.Integer --------------------------------------------------------
 
 (extend-protocol SystemType
@@ -86,6 +91,12 @@
 
 (defn integer? [x]
   (identical? :system/integer (-type x)))
+
+(defn parse-integer [s]
+  (try
+    (Integer/valueOf ^String s)
+    (catch NumberFormatException _
+      (ba/incorrect (format "Invalid integer value `%s`." s)))))
 
 ;; ---- System.Long -----------------------------------------------------------
 

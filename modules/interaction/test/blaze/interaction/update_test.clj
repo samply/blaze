@@ -302,7 +302,7 @@
                 {:path-params {:id "0"}
                  ::reitit/match observation-match
                  :body {:fhir/type :fhir/Observation :id "0"
-                        :subject #fhir/Reference{:reference "Patient/0"}}})]
+                        :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}})]
 
           (testing "returns error"
             (is (= 409 status))
@@ -568,7 +568,7 @@
               {:path-params {:id "0"}
                ::reitit/match observation-match
                :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference "Patient/0"}}})]
+                      :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}})]
 
         (testing "Returns 201"
           (is (= 201 status)))

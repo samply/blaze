@@ -23,7 +23,7 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
@@ -35,7 +35,7 @@
     (testing "not enforcing referential integrity"
       (with-system-data [{:blaze.db/keys [node]} non-ref-int-config]
         [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]
          [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)
@@ -49,7 +49,7 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct
@@ -63,10 +63,10 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/1"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/1"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct
@@ -83,7 +83,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct

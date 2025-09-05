@@ -7,6 +7,7 @@
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.alpha.spec :as s]
    [clojure.data.xml.name :as xml-name]
@@ -158,8 +159,9 @@
     :max max
     :spec-form
     (case path
+      ;; TODO: remove special string handling
       ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-      (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->InternedString)
+      (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/string identity)
       (keyword "fhir.xml" (:code type)))}])
 
 (defn elem-def->spec-def
@@ -342,13 +344,13 @@
    content))
 
 (defn select-non-nil-keys [m ks]
-  (into {} (remove (comp nil? val)) (select-keys m ks)))
+  (into {} (keep (fn [entry] (when (ks (key entry)) entry))) m))
 
 (defn- xml-attrs-form [child-spec-defs]
   `(select-non-nil-keys
     ~'m
     ~(into
-      []
+      #{}
       (comp
        (filter :key)
        (filter :representation)
@@ -504,18 +506,27 @@
 (defn- value-type [element]
   (some #(when (str/ends-with? (:path %) "value") (first (:type %))) element))
 
+(defn- pattern [name element]
+  (case name
+    "string" #"[\r\n\t\u0020-\uFFFF]+"
+    "uri" #"[\u0021-\uFFFF]*"
+    "url" #"[\u0021-\uFFFF]*"
+    "canonical" #"[\u0021-\uFFFF]*"
+    "code" #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*"
+    "markdown" #"[\r\n\t\u0020-\uFFFF]+"
+    (type-regex (value-type element))))
+
 (defn- xml-spec-form [name {:keys [element]}]
-  (let [pattern (type-regex (value-type element))
-        constructor (str "xml->" (su/capital name))]
+  (let [pattern (pattern name element)]
     (case name
-      "string" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->String)
-      "uri" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Uri)
-      "url" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Url)
-      "canonical" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Canonical)
-      "code" (xml/primitive-xml-form #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" `type/xml->Code)
-      "markdown" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->Markdown)
+      "boolean" (xml/primitive-xml-form pattern `type/boolean `system/parse-boolean)
+      "integer" (xml/primitive-xml-form pattern `type/integer `system/parse-integer)
+      "decimal" (xml/primitive-xml-form pattern `type/decimal `system/parse-decimal)
+      "unsignedInt" (xml/primitive-xml-form pattern `type/unsignedInt `system/parse-integer)
+      "positiveInt" (xml/primitive-xml-form pattern `type/positiveInt `system/parse-integer)
       "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
-      (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" constructor)))))
+      (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" name)
+                              identity))))
 
 (defn primitive-type->spec-defs
   "Converts a primitive type structure definition into spec defs for XML and

@@ -246,7 +246,7 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "144115"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")
@@ -322,12 +322,12 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "134129"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")
@@ -427,15 +427,15 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "134129"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Observation :id "184545"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")
@@ -550,13 +550,13 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Condition :id "191241"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
-                 :condition #fhir/Reference{:reference "Condition/191241"}}]}]
+                 :condition #fhir/Reference{:reference #fhir/string"Condition/191241"}}]}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")

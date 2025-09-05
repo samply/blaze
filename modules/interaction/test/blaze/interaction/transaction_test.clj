@@ -1478,7 +1478,7 @@
                     [{:fhir/type :fhir.Bundle/entry
                       :resource
                       {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}
                       :request
                       {:fhir/type :fhir.Bundle.entry/request
                        :method #fhir/code"PUT"
@@ -1723,7 +1723,7 @@
           (with-handler [handler]
             [[[:put {:fhir/type :fhir/Patient :id "0"}]
               [:put {:fhir/type :fhir/Observation :id "0"
-                     :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
             (let [{:keys [status body]
                    {[{:keys [resource response]}] :entry} :body}
@@ -2398,7 +2398,7 @@
                     [{:fhir/type :fhir.Bundle/entry
                       :resource
                       {:fhir/type :fhir/Observation
-                       :subject #fhir/Reference{:reference "Patient/0"}}
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}
                       :request
                       {:fhir/type :fhir.Bundle.entry/request
                        :method #fhir/code"POST"
