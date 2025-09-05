@@ -144,7 +144,7 @@
 (defn- index-tx-data!
   "This is the main transaction handling function.
 
-  If indexes resources and transaction data and commits either success or error."
+  It indexes resources and transaction data and commits either success or error."
   [{:keys [resource-indexer kv-store read-only-matcher] :as node}
    {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
