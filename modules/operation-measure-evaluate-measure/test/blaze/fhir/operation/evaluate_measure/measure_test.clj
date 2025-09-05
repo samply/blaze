@@ -244,10 +244,10 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
-        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference "Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string"Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string"Patient/1"}}]
         [:put {:fhir/type :fhir/Patient :id "2"}]]
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                :content [(library-content library-encounter)]}]]]
@@ -299,14 +299,14 @@
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"female"}]
-        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string"Patient/1"}}]
         [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]
-        [:put {:fhir/type :fhir/Encounter :id "2-0" :subject #fhir/Reference{:reference "Patient/2"}}]
-        [:put {:fhir/type :fhir/Encounter :id "2-1" :subject #fhir/Reference{:reference "Patient/2"}}]
+        [:put {:fhir/type :fhir/Encounter :id "2-0" :subject #fhir/Reference{:reference #fhir/string"Patient/2"}}]
+        [:put {:fhir/type :fhir/Encounter :id "2-1" :subject #fhir/Reference{:reference #fhir/string"Patient/2"}}]
         [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code"female"}]
-        [:put {:fhir/type :fhir/Encounter :id "3-0" :subject #fhir/Reference{:reference "Patient/3"}}]
-        [:put {:fhir/type :fhir/Encounter :id "3-1" :subject #fhir/Reference{:reference "Patient/3"}}]
-        [:put {:fhir/type :fhir/Encounter :id "3-2" :subject #fhir/Reference{:reference "Patient/3"}}]]
+        [:put {:fhir/type :fhir/Encounter :id "3-0" :subject #fhir/Reference{:reference #fhir/string"Patient/3"}}]
+        [:put {:fhir/type :fhir/Encounter :id "3-1" :subject #fhir/Reference{:reference #fhir/string"Patient/3"}}]
+        [:put {:fhir/type :fhir/Encounter :id "3-2" :subject #fhir/Reference{:reference #fhir/string"Patient/3"}}]]
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                :content [(library-content library-patient-encounter)]}]]]
 
@@ -538,10 +538,10 @@
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
           [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
-          [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference "Patient/1"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string"Patient/1"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string"Patient/1"}}]
           [:put {:fhir/type :fhir/Patient :id "2"}]]
          [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content library-encounter)]}]]]
@@ -753,7 +753,7 @@
                   :gender (if (even? id) #fhir/code"female" #fhir/code"male")}]]
     (zero? (rem id 4))
     (conj [:put {:fhir/type :fhir/MedicationStatement :id (str id)
-                 :medication #fhir/Reference{:reference "Medication/0"}
+                 :medication #fhir/Reference{:reference #fhir/string"Medication/0"}
                  :subject (type/reference {:reference (str "Patient/" id)})}])))
 
 (deftest evaluate-measure-cache-test

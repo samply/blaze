@@ -187,7 +187,7 @@
               "Specimen.subject.where(resolve() is Patient)"
               resolver
               {:fhir/type :fhir/Specimen :id "foo"
-               :subject #fhir/Reference{:reference "reference-180039"}})
+               :subject #fhir/Reference{:reference #fhir/string"reference-180039"}})
         [0 :reference] := "reference-180039")))
 
   (testing "Specimen with display only reference"

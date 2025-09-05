@@ -205,7 +205,7 @@
                         {:coding
                          [#fhir/Coding{:system #fhir/uri"http://loinc.org"
                                        :code #fhir/code"17861-6"}]}
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [{:keys [db] :as context} (context system library-observation-code)
               handles [{:population-handle (em-tu/resource db "Observation" "0")
@@ -228,16 +228,16 @@
       (with-system-data [system config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :value #fhir/Quantity
                          {:value #fhir/decimal 1M
                           :code #fhir/code"kg"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]
           [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
 
@@ -315,22 +315,22 @@
           [:put {:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date"2001"}]
           [:put {:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date"2003"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
                  :status #fhir/code"finished"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :period #fhir/Period{:start #fhir/dateTime"2020"}}]
           [:put {:fhir/type :fhir/Encounter :id "2"
                  :status #fhir/code"planned"
-                 :subject #fhir/Reference{:reference "Patient/1"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/1"}
                  :period #fhir/Period{:start #fhir/dateTime"2021"}}]
           [:put {:fhir/type :fhir/Encounter :id "3"
                  :status #fhir/code"finished"
-                 :subject #fhir/Reference{:reference "Patient/2"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/2"}
                  :period #fhir/Period{:start #fhir/dateTime"2022"}}]
           [:put {:fhir/type :fhir/Encounter :id "4"
                  :status #fhir/code"finished"
-                 :subject #fhir/Reference{:reference "Patient/2"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/2"}
                  :period #fhir/Period{:start #fhir/dateTime"2022"}}]]]
 
         (let [{:keys [db] :as context} (context system library-encounter-status-age)
@@ -361,13 +361,13 @@
       (with-system-data [system config]
         [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date"2000"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :effective #fhir/dateTime"2020"
                  :value #fhir/Quantity
                          {:value #fhir/decimal 1M
                           :code #fhir/code"kg"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :effective #fhir/dateTime"2021"
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]

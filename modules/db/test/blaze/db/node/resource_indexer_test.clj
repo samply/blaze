@@ -196,7 +196,7 @@
                  ::node/keys [resource-indexer]} config]
 
     (let [observation {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "foo"}}
+                       :subject #fhir/Reference{:reference #fhir/string"foo"}}
           hash (hash/generate observation)]
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault ::x ::y})]
         @(resource-indexer/index-resources
@@ -269,7 +269,7 @@
                {:system #fhir/uri"system-204435"
                 :code #fhir/code"code-204441"}]}
            :onset #fhir/dateTime"2020-01-30"
-           :subject #fhir/Reference{:reference "Patient/id-145552"}
+           :subject #fhir/Reference{:reference #fhir/string"Patient/id-145552"}
            :meta
            #fhir/Meta
             {:versionId #fhir/id"1"
@@ -362,7 +362,7 @@
                       [#fhir/Coding
                         {:system #fhir/uri"system-193821"
                          :code #fhir/code"code-193824"}]}
-                    :subject #fhir/Reference{:reference "Patient/id-180857"}
+                    :subject #fhir/Reference{:reference #fhir/string"Patient/id-180857"}
                     :effective #fhir/dateTime"2005-06-17"
                     :value
                     #fhir/Quantity
@@ -483,7 +483,7 @@
                     :status #fhir/code"status-151938"
                     :participant
                     [{:fhir/type :fhir.Appointment/participant
-                      :actor #fhir/Reference{:reference "Patient/id-151354"}}]}
+                      :actor #fhir/Reference{:reference #fhir/string"Patient/id-151354"}}]}
           hash (hash/generate resource)]
       @(rs/put! resource-store {hash resource})
       @(resource-indexer/index-resources

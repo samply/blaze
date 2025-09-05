@@ -139,10 +139,10 @@
   (testing "returns all encounters"
     (with-system-data [system config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
-        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference "Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string"Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string"Patient/1"}}]
         [:put {:fhir/type :fhir/Patient :id "2"}]]]
 
       (let [context (context system library-encounter)]

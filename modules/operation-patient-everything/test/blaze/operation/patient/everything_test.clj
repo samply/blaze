@@ -256,7 +256,7 @@
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type (keyword "fhir" type) :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
               @(handler {:path-params {:id "0"}})]
@@ -314,9 +314,9 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -391,9 +391,9 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
@@ -454,9 +454,9 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
@@ -517,11 +517,11 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Condition :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Specimen :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry fourth-entry] :entry
@@ -569,7 +569,7 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
             @(handler {:path-params {:id "0"}})]
@@ -605,7 +605,7 @@
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [i]
                [:put {:fhir/type :fhir/Observation :id (str i)
-                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+                      :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]))
         (range 10000))]
 
       (let [{:keys [status body]}
@@ -625,7 +625,7 @@
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [idx]
                [:put {:fhir/type :fhir/Observation :id (str idx)
-                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+                      :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]))
         (range 4))]
 
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -740,12 +740,12 @@
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :effective #fhir/dateTime"2024-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
@@ -843,15 +843,15 @@
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :effective #fhir/dateTime"2024-01-05T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "3"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :effective #fhir/dateTime"2026-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
@@ -953,7 +953,7 @@
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [i]
                [:put {:fhir/type :fhir/Observation :id (str i)
-                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+                      :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]))
         (range 20000))]
 
       (let [{:keys [status body]}

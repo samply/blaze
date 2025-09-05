@@ -176,7 +176,7 @@
           (with-handler [handler]
             [[[:put {:fhir/type :fhir/Patient :id "0"}]
               [:put {:fhir/type :fhir/Observation :id "0"
-                     :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -199,7 +199,7 @@
                        [#fhir/Coding
                          {:system #fhir/uri"http://loinc.org"
                           :code #fhir/code"39156-5"}]}
-                     :subject #fhir/Reference{:reference "Patient/0"}}]
+                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
               [:put {:fhir/type :fhir/Observation :id "1"
                      :code
                      #fhir/CodeableConcept
@@ -207,7 +207,7 @@
                        [#fhir/Coding
                          {:system #fhir/uri"http://loinc.org"
                           :code #fhir/code"29463-7"}]}
-                     :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
             (let [{:keys [status body]}
                   @(handler

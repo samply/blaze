@@ -104,9 +104,9 @@
     (with-handler [handler]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]
         [:create {:fhir/type :fhir/Observation :id "0"
-                  :subject #fhir/Reference{:reference "Patient/0"}}]
+                  :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:create {:fhir/type :fhir/Observation :id "1"
-                  :hasMember [#fhir/Reference{:reference "Observation/0"}]}]]]
+                  :hasMember [#fhir/Reference{:reference #fhir/string"Observation/0"}]}]]]
 
       (let [{:keys [status body]}
             @(handler

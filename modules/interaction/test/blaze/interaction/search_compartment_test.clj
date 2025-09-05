@@ -237,7 +237,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -270,7 +270,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -305,10 +305,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -339,10 +339,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -375,7 +375,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -407,7 +407,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -441,10 +441,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -474,10 +474,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -520,10 +520,10 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :status #fhir/code"final"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :status #fhir/code"preliminary"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [request {:path-params {:id "0" :type "Observation"}}]
 

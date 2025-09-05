@@ -352,15 +352,15 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Specimen :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/0"}
-               :specimen #fhir/Reference{:reference "Specimen/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/0"}
+               :specimen #fhir/Reference{:reference #fhir/string"Specimen/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [db (d/db node)
             patient (ctu/resource db "Patient" "0")]
@@ -648,12 +648,12 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [elm {:type "Query"
                  :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
@@ -693,10 +693,10 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :period #fhir/Period{:start #fhir/dateTime"2025-05-15"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                  :period #fhir/Period{:start #fhir/dateTime"2025-05-16"}}]]]
 
         (let [elm {:type "Query"
@@ -727,17 +727,17 @@
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/0"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/1"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/0"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/1"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/Medication :id "0"}]
       [:put {:fhir/type :fhir/Medication :id "1"}]]]
 

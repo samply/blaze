@@ -751,7 +751,7 @@
 
         (testing "with literal reference"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             (is (= ["0"] (compartment-ids subject-param observation)))))
 
         (testing "without reference"
@@ -765,7 +765,7 @@
 
         (testing "with absolute reference"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
+                             :subject #fhir/Reference{:reference #fhir/string"http://server.org/Patient/0"}}]
             (is (empty? (compartment-ids subject-param observation)))))))
 
     (testing "Condition"
@@ -773,7 +773,7 @@
 
         (testing "with literal reference"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:reference "Patient/0"}}]
+                           :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             (is (= ["0"] (compartment-ids patient-param condition)))))
 
         (testing "without reference"
@@ -787,5 +787,5 @@
 
         (testing "with absolute reference"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
+                           :subject #fhir/Reference{:reference #fhir/string"http://server.org/Patient/0"}}]
             (is (empty? (compartment-ids patient-param condition)))))))))

@@ -116,7 +116,7 @@
    (into [] (map (partial observation-tx-data version)) (range 10)))
   ([version id]
    [:put {:fhir/type :fhir/Observation :id (str id)
-          :subject #fhir/Reference{:reference "Patient/0"}
+          :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
           :method (type/codeable-concept {:text (type/string (str version))})
           :code
           #fhir/CodeableConcept

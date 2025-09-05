@@ -1782,7 +1782,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :code
                #fhir/CodeableConcept
                 {:coding
@@ -1795,7 +1795,7 @@
                  :code #fhir/code"mm[Hg]"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :code
                #fhir/CodeableConcept
                 {:coding
@@ -1808,7 +1808,7 @@
                  :code #fhir/code"mm[Hg]"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
-               :subject #fhir/Reference{:reference "Patient/1"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/1"}
                :code
                #fhir/CodeableConcept
                 {:coding
@@ -2234,16 +2234,16 @@
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/0"}}
+                 #fhir/Reference{:reference #fhir/string"Condition/0"}}
                 {:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/2"}}]}]
+                 #fhir/Reference{:reference #fhir/string"Condition/2"}}]}]
         [:put {:fhir/type :fhir/Encounter
                :id "1"
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/1"}}]}]
+                 #fhir/Reference{:reference #fhir/string"Condition/1"}}]}]
         [:put {:fhir/type :fhir/Condition
                :id "0"
                :code
@@ -2304,7 +2304,7 @@
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2351,7 +2351,7 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2382,9 +2382,9 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2427,10 +2427,10 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Encounter :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
-                   :subject #fhir/Reference{:reference "Patient/0"}
-                   :encounter #fhir/Reference{:reference "Encounter/1"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+                   :encounter #fhir/Reference{:reference #fhir/string"Encounter/1"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2474,10 +2474,10 @@
         (with-handler [handler _ page-id-cipher]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Patient :id "2"}]
             [:put {:fhir/type :fhir/Observation :id "3"
-                   :subject #fhir/Reference{:reference "Patient/2"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/2"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2660,7 +2660,7 @@
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2705,9 +2705,9 @@
         (with-handler [handler _ page-id-cipher]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Condition :id "2"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2774,10 +2774,10 @@
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :value #fhir/string "foo"}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :value #fhir/string "foo"}]]]
 
       (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
@@ -2849,7 +2849,7 @@
                      [#fhir/Coding
                        {:system #fhir/uri"http://loinc.org"
                         :code #fhir/code"94564-2"}]}
-             :subject #fhir/Reference{:reference "Patient/0"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
              :effective #fhir/dateTime"2025"}]]]
 
     (testing "no search param"

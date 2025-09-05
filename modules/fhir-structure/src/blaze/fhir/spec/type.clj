@@ -11,6 +11,7 @@
    [blaze.fhir.spec.type.macros :as macros
     :refer [def-complex-type def-primitive-type defextended]]
    [blaze.fhir.spec.type.protocols :as p]
+   [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.alpha.spec :as s2]
@@ -19,6 +20,7 @@
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
   (:import
+   [blaze.fhir.spec.type Address Annotation Code Coding CodeableConcept Markdown Period Identifier DateTime Extension Reference Uri Uuid]
    [blaze.fhir.spec.type.system Date]
    [clojure.lang ILookup IPersistentMap Keyword]
    [com.fasterxml.jackson.core JsonGenerator]
@@ -90,6 +92,9 @@
 (defn- system-to-xml [x]
   (xml-node/element nil {:value (system/-to-string x)}))
 
+(defn- into! [to from]
+  (reduce conj! to from))
+
 ;; ---- nil -------------------------------------------------------------------
 
 ;; Be sure all methods can be called on nil.
@@ -107,9 +112,9 @@
   (-serialize-json-secondary [_ _ _])
   (-to-xml [_])
   (-hash-into [_ _])
-  (-references [_]))
+  (-references [_] []))
 
-;; ---- Object -------------------------------------------------------------------
+;; ---- Object ----------------------------------------------------------------
 
 ;; Other instances have no type.
 (extend-protocol p/FhirType
@@ -118,111 +123,157 @@
   (-interned [_] false)
   (-references [_]))
 
+;; ---- Macros ----------------------------------------------------------------
+
+(defn write-extended-attributes [^JsonGenerator generator id extension]
+  (.writeStartObject generator)
+  (when id
+    (.writeFieldName generator "id")
+    (p/-serialize-json id generator))
+  (when extension
+    (.writeFieldName generator "extension")
+    (p/-serialize-json extension generator))
+  (.writeEndObject generator))
+
+(defmacro def-extend-protocol-primitive [name & {:as opts}]
+  (let [constructor (symbol (str name) "new")]
+    `(extend-protocol p/FhirType
+       ~name
+       (~'-type [~'v]
+         (.fhirType ~'v))
+       (~'-interned [~'v]
+         (and (nil? (.id ~'v)) (p/-interned (.extension ~'v))
+              ~@(when-not (:value-internable opts) [`(nil? (.value ~'v))])))
+       (~'-value [~'v]
+         (.value ~'v))
+       (~'-assoc-id [~'v ~'id]
+         (~constructor ~'id (.extension ~'v) (.value ~'v)))
+       (~'-assoc-extension [~'v ~'extension]
+         (~constructor (.id ~'v) ~'extension (.value ~'v)))
+       (~'-assoc-value [~'v ~'value]
+         (~constructor (.id ~'v) (.extension ~'v) ~'value))
+       (~'-has-primary-content [~'v]
+         (some? (.value ~'v)))
+       (~'-serialize-json [~'v ~'generator]
+         (.serializeJson ~'v ~'generator))
+       (~'-has-secondary-content [~'v]
+        (or (some? (.id ~'v)) (seq (.extension ~'v))))
+       (~'-serialize-json-secondary [~'_ ~'generator]
+         (write-extended-attributes ~'generator ~'id ~'extension))
+       (~'-to-xml [~'v]
+         (xml-node/element*
+          nil
+          (cond-> {}
+            (some? (.id ~'v))
+            (assoc :id (.id ~'v))
+            (some? (.value ~'v))
+            (assoc :value (system/-to-string (.value ~'v))))
+          (.extension ~'v)))
+       (~'-hash-into [~'v ~'sink]
+         (.hashInto ~'v ~'sink))
+       (~'-references [~'v]
+         (p/-references (.extension ~'v))))))
+
+(defmacro print-data-element
+  {:arglists '([prev-names* name])}
+  [& args]
+  (let [prev-names (butlast args)
+        name (last args)
+        accessor (fn [name] `(~(symbol (str "." name)) ~'v))]
+    `(when ~(accessor name)
+       ~@(when (seq prev-names)
+           [`(when (or ~@(map accessor prev-names))
+               (.write ~'w " "))])
+       (.write ~'w ~(str ":" name " "))
+       (print-method ~(accessor name) ~'w))))
+
+(defmacro print-type [name & data-element-names]
+  `(do (.write ~'w ~(format "#fhir/%s{" name))
+       ~@(map
+          (fn [names] `(print-data-element ~@names))
+          (map #(take % data-element-names) (range 1 (inc (count data-element-names)))))
+       (.write ~'w "}")))
+
+(defmacro def-print-method-primitive [name & data-element-names]
+  (let [class-sym (symbol (str "blaze.fhir.spec.type." (su/capital (str name))))]
+    `(defmethod print-method ~class-sym
+       [~(with-meta 'v {:tag class-sym}) ~(with-meta 'w {:tag 'Writer})]
+       (if (or (.id ~'v) (.extension ~'v))
+         (print-type ~name ~@data-element-names)
+         (do (.write ~'w ~(format "#fhir/%s " name))
+             (print-method (.value ~'v) ~'w))))))
+
 ;; ---- boolean ---------------------------------------------------------------
 
-(declare boolean)
+(defn boolean? [x]
+  (instance? blaze.fhir.spec.type.Boolean x))
 
-(extend-protocol p/FhirType
-  Boolean
-  (-type [_] :fhir/boolean)
-  (-interned [_] true)
-  (-assoc-id [b id] (boolean {:id id :value b}))
-  (-assoc-extension [b extension] (boolean {:extension extension :value b}))
-  (-value [b] b)
-  (-assoc-value [_ value] (boolean value))
-  (-has-primary-content [_] true)
-  (-serialize-json [b generator]
-    (.writeBoolean ^JsonGenerator generator b))
-  (-has-secondary-content [_] false)
-  (-serialize-json-secondary [_ generator]
-    (.writeNull ^JsonGenerator generator))
-  (-to-xml [b]
-    (xml-node/element nil {:value (str b)}))
-  (-hash-into [b sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 0))                                   ; :fhir/boolean
-      (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into b sink))
-  (-references [_]))
-
-(defextended ExtendedBoolean [id extension ^Boolean value]
-  :fhir-type :fhir/boolean :hash-num 0 :interned true)
+(defn- map->Boolean [{:keys [id extension value]}]
+  (blaze.fhir.spec.type.Boolean. id extension value))
 
 (def ^{:arglists '([x])} boolean
-  (let [intern (intern/intern-value map->ExtendedBoolean)]
+  (let [intern-extended (intern/intern-value map->Boolean)]
     (fn [x]
       (cond
         (map? x)
         (let [{:keys [id extension value]} x]
-          (cond
-            (and (nil? extension) (nil? id))
-            value
+          (if (and (nil? id) (p/-interned extension))
+            (intern-extended x)
+            (blaze.fhir.spec.type.Boolean. id extension value)))
 
-            (and (p/-interned extension) (nil? id))
-            (intern {:extension extension :value value})
+        (true? x) blaze.fhir.spec.type.Boolean/TRUE
+        (false? x) blaze.fhir.spec.type.Boolean/FALSE
 
-            :else
-            (->ExtendedBoolean id extension value)))
-        (clojure.core/boolean? x) x
-        :else ::s2/invalid))))
+        :else (ba/incorrect (format "Invalid boolean value `%s`." x))))))
 
-(defn xml->Boolean
-  {:arglists '([element])}
-  [{{:keys [id value]} :attrs content :content}]
-  (let [extension (seq content)
-        value (some-> ^String value (Boolean/valueOf))]
-    (if (or id extension)
-      (boolean {:id id :extension extension :value value})
-      (boolean value))))
+(def-extend-protocol-primitive blaze.fhir.spec.type.Boolean
+  :value-internable true)
 
-(defn boolean? [x]
-  (identical? :fhir/boolean (type x)))
+(def-print-method-primitive boolean "id" "extension" "value")
+
+(defmethod print-dup blaze.fhir.spec.type.Boolean [^blaze.fhir.spec.type.Boolean e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Boolean. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
 
 ;; ---- integer ---------------------------------------------------------------
 
-(declare integer)
+(defn integer? [x]
+  (instance? blaze.fhir.spec.type.Integer x))
 
-(extend-protocol p/FhirType
-  Integer
-  (-type [_] :fhir/integer)
-  (-interned [_] false)
-  (-assoc-id [i id] (integer {:id id :value i}))
-  (-assoc-extension [i extension] (integer {:extension extension :value i}))
-  (-value [i] i)
-  (-assoc-value [_ value] (integer value))
-  (-has-primary-content [_] true)
-  (-serialize-json [i generator]
-    (.writeNumber ^JsonGenerator generator i))
-  (-has-secondary-content [_] false)
-  (-serialize-json-secondary [_ generator]
-    (.writeNull ^JsonGenerator generator))
-  (-to-xml [i]
-    (xml-node/element nil {:value (str i)}))
-  (-hash-into [i sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 1))                                   ; :fhir/integer
-      (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into i sink))
-  (-references [_]))
-
-(defextended ExtendedInteger [id extension ^Integer value]
-  :fhir-type :fhir/integer :hash-num 1)
+(defn- map->Integer [{:keys [id extension value]}]
+  (blaze.fhir.spec.type.Integer. id extension (some-> value int)))
 
 (def ^{:arglists '([x])} integer
-  (create-fn (intern/intern-value map->ExtendedInteger) ->ExtendedInteger
-             #(if (clojure.core/int? %) (clojure.core/int %) ::s2/invalid)))
+  (let [intern-extended (intern/intern-value map->Integer)]
+    (fn [x]
+      (cond
+        (map? x)
+        (let [{:keys [id extension value]} x]
+          (if (and (nil? id) (p/-interned extension) (nil? value))
+            (intern-extended x)
+            (blaze.fhir.spec.type.Integer. id extension (some-> value int))))
 
-(defn xml->Integer
-  {:arglists '([element])}
-  [{{:keys [id value]} :attrs content :content}]
-  (let [extension (seq content)
-        value (some-> ^String value (Integer/valueOf))]
-    (if (or id extension)
-      (integer {:id id :extension extension :value value})
-      (integer value))))
+        (int? x) (blaze.fhir.spec.type.Integer. nil nil (int x))
 
-(defn integer? [x]
-  (identical? :fhir/integer (type x)))
+        :else (ba/incorrect (format "Invalid integer value `%s`." x))))))
+
+(def-extend-protocol-primitive blaze.fhir.spec.type.Integer)
+
+(def-print-method-primitive integer "id" "extension" "value")
+
+(defmethod print-dup blaze.fhir.spec.type.Integer [^blaze.fhir.spec.type.Integer e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Integer. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
 
 ;; ---- long ---------------------------------------------------------------
 
@@ -258,81 +309,39 @@
   (create-fn (intern/intern-value map->ExtendedLong) ->ExtendedLong
              #(if (clojure.core/int? %) (clojure.core/long %) ::s2/invalid)))
 
-(defn xml->Long
-  {:arglists '([element])}
-  [{{:keys [id value]} :attrs content :content}]
-  (let [extension (seq content)
-        value (some-> ^String value (Long/valueOf))]
-    (if (or id extension)
-      (long {:id id :extension extension :value value})
-      (long value))))
-
 (defn long? [x]
   (identical? :fhir/long (type x)))
 
 ;; ---- string ----------------------------------------------------------------
 
-(declare string)
-
-(extend-protocol p/FhirType
-  String
-  (-type [_] :fhir/string)
-  (-interned [_] false)
-  (-assoc-id [s id] (string {:id id :value s}))
-  (-assoc-extension [s extension] (string {:extension extension :value s}))
-  (-value [s] s)
-  (-assoc-value [_ value] value)
-  (-has-primary-content [_] true)
-  (-serialize-json [s generator]
-    (.writeString ^JsonGenerator generator s))
-  (-has-secondary-content [_] false)
-  (-serialize-json-secondary [_ generator]
-    (.writeNull ^JsonGenerator generator))
-  (-to-xml [s]
-    (xml-node/element nil {:value (str s)}))
-  (-hash-into [s sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 3))                                   ; :fhir/string
-      (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into s sink))
-  (-references [_]))
-
-(defextended ExtendedString [id extension value]
-  :fhir-type :fhir/string :hash-num 3)
-
-(def ^{:arglists '([x])} string
-  (create-fn (intern/intern-value map->ExtendedString) ->ExtendedString
-             identity))
-
-(defn xml->String
-  {:arglists '([element])}
-  [{{:keys [id value]} :attrs content :content}]
-  (let [extension (seq content)]
-    (if (or id extension)
-      (string {:id id :extension extension :value value})
-      (string value))))
-
-(def ^{:arglists '([x])} intern-string
-  (let [intern (intern/intern-value identity)
-        intern-extended (intern/intern-value map->ExtendedString)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (p/-interned extension) (nil? id))
-            (intern-extended {:extension extension :value value})
-            (->ExtendedString id extension value)))
-        (intern x)))))
-
-(defn xml->InternedString
-  {:arglists '([element])}
-  [{{:keys [id value]} :attrs content :content}]
-  (let [extension (seq content)]
-    (if (or id extension)
-      (intern-string {:id id :extension extension :value value})
-      (intern-string value))))
-
 (defn string? [x]
-  (identical? :fhir/string (type x)))
+  (instance? blaze.fhir.spec.type.String x))
+
+(defn- map->String [{:keys [id extension value]}]
+  (blaze.fhir.spec.type.String. id extension value))
+
+(def string
+  (let [intern-extended (intern/intern-value map->String)]
+    (fn [data]
+      (if (clojure.core/string? data)
+        (blaze.fhir.spec.type.String. nil nil data)
+        (let [{:keys [id extension value]} data]
+          (if (and (nil? id) (p/-interned extension) (nil? value))
+            (intern-extended data)
+            (blaze.fhir.spec.type.String. id extension value)))))))
+
+(def-extend-protocol-primitive blaze.fhir.spec.type.String)
+
+(def-print-method-primitive string "id" "extension" "value")
+
+(defmethod print-dup blaze.fhir.spec.type.String [^blaze.fhir.spec.type.String s ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.String. ")
+  (print-dup (.id s) w)
+  (.write w " ")
+  (print-dup (.extension s) w)
+  (.write w " ")
+  (print-dup (.value s) w)
+  (.write w ")"))
 
 ;; ---- decimal ---------------------------------------------------------------
 
@@ -385,13 +394,44 @@
 
 ;; ---- uri -------------------------------------------------------------------
 
-(declare uri?)
-(declare uri)
-(declare create-uri)
-(declare map->ExtendedUri)
-(declare xml->Uri)
+;(declare uri?)
+;(declare uri)
+;(declare create-uri)
+;(declare map->ExtendedUri)
+;(declare xml->Uri)
 
-(def-primitive-type Uri [^String value] :hash-num 5 :interned true)
+;(def-primitive-type Uri [^String value] :hash-num 5 :interned true)
+
+(defn uri? [x]
+  (instance? Uri x))
+
+(defn- map->Uri [{:keys [id extension value]}]
+  (Uri. id extension value))
+
+(def uri
+  (let [intern (intern/intern-value #(Uri. nil nil %))
+        intern-extended (intern/intern-value map->Uri)]
+    (fn [data]
+      (if (clojure.core/string? data)
+        (intern data)
+        (let [{:keys [id extension value]} data]
+          (if (and (nil? id) (p/-interned extension))
+            (intern-extended data)
+            (Uri. id extension value)))))))
+
+(def-extend-protocol-primitive Uri
+  :value-internable true)
+
+(def-print-method-primitive uri "id" "extension" "value")
+
+(defmethod print-dup Uri [^Uri e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Uri. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
 
 ;; ---- url -------------------------------------------------------------------
 
@@ -524,7 +564,7 @@
       (cond
         (map? x)
         (let [{:keys [id extension value]} x
-              value (cond-> value (string? value) parse-instant-value)]
+              value (cond-> value (clojure.core/string? value) parse-instant-value)]
           (cond
             (and (nil? value) (p/-interned extension) (nil? id))
             (intern {:extension extension})
@@ -732,7 +772,7 @@
       (cond
         (map? x)
         (let [{:keys [id extension value]} x
-              value (cond-> value (string? value) system/parse-date)]
+              value (cond-> value (clojure.core/string? value) system/parse-date)]
           (cond
             (ba/anomaly? value)
             ::s2/invalid
@@ -746,7 +786,7 @@
             :else
             (ExtendedDate. id extension value)))
         (system/date? x) (create-date x)
-        (string? x) (parse-date x)
+        (clojure.core/string? x) (parse-date x)
         :else ::s2/invalid))))
 
 (defn xml->Date
@@ -767,11 +807,11 @@
 
 ;; -- dateTime ----------------------------------------------------------------
 
-(declare dateTime)
-(declare create-date-time)
-(declare map->ExtendedDateTime)
+;(declare dateTime)
+;(declare create-date-time)
+;(declare map->ExtendedDateTime)
 
-(deftype DateTimeYear [^int year]
+#_(deftype DateTimeYear [^int year]
   p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
@@ -811,12 +851,12 @@
   (toString [date-time]
     (str (p/-value date-time))))
 
-(defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
+#_(defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
   (.write w "#fhir/dateTime\"")
   (.write w (str date-time))
   (.write w "\""))
 
-(deftype DateTimeYearMonth [^int year ^int month]
+#_(deftype DateTimeYearMonth [^int year ^int month]
   p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
@@ -856,12 +896,12 @@
   (toString [date]
     (str (p/-value date))))
 
-(defmethod print-method DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
+#_(defmethod print-method DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
   (.write w "#fhir/dateTime\"")
   (.write w (str date-time))
   (.write w "\""))
 
-(deftype DateTimeDate [^int year ^int month ^int day]
+#_(deftype DateTimeDate [^int year ^int month ^int day]
   p/FhirType
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
@@ -901,12 +941,12 @@
   (toString [date-time]
     (str (p/-value date-time))))
 
-(defmethod print-method DateTimeDate [^DateTimeDate date-time ^Writer w]
+#_(defmethod print-method DateTimeDate [^DateTimeDate date-time ^Writer w]
   (.write w "#fhir/dateTime\"")
   (.write w (str date-time))
   (.write w "\""))
 
-(extend-protocol p/FhirType
+#_(extend-protocol p/FhirType
   OffsetDateTime
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
@@ -953,10 +993,10 @@
     (system/-hash-into date-time sink))
   (-references [_]))
 
-(defextended ExtendedDateTime [id extension value]
+#_(defextended ExtendedDateTime [id extension value]
   :fhir-type :fhir/dateTime :hash-num 11)
 
-(defn create-date-time [system-date-time]
+#_(defn create-date-time [system-date-time]
   (condp = (class system-date-time)
     blaze.fhir.spec.type.system.DateTimeYear
     (DateTimeYear.
@@ -972,19 +1012,13 @@
      (.day ^blaze.fhir.spec.type.system.DateTimeDate system-date-time))
     system-date-time))
 
-(defn- parse-date-time [value]
-  (try
-    (create-date-time (system/parse-date-time* value))
-    (catch DateTimeException _
-      ::s2/invalid)))
-
-(def ^{:arglists '([x])} dateTime
+#_(def ^{:arglists '([x])} dateTime
   (let [intern (intern/intern-value map->ExtendedDateTime)]
     (fn [x]
       (cond
         (map? x)
         (let [{:keys [id extension value]} x
-              value (cond-> value (string? value) system/parse-date-time)]
+              value (cond-> value (clojure.core/string? value) system/parse-date-time)]
           (cond
             (ba/anomaly? value)
             ::s2/invalid
@@ -998,15 +1032,50 @@
             :else
             (ExtendedDateTime. id extension value)))
         (system/date-time? x) (create-date-time x)
-        (string? x) (parse-date-time x)
+        (clojure.core/string? x) (parse-date-time x)
+        :else ::s2/invalid))))
+
+(defn dateTime? [x]
+  (instance? DateTime x))
+
+(defn- map->DateTime [{:keys [id extension value]}]
+  (DateTime. id extension value))
+
+(defn create-date-time [system-date-time]
+  (DateTime. nil nil system-date-time))
+
+(defn- parse-date-time [value]
+  (try
+    (create-date-time (system/parse-date-time* value))
+    (catch DateTimeException _
+      ::s2/invalid)))
+
+(def ^{:arglists '([x])} dateTime
+  (let [intern-extended (intern/intern-value map->DateTime)]
+    (fn [x]
+      (cond
+        (map? x)
+        (let [{:keys [id extension value]} x]
+          (cond
+            (ba/anomaly? value)
+            ::s2/invalid
+
+            (and (nil? value) (p/-interned extension) (nil? id))
+            (intern-extended {:extension extension})
+
+            :else
+            (DateTime. id extension (cond-> value (clojure.core/string? value)
+                                                  system/parse-date-time))))
+        (system/date-time? x) (create-date-time x)
+        (clojure.core/string? x) (parse-date-time x)
         :else ::s2/invalid))))
 
 (defn xml->DateTime
   "Creates a primitive dateTime value from XML `element`."
   {:arglists '([element])}
   [{{:keys [id value]} :attrs content :content}]
-  (let [extension (seq content)]
-    (if (or id extension)
+  (let [extension (vec content)]
+    (if (or id (seq extension))
       (if value
         (if-ok [value (system/parse-date-time value)]
           (dateTime {:id id :extension extension :value value})
@@ -1014,8 +1083,18 @@
         (dateTime {:id id :extension extension}))
       (dateTime value))))
 
-(defn dateTime? [x]
-  (identical? :fhir/dateTime (type x)))
+(def-extend-protocol-primitive DateTime)
+
+(def-print-method-primitive dateTime "id" "extension" "value")
+
+(defmethod print-dup DateTime [^DateTime e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.DateTime. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
 
 ;; ---- time ------------------------------------------------------------------
 
@@ -1060,7 +1139,7 @@
       (cond
         (map? x)
         (let [{:keys [id extension value]} x
-              value (cond-> value (string? value) system/parse-time)]
+              value (cond-> value (clojure.core/string? value) system/parse-time)]
           (cond
             (ba/anomaly? value)
             ::s2/invalid
@@ -1074,7 +1153,7 @@
             :else
             (ExtendedTime. id extension value)))
         (system/time? x) x
-        (string? x) (parse-time x)
+        (clojure.core/string? x) (parse-time x)
         :else ::s2/invalid))))
 
 (defn xml->Time
@@ -1091,13 +1170,44 @@
 
 ;; ---- code ------------------------------------------------------------------
 
-(declare code?)
-(declare code)
-(declare create-code)
-(declare map->ExtendedCode)
-(declare xml->Code)
+;;(declare code?)
+;;(declare code)
+;;(declare create-code)
+;;(declare map->ExtendedCode)
+;;(declare xml->Code)
 
-(def-primitive-type Code [^String value] :hash-num 13 :interned true)
+#_(def-primitive-type Code [^String value] :hash-num 13 :interned true)
+
+(defn code? [x]
+  (instance? Code x))
+
+(defn- map->Code [{:keys [id extension value]}]
+  (Code. id extension value))
+
+(def code
+  (let [intern (intern/intern-value #(Code. nil nil %))
+        intern-extended (intern/intern-value map->Code)]
+    (fn [data]
+      (if (clojure.core/string? data)
+        (intern data)
+        (let [{:keys [id extension value]} data]
+          (if (and (nil? id) (p/-interned extension))
+            (intern-extended data)
+            (Code. id extension value)))))))
+
+(def-extend-protocol-primitive Code
+  :value-internable true)
+
+(def-print-method-primitive code "id" "extension" "value")
+
+(defmethod print-dup Code [^Code e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Code. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
 
 ;; ---- oid -------------------------------------------------------------------
 
@@ -1117,19 +1227,40 @@
 
 ;; ---- markdown --------------------------------------------------------------
 
-(declare markdown?)
-(declare markdown)
-(declare map->ExtendedMarkdown)
-(declare xml->Markdown)
+(defn markdown? [x]
+  (instance? Markdown x))
 
-(def-primitive-type Markdown [value] :hash-num 16)
+(defn- map->Markdown [{:keys [id extension value]}]
+  (Markdown. id extension value))
+
+(def ^{:arglists '([x])} markdown
+  (let [intern-extended (intern/intern-value map->Markdown)]
+    (fn [x]
+      (if (map? x)
+        (let [{:keys [id extension value]} x]
+          (if (and (nil? id) (p/-interned extension) (nil? value))
+            (intern-extended x)
+            (Markdown. id extension value)))
+        (Markdown. nil nil x)))))
+
+(def-extend-protocol-primitive Markdown)
+
+(def-print-method-primitive markdown "id" "extension" "value")
+
+(defmethod print-dup Markdown [^Markdown e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Markdown. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
 
 ;; ---- unsignedInt -----------------------------------------------------------
 
 (declare unsignedInt?)
 (declare unsignedInt)
 (declare map->ExtendedUnsignedInt)
-(declare xml->UnsignedInt)
 
 (def-primitive-type UnsignedInt [^Integer value] :hash-num 17)
 
@@ -1138,15 +1269,12 @@
 (declare positiveInt?)
 (declare positiveInt)
 (declare map->ExtendedPositiveInt)
-(declare xml->PositiveInt)
 
 (def-primitive-type PositiveInt [^Integer value] :hash-num 18)
 
 ;; ---- uuid ------------------------------------------------------------------
 
-(declare uuid)
-
-(extend-protocol p/FhirType
+#_(extend-protocol p/FhirType
   UUID
   (-type [_] :fhir/uuid)
   (-interned [_] false)
@@ -1170,23 +1298,41 @@
       (.putLong (.getLeastSignificantBits uuid))))
   (-references [_]))
 
-(defextended ExtendedUuid [id extension ^UUID value]
+#_(defextended ExtendedUuid [id extension ^UUID value]
   :fhir-type :fhir/uuid :hash-num 19 :value-constructor uuid :value-form (str "urn:uuid:" value))
 
-(def ^{:arglists '([x])} uuid
+#_(def ^{:arglists '([x])} uuid
   (create-fn (intern/intern-value map->ExtendedUuid) ->ExtendedUuid
              #(if (clojure.core/uuid? %) % (parse-uuid (subs % 9)))))
 
-(defn xml->Uuid
-  {:arglists '([element])}
-  [{{:keys [id value]} :attrs content :content}]
-  (let [extension (seq content)]
-    (if (or id extension)
-      (uuid {:id id :extension extension :value value})
-      (uuid value))))
-
 (defn uuid? [x]
-  (identical? :fhir/uuid (type x)))
+  (instance? Uuid x))
+
+(defn- map->Uuid [{:keys [id extension value]}]
+  (Uuid. id extension value))
+
+(def ^{:arglists '([x])} uuid
+  (let [intern-extended (intern/intern-value map->Uuid)]
+    (fn [x]
+      (if (map? x)
+        (let [{:keys [id extension value]} x]
+          (if (and (nil? id) (p/-interned extension) (nil? value))
+            (intern-extended x)
+            (Uuid. id extension value)))
+        (Uuid. nil nil x)))))
+
+(def-extend-protocol-primitive Uuid)
+
+(def-print-method-primitive uuid "id" "extension" "value")
+
+(defmethod print-dup Uuid [^Uuid e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Uuid. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
 
 ;; ---- xhtml -----------------------------------------------------------------
 
@@ -1323,6 +1469,11 @@
     (when-not (identical? :fhir.Bundle/entry (p/-type m))
       (transduce (mapcat p/-references) conj [] (vals m)))))
 
+(defmacro def-print-method-complex [name & data-element-names]
+  `(defmethod print-method ~(symbol name)
+     [~(with-meta 'v {:tag (symbol name)}) ~(with-meta 'w {:tag 'Writer})]
+     (print-type ~name ~@data-element-names)))
+
 (declare attachment)
 
 (def-complex-type Attachment
@@ -1331,35 +1482,153 @@
    ^:primitive hash ^:primitive title ^:primitive creation]
   :hash-num 46)
 
-(declare extension)
+#_(def-complex-type Extension
+    [^String id extension ^String url ^:polymorph ^:primitive
+     ^{:types [base64Binary boolean canonical code date dateTime decimal id
+               instant integer markdown oid positiveInt string time unsignedInt
+               uri url uuid Address Age Annotation Attachment CodeableConcept
+               Coding ContactPoint Count Distance Duration HumanName Identifier
+               Money Period Quantity Range Ratio Reference SampledData Signature
+               Timing ContactDetail Contributor DataRequirement Expression
+               ParameterDefinition RelatedArtifact TriggerDefinition UsageContext
+               Dosage Meta]} value]
+    :hash-num 39
+    :interned (and (nil? id) (p/-interned extension) (p/-interned value)))
 
-(def-complex-type Extension
-  [^String id extension ^String url ^:polymorph ^:primitive
-   ^{:types [base64Binary boolean canonical code date dateTime decimal id
-             instant integer markdown oid positiveInt string time unsignedInt
-             uri url uuid Address Age Annotation Attachment CodeableConcept
-             Coding ContactPoint Count Distance Duration HumanName Identifier
-             Money Period Quantity Range Ratio Reference SampledData Signature
-             Timing ContactDetail Contributor DataRequirement Expression
-             ParameterDefinition RelatedArtifact TriggerDefinition UsageContext
-             Dosage Meta]} value]
-  :hash-num 39
-  :interned (and (nil? id) (p/-interned extension) (p/-interned value)))
+(defn- map->Extension [{:keys [id extension url value]}]
+  (Extension. id extension url value))
 
-(declare coding)
+(def extension
+  (let [intern (intern/intern-value map->Extension)]
+    (fn [{:keys [id extension url value] :as data}]
+      (if (and (nil? id) (p/-interned extension) (p/-interned value))
+        (intern data)
+        (Extension. id extension url value)))))
 
-(def-complex-type Coding
+(extend-protocol p/FhirType
+  Extension
+  (-type [e]
+    (.fhirType e))
+  (-interned [e]
+    (and (nil? (.id e)) (p/-interned (.extension e)) (p/-interned (.value e))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+   (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+   (.hashInto e sink))
+  (-references [e]
+    (-> (transient [])
+        (into! (p/-references (.extension e)))
+        (into! (p/-references (.value e)))
+        (persistent!))))
+
+(def-print-method-complex "Extension" "id" "extension" "url")
+
+(defmethod print-dup Extension [^Extension e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Extension. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.url e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w ")"))
+
+#_(def-complex-type Coding
   [^String id extension ^:primitive system ^:primitive-string version
    ^:primitive code ^:primitive-string display ^:primitive userSelected]
   :hash-num 38
   :interned (and (nil? id) (p/-interned extension)))
 
-(declare codeable-concept)
+(defn- map->Coding [{:keys [id extension system version code display userSelected]}]
+  (Coding. id extension system version code display userSelected))
 
-(def-complex-type CodeableConcept
+(def coding
+  (let [intern (intern/intern-value map->Coding)]
+    (fn [{:keys [id extension system version code display userSelected] :as data}]
+      (if (and (nil? id) (p/-interned extension))
+        (intern data)
+        (Coding. id extension system version code display userSelected)))))
+
+(extend-protocol p/FhirType
+  Coding
+  (-type [e]
+    (.fhirType e))
+  (-interned [e]
+    (and (nil? (.id e)) (p/-interned (.extension e))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+    (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "Coding" "id" "extension" "system" "version" "code"
+                          "display" "userSelected")
+
+(defmethod print-dup Coding [^Coding e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Coding. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.system e) w)
+  (.write w " ")
+  (print-dup (.version e) w)
+  (.write w " ")
+  (print-dup (.code e) w)
+  (.write w " ")
+  (print-dup (.display e) w)
+  (.write w " ")
+  (print-dup (.userSelected e) w)
+  (.write w ")"))
+
+#_(def-complex-type CodeableConcept
   [^String id extension coding ^:primitive-string text]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension)))
+
+(defn- map->CodeableConcept [{:keys [id extension coding text]}]
+  (CodeableConcept. id extension coding text))
+
+(def codeable-concept
+  (let [intern (intern/intern-value map->CodeableConcept)]
+    (fn [{:keys [id extension coding text] :as data}]
+      (if (and (nil? id) (p/-interned extension))
+        (intern data)
+        (CodeableConcept. id extension coding text)))))
+
+(extend-protocol p/FhirType
+  CodeableConcept
+  (-type [e]
+    (.fhirType e))
+  (-interned [e]
+    (and (nil? (.id e)) (p/-interned (.extension e))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+    (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "CodeableConcept" "id" "extension" "coding" "text")
+
+(defmethod print-dup CodeableConcept [^CodeableConcept e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.CodeableConcept. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.coding e) w)
+  (.write w " ")
+  (print-dup (.text e) w)
+  (.write w ")"))
 
 (declare quantity)
 
@@ -1374,17 +1643,101 @@
 (def-complex-type Ratio [^String id extension numerator denominator]
   :hash-num 48)
 
-(declare period)
-
-(def-complex-type Period [^String id extension ^:primitive start ^:primitive end]
+#_(def-complex-type Period [^String id extension ^:primitive start ^:primitive end]
   :hash-num 41)
 
-(declare identifier)
+(defn- map->Period [{:keys [id extension start end]}]
+  (Period. id extension start end))
 
-(def-complex-type Identifier
+(def period
+  (let [intern (intern/intern-value map->Period)]
+    (fn [{:keys [id extension start end] :as data}]
+      (if (and (nil? id) (p/-interned extension) (nil? start) (nil? end))
+        (intern data)
+        (Period. id extension start end)))))
+
+(extend-protocol p/FhirType
+  Period
+  (-type [e]
+    (.fhirType e))
+  (-interned [e]
+    (and (nil? (.id e)) (p/-interned (.extension e)) (nil? (.start e)) (nil? (.end e))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+    (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "Period" "id" "extension" "start" "end")
+
+(defmethod print-dup Period [^Period e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Period. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.start e) w)
+  (.write w " ")
+  (print-dup (.end e) w)
+  (.write w ")"))
+
+#_(def-complex-type Identifier
   [^String id extension ^:primitive use type ^:primitive system
    ^:primitive-string value period assigner]
   :hash-num 42)
+
+(defn- map->Identifier [{:keys [id extension use type system value period assigner]}]
+  (Identifier. id extension use type system value period assigner))
+
+(def identifier
+  (let [intern (intern/intern-value map->Identifier)]
+    (fn [{:keys [id extension use type system value period assigner] :as data}]
+      (if (and (nil? id) (p/-interned extension) (p/-interned use)
+               (p/-interned type) (nil? value) (p/-interned period)
+               (p/-interned assigner))
+        (intern data)
+        (Identifier. id extension use type system value period assigner)))))
+
+(extend-protocol p/FhirType
+  Identifier
+  (-type [e]
+    (.fhirType e))
+  (-interned [e]
+    (and (nil? (.id e)) (p/-interned (.extension e)) (p/-interned (.use e))
+         (p/-interned (.type e)) (nil? (.value e)) (p/-interned (.period e))
+         (p/-interned (.assigner e))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+    (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "Identifier" "id" "extension" "use" "type" "system" "value" "period" "assigner")
+
+(defmethod print-dup Identifier [^Identifier e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Identifier. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.use e) w)
+  (.write w " ")
+  (print-dup (.type e) w)
+  (.write w " ")
+  (print-dup (.system e) w)
+  (.write w " ")
+  (print-dup (.value e) w)
+  (.write w " ")
+  (print-dup (.period e) w)
+  (.write w " ")
+  (print-dup (.assigner e) w)
+  (.write w ")"))
 
 (declare human-name)
 
@@ -1394,14 +1747,73 @@
    ^:primitive-list suffix period]
   :hash-num 46)
 
-(declare address)
+(defn- map->Address
+  [{:keys [id extension use type text line city district state postalCode
+           country period]}]
+  (Address. id extension use type text line city district state postalCode
+            country period))
 
-(def-complex-type Address
-  [^String id extension ^:primitive use ^:primitive type ^:primitive-string text
-   ^:primitive-list line ^:primitive-string city ^:primitive-string district
-   ^:primitive-string state ^:primitive-string postalCode
-   ^:primitive-string country period]
-  :hash-num 47)
+(def address
+  (let [intern (intern/intern-value map->Address)]
+    (fn [{:keys [id extension use type text line city district state postalCode
+                 country period] :as data}]
+      (if (and (nil? id) (p/-interned extension) (p/-interned use)
+               (p/-interned type) (p/-interned text) (p/-interned line)
+               (p/-interned city) (p/-interned district) (p/-interned state)
+               (p/-interned postalCode) (p/-interned country) (p/-interned period))
+        (intern data)
+        (Address. id extension use type text line city district state postalCode
+                  country period)))))
+
+(extend-protocol p/FhirType
+  Address
+  (-type [e]
+    (.fhirType e))
+  (-interned [e]
+    (and (nil? (.id e)) (p/-interned (.extension e)) (p/-interned (.use e))
+         (p/-interned (.type e)) (p/-interned (.text e)) (p/-interned (.line e))
+         (p/-interned (.city e)) (p/-interned (.district e))
+         (p/-interned (.state e)) (p/-interned (.postalCode e))
+         (p/-interned (.country e)) (p/-interned (.period e))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+    (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "Address" "id" "extension" "use" "type" "text" "line"
+                          "city" "district" "state" "postalCode" "country" "period")
+
+(defmethod print-dup Address [^Address e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Address. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.use e) w)
+  (.write w " ")
+  (print-dup (.type e) w)
+  (.write w " ")
+  (print-dup (.text e) w)
+  (.write w " ")
+  (print-dup (.line e) w)
+  (.write w " ")
+  (print-dup (.city e) w)
+  (.write w " ")
+  (print-dup (.district e) w)
+  (.write w " ")
+  (print-dup (.state e) w)
+  (.write w " ")
+  (print-dup (.postalCode e) w)
+  (.write w " ")
+  (print-dup (.country e) w)
+  (.write w " ")
+  (print-dup (.period e) w)
+  (.write w " ")
+  (.write w ")"))
 
 (defn- valid-ref? [[type id]]
   (and (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
@@ -1412,9 +1824,7 @@
     (when (valid-ref? ref)
       [ref])))
 
-(declare reference)
-
-(def-complex-type Reference
+#_(def-complex-type Reference
   [^String id extension ^:primitive-string reference ^:primitive type identifier
    ^:primitive-string display]
   :hash-num 43
@@ -1425,6 +1835,57 @@
       (macros/into! (p/-references identifier))
       (macros/into! (p/-references display))
       (persistent!)))
+
+(defn- map->Reference [{:keys [id extension reference type identifier display]}]
+  (Reference. id extension reference type identifier display))
+
+(def reference
+  (let [intern (intern/intern-value map->Reference)]
+    (fn [{:keys [id extension reference type identifier display] :as data}]
+      (if (and (nil? id) (p/-interned extension) (p/-interned reference)
+               (p/-interned type) (p/-interned identifier) (p/-interned display))
+        (intern data)
+        (Reference. id extension reference type identifier display)))))
+
+(extend-protocol p/FhirType
+  Reference
+  (-type [r]
+    (.fhirType r))
+  (-interned [r]
+    (and (nil? (.id r)) (p/-interned (.extension r))
+         (p/-interned (.reference r)) (p/-interned (.type r))
+         (p/-interned (.identifier r)) (p/-interned (.display r))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+    (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [r]
+    (-> (transient (or (some-> (.reference r) :value reference-reference) []))
+        (into! (p/-references (.extension r)))
+        (into! (p/-references (.type r)))
+        (into! (p/-references (.identifier r)))
+        (into! (p/-references (.display r)))
+        (persistent!))))
+
+(def-print-method-complex "Reference" "id" "extension" "reference" "type"
+                          "identifier" "display")
+
+(defmethod print-dup Reference [^Reference e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Reference. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.reference e) w)
+  (.write w " ")
+  (print-dup (.type e) w)
+  (.write w " ")
+  (print-dup (.identifier e) w)
+  (.write w " ")
+  (print-dup (.display e) w)
+  (.write w ")"))
 
 (declare meta)
 
@@ -1440,3 +1901,46 @@
   :fhir-type :fhir.Bundle.entry/search
   :hash-num 45
   :interned (and (nil? id) (p/-interned extension) (nil? score)))
+
+(defn- map->Annotation [{:keys [id extension author time text]}]
+  (Annotation. id extension author time text))
+
+(def annotation
+  (let [intern (intern/intern-value map->Annotation)]
+    (fn [{:keys [id extension author time text] :as data}]
+      (if (and (nil? id) (p/-interned extension) (p/-interned author)
+               (p/-interned time) (p/-interned text))
+        (intern data)
+        (Annotation. id extension author time text)))))
+
+(extend-protocol p/FhirType
+  Annotation
+  (-type [e]
+    (.fhirType e))
+  (-interned [e]
+    (and (nil? (.id e)) (p/-interned (.extension e)) (p/-interned (.author e))
+         (p/-interned (.time e)) (p/-interned (.text e))))
+  (-has-primary-content [_] true)
+  (-serialize-json [e generator]
+    (.serializeJson e generator))
+  (-has-secondary-content [_] false)
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "Annotation" "id" "extension" "author" "time" "text")
+
+(defmethod print-dup Annotation [^Annotation e ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.Annotation. ")
+  (print-dup (.id e) w)
+  (.write w " ")
+  (print-dup (.extension e) w)
+  (.write w " ")
+  (print-dup (.author e) w)
+  (.write w " ")
+  (print-dup (.time e) w)
+  (.write w " ")
+  (print-dup (.text e) w)
+  (.write w " ")
+  (.write w ")"))

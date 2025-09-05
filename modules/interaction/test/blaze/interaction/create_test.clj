@@ -155,7 +155,7 @@
               @(handler
                 {::reitit/match observation-match
                  :body {:fhir/type :fhir/Observation :id "0"
-                        :subject #fhir/Reference{:reference "Patient/0"}}})]
+                        :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}})]
 
           (is (= 409 status))
 
@@ -407,7 +407,7 @@
             @((-> handler wrap-defaults wrap-error)
               {::reitit/match observation-match
                :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference "Patient/0"}}})]
+                      :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}})]
 
         (is (= 201 status))
 
@@ -440,7 +440,7 @@
                       [{:fhir/type :fhir.Bundle/entry
                         :resource
                         {:fhir/type :fhir/Observation
-                         :subject #fhir/Reference{:reference "Patient/0"}}
+                         :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}
                         :request
                         {:fhir/type :fhir.Bundle.entry/request
                          :method #fhir/code"POST"

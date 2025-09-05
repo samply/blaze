@@ -165,7 +165,7 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]
         [:create {:fhir/type :fhir/Observation :id "0"
-                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                  :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (given (expand-tx-cmds node [{:op "patient-purge" :id "0"}])
         count := 2
