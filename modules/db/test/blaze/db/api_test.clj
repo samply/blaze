@@ -239,24 +239,37 @@
         [:meta :versionId] := #fhir/id"1"
         [meta :blaze.db/op] := :create)))
 
+  (testing "one Observation while deleting the referenced Patient"
+    (log/set-min-level! :error)
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given-failed-future
+       (d/transact node [[:delete "Patient" "0"]
+                         [:create
+                          {:fhir/type :fhir/Observation :id "0"
+                           :subject #fhir/Reference{:reference "Patient/0"}}]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`.")))
+
   (testing "a resource can't be created again with the same id"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (given-failed-future (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again.")))
+        ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again."))))
 
-  (testing "generated data"
-    (doseq [gen `[fg/patient fg/observation fg/encounter fg/procedure
-                  fg/allergy-intolerance fg/diagnostic-report fg/library]]
-      (satisfies-prop 20
-        (prop/for-all [tx-ops (create-tx ((resolve gen)) 20)]
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [tx-ops]
+(deftest ^:slow transact-create-property-test
+  (doseq [gen `[fg/patient fg/observation fg/encounter fg/procedure
+                fg/allergy-intolerance fg/diagnostic-report fg/library]]
+    (satisfies-prop 20
+      (prop/for-all [tx-ops (create-tx ((resolve gen)) 20)]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [tx-ops]
 
-            (= (count tx-ops)
-               (count @(d/pull-many node (d/type-list (d/db node) (kebab->pascal (name gen))))))))))))
+          (= (count tx-ops)
+             (count @(d/pull-many node (d/type-list (d/db node) (kebab->pascal (name gen)))))))))))
 
 (deftest transact-conditional-create-test
   (testing "on empty database"
@@ -595,9 +608,9 @@
     (satisfies-prop 10
       (prop/for-all [resources mixed-resource-gen]
         (with-system-data [{:blaze.db/keys [node]} config]
-          [(into [[:put {:fhir/type :fhir/Patient :id "0"}]
-                  [:put {:fhir/type :fhir/Medication :id "0"}]
-                  [:put {:fhir/type :fhir/Practitioner :id "0"}]]
+          [(into [[:create {:fhir/type :fhir/Patient :id "0"}]
+                  [:create {:fhir/type :fhir/Medication :id "0"}]
+                  [:create {:fhir/type :fhir/Practitioner :id "0"}]]
                  (map (partial vector :create))
                  resources)]
           (let [make-delete-command (fn [{id :id type :fhir/type}] [:delete (name type) id])

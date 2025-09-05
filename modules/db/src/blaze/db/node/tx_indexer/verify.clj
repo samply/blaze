@@ -339,14 +339,17 @@
        (throw-anom (ba/conflict (ref-integrity-msg type id)))))
    references))
 
+(defn- rev-tuples [db-before resource-handle del-resources]
+  (into
+   []
+   (comp (map rh/local-ref-tuple) (remove del-resources) (take 2))
+   (d/rev-include db-before resource-handle)))
+
 (defn- check-referential-integrity-delete!
-  [db del-resources type id]
-  (when-let [resource-handle (d/resource-handle db type id)]
-    (let [[[type-ref id-ref] second]
-          (into
-           []
-           (comp (map rh/local-ref-tuple) (remove del-resources) (take 2))
-           (d/rev-include db resource-handle))]
+  [db-before del-resources type id]
+  (when-let [resource-handle (d/resource-handle db-before type id)]
+    (let [[[type-ref id-ref] second] (rev-tuples db-before resource-handle
+                                                 del-resources)]
       (when type-ref
         (throw-anom (ref-integrity-del-anom type-ref id-ref type id second))))))
 
