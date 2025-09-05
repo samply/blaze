@@ -3247,7 +3247,7 @@
           [0 :id] := "id-1")))))
 
 (deftest type-query-id-test
-  (testing "search by _id"
+  (testing "single ID search"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
         [:put {:fhir/type :fhir/Patient :id "1" :active false}]
@@ -3301,7 +3301,26 @@
             [:seek-clauses count] := 1
             [:seek-clauses 0 :code] := "active"))
 
-        (is (zero? (count-type-query node "Patient" [["active" "true"] ["_id" "1"]])))))))
+        (is (zero? (count-type-query node "Patient" [["active" "true"] ["_id" "1"]]))))))
+
+  (testing "multiple ID search"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]]]
+
+      (let [clauses [["_id" "0" "1" "2"]]]
+        (given-type-query node "Patient" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2"))))))
 
 (deftest type-query-sort-test
   (testing "sorting by _id"
@@ -3478,89 +3497,130 @@
         count := 0))))
 
 (deftest type-query-search-param-list-test
-  (testing "Special Search Parameter _list"
-    (testing "a node with two patients, one observation and one list in one transaction"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Observation :id "0"}]
-          [:put {:fhir/type :fhir/List :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/0"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Observation/0"}}]}]]]
+  (testing "a node with two patients, one observation and one list in one transaction"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/0"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Observation/0"}}]}]]]
 
-        (testing "returns only the patient referenced in the list"
-          (given-type-query node "Patient" [["_list" "0"]]
-            count := 1
-            [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0"))
-
-        (testing "returns only the observation referenced in the list"
-          (given-type-query node "Observation" [["_list" "0"]]
-            count := 1
-            [0 :fhir/type] := :fhir/Observation
-            [0 :id] := "0"))))
-
-    (testing "a node with four patients and one list in one transaction"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Patient :id "2"}]
-          [:put {:fhir/type :fhir/Patient :id "3"}]
-          [:put {:fhir/type :fhir/List :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/0"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/2"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/3"}}]}]]]
-
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" [["_list" "0"]] "2")
-            count := 2
-            [0 :id] := "2"
-            [1 :id] := "3"))))
-
-    (testing "doesn't return the deleted patient"
-      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Patient :id "2"}]
-          [:put {:fhir/type :fhir/Patient :id "3"}]
-          [:put {:fhir/type :fhir/List :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/0"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/2"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/3"}}]}]]
-         [[:delete "Patient" "2"]]]
-
+      (testing "returns only the patient referenced in the list"
         (given-type-query node "Patient" [["_list" "0"]]
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"))
+
+      (testing "returns only the observation referenced in the list"
+        (given-type-query node "Observation" [["_list" "0"]]
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"))))
+
+  (testing "a node with four patients and one list in one transaction"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Patient :id "3"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/0"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/2"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/3"}}]}]]]
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["_list" "0"]] "2")
           count := 2
-          [0 :id] := "0"
-          [1 :id] := "3")))
+          [0 :id] := "2"
+          [1 :id] := "3"))))
 
-    (testing "a deleted list"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/List :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/0"}}]}]]
-         [[:delete "List" "0"]]]
+  (testing "a node with four patients and two lists in one transaction"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Patient :id "3"}]
+        [:put {:fhir/type :fhir/Patient :id "4"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/2"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/0"}}]}]
+        [:put {:fhir/type :fhir/List :id "1"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/3"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/4"}}]}]]]
 
-        (testing "doesn't reference anything"
-          (given-type-query node "Patient" [["_list" "0"]]
-            count := 0)
+      (testing "returns the patients of both lists"
+        (let [clauses [["_list" "0" "1"]]]
+          (given-type-query node "Patient" clauses
+            count := 4
+            [0 :id] := "0"
+            [1 :id] := "2"
+            [2 :id] := "3"
+            [3 :id] := "4")
 
-          (testing "it is possible to start with some patient"
-            (given (pull-type-query node "Patient" [["_list" "0"]] "0")
-              count := 0)))))))
+          (testing "it is possible to start with the second patient"
+            (given (pull-type-query node "Patient" clauses "2")
+              count := 3
+              [0 :id] := "2"
+              [1 :id] := "3"
+              [2 :id] := "4"))
+
+          (testing "it is possible to start with the third patient"
+            (given (pull-type-query node "Patient" clauses "3")
+              count := 2
+              [0 :id] := "3"
+              [1 :id] := "4"))))))
+
+  (testing "doesn't return the deleted patient"
+    (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Patient :id "3"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/0"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/2"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/3"}}]}]]
+       [[:delete "Patient" "2"]]]
+
+      (given-type-query node "Patient" [["_list" "0"]]
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "3")))
+
+  (testing "a deleted list"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference "Patient/0"}}]}]]
+       [[:delete "List" "0"]]]
+
+      (testing "doesn't reference anything"
+        (given-type-query node "Patient" [["_list" "0"]]
+          count := 0)
+
+        (testing "it is possible to start with some patient"
+          (given (pull-type-query node "Patient" [["_list" "0"]] "0")
+            count := 0))))))
 
 (deftest type-query-has-test
   (testing "Special Search Parameter _has"
@@ -4533,7 +4593,7 @@
 
 (deftest type-query-observation-code-value-concept-test
   (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/Observation :id "id-0"
+    [[[:put {:fhir/type :fhir/Observation :id "0"
              :status #fhir/code"final"
              :code
              #fhir/CodeableConcept
@@ -4549,7 +4609,7 @@
                  {:system #fhir/uri"http://snomed.info/sct"
                   :code #fhir/code"260373001"
                   :display #fhir/string"Detected (qualifier value)"}]}}]
-      [:put {:fhir/type :fhir/Observation :id "id-1"
+      [:put {:fhir/type :fhir/Observation :id "1"
              :status #fhir/code"final"
              :code
              #fhir/CodeableConcept
@@ -4565,7 +4625,7 @@
                  {:system #fhir/uri"http://snomed.info/sct"
                   :code #fhir/code"260415000"
                   :display #fhir/string"Not detected (qualifier value)"}]}}]
-      [:put {:fhir/type :fhir/Observation :id "id-2"
+      [:put {:fhir/type :fhir/Observation :id "2"
              :status #fhir/code"final"
              :code
              #fhir/CodeableConcept
@@ -4592,50 +4652,50 @@
         (testing "value as system|code"
           (given-type-query node "Observation" [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2"))
+            [0 :id] := "0"
+            [1 :id] := "2"))
 
         (testing "value as code"
           (given-type-query node "Observation" [["code-value-concept" "http://loinc.org|94564-2$260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2")))
+            [0 :id] := "0"
+            [1 :id] := "2")))
 
       (testing "code as code"
         (testing "value as system|code"
           (given-type-query node "Observation" [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2"))
+            [0 :id] := "0"
+            [1 :id] := "2"))
 
         (testing "value as code"
           (given-type-query node "Observation" [["code-value-concept" "94564-2$260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2")))
+            [0 :id] := "0"
+            [1 :id] := "2")))
 
       (testing "it is possible to start with the second observation"
         (testing "code as system|code"
           (testing "value as system|code"
-            (given (pull-type-query node "Observation" [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]] "id-2")
+            (given (pull-type-query node "Observation" [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]] "2")
               count := 1
-              [0 :id] := "id-2"))
+              [0 :id] := "2"))
 
           (testing "value as code"
-            (given (pull-type-query node "Observation" [["code-value-concept" "http://loinc.org|94564-2$260373001"]] "id-2")
+            (given (pull-type-query node "Observation" [["code-value-concept" "http://loinc.org|94564-2$260373001"]] "2")
               count := 1
-              [0 :id] := "id-2")))
+              [0 :id] := "2")))
 
         (testing "code as code"
           (testing "value as system|code"
-            (given (pull-type-query node "Observation" [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]] "id-2")
+            (given (pull-type-query node "Observation" [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]] "2")
               count := 1
-              [0 :id] := "id-2"))
+              [0 :id] := "2"))
 
           (testing "value as code"
-            (given (pull-type-query node "Observation" [["code-value-concept" "94564-2$260373001"]] "id-2")
+            (given (pull-type-query node "Observation" [["code-value-concept" "94564-2$260373001"]] "2")
               count := 1
-              [0 :id] := "id-2")))))
+              [0 :id] := "2")))))
 
     (testing "as second clause"
       (testing "code as system|code"
@@ -4643,30 +4703,45 @@
           (given-type-query node "Observation" [["status" "final"]
                                                 ["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2"))
+            [0 :id] := "0"
+            [1 :id] := "2"))
 
         (testing "value as code"
           (given-type-query node "Observation" [["status" "final"]
                                                 ["code-value-concept" "http://loinc.org|94564-2$260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2")))
+            [0 :id] := "0"
+            [1 :id] := "2")))
 
       (testing "code as code"
         (testing "value as system|code"
           (given-type-query node "Observation" [["status" "final"]
                                                 ["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2"))
+            [0 :id] := "0"
+            [1 :id] := "2"))
 
         (testing "value as code"
           (given-type-query node "Observation" [["status" "final"]
                                                 ["code-value-concept" "94564-2$260373001"]]
             count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-2"))))
+            [0 :id] := "0"
+            [1 :id] := "2"))))
+
+    (testing "with multiple values"
+      (let [clauses [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"
+                      "http://loinc.org|94564-2$http://snomed.info/sct|260415000"]]]
+        (given-type-query node "Observation" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2"))))
 
     (testing "with matcher"
       (let [matcher (d/compile-type-matcher node "Observation" [["code-value-concept" "94564-2$260373001"]])
@@ -4674,8 +4749,8 @@
             xform (d/matcher-transducer db matcher)]
         (given (into [] xform (d/type-list db "Observation"))
           count := 2
-          [0 :id] := "id-0"
-          [1 :id] := "id-2")))))
+          [0 :id] := "0"
+          [1 :id] := "2")))))
 
 (deftest type-query-observation-code-subject-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -6512,11 +6587,18 @@
         [[:put {:fhir/type :fhir/Patient :id (str id)
                 :identifier [(type/map->Identifier {:value (format "pat-%d" id)})]}]])
 
-      (given-type-query node "Patient" [["identifier" "pat-2" "pat-4" "pat-8"]]
-        count := 3
-        [0 :id] := "2"
-        [1 :id] := "4"
-        [2 :id] := "8"))))
+      (let [clauses [["identifier" "pat-2" "pat-4" "pat-8"]]]
+        (given-type-query node "Patient" clauses
+          count := 3
+          [0 :id] := "2"
+          [1 :id] := "4"
+          [2 :id] := "8")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" clauses "4")
+            count := 2
+            [0 :id] := "4"
+            [1 :id] := "8"))))))
 
 (deftest type-query-tag-test
   (with-system-data [{:blaze.db/keys [node]} config]

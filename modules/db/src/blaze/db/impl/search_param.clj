@@ -17,6 +17,7 @@
    [blaze.db.impl.search-param.quantity]
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
+   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
@@ -77,9 +78,6 @@
   ([search-param batch-db tid direction start-id]
    (p/-sorted-index-handles search-param batch-db tid direction start-id)))
 
-(defn- union-index-handles [index-handles]
-  (apply coll/union ih/id-comp ih/union index-handles))
-
 (defn ordered-index-handles
   "Returns an iterable of index handles from `batch-db` of type with `tid` that
   satisfy at least one of the `compiled-values` at `search-param` with
@@ -90,12 +88,11 @@
    (if (= 1 (count compiled-values))
      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
-       (union-index-handles (map index-handles compiled-values)))))
+       (u/union-index-handles (map index-handles compiled-values)))))
   ([search-param batch-db tid modifier compiled-values start-id]
    (if (= 1 (count compiled-values))
      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-     (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
-       (union-index-handles (map index-handles compiled-values))))))
+     (p/-ordered-index-handles search-param batch-db tid modifier compiled-values start-id))))
 
 (defn ordered-compartment-index-handles
   "Returns an iterable of index handles from `batch-db` in `compartment` of type

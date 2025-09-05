@@ -8,11 +8,17 @@
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.composite.common :as cc]
    [blaze.db.impl.search-param.token :as spt]
+   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]))
 
 (defrecord SearchParamCompositeTokenToken [name url type base code c-hash
                                            main-expression c1 c2]
   p/WithOrderedIndexHandles
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values start-id]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (u/union-index-handles (map index-handles compiled-values))))
+
   p/SearchParam
   (-compile-value [_ _ value]
     (when-ok [[v1 v2] (cc/split-value value)]

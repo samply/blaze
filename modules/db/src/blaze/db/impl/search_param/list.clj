@@ -45,6 +45,11 @@
 
 (defrecord SearchParamList [name type code]
   p/WithOrderedIndexHandles
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values start-id]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (u/union-index-handles (map index-handles compiled-values))))
+
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/id-byte-string value))

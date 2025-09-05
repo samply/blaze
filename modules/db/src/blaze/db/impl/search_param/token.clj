@@ -160,6 +160,11 @@
 
 (defrecord SearchParamToken [name url type base code target c-hash expression]
   p/WithOrderedIndexHandles
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values start-id]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (u/union-index-handles (map index-handles compiled-values))))
+
   p/SearchParam
   (-compile-value [_ _ value]
     (if (= "reference" type)
@@ -247,6 +252,11 @@
 
 (defrecord SearchParamTokenIdentifier [name url type base code target c-hash expression]
   p/WithOrderedIndexHandles
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values start-id]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (u/union-index-handles (map index-handles compiled-values))))
+
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/v-hash value))
@@ -295,6 +305,14 @@
 
 (defrecord SearchParamId [name type code]
   p/WithOrderedIndexHandles
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values start-id]
+    (u/union-index-handles
+     (coll/eduction
+      (comp (drop-while #(not= start-id %))
+            (map #(p/-index-handles search-param batch-db tid modifier %)))
+      compiled-values)))
+
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
