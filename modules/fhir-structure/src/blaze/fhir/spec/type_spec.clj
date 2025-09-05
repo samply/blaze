@@ -4,7 +4,9 @@
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.spec.type.system-spec]
    [clojure.alpha.spec :as s2]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s])
+  (:import
+   [java.time OffsetDateTime]))
 
 (s/fdef type/type
   :args (s/cat :x any?)
@@ -35,7 +37,7 @@
   :ret (s/or :value type/string? :invalid s2/invalid?))
 
 (s/fdef type/decimal
-  :args (s/cat :value (s/alt :integer-value int? :decimal-value decimal? :extended map?))
+  :args (s/cat :value (s/alt :value decimal? :extended map?))
   :ret (s/or :value type/string? :invalid s2/invalid?))
 
 (s/fdef type/uri
@@ -50,20 +52,24 @@
   :args (s/cat :value (s/alt :value string? :extended map?))
   :ret (s/or :value type/canonical? :invalid s2/invalid?))
 
+(s/fdef type/base64Binary
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/base64Binary? :invalid s2/invalid?))
+
 (s/fdef type/instant
-  :args (s/cat :value (s/alt :string-value string? :system-value system/date-time? :extended map?))
+  :args (s/cat :value (s/alt :value #(instance? OffsetDateTime %) :extended map?))
   :ret (s/or :value type/instant? :invalid s2/invalid?))
 
 (s/fdef type/date
-  :args (s/cat :value (s/alt :string-value string? :system-value system/date? :extended map?))
+  :args (s/cat :value (s/alt :value system/date? :extended map?))
   :ret (s/or :value type/date? :invalid s2/invalid?))
 
 (s/fdef type/dateTime
-  :args (s/cat :value (s/alt :string-value string? :system-value system/date-time? :extended map?))
+  :args (s/cat :value (s/alt :value system/date-time? :extended map?))
   :ret (s/or :value type/dateTime? :invalid s2/invalid?))
 
 (s/fdef type/time
-  :args (s/cat :value (s/alt :string-value string? :system-value system/time? :extended map?))
+  :args (s/cat :value (s/alt :value system/time? :extended map?))
   :ret (s/or :value type/time? :invalid s2/invalid?))
 
 (s/fdef type/code

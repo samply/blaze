@@ -43,7 +43,7 @@
                   :entry
                   [{:fhir/type :fhir.Bundle/entry
                     :response {:fhir/type :fhir.Bundle.entry/response
-                               :status "200"}}]})))
+                               :status #fhir/string "200"}}]})))
              "failed"
              (ac/completed-future
               (ring/response

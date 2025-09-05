@@ -140,7 +140,7 @@
   (type/identifier
    {:use #fhir/code"official"
     :system (type/uri job-util/job-number-url)
-    :value (str job-number)}))
+    :value (type/string (str job-number))}))
 
 (defn- prepare-job [job id job-number]
   (-> (assoc job :id id)
@@ -190,11 +190,11 @@
   (log/debug "Try to cancel job with id =" id)
   (-> (job-util/pull-job node id)
       (ac/then-compose
-       (fn [{:keys [status] :as job}]
-         (if-not (#{#fhir/code"completed" #fhir/code"failed" #fhir/code"cancelled"} status)
+       (fn [{{status-value :value} :status :as job}]
+         (if-not (#{"completed" "failed" "cancelled"} status-value)
            (job-util/update-job node job cancel-job*)
            (ac/completed-future
-            (ba/conflict (cancel-conflict-msg job) :job/status (type/value status))))))))
+            (ba/conflict (cancel-conflict-msg job) :job/status status-value)))))))
 
 (defn- hold-job** [job reason]
   (assoc

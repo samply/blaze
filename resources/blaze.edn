@@ -252,6 +252,7 @@
   ;;
   :blaze.fhir.operation.graphql/handler
   {:node #blaze/ref :blaze.db.main/node
+   :writing-context #blaze/ref :blaze.fhir/writing-context
    :executor #blaze/ref :blaze.fhir.operation.graphql/executor}
 
   :blaze.fhir.operation.graphql/executor

@@ -11,10 +11,10 @@
 
 (def ^:const ^long value-set-prefix-length (count lc/value-set-prefix))
 
-(defn- build-value-set [id {:keys [title]} value-set-concepts]
+(defn- build-value-set [id {{title :value} :title} value-set-concepts]
   {:fhir/type :fhir/ValueSet
    :name (type/string (str "LOINC_AnswerList_" (str/replace id "-" "_")))
-   :title (format "LOINC AnswerList %s (%s)" id title)
+   :title (type/string (format "LOINC AnswerList %s (%s)" id title))
    :status #fhir/code"active"
    :copyright lc/copyright
    :compose

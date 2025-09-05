@@ -179,7 +179,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"value"
-          [:issue 0 :diagnostics] := "The identifier `<invalid>` is invalid."))))
+          [:issue 0 :diagnostics] := #fhir/string "The identifier `<invalid>` is invalid."))))
 
   (testing "Returns an Error on Invalid Type"
     (with-handler [handler]
@@ -193,7 +193,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"value"
-          [:issue 0 :diagnostics] := "The type `<invalid>` is invalid."))))
+          [:issue 0 :diagnostics] := #fhir/string "The type `<invalid>` is invalid."))))
 
   (testing "on unknown search parameter"
     (testing "with strict handling"
@@ -212,7 +212,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"not-found"
-                [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Observation` was not found."))))
+                [:issue 0 :diagnostics] := #fhir/string "The search-param with code `foo` and type `Observation` was not found."))))
 
         (testing "summary result"
           (with-handler [handler]
@@ -228,7 +228,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"not-found"
-                [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Observation` was not found."))))))
+                [:issue 0 :diagnostics] := #fhir/string "The search-param with code `foo` and type `Observation` was not found."))))))
 
     (testing "with lenient handling"
       (testing "returns results with a self link lacking the unknown search parameter"
@@ -237,7 +237,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -270,7 +270,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -305,10 +305,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -339,10 +339,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -375,7 +375,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -407,7 +407,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -441,10 +441,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -474,10 +474,10 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -520,10 +520,10 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :status #fhir/code"final"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :status #fhir/code"preliminary"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [request {:path-params {:id "0" :type "Observation"}}]
 
@@ -587,13 +587,13 @@
 
             (testing "the first entry"
               (given (-> body :entry first)
-                :fullUrl := (str base-url context-path "/Observation/0")
+                [:fullUrl :value] := (str base-url context-path "/Observation/0")
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "0"))
 
             (testing "the second entry"
               (given (-> body :entry second)
-                :fullUrl := (str base-url context-path "/Observation/1")
+                [:fullUrl :value] := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "1"))))
 
@@ -625,7 +625,7 @@
 
             (testing "the entry"
               (given (-> body :entry first)
-                :fullUrl := (str base-url context-path "/Observation/0")
+                [:fullUrl :value] := (str base-url context-path "/Observation/0")
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "0")))
 
@@ -648,7 +648,7 @@
 
               (testing "the entry"
                 (given (-> body :entry first)
-                  :fullUrl := (str base-url context-path "/Observation/1")
+                  [:fullUrl :value] := (str base-url context-path "/Observation/1")
                   [:resource :fhir/type] := :fhir/Observation
                   [:resource :id] := "1")))))
 
@@ -662,4 +662,4 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"incomplete"
-                [:issue 0 :diagnostics] := "The resource content of `Observation/0` with hash `07F3F62AAE35B3BEF8F1AAA7B4BA3DE6055541BF073A65DFF32B512A460D6D1E` was not found."))))))))
+                [:issue 0 :diagnostics] := #fhir/string "The resource content of `Observation/0` with hash `65E7F47F5C5CFE48A6186611FC448C22429A0B298BE79E40BBCFAB107B74CE4C` was not found."))))))))

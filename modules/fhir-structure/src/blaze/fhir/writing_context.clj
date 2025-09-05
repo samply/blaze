@@ -71,44 +71,50 @@
        polymorphic
        (if complex-type
          (keyword "fhir" first-type-code)
-         (when element-type
-           (fhir-type-keyword path)))))))
+         (if element-type
+           (fhir-type-keyword path)
+           (when (= "http://hl7.org/fhirpath/System.String" first-type-code)
+             :system/string)))))))
 
 (defn- create-property-handlers
   "Returns a map of JSON property names to property handlers."
   [type element-definitions]
   (doall (map (partial property-handler-definitions type) element-definitions)))
 
-(defn- field-name ^SerializableString [^PropertyHandler def type]
-  ((.-field-name def) type))
+(defn- field-name ^SerializableString [^PropertyHandler property-handler type]
+  ((.-field-name property-handler) type))
 
-(defn- write-field! [type-handlers ^JsonGenerator gen ^PropertyHandler def value]
+(defn- write-field!
+  [type-handlers ^JsonGenerator gen ^PropertyHandler property-handler value]
   (if (sequential? value)
     (when-some [first-value (first value)]
-      (when-some [type (or (.-type def) (type/type first-value))]
+      (when-some [type (or (.-type property-handler) (type/type first-value))]
         (if-some [handler (type-handlers type)]
-          (do (.writeFieldName gen (field-name def type))
+          (do (.writeFieldName gen (field-name property-handler type))
               (.writeStartArray gen)
               (run! (partial handler type-handlers gen) value)
               (.writeEndArray gen))
-          (json/write-field gen (field-name def type) value))))
-    (when-some [type (or (.-type def) (type/type value))]
+          (json/write-field gen (field-name property-handler type) value))))
+    (when-some [type (or (.-type property-handler) (type/type value))]
       (if-some [handler (type-handlers type)]
-        (do (.writeFieldName gen (field-name def type))
+        (do (.writeFieldName gen (field-name property-handler type))
             (handler type-handlers gen value))
-        (json/write-field gen (field-name def type) value)))))
+        (if (identical? :system/string type)
+          (json/write-system-string-field gen (field-name property-handler type) value)
+          (json/write-field gen (field-name property-handler type) value))))))
 
 (defn- write-fields! [type-handlers property-handlers gen value]
-  (loop [[def & more] property-handlers]
-    (when def
-      (when-some [child-value (value (.-key ^PropertyHandler def))]
-        (write-field! type-handlers gen def child-value))
+  (loop [[property-handler & more] property-handlers]
+    (when property-handler
+      (when-some [child-value (value (.-key ^PropertyHandler property-handler))]
+        (write-field! type-handlers gen property-handler child-value))
       (recur more))))
 
 (def ^:private record-types
-  #{"Attachment" "Extension" "Coding" "CodeableConcept" "Quantity" "Ratio"
-    "Period" "Identifier" "HumanName" "Address" "Reference" "Meta"
-    "Bundle.entry.search"})
+  #{"Address" "Annotation" "Attachment" "CodeableConcept" "Coding"
+    "ContactDetail" "ContactPoint" "Expression"
+    "Extension" "HumanName" "Identifier" "Meta" "Period" "Quantity" "Range"
+    "Ratio" "Reference" "RelatedArtifact" "Bundle.entry.search"})
 
 (defn- create-type-handler
   "Creates a handler for `type` using `element-definitions`.

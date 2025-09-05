@@ -50,7 +50,7 @@
 
   (testing "Transaction command can be stored"
     (let [tx-cmd {:op "keep" :type "Patient" :id "0"
-                  :hash #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"}]
+                  :hash #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470"}]
       (with-system [{kv-store ::kv/mem} config]
         (kv/put! kv-store
                  [(tx-error/index-entry

@@ -60,9 +60,8 @@
        :code (type/code code)})]}))
 
 (defn- cql-expression [expr]
-  {:fhir/type :fhir/Expression
-   :language #fhir/code"text/cql-identifier"
-   :expression expr})
+  (type/expression {:language #fhir/code"text/cql-identifier"
+                    :expression (type/string expr)}))
 
 (def cql-attachment
   #fhir/Attachment
@@ -251,9 +250,9 @@
                 :status := #fhir/code"complete"
                 :type := #fhir/code"summary"
                 :measure := #fhir/canonical"url-181501"
-                :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-                [:period :start] := #fhir/dateTime"2014"
-                [:period :end] := #fhir/dateTime"2015")))))
+                :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+                [:period :start] := #fhir/dateTime #system/date-time "2014"
+                [:period :end] := #fhir/dateTime #system/date-time "2015")))))
 
       (testing "as POST request"
         (with-handler [handler]
@@ -270,8 +269,8 @@
                    :path-params {:id "0"}
                    :body
                    (fu/parameters
-                    "periodStart" #fhir/date"2014"
-                    "periodEnd" #fhir/date"2015")})]
+                    "periodStart" #fhir/date #system/date "2014"
+                    "periodEnd" #fhir/date #system/date "2015")})]
 
             (is (= 201 status))
 
@@ -284,9 +283,9 @@
               :status := #fhir/code"complete"
               :type := #fhir/code"summary"
               :measure := #fhir/canonical"url-181501"
-              :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime"2014"
-              [:period :end] := #fhir/dateTime"2015"))))))
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+              [:period :start] := #fhir/dateTime #system/date-time "2014"
+              [:period :end] := #fhir/dateTime #system/date-time "2015"))))))
 
   (testing "Returns Not Found on Non-Existing Measure"
     (with-handler [handler]
@@ -302,7 +301,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "The Measure resource with id `0` was not found."))))
+          [:issue 0 :diagnostics] := #fhir/string "The Measure resource with id `0` was not found."))))
 
   (testing "Returns Gone on Deleted Resource"
     (with-handler [handler]
@@ -321,7 +320,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"deleted"
-          [:issue 0 :diagnostics] := "The Measure resource with the id `0` was deleted."))))
+          [:issue 0 :diagnostics] := #fhir/string "The Measure resource with the id `0` was deleted."))))
 
   (testing "Returns Server Error on Missing Measure Content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
@@ -340,7 +339,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"incomplete"
-            [:issue 0 :diagnostics] := "The resource content of `Measure/0` with hash `D0CCBAF739DAC930C5A0844A48CDE18F0004D4549CEF7E1FF0DEB9A0611D9451` was not found."))))))
+            [:issue 0 :diagnostics] := #fhir/string "The resource content of `Measure/0` with hash `9C519DBC863CC6BB72A23FFE6AE9D8F8DB3BCE0FDD449200D6D3B808A30A3E6B` was not found."))))))
 
 (deftest handler-type-test
   (testing "Returns Success"
@@ -430,16 +429,16 @@
                 [:extension 0 :value :code] := #fhir/code"s"
                 [:extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
                 [:extension 0 :value :unit] := #fhir/string"s"
-                [:extension 0 :value :value] :instanceof BigDecimal
+                [:extension 0 :value :value :value] :? decimal?
                 :status := #fhir/code"complete"
                 :type := #fhir/code"summary"
                 :measure := #fhir/canonical"url-181501"
-                :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-                [:period :start] := #fhir/dateTime"2014"
-                [:period :end] := #fhir/dateTime"2015"
+                :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+                [:period :start] := #fhir/dateTime #system/date-time "2014"
+                [:period :end] := #fhir/dateTime #system/date-time "2015"
                 [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
                 [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-                [:group 0 :population 0 :count] := 1)))))
+                [:group 0 :population 0 :count] := #fhir/integer 1)))))
 
       (testing "cohort scoring with stratifiers"
         (with-handler [handler]
@@ -489,20 +488,20 @@
               :status := #fhir/code"complete"
               :type := #fhir/code"summary"
               :measure := #fhir/canonical"url-181501"
-              :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime"2014"
-              [:period :end] := #fhir/dateTime"2015"
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+              [:period :start] := #fhir/dateTime #system/date-time "2014"
+              [:period :end] := #fhir/dateTime #system/date-time "2015"
               [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-              [:group 0 :population 0 :count] := 3
+              [:group 0 :population 0 :count] := #fhir/integer 3
               [:group 0 :stratifier 0 :code 0 :text] := #fhir/string"gender"
               [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system] := measure-population-uri
               [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 1
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := #fhir/integer 1
               [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string"male"
               [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system] := measure-population-uri
               [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 2
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := #fhir/integer 2
               [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"female")))))
 
     (testing "as POST request"
@@ -521,8 +520,8 @@
                    :body
                    (fu/parameters
                     "measure" #fhir/string"url-181501"
-                    "periodStart" #fhir/date"2014"
-                    "periodEnd" #fhir/date"2015")})]
+                    "periodStart" #fhir/date #system/date "2014"
+                    "periodEnd" #fhir/date #system/date "2015")})]
 
             (is (= 201 status))
 
@@ -535,9 +534,9 @@
               :status := #fhir/code"complete"
               :type := #fhir/code"summary"
               :measure := #fhir/canonical"url-181501"
-              :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime"2014"
-              [:period :end] := #fhir/dateTime"2015")
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+              [:period :start] := #fhir/dateTime #system/date-time "2014"
+              [:period :end] := #fhir/dateTime #system/date-time "2015")
 
             (testing "with return=minimal Prefer header"
               (with-handler [handler]
@@ -555,8 +554,8 @@
                          :body
                          (fu/parameters
                           "measure" #fhir/string"url-181501"
-                          "periodStart" #fhir/date"2014"
-                          "periodEnd" #fhir/date"2015")})]
+                          "periodStart" #fhir/date #system/date "2014"
+                          "periodEnd" #fhir/date #system/date "2015")})]
 
                   (is (= 201 status))
 
@@ -580,7 +579,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"required"
-                [:issue 0 :diagnostics] := "The measure parameter is missing."))))
+                [:issue 0 :diagnostics] := #fhir/string "The measure parameter is missing."))))
 
         (testing "on POST requests"
           (with-handler [handler]
@@ -589,8 +588,8 @@
                     {:request-method :post
                      :body
                      (fu/parameters
-                      "periodStart" #fhir/date"2014"
-                      "periodEnd" #fhir/date"2015")})]
+                      "periodStart" #fhir/date #system/date "2014"
+                      "periodEnd" #fhir/date #system/date "2015")})]
 
               (is (= 422 status))
 
@@ -598,7 +597,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"required"
-                [:issue 0 :diagnostics] := "The measure parameter is missing.")))))
+                [:issue 0 :diagnostics] := #fhir/string "The measure parameter is missing.")))))
 
       (testing "Returns 4xx on Non-Existing Measure"
         (testing "on GET requests"
@@ -615,7 +614,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"not-found"
-                [:issue 0 :diagnostics] := "The Measure resource with reference `url-181501` was not found."))))
+                [:issue 0 :diagnostics] := #fhir/string "The Measure resource with reference `url-181501` was not found."))))
 
         (testing "on POST requests"
           (with-handler [handler]
@@ -624,9 +623,9 @@
                     {:request-method :post
                      :body
                      (fu/parameters
-                      "periodStart" #fhir/date"2014"
-                      "periodEnd" #fhir/date"2015"
-                      "measure" "url-181501")})]
+                      "periodStart" #fhir/date #system/date "2014"
+                      "periodEnd" #fhir/date #system/date "2015"
+                      "measure" #fhir/string "url-181501")})]
 
               (is (= 422 status))
 
@@ -634,7 +633,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"not-found"
-                [:issue 0 :diagnostics] := "The Measure resource with reference `url-181501` was not found.")))))))
+                [:issue 0 :diagnostics] := #fhir/string "The Measure resource with reference `url-181501` was not found.")))))))
 
   (testing "Returns Bad Request"
     (testing "on Measure with Non-Existing Library"
@@ -656,8 +655,8 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :diagnostics] := "The Library resource with canonical URI `urn:uuid:98060091-4638-497d-ba99-7a0084ab17f6` was not found."
-              [:issue 0 :expression first] := "Measure.library"))))
+              [:issue 0 :diagnostics] := #fhir/string "The Library resource with canonical URI `urn:uuid:98060091-4638-497d-ba99-7a0084ab17f6` was not found."
+              [:issue 0 :expression first] := #fhir/string "Measure.library"))))
 
       (testing "with literal reference"
         (testing "with non Library type"
@@ -679,8 +678,8 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :diagnostics] := "The Library resource with canonical URI `Patient/0` was not found."
-                [:issue 0 :expression first] := "Measure.library"))))
+                [:issue 0 :diagnostics] := #fhir/string "The Library resource with canonical URI `Patient/0` was not found."
+                [:issue 0 :expression first] := #fhir/string "Measure.library"))))
 
         (testing "with non existing id"
           (with-handler [handler]
@@ -701,8 +700,8 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :diagnostics] := "The Library resource with canonical URI `Library/1` was not found."
-                [:issue 0 :expression first] := "Measure.library"))))))
+                [:issue 0 :diagnostics] := #fhir/string "The Library resource with canonical URI `Library/1` was not found."
+                [:issue 0 :expression first] := #fhir/string "Measure.library"))))))
 
     (testing "on Missing Content in Library"
       (with-handler [handler]
@@ -724,8 +723,8 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :diagnostics] := "No attachment with `text/cql` content type found in library with id `0`."
-            [:issue 0 :expression first] := "Library.content"))))
+            [:issue 0 :diagnostics] := #fhir/string "No attachment with `text/cql` content type found in library with id `0`."
+            [:issue 0 :expression first] := #fhir/string "Library.content"))))
 
     (testing "on Missing Data in Library Content"
       (with-handler [handler]
@@ -749,8 +748,8 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :diagnostics] := "Missing embedded data of first attachment in library with id `0`."
-            [:issue 0 :expression first] := "Library.content[0].data"))))
+            [:issue 0 :diagnostics] := #fhir/string "Missing embedded data of first attachment in library with id `0`."
+            [:issue 0 :expression first] := #fhir/string "Library.content[0].data"))))
 
     (testing "on non text/cql content type"
       (with-handler [handler]
@@ -774,8 +773,8 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :diagnostics] := "No attachment with `text/cql` content type found in library with id `0`."
-            [:issue 0 :expression first] := "Library.content")))))
+            [:issue 0 :diagnostics] := #fhir/string "No attachment with `text/cql` content type found in library with id `0`."
+            [:issue 0 :expression first] := #fhir/string "Library.content")))))
 
   (testing "Returns Unprocessable Entity on Measure without Library"
     (with-handler [handler]
@@ -794,8 +793,8 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-supported"
-          [:issue 0 :diagnostics] := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-          [:issue 0 :expression first] := "Measure.library")))))
+          [:issue 0 :diagnostics] := #fhir/string "Missing primary library. Currently only CQL expressions together with one primary library are supported."
+          [:issue 0 :expression first] := #fhir/string "Measure.library")))))
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::evaluate-measure/keys [executor] :as system}

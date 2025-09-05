@@ -264,7 +264,7 @@
                    :attachment
                    #fhir/Attachment
                     {:url #fhir/url
-                           {:extension #fhir/Extension{:url "foo"}
+                           {:extension [#fhir/Extension{:url "foo"}]
                             :value "urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"}}}]}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
@@ -280,7 +280,7 @@
                  :method #fhir/code"POST"
                  :url #fhir/uri"Binary"}}]]
           (given (links/resolve-entry-links entries)
-            [0 :resource :content 0 :attachment :url] := #fhir/url{:extension #fhir/Extension{:url "foo"}
+            [0 :resource :content 0 :attachment :url] := #fhir/url{:extension [#fhir/Extension{:url "foo"}]
                                                                    :value "Binary/160527"}))))
 
     (testing "does nothing at not found URL value"
@@ -377,7 +377,7 @@
                 :resource
                 {:fhir/type :fhir/ConceptMap
                  :id "0"
-                 :source #fhir/uri{:extension #fhir/Extension{:url "foo"}
+                 :source #fhir/uri{:extension [#fhir/Extension{:url "foo"}]
                                    :value "urn:uuid:76566123-cf61-440b-98f5-7eda0bfde07a"}}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
@@ -393,7 +393,7 @@
                  :method #fhir/code"POST"
                  :url #fhir/uri"ValueSet"}}]]
           (given (links/resolve-entry-links entries)
-            [0 :resource :source] := #fhir/uri{:extension #fhir/Extension{:url "foo"}
+            [0 :resource :source] := #fhir/uri{:extension [#fhir/Extension{:url "foo"}]
                                                :value "ValueSet/165422"}))))
 
     (testing "does nothing at not found URI value"
@@ -440,9 +440,9 @@
           [{:fhir/type :fhir.Bundle/entry
             :resource
             {:fhir/type :fhir/Observation :id "0"
-             :subject #fhir/Reference{:display "foo"}}}]]
+             :subject #fhir/Reference{:display #fhir/string "foo"}}}]]
       (given (links/resolve-entry-links entries)
-        [0 :resource :subject] := #fhir/Reference{:display "foo"}))))
+        [0 :resource :subject] := #fhir/Reference{:display #fhir/string "foo"}))))
 
 (deftest resolve-entry-links-in-contained-resources-test
   (let [entries
@@ -462,10 +462,10 @@
            [{:fhir/type :fhir/ServiceRequest :id "0"
              :subject
              #fhir/Reference
-              {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
+              {:reference #fhir/string "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
           :request
           {:fhir/type :fhir.Bundle.entry/request
            :method #fhir/code"POST"
            :url #fhir/uri"ExplanationOfBenefit"}}]]
     (given (links/resolve-entry-links entries)
-      [1 :resource :contained 0 :subject :reference] := "Patient/0")))
+      [1 :resource :contained 0 :subject :reference] := #fhir/string "Patient/0")))

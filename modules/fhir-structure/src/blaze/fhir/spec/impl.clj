@@ -7,6 +7,7 @@
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.alpha.spec :as s]
    [clojure.data.xml.name :as xml-name]
@@ -158,8 +159,9 @@
     :max max
     :spec-form
     (case path
+      ;; TODO: remove special string handling
       ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-      (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->InternedString)
+      (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/string `identity)
       (keyword "fhir.xml" (:code type)))}])
 
 (defn elem-def->spec-def
@@ -258,18 +260,24 @@
      :max (:max elem-def)
      :spec-form
      (case key
-       (:fhir/Attachment
-        :fhir/Extension
-        :fhir/Coding
+       (:fhir/Address
+        :fhir/Annotation
+        :fhir/Attachment
         :fhir/CodeableConcept
-        :fhir/Quantity
-        :fhir/Ratio
-        :fhir/Period
-        :fhir/Identifier
+        :fhir/Coding
+        :fhir/ContactDetail
+        :fhir/ContactPoint
+        :fhir/Expression
+        :fhir/Extension
         :fhir/HumanName
-        :fhir/Address
+        :fhir/Identifier
+        :fhir/Meta
+        :fhir/Period
+        :fhir/Quantity
+        :fhir/Range
+        :fhir/Ratio
         :fhir/Reference
-        :fhir/Meta)
+        :fhir/RelatedArtifact)
        (record-spec-form path-part child-spec-defs)
        :fhir.Bundle.entry/search
        (record-spec-form "BundleEntrySearch" child-spec-defs)
@@ -342,13 +350,13 @@
    content))
 
 (defn select-non-nil-keys [m ks]
-  (into {} (remove (comp nil? val)) (select-keys m ks)))
+  (into {} (keep (fn [entry] (when (ks (key entry)) entry))) m))
 
 (defn- xml-attrs-form [child-spec-defs]
   `(select-non-nil-keys
     ~'m
     ~(into
-      []
+      #{}
       (comp
        (filter :key)
        (filter :representation)
@@ -403,14 +411,15 @@
         `s/and))
 
 (defn- special-xml-schema-spec-form [kind type-name child-spec-defs]
-  (let [constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))
-        constructor (resolve constructor-sym)]
-    (conj (seq (conj (remap-choice-conformer-forms child-spec-defs)
-                     `(s/conformer ~constructor identity)))
-          (schema-spec-form :xml child-spec-defs)
-          `(s/conformer conform-xml
-                        ~(xml-unformer kind (keyword type-name) child-spec-defs))
-          `s/and)))
+  (let [constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))]
+    (if-let [constructor (resolve constructor-sym)]
+      (conj (seq (conj (remap-choice-conformer-forms child-spec-defs)
+                       `(s/conformer ~constructor #(into {} %))))
+            (schema-spec-form :xml child-spec-defs)
+            `(s/conformer conform-xml
+                          ~(xml-unformer kind (keyword type-name) child-spec-defs))
+            `s/and)
+      (throw (Exception. (format "Can't resolve constructor `%s`." constructor-sym))))))
 
 (defn- xml-schema-spec-def
   [kind parent-path-parts path-part elem-def child-spec-defs]
@@ -421,18 +430,24 @@
      :modifier :xml
      :spec-form
      (case key
-       (:fhir.xml/Attachment
-        :fhir.xml/Extension
-        :fhir.xml/Coding
+       (:fhir.xml/Address
+        :fhir.xml/Annotation
+        :fhir.xml/Attachment
         :fhir.xml/CodeableConcept
-        :fhir.xml/Quantity
-        :fhir.xml/Ratio
-        :fhir.xml/Period
-        :fhir.xml/Identifier
+        :fhir.xml/Coding
+        :fhir.xml/ContactDetail
+        :fhir.xml/ContactPoint
+        :fhir.xml/Expression
+        :fhir.xml/Extension
         :fhir.xml/HumanName
-        :fhir.xml/Address
+        :fhir.xml/Identifier
+        :fhir.xml/Meta
+        :fhir.xml/Period
+        :fhir.xml/Quantity
+        :fhir.xml/Range
+        :fhir.xml/Ratio
         :fhir.xml/Reference
-        :fhir.xml/Meta)
+        :fhir.xml/RelatedArtifact)
        (special-xml-schema-spec-form kind (name key) child-spec-defs)
        :fhir.xml.Bundle.entry/search
        (special-xml-schema-spec-form kind "BundleEntrySearch" child-spec-defs)
@@ -504,18 +519,30 @@
 (defn- value-type [element]
   (some #(when (str/ends-with? (:path %) "value") (first (:type %))) element))
 
+(defn- pattern [name element]
+  (case name
+    "string" #"[\r\n\t\u0020-\uFFFF]+"
+    "uri" #"[\u0021-\uFFFF]*"
+    "url" #"[\u0021-\uFFFF]*"
+    "canonical" #"[\u0021-\uFFFF]*"
+    "code" #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*"
+    "markdown" #"[\r\n\t\u0020-\uFFFF]+"
+    (type-regex (value-type element))))
+
 (defn- xml-spec-form [name {:keys [element]}]
-  (let [pattern (type-regex (value-type element))
-        constructor (str "xml->" (su/capital name))]
+  (let [pattern (pattern name element)]
     (case name
-      "string" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->String)
-      "uri" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Uri)
-      "url" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Url)
-      "canonical" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Canonical)
-      "code" (xml/primitive-xml-form #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" `type/xml->Code)
-      "markdown" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->Markdown)
+      "boolean" (xml/primitive-xml-form pattern `type/boolean `system/parse-boolean)
+      "integer" (xml/primitive-xml-form pattern `type/integer `system/parse-integer)
+      "decimal" (xml/primitive-xml-form pattern `type/decimal `system/parse-decimal)
+      "instant" (xml/primitive-xml-form pattern `type/instant `system/parse-date-time)
+      "date" (xml/primitive-xml-form pattern `type/date `system/parse-date)
+      "dateTime" (xml/primitive-xml-form pattern `type/dateTime `system/parse-date-time)
+      "time" (xml/primitive-xml-form pattern `type/time `system/parse-time)
+      "unsignedInt" (xml/primitive-xml-form pattern `type/unsignedInt `system/parse-integer)
+      "positiveInt" (xml/primitive-xml-form pattern `type/positiveInt `system/parse-integer)
       "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
-      (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" constructor)))))
+      (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" name) `identity))))
 
 (defn primitive-type->spec-defs
   "Converts a primitive type structure definition into spec defs for XML and

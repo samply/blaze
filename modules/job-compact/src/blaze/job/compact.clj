@@ -28,7 +28,7 @@
 
 (def ^:private initial-duration
   #fhir/Quantity
-   {:value #fhir/decimal 0
+   {:value #fhir/decimal 0M
     :unit #fhir/string"s"
     :system #fhir/uri"http://unitsofmeasure.org"
     :code #fhir/code"s"})
@@ -47,7 +47,7 @@
        {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
         :code #fhir/code"compact"
         :display #fhir/string"Compact a Database Column Family"}]}
-   :authoredOn authored-on
+   :authoredOn (type/dateTime authored-on)
    :input
    [{:fhir/type :fhir.Task/input
      :type (type/codeable-concept

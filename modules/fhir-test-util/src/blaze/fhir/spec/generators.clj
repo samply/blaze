@@ -1,5 +1,5 @@
 (ns blaze.fhir.spec.generators
-  (:refer-clojure :exclude [boolean meta str time])
+  (:refer-clojure :exclude [boolean meta range str time])
   (:require
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
@@ -52,7 +52,7 @@
        (gen/such-that (partial re-matches #"([0-9a-zA-Z\\+/=]{4})+"))))
 
 (def year
-  (gen/choose 1900 2100))
+  (gen/choose 1 9999))
 
 (def month
   (gen/choose 1 12))
@@ -77,30 +77,38 @@
   (gen/one-of [(gen/return "Z") zone-offset]))
 
 (def instant-value
-  (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-            (gen/tuple year month day hour minute time-second zone)))
+  (gen/fmap
+   system/parse-date-time
+   (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
+             (gen/tuple year month day hour minute time-second zone))))
 
 (def date-value
-  (gen/one-of
-   [(gen/fmap (partial format "%04d") year)
-    (gen/fmap (partial apply format "%04d-%02d")
-              (gen/tuple year month))
-    (gen/fmap (partial apply format "%04d-%02d-%02d")
-              (gen/tuple year month day))]))
+  (gen/fmap
+   system/parse-date
+   (gen/one-of
+    [(gen/fmap (partial format "%04d") year)
+     (gen/fmap (partial apply format "%04d-%02d")
+               (gen/tuple year month))
+     (gen/fmap (partial apply format "%04d-%02d-%02d")
+               (gen/tuple year month day))])))
 
 (defn dateTime-value [& {:keys [year] :or {year year}}]
-  (gen/one-of
-   [(gen/fmap (partial format "%04d") year)
-    (gen/fmap (partial apply format "%04d-%02d")
-              (gen/tuple year month))
-    (gen/fmap (partial apply format "%04d-%02d-%02d")
-              (gen/tuple year month day))
-    (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-              (gen/tuple year month day hour minute time-second zone))]))
+  (gen/fmap
+   system/parse-date-time
+   (gen/one-of
+    [(gen/fmap (partial format "%04d") year)
+     (gen/fmap (partial apply format "%04d-%02d")
+               (gen/tuple year month))
+     (gen/fmap (partial apply format "%04d-%02d-%02d")
+               (gen/tuple year month day))
+     (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
+               (gen/tuple year month day hour minute time-second zone))])))
 
 (def time-value
-  (gen/fmap (partial apply format "%02d:%02d:%02d")
-            (gen/tuple hour minute time-second)))
+  (gen/fmap
+   system/parse-time
+   (gen/fmap (partial apply format "%02d:%02d:%02d")
+             (gen/tuple hour minute time-second))))
 
 (def code-value
   (gen/such-that (partial re-matches #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*") gen/string 1000))
@@ -115,7 +123,8 @@
 
 (def id-value
   (gen/such-that (partial re-matches #"[A-Za-z0-9\-\.]{1,64}")
-                 (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 64))))
+                 (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 64))
+                 1000))
 
 (def markdown-value
   (gen/such-that (partial re-matches #"[\r\n\t\u0020-\uFFFF]+") gen/string 1000))
@@ -149,8 +158,8 @@
 (defn- primitive-gen [constructor value-gen]
   (fn
     [& {:keys [id extension value]
-        :or {id (gen/return nil)
-             extension (extensions)
+        :or {id (often-nil id-value)
+             extension (often-nil (extensions))
              value (nilable value-gen)}}]
     (->> (gen/tuple id extension value)
          (to-map [:id :extension :value])
@@ -198,12 +207,37 @@
 (def id
   (primitive-gen type/id id-value))
 
+(def oid
+  (primitive-gen type/oid oid-value))
+
+(def markdown
+  (primitive-gen type/markdown markdown-value))
+
 (def unsignedInt
   (primitive-gen type/unsignedInt unsignedInt-value))
 
+(def positiveInt
+  (primitive-gen type/positiveInt positiveInt-value))
+
+(def uuid
+  (primitive-gen type/uuid uuid-value))
+
+(declare reference)
+
+(defn annotation
+  [& {:keys [id extension author time text]
+      :or {id (often-nil id-value)
+           extension (gen/return nil)
+           author (rare-nil (gen/one-of [(reference) (string)]))
+           time (rare-nil (dateTime))
+           text (rare-nil (markdown))}}]
+  (->> (gen/tuple id extension author time text)
+       (to-map [:id :extension :author :time :text])
+       (gen/fmap type/annotation)))
+
 (defn attachment
   [& {:keys [id extension contentType language data url size hash title creation]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (gen/return nil)
            contentType (rare-nil (code))
            language (nilable (code))
@@ -221,7 +255,7 @@
 
 (defn extension
   [& {:keys [id extension value]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (gen/return nil)
            value (gen/return nil)}}]
   (->> (gen/tuple id extension uri-value value)
@@ -230,7 +264,7 @@
 
 (defn coding
   [& {:keys [id extension system version code display user-selected]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            system (rare-nil (uri))
            version (often-nil (string))
@@ -243,7 +277,7 @@
 
 (defn codeable-concept
   [& {:keys [id extension coding text]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            coding (gen/vector (coding))
            text (often-nil (string))}}]
@@ -251,9 +285,36 @@
        (to-map [:id :extension :coding :text])
        (gen/fmap type/codeable-concept)))
 
+(declare contact-point)
+
+(defn contact-detail
+  [& {:keys [id extension name telecom]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           name (rare-nil (string))
+           telecom (gen/vector (contact-point))}}]
+  (->> (gen/tuple id extension name telecom)
+       (to-map [:id :extension :name :telecom])
+       (gen/fmap type/contact-detail)))
+
+(declare period)
+
+(defn contact-point
+  [& {:keys [id extension system value use rank period]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           system (rare-nil (code))
+           value (rare-nil (string))
+           use (nilable (code))
+           rank (often-nil (positiveInt))
+           period (rare-nil (period))}}]
+  (->> (gen/tuple id extension system value use rank period)
+       (to-map [:id :extension :system :value :use :rank :period])
+       (gen/fmap type/contact-point)))
+
 (defn quantity
   [& {:keys [id extension value comparator unit system code]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            value (rare-nil (decimal))
            comparator (often-nil (code))
@@ -264,15 +325,31 @@
        (to-map [:id :extension :value :comparator :unit :system :code])
        (gen/fmap type/quantity)))
 
-;; TODO: Range
+(defn range
+  [& {:keys [id extension low high]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           low (nilable (quantity))
+           high (nilable (quantity))}}]
+  (->> (gen/tuple id extension low high)
+       (to-map [:id :extension :low :high])
+       (gen/fmap type/range)))
 
-;; TODO: Ratio
+(defn ratio
+  [& {:keys [id extension numerator denominator]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           numerator (nilable (quantity))
+           denominator (nilable (quantity))}}]
+  (->> (gen/tuple id extension numerator denominator)
+       (to-map [:id :extension :numerator :denominator])
+       (gen/fmap type/ratio)))
 
 ;; TODO: RatioRange
 
 (defn period
   [& {:keys [id extension start end]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            start (nilable (dateTime))
            end (nilable (dateTime))}}]
@@ -286,11 +363,9 @@
 
 ;; TODO: SampledData
 
-(declare reference)
-
 (defn identifier
   [& {:keys [id extension use type system value period assigner]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            use (rare-nil (code))
            type (nilable (codeable-concept))
@@ -304,7 +379,7 @@
 
 (defn human-name
   [& {:keys [id extension use text family given prefix suffix period]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            use (rare-nil (code))
            text (often-nil (string))
@@ -320,7 +395,7 @@
 (defn address
   [& {:keys [id extension use type text line city district state postalCode
              country period]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            use (rare-nil (code))
            type (rare-nil (code))
@@ -348,7 +423,7 @@
 
 (defn reference
   [& {:keys [id extension reference type identifier display]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            reference (rare-nil (string))
            type (often-nil (uri))
@@ -358,9 +433,22 @@
        (to-map [:id :extension :reference :type :identifier :display])
        (gen/fmap type/reference)))
 
+(defn expression
+  [& {:keys [id extension description name language expression reference]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           description (often-nil (string))
+           name (often-nil (blaze.fhir.spec.generators/id))
+           language (rare-nil (code))
+           expression (rare-nil (string))
+           reference (often-nil (uri))}}]
+  (->> (gen/tuple id extension description name language expression reference)
+       (to-map [:id :extension :description :name :language :expression :reference])
+       (gen/fmap type/expression)))
+
 (defn meta
   [& {:keys [id extension versionId lastUpdated source profile security tag]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            versionId (rare-nil (blaze.fhir.spec.generators/id))
            lastUpdated (rare-nil (instant))
@@ -375,7 +463,7 @@
 
 (defn bundle-entry-search
   [& {:keys [id extension mode score]
-      :or {id (gen/return nil)
+      :or {id (often-nil id-value)
            extension (extensions)
            mode (rare-nil (code))
            score (often-nil (decimal))}}]
@@ -387,11 +475,13 @@
   (gen/fmap #(assoc % :fhir/type fhir-type) gen))
 
 (defn bundle-entry
-  [& {:keys [id extension resource]
-      :or {id (gen/return nil)
-           extension (extensions)}}]
-  (->> (gen/tuple id extension resource)
-       (to-map [:id :extension :resource])
+  [& {:keys [id extension fullUrl resource]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           fullUrl (uri)
+           resource (gen/return nil)}}]
+  (->> (gen/tuple id extension fullUrl resource)
+       (to-map [:id :extension :fullUrl :resource])
        (fhir-type :fhir.Bundle/entry)))
 
 (defn- kebab->pascal [s]
@@ -405,6 +495,12 @@
        (->> (gen/tuple ~@field-syms)
             (to-map [~@(map keyword field-syms)])
             (fhir-type ~(keyword "fhir" (kebab->pascal (str type))))))))
+
+(def-resource-gen bundle
+  [id id-value
+   identifier (identifier)
+   type (rare-nil (code))
+   entry (gen/vector (bundle-entry))])
 
 (def-resource-gen patient
   [id id-value

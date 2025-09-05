@@ -5,7 +5,6 @@
    [blaze.fhir.operation.evaluate-measure.measure :as-alias measure]
    [blaze.fhir.operation.evaluate-measure.measure.spec]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [clojure.spec.alpha :as s]))
 
@@ -44,7 +43,8 @@
 
 (defn- get-param-value-from-resource [body name]
   (when (identical? :fhir/Parameters (fhir-spec/fhir-type body))
-    (some #(when (= name (:name %)) (type/value (:value %))) (:parameter body))))
+    (some #(when (= name (-> % :name :value)) (-> % :value :value))
+          (:parameter body))))
 
 (defn- get-param-value* [{:keys [params body]} name coercer]
   (or (some->> (get params name) (coercer name))
@@ -100,7 +100,7 @@
 (defn- coerce-and-validate-report-type [_ value]
   (if-not (s/valid? ::measure/report-type value)
     (ba/incorrect (invalid-report-type-param-msg value) :fhir/issue "value")
-    (type/code value)))
+    value))
 
 (defn- invalid-subject-param-msg [subject]
   (format "Invalid parameter `subject` with value `%s`. Should be a reference."
@@ -132,18 +132,17 @@
             report-type (get-param-value
                          request "reportType" coerce-and-validate-report-type)
             subject-ref (coerce-subject-ref-param request)]
-    (let [report-type (some-> report-type type/value)]
-      (if (and (= :get request-method) (= "subject-list" report-type))
-        (ba/unsupported no-subject-list-on-get-msg)
-        (assoc request
-               :blaze.fhir.operation.evaluate-measure/params
-               (cond-> {:period [period-start period-end]
-                        :report-type (or report-type
-                                         (if subject-ref "subject" "population"))}
-                 measure
-                 (assoc :measure measure)
-                 subject-ref
-                 (assoc :subject-ref subject-ref)))))))
+    (if (and (= :get request-method) (= "subject-list" report-type))
+      (ba/unsupported no-subject-list-on-get-msg)
+      (assoc request
+             :blaze.fhir.operation.evaluate-measure/params
+             (cond-> {:period [period-start period-end]
+                      :report-type (or report-type
+                                       (if subject-ref "subject" "population"))}
+               measure
+               (assoc :measure measure)
+               subject-ref
+               (assoc :subject-ref subject-ref))))))
 
 (defn wrap-coerce-params [handler]
   (fn [request]

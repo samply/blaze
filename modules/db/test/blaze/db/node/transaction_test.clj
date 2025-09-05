@@ -32,9 +32,9 @@
         [0 0 :op] := "create"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
-        [0 0 :hash] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [0 0 :hash] := #blaze/hash"37F2FC44C33CBF31C23E78F12A58D42985E86B39767C020F811212FD07946850"
         [0 0 :refs] := [["Patient" "0"]]
-        [1 0 0] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [1 0 0] := #blaze/hash"37F2FC44C33CBF31C23E78F12A58D42985E86B39767C020F811212FD07946850"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}})
 
@@ -81,8 +81,8 @@
       [0 0 :op] := "put"
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"
-      [0 0 :hash] := #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
-      [1 0 0] := #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
+      [0 0 :hash] := #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470"
+      [1 0 0] := #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470"
       [1 0 1] := {:fhir/type :fhir/Patient :id "0"})
 
     (testing "with references"
@@ -93,9 +93,9 @@
         [0 0 :op] := "put"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
-        [0 0 :hash] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [0 0 :hash] := #blaze/hash"37F2FC44C33CBF31C23E78F12A58D42985E86B39767C020F811212FD07946850"
         [0 0 :refs] := [["Patient" "0"]]
-        [1 0 0] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [1 0 0] := #blaze/hash"37F2FC44C33CBF31C23E78F12A58D42985E86B39767C020F811212FD07946850"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}})
 
@@ -112,7 +112,7 @@
             (= if-match (:if-match (ffirst (tx/prepare-ops context [tx-op])))))))))
 
   (testing "keep"
-    (let [hash #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"]
+    (let [hash #blaze/hash"37F2FC44C33CBF31C23E78F12A58D42985E86B39767C020F811212FD07946850"]
       (testing "without any if-match ts"
         (given (tx/prepare-ops context [[:keep "Patient" "0" hash]])
           [0 0 :op] := "keep"

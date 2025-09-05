@@ -8,6 +8,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [blaze.module :as m]
    [blaze.util :refer [str]]
@@ -42,7 +43,7 @@
       [{:fhir/type :fhir.OperationOutcome/issue
         :severity #fhir/code"success"
         :code #fhir/code"success"
-        :diagnostics (diagnostics db type clauses)}]})
+        :diagnostics (type/string (diagnostics db type clauses))}]})
     (ring/status 204)))
 
 (defmethod m/pre-init-spec :blaze.interaction/conditional-delete-type [_]

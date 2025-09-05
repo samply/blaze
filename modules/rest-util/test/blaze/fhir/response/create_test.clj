@@ -127,7 +127,7 @@
       (testing "kept"
         (testing "with no Prefer header"
           (let [{:keys [status headers body]}
-                @(build-response context [:keep "Patient" "0" #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"] nil
+                @(build-response context [:keep "Patient" "0" #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470"] nil
                                  resource-handle)]
 
             (testing "Returns 200"

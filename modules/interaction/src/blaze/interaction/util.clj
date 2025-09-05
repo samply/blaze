@@ -7,7 +7,11 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [clojure.string :as str]
-   [ring.util.response :as ring]))
+   [ring.util.response :as ring])
+  (:import
+   [java.time Instant ZoneOffset]))
+
+(set! *warn-on-reflection* true)
 
 (defn etag->t [etag]
   (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
@@ -99,3 +103,6 @@
     (-> (ring/response resource)
         (ring/header "Last-Modified" (fhir-util/last-modified tx))
         (ring/header "ETag" (fhir-util/etag tx)))))
+
+(defn instant [{:blaze.db.tx/keys [instant]}]
+  (type/instant (.atOffset ^Instant instant ZoneOffset/UTC)))

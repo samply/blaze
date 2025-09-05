@@ -45,6 +45,10 @@
 (defn field-name ^SerializableString [s]
   (->FieldName s (.getBytes ^String s StandardCharsets/UTF_8)))
 
+(defn write-system-string-field [^JsonGenerator generator ^SerializableString field-name value]
+  (.writeFieldName generator field-name)
+  (.writeString generator ^String value))
+
 (defn write-field [^JsonGenerator generator ^SerializableString field-name value]
   (when (p/-has-primary-content value)
     (.writeFieldName generator field-name)

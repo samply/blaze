@@ -126,7 +126,7 @@
   {:arglists '([resource-indexer tx-data])}
   [{:keys [resource-store] :as resource-indexer}
    {:keys [tx-cmds] resources :local-payload last-updated :instant}]
-  (let [context (assoc resource-indexer :last-updated last-updated)]
+  (let [context (assoc resource-indexer :last-updated (node-util/instant last-updated))]
     (if resources
       (index-resources* context resources)
       (-> (rs/multi-get resource-store (cmd-rs-keys tx-cmds :complete))

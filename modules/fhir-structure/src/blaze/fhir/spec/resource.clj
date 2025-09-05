@@ -452,7 +452,7 @@
   representation using `constructor`."
   [def]
   (->> (primitive-value-handler def type/decimal JsonToken/VALUE_NUMBER_INT
-                                get-long JsonToken/VALUE_NUMBER_FLOAT get-decimal
+                                get-decimal JsonToken/VALUE_NUMBER_FLOAT get-decimal
                                 "decimal")
        (primitive-handler def type/decimal)))
 
@@ -644,17 +644,23 @@
 (defn- finalize-complex-type [type value]
   (condp = type
     "Address" (type/address (persistent! value))
+    "Annotation" (type/annotation (persistent! value))
     "Attachment" (type/attachment (persistent! value))
     "CodeableConcept" (type/codeable-concept (persistent! value))
     "Coding" (type/coding (persistent! value))
+    "ContactDetail" (type/contact-detail (persistent! value))
+    "ContactPoint" (type/contact-point (persistent! value))
+    "Expression" (type/expression (persistent! value))
     "Extension" (type/extension (persistent! value))
     "HumanName" (type/human-name (persistent! value))
     "Identifier" (type/identifier (persistent! value))
+    "Meta" (type/meta (persistent! value))
     "Period" (type/period (persistent! value))
     "Quantity" (type/quantity (persistent! value))
+    "Range" (type/range (persistent! value))
     "Ratio" (type/ratio (persistent! value))
     "Reference" (type/reference (persistent! value))
-    "Meta" (type/meta (persistent! value))
+    "RelatedArtifact" (type/related-artifact (persistent! value))
     "Bundle.entry.search" (type/bundle-entry-search (persistent! value))
     (persistent! (assoc! value :fhir/type (fhir-type-keyword type)))))
 

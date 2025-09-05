@@ -58,7 +58,7 @@
               res
               (cond-> {:fhir/type :fhir.CapabilityStatement.rest.resource/interaction
                        :code (type/code (clojure.core/name code))}
-                doc (assoc :documentation (type/->Markdown doc))))
+                doc (assoc :documentation (type/markdown doc))))
              res))
          []
          [:read
@@ -93,14 +93,17 @@
              (cons
               (str name ":" code)
               (for [target target]
-                (str name ":" code ":" target))))))
+                (str name ":" code ":" target)))))
+          (map type/string))
          (sr/list-by-type search-param-registry name))
         :searchRevInclude
         (into
          []
-         (mapcat
-          (fn [{:keys [base code]}]
-            (map #(str % ":" code) base)))
+         (comp
+          (mapcat
+           (fn [{:keys [base code]}]
+             (map #(str % ":" code) base)))
+          (map type/string))
          (sr/list-by-target-type search-param-registry name))
         :searchParam
         (into
@@ -111,7 +114,8 @@
            (fn [{:keys [name url type]}]
              (cond->
               {:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
-               :name name :type (type/code type)}
+               :name (type/string name)
+               :type (type/code type)}
                url
                (assoc :definition (type/canonical url))
                (= "quantity" type)
@@ -129,10 +133,10 @@
              (when (or type-handler instance-handler)
                (cond->
                 {:fhir/type :fhir.CapabilityStatement.rest.resource/operation
-                 :name code
+                 :name (type/string code)
                  :definition (type/canonical def-uri)}
                  documentation
-                 (assoc :documentation (type/->Markdown documentation))))))
+                 (assoc :documentation (type/markdown documentation))))))
           operations))))))
 
 (defn- build-capability-statement-base
@@ -158,26 +162,26 @@
                        (when system-handler
                          (cond->
                           {:fhir/type :fhir.CapabilityStatement.rest/operation
-                           :name code
+                           :name (type/string code)
                            :definition (type/canonical def-uri)}
                            documentation
-                           (assoc :documentation (type/->Markdown documentation))))))
+                           (assoc :documentation (type/markdown documentation))))))
                     operations)]
     {:fhir/type :fhir/CapabilityStatement
      :status #fhir/code"active"
-     :experimental false
-     :publisher "The Samply Community"
+     :experimental #fhir/boolean false
+     :publisher #fhir/string "The Samply Community"
      :copyright copyright
      :kind #fhir/code"instance"
      :date (type/dateTime release-date)
      :software
      {:fhir/type :fhir.CapabilityStatement/software
-      :name "Blaze"
-      :version version
+      :name #fhir/string "Blaze"
+      :version (type/string version)
       :releaseDate (type/dateTime release-date)}
      :implementation
      {:fhir/type :fhir.CapabilityStatement/implementation
-      :description "Blaze"}
+      :description #fhir/string "Blaze"}
      :fhirVersion #fhir/code"4.0.1"
      :format
      [#fhir/code"application/fhir+json"
@@ -206,57 +210,57 @@
                  :code #fhir/code"history-system"}))
         :searchParam
         [{:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_id"
-          :type "token"
-          :definition "http://hl7.org/fhir/SearchParameter/Resource-id"}
+          :name #fhir/string "_id"
+          :type #fhir/code "token"
+          :definition #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-id"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_lastUpdated"
-          :type "date"
-          :definition "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"}
+          :name #fhir/string "_lastUpdated"
+          :type #fhir/code "date"
+          :definition #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_profile"
-          :type "uri"
-          :definition "http://hl7.org/fhir/SearchParameter/Resource-profile"}
+          :name #fhir/string "_profile"
+          :type #fhir/code "uri"
+          :definition #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-profile"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_security"
-          :type "token"
-          :definition "http://hl7.org/fhir/SearchParameter/Resource-security"}
+          :name #fhir/string "_security"
+          :type #fhir/code "token"
+          :definition #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-security"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_source"
-          :type "uri"
-          :definition "http://hl7.org/fhir/SearchParameter/Resource-source"}
+          :name #fhir/string "_source"
+          :type #fhir/code "uri"
+          :definition #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-source"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_tag"
-          :type "token"
-          :definition "http://hl7.org/fhir/SearchParameter/Resource-tag"}
+          :name #fhir/string "_tag"
+          :type #fhir/code "token"
+          :definition #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-tag"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_list"
-          :type "special"}
+          :name #fhir/string "_list"
+          :type #fhir/code "special"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_has"
-          :type "special"}
+          :name #fhir/string "_has"
+          :type #fhir/code "special"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_include"
-          :type "special"}
+          :name #fhir/string "_include"
+          :type #fhir/code "special"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_revinclude"
-          :type "special"}
+          :name #fhir/string "_revinclude"
+          :type #fhir/code "special"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_count"
-          :type "number"
-          :documentation "The number of resources returned per page"}
+          :name #fhir/string "_count"
+          :type #fhir/code "number"
+          :documentation #fhir/markdown "The number of resources returned per page"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_elements"
-          :type "special"}
+          :name #fhir/string "_elements"
+          :type #fhir/code "special"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_sort"
-          :type "special"
-          :documentation "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
+          :name #fhir/string "_sort"
+          :type #fhir/code "special"
+          :documentation #fhir/markdown "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
-          :name "_summary"
-          :type "token"
-          :documentation "Only `count` is supported at the moment."}]
-        :compartment ["http://hl7.org/fhir/CompartmentDefinition/patient"]}
+          :name #fhir/string "_summary"
+          :type #fhir/code "token"
+          :documentation #fhir/markdown "Only `count` is supported at the moment."}]
+        :compartment [#fhir/canonical "http://hl7.org/fhir/CompartmentDefinition/patient"]}
         (seq operations) (assoc :operation operations))]}))
 
 (defn- build-terminology-capabilities-base
@@ -264,19 +268,19 @@
   {:fhir/type :fhir/TerminologyCapabilities
    :meta #fhir/Meta{:profile [#fhir/canonical"http://hl7.org/fhir/StructureDefinition/TerminologyCapabilities"]}
    :status #fhir/code"active"
-   :experimental false
-   :publisher "The Samply Community"
+   :experimental #fhir/boolean false
+   :publisher #fhir/string "The Samply Community"
    :copyright copyright
    :kind #fhir/code"instance"
    :date (type/dateTime release-date)
    :software
    {:fhir/type :fhir.TerminologyCapabilities/software
-    :name "Blaze"
-    :version version
+    :name #fhir/string "Blaze"
+    :version (type/string version)
     :releaseDate (type/dateTime release-date)}
    :implementation
    {:fhir/type :fhir.TerminologyCapabilities/implementation
-    :description "Blaze"}
+    :description #fhir/string "Blaze"}
    :validateCode
    {:fhir/type :fhir.TerminologyCapabilities/validateCode
     :translations #fhir/boolean false}})
@@ -290,7 +294,7 @@
 
 (defn- assoc-implementation-url [capability-statement-base context-path base-url]
   (assoc-in capability-statement-base [:implementation :url]
-            (type/->Url (str base-url context-path))))
+            (type/url (str base-url context-path))))
 
 (defn- profile-canonical [{:keys [url version]}]
   (let [version (type/value version)]
@@ -335,7 +339,7 @@
      (assoc-in
       terminology-capabilities-base
       [:implementation :url]
-      (type/->Url (str base-url context-path)))
+      (type/url (str base-url context-path)))
       code-systems (assoc :codeSystem code-systems))))
 
 (defn- final-capabilities [context db base-url mode elements]

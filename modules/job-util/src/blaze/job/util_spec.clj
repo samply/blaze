@@ -47,6 +47,14 @@
   :args (s/cat :job :fhir/Task :system string? :code string? :f fn? :x any?)
   :ret any?)
 
+(s/fdef job-util/task-output
+  :args (s/cat :system string? :code string? :value any?)
+  :ret :fhir.Task/output)
+
+(s/fdef job-util/add-output
+  :args (s/cat :job :fhir/Task :system (s/? string?) :code string? :value any?)
+  :ret :fhir/Task)
+
 (s/fdef job-util/pull-job
   :args (s/cat :node :blaze.db/node :db (s/? :blaze.db/db) :id :blaze.resource/id)
   :ret ac/completable-future?)

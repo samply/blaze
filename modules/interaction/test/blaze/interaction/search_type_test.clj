@@ -37,9 +37,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -237,7 +235,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"not-found"
-                [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Patient` was not found.")))
+                [:issue 0 :diagnostics] := #fhir/string "The search-param with code `foo` and type `Patient` was not found.")))
 
           (testing "summary result"
             (let [{:keys [status body]}
@@ -251,7 +249,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"not-found"
-                [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Patient` was not found."))))))
+                [:issue 0 :diagnostics] := #fhir/string "The search-param with code `foo` and type `Patient` was not found."))))))
 
     (testing "with lenient handling"
       (testing "returns results with a self link lacking the unknown search parameter"
@@ -318,7 +316,7 @@
           (with-handler [handler]
             [[[:put {:fhir/type :fhir/Patient :id "0"}]
               [:put {:fhir/type :fhir/Patient :id "1"
-                     :active true}]]]
+                     :active #fhir/boolean true}]]]
 
             (testing "normal result"
               (let [{:keys [status body]}
@@ -453,7 +451,7 @@
           (with-handler [handler]
             [[[:put {:fhir/type :fhir/Patient :id "0"}]
               [:put {:fhir/type :fhir/Patient :id "1"
-                     :active true}]]]
+                     :active #fhir/boolean true}]]]
 
             (testing "normal result"
               (let [{:keys [status body]}
@@ -536,7 +534,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := "More than one sort parameter is unsupported.")))
+              [:issue 0 :diagnostics] := #fhir/string "More than one sort parameter is unsupported.")))
 
         (testing "summary result"
           (let [{:keys [status body]}
@@ -549,7 +547,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := "More than one sort parameter is unsupported."))))))
+              [:issue 0 :diagnostics] := #fhir/string "More than one sort parameter is unsupported."))))))
 
   (testing "on invalid date-time"
     (testing "returns error"
@@ -567,7 +565,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`.")))
+              [:issue 0 :diagnostics] := #fhir/string "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`.")))
 
         (testing "summary result"
           (let [{:keys [status body]}
@@ -582,7 +580,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`."))))))
+              [:issue 0 :diagnostics] := #fhir/string "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`."))))))
 
   (testing "on invalid token"
     (testing "returns error"
@@ -598,7 +596,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Invalid token `invalid-token-175424`.")))))
+            [:issue 0 :diagnostics] := #fhir/string "Invalid token `invalid-token-175424`.")))))
 
   (testing "on missing token"
     (testing "returns error"
@@ -614,8 +612,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := (format "Clauses of token `%s` not found."
-                                               (str/join (repeat 64 "A"))))))))
+            [:issue 0 :diagnostics] := (type/string (format "Clauses of token `%s` not found." (str/join (repeat 64 "A")))))))))
 
   (testing "with one patient"
     (with-handler [handler]
@@ -647,14 +644,14 @@
 
             (testing "the entry has the right fullUrl"
               (is (= (str base-url context-path "/Patient/0")
-                     (:fullUrl first-entry))))
+                     (-> first-entry :fullUrl :value))))
 
             (testing "the entry has the right resource"
               (given (:resource first-entry)
                 :fhir/type := :fhir/Patient
                 :id := "0"
                 [:meta :versionId] := #fhir/id"1"
-                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
                 [:meta :tag (coding v3-ObservationValue) count] := 0
                 :multipleBirth := #fhir/boolean true))
 
@@ -687,14 +684,14 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
               [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code"SUBSETTED"
               :multipleBirth := nil))
 
@@ -849,8 +846,8 @@
   (testing "with three patients"
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1" :active true}]
-        [:put {:fhir/type :fhir/Patient :id "2" :active true}]]]
+        [:put {:fhir/type :fhir/Patient :id "1" :active #fhir/boolean true}]
+        [:put {:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]]]
 
       (testing "search for active patients with _summary=count"
         (testing "with strict handling"
@@ -1037,9 +1034,9 @@
   (testing "with four patients"
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1" :active true}]
-        [:put {:fhir/type :fhir/Patient :id "2" :active true}]
-        [:put {:fhir/type :fhir/Patient :id "3" :active true}]]]
+        [:put {:fhir/type :fhir/Patient :id "1" :active #fhir/boolean true}]
+        [:put {:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]
+        [:put {:fhir/type :fhir/Patient :id "3" :active #fhir/boolean true}]]]
 
       (testing "on normal request"
         (testing "search for active patients with _count=1"
@@ -1129,7 +1126,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -1179,11 +1176,11 @@
 
             (testing "the first entry has the right fullUrl"
               (is (= (str base-url context-path "/Patient/0")
-                     (:fullUrl first-entry))))
+                     (-> first-entry :fullUrl :value))))
 
             (testing "the second entry has the right fullUrl"
               (is (= (str base-url context-path "/Patient/2")
-                     (-> :fullUrl second-entry))))
+                     (-> second-entry :fullUrl :value))))
 
             (testing "the first entry has the right resource"
               (given (:resource first-entry)
@@ -1220,11 +1217,11 @@
 
               (testing "the first entry has the right fullUrl"
                 (is (= (str base-url context-path "/Patient/3")
-                       (:fullUrl first-entry))))
+                       (-> first-entry :fullUrl :value))))
 
               (testing "the second entry has the right fullUrl"
                 (is (= (str base-url context-path "/Patient/4")
-                       (-> :fullUrl second-entry))))
+                       (-> second-entry :fullUrl :value))))
 
               (testing "the first entry has the right resource"
                 (given (:resource first-entry)
@@ -1267,7 +1264,7 @@
 
             (testing "the entry has the right fullUrl"
               (is (= (str base-url context-path "/Patient/0")
-                     (:fullUrl first-entry))))
+                     (-> first-entry :fullUrl :value))))
 
             (testing "the first entry has the right resource"
               (given (:resource first-entry)
@@ -1304,7 +1301,7 @@
 
             (testing "the entry has the right fullUrl"
               (is (= (str base-url context-path "/Patient/0")
-                     (:fullUrl first-entry))))
+                     (-> first-entry :fullUrl :value))))
 
             (testing "the first entry has the right resource"
               (given (:resource first-entry)
@@ -1458,7 +1455,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := "Unsupported sort direction `desc` for search param `_id`."))))))
+              [:issue 0 :diagnostics] := #fhir/string "Unsupported sort direction `desc` for search param `_id`."))))))
 
   (testing "_lastUpdated sort"
     (with-handler [handler _ page-id-cipher]
@@ -1565,7 +1562,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/1")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -1602,7 +1599,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/1")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -1644,11 +1641,11 @@
 
           (testing "the first entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the second entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/1")
-                   (:fullUrl second-entry))))
+                   (-> second-entry :fullUrl :value))))
 
           (testing "the first entry has the right resource"
             (given (:resource first-entry)
@@ -1691,7 +1688,7 @@
                [{:fhir/type :fhir.List/entry
                  :item
                  #fhir/Reference
-                  {:reference "Patient/0"}}]}]]]
+                  {:reference #fhir/string "Patient/0"}}]}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1715,7 +1712,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -1727,19 +1724,19 @@
       [[[:put {:fhir/type :fhir/Observation :id "0"
                :value
                #fhir/Quantity
-                {:value 65M
+                {:value #fhir/decimal 65M
                  :code #fhir/code"kg"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :value
                #fhir/Quantity
-                {:value 75M
+                {:value #fhir/decimal 75M
                  :code #fhir/code"kg"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :value
                #fhir/Quantity
-                {:value 100M
+                {:value #fhir/decimal 100M
                  :code #fhir/code"kg"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
@@ -1767,7 +1764,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/1")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resources"
             (given (:resource first-entry)
@@ -1782,7 +1779,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :code
                #fhir/CodeableConcept
                 {:coding
@@ -1791,11 +1788,11 @@
                     :code #fhir/code"8480-6"}]}
                :value
                #fhir/Quantity
-                {:value 130M
+                {:value #fhir/decimal 130M
                  :code #fhir/code"mm[Hg]"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :code
                #fhir/CodeableConcept
                 {:coding
@@ -1804,11 +1801,11 @@
                     :code #fhir/code"8480-6"}]}
                :value
                #fhir/Quantity
-                {:value 150M
+                {:value #fhir/decimal 150M
                  :code #fhir/code"mm[Hg]"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
-               :subject #fhir/Reference{:reference "Patient/1"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/1"}
                :code
                #fhir/CodeableConcept
                 {:coding
@@ -1817,7 +1814,7 @@
                     :code #fhir/code"8480-6"}]}
                :value
                #fhir/Quantity
-                {:value 100M
+                {:value #fhir/decimal 100M
                  :code #fhir/code"mm[Hg]"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
@@ -1843,7 +1840,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -1879,11 +1876,11 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
-              [:identifier 0 :value] := "0"))))))
+              [:identifier 0 :value] := #fhir/string "0"))))))
 
   (testing "Patient language search"
     (with-handler [handler]
@@ -1935,15 +1932,15 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (is (= "0" (-> body :entry first :resource :id))))))))
 
   (testing "Library title search"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Library :id "0" :title "ab"}]
-        [:put {:fhir/type :fhir/Library :id "1" :title "b"}]]]
+      [[[:put {:fhir/type :fhir/Library :id "0" :title #fhir/string "ab"}]
+        [:put {:fhir/type :fhir/Library :id "1" :title #fhir/string "b"}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1965,7 +1962,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Library/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -2002,7 +1999,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/MeasureReport/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -2052,7 +2049,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/List/id-143814")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -2071,7 +2068,7 @@
                       :code #fhir/code"8480-6"}]}
                  :value
                  #fhir/Quantity
-                  {:value 140M
+                  {:value #fhir/decimal 140M
                    :system #fhir/uri"http://unitsofmeasure.org"
                    :code #fhir/code"mm[Hg]"}}
                 {:fhir/type :fhir.Observation/component
@@ -2083,7 +2080,7 @@
                       :code #fhir/code"8462-4"}]}
                  :value
                  #fhir/Quantity
-                  {:value 90M
+                  {:value #fhir/decimal 90M
                    :system #fhir/uri"http://unitsofmeasure.org"
                    :code #fhir/code"mm[Hg]"}}]}]]
        [[:put {:fhir/type :fhir/Observation :id "id-123130"
@@ -2097,7 +2094,7 @@
                       :code #fhir/code"8480-6"}]}
                  :value
                  #fhir/Quantity
-                  {:value 150M
+                  {:value #fhir/decimal 150M
                    :system #fhir/uri"http://unitsofmeasure.org"
                    :code #fhir/code"mm[Hg]"}}
                 {:fhir/type :fhir.Observation/component
@@ -2109,7 +2106,7 @@
                       :code #fhir/code"8462-4"}]}
                  :value
                  #fhir/Quantity
-                  {:value 100M
+                  {:value #fhir/decimal 100M
                    :system #fhir/uri"http://unitsofmeasure.org"
                    :code #fhir/code"mm[Hg]"}}]}]]]
 
@@ -2177,7 +2174,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Condition/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
@@ -2225,7 +2222,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Condition/2")
-                   (:fullUrl first-entry))))))))
+                   (-> first-entry :fullUrl :value))))))))
 
   (testing "forward chaining"
     (with-handler [handler]
@@ -2234,16 +2231,16 @@
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/0"}}
+                 #fhir/Reference{:reference #fhir/string"Condition/0"}}
                 {:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/2"}}]}]
+                 #fhir/Reference{:reference #fhir/string"Condition/2"}}]}]
         [:put {:fhir/type :fhir/Encounter
                :id "1"
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
-                 #fhir/Reference{:reference "Condition/1"}}]}]
+                 #fhir/Reference{:reference #fhir/string"Condition/1"}}]}]
         [:put {:fhir/type :fhir/Condition
                :id "0"
                :code
@@ -2282,7 +2279,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Encounter/0")
-                   (:fullUrl first-entry))))))
+                   (-> first-entry :fullUrl :value))))))
 
       (testing "ambiguous type"
         (let [{:keys [status body]}
@@ -2297,14 +2294,14 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Ambiguous target types `Condition, Procedure` in the chain `diagnosis.code`. Please use a modifier to constrain the type.")))))
+            [:issue 0 :diagnostics] := #fhir/string "Ambiguous target types `Condition, Procedure` in the chain `diagnosis.code`. Please use a modifier to constrain the type.")))))
 
   (testing "Include Resources"
     (testing "direct include"
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2337,13 +2334,13 @@
 
           (testing "the first entry is the matched Observation"
             (given (-> body :entry first)
-              :fullUrl := (str base-url context-path "/Observation/0")
+              [:fullUrl :value] := (str base-url context-path "/Observation/0")
               [:resource :fhir/type] := :fhir/Observation
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Patient"
             (given (-> body :entry second)
-              :fullUrl := (str base-url context-path "/Patient/0")
+              [:fullUrl :value] := (str base-url context-path "/Patient/0")
               [:resource :fhir/type] := :fhir/Patient
               [:search :mode] := #fhir/code"include"))))
 
@@ -2351,7 +2348,7 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2374,7 +2371,7 @@
 
             (testing "the first entry is the matched Observation"
               (given (-> body :entry first)
-                :fullUrl := (str base-url context-path "/Observation/0")
+                [:fullUrl :value] := (str base-url context-path "/Observation/0")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match")))))
 
@@ -2382,9 +2379,9 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2407,19 +2404,19 @@
 
             (testing "the first entry is the first matched Observation"
               (given (-> body :entry first)
-                :fullUrl := (str base-url context-path "/Observation/1")
+                [:fullUrl :value] := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the second matched Observation"
               (given (-> body :entry second)
-                :fullUrl := (str base-url context-path "/Observation/2")
+                [:fullUrl :value] := (str base-url context-path "/Observation/2")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the third entry is the included Patient"
               (given (-> body :entry (nth 2))
-                :fullUrl := (str base-url context-path "/Patient/0")
+                [:fullUrl :value] := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"include")))))
 
@@ -2427,10 +2424,10 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Encounter :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
-                   :subject #fhir/Reference{:reference "Patient/0"}
-                   :encounter #fhir/Reference{:reference "Encounter/1"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+                   :encounter #fhir/Reference{:reference #fhir/string"Encounter/1"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2454,19 +2451,19 @@
 
             (testing "the first entry is the matched Observation"
               (given (-> body :entry first)
-                :fullUrl := (str base-url context-path "/Observation/2")
+                [:fullUrl :value] := (str base-url context-path "/Observation/2")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the included Encounter"
               (given (-> body :entry (nth 2))
-                :fullUrl := (str base-url context-path "/Encounter/1")
+                [:fullUrl :value] := (str base-url context-path "/Encounter/1")
                 [:resource :fhir/type] := :fhir/Encounter
                 [:search :mode] := #fhir/code"include"))
 
             (testing "the third entry is the included Patient"
               (given (-> body :entry second)
-                :fullUrl := (str base-url context-path "/Patient/0")
+                [:fullUrl :value] := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"include")))))
 
@@ -2474,10 +2471,10 @@
         (with-handler [handler _ page-id-cipher]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Patient :id "2"}]
             [:put {:fhir/type :fhir/Observation :id "3"
-                   :subject #fhir/Reference{:reference "Patient/2"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/2"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2507,13 +2504,13 @@
 
             (testing "the first entry is the matched Observation"
               (given (-> body :entry first)
-                :fullUrl := (str base-url context-path "/Observation/1")
+                [:fullUrl :value] := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the included Patient"
               (given (-> body :entry second)
-                :fullUrl := (str base-url context-path "/Patient/0")
+                [:fullUrl :value] := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"include"))
 
@@ -2550,13 +2547,13 @@
 
                 (testing "the first entry is the matched Observation"
                   (given (-> body :entry first)
-                    :fullUrl := (str base-url context-path "/Observation/3")
+                    [:fullUrl :value] := (str base-url context-path "/Observation/3")
                     [:resource :fhir/type] := :fhir/Observation
                     [:search :mode] := #fhir/code"match"))
 
                 (testing "the second entry is the included Patient"
                   (given (-> body :entry second)
-                    :fullUrl := (str base-url context-path "/Patient/2")
+                    [:fullUrl :value] := (str base-url context-path "/Patient/2")
                     [:resource :fhir/type] := :fhir/Patient
                     [:search :mode] := #fhir/code"include"))))))))
 
@@ -2565,11 +2562,11 @@
         [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                  :medication
                  #fhir/Reference
-                  {:reference "Medication/0"}}]
+                  {:reference #fhir/string "Medication/0"}}]
           [:put {:fhir/type :fhir/Medication :id "0"
                  :manufacturer
                  #fhir/Reference
-                  {:reference "Organization/0"}}]
+                  {:reference #fhir/string "Organization/0"}}]
           [:put {:fhir/type :fhir/Organization :id "0"}]]]
 
         (let [{:keys [status body]}
@@ -2595,19 +2592,19 @@
 
           (testing "the first entry is the matched MedicationStatement"
             (given (-> body :entry first)
-              :fullUrl := (str base-url context-path "/MedicationStatement/0")
+              [:fullUrl :value] := (str base-url context-path "/MedicationStatement/0")
               [:resource :fhir/type] := :fhir/MedicationStatement
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Organization"
             (given (-> body :entry second)
-              :fullUrl := (str base-url context-path "/Organization/0")
+              [:fullUrl :value] := (str base-url context-path "/Organization/0")
               [:resource :fhir/type] := :fhir/Organization
               [:search :mode] := #fhir/code"include"))
 
           (testing "the third entry is the included Medication"
             (given (-> body :entry (nth 2))
-              :fullUrl := (str base-url context-path "/Medication/0")
+              [:fullUrl :value] := (str base-url context-path "/Medication/0")
               [:resource :fhir/type] := :fhir/Medication
               [:search :mode] := #fhir/code"include")))))
 
@@ -2616,11 +2613,11 @@
         [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                  :medication
                  #fhir/Reference
-                  {:reference "Medication/0"}}]
+                  {:reference #fhir/string "Medication/0"}}]
           [:put {:fhir/type :fhir/Medication :id "0"
                  :manufacturer
                  #fhir/Reference
-                  {:reference "Organization/0"}}]
+                  {:reference #fhir/string "Organization/0"}}]
           [:put {:fhir/type :fhir/Organization :id "0"}]]]
 
         (let [{:keys [status body]}
@@ -2646,13 +2643,13 @@
 
           (testing "the first entry is the matched MedicationStatement"
             (given (-> body :entry first)
-              :fullUrl := (str base-url context-path "/MedicationStatement/0")
+              [:fullUrl :value] := (str base-url context-path "/MedicationStatement/0")
               [:resource :fhir/type] := :fhir/MedicationStatement
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Medication"
             (given (-> body :entry second)
-              :fullUrl := (str base-url context-path "/Medication/0")
+              [:fullUrl :value] := (str base-url context-path "/Medication/0")
               [:resource :fhir/type] := :fhir/Medication
               [:search :mode] := #fhir/code"include")))))
 
@@ -2660,7 +2657,7 @@
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2691,13 +2688,13 @@
 
           (testing "the first entry is the matched Patient"
             (given (-> body :entry first)
-              :fullUrl := (str base-url context-path "/Patient/0")
+              [:fullUrl :value] := (str base-url context-path "/Patient/0")
               [:resource :fhir/type] := :fhir/Patient
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Observation"
             (given (-> body :entry second)
-              :fullUrl := (str base-url context-path "/Observation/1")
+              [:fullUrl :value] := (str base-url context-path "/Observation/1")
               [:resource :fhir/type] := :fhir/Observation
               [:search :mode] := #fhir/code"include"))))
 
@@ -2705,9 +2702,9 @@
         (with-handler [handler _ page-id-cipher]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
             [:put {:fhir/type :fhir/Condition :id "2"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -2739,19 +2736,19 @@
 
             (testing "the first entry is the matched Patient"
               (given (-> body :entry first)
-                :fullUrl := (str base-url context-path "/Patient/0")
+                [:fullUrl :value] := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the included Condition"
               (given (-> body :entry second)
-                :fullUrl := (str base-url context-path "/Condition/2")
+                [:fullUrl :value] := (str base-url context-path "/Condition/2")
                 [:resource :fhir/type] := :fhir/Condition
                 [:search :mode] := #fhir/code"include"))
 
             (testing "the third entry is the included Observation"
               (given (-> body :entry (nth 2))
-                :fullUrl := (str base-url context-path "/Observation/1")
+                [:fullUrl :value] := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"include"))))))
 
@@ -2768,16 +2765,16 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`.")))))
+            [:issue 0 :diagnostics] := #fhir/string "Missing search parameter code in _include search parameter with source type `Observation`.")))))
 
   (testing "_elements"
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :value #fhir/string "foo"}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
                :value #fhir/string "foo"}]]]
 
       (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
@@ -2808,7 +2805,8 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= (str base-url context-path "/Observation/0") (:fullUrl entry))))
+          (is (= (str base-url context-path "/Observation/0")
+                 (-> entry :fullUrl :value))))
 
         (testing "the resource is subsetted"
           (given (-> resource :meta :tag (coding v3-ObservationValue) first)
@@ -2818,7 +2816,7 @@
           (is (= "0" (:id resource))))
 
         (testing "the resource has a subject"
-          (is (= "Patient/0" (-> resource :subject :reference))))
+          (is (= "Patient/0" (-> resource :subject :reference :value))))
 
         (testing "the resource has no value"
           (is (nil? (:value resource)))))))
@@ -2837,7 +2835,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"incomplete"
-            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))
+            [:issue 0 :diagnostics] := #fhir/string "The resource content of `Patient/0` with hash `5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470` was not found."))))))
 
 (deftest handler-query-stats-test
   (with-handler [handler]
@@ -2849,8 +2847,8 @@
                      [#fhir/Coding
                        {:system #fhir/uri"http://loinc.org"
                         :code #fhir/code"94564-2"}]}
-             :subject #fhir/Reference{:reference "Patient/0"}
-             :effective #fhir/dateTime"2025"}]]]
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+             :effective #fhir/dateTime #system/date-time "2025"}]]]
 
     (testing "no search param"
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2916,7 +2914,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Observation` was not found."))))
+            [:issue 0 :diagnostics] := #fhir/string "The search-param with code `foo` and type `Observation` was not found."))))
 
     (testing "one token search param"
       (testing "with match"

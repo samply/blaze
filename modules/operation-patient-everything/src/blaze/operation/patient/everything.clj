@@ -73,7 +73,7 @@
       (assoc :link [(next-link context request start end page-size next-offset)])
 
       (nil? page-size)
-      (assoc :total (type/->UnsignedInt (count entries))))))
+      (assoc :total (type/unsignedInt (count entries))))))
 
 (defn- handler [context]
   (fn [{:blaze/keys [db]

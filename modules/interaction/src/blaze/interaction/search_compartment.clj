@@ -67,7 +67,7 @@
   {:fhir/type :fhir/Bundle
    :id (m/luid context)
    :type #fhir/code"searchset"
-   :total (type/->UnsignedInt (count handles))
+   :total (type/unsignedInt (count handles))
    :link [(self-link context clauses)]})
 
 (defn- bundle [{{:keys [page-size]} :params :as context} handles clauses entries]

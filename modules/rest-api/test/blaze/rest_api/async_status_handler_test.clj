@@ -43,26 +43,26 @@
                                   wrap-error)]
          ~@body))))
 
-(defn ready-job [authored-on bundle-id t]
+(defn- ready-job [authored-on bundle-id t]
   (job-async/job authored-on bundle-id t))
 
-(defn in-progress-job [authored-on bundle-id t]
+(defn- in-progress-job [authored-on bundle-id t]
   (assoc (job-async/job authored-on bundle-id t) :status #fhir/code"in-progress"))
 
-(defn completed-job [authored-on request-bundle-id t response-bundle-id]
+(defn- completed-job [authored-on request-bundle-id t response-bundle-id]
   (-> (job-async/job authored-on request-bundle-id t)
       (assoc :status #fhir/code"completed")
       (job-async/add-response-bundle-reference response-bundle-id)))
 
-(defn completed-compact-job [authored-on]
+(defn- completed-compact-job [authored-on]
   (-> (job-compact/job authored-on "index" "resource-as-of-index")
       (assoc :status #fhir/code"completed")))
 
-(defn failed-job [authored-on bundle-id t error-msg]
+(defn- failed-job [authored-on bundle-id t error-msg]
   (-> (job-async/job authored-on bundle-id t)
       (job-util/fail-job (ba/fault error-msg))))
 
-(defn cancelled-job [authored-on bundle-id t]
+(defn- cancelled-job [authored-on bundle-id t]
   (assoc (job-async/job authored-on bundle-id t) :status #fhir/code"cancelled"))
 
 (deftest async-status-handler-test
@@ -126,7 +126,7 @@
         (given body
           :fhir/type := :fhir/Bundle
           :type := #fhir/code"batch-response"
-          [:entry 0 :response :status] := "200"))))
+          [:entry 0 :response :status] := #fhir/string "200"))))
 
   (testing "with failed job"
     (with-handler [handler]
@@ -141,11 +141,11 @@
         (given body
           :fhir/type := :fhir/Bundle
           :type := #fhir/code"batch-response"
-          [:entry 0 :response :status] := "500"
+          [:entry 0 :response :status] := #fhir/string "500"
           [:entry 0 :response :outcome :fhir/type] := :fhir/OperationOutcome
           [:entry 0 :response :outcome :issue 0 :severity] := #fhir/code"error"
           [:entry 0 :response :outcome :issue 0 :code] := #fhir/code"exception"
-          [:entry 0 :response :outcome :issue 0 :diagnostics] := "msg-181242"))))
+          [:entry 0 :response :outcome :issue 0 :diagnostics] := #fhir/string "msg-181242"))))
 
   (testing "with cancelled job"
     (with-handler [handler]
@@ -161,4 +161,4 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "The asynchronous request with id `0` is cancelled.")))))
+          [:issue 0 :diagnostics] := #fhir/string "The asynchronous request with id `0` is cancelled.")))))

@@ -23,18 +23,24 @@
  fhir/uuid blaze.fhir.spec.type/uuid
  fhir/xhtml blaze.fhir.spec.type/->Xhtml
  fhir/Attachment blaze.fhir.spec.type/attachment
+ fhir/Expression blaze.fhir.spec.type/expression
  fhir/Extension blaze.fhir.spec.type/extension
- fhir/Coding blaze.fhir.spec.type/coding
  fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
+ fhir/Coding blaze.fhir.spec.type/coding
+ fhir/ContactDetail blaze.fhir.spec.type/contact-detail
+ fhir/ContactPoint blaze.fhir.spec.type/contact-point
  fhir/Quantity blaze.fhir.spec.type/quantity
+ fhir/Range blaze.fhir.spec.type/range
  fhir/Ratio blaze.fhir.spec.type/ratio
  fhir/Period blaze.fhir.spec.type/period
  fhir/Identifier blaze.fhir.spec.type/identifier
  fhir/HumanName blaze.fhir.spec.type/human-name
  fhir/Address blaze.fhir.spec.type/address
  fhir/Reference blaze.fhir.spec.type/reference
+ fhir/RelatedArtifact blaze.fhir.spec.type/related-artifact
  fhir/Meta blaze.fhir.spec.type/meta
  fhir/BundleEntrySearch blaze.fhir.spec.type/bundle-entry-search
+ fhir/Annotation blaze.fhir.spec.type/annotation
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time
  system/time blaze.fhir.spec.type.system/parse-time}

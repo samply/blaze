@@ -92,7 +92,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Expected Parameters resource but was `Patient` resource."))))
+          [:issue 0 :diagnostics] := #fhir/string "Expected Parameters resource but was `Patient` resource."))))
 
   (testing "Missing database parameter"
     (with-handler [handler]
@@ -104,7 +104,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Missing `database` parameter."))))
+          [:issue 0 :diagnostics] := #fhir/string "Missing `database` parameter."))))
 
   (testing "Missing column-family parameter"
     (with-handler [handler]
@@ -117,7 +117,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Missing `column-family` parameter."))))
+          [:issue 0 :diagnostics] := #fhir/string "Missing `column-family` parameter."))))
 
   (testing "success"
     (with-handler [handler]

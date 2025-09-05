@@ -4,6 +4,7 @@
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
@@ -22,7 +23,7 @@
         :issue [{:fhir/type :fhir.OperationOutcome/issue
                  :severity #fhir/code"success"
                  :code #fhir/code"success"
-                 :diagnostics (diagnostics id)}]}))))
+                 :diagnostics (type/string (diagnostics id))}]}))))
 
 (defmethod m/pre-init-spec :blaze.operation.patient/purge [_]
   (s/keys :req-un [:blaze.db/node]))

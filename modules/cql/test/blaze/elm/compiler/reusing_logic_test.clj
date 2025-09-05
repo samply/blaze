@@ -260,9 +260,9 @@
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-          {:value 23M :code "kg"} (quantity 23M "kg")
-          {:value 42M} (quantity 42M "1")
-          {} nil))
+          #fhir/Quantity{:value #fhir/decimal 23M :code #fhir/code "kg"} (quantity 23M "kg")
+          #fhir/Quantity{:value #fhir/decimal 42M} (quantity 42M "1")
+          #fhir/Quantity{} nil))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -290,9 +290,9 @@
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/date{:id "foo"} nil
           #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil
-          #fhir/date"2023" #system/date"2023"
-          #fhir/date"2023-05" #system/date"2023-05"
-          #fhir/date"2023-05-07" #system/date"2023-05-07"))
+          #fhir/date #system/date "2023" #system/date"2023"
+          #fhir/date #system/date "2023-05" #system/date"2023-05"
+          #fhir/date #system/date "2023-05-07" #system/date"2023-05-07"))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -320,15 +320,15 @@
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/dateTime{:id "foo"} nil
           #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} nil
-          #fhir/dateTime"2022" #system/date-time"2022"
-          #fhir/dateTime"2022-02" #system/date-time"2022-02"
-          #fhir/dateTime"2022-02-22" #system/date-time"2022-02-22"
-          #fhir/dateTime"2023-05-07T17:39" #system/date-time"2023-05-07T17:39"
+          #fhir/dateTime #system/date-time "2022" #system/date-time"2022"
+          #fhir/dateTime #system/date-time "2022-02" #system/date-time"2022-02"
+          #fhir/dateTime #system/date-time "2022-02-22" #system/date-time"2022-02-22"
+          #fhir/dateTime #system/date-time "2023-05-07T17:39" #system/date-time"2023-05-07T17:39"
 
           #fhir/instant{:id "foo"} nil
           #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} nil
-          #fhir/instant"2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
-          #fhir/instant"2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
+          #fhir/instant #system/date-time "2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
+          #fhir/instant #system/date-time "2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -338,8 +338,8 @@
       (testing-function-ref-resolve-refs "ToDateTime")
 
       (testing "resolve parameters"
-        (has-form (core/-resolve-params expr {"x" #fhir/dateTime"2022-02"})
-          '(call "ToDateTime" #fhir/dateTime"2022-02"))
+        (has-form (core/-resolve-params expr {"x" #fhir/dateTime #system/date-time "2022-02"})
+          '(call "ToDateTime" #fhir/dateTime #system/date-time "2022-02"))
 
         (has-form (core/-resolve-params expr {})
           '(call "ToDateTime" (param-ref "x"))))
@@ -356,7 +356,7 @@
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-          "string-195733" "string-195733"
+          #fhir/string "string-195733" "string-195733"
           #fhir/uri"uri-195924" "uri-195924"
           #fhir/code{:id "foo" :value "code-211914"} "code-211914"
           #fhir/code{:id "foo"} nil))
@@ -407,6 +407,32 @@
       (testing "form"
         (has-form expr '(call "ToCode" (param-ref "x"))))))
 
+  (testing "ToDecimal"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/function-ref ["ToDecimal" #elm/parameter-ref "x"]
+          expr (c/compile compile-ctx elm)]
+
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
+          nil nil
+          #fhir/decimal 123M 123M))
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToDecimal")
+
+      (testing-function-ref-resolve-refs "ToDecimal")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {})
+          '(call "ToDecimal" (param-ref "x"))))
+
+      (testing-function-ref-optimize "ToDecimal")
+
+      (testing "form"
+        (has-form expr '(call "ToDecimal" (param-ref "x"))))))
+
   (testing "ToInterval"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToInterval" #elm/parameter-ref "x"]
@@ -416,19 +442,19 @@
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/Period
-           {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-            :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+           {:start #fhir/dateTime #system/date-time "2021-02-23T15:12:45+01:00"
+            :end #fhir/dateTime #system/date-time "2021-02-23T16:00:00+01:00"}
           (interval/interval
            (system/date-time 2021 2 23 14 12 45)
            (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
            {:start nil
-            :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+            :end #fhir/dateTime #system/date-time "2021-02-23T16:00:00+01:00"}
           (interval/interval
            nil
            (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
-           {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+           {:start #fhir/dateTime #system/date-time "2021-02-23T15:12:45+01:00"
             :end nil}
           (interval/interval
            (system/date-time 2021 2 23 14 12 45)
@@ -445,11 +471,11 @@
 
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {"x" #fhir/Period
-                                                   {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                                                    :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}})
+                                                   {:start #fhir/dateTime #system/date-time "2021-02-23T15:12:45+01:00"
+                                                    :end #fhir/dateTime #system/date-time "2021-02-23T16:00:00+01:00"}})
           '(call "ToInterval" #fhir/Period
-                               {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                                :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}))
+                               {:start #fhir/dateTime #system/date-time "2021-02-23T15:12:45+01:00"
+                                :end #fhir/dateTime #system/date-time "2021-02-23T16:00:00+01:00"}))
 
         (testing-function-ref-optimize "ToInterval")
 
@@ -493,7 +519,7 @@
           '(call "ToConcept" #fhir/CodeableConcept
                               {:coding
                                [#fhir/Coding{:system #fhir/uri"system-172740"
-                                             :version "version-172819"
+                                             :version #fhir/string "version-172819"
                                              :code #fhir/code"code-172745"}]}))
 
         (testing-function-ref-optimize "ToConcept")

@@ -3,6 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type.system :refer [parse-date-time]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.interaction.conditional-delete-type]
@@ -207,7 +208,7 @@
    {:job-scheduler (ig/ref :blaze/job-scheduler)}
    ::rest-api/capabilities-handler
    {:version "0.1.0"
-    :release-date "2024-01-07"
+    :release-date (parse-date-time "2024-01-07")
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :terminology-service (ig/ref ::ts/local)
@@ -315,7 +316,7 @@
                              :headers {"content-type" "application/fhir+json"}
                              :body (input-stream (json-writer search-bundle))})
         :status := 200
-        [:body json-parser :entry 0 :response :status] := "200"))))
+        [:body json-parser :entry 0 :response :status] := #fhir/string "200"))))
 
 (deftest not-found-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -346,18 +347,18 @@
 
 (deftest vread-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
-     [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
     (testing "current version"
       (given (call rest-api {:request-method :get :uri "/Patient/0/_history/3"})
         :status := 200
-        [:body json-parser :active] := true))
+        [:body json-parser :active] := #fhir/boolean true))
 
     (testing "older version"
       (given (call rest-api {:request-method :get :uri "/Patient/0/_history/2"})
         :status := 200
-        [:body json-parser :active] := false))
+        [:body json-parser :active] := #fhir/boolean false))
 
     (doseq [t [0 4]]
       (testing (format "version %d doesn't exist" t)
@@ -367,14 +368,14 @@
 
   (testing "with deleted history"
     (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
        [[:delete-history "Patient" "0"]]]
 
       (testing "current version"
         (given (call rest-api {:request-method :get :uri "/Patient/0/_history/3"})
           :status := 200
-          [:body json-parser :active] := true))
+          [:body json-parser :active] := #fhir/boolean true))
 
       (doseq [t [0 2 4]]
         (testing (format "version %d doesn't exist" t)
@@ -398,7 +399,7 @@
                            :headers {"content-type" "application/fhir+json"}
                            :body (input-stream (json-writer read-bundle))})
       :status := 200
-      [:body json-parser :entry 0 :response :status] := "404"
+      [:body json-parser :entry 0 :response :status] := #fhir/string "404"
       [:body json-parser :entry 0 :response :outcome :fhir/type] := :fhir/OperationOutcome)))
 
 (deftest batch-unsupported-media-type-test
@@ -425,7 +426,7 @@
                            :body (input-stream (json-writer metadata-bundle))})
       :status := 200
       [:body json-parser :entry 0 :resource :fhir/type] := :fhir/CapabilityStatement
-      [:body json-parser :entry 0 :response :status] := "200")))
+      [:body json-parser :entry 0 :response :status] := #fhir/string "200")))
 
 (deftest delete-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -439,8 +440,8 @@
 
 (deftest delete-history-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
-     [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
     (given (call rest-api {:request-method :delete :uri "/Patient/0/_history"})
       :status := 204

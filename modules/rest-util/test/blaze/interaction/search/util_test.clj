@@ -41,7 +41,7 @@
 
   (given (search-util/match-entry context {:fhir/type :fhir/Patient :id "0"})
     :fhir/type := :fhir.Bundle/entry
-    :fullUrl := "/Patient/0"
+    :fullUrl := #fhir/uri "/Patient/0"
     [:resource :fhir/type] := :fhir/Patient
     [:resource :id] := "0"
     [:search :mode] #fhir/code"match"))
@@ -57,7 +57,7 @@
 
   (given (search-util/include-entry context {:fhir/type :fhir/Patient :id "0"})
     :fhir/type := :fhir.Bundle/entry
-    :fullUrl := "/Patient/0"
+    :fullUrl := #fhir/uri "/Patient/0"
     [:resource :fhir/type] := :fhir/Patient
     [:resource :id] := "0"
     [:search :mode] #fhir/code"include"))

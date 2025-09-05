@@ -31,9 +31,7 @@
    [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -219,25 +217,25 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right request"
           (given (:request first-entry)
             :method := #fhir/code"PUT"
-            :url := "Patient/0"))
+            :url := #fhir/uri "Patient/0"))
 
         (testing "the entry has the right response"
           (given (:response first-entry)
-            :status := "201"
-            :etag := "W/\"1\""
-            :lastModified := Instant/EPOCH)))))
+            :status := #fhir/string "201"
+            :etag := #fhir/string "W/\"1\""
+            :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
   (testing "with one code system"
     (with-handler [handler]
@@ -278,26 +276,26 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/CodeSystem/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/CodeSystem
             :id := "0"
             [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
             [:concept 0 :code] := #fhir/code"code-115927"))
 
         (testing "the second entry has the right request"
           (given (:request first-entry)
             :method := #fhir/code"PUT"
-            :url := "CodeSystem/0"))
+            :url := #fhir/uri "CodeSystem/0"))
 
         (testing "the entry has the right response"
           (given (:response first-entry)
-            :status := "201"
-            :etag := "W/\"1\""
-            :lastModified := Instant/EPOCH)))
+            :status := #fhir/string "201"
+            :etag := #fhir/string "W/\"1\""
+            :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))
 
       (testing "in summary mode"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -329,27 +327,27 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/CodeSystem/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/CodeSystem
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
               [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code"SUBSETTED"
               :concept := nil))
 
           (testing "the second entry has the right request"
             (given (:request first-entry)
               :method := #fhir/code"PUT"
-              :url := "CodeSystem/0"))
+              :url := #fhir/uri "CodeSystem/0"))
 
           (testing "the entry has the right response"
             (given (:response first-entry)
-              :status := "201"
-              :etag := "W/\"1\""
-              :lastModified := Instant/EPOCH))))))
+              :status := #fhir/string "201"
+              :etag := #fhir/string "W/\"1\""
+              :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))
 
   (testing "with two patients in one transaction"
     (with-handler [handler node page-id-cipher]
@@ -374,11 +372,11 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry)))))
+                 (-> first-entry :fullUrl :value)))))
 
       (testing "calling the second page"
         (testing "updating the patient will not affect the second page"
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]))
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]))
 
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
@@ -403,7 +401,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/1")
-                   (:fullUrl first-entry))))))
+                   (-> first-entry :fullUrl :value))))))
 
       (testing "a call with `page-id` but missing `page-type` just ignores `page-id`"
         (let [{:keys [body]}
@@ -440,11 +438,11 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/1")
-                 (:fullUrl first-entry)))))
+                 (-> first-entry :fullUrl :value)))))
 
       (testing "calling the second page"
         (testing "updating the patient will not affect the second page"
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]))
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]))
 
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
@@ -466,7 +464,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))))))
+                   (-> first-entry :fullUrl :value))))))))
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node]
@@ -506,4 +504,4 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"incomplete"
-            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))
+            [:issue 0 :diagnostics] := #fhir/string "The resource content of `Patient/0` with hash `5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470` was not found."))))))

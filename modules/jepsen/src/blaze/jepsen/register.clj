@@ -27,7 +27,7 @@
   @(-> (fhir-client/read base-uri "Patient" id context)
        (ac/then-apply
         (fn [resource]
-          {:type :ok :value (:multipleBirth resource)}))
+          {:type :ok :value (-> resource :multipleBirth :value)}))
        (ac/exceptionally
         (fn [e]
           {:type (if (ba/not-found? e) :ok :fail) :value nil}))))
@@ -58,7 +58,7 @@
   @(-> (fhir-client/update
         base-uri
         {:fhir/type :fhir/Observation :id "0"
-         :subject (type/reference {:reference (str "Patient/" (random-uuid))})}
+         :subject (type/reference {:reference (type/string (str "Patient/" (random-uuid)))})}
         context)
        (ac/exceptionally (constantly nil))))
 

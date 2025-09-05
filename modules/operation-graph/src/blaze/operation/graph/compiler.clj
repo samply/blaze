@@ -65,7 +65,7 @@
   (fn [db source-resource _target-node]
     (let [[res & more] (fhir-path/eval noop-resolver path source-resource)]
       (when (and (nil? more) (= :fhir/Reference (type/type res)))
-        (when-let [ref (:reference res)]
+        (when-let [ref (-> res :reference :value)]
           (when-let [[type id] (fsr/split-literal-ref ref)]
             (ba/map (fhir-util/resource-handle db type id) vector)))))))
 
@@ -85,7 +85,7 @@
     (let [ref (str (name type) "/" id)]
       (d/type-query db (:type target-node) (mapv #(% ref) clauses)))))
 
-(defn- link [{:keys [path] extensions :extension}]
+(defn- link [{{path :value} :path extensions :extension}]
   (let [link (base-link extensions)
         params (some (extension-value (str extension-base ".link.params")) extensions)]
     (cond

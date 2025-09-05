@@ -77,15 +77,15 @@
                :meta #fhir/Meta{:versionId #fhir/id"1"}}
               {:blaze.db/op :create
                :blaze.db/num-changes 1
-               :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := (str base-url context-path "/Patient/0")
+               :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := (type/uri (str base-url context-path "/Patient/0"))
       [:request :method] := #fhir/code"POST"
-      [:request :url] := "Patient"
+      [:request :url] := #fhir/uri "Patient"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
-      [:response :status] := "201"
-      [:response :lastModified] := Instant/EPOCH
-      [:response :etag] := "W/\"1\""))
+      [:response :status] := #fhir/string "201"
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
+      [:response :etag] := #fhir/string "W/\"1\""))
 
   (testing "Initial version with client assigned id"
     (given (history-util/build-entry
@@ -96,15 +96,15 @@
                :meta #fhir/Meta{:versionId #fhir/id"1"}}
               {:blaze.db/op :put
                :blaze.db/num-changes 1
-               :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := (str base-url context-path "/Patient/0")
+               :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := (type/uri (str base-url context-path "/Patient/0"))
       [:request :method] := #fhir/code"PUT"
-      [:request :url] := "Patient/0"
+      [:request :url] := #fhir/uri "Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
-      [:response :status] := "201"
-      [:response :lastModified] := Instant/EPOCH
-      [:response :etag] := "W/\"1\""))
+      [:response :status] := #fhir/string "201"
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
+      [:response :etag] := #fhir/string "W/\"1\""))
 
   (testing "Non-initial version"
     (given (history-util/build-entry
@@ -115,15 +115,15 @@
                :meta #fhir/Meta{:versionId #fhir/id"2"}}
               {:blaze.db/op :put
                :blaze.db/num-changes 2
-               :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := (str base-url context-path "/Patient/0")
+               :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := (type/uri (str base-url context-path "/Patient/0"))
       [:request :method] := #fhir/code"PUT"
-      [:request :url] := "Patient/0"
+      [:request :url] := #fhir/uri "Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
-      [:response :status] := "200"
-      [:response :lastModified] := Instant/EPOCH
-      [:response :etag] := "W/\"2\""))
+      [:response :status] := #fhir/string "200"
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
+      [:response :etag] := #fhir/string "W/\"2\""))
 
   (testing "Deleted version"
     (given (history-util/build-entry
@@ -134,13 +134,13 @@
                :meta #fhir/Meta{:versionId #fhir/id"2"}}
               {:blaze.db/op :delete
                :blaze.db/num-changes 2
-               :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := (str base-url context-path "/Patient/0")
+               :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := (type/uri (str base-url context-path "/Patient/0"))
       [:request :method] := #fhir/code"DELETE"
-      [:request :url] := "Patient/0"
-      [:response :status] := "204"
-      [:response :lastModified] := Instant/EPOCH
-      [:response :etag] := "W/\"2\"")))
+      [:request :url] := #fhir/uri "Patient/0"
+      [:response :status] := #fhir/string "204"
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
+      [:response :etag] := #fhir/string "W/\"2\"")))
 
 (def ^:private config
   {::context
