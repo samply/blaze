@@ -40,7 +40,7 @@ export default defineConfig({
 		nav: [
 			{ text: 'Home', link: '/' },
 			{
-				text: 'v1.0.4',
+				text: 'v1.1.1',
 				items: [
 					{
 						text: 'Changelog',

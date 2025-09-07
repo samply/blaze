@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.1
+
+### Bugfixes
+
+* Fix Paging with FHIR Search _id Parameter ([#2953](https://github.com/samply/blaze/issues/2953))
+
+### Minor Enhancements
+
+* Implement Frontend Dark Mode ([#2926](https://github.com/samply/blaze/issues/2926))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/111?closed=1).
+
 ## v1.1.0
 
 ### Enhancements
