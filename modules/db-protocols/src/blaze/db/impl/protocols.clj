@@ -138,6 +138,7 @@
 
 (defprotocol WithOrderedIndexHandles
   (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
     [search-param batch-db tid modifier compiled-values start-id]))
 
 (defprotocol SearchParamRegistry

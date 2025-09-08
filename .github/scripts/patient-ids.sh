@@ -7,4 +7,6 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 BASE="http://localhost:8080/fhir"
 PATIENT_IDENTIFIERS="${1//[[:space:]]/}"
-curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIERS&_count=1000" | jq -r '.entry[].resource.id' | paste -sd, -
+
+# it's important to shuffle the IDs here in order to test that FHIR search works with unordered IDs
+blazectl download --server "$BASE" Patient -p -q "identifier=$PATIENT_IDENTIFIERS" | jq -r '.id' | shuf | paste -sd, -

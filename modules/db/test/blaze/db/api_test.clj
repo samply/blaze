@@ -28,6 +28,7 @@
    [blaze.fhir.spec.type.system :as system]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.math.combinatorics :as combo]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -3307,20 +3308,57 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Patient :id "2"}]]]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Patient :id "3"}]
+        [:put {:fhir/type :fhir/Patient :id "4"}]
+        [:put {:fhir/type :fhir/Patient :id "5"}]]]
 
-      (let [clauses [["_id" "0" "1" "2"]]]
-        (given-type-query node "Patient" clauses
-          count := 3
-          [0 :id] := "0"
-          [1 :id] := "1"
-          [2 :id] := "2")
-
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" clauses "1")
-            count := 2
+      (doseq [ids (combo/permutations ["1" "3" "4"])]
+        (let [clauses [(into ["_id"] ids)]]
+          (given-type-query node "Patient" clauses
+            count := 3
             [0 :id] := "1"
-            [1 :id] := "2"))))))
+            [1 :id] := "3"
+            [2 :id] := "4")
+
+          (testing "it is possible to start with the second patient"
+            (given (pull-type-query node "Patient" clauses "3")
+              count := 2
+              [0 :id] := "3"
+              [1 :id] := "4"))
+
+          (testing "it is possible to start with the third patient"
+            (given (pull-type-query node "Patient" clauses "4")
+              count := 1
+              [0 :id] := "4"))
+
+          (testing "using a non-matching ID doesn't fail"
+            (testing "in the middle"
+              (given (pull-type-query node "Patient" clauses "2")
+                count := 0))
+
+            (testing "at the end"
+              (given (pull-type-query node "Patient" clauses "5")
+                count := 0))))))))
+
+(deftest ^:slow type-query-id-property-test
+  (log/set-min-level! :warn)
+
+  (testing "random id's"
+    (satisfies-prop 50
+      (prop/for-all [ids (gen/set (s/gen :blaze.resource/id) {:min-elements 1 :max-elements 1000})]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [(mapv #(vector :create {:fhir/type :fhir/Patient :id %}) ids)]
+
+          (let [db (d/db node)
+                ids (shuffle (take 100 ids))
+                clauses [(into ["_id"] ids)]
+                sorted-ids (sort ids)
+                start-id (rand-nth sorted-ids)]
+            (and (= (into [] (map :id) (d/type-query db "Patient" clauses))
+                    sorted-ids)
+                 (= (into [] (map :id) (d/type-query db "Patient" clauses start-id))
+                    (drop-while #(not= start-id %) sorted-ids)))))))))
 
 (deftest type-query-sort-test
   (testing "sorting by _id"
@@ -3449,7 +3487,10 @@
           (with-system-data [{:blaze.db/keys [node]} config]
             [(mapv #(vector :create {:fhir/type :fhir/Patient :id %}) ids)]
 
-            (= (sort ids) (mapv :id (pull-type-query node "Patient" [[:sort "_id" :asc]])))))))))
+            (let [db (d/db node)
+                  clauses [[:sort "_id" :asc]]]
+              (= (into [] (map :id) (d/type-query db "Patient" clauses))
+                 (sort ids)))))))))
 
 (deftest type-query-version-test
   (testing "only the latest version matches"

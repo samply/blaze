@@ -161,6 +161,11 @@
 (defrecord SearchParamToken [name url type base code target c-hash expression]
   p/WithOrderedIndexHandles
   (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (u/union-index-handles (map index-handles compiled-values))))
+
+  (-ordered-index-handles
     [search-param batch-db tid modifier compiled-values start-id]
     (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
       (u/union-index-handles (map index-handles compiled-values))))
@@ -253,6 +258,11 @@
 (defrecord SearchParamTokenIdentifier [name url type base code target c-hash expression]
   p/WithOrderedIndexHandles
   (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (u/union-index-handles (map index-handles compiled-values))))
+
+  (-ordered-index-handles
     [search-param batch-db tid modifier compiled-values start-id]
     (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
       (u/union-index-handles (map index-handles compiled-values))))
@@ -306,12 +316,18 @@
 (defrecord SearchParamId [name type code]
   p/WithOrderedIndexHandles
   (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (coll/eduction (mapcat index-handles) (sort compiled-values))))
+
+  (-ordered-index-handles
     [search-param batch-db tid modifier compiled-values start-id]
-    (u/union-index-handles
-     (coll/eduction
-      (comp (drop-while #(not= start-id %))
-            (map #(p/-index-handles search-param batch-db tid modifier %)))
-      compiled-values)))
+    (let [compiled-values (drop-while #(not= start-id %) (sort compiled-values))
+          index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (condp = (count compiled-values)
+        0 []
+        1 (index-handles (first compiled-values))
+        (coll/eduction (mapcat index-handles) compiled-values))))
 
   p/SearchParam
   (-compile-value [_ _ value]
@@ -328,7 +344,7 @@
         []))
 
   (-index-handles [sp batch-db tid modifier compiled-value start-id]
-    (if (= compiled-value start-id)
+    (if (bs/<= start-id compiled-value)
       (p/-index-handles sp batch-db tid modifier compiled-value)
       []))
 
