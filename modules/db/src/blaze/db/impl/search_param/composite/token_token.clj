@@ -15,6 +15,11 @@
                                            main-expression c1 c2]
   p/WithOrderedIndexHandles
   (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
+    (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (u/union-index-handles (map index-handles compiled-values))))
+
+  (-ordered-index-handles
     [search-param batch-db tid modifier compiled-values start-id]
     (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
       (u/union-index-handles (map index-handles compiled-values))))

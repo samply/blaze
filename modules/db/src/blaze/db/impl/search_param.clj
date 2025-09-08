@@ -17,7 +17,6 @@
    [blaze.db.impl.search-param.quantity]
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
-   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
@@ -87,8 +86,7 @@
   ([search-param batch-db tid modifier compiled-values]
    (if (= 1 (count compiled-values))
      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-     (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
-       (u/union-index-handles (map index-handles compiled-values)))))
+     (p/-ordered-index-handles search-param batch-db tid modifier compiled-values)))
   ([search-param batch-db tid modifier compiled-values start-id]
    (if (= 1 (count compiled-values))
      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
