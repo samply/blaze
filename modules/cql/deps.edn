@@ -5,11 +5,11 @@
   {:local/root "../db"}
 
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
-  {:mvn/version "2.19.2"
+  {:mvn/version "2.20.0"
    :exclusions [javax.xml.bind/jaxb-api]}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
-  {:mvn/version "2.19.2"}
+  {:mvn/version "2.20.0"}
 
   info.cqframework/cql-to-elm
   {:mvn/version "2.11.0"
