@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.2
+
+### Bugfixes
+
+* Fix Paging on _id Parameter with Unsorted IDs ([#2960](https://github.com/samply/blaze/issues/2960))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/113?closed=1).
+
 ## v1.1.1
 
 ### Bugfixes
