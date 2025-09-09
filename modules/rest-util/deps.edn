@@ -16,7 +16,7 @@
 
   ;; newer version for cheshire dependency
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.19.2"}
+  {:mvn/version "2.20.0"}
 
   org.apache.httpcomponents.core5/httpcore5
   {:mvn/version "5.3.5"}
