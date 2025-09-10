@@ -15,8 +15,7 @@
 ;;
 
 {:base-config
- {
-  ;;
+ {;;
   ;; FHIR RESTful API
   ;;
   ;; Provides the FHIR RESTful API which is the public interface of Blaze. The
@@ -37,8 +36,8 @@
    :resource-patterns #blaze/ref :blaze.rest-api/resource-patterns
    :compartments
    [#:blaze.rest-api.compartment
-           {:code "Patient"
-            :search-handler #blaze/ref :blaze.interaction/search-compartment}]
+     {:code "Patient"
+      :search-handler #blaze/ref :blaze.interaction/search-compartment}]
    :operations #blaze/ref :blaze.rest-api/operations
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]
    :job-scheduler #blaze/ref :blaze/job-scheduler
@@ -57,62 +56,62 @@
   {:default
    {:read
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction/read}
+     {:handler #blaze/ref :blaze.interaction/read}
     :vread
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction/vread}
+     {:handler #blaze/ref :blaze.interaction/vread}
     :update
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction/update}
+     {:handler #blaze/ref :blaze.interaction/update}
     :delete
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction/delete}
+     {:handler #blaze/ref :blaze.interaction/delete}
     :conditional-delete-type
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction/conditional-delete-type}
+     {:handler #blaze/ref :blaze.interaction/conditional-delete-type}
     :history-instance
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction.history/instance}
+     {:handler #blaze/ref :blaze.interaction.history/instance}
     :history-type
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction.history/type}
+     {:handler #blaze/ref :blaze.interaction.history/type}
     :create
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction.main/create}
+     {:handler #blaze/ref :blaze.interaction.main/create}
     :search-type
     #:blaze.rest-api.interaction
-            {:handler #blaze/ref :blaze.interaction/search-type}}}
+     {:handler #blaze/ref :blaze.interaction/search-type}}}
 
   :blaze.rest-api/operations
   [#:blaze.rest-api.operation
-          {:code "evaluate-measure"
-           :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-           :resource-types ["Measure"]
-           :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
-           :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}
+    {:code "evaluate-measure"
+     :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+     :resource-types ["Measure"]
+     :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
+     :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}
    #:blaze.rest-api.operation
-           {:code "graphql"
-            :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graphql"
-            :affects-state false
-            :resource-types ["Resource"]
-            :post-middleware #blaze/ref :blaze.fhir.operation.graphql.middleware/query
-            :response-type :json
-            :system-handler #blaze/ref :blaze.fhir.operation.graphql/handler}
+    {:code "graphql"
+     :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graphql"
+     :affects-state false
+     :resource-types ["Resource"]
+     :post-middleware #blaze/ref :blaze.fhir.operation.graphql.middleware/query
+     :response-type :json
+     :system-handler #blaze/ref :blaze.fhir.operation.graphql/handler}
    #:blaze.rest-api.operation
-           {:code "everything"
-            :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
-            :affects-state false
-            :resource-types ["Patient"]
-            :instance-handler #blaze/ref :blaze.operation.patient/everything
-            :instance-page-handler #blaze/ref :blaze.operation.patient/everything
-            :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}
+    {:code "everything"
+     :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
+     :affects-state false
+     :resource-types ["Patient"]
+     :instance-handler #blaze/ref :blaze.operation.patient/everything
+     :instance-page-handler #blaze/ref :blaze.operation.patient/everything
+     :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}
    #:blaze.rest-api.operation
-           {:code "totals"
-            :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
-            :affects-state false
-            :resource-types ["Resource"]
-            :system-handler #blaze/ref :blaze.fhir.operation/totals
-            :documentation "Retrieves the total counts of resources available by resource type."}]
+    {:code "totals"
+     :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+     :affects-state false
+     :resource-types ["Resource"]
+     :system-handler #blaze/ref :blaze.fhir.operation/totals
+     :documentation "Retrieves the total counts of resources available by resource type."}]
 
   ;;
   ;; FHIR Interactions
@@ -484,8 +483,7 @@
 
  :storage
  {:in-memory
-  {
-   ;;
+  {;;
    ;; Main In-Memory, Volatile Index Store
    ;;
    ;; In-memory, volatile key-value store implementation for demonstration
@@ -625,8 +623,7 @@
    {:page-store #blaze/ref :blaze.page-store/local}}
 
   :standalone
-  {
-   ;;
+  {;;
    ;; Main RocksDB Index Store
    ;;
    [:blaze.db.kv/rocksdb :blaze.db.main/index-kv-store]
@@ -984,8 +981,7 @@
    {:page-store #blaze/ref :blaze.page-store/local}}
 
   :distributed
-  {
-   ;;
+  {;;
    ;; Main RocksDB Index Store
    ;;
    [:blaze.db.kv/rocksdb :blaze.db.main/index-kv-store]
@@ -1302,8 +1298,7 @@
    :blaze.page-store.cassandra/resource-bytes {}}}
 
  :features
- [
-  ;;
+ [;;
   ;; Admin API
   ;;
   {:key :admin-api
@@ -1319,11 +1314,11 @@
 
     :blaze.rest-api/operations
     [#:blaze.rest-api.operation
-            {:code "compact"
-             :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/compact"
-             :affects-state true
-             :system-handler #blaze/ref :blaze.fhir.operation/compact
-             :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]}}
+      {:code "compact"
+       :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/compact"
+       :affects-state true
+       :system-handler #blaze/ref :blaze.fhir.operation/compact
+       :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]}}
 
   ;;
   ;; OpenID Authentication
@@ -1381,7 +1376,7 @@
     {:default
      {:delete-history
       #:blaze.rest-api.interaction
-              {:handler #blaze/ref :blaze.interaction/delete-history}}}
+       {:handler #blaze/ref :blaze.interaction/delete-history}}}
 
     :blaze.interaction/delete-history
     {:node #blaze/ref :blaze.db.main/node}}}
@@ -1392,12 +1387,12 @@
    :config
    {:blaze.rest-api/operations
     [#:blaze.rest-api.operation
-            {:code "purge"
-             :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-purge"
-             :affects-state true
-             :resource-types ["Patient"]
-             :instance-handler #blaze/ref :blaze.operation.patient/purge
-             :documentation "This operation is used to request the removal of all current and historical versions for all resources in a patient compartment or from a Group of patient compartments. The return is an OperationOutcome with results and/or details about execution."}]
+      {:code "purge"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-purge"
+       :affects-state true
+       :resource-types ["Patient"]
+       :instance-handler #blaze/ref :blaze.operation.patient/purge
+       :documentation "This operation is used to request the removal of all current and historical versions for all resources in a patient compartment or from a Group of patient compartments. The return is an OperationOutcome with results and/or details about execution."}]
 
     :blaze.operation.patient/purge
     {:node #blaze/ref :blaze.db.main/node}}}
@@ -1408,29 +1403,29 @@
    :config
    {:blaze.rest-api/operations
     [#:blaze.rest-api.operation
-            {:code "expand"
-             :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
-             :affects-state false
-             :resource-types ["ValueSet"]
-             :type-handler #blaze/ref :blaze.fhir.operation.value-set/expand
-             :instance-handler #blaze/ref :blaze.fhir.operation.value-set/expand
-             :documentation "The $expand operation can be used to expand all codes of a ValueSet."}
+      {:code "expand"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
+       :affects-state false
+       :resource-types ["ValueSet"]
+       :type-handler #blaze/ref :blaze.fhir.operation.value-set/expand
+       :instance-handler #blaze/ref :blaze.fhir.operation.value-set/expand
+       :documentation "The $expand operation can be used to expand all codes of a ValueSet."}
      #:blaze.rest-api.operation
-             {:code "validate-code"
-              :def-uri "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code"
-              :affects-state false
-              :resource-types ["CodeSystem"]
-              :type-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
-              :instance-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
-              :documentation "Validate that a coded value is in the code system."}
+      {:code "validate-code"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code"
+       :affects-state false
+       :resource-types ["CodeSystem"]
+       :type-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
+       :instance-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
+       :documentation "Validate that a coded value is in the code system."}
      #:blaze.rest-api.operation
-             {:code "validate-code"
-              :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-validate-code"
-              :affects-state false
-              :resource-types ["ValueSet"]
-              :type-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
-              :instance-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
-              :documentation "Validate that a coded value is in the set of codes allowed by a value set."}]
+      {:code "validate-code"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-validate-code"
+       :affects-state false
+       :resource-types ["ValueSet"]
+       :type-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
+       :instance-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
+       :documentation "Validate that a coded value is in the set of codes allowed by a value set."}]
 
     :blaze.fhir.operation.code-system/validate-code
     {:terminology-service #blaze/ref :blaze.terminology-service/local}
@@ -1485,12 +1480,12 @@
    :config
    {:blaze.rest-api/operations
     [#:blaze.rest-api.operation
-            {:code "graph"
-             :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graph"
-             :affects-state false
-             :resource-types ["Patient"]
-             :instance-handler #blaze/ref :blaze.operation/graph
-             :documentation "Return an entire graph of resources based on a GraphDefinition. The operation is invoked on a specific instance of a resource, and the graph definition tells the server what other resources to return in the same package."}]
+      {:code "graph"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graph"
+       :affects-state false
+       :resource-types ["Patient"]
+       :instance-handler #blaze/ref :blaze.operation/graph
+       :documentation "Return an entire graph of resources based on a GraphDefinition. The operation is invoked on a specific instance of a resource, and the graph definition tells the server what other resources to return in the same package."}]
 
     :blaze.operation/graph
     {:compiled-graph-cache #blaze/ref :blaze.operation.graph/compiled-graph-cache
