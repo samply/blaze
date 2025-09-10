@@ -1,5 +1,5 @@
 fmt:
-	cljfmt check resources src deps.edn
+	cljfmt --file-pattern "\.(cljs|edn)?$$" check resources src deps.edn
 
 lint:
 	clj-kondo --lint src deps.edn

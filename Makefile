@@ -4,7 +4,7 @@ $(MODULES):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 fmt-root:
-	cljfmt check dev profiling resources src test deps.edn tests.edn
+	cljfmt --file-pattern "\.(cljs|edn)?$$" check dev profiling resources src test deps.edn tests.edn
 
 fmt: $(MODULES) fmt-root
 
