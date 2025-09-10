@@ -1,7 +1,9 @@
 (ns blaze.operation.patient.everything-test
   (:require
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.tx-log :as tx-log]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.handler.fhir.util-spec]
@@ -21,12 +23,14 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
+   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
    [taoensso.timbre :as log])
   (:import
    [java.time Instant]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 (tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
@@ -149,7 +153,7 @@
 (defn- page-path-params [page-id-cipher params]
   {:id "0" :page-id (decrypt-page-id/encrypt page-id-cipher params)})
 
-(deftest handler-test
+(deftest params-test
   (testing "Patient not found"
     (with-handler [handler]
       (let [{:keys [status body]}
@@ -209,8 +213,9 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "invalid"
-          [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `end` is no valid date."))))
+          [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `end` is no valid date.")))))
 
+(deftest patient-only
   (testing "Patient only"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
@@ -249,8 +254,9 @@
         (testing "the entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code "match")))))
+            :mode := #fhir/code "match"))))))
 
+(deftest patient-with
   (doseq [type ["Observation" "Specimen"]]
     (testing (str "Patient with one " type)
       (with-handler [handler]
@@ -385,8 +391,9 @@
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code "match")))))
+            :mode := #fhir/code "match"))))))
 
+(deftest start-date
   (testing "with start date"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -448,8 +455,9 @@
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code "match")))))
+            :mode := #fhir/code "match"))))))
 
+(deftest end-date
   (testing "with end date"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -617,8 +625,9 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "too-costly"
-          [:issue 0 :diagnostics] := #fhir/string "The compartment of the Patient with the id `0` has more than 10,000 resources which is too costly to output. Please use paging by specifying the _count query param."))))
+          [:issue 0 :diagnostics] := #fhir/string "The compartment of the Patient with the id `0` has more than 10,000 resources which is too costly to output. Please use paging by specifying the _count query param.")))))
 
+(deftest paging-test
   (testing "paging"
     (with-handler [handler _ page-id-cipher]
       [(into
@@ -981,3 +990,159 @@
 
         (testing "the bundle contains 10,000 entries"
           (is (= 10000 (count (:entry body)))))))))
+
+(def ^:private system-clock-config
+  (-> (assoc config :blaze.test/system-clock {})
+      (assoc-in [::tx-log/local :clock]
+                (ig/ref :blaze.test/system-clock))
+      (assoc-in [:blaze.operation.patient/everything :clock]
+                (ig/ref :blaze.test/system-clock))))
+
+(deftest since-test
+  (with-system-data [{node :blaze.db/node
+                      page-id-cipher :blaze.test/page-id-cipher
+                      handler :blaze.operation.patient/everything
+                      system-clock :blaze.test/system-clock} system-clock-config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference "Patient/0"}}]]]
+    (let [start Instant/EPOCH
+          handler (-> handler wrap-defaults (wrap-db node page-id-cipher) wrap-error)
+          _ (Thread/sleep 200)
+          after-init (time/instant system-clock)
+          _ @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
+                                      :subject #fhir/Reference{:reference "Patient/0"}}]])
+          {:keys [status]
+           {[first-entry second-entry third-entry] :entry :as body} :body}
+          @(handler {:path-params {:id "0"}
+                     :query-params {"_since" (str start)}})]
+
+      (testing "since start of time"
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code "searchset" (:type body))))
+
+        (testing "the total count is 3"
+          (is (= #fhir/unsignedInt 3 (:total body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 3 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= (str base-url context-path "/Patient/0")
+                 (-> first-entry :fullUrl :value))))
+
+        (testing "the first entry has the right resource"
+          (given (:resource first-entry)
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id "1"))
+
+        (testing "the second entry has the right resource"
+          (given (:resource second-entry)
+            :fhir/type := :fhir/Observation
+            :id := "0"
+            [:meta :versionId] := #fhir/id "1"))
+
+        (testing "the third entry has the right resource"
+          (given (:resource third-entry)
+            :fhir/type := :fhir/Observation
+            :id := "1"
+            [:meta :versionId] := #fhir/id "2")))
+
+      (testing "since after initialization"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler {:path-params {:id "0"}
+                         :query-params {"_since" (str after-init)}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"))
+
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "1"
+              [:meta :versionId] := #fhir/id "2")))
+
+        (testing "with paging"
+          (let [{:keys [status] {[entry] :entry :as body} :body}
+                @(handler {:path-params {:id "0"}
+                           :query-params {"_since" (str after-init)
+                                          "_count" "1"}})]
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code "searchset" (:type body))))
+
+            (testing "the total count is not given"
+              (is (nil? (:total body))))
+
+            (testing "has next link"
+              (is (some? (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))
+
+            (testing "the entry has the right resource"
+              (given (:resource entry)
+                :fhir/type := :fhir/Patient
+                :id := "0"
+                [:meta :versionId] := #fhir/id "1"))
+
+            (testing "following the next link"
+              (let [{:keys [status] {[entry] :entry :as body} :body}
+                    @(handler
+                      {::reitit/match page-match
+                       :path-params
+                       (page-path-params
+                        page-id-cipher
+                        {"_count" "1" "__t" "2"
+                         "_since" (str after-init)
+                         "__page-offset" "1"})})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code "searchset" (:type body))))
+
+                (testing "the total count is not given"
+                  (is (nil? (:total body))))
+
+                (testing "has no next link"
+                  (is (nil? (link-url body "next"))))
+
+                (testing "the bundle contains one entry"
+                  (is (= 1 (count (:entry body)))))
+
+                (testing "the entry has the right resource"
+                  (given (:resource entry)
+                    :fhir/type := :fhir/Observation
+                    :id := "1"
+                    [:meta :versionId] := #fhir/id "2"))))))))))
