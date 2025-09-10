@@ -51,6 +51,7 @@
    {:column-families {}}
 
    :blaze.test/fixed-clock {}
+   :blaze.test/system-clock {}
 
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}
