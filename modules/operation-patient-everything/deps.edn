@@ -11,6 +11,9 @@
   blaze/rest-util
   {:local/root "../rest-util"}
 
+  blaze/interaction
+  {:local/root "../interaction"}
+
   blaze/spec
   {:local/root "../spec"}}
 
