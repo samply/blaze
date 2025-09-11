@@ -174,7 +174,7 @@ services:
     - cassandra-init-data
 
   ingress:
-    image: "haproxy:3.2@sha256:5459c3870279663086d25360eec293a4464145fbc3bdb2943e2cdd7f6a68006a"
+    image: "haproxy:3.2@sha256:460591a5f018cffddbb8122a5acde386aeb480e29b49613a340fc89258cadc39"
     ports:
     - "8080:8080"
     volumes:
