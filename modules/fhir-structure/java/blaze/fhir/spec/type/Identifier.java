@@ -7,6 +7,7 @@ import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -103,6 +104,37 @@ public final class Identifier extends Element implements Complex, ExtensionValue
         seq = appendElement(seq, TYPE, type);
         seq = appendElement(seq, USE, use);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Identifier(null, null, null, null, null, null, null, null);
+    }
+
+    @Override
+    public Identifier assoc(Object key, Object val) {
+        if (key == ID)
+            return new Identifier((java.lang.String) val, extension, use, type, system, value, period, assigner);
+        if (key == EXTENSION)
+            return new Identifier(id, (PersistentVector) val, use, type, system, value, period, assigner);
+        if (key == USE)
+            return new Identifier(id, extension, (Code) val, type, system, value, period, assigner);
+        if (key == TYPE)
+            return new Identifier(id, extension, use, (CodeableConcept) val, system, value, period, assigner);
+        if (key == SYSTEM)
+            return new Identifier(id, extension, use, type, (Uri) val, value, period, assigner);
+        if (key == VALUE)
+            return new Identifier(id, extension, use, type, system, (String) val, period, assigner);
+        if (key == PERIOD)
+            return new Identifier(id, extension, use, type, system, value, (Period) val, assigner);
+        if (key == ASSIGNER)
+            return new Identifier(id, extension, use, type, system, value, period, (Reference) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Identifier.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

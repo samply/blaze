@@ -7,6 +7,7 @@ import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -60,6 +61,25 @@ public final class Extension extends Element implements Complex {
         seq = appendElement(seq, VALUE, value);
         seq = appendElement(seq, URL, url);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Extension(null, null, null, null);
+    }
+
+    @Override
+    public Extension assoc(Object key, Object val) {
+        if (key == ID) return new Extension((java.lang.String) val, extension, url, value);
+        if (key == EXTENSION) return new Extension(id, (PersistentVector) val, url, value);
+        if (key == URL) return new Extension(id, extension, (java.lang.String) val, value);
+        if (key == VALUE) return new Extension(id, extension, url, (ExtensionValue) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Extension.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

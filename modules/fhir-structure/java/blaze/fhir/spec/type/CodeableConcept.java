@@ -7,6 +7,7 @@ import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -65,6 +66,29 @@ public final class CodeableConcept extends Element implements Complex, Extension
             seq = appendElement(seq, CODING, coding);
         }
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new CodeableConcept(null, null, null, null);
+    }
+
+    @Override
+    public CodeableConcept assoc(Object key, Object val) {
+        if (key == ID)
+            return new CodeableConcept((java.lang.String) val, extension, coding, text);
+        if (key == EXTENSION)
+            return new CodeableConcept(id, (PersistentVector) val, coding, text);
+        if (key == CODING)
+            return new CodeableConcept(id, extension, (PersistentVector) val, text);
+        if (key == TEXT)
+            return new CodeableConcept(id, extension, coding, (String) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.CodeableConcept.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

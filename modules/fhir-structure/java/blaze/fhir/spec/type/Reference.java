@@ -1,9 +1,6 @@
 package blaze.fhir.spec.type;
 
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
@@ -84,6 +81,33 @@ public final class Reference extends Element implements Complex, ExtensionValue 
         seq = appendElement(seq, TYPE, type);
         seq = appendElement(seq, REFERENCE, reference);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Reference(null, null, null, null, null, null);
+    }
+
+    @Override
+    public Reference assoc(Object key, Object val) {
+        if (key == ID)
+            return new Reference((java.lang.String) val, extension, reference, type, identifier, display);
+        if (key == EXTENSION)
+            return new Reference(id, (PersistentVector) val, reference, type, identifier, display);
+        if (key == REFERENCE)
+            return new Reference(id, extension, (String) val, type, identifier, display);
+        if (key == TYPE)
+            return new Reference(id, extension, reference, (Uri) val, identifier, display);
+        if (key == IDENTIFIER)
+            return new Reference(id, extension, reference, type, (Identifier) val, display);
+        if (key == DISPLAY)
+            return new Reference(id, extension, reference, type, identifier, (String) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Reference.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

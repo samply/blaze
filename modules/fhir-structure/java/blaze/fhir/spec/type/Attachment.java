@@ -6,6 +6,7 @@ import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -119,6 +120,41 @@ public final class Attachment extends Element implements Complex, ExtensionValue
         seq = appendElement(seq, LANGUAGE, language);
         seq = appendElement(seq, CONTENT_TYPE, contentType);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Attachment(null, null, null, null, null, null, null, null, null, null);
+    }
+
+    @Override
+    public Attachment assoc(Object key, Object val) {
+        if (key == ID)
+            return new Attachment((java.lang.String) val, extension, contentType, language, data, url, size, hash, title, creation);
+        if (key == EXTENSION)
+            return new Attachment(id, (PersistentVector) val, contentType, language, data, url, size, hash, title, creation);
+        if (key == CONTENT_TYPE)
+            return new Attachment(id, extension, (Code) val, language, data, url, size, hash, title, creation);
+        if (key == LANGUAGE)
+            return new Attachment(id, extension, contentType, (Code) val, data, url, size, hash, title, creation);
+        if (key == DATA)
+            return new Attachment(id, extension, contentType, language, (Base64Binary) val, url, size, hash, title, creation);
+        if (key == URL)
+            return new Attachment(id, extension, contentType, language, data, (Url) val, size, hash, title, creation);
+        if (key == SIZE)
+            return new Attachment(id, extension, contentType, language, data, url, (UnsignedInt) val, hash, title, creation);
+        if (key == HASH)
+            return new Attachment(id, extension, contentType, language, data, url, size, (Base64Binary) val, title, creation);
+        if (key == TITLE)
+            return new Attachment(id, extension, contentType, language, data, url, size, hash, (String) val, creation);
+        if (key == CREATION)
+            return new Attachment(id, extension, contentType, language, data, url, size, hash, title, (DateTime) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Attachment.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

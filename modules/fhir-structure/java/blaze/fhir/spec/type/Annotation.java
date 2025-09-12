@@ -1,11 +1,7 @@
 package blaze.fhir.spec.type;
 
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
@@ -76,6 +72,27 @@ public final class Annotation extends Element implements Complex, ExtensionValue
         seq = appendElement(seq, TIME, time);
         seq = appendElement(seq, AUTHOR, author);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Annotation(null, null, null, null, null);
+    }
+
+    @Override
+    public Annotation assoc(Object key, Object val) {
+        if (key == ID) return new Annotation((java.lang.String) val, extension, author, time, text);
+        if (key == EXTENSION)
+            return new Annotation(id, (PersistentVector) val, author, time, text);
+        if (key == AUTHOR) return new Annotation(id, extension, (Base) val, time, text);
+        if (key == TIME) return new Annotation(id, extension, author, (DateTime) val, text);
+        if (key == TEXT) return new Annotation(id, extension, author, time, (Markdown) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Annotation.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

@@ -1,12 +1,7 @@
 package blaze.fhir.spec.type;
 
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.SerializableString;
-import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
@@ -65,6 +60,25 @@ public final class Period extends Element implements Complex, ExtensionValue {
         seq = appendElement(seq, END, end);
         seq = appendElement(seq, START, start);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Period(null, null, null, null);
+    }
+
+    @Override
+    public Period assoc(Object key, Object val) {
+        if (key == ID) return new Period((java.lang.String) val, extension, start, end);
+        if (key == EXTENSION) return new Period(id, (PersistentVector) val, start, end);
+        if (key == START) return new Period(id, extension, (DateTime) val, end);
+        if (key == END) return new Period(id, extension, start, (DateTime) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Period.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override
