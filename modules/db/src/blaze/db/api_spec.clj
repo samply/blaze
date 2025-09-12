@@ -30,6 +30,18 @@
   :args (s/cat :db :blaze.db/db)
   :ret :blaze.db/node)
 
+(s/fdef d/as-of
+  :args (s/cat :db :blaze.db/db :t :blaze.db/t)
+  :ret :blaze.db/db)
+
+(s/fdef d/since
+  :args (s/cat :db :blaze.db/db :since inst?)
+  :ret :blaze.db/db)
+
+(s/fdef d/since-t
+  :args (s/cat :db :blaze.db/db)
+  :ret :blaze.db/t)
+
 (s/fdef d/t
   :args (s/cat :db :blaze.db/db)
   :ret :blaze.db/t)
@@ -38,10 +50,16 @@
   :args (s/cat :db :blaze.db/db)
   :ret :blaze.db/t)
 
+(s/fdef d/as-of-t
+  :args (s/cat :db :blaze.db/db)
+  :ret :blaze.db/t)
+
 (s/fdef d/tx
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :t :blaze.db/t)
   :ret (s/nilable :blaze.db/tx))
+
+;; ---- Instance-Level Functions ----------------------------------------------
 
 (s/fdef d/resource-handle
   :args (s/cat :db :blaze.db/db :type :fhir.resource/type :id :blaze.resource/id)
@@ -179,11 +197,6 @@
   :args (s/cat :matcher :blaze.db/matcher)
   :ret :blaze.db.query/clauses)
 
-;; ---- History Functions -----------------------------------------------------
-
-(s/fdef d/stop-history-at
-  :args (s/cat :db :blaze.db/db :since inst?))
-
 ;; ---- Instance-Level History Functions --------------------------------------
 
 (s/fdef d/instance-history
@@ -196,8 +209,7 @@
 (s/fdef d/total-num-of-instance-changes
   :args (s/cat :db :blaze.db/db
                :type :fhir.resource/type
-               :id :blaze.resource/id
-               :since (s/? (s/nilable inst?)))
+               :id :blaze.resource/id)
   :ret nat-int?)
 
 ;; ---- Type-Level History Functions ------------------------------------------
@@ -211,8 +223,7 @@
 
 (s/fdef d/total-num-of-type-changes
   :args (s/cat :db :blaze.db/db
-               :type :fhir.resource/type
-               :since (s/? (s/nilable inst?)))
+               :type :fhir.resource/type)
   :ret nat-int?)
 
 ;; ---- System-Level History Functions ----------------------------------------
@@ -230,7 +241,7 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/total-num-of-system-changes
-  :args (s/cat :db :blaze.db/db :since (s/? (s/nilable inst?)))
+  :args (s/cat :db :blaze.db/db)
   :ret nat-int?)
 
 (s/fdef d/include
