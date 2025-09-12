@@ -5,6 +5,7 @@ import clojure.lang.Keyword;
 import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
@@ -13,15 +14,17 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Period extends Element {
+public final class Period extends Element implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Period");
 
     private static final Keyword START = Keyword.intern("start");
     private static final Keyword END = Keyword.intern("end");
 
-    private static final SerializedString FIELD_NAME_START = new SerializedString("start");
-    private static final SerializedString FIELD_NAME_END = new SerializedString("end");
+    private static final FieldName FIELD_NAME_START = FieldName.of("start");
+    private static final FieldName FIELD_NAME_END = FieldName.of("end");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valuePeriod");
 
     private static final byte HASH_MARKER = 41;
 
@@ -65,16 +68,19 @@ public final class Period extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeAsJsonValue(JsonGenerator generator) throws IOException {
         generator.writeStartObject();
         serializeJsonBase(generator);
-        if (start != null && start.value() != null) {
-            generator.writeFieldName(FIELD_NAME_START);
-            start.serializeJson(generator);
+        if (start != null) {
+            start.serializeAsJsonProperty(generator, FIELD_NAME_START);
         }
-        if (end != null && end.value() != null) {
-            generator.writeFieldName(FIELD_NAME_END);
-            end.serializeJson(generator);
+        if (end != null) {
+            end.serializeAsJsonProperty(generator, FIELD_NAME_END);
         }
         generator.writeEndObject();
     }

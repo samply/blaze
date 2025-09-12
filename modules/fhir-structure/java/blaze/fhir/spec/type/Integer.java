@@ -7,6 +7,8 @@ import clojure.lang.Keyword;
 import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.SerializableString;
+import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
@@ -14,9 +16,11 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Integer extends Element {
+public final class Integer extends Element implements Primitive {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "integer");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueInteger");
 
     private static final byte HASH_MARKER = 1;
 
@@ -52,9 +56,16 @@ public final class Integer extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
-        if (value != null) {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+        if (hasValue()) {
             generator.writeNumber(value);
+        } else {
+            generator.writeNull();
         }
     }
 

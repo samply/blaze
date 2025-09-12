@@ -2,33 +2,129 @@ package blaze.fhir.spec.type;
 
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
-public interface Base extends Seqable, ILookup {
+public interface Base extends IPersistentMap, Map<Object, Object> {
 
     Keyword ID = Keyword.intern("id");
     Keyword EXTENSION = Keyword.intern("extension");
     Keyword VALUE = Keyword.intern("value");
 
-    SerializedString FIELD_NAME_ID = new SerializedString("id");
-    SerializedString FIELD_NAME_EXTENSION = new SerializedString("extension");
+    static ISeq appendElement(ISeq base, Keyword name, Object value) {
+        return value == null ? base : base.cons(MapEntry.create(name, value));
+    }
 
     Keyword fhirType();
 
-    void serializeJson(JsonGenerator generator) throws IOException;
+    void serializeJsonPrimitiveExtension(JsonGenerator generator) throws IOException;
 
     @SuppressWarnings("UnstableApiUsage")
     void hashInto(PrimitiveSink sink);
+
+    @Override
+    default boolean containsKey(Object key) {
+        return valAt(key) != null;
+    }
 
     @Override
     default Object valAt(Object key) {
         return valAt(key, null);
     }
 
-    static ISeq appendElement(ISeq base, Keyword name, Object value) {
-        return value == null ? base : base.cons(MapEntry.create(name, value));
+    @Override
+    default IMapEntry entryAt(Object key) {
+        var val = valAt(key);
+        return val == null ? null : MapEntry.create(key, val);
+    }
+
+    @Override
+    default int count() {
+        return seq().count();
+    }
+
+    @Override
+    default IPersistentCollection cons(Object o) {
+        throw new UnsupportedOperationException("Cons isn't supported in FHIR types.");
+    }
+
+    @Override
+    default IPersistentMap assocEx(Object key, Object val) {
+        throw new UnsupportedOperationException("AssocEx isn't supported in FHIR types.");
+    }
+
+    @Override
+    default IPersistentMap without(Object key) {
+        return assoc(key, null);
+    }
+
+    @Override
+    default boolean equiv(Object o) {
+        return equals(o);
+    }
+
+    @Override
+    default Iterator<Object> iterator() {
+        return values().iterator();
+    }
+
+    @Override
+    default int size() {
+        return seq().count();
+    }
+
+    @Override
+    default boolean isEmpty() {
+        return size() == 0;
+    }
+
+    @Override
+    default boolean containsValue(Object value) {
+        return false;
+    }
+
+    @Override
+    default Object get(Object key) {
+        return valAt(key);
+    }
+
+    @Override
+    default Object put(Object key, Object value) {
+        throw new UnsupportedOperationException("Put isn't supported in FHIR types.");
+    }
+
+    @Override
+    default Object remove(Object key) {
+        throw new UnsupportedOperationException("Remove isn't supported in FHIR types.");
+    }
+
+    @Override
+    default void putAll(Map m) {
+        throw new UnsupportedOperationException("PutAll isn't supported in FHIR types.");
+    }
+
+    @Override
+    default void clear() {
+        throw new UnsupportedOperationException("Clear isn't supported in FHIR types.");
+    }
+
+    @Override
+    default Set<Object> keySet() {
+        return PersistentHashSet.create(RT.keys(this));
+    }
+
+    @Override
+    default Set<Entry<Object, Object>> entrySet() {
+        return PersistentHashSet.create(this);
+    }
+
+    @Override
+    default Collection<Object> values() {
+        return (Collection<Object>) RT.vals(this);
     }
 }

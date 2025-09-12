@@ -1,9 +1,6 @@
 package blaze.fhir.spec.type;
 
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
@@ -14,7 +11,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Address extends Element {
+public final class Address extends Element implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Address");
 
@@ -29,16 +26,18 @@ public final class Address extends Element {
     private static final Keyword COUNTRY = Keyword.intern("country");
     private static final Keyword PERIOD = Keyword.intern("period");
 
-    private static final SerializedString FIELD_NAME_USE = new SerializedString("use");
-    private static final SerializedString FIELD_NAME_TYPE = new SerializedString("type");
-    private static final SerializedString FIELD_NAME_TEXT = new SerializedString("text");
-    private static final SerializedString FIELD_NAME_LINE = new SerializedString("line");
-    private static final SerializedString FIELD_NAME_CITY = new SerializedString("city");
-    private static final SerializedString FIELD_NAME_DISTRICT = new SerializedString("district");
-    private static final SerializedString FIELD_NAME_STATE = new SerializedString("state");
-    private static final SerializedString FIELD_NAME_POSTAL_CODE = new SerializedString("postalCode");
-    private static final SerializedString FIELD_NAME_COUNTRY = new SerializedString("country");
+    private static final FieldName FIELD_NAME_USE = FieldName.of("use");
+    private static final FieldName FIELD_NAME_TYPE = FieldName.of("type");
+    private static final FieldName FIELD_NAME_TEXT = FieldName.of("text");
+    private static final FieldName FIELD_NAME_LINE = FieldName.of("line");
+    private static final FieldName FIELD_NAME_CITY = FieldName.of("city");
+    private static final FieldName FIELD_NAME_DISTRICT = FieldName.of("district");
+    private static final FieldName FIELD_NAME_STATE = FieldName.of("state");
+    private static final FieldName FIELD_NAME_POSTAL_CODE = FieldName.of("postalCode");
+    private static final FieldName FIELD_NAME_COUNTRY = FieldName.of("country");
     private static final SerializedString FIELD_NAME_PERIOD = new SerializedString("period");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueAddress");
 
     private static final byte HASH_MARKER = 47;
 
@@ -130,6 +129,41 @@ public final class Address extends Element {
     }
 
     @Override
+    public IPersistentCollection empty() {
+        return new Address(null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Address assoc(Object key, Object val) {
+        if (key == ID)
+            return new Address((java.lang.String) val, extension, use, type, text, line, city, district, state, postalCode, country, period);
+        if (key == EXTENSION)
+            return new Address(id, (PersistentVector) val, use, type, text, line, city, district, state, postalCode, country, period);
+        if (key == USE)
+            return new Address(id, extension, (Code) val, type, text, line, city, district, state, postalCode, country, period);
+        if (key == TYPE)
+            return new Address(id, extension, use, (Code) val, text, line, city, district, state, postalCode, country, period);
+        if (key == TEXT)
+            return new Address(id, extension, use, type, (String) val, line, city, district, state, postalCode, country, period);
+        if (key == LINE)
+            return new Address(id, extension, use, type, text, (List<String>) val, city, district, state, postalCode, country, period);
+        if (key == CITY)
+            return new Address(id, extension, use, type, text, line, (String) val, district, state, postalCode, country, period);
+        if (key == DISTRICT)
+            return new Address(id, extension, use, type, text, line, city, (String) val, state, postalCode, country, period);
+        if (key == STATE)
+            return new Address(id, extension, use, type, text, line, city, district, (String) val, postalCode, country, period);
+        if (key == POSTAL_CODE)
+            return new Address(id, extension, use, type, text, line, city, district, state, (String) val, country, period);
+        if (key == COUNTRY)
+            return new Address(id, extension, use, type, text, line, city, district, state, postalCode, (String) val, period);
+        if (key == PERIOD)
+            return new Address(id, extension, use, type, text, line, city, district, state, postalCode, country, (Period) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Address.");
+    }
+
+    @Override
     public ISeq seq() {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, PERIOD, period);
@@ -148,52 +182,44 @@ public final class Address extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeAsJsonValue(JsonGenerator generator) throws IOException {
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (use != null) {
-            generator.writeFieldName(FIELD_NAME_USE);
-            use.serializeJson(generator);
+            use.serializeAsJsonProperty(generator, FIELD_NAME_USE);
         }
         if (type != null) {
-            generator.writeFieldName(FIELD_NAME_TYPE);
-            type.serializeJson(generator);
+            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
         }
-        if (text != null && text.value() != null) {
-            generator.writeFieldName(FIELD_NAME_TEXT);
-            text.serializeJson(generator);
+        if (text != null) {
+            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
         }
         if (line != null && !line.isEmpty()) {
-            generator.writeFieldName(FIELD_NAME_LINE);
-            generator.writeStartArray();
-            for (String s : line) {
-                s.serializeJson(generator);
-            }
-            generator.writeEndArray();
+            Primitives.serializeJsonPrimitiveList(line, generator, FIELD_NAME_LINE);
         }
-        if (city != null && city.value() != null) {
-            generator.writeFieldName(FIELD_NAME_CITY);
-            city.serializeJson(generator);
+        if (city != null) {
+            city.serializeAsJsonProperty(generator, FIELD_NAME_CITY);
         }
-        if (district != null && district.value() != null) {
-            generator.writeFieldName(FIELD_NAME_DISTRICT);
-            district.serializeJson(generator);
+        if (district != null) {
+            district.serializeAsJsonProperty(generator, FIELD_NAME_DISTRICT);
         }
-        if (state != null && state.value() != null) {
-            generator.writeFieldName(FIELD_NAME_STATE);
-            state.serializeJson(generator);
+        if (state != null) {
+            state.serializeAsJsonProperty(generator, FIELD_NAME_STATE);
         }
-        if (postalCode != null && postalCode.value() != null) {
-            generator.writeFieldName(FIELD_NAME_POSTAL_CODE);
-            postalCode.serializeJson(generator);
+        if (postalCode != null) {
+            postalCode.serializeAsJsonProperty(generator, FIELD_NAME_POSTAL_CODE);
         }
-        if (country != null && country.value() != null) {
-            generator.writeFieldName(FIELD_NAME_COUNTRY);
-            country.serializeJson(generator);
+        if (country != null) {
+            country.serializeAsJsonProperty(generator, FIELD_NAME_COUNTRY);
         }
         if (period != null) {
             generator.writeFieldName(FIELD_NAME_PERIOD);
-            period.serializeJson(generator);
+            period.serializeAsJsonValue(generator);
         }
         generator.writeEndObject();
     }

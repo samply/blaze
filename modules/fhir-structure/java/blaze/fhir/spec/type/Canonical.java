@@ -14,18 +14,18 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Code extends Element implements Primitive {
+public final class Canonical extends Element implements Primitive {
 
-    private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "code");
+    private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "canonical");
 
-    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueCode");
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueCanonical");
 
-    private static final byte HASH_MARKER = 13;
+    private static final byte HASH_MARKER = 7;
 
     private final java.lang.String value;
     private final SerializedString jsonValue;
 
-    public Code(java.lang.String id, PersistentVector extension, java.lang.String value) {
+    public Canonical(java.lang.String id, PersistentVector extension, java.lang.String value) {
         super(id, extension);
         this.value = value;
         jsonValue = value == null ? null : new SerializedString(value);
@@ -83,7 +83,7 @@ public final class Code extends Element implements Primitive {
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
-        Code c = (Code) o;
+        Canonical c = (Canonical) o;
         return Objects.equals(id, c.id) &&
                 Objects.equals(extension, c.extension) &&
                 Objects.equals(value, c.value);
@@ -96,10 +96,10 @@ public final class Code extends Element implements Primitive {
 
     @Override
     public java.lang.String toString() {
-        return "Code{" +
+        return "Canonical{" +
                 "id=" + (id == null ? null : '\'' + id + '\'') +
                 ", extension=" + extension +
-                ", value='" + value + '\'' +
+                ", value=" + (value == null ? null : '\'' + value + '\'') +
                 '}';
     }
 }

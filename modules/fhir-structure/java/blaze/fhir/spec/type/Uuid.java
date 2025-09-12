@@ -5,6 +5,8 @@ import clojure.lang.Keyword;
 import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.SerializableString;
+import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
@@ -13,9 +15,11 @@ import java.util.UUID;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Uuid extends Element {
+public final class Uuid extends Element implements Primitive {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "uuid");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueUuid");
 
     private static final byte HASH_MARKER = 19;
 
@@ -51,9 +55,16 @@ public final class Uuid extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
-        if (value != null) {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+        if (hasValue()) {
             generator.writeString("urn:uuid:" + value);
+        } else {
+            generator.writeNull();
         }
     }
 

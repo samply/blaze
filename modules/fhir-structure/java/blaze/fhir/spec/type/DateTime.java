@@ -14,9 +14,11 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class DateTime extends Element {
+public final class DateTime extends Element implements Primitive {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "dateTime");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueDateTime");
 
     private static final byte HASH_MARKER = 11;
 
@@ -52,11 +54,19 @@ public final class DateTime extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
-        if (value != null) {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+        if (hasValue()) {
             generator.writeString(DateTimes.toString(value));
+        } else {
+            generator.writeNull();
         }
     }
+
 
     @Override
     @SuppressWarnings("UnstableApiUsage")

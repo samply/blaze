@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class CodeableConcept extends Element {
+public final class CodeableConcept extends Element implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "CodeableConcept");
 
@@ -21,7 +21,8 @@ public final class CodeableConcept extends Element {
     private static final Keyword TEXT = Keyword.intern("text");
 
     private static final SerializedString FIELD_NAME_CODING = new SerializedString("coding");
-    private static final SerializedString FIELD_NAME_TEXT = new SerializedString("text");
+    private static final FieldName FIELD_NAME_TEXT = FieldName.of("text");
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueCodeableConcept");
 
     private static final byte HASH_MARKER = 39;
 
@@ -67,20 +68,24 @@ public final class CodeableConcept extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeAsJsonValue(JsonGenerator generator) throws IOException {
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (coding != null && !coding.isEmpty()) {
             generator.writeFieldName(FIELD_NAME_CODING);
             generator.writeStartArray();
             for (Object c : coding) {
-                ((Coding) c).serializeJson(generator);
+                ((Coding) c).serializeAsJsonValue(generator);
             }
             generator.writeEndArray();
         }
-        if (text != null && text.value() != null) {
-            generator.writeFieldName(FIELD_NAME_TEXT);
-            text.serializeJson(generator);
+        if (text != null) {
+            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
         }
         generator.writeEndObject();
     }

@@ -6,6 +6,7 @@ import clojure.lang.Keyword;
 import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
@@ -14,19 +15,19 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Markdown extends Element {
+public final class Markdown extends Element implements Primitive {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "markdown");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueMarkdown");
 
     private static final byte HASH_MARKER = 16;
 
     private final java.lang.String value;
-    private final SerializedString jsonValue;
 
     public Markdown(java.lang.String id, PersistentVector extension, java.lang.String value) {
         super(id, extension);
         this.value = value;
-        jsonValue = value == null ? null : new SerializedString(value);
     }
 
     @Override
@@ -54,9 +55,16 @@ public final class Markdown extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
-        if (jsonValue != null) {
-            generator.writeString(jsonValue);
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+        if (hasValue()) {
+            generator.writeString(value);
+        } else {
+            generator.writeNull();
         }
     }
 

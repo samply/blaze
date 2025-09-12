@@ -1,8 +1,10 @@
 package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Strings;
-import clojure.lang.*;
+import clojure.lang.ISeq;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
@@ -11,12 +13,19 @@ import static blaze.fhir.spec.type.Base.appendElement;
 
 abstract class Element implements Base {
 
+    private static final SerializedString FIELD_NAME_ID = new SerializedString("id");
+    private static final SerializedString FIELD_NAME_EXTENSION = new SerializedString("extension");
+
     protected final java.lang.String id;
     protected final PersistentVector extension;
 
     Element(java.lang.String id, PersistentVector extension) {
         this.id = id;
         this.extension = extension;
+    }
+
+    public boolean isExtended() {
+        return id != null || extension != null && !extension.isEmpty();
     }
 
     public java.lang.String id() {
@@ -41,9 +50,20 @@ abstract class Element implements Base {
             generator.writeFieldName(FIELD_NAME_EXTENSION);
             generator.writeStartArray();
             for (Object extension : extension) {
-                ((Extension) extension).serializeJson(generator);
+                ((Extension) extension).serializeAsJsonValue(generator);
             }
             generator.writeEndArray();
+        }
+    }
+
+    @Override
+    public void serializeJsonPrimitiveExtension(JsonGenerator generator) throws IOException {
+        if (id != null || extension != null && !extension.isEmpty()) {
+            generator.writeStartObject();
+            serializeJsonBase(generator);
+            generator.writeEndObject();
+        } else {
+            generator.writeNull();
         }
     }
 

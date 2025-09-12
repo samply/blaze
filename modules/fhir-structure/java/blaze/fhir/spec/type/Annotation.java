@@ -5,6 +5,7 @@ import clojure.lang.Keyword;
 import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
@@ -13,7 +14,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Annotation extends Element {
+public final class Annotation extends Element implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Annotation");
 
@@ -22,9 +23,11 @@ public final class Annotation extends Element {
     private static final Keyword TEXT = Keyword.intern("text");
 
     private static final SerializedString FIELD_NAME_AUTHOR_REFERENCE = new SerializedString("authorReference");
-    private static final SerializedString FIELD_NAME_AUTHOR_STRING = new SerializedString("authorString");
-    private static final SerializedString FIELD_NAME_TIME = new SerializedString("time");
-    private static final SerializedString FIELD_NAME_TEXT = new SerializedString("text");
+    private static final FieldName FIELD_NAME_AUTHOR_STRING = FieldName.of("authorString");
+    private static final FieldName FIELD_NAME_TIME = FieldName.of("time");
+    private static final FieldName FIELD_NAME_TEXT = FieldName.of("text");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueAnnotation");
 
     private static final byte HASH_MARKER = 48;
 
@@ -76,25 +79,27 @@ public final class Annotation extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeAsJsonValue(JsonGenerator generator) throws IOException {
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (author != null) {
-            if (author instanceof Reference) {
+            if (author instanceof Reference referenceAuthor) {
                 generator.writeFieldName(FIELD_NAME_AUTHOR_REFERENCE);
-                author.serializeJson(generator);
-            } else if (author instanceof String) {
-                generator.writeFieldName(FIELD_NAME_AUTHOR_STRING);
-                author.serializeJson(generator);
+                referenceAuthor.serializeAsJsonValue(generator);
+            } else if (author instanceof String stringAuthor) {
+                stringAuthor.serializeAsJsonProperty(generator, FIELD_NAME_AUTHOR_STRING);
             }
         }
-        if (time != null && time.value() != null) {
-            generator.writeFieldName(FIELD_NAME_TIME);
-            time.serializeJson(generator);
+        if (time != null) {
+            time.serializeAsJsonProperty(generator, FIELD_NAME_TIME);
         }
-        if (text != null && text.value() != null) {
-            generator.writeFieldName(FIELD_NAME_TEXT);
-            text.serializeJson(generator);
+        if (text != null) {
+            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
         }
         generator.writeEndObject();
     }

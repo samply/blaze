@@ -13,9 +13,11 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class String extends Element {
+public final class String extends Element implements Primitive {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "string");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueString");
 
     private static final byte HASH_MARKER = 3;
 
@@ -51,9 +53,16 @@ public final class String extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
-        if (value != null) {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+        if (hasValue()) {
             generator.writeString(value);
+        } else {
+            generator.writeNull();
         }
     }
 

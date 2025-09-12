@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Identifier extends Element {
+public final class Identifier extends Element implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Identifier");
 
@@ -24,12 +24,13 @@ public final class Identifier extends Element {
     private static final Keyword PERIOD = Keyword.intern("period");
     private static final Keyword ASSIGNER = Keyword.intern("assigner");
 
-    private static final SerializedString FIELD_NAME_USE = new SerializedString("use");
+    private static final FieldName FIELD_NAME_USE = FieldName.of("use");
     private static final SerializedString FIELD_NAME_TYPE = new SerializedString("type");
-    private static final SerializedString FIELD_NAME_SYSTEM = new SerializedString("system");
-    private static final SerializedString FIELD_NAME_VALUE = new SerializedString("value");
+    private static final FieldName FIELD_NAME_SYSTEM = FieldName.of("system");
+    private static final FieldName FIELD_NAME_VALUE = FieldName.of("value");
     private static final SerializedString FIELD_NAME_PERIOD = new SerializedString("period");
     private static final SerializedString FIELD_NAME_ASSIGNER = new SerializedString("assigner");
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueIdentifier");
 
     private static final byte HASH_MARKER = 42;
 
@@ -105,32 +106,34 @@ public final class Identifier extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeAsJsonValue(JsonGenerator generator) throws IOException {
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (use != null) {
-            generator.writeFieldName(FIELD_NAME_USE);
-            use.serializeJson(generator);
+            use.serializeAsJsonProperty(generator, FIELD_NAME_USE);
         }
         if (type != null) {
             generator.writeFieldName(FIELD_NAME_TYPE);
-            type.serializeJson(generator);
+            type.serializeAsJsonValue(generator);
         }
         if (system != null) {
-            generator.writeFieldName(FIELD_NAME_SYSTEM);
-            system.serializeJson(generator);
+            system.serializeAsJsonProperty(generator, FIELD_NAME_SYSTEM);
         }
-        if (value != null && value.value() != null) {
-            generator.writeFieldName(FIELD_NAME_VALUE);
-            value.serializeJson(generator);
+        if (value != null) {
+            value.serializeAsJsonProperty(generator, FIELD_NAME_VALUE);
         }
         if (period != null) {
             generator.writeFieldName(FIELD_NAME_PERIOD);
-            period.serializeJson(generator);
+            period.serializeAsJsonValue(generator);
         }
         if (assigner != null) {
             generator.writeFieldName(FIELD_NAME_ASSIGNER);
-            assigner.serializeJson(generator);
+            assigner.serializeAsJsonValue(generator);
         }
         generator.writeEndObject();
     }

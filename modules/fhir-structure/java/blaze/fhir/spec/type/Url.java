@@ -6,6 +6,7 @@ import clojure.lang.Keyword;
 import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
@@ -14,21 +15,19 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Code extends Element implements Primitive {
+public final class Url extends Element implements Primitive {
 
-    private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "code");
+    private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "url");
 
-    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueCode");
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueUrl");
 
-    private static final byte HASH_MARKER = 13;
+    private static final byte HASH_MARKER = 6;
 
     private final java.lang.String value;
-    private final SerializedString jsonValue;
 
-    public Code(java.lang.String id, PersistentVector extension, java.lang.String value) {
+    public Url(java.lang.String id, PersistentVector extension, java.lang.String value) {
         super(id, extension);
         this.value = value;
-        jsonValue = value == null ? null : new SerializedString(value);
     }
 
     @Override
@@ -63,7 +62,7 @@ public final class Code extends Element implements Primitive {
     @Override
     public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
         if (hasValue()) {
-            generator.writeString(jsonValue);
+            generator.writeString(value);
         } else {
             generator.writeNull();
         }
@@ -83,7 +82,7 @@ public final class Code extends Element implements Primitive {
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
-        Code c = (Code) o;
+        Url c = (Url) o;
         return Objects.equals(id, c.id) &&
                 Objects.equals(extension, c.extension) &&
                 Objects.equals(value, c.value);
@@ -96,10 +95,10 @@ public final class Code extends Element implements Primitive {
 
     @Override
     public java.lang.String toString() {
-        return "Code{" +
+        return "Url{" +
                 "id=" + (id == null ? null : '\'' + id + '\'') +
                 ", extension=" + extension +
-                ", value='" + value + '\'' +
+                ", value=" + (value == null ? null : '\'' + value + '\'') +
                 '}';
     }
 }

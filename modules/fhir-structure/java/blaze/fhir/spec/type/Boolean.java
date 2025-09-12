@@ -13,12 +13,14 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Boolean extends Element {
+public final class Boolean extends Element implements Primitive {
 
     public static final Boolean TRUE = new Boolean(null, null, java.lang.Boolean.TRUE);
     public static final Boolean FALSE = new Boolean(null, null, java.lang.Boolean.FALSE);
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "boolean");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueBoolean");
 
     private static final byte HASH_MARKER = 0;
 
@@ -56,9 +58,16 @@ public final class Boolean extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
-        if (value != null) {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+        if (hasValue()) {
             generator.writeBoolean(value);
+        } else {
+            generator.writeNull();
         }
     }
 

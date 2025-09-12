@@ -1,6 +1,9 @@
 package blaze.fhir.spec.type;
 
-import clojure.lang.*;
+import clojure.lang.ISeq;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentList;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
@@ -10,21 +13,20 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Extension extends Element {
+public final class Extension extends Element implements Complex {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Extension");
 
     private static final Keyword URL = Keyword.intern("url");
 
     private static final SerializedString FIELD_NAME_URL = new SerializedString("url");
-    private static final SerializedString FIELD_NAME_VALUE_QUANTITY = new SerializedString("valueQuantity");
 
     private static final byte HASH_MARKER = 39;
 
     private final java.lang.String url;
-    private final Base value;
+    private final ExtensionValue value;
 
-    public Extension(java.lang.String id, PersistentVector extension, java.lang.String url, Base value) {
+    public Extension(java.lang.String id, PersistentVector extension, java.lang.String url, ExtensionValue value) {
         super(id, extension);
         this.url = url;
         this.value = value;
@@ -61,12 +63,20 @@ public final class Extension extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
+    public void serializeAsJsonValue(JsonGenerator generator) throws IOException {
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (url != null) {
             generator.writeFieldName(FIELD_NAME_URL);
             generator.writeString(url);
+        }
+        if (value != null) {
+            if (value instanceof Primitive primitiveValue){
+                primitiveValue.serializeAsJsonProperty(generator, value.fieldNameExtensionValue());
+            } else if (value instanceof Complex complexValue){
+                generator.writeFieldName(value.fieldNameExtensionValue().normal());
+                complexValue.serializeAsJsonValue(generator);
+            }
         }
         generator.writeEndObject();
     }

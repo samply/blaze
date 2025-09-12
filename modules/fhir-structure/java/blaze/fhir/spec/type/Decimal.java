@@ -14,9 +14,11 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Decimal extends Element {
+public final class Decimal extends Element implements Primitive {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "decimal");
+
+    private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueDecimal");
 
     private static final byte HASH_MARKER = 4;
 
@@ -52,9 +54,16 @@ public final class Decimal extends Element {
     }
 
     @Override
-    public void serializeJson(JsonGenerator generator) throws IOException {
-        if (value != null) {
+    public FieldName fieldNameExtensionValue() {
+        return FIELD_NAME_EXTENSION_VALUE;
+    }
+
+    @Override
+    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+        if (hasValue()) {
             generator.writeNumber(value);
+        } else {
+            generator.writeNull();
         }
     }
 
