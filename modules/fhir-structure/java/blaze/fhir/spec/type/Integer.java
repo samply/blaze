@@ -2,15 +2,11 @@ package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Integers;
 import blaze.fhir.spec.type.system.Longs;
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
-import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -30,6 +26,10 @@ public final class Integer extends Element implements Primitive {
     public Integer(java.lang.String id, PersistentVector extension, java.lang.Integer value) {
         super(id, extension);
         this.value = value;
+    }
+
+    public static Integer create(IPersistentMap m) {
+        return new Integer((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (java.lang.Integer) m.valAt(VALUE));
     }
 
     @Override

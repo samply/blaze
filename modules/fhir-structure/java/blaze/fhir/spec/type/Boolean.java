@@ -1,13 +1,9 @@
 package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Booleans;
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
-import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -32,6 +28,10 @@ public final class Boolean extends Element implements Primitive {
         this.value = value;
     }
 
+    public static Boolean create(IPersistentMap m) {
+        return new Boolean((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (java.lang.Boolean) m.valAt(VALUE));
+    }
+
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
@@ -54,7 +54,6 @@ public final class Boolean extends Element implements Primitive {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, VALUE, value);
         seq = appendBase(seq);
-        System.out.println("seq = " + seq);
         return seq;
     }
 

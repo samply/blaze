@@ -6,6 +6,8 @@ import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -17,6 +19,8 @@ public final class Annotation extends Element implements Complex, ExtensionValue
     private static final Keyword AUTHOR = Keyword.intern("author");
     private static final Keyword TIME = Keyword.intern("time");
     private static final Keyword TEXT = Keyword.intern("text");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, AUTHOR, TIME, TEXT};
 
     private static final SerializedString FIELD_NAME_AUTHOR_REFERENCE = new SerializedString("authorReference");
     private static final FieldName FIELD_NAME_AUTHOR_STRING = FieldName.of("authorString");
@@ -77,6 +81,11 @@ public final class Annotation extends Element implements Complex, ExtensionValue
     @Override
     public IPersistentCollection empty() {
         return new Annotation(null, null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

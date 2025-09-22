@@ -25,6 +25,10 @@ public final class Uuid extends Element implements Primitive {
         this.value = value == null ? null : UUID.fromString(value.substring(9));
     }
 
+    public static Uuid create(IPersistentMap m) {
+        return new Uuid((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (java.lang.String) m.valAt(VALUE));
+    }
+
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
@@ -36,7 +40,7 @@ public final class Uuid extends Element implements Primitive {
 
     @Override
     public Object valAt(Object key, Object notFound) {
-        if (key == VALUE) return value;
+        if (key == VALUE) return value();
         if (key == EXTENSION) return extension;
         if (key == ID) return id;
         return notFound;
@@ -58,7 +62,7 @@ public final class Uuid extends Element implements Primitive {
     @Override
     public ISeq seq() {
         ISeq seq = PersistentList.EMPTY;
-        seq = appendElement(seq, VALUE, value);
+        seq = appendElement(seq, VALUE, value());
         return appendBase(seq);
     }
 

@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-public interface Base extends IPersistentMap, Map<Object, Object> {
+public interface Base extends IPersistentMap, Map<Object, Object>, IRecord {
 
     Keyword ID = Keyword.intern("id");
     Keyword EXTENSION = Keyword.intern("extension");
@@ -45,7 +45,8 @@ public interface Base extends IPersistentMap, Map<Object, Object> {
 
     @Override
     default int count() {
-        return seq().count();
+        var seq = seq();
+        return seq == null ? 0 : seq.count();
     }
 
     @Override
@@ -70,7 +71,7 @@ public interface Base extends IPersistentMap, Map<Object, Object> {
 
     @Override
     default int size() {
-        return seq().count();
+        return count();
     }
 
     @Override
@@ -117,7 +118,7 @@ public interface Base extends IPersistentMap, Map<Object, Object> {
     @Override
     @SuppressWarnings("unchecked")
     default Set<Entry<Object, Object>> entrySet() {
-        return PersistentHashSet.create(this);
+        return PersistentHashSet.create(seq());
     }
 
     @Override

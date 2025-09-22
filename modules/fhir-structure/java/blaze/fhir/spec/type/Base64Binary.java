@@ -1,13 +1,9 @@
 package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Strings;
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
-import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -27,6 +23,10 @@ public final class Base64Binary extends Element implements Primitive {
     public Base64Binary(java.lang.String id, PersistentVector extension, java.lang.String value) {
         super(id, extension);
         this.value = value;
+    }
+
+    public static Base64Binary create(IPersistentMap m) {
+        return new Base64Binary((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (java.lang.String) m.valAt(VALUE));
     }
 
     @Override

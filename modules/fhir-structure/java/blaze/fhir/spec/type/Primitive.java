@@ -1,10 +1,14 @@
 package blaze.fhir.spec.type;
 
+import clojure.lang.Keyword;
 import com.fasterxml.jackson.core.JsonGenerator;
 
 import java.io.IOException;
+import java.util.Iterator;
 
 public interface Primitive extends ExtensionValue {
+
+    Keyword[] FIELDS = {ID, EXTENSION, VALUE};
 
     default boolean hasValue() {
         return value() != null;
@@ -13,6 +17,11 @@ public interface Primitive extends ExtensionValue {
     Object value();
 
     boolean isExtended();
+
+    @Override
+    default Iterator<Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
+    }
 
     void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException;
 

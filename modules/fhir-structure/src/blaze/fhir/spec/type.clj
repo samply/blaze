@@ -1638,12 +1638,12 @@
 ;; ---- Extension --------------------------------------------------------
 
 (defn- map->Extension [{:keys [id extension url value]}]
-  (Extension. id extension url #p value))
+  (Extension. id extension url value))
 
 (def ^{:arglists '([x])} extension
   (let [intern (intern/intern-value map->Extension)]
     (fn [{:keys [id extension url value] :as x}]
-      (if #p (and (nil? id) (p/-interned extension) (p/-interned value))
+      (if (and (nil? id) (p/-interned extension) (p/-interned value))
         (intern x)
         (Extension. id extension url value)))))
 

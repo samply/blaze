@@ -1,13 +1,9 @@
 package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Decimals;
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
-import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -28,6 +24,10 @@ public final class Decimal extends Element implements Primitive {
     public Decimal(java.lang.String id, PersistentVector extension, BigDecimal value) {
         super(id, extension);
         this.value = value;
+    }
+
+    public static Decimal create(IPersistentMap m) {
+        return new Decimal((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (BigDecimal) m.valAt(VALUE));
     }
 
     @Override

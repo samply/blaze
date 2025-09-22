@@ -1,14 +1,10 @@
 package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Strings;
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
-import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -30,6 +26,10 @@ public final class Canonical extends Element implements Primitive {
         super(id, extension);
         this.value = value;
         jsonValue = value == null ? null : new SerializedString(value);
+    }
+
+    public static Canonical create(IPersistentMap m) {
+        return new Canonical((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (java.lang.String) m.valAt(VALUE));
     }
 
     @Override

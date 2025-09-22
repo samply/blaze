@@ -10,6 +10,8 @@ import com.google.common.hash.PrimitiveSink;
 import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -20,6 +22,8 @@ public final class CodeableConcept extends Element implements Complex, Extension
 
     private static final Keyword CODING = Keyword.intern("coding");
     private static final Keyword TEXT = Keyword.intern("text");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, CODING, TEXT};
 
     private static final SerializedString FIELD_NAME_CODING = new SerializedString("coding");
     private static final FieldName FIELD_NAME_TEXT = FieldName.of("text");
@@ -71,6 +75,11 @@ public final class CodeableConcept extends Element implements Complex, Extension
     @Override
     public IPersistentCollection empty() {
         return new CodeableConcept(null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

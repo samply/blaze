@@ -27,6 +27,10 @@ public final class Url extends Element implements Primitive {
         this.value = value;
     }
 
+    public static Url create(IPersistentMap m) {
+        return new Url((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (java.lang.String) m.valAt(VALUE));
+    }
+
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;

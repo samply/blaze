@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -17,6 +19,8 @@ public final class Coding extends Element implements Complex, ExtensionValue {
     private static final Keyword CODE = Keyword.intern("code");
     private static final Keyword DISPLAY = Keyword.intern("display");
     private static final Keyword USER_SELECTED = Keyword.intern("userSelected");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, SYSTEM, VERSION, CODE, DISPLAY, USER_SELECTED};
 
     private static final FieldName FIELD_NAME_SYSTEM = FieldName.of("system");
     private static final FieldName FIELD_NAME_VERSION = FieldName.of("version");
@@ -83,6 +87,11 @@ public final class Coding extends Element implements Complex, ExtensionValue {
     @Override
     public IPersistentCollection empty() {
         return new Coding(null, null, null, null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

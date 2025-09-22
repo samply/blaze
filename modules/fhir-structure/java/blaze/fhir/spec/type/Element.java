@@ -38,7 +38,8 @@ abstract class Element implements Base {
 
     protected ISeq appendBase(ISeq seq) {
         seq = appendElement(seq, EXTENSION, extension);
-        return appendElement(seq, ID, id);
+        seq = appendElement(seq, ID, id);
+        return seq.count() == 0 ? null : seq;
     }
 
     protected void serializeJsonBase(JsonGenerator generator) throws IOException {

@@ -28,6 +28,10 @@ public final class Uri extends Element implements Primitive {
         jsonValue = value == null ? null : new SerializedString(value);
     }
 
+    public static Uri create(IPersistentMap m) {
+        return new Uri((java.lang.String) m.valAt(ID), (PersistentVector) m.valAt(EXTENSION), (java.lang.String) m.valAt(VALUE));
+    }
+
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;

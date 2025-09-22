@@ -22,9 +22,18 @@ public class BaseIterator implements Iterator<Map.Entry<Object, Object>> {
     }
 
     public boolean hasNext() {
-        return i < fields.length;
+        System.out.println("hasNext: i = " + i);
+        if (i < fields.length) {
+            if (lookup.valAt(fields[i]) != null) {
+                return true;
+            }
+            i++;
+            return hasNext();
+        }
+        return false;
     }
 
+    @SuppressWarnings("unchecked")
     public Map.Entry<Object, Object> next() {
         if (hasNext()) {
             Object k = fields[i];

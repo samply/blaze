@@ -10,6 +10,8 @@ import com.google.common.hash.PrimitiveSink;
 import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -24,6 +26,8 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     private static final Keyword VALUE = Keyword.intern("value");
     private static final Keyword PERIOD = Keyword.intern("period");
     private static final Keyword ASSIGNER = Keyword.intern("assigner");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, USE, TYPE, SYSTEM, VALUE, PERIOD, ASSIGNER};
 
     private static final FieldName FIELD_NAME_USE = FieldName.of("use");
     private static final SerializedString FIELD_NAME_TYPE = new SerializedString("type");
@@ -109,6 +113,11 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     @Override
     public IPersistentCollection empty() {
         return new Identifier(null, null, null, null, null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

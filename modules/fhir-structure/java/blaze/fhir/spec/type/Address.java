@@ -6,7 +6,9 @@ import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -25,6 +27,8 @@ public final class Address extends Element implements Complex, ExtensionValue {
     private static final Keyword POSTAL_CODE = Keyword.intern("postalCode");
     private static final Keyword COUNTRY = Keyword.intern("country");
     private static final Keyword PERIOD = Keyword.intern("period");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, USE, TYPE, TEXT, LINE, CITY, DISTRICT, STATE, POSTAL_CODE, COUNTRY, PERIOD};
 
     private static final FieldName FIELD_NAME_USE = FieldName.of("use");
     private static final FieldName FIELD_NAME_TYPE = FieldName.of("type");
@@ -131,6 +135,11 @@ public final class Address extends Element implements Complex, ExtensionValue {
     @Override
     public IPersistentCollection empty() {
         return new Address(null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

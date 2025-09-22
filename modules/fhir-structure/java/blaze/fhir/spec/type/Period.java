@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -15,6 +17,8 @@ public final class Period extends Element implements Complex, ExtensionValue {
 
     private static final Keyword START = Keyword.intern("start");
     private static final Keyword END = Keyword.intern("end");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, START, END};
 
     private static final FieldName FIELD_NAME_START = FieldName.of("start");
     private static final FieldName FIELD_NAME_END = FieldName.of("end");
@@ -65,6 +69,11 @@ public final class Period extends Element implements Complex, ExtensionValue {
     @Override
     public IPersistentCollection empty() {
         return new Period(null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

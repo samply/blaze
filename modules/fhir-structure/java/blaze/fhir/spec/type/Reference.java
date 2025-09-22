@@ -6,6 +6,8 @@ import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -18,6 +20,8 @@ public final class Reference extends Element implements Complex, ExtensionValue 
     private static final Keyword TYPE = Keyword.intern("type");
     private static final Keyword IDENTIFIER = Keyword.intern("identifier");
     private static final Keyword DISPLAY = Keyword.intern("display");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, REFERENCE, TYPE, IDENTIFIER, DISPLAY};
 
     private static final FieldName FIELD_NAME_REFERENCE = FieldName.of("reference");
     private static final FieldName FIELD_NAME_TYPE = FieldName.of("type");
@@ -86,6 +90,11 @@ public final class Reference extends Element implements Complex, ExtensionValue 
     @Override
     public IPersistentCollection empty() {
         return new Reference(null, null, null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

@@ -9,6 +9,8 @@ import com.google.common.hash.PrimitiveSink;
 import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -25,6 +27,8 @@ public final class Attachment extends Element implements Complex, ExtensionValue
     private static final Keyword HASH = Keyword.intern("hash");
     private static final Keyword TITLE = Keyword.intern("title");
     private static final Keyword CREATION = Keyword.intern("creation");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, CONTENT_TYPE, LANGUAGE, DATA, URL, SIZE, HASH, TITLE, CREATION};
 
     private static final FieldName FIELD_NAME_CONTENT_TYPE = FieldName.of("contentType");
     private static final FieldName FIELD_NAME_LANGUAGE = FieldName.of("language");
@@ -125,6 +129,11 @@ public final class Attachment extends Element implements Complex, ExtensionValue
     @Override
     public IPersistentCollection empty() {
         return new Attachment(null, null, null, null, null, null, null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

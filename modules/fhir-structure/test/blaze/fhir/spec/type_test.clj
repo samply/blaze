@@ -93,7 +93,6 @@
       (is (nil? (type/assoc-id nil "foo"))))
 
     (testing "assoc extension"
-      (comment (clojure.repl/pst))
       (is (nil? (type/assoc-extension nil [#fhir/Extension{:url "foo"}]))))
 
     (testing "value"
