@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -52,6 +53,24 @@ public final class Markdown extends Element implements Primitive {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, VALUE, value);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Markdown(null, null, null);
+    }
+
+    @Override
+    public Markdown assoc(Object key, Object val) {
+        if (key == VALUE) return new Markdown(id, extension, (java.lang.String) val);
+        if (key == EXTENSION) return new Markdown(id, (PersistentVector) val, value);
+        if (key == ID) return new Markdown((java.lang.String) val, extension, value);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Markdown.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

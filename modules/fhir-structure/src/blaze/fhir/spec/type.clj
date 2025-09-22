@@ -1213,7 +1213,7 @@
   (identical? :fhir/time (type x)))
 
 ;; ---- code ------------------------------------------------------------------
-(macroexpand '(defrecord A [a]))
+
 (defn code? [x]
   (instance? Code x))
 
@@ -1638,12 +1638,12 @@
 ;; ---- Extension --------------------------------------------------------
 
 (defn- map->Extension [{:keys [id extension url value]}]
-  (Extension. id extension url value))
+  (Extension. id extension url #p value))
 
 (def ^{:arglists '([x])} extension
   (let [intern (intern/intern-value map->Extension)]
     (fn [{:keys [id extension url value] :as x}]
-      (if (and (nil? id) (p/-interned extension) (p/-interned value))
+      (if #p (and (nil? id) (p/-interned extension) (p/-interned value))
         (intern x)
         (Extension. id extension url value)))))
 

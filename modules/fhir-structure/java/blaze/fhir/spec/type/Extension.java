@@ -10,6 +10,8 @@ import com.google.common.hash.PrimitiveSink;
 import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -19,6 +21,8 @@ public final class Extension extends Element implements Complex {
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Extension");
 
     private static final Keyword URL = Keyword.intern("url");
+
+    private static final Keyword[] FIELDS = {ID, EXTENSION, URL, VALUE};
 
     private static final SerializedString FIELD_NAME_URL = new SerializedString("url");
 
@@ -66,6 +70,11 @@ public final class Extension extends Element implements Complex {
     @Override
     public IPersistentCollection empty() {
         return new Extension(null, null, null, null);
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
     }
 
     @Override

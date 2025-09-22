@@ -2615,7 +2615,7 @@
         (prop/for-all [x (fg/coding)]
           (s2/valid? :fhir/Coding x))))
 
-    (testing "invalid" (set) (vals)
+    (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Coding x))
         #fhir/Coding{:system #fhir/uri"foo"})))
 

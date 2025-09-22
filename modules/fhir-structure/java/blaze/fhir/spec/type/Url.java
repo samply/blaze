@@ -1,10 +1,7 @@
 package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Strings;
-import clojure.lang.ISeq;
-import clojure.lang.Keyword;
-import clojure.lang.PersistentList;
-import clojure.lang.PersistentVector;
+import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
@@ -45,6 +42,19 @@ public final class Url extends Element implements Primitive {
         if (key == EXTENSION) return extension;
         if (key == ID) return id;
         return notFound;
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Uri(null, null, null);
+    }
+
+    @Override
+    public Url assoc(Object key, Object val) {
+        if (key == VALUE) return new Url(id, extension, (java.lang.String) val);
+        if (key == EXTENSION) return new Url(id, (PersistentVector) val, value);
+        if (key == ID) return new Url((java.lang.String) val, extension, value);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Url.");
     }
 
     @Override

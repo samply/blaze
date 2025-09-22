@@ -7,6 +7,7 @@ import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -50,6 +51,24 @@ public final class Base64Binary extends Element implements Primitive {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, VALUE, value);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Base64Binary(null, null, null);
+    }
+
+    @Override
+    public Base64Binary assoc(Object key, Object val) {
+        if (key == VALUE) return new Base64Binary(id, extension, (java.lang.String) val);
+        if (key == EXTENSION) return new Base64Binary(id, (PersistentVector) val, value);
+        if (key == ID) return new Base64Binary((java.lang.String) val, extension, value);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Base64Binary.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

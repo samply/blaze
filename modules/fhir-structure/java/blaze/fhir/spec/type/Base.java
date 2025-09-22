@@ -69,11 +69,6 @@ public interface Base extends IPersistentMap, Map<Object, Object> {
     }
 
     @Override
-    default Iterator<Object> iterator() {
-        return values().iterator();
-    }
-
-    @Override
     default int size() {
         return seq().count();
     }
@@ -104,7 +99,7 @@ public interface Base extends IPersistentMap, Map<Object, Object> {
     }
 
     @Override
-    default void putAll(Map m) {
+    default void putAll(Map<?, ?> m) {
         throw new UnsupportedOperationException("PutAll isn't supported in FHIR types.");
     }
 
@@ -114,16 +109,19 @@ public interface Base extends IPersistentMap, Map<Object, Object> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     default Set<Object> keySet() {
         return PersistentHashSet.create(RT.keys(this));
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     default Set<Entry<Object, Object>> entrySet() {
         return PersistentHashSet.create(this);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     default Collection<Object> values() {
         return (Collection<Object>) RT.vals(this);
     }

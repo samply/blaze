@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -52,6 +53,24 @@ public final class PositiveInt extends Element implements Primitive {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, VALUE, value);
         return appendBase(seq);
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new PositiveInt(null, null, null);
+    }
+
+    @Override
+    public PositiveInt assoc(Object key, Object val) {
+        if (key == VALUE) return new PositiveInt(id, extension, (java.lang.Integer) val);
+        if (key == EXTENSION) return new PositiveInt(id, (PersistentVector) val, value);
+        if (key == ID) return new PositiveInt((java.lang.String) val, extension, value);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.PositiveInt.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override

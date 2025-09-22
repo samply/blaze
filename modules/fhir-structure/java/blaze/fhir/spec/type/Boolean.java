@@ -7,6 +7,7 @@ import clojure.lang.PersistentList;
 import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
+import clojure.lang.IPersistentCollection;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -55,6 +56,24 @@ public final class Boolean extends Element implements Primitive {
         seq = appendBase(seq);
         System.out.println("seq = " + seq);
         return seq;
+    }
+
+    @Override
+    public IPersistentCollection empty() {
+        return new Boolean(null, null, null);
+    }
+
+    @Override
+    public Boolean assoc(Object key, Object val) {
+        if (key == VALUE) return new Boolean(id, extension, (java.lang.Boolean) val);
+        if (key == EXTENSION) return new Boolean(id, (PersistentVector) val, value);
+        if (key == ID) return new Boolean((java.lang.String) val, extension, value);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Boolean.");
+    }
+
+    @Override
+    public boolean equiv(Object o) {
+        return equals(o);
     }
 
     @Override
