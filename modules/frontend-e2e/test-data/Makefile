@@ -1,7 +1,10 @@
 install:
-	npm install
+	npm clean-install
+
+update:
+	npm update
 
 clean:
 	rm -rf node_modules
 
-.PHONY: install clean
+.PHONY: install update clean
