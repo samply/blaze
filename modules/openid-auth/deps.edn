@@ -17,7 +17,7 @@
 
   ;; newer version for buddy-core dependency
   cheshire/cheshire
-  {:mvn/version "6.0.0"}
+  {:mvn/version "6.1.0"}
 
   ;; newer version for cheshire dependency
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
