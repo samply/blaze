@@ -2,7 +2,7 @@
 
  :deps
  {com.google.guava/guava
-  {:mvn/version "33.4.8-jre"
+  {:mvn/version "33.5.0-jre"
    :exclusions
    [com.google.errorprone/error_prone_annotations
     com.google.guava/listenablefuture
