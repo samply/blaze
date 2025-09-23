@@ -1,5 +1,5 @@
 install:
-	npm install
+	npm clean-install
 
 update:
 	npm update
@@ -22,4 +22,4 @@ cloc-prod:
 clean:
 	rm -rf build node_modules .svelte-kit
 
-.PHONY: install update fmt lint test test-coverage build cloc-prod cloc-test clean
+.PHONY: install update fmt lint test build cloc-prod clean

@@ -1,5 +1,8 @@
 install:
-	npm install
+	npm clean-install
+
+update:
+	npm update
 
 build: install
 	node_modules/.bin/sushi build -s .
@@ -14,4 +17,4 @@ clean:
 	rm -rf fsh-generated
 	rm -f validator_cli.jar
 
-.PHONY: install build validate clean
+.PHONY: install update build validate clean

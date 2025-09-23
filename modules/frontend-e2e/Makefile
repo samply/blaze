@@ -1,5 +1,8 @@
 install:
-	npm install
+	npm clean-install
+
+update:
+	npm update
 
 install-playwright: install
 	npx playwright install --with-deps
@@ -29,4 +32,4 @@ clean:
 	rm -rf node_modules
 	$(MAKE) -C test-data clean
 
-.PHONY: fmt lint install install-playwright test test-dev-chromium test-dev-ui test-coverage cloc-prod cloc-test clean
+.PHONY: fmt install update install-playwright lint test test-dev test-dev-chromium test-dev-ui cloc-prod cloc-test clean
