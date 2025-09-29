@@ -20,7 +20,7 @@
    [integrant.core :as ig]
    [java-time.api :as time]))
 
-(def ^:private root-system
+(def root-system
   "Root part of the system initialized for performance reasons."
   (ig/init
    {:blaze.fhir/parsing-context
