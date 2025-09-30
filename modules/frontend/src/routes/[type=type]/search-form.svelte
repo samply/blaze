@@ -123,7 +123,9 @@
       .filter((p) => p.value.length != 0)
       .map((p) => [p.active ? p.name : p.name + ':inactive', p.value]) as string[][];
     if (queryPlan) params.push(['__explain', 'true']);
-    goto(`${resolve('/[type=type]', { type: type })}/?${new URLSearchParams(params)}`);
+
+    // eslint-disable-next-line svelte/no-navigation-without-resolve
+    goto(`${resolve('/[type=type]', { type: type })}?${new URLSearchParams(params)}`);
   }
 
   let openSearchSettings = $state(false);

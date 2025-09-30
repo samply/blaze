@@ -1,8 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import type { ResolvedPathname } from '$app/types';
 
   interface Props {
     status?: number;
@@ -10,7 +11,7 @@
       short?: string;
       message: string;
     } | null;
-    homeHref?: string;
+    homeHref?: ResolvedPathname;
     homeMsg?: string;
     children?: Snippet;
   }
@@ -18,11 +19,13 @@
   let {
     status = page.status,
     error = page.error,
-    homeHref = base,
+    homeHref = resolve('/'),
     homeMsg = 'Go back home',
     children
   }: Props = $props();
 </script>
+
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
 
 <div class="text-center overflow-hidden py-20">
   <p class="text-base font-semibold text-indigo-600 dark:text-indigo-300">{status}</p>
