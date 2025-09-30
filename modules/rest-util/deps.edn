@@ -30,7 +30,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ring/ring-core
-  {:mvn/version "1.14.2"
+  {:mvn/version "1.15.3"
    :exclusions
    [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality
