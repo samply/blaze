@@ -66,6 +66,8 @@
   const fadeParams = { duration: 300, easing: quintIn };
 </script>
 
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
+
 <div in:fade|global={fadeParams} class="overflow-hidden">
   <div class="border-b border-gray-200 dark:border-gray-600 px-8">
     <nav class="-mb-px flex space-x-8" aria-label="Tabs">

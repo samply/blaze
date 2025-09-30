@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FhirPrimitive, Type } from '$lib/resource/resource-card.js';
-  import { base } from '$app/paths';
+  import { resolve } from '$app/paths';
 
   interface Props {
     value: FhirPrimitive;
@@ -23,7 +23,7 @@
 
 {#if targetType}
   <a
-    href="{base}/{targetType}?url={value.value}"
+    href="{resolve(`/[type=type]`, { type: targetType })}?url={value.value}"
     class="font-medium text-indigo-600 dark:text-indigo-300 hover:text-indigo-500 hover:dark:text-indigo-400"
     >{value.value}</a
   >
