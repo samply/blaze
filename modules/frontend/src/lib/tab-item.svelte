@@ -10,6 +10,8 @@
   let { name, label }: Props = $props();
 </script>
 
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
+
 {#if isTabActive(page.url, name)}
   <a
     href={withTab(page.url, name)}

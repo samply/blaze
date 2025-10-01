@@ -1,11 +1,15 @@
 <script lang="ts">
+  import type { ResolvedPathname } from '$app/types';
+
   interface Props {
     name: string;
-    url: string;
+    url: ResolvedPathname;
   }
 
   let { name, url }: Props = $props();
 </script>
+
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
 
 <!-- Active: "bg-gray-100 text-gray-900 dark:text-gray-100 outline-none", Not Active: "text-gray-700 dark:text-gray-300" -->
 <a

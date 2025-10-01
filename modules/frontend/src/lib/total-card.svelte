@@ -18,6 +18,8 @@
   let nextLinkUrl = $derived(bundleLink(bundle, 'next')?.url);
 </script>
 
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
+
 <div
   in:fade|global={{ duration: 300, easing: quintIn }}
   class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-600"
