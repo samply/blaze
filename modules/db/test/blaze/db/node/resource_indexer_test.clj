@@ -196,7 +196,7 @@
                  ::node/keys [resource-indexer]} config]
 
     (let [observation {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "foo"}}
+                       :subject #fhir/Reference{:reference #fhir/string"foo"}}
           hash (hash/generate observation)]
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault ::x ::y})]
         @(resource-indexer/index-resources
@@ -233,18 +233,16 @@
            :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Patient" "id-104313" #blaze/hash-prefix"45142904"]}
-                    (sp-vr-tu/decode-index-entries
-                     kv-store :type :id :hash-prefix)))
+        (is (every? #{["Patient" "id-104313"]}
+                    (sp-vr-tu/decode-index-entries kv-store :type :id)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["active" (codec/v-hash "true")]
                 ["deceased" (codec/v-hash "false")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "ResourceSearchParamValue index"
-        (is (every? #{["Patient" "id-104313" #blaze/hash-prefix"45142904"]}
-                    (r-sp-v-tu/decode-index-entries
-                     kv-store :type :id :hash-prefix)))
+        (is (every? #{["Patient" "id-104313"]}
+                    (r-sp-v-tu/decode-index-entries kv-store :type :id)))
         (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
                [["active" (codec/v-hash "true")]
                 ["deceased" (codec/v-hash "false")]
@@ -268,8 +266,8 @@
              [#fhir/Coding
                {:system #fhir/uri"system-204435"
                 :code #fhir/code"code-204441"}]}
-           :onset #fhir/dateTime"2020-01-30"
-           :subject #fhir/Reference{:reference "Patient/id-145552"}
+           :onset #fhir/dateTime #system/date-time "2020-01-30"
+           :subject #fhir/Reference{:reference #fhir/string"Patient/id-145552"}
            :meta
            #fhir/Meta
             {:versionId #fhir/id"1"
@@ -287,9 +285,8 @@
            :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Condition" "id-204446" #blaze/hash-prefix"4AB29C7B"]}
-                    (sp-vr-tu/decode-index-entries
-                     kv-store :type :id :hash-prefix)))
+        (is (every? #{["Condition" "id-204446"]}
+                    (sp-vr-tu/decode-index-entries kv-store :type :id)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
                 ["patient" (codec/tid-id
@@ -310,9 +307,8 @@
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "ResourceSearchParamValue index"
-        (is (every? #{["Condition" "id-204446" #blaze/hash-prefix"4AB29C7B"]}
-                    (r-sp-v-tu/decode-index-entries
-                     kv-store :type :id :hash-prefix)))
+        (is (every? #{["Condition" "id-204446"]}
+                    (r-sp-v-tu/decode-index-entries kv-store :type :id)))
         (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
                 ["patient" (codec/tid-id
@@ -337,10 +333,8 @@
                [[["Patient" "id-145552"] "Condition" "id-204446"]])))
 
       (testing "CompartmentSearchParamValueResource index"
-        (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
-                       #blaze/hash-prefix"4AB29C7B"]}
-                    (c-sp-vr-tu/decode-index-entries
-                     kv-store :compartment :type :id :hash-prefix)))
+        (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"]}
+                    (c-sp-vr-tu/decode-index-entries kv-store :compartment :type :id)))
         (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["code" (codec/v-hash "system-204435|code-204441")]]))))))
 
@@ -362,13 +356,13 @@
                       [#fhir/Coding
                         {:system #fhir/uri"system-193821"
                          :code #fhir/code"code-193824"}]}
-                    :subject #fhir/Reference{:reference "Patient/id-180857"}
-                    :effective #fhir/dateTime"2005-06-17"
+                    :subject #fhir/Reference{:reference #fhir/string"Patient/id-180857"}
+                    :effective #fhir/dateTime #system/date-time "2005-06-17"
                     :value
                     #fhir/Quantity
                      {:code #fhir/code"kg/m2"
                       :system #fhir/uri"http://unitsofmeasure.org"
-                      :value 23.42M}}
+                      :value #fhir/decimal 23.42M}}
           hash (hash/generate resource)]
       @(rs/put! resource-store {hash resource})
       @(resource-indexer/index-resources
@@ -382,9 +376,8 @@
            :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Observation" "id-192702" #blaze/hash-prefix"651D1F37"]}
-                    (sp-vr-tu/decode-index-entries
-                     kv-store :type :id :hash-prefix)))
+        (is (every? #{["Observation" "id-192702"]}
+                    (sp-vr-tu/decode-index-entries kv-store :type :id)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["code-value-quantity"
                  #blaze/byte-string"82821D0F00000000900926"]
@@ -465,10 +458,9 @@
                [[["Patient" "id-180857"] "Observation" "id-192702"]])))
 
       (testing "CompartmentSearchParamValueResource index"
-        (is (every? #{[["Patient" "id-180857"] "Observation" "id-192702"
-                       #blaze/hash-prefix"651D1F37"]}
+        (is (every? #{[["Patient" "id-180857"] "Observation" "id-192702"]}
                     (c-sp-vr-tu/decode-index-entries
-                     kv-store :compartment :type :id :hash-prefix)))
+                     kv-store :compartment :type :id)))
         (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["category" (codec/v-hash "system-193558|code-193603")]
                 ["code" (codec/v-hash "system-193821|code-193824")]
@@ -483,7 +475,7 @@
                     :status #fhir/code"status-151938"
                     :participant
                     [{:fhir/type :fhir.Appointment/participant
-                      :actor #fhir/Reference{:reference "Patient/id-151354"}}]}
+                      :actor #fhir/Reference{:reference #fhir/string"Patient/id-151354"}}]}
           hash (hash/generate resource)]
       @(rs/put! resource-store {hash resource})
       @(resource-indexer/index-resources
@@ -497,9 +489,8 @@
            :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Appointment" "id-151125" #blaze/hash-prefix"8351D5EB"]}
-                    (sp-vr-tu/decode-index-entries
-                     kv-store :type :id :hash-prefix)))
+        (is (every? #{["Appointment" "id-151125"]}
+                    (sp-vr-tu/decode-index-entries kv-store :type :id)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "id-151354")]
                 ["patient" (codec/tid-id
@@ -519,10 +510,8 @@
                [[["Patient" "id-151354"] "Appointment" "id-151125"]])))
 
       (testing "CompartmentSearchParamValueResource index"
-        (is (every? #{[["Patient" "id-151354"] "Appointment" "id-151125"
-                       #blaze/hash-prefix"8351D5EB"]}
-                    (c-sp-vr-tu/decode-index-entries
-                     kv-store :compartment :type :id :hash-prefix)))
+        (is (every? #{[["Patient" "id-151354"] "Appointment" "id-151125"]}
+                    (c-sp-vr-tu/decode-index-entries kv-store :compartment :type :id)))
         (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["status" (codec/v-hash "status-151938")]]))))))
 

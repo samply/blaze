@@ -120,7 +120,7 @@
                   :code #fhir/code"8480-6"}]}
              :value
              #fhir/Quantity
-              {:value 100M
+              {:value #fhir/decimal 100M
                :code #fhir/code"mm[Hg]"
                :system #fhir/uri"http://unitsofmeasure.org"}}
             hash (hash/generate observation)

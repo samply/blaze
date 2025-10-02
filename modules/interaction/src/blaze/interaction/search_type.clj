@@ -201,7 +201,7 @@
     (not= "page" (name route-name))
     (update :link conj (self-link context clauses))
     total
-    (assoc :total (type/->UnsignedInt total))))
+    (assoc :total (type/unsignedInt total))))
 
 (defn- gen-token! [{{:keys [token]} :params :keys [gen-token-fn]} clauses]
   (if token
@@ -226,7 +226,7 @@
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
     :type #fhir/code"searchset"
-    :total (type/->UnsignedInt total)
+    :total (type/unsignedInt total)
     :link [(self-link context clauses)]}))
 
 (defn no-query-summary-response [{:keys [type] :blaze/keys [db] :as context}]

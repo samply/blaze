@@ -17,7 +17,7 @@
     (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
 (defmethod entry-tx-op "POST"
-  [_ {:keys [resource] {if-none-exist :ifNoneExist} :request :as entry}]
+  [_ {:keys [resource] {{if-none-exist :value} :ifNoneExist} :request :as entry}]
   (let [clauses (conditional-clauses if-none-exist)]
     (assoc entry
            :tx-op
@@ -27,8 +27,9 @@
              (conj clauses)))))
 
 (defmethod entry-tx-op "PUT"
-  [db {{if-match :ifMatch if-none-match :ifNoneMatch} :request :keys [resource]
-       :as entry}]
+  [db
+   {{{if-match :value} :ifMatch {if-none-match :value} :ifNoneMatch} :request
+    :keys [resource] :as entry}]
   (when-ok [tx-op (iu/update-tx-op db (iu/strip-meta resource) if-match
                                    if-none-match)]
     (assoc entry :tx-op tx-op)))

@@ -8,26 +8,26 @@
    [blaze.terminology-service.local.graph :as graph]))
 
 (defn- expand-filter
-  [{:keys [url] :default/keys [graph]} value]
+  [{{url :value} :url :default/keys [graph]} value]
   (if (nil? value)
-    (ba/incorrect (format "Missing concept descendent-of filter value in code system `%s`." (type/value url)))
-    (graph/descendent-of graph (type/value value))))
+    (ba/incorrect (format "Missing concept descendent-of filter value in code system `%s`." url))
+    (graph/descendent-of graph value)))
 
 (defmethod core/filter-concepts :descendent-of
-  [{:keys [url] :as code-system} {:keys [property value]}]
+  [{{url :value} :url :as code-system} {:keys [property value]}]
   (condp = (type/value property)
     "concept" (expand-filter code-system (type/value value))
     nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))
     (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." (type/value property) url))))
 
 (defn- find-filter
-  [{:keys [url] :default/keys [graph]} value code]
+  [{{url :value} :url :default/keys [graph]} value code]
   (if (nil? value)
-    (ba/incorrect (format "Missing concept descendent-of filter value in code system `%s`." (type/value url)))
+    (ba/incorrect (format "Missing concept descendent-of filter value in code system `%s`." url))
     (graph/find-descendent-of graph value code)))
 
 (defmethod core/find-concept :descendent-of
-  [{:keys [url] :as code-system} {:keys [property value]} code]
+  [{{url :value} :url :as code-system} {:keys [property value]} code]
   (condp = (type/value property)
     "concept" (find-filter code-system (type/value value) code)
     nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))

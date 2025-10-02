@@ -19,9 +19,7 @@
    [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -62,7 +60,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `Patient/0` was not found."))))
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` was not found."))))
 
   (testing "returns Bad-Request on invalid id"
     (with-handler [handler]
@@ -77,7 +75,7 @@
           [:issue 0 :code] := #fhir/code"value"
           [:issue 0 :details :coding 0 :system] := operation-outcome
           [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
-          [:issue 0 :diagnostics] := "Resource id `A_B` is invalid."))))
+          [:issue 0 :diagnostics] := #fhir/string "Resource id `A_B` is invalid."))))
 
   (testing "returns Gone on deleted resource"
     (with-handler [handler]
@@ -99,7 +97,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"deleted"
-          [:issue 0 :diagnostics] := "Resource `Patient/0` was deleted."))))
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` was deleted."))))
 
   (testing "returns Internal Server Error on missing resource content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
@@ -115,7 +113,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"incomplete"
-            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found.")))))
+            [:issue 0 :diagnostics] := #fhir/string "The resource content of `Patient/0` with hash `5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470` was not found.")))))
 
   (testing "returns existing resource"
     (with-handler [handler]
@@ -137,4 +135,4 @@
           :fhir/type := :fhir/Patient
           :id := "0"
           [:meta :versionId] := #fhir/id"1"
-          [:meta :lastUpdated] := Instant/EPOCH)))))
+          [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))

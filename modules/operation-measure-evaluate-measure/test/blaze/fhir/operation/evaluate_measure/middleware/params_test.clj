@@ -41,8 +41,8 @@
           :code := #fhir/code"value"
           [:details :coding 0 :system] := operation-outcome-uri
           [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
-          :diagnostics := "Missing required parameter `periodStart`."
-          [:expression first] := "periodStart")))
+          :diagnostics := #fhir/string "Missing required parameter `periodStart`."
+          [:expression first] := #fhir/string "periodStart")))
 
     (testing "invalid"
       (let [{:keys [status body]}
@@ -57,8 +57,8 @@
           :code := #fhir/code"value"
           [:details :coding 0 :system] := operation-outcome-uri
           [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
-          :diagnostics := "Invalid parameter `periodStart` with value `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD."
-          [:expression first] := "periodStart"))))
+          :diagnostics := #fhir/string "Invalid parameter `periodStart` with value `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD."
+          [:expression first] := #fhir/string "periodStart"))))
 
   (testing "period end"
     (testing "missing"
@@ -74,8 +74,8 @@
           :code := #fhir/code"value"
           [:details :coding 0 :system] := operation-outcome-uri
           [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
-          :diagnostics := "Missing required parameter `periodEnd`."
-          [:expression first] := "periodEnd")))
+          :diagnostics := #fhir/string "Missing required parameter `periodEnd`."
+          [:expression first] := #fhir/string "periodEnd")))
 
     (testing "invalid"
       (let [{:keys [status body]}
@@ -90,8 +90,8 @@
           :code := #fhir/code"value"
           [:details :coding 0 :system] := operation-outcome-uri
           [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
-          :diagnostics := "Invalid parameter `periodEnd` with value `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD."
-          [:expression first] := "periodEnd"))))
+          :diagnostics := #fhir/string "Invalid parameter `periodEnd` with value `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD."
+          [:expression first] := #fhir/string "periodEnd"))))
 
   (testing "valid period"
     (testing "with params"
@@ -108,8 +108,8 @@
             @(handler
               {:body
                (fu/parameters
-                "periodStart" #fhir/date"2020"
-                "periodEnd" #fhir/date"2021")})]
+                "periodStart" #fhir/date #system/date "2020"
+                "periodEnd" #fhir/date #system/date "2021")})]
 
         (given params
           [:period 0] := #system/date"2020"
@@ -120,9 +120,9 @@
       (let [request {:request-method :post
                      :body
                      (fu/parameters
-                      "periodStart" #fhir/date"2014"
-                      "periodEnd" #fhir/date"2015"
-                      "measure" #fhir/date"2015")}
+                      "periodStart" #fhir/date #system/date "2014"
+                      "periodEnd" #fhir/date #system/date "2015"
+                      "measure" #fhir/date #system/date "2015")}
             {:keys [status body]} @(handler request)]
 
         (is (= 400 status))
@@ -132,7 +132,7 @@
         (given (-> body :issue first)
           :severity := #fhir/code"error"
           :code := #fhir/code"value"
-          :diagnostics := "Invalid parameter `measure` with value `2015`. Should be a string.")))
+          :diagnostics := #fhir/string "Invalid parameter `measure` with value `2015`. Should be a string.")))
 
     (testing "valid (both GET and POST)"
       (doseq [request
@@ -142,8 +142,8 @@
                  "measure" "measure-202606"}}
                {:body
                 (fu/parameters
-                 "periodStart" #fhir/date"2014"
-                 "periodEnd" #fhir/date"2015"
+                 "periodStart" #fhir/date #system/date "2014"
+                 "periodEnd" #fhir/date #system/date "2015"
                  "measure" #fhir/string"measure-202606")}]]
         (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
               @(handler request)]
@@ -168,7 +168,7 @@
         (given (-> body :issue first)
           :severity := #fhir/code"error"
           :code := #fhir/code"value"
-          :diagnostics := "Invalid parameter `reportType` with value `<invalid>`. Should be one of `subject`, `subject-list` or `population`.")))
+          :diagnostics := #fhir/string "Invalid parameter `reportType` with value `<invalid>`. Should be one of `subject`, `subject-list` or `population`.")))
 
     (testing "subject-list is not possible with a GET request"
       (let [{:keys [status body]}
@@ -186,7 +186,7 @@
         (given (-> body :issue first)
           :severity := #fhir/code"error"
           :code := #fhir/code"not-supported"
-          :diagnostics := "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")))
+          :diagnostics := #fhir/string "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")))
 
     (testing "subject-list on POST request"
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
@@ -194,8 +194,8 @@
               {:request-method :post
                :body
                (fu/parameters
-                "periodStart" #fhir/date"2014"
-                "periodEnd" #fhir/date"2015"
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015"
                 "reportType" #fhir/code"subject-list")})]
 
         (given params
@@ -267,5 +267,5 @@
           :code := #fhir/code"value"
           [:details :coding 0 :system] := operation-outcome-uri
           [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
-          :diagnostics := "Invalid parameter `subject` with value `a/1`. Should be a reference."
-          [:expression first] := "subject")))))
+          :diagnostics := #fhir/string "Invalid parameter `subject` with value `a/1`. Should be a reference."
+          [:expression first] := #fhir/string "subject")))))

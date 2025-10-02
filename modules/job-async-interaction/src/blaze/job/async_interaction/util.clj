@@ -19,7 +19,7 @@
            [(type/coding
              {:system (type/uri parameter-uri)
               :code #fhir/code"bundle"})]})
-   :value (type/reference {:reference reference})})
+   :value (type/reference {:reference (type/string reference)})})
 
 (defn processing-duration [start]
   (type/quantity
@@ -29,7 +29,7 @@
     :code #fhir/code"s"}))
 
 (defn- request-bundle-ref [job]
-  (if-let [{:keys [reference]} (job-util/input-value job parameter-uri "bundle")]
+  (if-let [reference (-> (job-util/input-value job parameter-uri "bundle") :reference :value)]
     (or (fsr/split-literal-ref reference)
         (ba/incorrect (format "Invalid request bundle reference `%s`." reference)))
     (ba/incorrect "Missing request bundle reference.")))

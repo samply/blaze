@@ -37,7 +37,8 @@
           (identical? :fhir/url type))
       (resolve-link context value)
 
-      (fhir-spec/primitive? type)
+      (or (fhir-spec/primitive? type)
+          (string? value))
       value
 
       :else

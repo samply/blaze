@@ -87,7 +87,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "Resource `ValueSet/170852` was not found."))))
+            [:issue 0 :diagnostics] := #fhir/string "Resource `ValueSet/170852` was not found."))))
 
     (testing "by url"
       (with-handler [handler]
@@ -100,7 +100,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The value set `153404` was not found.")))))
+            [:issue 0 :diagnostics] := #fhir/string "The value set `153404` was not found.")))))
 
   (testing "unsupported parameters"
     (with-handler [handler]
@@ -119,7 +119,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param))))
+              [:issue 0 :diagnostics] := (type/string (format "Unsupported parameter `%s`." param)))))
 
         (testing "POST"
           (let [{:keys [status body]}
@@ -133,7 +133,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param)))))))
+              [:issue 0 :diagnostics] := (type/string (format "Unsupported parameter `%s`." param))))))))
 
   (testing "unsupported GET parameters"
     (with-handler [handler]
@@ -147,7 +147,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-supported"
-            [:issue 0 :diagnostics] := (format "Unsupported parameter `%s` in GET request. Please use POST." param))))))
+            [:issue 0 :diagnostics] := (type/string (format "Unsupported parameter `%s` in GET request. Please use POST." param)))))))
 
   (testing "invalid non-integer parameter count"
     (testing "GET"
@@ -162,7 +162,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Invalid value for parameter `count`. Has to be an integer.")))))
+              [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `count`. Has to be an integer.")))))
 
     (testing "POST"
       (with-handler [handler]
@@ -177,7 +177,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Invalid value for parameter `count`. Has to be a non-negative integer.")))))
+            [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `count`. Has to be a non-negative integer.")))))
 
   (testing "invalid non-zero parameter offset"
     (testing "GET"
@@ -191,7 +191,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Invalid non-zero value for parameter `offset`."))))
+            [:issue 0 :diagnostics] := #fhir/string "Invalid non-zero value for parameter `offset`."))))
 
     (testing "POST"
       (with-handler [handler]
@@ -206,7 +206,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Invalid non-zero value for parameter `offset`.")))))
+            [:issue 0 :diagnostics] := #fhir/string "Invalid non-zero value for parameter `offset`.")))))
 
   (testing "invalid boolean parameter includeDefinition"
     (with-handler [handler]
@@ -220,7 +220,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Invalid value for parameter `includeDefinition`. Has to be a boolean.")))))
+            [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `includeDefinition`. Has to be a boolean.")))))
 
   (testing "successful expansion by id"
     (with-handler [handler]

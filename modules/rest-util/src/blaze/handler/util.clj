@@ -51,12 +51,12 @@
             severity
             (assoc :severity (type/code severity))
             diagnostics
-            (assoc :diagnostics diagnostics)
+            (assoc :diagnostics (type/string diagnostics))
             (coll? expression)
-            (assoc :expression expression)
+            (assoc :expression (mapv type/string expression))
             (and (not (coll? expression))
                  (some? expression))
-            (assoc :expression [expression])))
+            (assoc :expression [(type/string expression)])))
         issues))
 
 (defn- operation-outcome-issue
@@ -75,14 +75,14 @@
       [{:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
         :code (type/code operation-outcome)}]})
     message
-    (assoc :diagnostics message)
+    (assoc :diagnostics (type/string message))
     stacktrace
-    (assoc :diagnostics stacktrace)
+    (assoc :diagnostics (type/string stacktrace))
     (coll? expression)
-    (assoc :expression expression)
+    (assoc :expression (mapv type/string expression))
     (and (not (coll? expression))
          (some? expression))
-    (assoc :expression [expression])))
+    (assoc :expression [(type/string expression)])))
 
 (defn operation-outcome
   "Creates an FHIR OperationOutcome from an anomaly."
@@ -188,7 +188,7 @@
    error
    (fn [{::anom/keys [category] :http/keys [status] :as error}]
      {:fhir/type :fhir.Bundle.entry/response
-      :status (str (or status (category->status category)))
+      :status (type/string (str (or status (category->status category))))
       :outcome (operation-outcome error)})))
 
 (def ^:private not-found-issue
@@ -211,7 +211,7 @@
   {:fhir/type :fhir.OperationOutcome/issue
    :severity #fhir/code"error"
    :code #fhir/code"processing"
-   :diagnostics (method-not-allowed-msg request)})
+   :diagnostics (type/string (method-not-allowed-msg request))})
 
 (defn- method-not-allowed-outcome [request]
   {:fhir/type :fhir/OperationOutcome

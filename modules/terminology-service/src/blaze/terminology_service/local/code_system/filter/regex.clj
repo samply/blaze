@@ -18,7 +18,7 @@
                (and (= property (type/value code))
                     (re-matches pattern (type/value value))))
              properties)))
-        #(assoc % ::anom/message (format "Invalid %s regex filter value `%s` in code system `%s`. Should be a valid regex pattern." property value (type/value url))))
+        #(assoc % ::anom/message (format "Invalid %s regex filter value `%s` in code system `%s`. Should be a valid regex pattern." property (type/value value) (type/value url))))
       (ba/incorrect (format "Missing %s regex filter value in code system `%s`." property (type/value url))))
     (ba/incorrect (format "Missing regex filter property in code system `%s`." (type/value url)))))
 

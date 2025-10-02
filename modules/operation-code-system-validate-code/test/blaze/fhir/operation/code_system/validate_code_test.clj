@@ -83,7 +83,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "Resource `CodeSystem/170852` was not found."))))
+            [:issue 0 :diagnostics] := #fhir/string "Resource `CodeSystem/170852` was not found."))))
 
     (testing "by url"
       (with-handler [handler]
@@ -97,7 +97,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The code system `153404` was not found.")))))
+            [:issue 0 :diagnostics] := #fhir/string "The code system `153404` was not found.")))))
 
   (testing "unsupported parameters"
     (with-handler [handler]
@@ -112,7 +112,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param))))
+              [:issue 0 :diagnostics] := (type/string (format "Unsupported parameter `%s`." param)))))
 
         (testing "POST"
           (let [{:keys [status body]}
@@ -125,7 +125,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param)))))))
+              [:issue 0 :diagnostics] := (type/string (format "Unsupported parameter `%s`." param))))))))
 
   (testing "unsupported GET parameters"
     (with-handler [handler]
@@ -139,7 +139,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-supported"
-            [:issue 0 :diagnostics] := (format "Unsupported parameter `%s` in GET request. Please use POST." param))))))
+            [:issue 0 :diagnostics] := (type/string (format "Unsupported parameter `%s` in GET request. Please use POST." param)))))))
 
   (testing "successful validation by id"
     (with-handler [handler]

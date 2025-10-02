@@ -173,9 +173,9 @@
             (testing "eval"
               (given (core/-eval expr {:db db} nil nil)
                 count := 2
-                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
-                [1 fhir-spec/fhir-type] := :fhir/Patient
+                [1 :fhir/type] := :fhir/Patient
                 [1 :id] := "1"))
 
             (testing "form"
@@ -192,7 +192,7 @@
             (testing "eval"
               (given (core/-eval expr {:db db} nil nil)
                 count := 1
-                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"))
 
             (testing "form"
@@ -218,7 +218,7 @@
               (testing "eval"
                 (given (core/-eval expr {:db db} nil nil)
                   count := 1
-                  [0 fhir-spec/fhir-type] := :fhir/Patient
+                  [0 :fhir/type] := :fhir/Patient
                   [0 :id] := "0"))
 
               (testing "form"
@@ -352,15 +352,15 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Specimen :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/0"}
-               :specimen #fhir/Reference{:reference "Specimen/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/0"}
+               :specimen #fhir/Reference{:reference #fhir/string"Specimen/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [db (d/db node)
             patient (ctu/resource db "Patient" "0")]
@@ -371,14 +371,14 @@
                    [{:type "With"
                      :expression #elm/retrieve{:type "Encounter"}
                      :alias "E"
-                     :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                     :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                            #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}]
 
           (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
             (testing "eval"
               (given (core/-eval expr {:db db} patient nil)
                 count := 1
-                [0 fhir-spec/fhir-type] := :fhir/Observation
+                [0 :fhir/type] := :fhir/Observation
                 [0 :id] := "0"))
 
             (testing "form"
@@ -390,7 +390,7 @@
                       (exists
                        (fn [E]
                          (equal
-                          (:reference (:encounter O))
+                          (call "ToString" (:reference (:encounter O)))
                           (concatenate "Encounter/" (:id E))))
                        (retrieve "Encounter"))))
                    distinct)
@@ -403,7 +403,7 @@
               (testing "eval"
                 (given (core/-eval expr {:db db} patient nil)
                   count := 1
-                  [0 fhir-spec/fhir-type] := :fhir/Observation
+                  [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "0"))
 
               (testing "form"
@@ -414,7 +414,7 @@
                        (exists
                         (fn [E]
                           (equal
-                           (:reference (:encounter O))
+                           (call "ToString" (:reference (:encounter O)))
                            (concatenate "Encounter/" (:id E))))
                         (retrieve "Encounter"))))
                     (retrieve "Observation")))))))
@@ -426,7 +426,7 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
                      :return {:expression #elm/scope-property ["O" "id"]}}]
 
@@ -445,7 +445,7 @@
                         (exists
                          (fn [E]
                            (equal
-                            (:reference (:encounter O))
+                            (call "ToString" (:reference (:encounter O)))
                             (concatenate "Encounter/" (:id E))))
                          (retrieve "Encounter"))))
                      (comp
@@ -472,7 +472,7 @@
                           (exists
                            (fn [E]
                              (equal
-                              (:reference (:encounter O))
+                              (call "ToString" (:reference (:encounter O)))
                               (concatenate "Encounter/" (:id E))))
                            (retrieve "Encounter"))))
                        (map
@@ -486,7 +486,7 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
                      :return {:distinct false :expression #elm/scope-property ["O" "id"]}}
                 expr (c/compile {:node node :eval-context "Patient"} elm)]
@@ -505,7 +505,7 @@
                       (exists
                        (fn [E]
                          (equal
-                          (:reference (:encounter O))
+                          (call "ToString" (:reference (:encounter O)))
                           (concatenate "Encounter/" (:id E))))
                        (retrieve "Encounter"))))
                    (map
@@ -519,7 +519,7 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
                      :where #elm/equal [#elm/string "1" #elm/scope-property ["O" "id"]]}]
 
@@ -538,7 +538,7 @@
                         (exists
                          (fn [E]
                            (equal
-                            (:reference (:encounter O))
+                            (call "ToString" (:reference (:encounter O)))
                             (concatenate "Encounter/" (:id E))))
                          (retrieve "Encounter"))))
                      distinct)
@@ -562,7 +562,7 @@
                           (exists
                            (fn [E]
                              (equal
-                              (:reference (:encounter O))
+                              (call "ToString" (:reference (:encounter O)))
                               (concatenate "Encounter/" (:id E))))
                            (retrieve "Encounter")))))
                       (retrieve "Observation"))))))))
@@ -574,19 +574,19 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}
                       {:type "With"
                        :expression #elm/retrieve{:type "Specimen"}
                        :alias "S"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "specimen"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "specimen"] "reference"]]
                                              #elm/concatenate [#elm/string "Specimen/" #elm/scope-property ["S" "id"]]]}]}]
 
             (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
               (testing "eval"
                 (given (core/-eval expr {:db db} patient nil)
                   count := 1
-                  [0 fhir-spec/fhir-type] := :fhir/Observation
+                  [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "0"))
 
               (testing "form"
@@ -598,7 +598,7 @@
                         (exists
                          (fn [E]
                            (equal
-                            (:reference (:encounter O))
+                            (call "ToString" (:reference (:encounter O)))
                             (concatenate "Encounter/" (:id E))))
                          (retrieve "Encounter"))))
                      (filter
@@ -606,7 +606,7 @@
                         (exists
                          (fn [S]
                            (equal
-                            (:reference (:specimen O))
+                            (call "ToString" (:reference (:specimen O)))
                             (concatenate "Specimen/" (:id S))))
                          (retrieve "Specimen"))))
                      distinct)
@@ -619,7 +619,7 @@
                 (testing "eval"
                   (given (core/-eval expr {:db db} patient nil)
                     count := 1
-                    [0 fhir-spec/fhir-type] := :fhir/Observation
+                    [0 :fhir/type] := :fhir/Observation
                     [0 :id] := "0"))
 
                 (testing "form"
@@ -631,7 +631,7 @@
                           (exists
                            (fn [E]
                              (equal
-                              (:reference (:encounter O))
+                              (call "ToString" (:reference (:encounter O)))
                               (concatenate "Encounter/" (:id E))))
                            (retrieve "Encounter"))))
                        (filter
@@ -639,7 +639,7 @@
                           (exists
                            (fn [S]
                              (equal
-                              (:reference (:specimen O))
+                              (call "ToString" (:reference (:specimen O)))
                               (concatenate "Specimen/" (:id S))))
                            (retrieve "Specimen")))))
                       (retrieve "Observation")))))))))))
@@ -648,12 +648,12 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
       (let [elm {:type "Query"
                  :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
@@ -661,7 +661,7 @@
                  [{:type "Without"
                    :expression #elm/retrieve{:type "Encounter"}
                    :alias "E"
-                   :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                   :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                          #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}
             expr (c/compile {:node node :eval-context "Patient"} elm)
             db (d/db node)
@@ -670,7 +670,7 @@
         (testing "eval"
           (given (core/-eval expr {:db db} patient nil)
             count := 1
-            [0 fhir-spec/fhir-type] := :fhir/Observation
+            [0 :fhir/type] := :fhir/Observation
             [0 :id] := "1"))
 
         (testing "form"
@@ -682,7 +682,7 @@
                   (not-exists
                    (fn [E]
                      (equal
-                      (:reference (:encounter O))
+                      (call "ToString" (:reference (:encounter O)))
                       (concatenate "Encounter/" (:id E))))
                    (retrieve "Encounter"))))
                distinct)
@@ -693,11 +693,11 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2025-05-15"}}]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-15"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2025-05-16"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string"Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-16"}}]]]
 
         (let [elm {:type "Query"
                    :source
@@ -727,17 +727,17 @@
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/0"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/1"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/0"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string"Medication/1"}
+             :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
       [:put {:fhir/type :fhir/Medication :id "0"}]
       [:put {:fhir/type :fhir/Medication :id "1"}]]]
 

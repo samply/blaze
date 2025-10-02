@@ -81,7 +81,7 @@
         [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
         [:issue 0 :severity] := #fhir/code"error"
         [:issue 0 :code] := #fhir/code"invalid"
-        [:issue 0 :expression] := ["expr-082940"]))
+        [:issue 0 :expression] := [#fhir/string "expr-082940"]))
 
     (testing "with multiple expressions"
       (given (handler-util/operation-outcome
@@ -92,7 +92,7 @@
         [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
         [:issue 0 :severity] := #fhir/code"error"
         [:issue 0 :code] := #fhir/code"invalid"
-        [:issue 0 :expression] := ["expr-082940" "expr-083056"])))
+        [:issue 0 :expression] := [#fhir/string "expr-082940" #fhir/string "expr-083056"])))
 
   (testing "multiple issues"
     (given (handler-util/operation-outcome
@@ -106,11 +106,11 @@
       [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
       [:issue 0 :severity] := #fhir/code"error"
       [:issue 0 :code] := #fhir/code"invariant"
-      [:issue 0 :expression] := ["expr-082940"]
+      [:issue 0 :expression] := [#fhir/string "expr-082940"]
       [:issue 1 :fhir/type] := :fhir.OperationOutcome/issue
       [:issue 1 :severity] := #fhir/code"error"
       [:issue 1 :code] := #fhir/code"exception"
-      [:issue 1 :expression] := ["expr-082940" "expr-083056"])))
+      [:issue 1 :expression] := [#fhir/string "expr-082940" #fhir/string "expr-083056"])))
 
 (deftest error-response-test
   (testing "fault anomaly"
@@ -141,7 +141,7 @@
   (testing "fault anomaly"
     (given (handler-util/bundle-error-response {::anom/category ::anom/fault})
       :fhir/type := :fhir.Bundle.entry/response
-      :status := "500"
+      :status := #fhir/string "500"
       [:outcome :fhir/type] := :fhir/OperationOutcome
       [:outcome :issue 0 :fhir/type] := :fhir.OperationOutcome/issue
       [:outcome :issue 0 :severity] := #fhir/code"error"
@@ -161,7 +161,7 @@
     [:body :fhir/type] := :fhir/OperationOutcome
     [:body :issue 0 :severity] := #fhir/code"error"
     [:body :issue 0 :code] := #fhir/code"processing"
-    [:body :issue 0 :diagnostics] := "Method PUT not allowed on `/Patient` endpoint."))
+    [:body :issue 0 :diagnostics] := #fhir/string "Method PUT not allowed on `/Patient` endpoint."))
 
 (deftest method-not-allowed-batch-handler-test
   (given-failed-future (handler-util/method-not-allowed-batch-handler

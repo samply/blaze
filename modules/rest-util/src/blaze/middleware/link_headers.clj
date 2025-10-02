@@ -7,7 +7,7 @@
    [blaze.util :refer [str]]
    [clojure.string :as str]))
 
-(defn- link-header-value [{:keys [relation url]}]
+(defn- link-header-value [{{relation :value} :relation {url :value} :url}]
   (str "<" url ">;rel=\"" relation "\""))
 
 (defn- add-link-header [response links]

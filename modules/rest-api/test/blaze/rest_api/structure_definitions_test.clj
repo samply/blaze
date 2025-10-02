@@ -13,6 +13,7 @@
    [taoensso.timbre :as log]))
 
 (st/instrument)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -25,7 +26,6 @@
    :blaze.test/incrementing-rng-fn {}))
 
 (deftest ensure-structure-definitions-test
-  (log/set-min-level! :info)
   (with-system [{:blaze.db/keys [node]
                  parsing-context [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
                  :blaze.test/keys [fixed-clock incrementing-rng-fn]} config]

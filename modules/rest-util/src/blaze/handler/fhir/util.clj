@@ -17,7 +17,7 @@
    [cognitect.anomalies :as anom]
    [reitit.core :as reitit])
   (:import
-   [java.time Instant ZoneId ZonedDateTime]
+   [java.time OffsetDateTime ZoneId ZonedDateTime]
    [java.time.format DateTimeFormatter]
    [java.util.concurrent TimeUnit]))
 
@@ -254,9 +254,9 @@
     return-preference :blaze.preference/return
     :or {context-path ""}}
    {{:keys [method url]
-     if-none-match :ifNoneMatch
-     if-match :ifMatch
-     if-none-exist :ifNoneExist
+     {if-none-match :value} :ifNoneMatch
+     {if-match :value} :ifMatch
+     {if-none-exist :value} :ifNoneExist
      :as request}
     :request :keys [resource]}]
   (let [url (-> url type/value u/strip-leading-slashes)
@@ -298,7 +298,7 @@
 (defn- convert-http-date
   "Converts string `s` representing an HTTP date into a FHIR instant."
   [s]
-  (Instant/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)))
+  (type/instant (OffsetDateTime/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s))))
 
 (defn- bundle-response
   {:arglists '([ring-response])}
@@ -312,13 +312,13 @@
     :response
     (cond->
      {:fhir/type :fhir.Bundle.entry/response
-      :status (str status)}
+      :status (type/string (str status))}
 
       location
       (assoc :location (type/uri location))
 
       etag
-      (assoc :etag etag)
+      (assoc :etag (type/string etag))
 
       last-modified
       (assoc :lastModified (convert-http-date last-modified)))}
@@ -330,7 +330,7 @@
   {:fhir/type :fhir.Bundle/entry :response response})
 
 (defn- with-entry-location* [issues idx]
-  (mapv #(assoc % :expression [(format "Bundle.entry[%d]" idx)]) issues))
+  (mapv #(assoc % :expression [(type/string (format "Bundle.entry[%d]" idx))]) issues))
 
 (defn- with-entry-location [outcome idx]
   (update outcome :issue with-entry-location* idx))

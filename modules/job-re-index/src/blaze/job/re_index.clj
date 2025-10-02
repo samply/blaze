@@ -12,7 +12,9 @@
    [clojure.string :as str]
    [integrant.core :as ig]
    [java-time.api :as time]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.time ZoneOffset]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +29,7 @@
 
 (def ^:private initial-duration
   #fhir/Quantity
-   {:value #fhir/decimal 0
+   {:value #fhir/decimal 0M
     :unit #fhir/string"s"
     :system #fhir/uri"http://unitsofmeasure.org"
     :code #fhir/code"s"})
@@ -61,7 +63,7 @@
 
 (defn- set-next [job {:fhir/keys [type] :keys [id]}]
   (if type
-    (add-output job "next-resource" (str (name type) "/" id))
+    (add-output job "next-resource" (type/string (str (name type) "/" id)))
     (job-util/remove-output job output-system "next-resource")))
 
 (defn- increment-job [job {:keys [num-resources duration next]}]
@@ -76,15 +78,16 @@
       (dissoc :statusReason)))
 
 (defn- search-param-url [job]
-  (some-> (job-util/input-value job parameter-system "search-param-url")
-          type/value))
+  (-> (job-util/input-value job parameter-system "search-param-url") :value))
 
 (defn- next-resource [job]
-  (some-> (job-util/output-value job output-system "next-resource")
-          type/value))
+  (-> (job-util/output-value job output-system "next-resource") :value))
+
+(defn- instant [clock]
+  (.atOffset (time/instant clock) ZoneOffset/UTC))
 
 (defn- elapsed [clock job]
-  (-> (time/duration (-> job :meta :lastUpdated) (time/instant clock))
+  (-> (time/duration (-> job :meta :lastUpdated :value) (instant clock))
       (time/as :seconds)))
 
 (defn- update-job [{:keys [admin-node clock]} job {:keys [next] :as result}]

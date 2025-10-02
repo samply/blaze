@@ -16,6 +16,7 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
@@ -36,8 +37,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-;; trace is just to violent for this test
-(log/set-min-level! :debug)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -284,7 +284,7 @@
   (output-value job "processing-duration"))
 
 (defn- next-resource [job]
-  (output-value job "next-resource"))
+  (:value (output-value job "next-resource")))
 
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))
@@ -313,7 +313,8 @@
             jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
-            [processing-duration :value] :? pos?
+            [processing-duration :value type/type] := :fhir/decimal
+            [processing-duration :value :value] :? pos?
             [processing-duration :unit] := #fhir/string"s"
             [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code"s"
@@ -360,7 +361,8 @@
             jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
-            [processing-duration :value] :? pos?
+            [processing-duration :value type/type] := :fhir/decimal
+            [processing-duration :value :value] :? pos?
             [processing-duration :unit] := #fhir/string"s"
             [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code"s"))
@@ -507,7 +509,8 @@
           jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value] :? pos?
+          [processing-duration :value type/type] := :fhir/decimal
+          [processing-duration :value :value] :? pos?
           [processing-duration :unit] := #fhir/string"s"
           [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code"s"))
@@ -559,7 +562,8 @@
           jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value] :? pos?
+          [processing-duration :value type/type] := :fhir/decimal
+          [processing-duration :value :value] :? pos?
           [processing-duration :unit] := #fhir/string"s"
           [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code"s"))

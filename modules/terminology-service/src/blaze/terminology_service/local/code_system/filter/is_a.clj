@@ -15,20 +15,20 @@
     (graph/is-a graph value)))
 
 (defmethod core/filter-concepts :is-a
-  [{:keys [url] :as code-system} {:keys [property value]}]
+  [{{url :value} :url :as code-system} {:keys [property value]}]
   (condp = (type/value property)
     "concept" (expand-filter code-system (type/value value))
     nil (ba/incorrect (format "Missing is-a filter property in code system `%s`." url))
     (ba/unsupported (format "Unsupported is-a filter property `%s` in code system `%s`." (type/value property) url))))
 
 (defn- find-filter
-  [{:keys [url] :default/keys [graph]} value code]
+  [{{url :value} :url :default/keys [graph]} value code]
   (if (nil? value)
-    (ba/incorrect (format "Missing concept is-a filter value in code system `%s`." (type/value url)))
+    (ba/incorrect (format "Missing concept is-a filter value in code system `%s`." url))
     (graph/find-is-a graph value code)))
 
 (defmethod core/find-concept :is-a
-  [{:keys [url] :as code-system} {:keys [property value]} code]
+  [{{url :value} :url :as code-system} {:keys [property value]} code]
   (condp = (type/value property)
     "concept" (find-filter code-system (type/value value) code)
     nil (ba/incorrect (format "Missing is-a filter property in code system `%s`." url))

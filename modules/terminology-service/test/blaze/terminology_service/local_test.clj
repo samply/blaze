@@ -475,7 +475,7 @@
 
     (testing "unsupported param"
       (given-failed-future (code-system-validate-code ts
-                             "date" #fhir/dateTime"2025")
+                             "date" #fhir/dateTime #system/date-time "2025")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `date`."))
 
@@ -509,6 +509,28 @@
             ::anom/message := (format "Can't use the code system `system-115910` because it's content is not one of complete, fragment. It's content is `%s`." content)))))))
 
 (deftest code-system-validate-code-test
+  (testing "status property with type Coding doesn't crash"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-154735"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem.concept/property
+                   :code #fhir/code"status"
+                   :value
+                   #fhir/Coding
+                    {:system #fhir/uri"http://devices.fhir.org/CodeSystem/MDC-concept-status",
+                     :code #fhir/code"published"}}]}]}]]]
+
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"system-115910"
+                "code" #fhir/code"code-154735")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true)))
+
   (testing "with url"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -1318,7 +1340,7 @@
 
     (testing "unsupported param"
       (given-failed-future (expand-value-set ts
-                             "date" #fhir/dateTime"2025")
+                             "date" #fhir/dateTime #system/date-time "2025")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `date`."))
 
@@ -1524,7 +1546,7 @@
                   :include
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-115910"
-                    :version "version-093818"}]}}]]]
+                    :version #fhir/string "version-093818"}]}}]]]
 
         (given-failed-future (expand-value-set ts
                                "url" #fhir/uri"value-set-135750")
@@ -1541,7 +1563,7 @@
                     :include
                     [{:fhir/type :fhir.ValueSet.compose/include
                       :system #fhir/uri"system-115910"
-                      :version "*"}]}}]]]
+                      :version #fhir/string "*"}]}}]]]
 
           (given-failed-future (expand-value-set ts
                                  "url" #fhir/uri"value-set-135750")
@@ -1677,7 +1699,7 @@
                :expansion
                {:fhir/type :fhir.ValueSet/expansion
                 :identifier #fhir/uri"urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
-                :timestamp #fhir/dateTime"1970-01-01T00:00:00Z"
+                :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
                 :contains
                 [{:fhir/type :fhir.ValueSet.expansion/contains
                   :system #fhir/uri"system-115910"
@@ -1715,7 +1737,7 @@
 
         (given @(expand-value-set ts
                   "url" #fhir/uri"value-set-135750"
-                  "unknown-parameter" "is-ignored")
+                  "unknown-parameter" #fhir/string "is-ignored")
           :fhir/type := :fhir/ValueSet
           [:expansion :parameter count] := 1
           [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-115910"
@@ -1778,8 +1800,8 @@
 
           (given @(expand-value-set ts
                     "url" #fhir/uri"value-set-135750"
-                    "property" "status"
-                    "property" "property-034158")
+                    "property" #fhir/string "status"
+                    "property" #fhir/string "property-034158")
             :fhir/type := :fhir/ValueSet
             [:expansion :property count] := 2
             [:expansion :property 0 :code] := #fhir/code"status"
@@ -1813,7 +1835,7 @@
 
             (given @(expand-value-set ts
                       "url" #fhir/uri"value-set-135750"
-                      "property" "definition")
+                      "property" #fhir/string "definition")
               :fhir/type := :fhir/ValueSet
               [:expansion :property count] := 1
               [:expansion :property 0 :code] := #fhir/code"definition"
@@ -1830,21 +1852,21 @@
           (with-system-data [{ts ::ts/local} config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                      :url #fhir/uri"system-115910"
-                     :version "1.0.0"
+                     :version #fhir/string "1.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-115927"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "1"
                      :url #fhir/uri"system-115910"
-                     :version "2.0.0"
+                     :version #fhir/string "2.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-092722"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "2"
                      :url #fhir/uri"system-115910"
-                     :version "3.0.0"
+                     :version #fhir/string "3.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
@@ -1856,7 +1878,7 @@
                       :include
                       [{:fhir/type :fhir.ValueSet.compose/include
                         :system #fhir/uri"system-115910"
-                        :version "2.0.0"}]}}]]]
+                        :version #fhir/string "2.0.0"}]}}]]]
 
             (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
               :fhir/type := :fhir/ValueSet
@@ -1870,21 +1892,21 @@
           (with-system-data [{ts ::ts/local} config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                      :url #fhir/uri"system-115910"
-                     :version "1.0.0"
+                     :version #fhir/string "1.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-115927"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "1"
                      :url #fhir/uri"system-115910"
-                     :version "2.0.0"
+                     :version #fhir/string "2.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-092722"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "2"
                      :url #fhir/uri"system-115910"
-                     :version "3.0.0"
+                     :version #fhir/string "3.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
@@ -1909,21 +1931,21 @@
           (with-system-data [{ts ::ts/local} config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                      :url #fhir/uri"system-115910"
-                     :version "1.0.0"
+                     :version #fhir/string "1.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-115927"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "1"
                      :url #fhir/uri"system-115910"
-                     :version "2.0.0"
+                     :version #fhir/string "2.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-092722"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "2"
                      :url #fhir/uri"system-115910"
-                     :version "3.0.0"
+                     :version #fhir/string "3.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
@@ -2260,8 +2282,8 @@
 
         (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
           :fhir/type := :fhir/ValueSet
-          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-180814"
-          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-115910"
+          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-115910"
+          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-180814"
           [:expansion :contains count] := 2
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
           [:expansion :contains 0 :code] := #fhir/code"code-115927"
@@ -2300,8 +2322,8 @@
 
         (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
           :fhir/type := :fhir/ValueSet
-          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-180814"
-          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-115910"
+          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-115910"
+          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-180814"
           [:expansion :contains count] := 4
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
           [:expansion :contains 0 :code] := #fhir/code"code-115927"
@@ -2352,8 +2374,8 @@
 
           (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
             :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-180814"
-            [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-115910"
+            [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-115910"
+            [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-180814"
             [:expansion :contains count] := 3
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
             [:expansion :contains 0 :code] := #fhir/code"code-115927"
@@ -2674,7 +2696,7 @@
                  :expansion
                  {:fhir/type :fhir.ValueSet/expansion
                   :identifier #fhir/uri"urn:uuid:78653bd7-1b0a-4c9c-afa7-0d5ccf8c6a71"
-                  :timestamp #fhir/dateTime"1970-01-01T00:00:00Z"
+                  :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
                   :contains
                   [{:fhir/type :fhir.ValueSet.expansion/contains
                     :system #fhir/uri"system-180814"
@@ -3442,9 +3464,9 @@
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 2
         [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-        [:expansion :contains 0 :code] := #fhir/code"code-145731"
+        [:expansion :contains 0 :code] := #fhir/code"code-145708"
         [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-        [:expansion :contains 1 :code] := #fhir/code"code-145708"))))
+        [:expansion :contains 1 :code] := #fhir/code"code-145731"))))
 
 (deftest expand-value-set-include-filter-multiple-test
   (testing "is-a and exists (and the other way around)"
@@ -5092,7 +5114,7 @@
         :meta := nil
         :url := #fhir/uri"value-set-135750"
         :compose := nil
-        [:expansion :timestamp] := #fhir/dateTime"1970-01-01T00:00:00Z"
+        [:expansion :timestamp] := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
         [:expansion :identifier type/value] :? uuid-urn?
         [:expansion :total] := #fhir/integer 1
         [:expansion :contains count] := 1
@@ -5124,7 +5146,7 @@
         :meta := nil
         :url := #fhir/uri"value-set-135750"
         [:compose :include 0 :system] := #fhir/uri"system-115910"
-        [:expansion :timestamp] := #fhir/dateTime"1970-01-01T00:00:00Z"
+        [:expansion :timestamp] := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
         [:expansion :identifier type/value] :? uuid-urn?
         [:expansion :total] := #fhir/integer 1
         [:expansion :contains count] := 1
@@ -5258,7 +5280,7 @@
                 "valueSet" {:fhir/type :fhir/ValueSet})
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := "Missing one of the parameters `code`, `coding` or `codeableConcept`."))
+        [(parameter "message") 0 :value] := #fhir/string "Missing one of the parameters `code`, `coding` or `codeableConcept`."))
 
     (testing "missing system"
       (given @(value-set-validate-code ts
@@ -5266,7 +5288,7 @@
                 "code" #fhir/code"code-211233")
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := "Missing required parameter `system`."))
+        [(parameter "message") 0 :value] := #fhir/string "Missing required parameter `system`."))
 
     (testing "incomplete coding"
       (given @(value-set-validate-code ts
@@ -5274,7 +5296,7 @@
                 "coding" #fhir/Coding{})
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := "Missing required parameter `coding.code`."))
+        [(parameter "message") 0 :value] := #fhir/string "Missing required parameter `coding.code`."))
 
     (testing "incomplete codeableConcept"
       (given @(value-set-validate-code ts
@@ -5282,7 +5304,7 @@
                 "codeableConcept" #fhir/CodeableConcept{})
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := "Incorrect parameter `codeableConcept` with no coding.")
+        [(parameter "message") 0 :value] := #fhir/string "Incorrect parameter `codeableConcept` with no coding.")
 
       (given @(value-set-validate-code ts
                 "valueSet" {:fhir/type :fhir/ValueSet}
@@ -5290,7 +5312,7 @@
                 #fhir/CodeableConcept{:coding [#fhir/Coding{}]})
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := "Missing required parameter `coding.code`."))
+        [(parameter "message") 0 :value] := #fhir/string "Missing required parameter `coding.code`."))
 
     (testing "codeableConcept with two codings"
       (given @(value-set-validate-code ts
@@ -5301,7 +5323,7 @@
                            #fhir/Coding{}]})
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := "Unsupported parameter `codeableConcept` with more than one coding."))
+        [(parameter "message") 0 :value] := #fhir/string "Unsupported parameter `codeableConcept` with more than one coding."))
 
     (testing "both url and valueSet parameters"
       (given-failed-future (value-set-validate-code ts
@@ -5312,7 +5334,7 @@
 
     (testing "unsupported param"
       (given-failed-future (value-set-validate-code ts
-                             "date" #fhir/dateTime"2025")
+                             "date" #fhir/dateTime #system/date-time "2025")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `date`."))
 
@@ -5545,7 +5567,7 @@
                 :include
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-182822"
-                  :version "*"}]}}]]]
+                  :version #fhir/string "*"}]}}]]]
 
       (given @(value-set-validate-code ts
                 "url" #fhir/uri"value-set-105710"
@@ -5588,21 +5610,21 @@
           (with-system-data [{ts ::ts/local} config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                      :url #fhir/uri"system-115910"
-                     :version "1.0.0"
+                     :version #fhir/string "1.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-115927"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "1"
                      :url #fhir/uri"system-115910"
-                     :version "2.0.0"
+                     :version #fhir/string "2.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-092722"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "2"
                      :url #fhir/uri"system-115910"
-                     :version "3.0.0"
+                     :version #fhir/string "3.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
@@ -5614,7 +5636,7 @@
                       :include
                       [{:fhir/type :fhir.ValueSet.compose/include
                         :system #fhir/uri"system-115910"
-                        :version "2.0.0"}]}}]]]
+                        :version #fhir/string "2.0.0"}]}}]]]
 
             (given @(value-set-validate-code ts
                       "url" #fhir/uri"value-set-135750"
@@ -5629,21 +5651,21 @@
           (with-system-data [{ts ::ts/local} config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                      :url #fhir/uri"system-115910"
-                     :version "1.0.0"
+                     :version #fhir/string "1.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-115927"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "1"
                      :url #fhir/uri"system-115910"
-                     :version "2.0.0"
+                     :version #fhir/string "2.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-092722"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "2"
                      :url #fhir/uri"system-115910"
-                     :version "3.0.0"
+                     :version #fhir/string "3.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
@@ -5669,21 +5691,21 @@
           (with-system-data [{ts ::ts/local} config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                      :url #fhir/uri"system-115910"
-                     :version "1.0.0"
+                     :version #fhir/string "1.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-115927"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "1"
                      :url #fhir/uri"system-115910"
-                     :version "2.0.0"
+                     :version #fhir/string "2.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept
                        :code #fhir/code"code-092722"}]}]
               [:put {:fhir/type :fhir/CodeSystem :id "2"
                      :url #fhir/uri"system-115910"
-                     :version "3.0.0"
+                     :version #fhir/string "3.0.0"
                      :content #fhir/code"complete"
                      :concept
                      [{:fhir/type :fhir.CodeSystem/concept

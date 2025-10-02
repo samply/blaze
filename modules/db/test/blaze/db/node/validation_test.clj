@@ -14,11 +14,11 @@
 
 (deftest validate-ops-test
   (testing "single keep"
-    (is (nil? (validation/validate-ops [[:keep "Patient" "0" #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"]]))))
+    (is (nil? (validation/validate-ops [[:keep "Patient" "0" #blaze/hash"37F2FC44C33CBF31C23E78F12A58D42985E86B39767C020F811212FD07946850"]]))))
 
   (testing "duplicate keep"
-    (given (validation/validate-ops [[:keep "Patient" "0" #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"]
-                                     [:keep "Patient" "0" #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"]])
+    (given (validation/validate-ops [[:keep "Patient" "0" #blaze/hash"37F2FC44C33CBF31C23E78F12A58D42985E86B39767C020F811212FD07946850"]
+                                     [:keep "Patient" "0" #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470"]])
       ::anom/category := ::anom/incorrect
       :cognitect.anomalies/message := "Duplicate resource `Patient/0`.",
       :fhir/issue := "invariant"))
@@ -34,7 +34,7 @@
       :fhir/issue := "invariant"))
 
   (testing "duplicate keep/delete"
-    (given (validation/validate-ops [[:keep "Patient" "0" #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"]
+    (given (validation/validate-ops [[:keep "Patient" "0" #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470"]
                                      [:delete "Patient" "0"]])
       ::anom/category := ::anom/incorrect
       :cognitect.anomalies/message := "Duplicate resource `Patient/0`.",

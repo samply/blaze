@@ -691,7 +691,7 @@
                            [#fhir/Coding
                              {:system #fhir/uri"system-192253"
                               :code #fhir/code"code-192300"}]}
-                         :subject (type/reference {:reference (str "Patient/" pat-id)})}]))
+                         :subject (type/reference {:reference (type/string (str "Patient/" pat-id))})}]))
            (range 120)))
         (mapv (range 100)))
 
@@ -729,7 +729,7 @@
              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code"re-index"
               :display #fhir/string"(Re)Index a Search Parameter"}]}
-   :authoredOn #fhir/dateTime"2024-04-13T10:05:20.927Z"
+   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
@@ -750,7 +750,7 @@
              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code"compact"
               :display #fhir/string"Compact a Database Column Family"}]}
-   :authoredOn #fhir/dateTime"2024-04-13T10:05:20.927Z"
+   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
@@ -850,7 +850,7 @@
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (json-writer (update-in re-index-job [:code :coding 0] merge {:code #fhir/code"compact" :display "Compact a Database Column Family"}))})]
+               :body (json-writer (update-in re-index-job [:code :coding 0] merge {:code #fhir/code"compact" :display #fhir/string "Compact a Database Column Family"}))})]
 
         (is (= 400 status))
 

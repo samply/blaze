@@ -83,7 +83,7 @@
   (is (= (job-util/output-value
           {:fhir/type :fhir/Task
            :output
-           [(job-util/task-output "foo" "other" "other")
+           [(job-util/task-output "foo" "other" #fhir/string"other")
             (job-util/task-output "foo" "bar" #fhir/code"baz")]}
           "foo" "bar")
          #fhir/code"baz"))
@@ -92,7 +92,7 @@
     (is (= (job-util/output-value
             {:fhir/type :fhir/Task
              :output
-             [(job-util/task-output "foo" "other" "other")
+             [(job-util/task-output "foo" "other" #fhir/string"other")
               (job-util/task-output "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput" "bar" #fhir/code"baz")]}
             "bar")
            #fhir/code"baz"))))
@@ -101,14 +101,14 @@
   (is (= (job-util/error-msg
           {:fhir/type :fhir/Task
            :output
-           [(job-util/task-output "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput" "error" "msg-175657")]})
+           [(job-util/task-output "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput" "error" #fhir/string"msg-175657")]})
          "msg-175657")))
 
 (deftest update-output-value-test
   (is (= (job-util/update-output-value
           {:fhir/type :fhir/Task
            :output
-           [(job-util/task-output "foo" "other" "other")
+           [(job-util/task-output "foo" "other" #fhir/string"other")
             (job-util/task-output "foo" "bar" #fhir/integer 1)]}
           "foo" "bar"
           (fn [value x]
@@ -116,19 +116,19 @@
           1)
          {:fhir/type :fhir/Task
           :output
-          [(job-util/task-output "foo" "other" "other")
+          [(job-util/task-output "foo" "other" #fhir/string"other")
            (job-util/task-output "foo" "bar" #fhir/integer 2)]})))
 
 (deftest remove-output-test
   (is (= (job-util/remove-output
           {:fhir/type :fhir/Task
            :output
-           [(job-util/task-output "foo" "other" "other")
+           [(job-util/task-output "foo" "other" #fhir/string"other")
             (job-util/task-output "foo" "bar" #fhir/integer 1)]}
           "foo" "bar")
          {:fhir/type :fhir/Task
           :output
-          [(job-util/task-output "foo" "other" "other")]})))
+          [(job-util/task-output "foo" "other" #fhir/string"other")]})))
 
 (defn- start-job [job]
   (assoc job :status #fhir/code"in-progress"))
@@ -233,4 +233,4 @@
 (deftest fail-job-test
   (testing "without message"
     (given (job-util/fail-job {:fhir/type :fhir/Task} (ba/fault))
-      #(job-util/output-value % "error") := "empty error message")))
+      job-util/error-msg := "empty error message")))

@@ -91,5 +91,5 @@
     [:class "CYTO"] := "LP7789-3"
 
     ;; Answer List Value Sets
-    [:value-sets "LL4049-4" :title] := "Medication usage suggestion"
+    [:value-sets "LL4049-4" :title] := #fhir/string "Medication usage suggestion"
     [:value-set-concepts "LL4049-4" 0 :code] := #fhir/code"LA26421-0"))

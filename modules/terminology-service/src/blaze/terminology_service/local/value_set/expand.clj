@@ -48,11 +48,9 @@
    :name #fhir/string"version"
    :value (type/uri (str url "|" version))})
 
-(defn- code-system-parameters [{:keys [url version]}]
-  (let [url (type/value url)
-        version (type/value version)]
-    (cond-> #{(used-codesystem-parameter url version)}
-      version (conj (version-parameter url version)))))
+(defn- code-system-parameters [{{url :value} :url {version :value} :version}]
+  (cond-> #{(used-codesystem-parameter url version)}
+    version (conj (version-parameter url version))))
 
 (defn- include-system
   [{:keys [params] :as context} {concepts :concept filters :filter :as include}]
@@ -135,8 +133,8 @@
   (cond->
    {:fhir/type :fhir.ValueSet/expansion
     :identifier (type/uri (str "urn:uuid:" (random-uuid)))
-    :timestamp (time/offset-date-time clock)
-    :total (clojure.core/count concepts)
+    :timestamp (type/dateTime (time/offset-date-time clock))
+    :total (type/integer (clojure.core/count concepts))
     :parameter (append-params parameters params)}
     (seq properties) (assoc :property (append-properties properties))
     (nil? count) (assoc :contains concepts)
@@ -145,7 +143,7 @@
 (defn- expand-value-set**
   [{{:keys [include-definition] :or {include-definition false}} :params
     :as context}
-   {{:keys [inactive] includes :include excludes :exclude} :compose :as value-set}]
+   {{{inactive :value} :inactive includes :include excludes :exclude} :compose :as value-set}]
   (let [new-context (update-in context [:params :active-only] #(or % (false? inactive)))
         includes (expand-includes new-context includes)
         excludes (expand-includes new-context excludes)]
@@ -160,7 +158,7 @@
           (expansion context (vec (:parameter includes)) concepts))
           (not include-definition) (dissoc :compose))))))
 
-(defn- expand-value-set-msg [{:keys [url]}]
+(defn- expand-value-set-msg [{{url :value} :url}]
   (if url
     (format "Error while expanding the value set `%s`. " url)
     "Error while expanding the provided value set. "))

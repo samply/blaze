@@ -37,7 +37,7 @@
                  [(g-tu/extension-link-source-id :value #fhir/id"patient")
                   (g-tu/extension-link-target-id :value #fhir/id"observation")
                   (g-tu/extension-link-params :value #fhir/string"patient={ref}")]
-                 :path "encounter"}]})
+                 :path #fhir/string "encounter"}]})
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid link with path and params."))
 
@@ -106,7 +106,7 @@
                :extension
                [(g-tu/extension-link-source-id :value #fhir/id"observation")
                 (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-               :path "encounter"}]})
+               :path #fhir/string "encounter"}]})
       :start-node-id := "patient"
       [:nodes "patient"] := {:id "patient", :type "Patient"}
       [:nodes "observation"] := {:id "observation", :type "Observation"}

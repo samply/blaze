@@ -17,9 +17,7 @@
    [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -70,7 +68,7 @@
           :fhir/type := :fhir/Patient
           :id := "0"
           [:meta :versionId] := #fhir/id"1"
-          [:meta :lastUpdated] := Instant/EPOCH)))
+          [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))
 
     (testing "deleted version"
       (let [{:keys [status headers body]}
@@ -89,7 +87,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"deleted"
-          [:issue 0 :diagnostics] := "Resource `Patient/0` was deleted in version `2`.")))
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` was deleted in version `2`.")))
 
     (testing "non existing version"
       (let [{:keys [status headers body]}
@@ -110,7 +108,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `Patient/0` with version `3` was not found.")))
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` with version `3` was not found.")))
 
     (testing "invalid version"
       (let [{:keys [status headers body]}
@@ -131,12 +129,12 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `Patient/0` with the given version was not found."))))
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` with the given version was not found."))))
 
   (testing "with deleted history"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
        [[:delete-history "Patient" "0"]]]
 
       (testing "initial version doesn't exist anymore"
@@ -155,7 +153,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "Resource `Patient/0` with version `1` was not found.")))
+            [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` with version `1` was not found.")))
 
       (testing "current version still exists"
         (let [{:keys [status headers body]}
@@ -173,7 +171,7 @@
           (given body
             :fhir/type := :fhir/Patient
             :id := "0"
-            :active := true)))
+            :active := #fhir/boolean true)))
 
       (testing "version 3 doesn't exist"
         (let [{:keys [status headers body]}
@@ -191,4 +189,4 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "Resource `Patient/0` with version `3` was not found."))))))
+            [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` with version `3` was not found."))))))

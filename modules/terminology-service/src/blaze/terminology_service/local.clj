@@ -151,7 +151,7 @@
 (defn- expand-vs-more
   [{:keys [url value-set offset] :as params}]
   (cond
-    (when-let [offset (type/value offset)] (not= 0 offset))
+    (and (some? offset) (not= 0 offset))
     (ba/incorrect "Invalid non-zero value for parameter `offset`.")
 
     (and url value-set)

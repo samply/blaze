@@ -28,9 +28,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -122,7 +120,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Missing HTTP body.")))))
+              [:issue 0 :diagnostics] := #fhir/string "Missing HTTP body.")))))
 
     (testing "type mismatch"
       (with-handler [handler]
@@ -141,7 +139,7 @@
               [:issue 0 :code] := #fhir/code"invariant"
               [:issue 0 :details :coding 0 :system] := operation-outcome
               [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
-              [:issue 0 :diagnostics] := "Invalid update interaction of a Observation at a Patient endpoint.")))))
+              [:issue 0 :diagnostics] := #fhir/string "Invalid update interaction of a Observation at a Patient endpoint.")))))
 
     (testing "missing id"
       (with-handler [handler]
@@ -160,7 +158,7 @@
               [:issue 0 :code] := #fhir/code"required"
               [:issue 0 :details :coding 0 :system] := operation-outcome
               [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISSING"
-              [:issue 0 :diagnostics] := "Missing resource id.")))))
+              [:issue 0 :diagnostics] := #fhir/string "Missing resource id.")))))
 
     (testing "subsetted"
       (with-handler [handler]
@@ -169,7 +167,7 @@
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
                  :body {:fhir/type :fhir/Patient :id "0"
-                        :meta (type/map->Meta {:tag [fu/subsetted]})}})]
+                        :meta (type/meta {:tag [fu/subsetted]})}})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -178,7 +176,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"processing"
-              [:issue 0 :diagnostics] := "Resources with tag SUBSETTED may be incomplete and so can't be used in updates.")))))
+              [:issue 0 :diagnostics] := #fhir/string "Resources with tag SUBSETTED may be incomplete and so can't be used in updates.")))))
 
     (testing "ID mismatch"
       (with-handler [handler]
@@ -197,7 +195,7 @@
               [:issue 0 :code] := #fhir/code"invariant"
               [:issue 0 :details :coding 0 :system] := operation-outcome
               [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISMATCH"
-              [:issue 0 :diagnostics] := "The resource id `1` doesn't match the endpoints id `0`.")))))
+              [:issue 0 :diagnostics] := #fhir/string "The resource id `1` doesn't match the endpoints id `0`.")))))
 
     (testing "arbitrary If-Match header fails"
       (with-handler [handler]
@@ -235,7 +233,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))))
+                [:issue 0 :diagnostics] := #fhir/string "Precondition `W/\"1\"` failed on `Patient/0`.")))))
 
       (testing "with identical content"
         (with-handler [handler]
@@ -259,7 +257,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."))))
+                [:issue 0 :diagnostics] := #fhir/string "Precondition `W/\"1\"` failed on `Patient/0`."))))
 
         (testing "and content changing transaction in between"
           (with-redefs [kv/put!
@@ -290,7 +288,7 @@
                     :fhir/type := :fhir/OperationOutcome
                     [:issue 0 :severity] := #fhir/code"error"
                     [:issue 0 :code] := #fhir/code"conflict"
-                    [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))
+                    [:issue 0 :diagnostics] := #fhir/string "Precondition `W/\"1\"` failed on `Patient/0`.")))
 
               (testing "we did not retry to the error transaction is 3"
                 (is (= 3 (:error-t @(:state node))))))))))
@@ -302,7 +300,7 @@
                 {:path-params {:id "0"}
                  ::reitit/match observation-match
                  :body {:fhir/type :fhir/Observation :id "0"
-                        :subject #fhir/Reference{:reference "Patient/0"}}})]
+                        :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}})]
 
           (testing "returns error"
             (is (= 409 status))
@@ -311,7 +309,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"conflict"
-              [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
+              [:issue 0 :diagnostics] := #fhir/string "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
 
   (testing "missing resource content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
@@ -328,7 +326,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"incomplete"
-            [:issue 0 :diagnostics] := "The resource `Patient/0` was successfully updated but it's content with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found during response creation.")))))
+            [:issue 0 :diagnostics] := #fhir/string "The resource `Patient/0` was successfully updated but it's content with hash `5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470` was not found during response creation.")))))
 
   (testing "on newly created resource"
     (testing "with no Prefer header"
@@ -359,7 +357,7 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH)))))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
     (testing "with return=minimal Prefer header"
       (with-handler [handler]
@@ -451,7 +449,7 @@
                 :fhir/type := :fhir/Patient
                 :id := "0"
                 [:meta :versionId] := #fhir/id"3"
-                [:meta :lastUpdated] := Instant/EPOCH)))))))
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
   (testing "on successful update of an existing resource"
     (testing "with no Prefer header"
@@ -465,7 +463,7 @@
                    ::reitit/match patient-match
                    :headers {"if-match" if-match}
                    :body {:fhir/type :fhir/Patient :id "0"
-                          :birthDate #fhir/date"2020"}})]
+                          :birthDate #fhir/date #system/date "2020"}})]
 
             (testing "Returns 200"
               (is (= 200 status)))
@@ -480,15 +478,15 @@
               (given body
                 :fhir/type := :fhir/Patient
                 :id := "0"
-                :birthDate := #fhir/date"2020"
+                :birthDate := #fhir/date #system/date "2020"
                 [:meta :versionId] := #fhir/id"2"
-                [:meta :lastUpdated] := Instant/EPOCH)))))))
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
   (testing "on update of an existing resource with identical content"
     (doseq [if-match [nil "W/\"1\"" "W/\"1\",W/\"2\""]]
       (with-handler [handler]
         [[[:create {:fhir/type :fhir/Patient :id "0"
-                    :birthDate #fhir/date"2020"}]]]
+                    :birthDate #fhir/date #system/date "2020"}]]]
 
         (let [{:keys [status headers body]}
               @(handler
@@ -497,8 +495,8 @@
                  :headers {"if-match" if-match}
                  :body {:fhir/type :fhir/Patient :id "0"
                         :meta (type/meta {:versionId #fhir/id"1"
-                                          :lastUpdated Instant/EPOCH})
-                        :birthDate #fhir/date"2020"}})]
+                                          :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
+                        :birthDate #fhir/date #system/date "2020"}})]
 
           (testing "Returns 200"
             (is (= 200 status)))
@@ -513,9 +511,9 @@
             (given body
               :fhir/type := :fhir/Patient
               :id := "0"
-              :birthDate := #fhir/date"2020"
+              :birthDate := #fhir/date #system/date "2020"
               [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH)))))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
     (testing "and content changing transaction in between"
       (with-redefs [kv/put!
@@ -525,12 +523,12 @@
         (doseq [if-match [nil "W/\"1\",W/\"2\""]]
           (with-handler [handler node]
             [[[:create {:fhir/type :fhir/Patient :id "0"
-                        :birthDate #fhir/date"2020"}]]]
+                        :birthDate #fhir/date #system/date "2020"}]]]
 
             ;; don't wait for the transaction to be finished because the handler
             ;; call should see the first version of the patient
             @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
-                                          :birthDate #fhir/date"2021"}]])
+                                          :birthDate #fhir/date #system/date "2021"}]])
 
             (let [{:keys [status headers body]}
                   @(handler
@@ -539,8 +537,8 @@
                      :headers {"if-match" if-match}
                      :body {:fhir/type :fhir/Patient :id "0"
                             :meta (type/meta {:versionId #fhir/id"1"
-                                              :lastUpdated Instant/EPOCH})
-                            :birthDate #fhir/date"2020"}})]
+                                              :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
+                            :birthDate #fhir/date #system/date "2020"}})]
 
               (testing "Returns 200"
                 (is (= 200 status)))
@@ -555,9 +553,9 @@
                 (given body
                   :fhir/type := :fhir/Patient
                   :id := "0"
-                  :birthDate := #fhir/date"2020"
+                  :birthDate := #fhir/date #system/date "2020"
                   [:meta :versionId] := #fhir/id"4"
-                  [:meta :lastUpdated] := Instant/EPOCH))))))))
+                  [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
 
   (testing "with disabled referential integrity check"
     (with-handler [handler]
@@ -568,7 +566,7 @@
               {:path-params {:id "0"}
                ::reitit/match observation-match
                :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference "Patient/0"}}})]
+                      :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}})]
 
         (testing "Returns 201"
           (is (= 201 status)))
@@ -590,7 +588,7 @@
             :fhir/type := :fhir/Observation
             :id := "0"
             [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH)))))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
   (testing "conditional update"
     (testing "if-none-match"
@@ -613,7 +611,7 @@
                   :fhir/type := :fhir/OperationOutcome
                   [:issue 0 :severity] := #fhir/code"error"
                   [:issue 0 :code] := #fhir/code"conflict"
-                  [:issue 0 :diagnostics] := "Resource `Patient/0` already exists.")))))
+                  [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` already exists.")))))
 
         (testing "with no existing resource"
           (with-handler [handler]
@@ -647,7 +645,7 @@
                   :fhir/type := :fhir/OperationOutcome
                   [:issue 0 :severity] := #fhir/code"error"
                   [:issue 0 :code] := #fhir/code"conflict"
-                  [:issue 0 :diagnostics] := "Resource `Patient/0` already exists."))))))
+                  [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` already exists."))))))
 
       (testing "W/\"1\""
         (testing "with existing resource"
@@ -668,7 +666,7 @@
                   :fhir/type := :fhir/OperationOutcome
                   [:issue 0 :severity] := #fhir/code"error"
                   [:issue 0 :code] := #fhir/code"conflict"
-                  [:issue 0 :diagnostics] := "Resource `Patient/0` with version 1 already exists."))))))
+                  [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` with version 1 already exists."))))))
 
       (testing "W/\"2\""
         (testing "with existing resource"

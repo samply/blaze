@@ -90,7 +90,7 @@
 
     (testing "Specimen patient will not indexed because we don't support resolving in FHIRPath"
       (let [specimen {:fhir/type :fhir/Specimen :id "id-150810"
-                      :subject #fhir/Reference{:reference "reference-150829"}}
+                      :subject #fhir/Reference{:reference #fhir/string"reference-150829"}}
             hash (hash/generate specimen)]
         (is
          (empty?
@@ -129,7 +129,7 @@
         (let [resource {:fhir/type :fhir/List :id "id-121825"
                         :entry
                         [{:fhir/type :fhir.List/entry
-                          :item #fhir/Reference{:reference "Patient/0"}}]}
+                          :item #fhir/Reference{:reference #fhir/string"Patient/0"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -256,7 +256,7 @@
                         [{:fhir/type :fhir.List/entry
                           :item
                           #fhir/Reference
-                           {:reference "http://foo.com/bar-141221"}}]}
+                           {:reference #fhir/string "http://foo.com/bar-141221"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1]]
               (index-entries

@@ -33,8 +33,8 @@
     "1ne" [:eq "1ne"]))
 
 (deftest format-skip-indexing-msg-test
-  (is (= (u/format-skip-indexing-msg "value-132537" "url-132522" "type-132528")
-         "Skip indexing value `value-132537` of type `:fhir/string` for search parameter `url-132522` with type `type-132528` because the rule is missing.")))
+  (is (= (u/format-skip-indexing-msg #fhir/string "value-132537" "url-132522" "type-132528")
+         "Skip indexing value `String{id=null, extension=null, value='value-132537'}` of type `:fhir/string` for search parameter `url-132522` with type `type-132528` because the rule is missing.")))
 
 (deftest soundex-test
   (testing "question mark from issue #903"
@@ -78,7 +78,7 @@
                (<= (count version-parts) 2)))))))
 
 (def ^:private hash
-  #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F")
+  #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470")
 
 (deftest by-id-grouper-test
   (testing "works with reduced values"

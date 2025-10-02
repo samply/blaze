@@ -225,7 +225,7 @@
 (defn- validate-code***
   {:arglists '([context value-set params])}
   [context
-   {{:keys [inactive] includes :include excludes :exclude} :compose :as value-set}
+   {{{inactive :value} :inactive includes :include excludes :exclude} :compose :as value-set}
    {:keys [clause] :as params}]
   (if (seq includes)
     (-> (find-concept-includes (assoc context :value-set value-set) includes params)
@@ -248,7 +248,7 @@
        (fn [e]
          (cond-> e
            (not (:terminal e))
-           (as-> e (let [{{:keys [text]} :details :as issue} (issue/not-in-vs value-set clause)]
+           (as-> e (let [{{{text :value} :text} :details :as issue} (issue/not-in-vs value-set clause)]
                      (cond-> (update e :issues (partial into [issue]))
                        (not (::message-important e)) (assoc ::anom/message text)))))))
       (ac/then-apply (display-validator context params))

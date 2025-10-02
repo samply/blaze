@@ -128,16 +128,16 @@
       {:code #fhir/code"kg/m2"
        :system #fhir/uri"http://unitsofmeasure.org"
        :unit #fhir/string"kg/m2"
-       :value 36.6M}
+       :value #fhir/decimal 36.6M}
      :status #fhir/code"final"
-     :effective #fhir/dateTime"2005-06-17"
+     :effective #fhir/dateTime #system/date-time "2005-06-17"
      :id "0-bmi"
      :code
      #fhir/CodeableConcept
       {:coding
        [#fhir/Coding
          {:code #fhir/code"39156-5" :system #fhir/uri"http://loinc.org"}]}
-     :subject #fhir/Reference{:reference "Patient/0"}})
+     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}})
 
   ;; 418
   (count (fhir-spec/unform-cbor observation)))

@@ -171,7 +171,7 @@
                :status #fhir/code"final"
                :value
                #fhir/Quantity
-                {:value 140M
+                {:value #fhir/decimal 140M
                  :code #fhir/code"mm[Hg]"
                  :system #fhir/uri"http://unitsofmeasure.org"}}
               hash (hash/generate observation)
@@ -235,7 +235,7 @@
                :status #fhir/code"final"
                :value
                #fhir/Quantity
-                {:value 140M
+                {:value #fhir/decimal 140M
                  :unit #fhir/string"mmHg"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
@@ -282,7 +282,7 @@
                :status #fhir/code"final"
                :value
                #fhir/Quantity
-                {:value 120M
+                {:value #fhir/decimal 120M
                  :unit #fhir/string"mm[Hg]"
                  :code #fhir/code"mm[Hg]"}}
               hash (hash/generate observation)
@@ -330,7 +330,7 @@
                :status #fhir/code"final"
                :value
                #fhir/Quantity
-                {:value 120M
+                {:value #fhir/decimal 120M
                  :unit #fhir/string"mmHg"
                  :code #fhir/code"mm[Hg]"}}
               hash (hash/generate observation)

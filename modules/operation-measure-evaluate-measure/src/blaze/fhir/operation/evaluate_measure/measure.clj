@@ -16,6 +16,7 @@
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
    [blaze.module :as m]
@@ -334,7 +335,7 @@
      {:code #fhir/code"s"
       :system #fhir/uri"http://unitsofmeasure.org"
       :unit #fhir/string"s"
-      :value (bigdec duration)})}))
+      :value (type/decimal (bigdec duration))})}))
 
 (defn- bloom-filter-ratio
   "Creates an extension with a number of available Bloom filters over the total
@@ -345,9 +346,9 @@
     :value
     (type/ratio
      {:numerator
-      (type/quantity {:value (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters)))})
+      (type/quantity {:value (type/decimal (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters))))})
       :denominator
-      (type/quantity {:value (bigdec (count bloom-filters))})})}))
+      (type/quantity {:value (type/decimal (bigdec (count bloom-filters)))})})}))
 
 (defn- local-ref [handle]
   (str (name (fhir-spec/fhir-type handle)) "/" (:id handle)))
@@ -367,14 +368,14 @@
       "subject-list" #fhir/code"subject-list"
       "subject" #fhir/code"individual")
     :measure (type/canonical (canonical context measure))
-    :date now
+    :date (type/dateTime now)
     :period
     (type/period
-     {:start (type/dateTime (str start))
-      :end (type/dateTime (str end))})}
+     {:start (type/dateTime (system/parse-date-time (str start)))
+      :end (type/dateTime (system/parse-date-time (str end)))})}
 
     subject-handle
-    (assoc :subject (type/reference {:reference (local-ref subject-handle)}))
+    (assoc :subject (type/reference {:reference (type/string (local-ref subject-handle))}))
 
     (seq result)
     (assoc :group result)))

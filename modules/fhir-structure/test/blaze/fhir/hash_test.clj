@@ -29,10 +29,10 @@
     (is (.equals hash hash))))
 
 (deftest hashCode-test
-  (is (= 1473621365 (.hashCode (hash/generate {:fhir/type :fhir/Patient :id "0"})))))
+  (is (= -82434543 (.hashCode (hash/generate {:fhir/type :fhir/Patient :id "0"})))))
 
 (deftest str-test
-  (is (= "C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
+  (is (= "5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470"
          (str (hash/generate {:fhir/type :fhir/Patient :id "0"})))))
 
 (deftest byte-buffer-test
@@ -82,5 +82,5 @@
 
 (deftest print-test
   (is (= (pr-str (hash/generate {:fhir/type :fhir/Patient :id "0"}))
-         (pr-str #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F")
-         "#blaze/hash\"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F\"")))
+         (pr-str #blaze/hash"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470")
+         "#blaze/hash\"5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470\"")))

@@ -157,7 +157,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `Patient/145633` was not found."))))
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/145633` was not found."))))
 
   (testing "Patient deleted"
     (with-handler [handler]
@@ -174,7 +174,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"deleted"
-          [:issue 0 :diagnostics] := "Resource `Patient/145711` was deleted."))))
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/145711` was deleted."))))
 
   (testing "GraphDefinition not-found"
     (with-handler [handler]
@@ -190,7 +190,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "The graph definition `151647` was not found."))))
+          [:issue 0 :diagnostics] := #fhir/string "The graph definition `151647` was not found."))))
 
   (testing "only returning the patient itself"
     (with-handler [handler]
@@ -230,7 +230,7 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the entry has the right resource"
           (given (:resource first-entry)
@@ -246,7 +246,7 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "144115"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")
@@ -292,11 +292,11 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/144115")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
@@ -319,15 +319,16 @@
             :mode := #fhir/code"match")))))
 
   (testing "returning the patient with one observation and one encounter"
+    (log/set-min-level! :warn)
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "134129"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")
@@ -357,7 +358,7 @@
                  :extension
                  [(g-tu/extension-link-source-id :value #fhir/id"observation")
                   (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}]}]]]
+                 :path #fhir/string "encounter"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -383,15 +384,15 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/134129")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Encounter/134144")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
@@ -427,15 +428,15 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "134129"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Observation :id "184545"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")
@@ -465,7 +466,7 @@
                  :extension
                  [(g-tu/extension-link-source-id :value #fhir/id"observation")
                   (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}]}]]]
+                 :path #fhir/string "encounter"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry fourth-entry] :entry
@@ -492,19 +493,19 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/134129")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Encounter/134144")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the fourth entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/184545")
-                 (:fullUrl fourth-entry))))
+                 (-> fourth-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
@@ -550,13 +551,13 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Condition :id "191241"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string"Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}
+               :subject #fhir/Reference{:reference #fhir/string"Patient/145711"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
-                 :condition #fhir/Reference{:reference "Condition/191241"}}]}]
+                 :condition #fhir/Reference{:reference #fhir/string"Condition/191241"}}]}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
                [(g-tu/extension-start :value #fhir/id"patient")
@@ -586,12 +587,12 @@
                  :extension
                  [(g-tu/extension-link-source-id :value #fhir/id"condition")
                   (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}
+                 :path #fhir/string "encounter"}
                 {:fhir/type :fhir.GraphDefinition/link
                  :extension
                  [(g-tu/extension-link-source-id :value #fhir/id"encounter")
                   (g-tu/extension-link-target-id :value #fhir/id"condition")]
-                 :path "diagnosis.condition"}]}]]]
+                 :path #fhir/string "diagnosis.condition"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -617,15 +618,15 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Condition/191241")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Encounter/134144")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)

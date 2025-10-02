@@ -13,6 +13,7 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
@@ -211,7 +212,8 @@
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
             jtu/combined-status := :completed
-            [processing-duration :value] :? pos?
+            [processing-duration :value type/type] := :fhir/decimal
+            [processing-duration :value :value] :? pos?
             [processing-duration :unit] := #fhir/string"s"
             [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code"s"))

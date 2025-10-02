@@ -102,7 +102,7 @@
         ["Patient" patient-1-hash :complete] patient-1
         ["CodeSystem" code-system-0-hash :complete] code-system-0
         ["CodeSystem" code-system-0-hash :summary] {:fhir/type :fhir/CodeSystem :id "0"
-                                                    :meta (type/map->Meta {:tag [fu/subsetted]})}
+                                                    :meta (type/meta {:tag [fu/subsetted]})}
         ["CodeSystem" code-system-0-hash :complete] code-system-0)))
 
   (testing "not-found"

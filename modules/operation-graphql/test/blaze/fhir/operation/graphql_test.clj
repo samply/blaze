@@ -8,6 +8,7 @@
    [blaze.fhir.operation.graphql :as graphql]
    [blaze.fhir.operation.graphql.spec]
    [blaze.fhir.operation.graphql.test-util :refer [wrap-error]]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
@@ -25,11 +26,15 @@
 (test/use-fixtures :each tu/fixture)
 
 (def config
-  (assoc api-stub/mem-node-config
-         ::graphql/handler
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   api-stub/mem-node-config
+   ::graphql/handler
+   {:node (ig/ref :blaze.db/node)
+    :writing-context (ig/ref :blaze.fhir/writing-context)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}
+   :blaze.test/executor {}))
 
 (deftest init-test
   (testing "nil config"
@@ -43,13 +48,21 @@
       :key := ::graphql/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid node"
     (given-failed-system (assoc-in config [::graphql/handler :node] ::invalid)
       :key := ::graphql/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid writing-context"
+    (given-failed-system (assoc-in config [::graphql/handler :writing-context] ::invalid)
+      :key := ::graphql/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid executor"
@@ -87,6 +100,7 @@
 
 (deftest execute-query-test
   (testing "query param"
+    (log/set-min-level! :warn)
     (testing "invalid query"
       (testing "via query param"
         (with-handler [handler]
@@ -176,7 +190,7 @@
           (with-handler [handler]
             [[[:put {:fhir/type :fhir/Patient :id "0"}]
               [:put {:fhir/type :fhir/Observation :id "0"
-                     :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -199,7 +213,7 @@
                        [#fhir/Coding
                          {:system #fhir/uri"http://loinc.org"
                           :code #fhir/code"39156-5"}]}
-                     :subject #fhir/Reference{:reference "Patient/0"}}]
+                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]
               [:put {:fhir/type :fhir/Observation :id "1"
                      :code
                      #fhir/CodeableConcept
@@ -207,7 +221,7 @@
                        [#fhir/Coding
                          {:system #fhir/uri"http://loinc.org"
                           :code #fhir/code"29463-7"}]}
-                     :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                     :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -234,4 +248,4 @@
           (is (= 200 status))
 
           (given body
-            [:errors 0 :message] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))
+            [:errors 0 :message] := "The resource content of `Patient/0` with hash `5EE37C94FB1626111B5C2D37F7C2ECAF21B50B9D0FB45FA189889F38D0F9A470` was not found."))))))

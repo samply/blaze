@@ -187,7 +187,7 @@
       :status := 500
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
       [:body parse-xml :fhir/type] := :fhir/OperationOutcome
-      [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
+      [:body parse-xml :issue 0 :diagnostics] := #fhir/string "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
 
 (deftest binary-resource-test
   (testing "by default, the binary data gets wrapped inside a JSON FHIR-resource"
@@ -260,7 +260,7 @@
         :status := 500
         [:headers "Content-Type"] := "application/fhir+json"
         [:body parse-json :fhir/type] := :fhir/OperationOutcome
-        [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
+        [:body parse-json :issue 0 :diagnostics] := #fhir/string "Input byte array has wrong 4-byte ending unit"))))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200-with-patient {:headers {"accept" "text/plain"}}))))

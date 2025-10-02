@@ -310,7 +310,7 @@
              [#fhir/Coding
                {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
                 :code #fhir/code"bundle"}]}
-     :value (type/reference {:reference (str "Bundle/" bundle-id)})}]})
+     :value (type/reference {:reference (type/string (str "Bundle/" bundle-id))})}]})
 
 (defn bundle [id]
   {:fhir/type :fhir/Bundle
@@ -419,7 +419,7 @@
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
             jtu/combined-status := :ready
-            bundle-input := (type/reference {:reference (str "Bundle/" bundle-id)})))
+            bundle-input := (type/reference {:reference (type/string (str "Bundle/" bundle-id))})))
 
         (testing "the bundle is created"
           (given @(d/pull node (d/resource-handle (d/db node) "Bundle" bundle-id))

@@ -204,7 +204,7 @@
         :severity #fhir/code"error"
         :code #fhir/code"value"
         :details #fhir/CodeableConcept
-                  {:text "No allowed profile found."}}]})))
+                  {:text #fhir/string "No allowed profile found."}}]})))
 
 (defn- validate [^FhirValidator validator writing-context resource]
   (->> ^String (fhir-spec/write-json-as-string writing-context resource)

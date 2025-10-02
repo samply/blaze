@@ -36,7 +36,7 @@
              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code"async-interaction"
               :display #fhir/string"Asynchronous Interaction Request"}]}
-   :authoredOn authored-on
+   :authoredOn (type/dateTime authored-on)
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))
     {:fhir/type :fhir.Task/input
@@ -48,7 +48,7 @@
      :value (type/unsignedInt t)}]})
 
 (defn- return-preference-extension [return-preference]
-  (type/map->Extension
+  (type/extension
    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
     :value (type/code (name return-preference))}))
 
@@ -82,9 +82,9 @@
   (type/value (job-util/input-value job u/parameter-uri "t")))
 
 (defn response-bundle-ref
-  "Returns the reference to the response bundle og `job` or nil if there is none."
+  "Returns the reference to the response bundle of `job` or nil if there is none."
   [job]
-  (:reference (job-util/output-value job output-uri "bundle")))
+  (-> (job-util/output-value job output-uri "bundle") :reference :value))
 
 (defn- response-bundle [context entries]
   {:fhir/type :fhir/Bundle
@@ -107,7 +107,7 @@
              (response-bundle context entries)))))))
 
 (defn add-response-bundle-reference [job response-bundle-id]
-  (->> (type/reference {:reference (str "Bundle/" response-bundle-id)})
+  (->> (type/reference {:reference (type/string (str "Bundle/" response-bundle-id))})
        (job-util/add-output job output-uri "bundle")))
 
 (defn- add-processing-duration [job start]

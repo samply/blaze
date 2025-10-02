@@ -16,7 +16,7 @@
   (let [total (d/type-total db type)]
     (when (pos? total)
       {:fhir/type :fhir.Parameters/parameter
-       :name type
+       :name (type/string type)
        :value (type/unsignedInt total)})))
 
 (defn- parameters [db types]
