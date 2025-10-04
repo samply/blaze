@@ -11,4 +11,4 @@
   {:local/root "../test-util"}
 
   integrant/integrant
-  {:mvn/version "0.13.1"}}}
+  {:mvn/version "1.0.1"}}}
