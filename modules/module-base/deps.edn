@@ -14,7 +14,7 @@
   {:mvn/version "6.8.0"}
 
   integrant/integrant
-  {:mvn/version "0.13.1"}
+  {:mvn/version "1.0.1"}
 
   prom-metrics/prom-metrics
   {:git/url "https://github.com/alexanderkiel/prom-metrics.git"
