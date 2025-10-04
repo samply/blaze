@@ -30,16 +30,14 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (def ^:private writing-context
-  (:blaze.fhir/writing-context
-   (ig/init
-    {:blaze.fhir/writing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- resource-handler-200 [resource]
   (wrap-output

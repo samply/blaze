@@ -4,6 +4,7 @@
    [blaze.fhir.spec.resource :as res]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -20,11 +21,9 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private json-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- parse-json
   ([source]
@@ -40,14 +39,12 @@
     `(given (parse-json (j/write-value-as-string ~type-or-data)) ~@more)))
 
 (def ^:private cbor-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
-      :fail-on-unknown-property false
-      :include-summary-only true
-      :use-regex false}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo
+    :fail-on-unknown-property false
+    :include-summary-only true
+    :use-regex false}))
 
 (defn- parse-cbor
   ([type source]

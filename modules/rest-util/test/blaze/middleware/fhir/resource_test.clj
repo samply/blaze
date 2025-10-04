@@ -30,10 +30,9 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- wrap-error [handler]
   (fn [request]

@@ -8290,10 +8290,9 @@
           [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))))
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- load-resource [test name]
   (fhir-spec/parse-json parsing-context (slurp (io/resource (format "tx-ecosystem/%s/%s.json" test name)))))

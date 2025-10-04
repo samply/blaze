@@ -11,7 +11,7 @@
    [blaze.fhir.spec.impl.xml-spec]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.structure-definition-repo]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.fhir.writing-context]
    [blaze.test-util :as tu :refer [satisfies-prop]]
@@ -54,21 +54,17 @@
   (j/read-value source cbor-object-mapper))
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (def ^:private rs-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
-      :fail-on-unknown-property false
-      :include-summary-only true
-      :use-regex false}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo
+    :fail-on-unknown-property false
+    :include-summary-only true
+    :use-regex false}))
 
 (defn- parse-json
   ([source]
@@ -83,11 +79,9 @@
    (fhir-spec/parse-cbor rs-context type source variant)))
 
 (def ^:private writing-context
-  (:blaze.fhir/writing-context
-   (ig/init
-    {:blaze.fhir/writing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- write-json [x]
   (fhir-spec/write-json-as-bytes writing-context x))

@@ -73,10 +73,9 @@
     :url #fhir/uri"Library/1"}})
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- read-data [name]
   (let [raw (slurp-resource (str name ".json"))

@@ -2,42 +2,48 @@
   (:require
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.structure-definition-repo]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.writing-context]
    [blaze.test-util]
    [criterium.core :as criterium]
    [integrant.core :as ig]))
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (def ^:private writing-context
-  (:blaze.fhir/writing-context
-   (ig/init
-    {:blaze.fhir/writing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}))
 
-(defn- bench-unform-json [x]
+(def kds-bundle-filename
+  "../../.github/test-data/kds-testdata-2024.0.1/resources/Bundle-mii-exa-test-data-bundle.json")
+
+(defn- bench-write-json [x]
   (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (fhir-spec/write-json-as-bytes writing-context x) {}))))))
 
-(comment
-  ;; 0,333 µs <> 0,334 µs
-  (bench-unform-json #fhir/HumanName{:family "Doe" :given ["John"]})
+(defn- read-json [type x]
+  (fhir-spec/parse-json parsing-context type x))
 
-  ;; 0,330 µs <> 0,332 µs
-  (bench-unform-json
+(defn- bench-read-json [type x]
+  (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (read-json type x) {}))))))
+
+(comment
+  ;; 0,174 µs <> 0,175 µs
+  (bench-write-json #fhir/HumanName{:family "Doe" :given ["John"]})
+
+  ;; 0,162 µs <> 0,163 µs
+  (bench-write-json
    #fhir/CodeableConcept
     {:coding
      [#fhir/Coding
        {:system #fhir/uri"http://loinc.org"
         :code #fhir/code"17861-6"}]})
 
-  ;; 3,264 µs <> 3,269 µs
-  (bench-unform-json
+  ;; 2,800 µs <> 2,804 µs
+  (bench-write-json
    {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
     :meta #fhir/Meta
            {:versionId #fhir/id"481283"
@@ -66,8 +72,8 @@
              :system #fhir/uri"http://unitsofmeasure.org"
              :code #fhir/code"kg/m2"}})
 
-  ;; 4,169 µs <> 4,178 µs
-  (bench-unform-json
+  ;; 3,191 µs <> 3,195 µs
+  (bench-write-json
    {:fhir/type :fhir.Bundle/entry
     :fullUrl "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
     :resource
@@ -98,21 +104,12 @@
               :unit "kg/m2"
               :system #fhir/uri"http://unitsofmeasure.org"
               :code #fhir/code"kg/m2"}}
-    :search #fhir/BundleEntrySearch{:mode #fhir/code"match"}}))
+    :search #fhir/BundleEntrySearch{:mode #fhir/code"match"}})
 
-(comment
-  (criterium/quick-bench (fhir-spec/write-json-as-bytes writing-context #fhir/HumanName{:family "Doe" :given ["John"]}))
-  (criterium/quick-bench (fhir-spec/write-json-as-bytes writing-context #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri"http://loinc.org" :code #fhir/code"17861-6"}]})))
+  ;; 689,153 µs <> 690,274 µs
+  (bench-write-json (read-json "Bundle" (slurp kds-bundle-filename)))
 
-(def filename
-  "/Users/akiel/coding/blaze/.github/validation/kds-testdata-2024.0.1/resources/Observation-mii-exa-test-data-patient-1-muv-arterieller-blutdruck.json")
+  ;; Read Performance
 
-(comment
-  (let [s (slurp filename)]
-    (criterium/bench
-     (fhir-spec/parse-json parsing-context "Observation" s))))
-
-(comment
-  (let [s (slurp filename)]
-    (dotimes [_ 1000000]
-      (fhir-spec/parse-json parsing-context "Observation" s))))
+  ;; 3461,458 µs <> 3470,343 µs
+  (bench-read-json "Bundle" (slurp kds-bundle-filename)))
