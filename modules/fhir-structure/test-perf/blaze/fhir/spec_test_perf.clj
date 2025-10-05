@@ -31,10 +31,10 @@
   (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (read-json type x) {}))))))
 
 (comment
-  ;; 0,174 µs <> 0,175 µs
+  ;; 0,168 µs <> 0,169 µs
   (bench-write-json #fhir/HumanName{:family "Doe" :given ["John"]})
 
-  ;; 0,162 µs <> 0,163 µs
+  ;; 0,145 µs <> 0,146 µs
   (bench-write-json
    #fhir/CodeableConcept
     {:coding
@@ -42,7 +42,7 @@
        {:system #fhir/uri"http://loinc.org"
         :code #fhir/code"17861-6"}]})
 
-  ;; 2,800 µs <> 2,804 µs
+  ;; 2,380 µs <> 2,393 µs
   (bench-write-json
    {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
     :meta #fhir/Meta
@@ -72,7 +72,7 @@
              :system #fhir/uri"http://unitsofmeasure.org"
              :code #fhir/code"kg/m2"}})
 
-  ;; 3,191 µs <> 3,195 µs
+  ;; 2,770 µs <> 2,773 µs
   (bench-write-json
    {:fhir/type :fhir.Bundle/entry
     :fullUrl "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
@@ -106,7 +106,7 @@
               :code #fhir/code"kg/m2"}}
     :search #fhir/BundleEntrySearch{:mode #fhir/code"match"}})
 
-  ;; 689,153 µs <> 690,274 µs
+  ;; 581,264 µs <> 583,088 µs
   (bench-write-json (read-json "Bundle" (slurp kds-bundle-filename)))
 
   ;; Read Performance
