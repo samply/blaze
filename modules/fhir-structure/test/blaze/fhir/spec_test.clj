@@ -2491,6 +2491,11 @@
 
   (testing "parsing"
     (testing "JSON"
+      (testing "urls are interned"
+        (let [e1 (write-parse-json "Extension" {:url (String. "foo") :valueString "bar"})
+              e2 (write-parse-json "Extension" {:url (String. "foo") :valueString "bar"})]
+          (is (identical? (:url e1) (:url e2)))))
+
       (are [json fhir] (= fhir (write-parse-json "Extension" json))
         {:url "foo" :valueString "bar"}
         #fhir/Extension{:url "foo" :value #fhir/string"bar"}
@@ -2508,6 +2513,11 @@
         #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}))
 
     (testing "XML"
+      (testing "urls are interned"
+        (let [e1 (s2/conform :fhir.xml/Extension (sexp [nil {:url (String. "foo")} [::f/valueString {:value "bar"}]]))
+              e2 (s2/conform :fhir.xml/Extension (sexp [nil {:url (String. "foo")} [::f/valueString {:value "bar"}]]))]
+          (is (identical? (:url e1) (:url e2)))))
+
       (are [xml fhir] (= fhir (s2/conform :fhir.xml/Extension xml))
         (sexp [nil {:url "foo"} [::f/valueString {:value "bar"}]])
         #fhir/Extension{:url "foo" :value #fhir/string"bar"}
@@ -2525,6 +2535,11 @@
         #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}))
 
     (testing "CBOR"
+      (testing "urls are interned"
+        (let [e1 (write-parse-cbor "Extension" {:url (String. "foo") :valueString "bar"})
+              e2 (write-parse-cbor "Extension" {:url (String. "foo") :valueString "bar"})]
+          (is (identical? (:url e1) (:url e2)))))
+
       (are [cbor fhir] (= fhir (write-parse-cbor "Extension" cbor))
         {:url "foo" :valueString "bar"}
         #fhir/Extension{:url "foo" :value #fhir/string"bar"}

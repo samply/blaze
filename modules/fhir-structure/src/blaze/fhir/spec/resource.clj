@@ -19,6 +19,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.fhir.spec.impl :as impl]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
@@ -539,7 +540,7 @@
     {field-name (create-system-string-handler #(assoc! %1 key %2) (name key) "string")}
 
     :system.string/uri
-    {field-name (create-system-string-handler #(assoc! %1 key %2) (name key) "uri")}
+    {field-name (create-system-string-handler #(assoc! %1 key (impl/intern-string %2)) (name key) "uri")}
 
     :primitive/boolean
     (primitive-handler def type/boolean (primitive-boolean-value-handler def))
