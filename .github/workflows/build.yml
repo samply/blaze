@@ -142,12 +142,12 @@ jobs:
         - thread-pool-executor-collector
 
         java-version:
-        - '17'
         - '21'
+        - '25'
 
         exclude:
         - module: jepsen
-          java-version: '17'
+          java-version: '21'
 
     needs: job-ig
     runs-on: ubuntu-24.04
@@ -210,8 +210,8 @@ jobs:
         - db
 
         java-version:
-        - '17'
         - '21'
+        - '25'
 
     needs: job-ig
     runs-on: ubuntu-24.04
@@ -317,8 +317,8 @@ jobs:
     strategy:
       matrix:
         java-version:
-        - '17'
         - '21'
+        - '25'
 
     needs: job-ig
     runs-on: ubuntu-24.04
