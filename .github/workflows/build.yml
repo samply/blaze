@@ -47,7 +47,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        clj-kondo: '2025.06.05'
+        clj-kondo: '2025.09.22'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
