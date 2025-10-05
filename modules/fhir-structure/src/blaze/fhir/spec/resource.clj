@@ -279,7 +279,7 @@
        (fn primitive-property-handler-one-token-cardinality-many [_ parser locator m]
          (cond-next-token parser locator
            JsonToken/START_ARRAY
-           (loop [l (or (m key) []) i 0]
+           (loop [l (m key []) i 0]
              (when-ok [t (next-token! parser locator)]
                (condp identical? t
                  token
@@ -313,7 +313,7 @@
        (fn primitive-property-handler-two-tokens-cardinality-many [_ parser locator m]
          (cond-next-token parser locator
            JsonToken/START_ARRAY
-           (loop [l (or (m key) []) i 0]
+           (loop [l (m key []) i 0]
              (when-ok [t (next-token! parser locator)]
                (condp identical? t
                  token-1
@@ -407,7 +407,7 @@
       (fn [type-handlers parser locator m]
         (cond-next-token parser locator
           JsonToken/START_ARRAY
-          (loop [l (or (m key) []) i 0]
+          (loop [l (m key []) i 0]
             (when-ok [t (next-token! parser (conj locator path))]
               (condp identical? t
                 JsonToken/START_OBJECT
