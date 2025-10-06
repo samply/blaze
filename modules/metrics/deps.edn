@@ -16,7 +16,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.10.9" :git/sha "e405aac"}}
+    {:git/tag "v0.10.10" :git/sha "deedd62"}}
    :ns-default build}
 
   :test

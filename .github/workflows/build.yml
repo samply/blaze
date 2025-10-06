@@ -162,7 +162,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.0.1479'
+        cli: '1.12.3.1577'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -226,7 +226,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.0.1479'
+        cli: '1.12.3.1577'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -273,7 +273,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.0.1479'
+        cli: '1.12.3.1577'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -333,7 +333,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.0.1479'
+        cli: '1.12.3.1577'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -391,7 +391,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.0.1479'
+        cli: '1.12.3.1577'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -2185,7 +2185,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.0.1479'
+        cli: '1.12.3.1577'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
@@ -2595,7 +2595,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.0.1479'
+        cli: '1.12.3.1577'
 
     - name: Check out Git repository
       uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
