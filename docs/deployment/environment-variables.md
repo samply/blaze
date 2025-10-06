@@ -464,9 +464,13 @@ Enable SNOMED CT for the Terminology Service by using the value `true`.
 
 Path of an official SNOMED CT release.
 
-[1]: <https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies>
-[2]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
-[3]: <https://github.com/facebook/rocksdb/wiki/Thread-Pool>
-[4]: <https://openid.net/connect/>
-[5]: <../authentication.md>
-[6]: <http://tx.fhir.org/r4>
+#### `ENABLE_VALIDATION_ON_INGEST` <Badge type="warning" text="Since unreleased"/>
+
+Enable [Validation](../validation.md).
+
+[1]: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies
+[2]: https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size
+[3]: https://github.com/facebook/rocksdb/wiki/Thread-Pool
+[4]: https://openid.net/connect/
+[5]: ../authentication.md
+[6]: http://tx.fhir.org/r4
