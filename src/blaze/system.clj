@@ -231,7 +231,7 @@
         config (-> (merge-with merge root-config config)
                    (resolve-config env))]
     (load-namespaces config)
-    (-> config ig/prep ig/init)))
+    (ig/init config)))
 
 (defn shutdown! [system]
   (ig/halt! system))
