@@ -7,26 +7,46 @@ COMPOSE_FILE="$1"
 BASE="${2:-http://localhost:8080/fhir}"
 START_EPOCH="$(date +"%s")"
 PATIENT_COUNT=1000
-PATIENT_IDS="$(curl -sf "$BASE/Patient?birthdate=le1930&_count=$PATIENT_COUNT&_elements=id" | jq -r '.entry[].resource.id' | shuf | tr '\n' ',' | sed 's/,$//')"
+PATIENT_IDS="$(curl -sf "$BASE/Patient?birthdate=le1930&_count=$PATIENT_COUNT&_elements=id" | jq -r '.entry[].resource.id' | shuf | paste -sd ',' -)"
 
 count-resources() {
   NAME="$1"
-  CODES="$2"
+  TYPE="$2"
+  CODES="$3"
 
-  echo "Counting $NAME Observations over $PATIENT_COUNT Patients..."
-  count-resources-raw-post "$BASE" "Observation" "code=$CODES&patient=$PATIENT_IDS" "$START_EPOCH-count-$NAME.times"
+  echo "Counting $NAME ${TYPE}s over $PATIENT_COUNT Patients..."
+  count-resources-raw-post "$BASE" "$TYPE" "code=$CODES&patient=$PATIENT_IDS" "$START_EPOCH-count-$NAME.times"
 }
 
 download-resources() {
   NAME="$1"
-  CODES="$2"
+  TYPE="$2"
+  CODES="$3"
 
-  echo "Downloading $NAME Observations over $PATIENT_COUNT Patients..."
-  download-resources-raw-post "$BASE" "Observation" "code=$CODES&patient=$PATIENT_IDS" "$START_EPOCH-download-$NAME.times"
+  echo "Downloading $NAME ${TYPE}s over $PATIENT_COUNT Patients..."
+  download-resources-raw-post "$BASE" "$TYPE" "code=$CODES&patient=$PATIENT_IDS" "$START_EPOCH-download-$NAME.times"
 }
 
 restart "$COMPOSE_FILE"
-NAME="top-20-observation-codes"
-CODES="http://loinc.org|72514-3,http://loinc.org|49765-1,http://loinc.org|20565-8,http://loinc.org|2069-3,http://loinc.org|38483-4,http://loinc.org|2339-0,http://loinc.org|6298-4,http://loinc.org|2947-0,http://loinc.org|6299-2,http://loinc.org|85354-9,http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1,http://loinc.org|8302-2,http://loinc.org|72166-2,http://loinc.org|39156-5,http://loinc.org|93025-5,http://loinc.org|74006-8,http://loinc.org|55758-7,http://loinc.org|33914-3"
-count-resources "$NAME" "$CODES"
-download-resources "$NAME" "$CODES"
+NAME="10-observation-codes"
+CODES="$(add_system "http://loinc.org" "$(cat "$SCRIPT_DIR/observation-codes-10.txt")")"
+count-resources "$NAME" "Observation" "$CODES"
+download-resources "$NAME" "Observation" "$CODES"
+
+restart "$COMPOSE_FILE"
+NAME="100-observation-codes"
+CODES="$(add_system "http://loinc.org" "$(cat "$SCRIPT_DIR/observation-codes-100.txt")")"
+count-resources "$NAME" "Observation" "$CODES"
+download-resources "$NAME" "Observation" "$CODES"
+
+restart "$COMPOSE_FILE"
+NAME="1k-condition-codes"
+CODES="$(add_system "http://snomed.info/sct" "$(cat "$SCRIPT_DIR/condition-codes-disease-1k.txt")")"
+count-resources "$NAME" "Condition" "$CODES"
+download-resources "$NAME" "Condition" "$CODES"
+
+restart "$COMPOSE_FILE"
+NAME="10k-condition-codes"
+CODES="$(add_system "http://snomed.info/sct" "$(cat "$SCRIPT_DIR/condition-codes-disease-10k.txt")")"
+count-resources "$NAME" "Condition" "$CODES"
+download-resources "$NAME" "Condition" "$CODES"

@@ -62,7 +62,7 @@ count-resources-raw() {
 
   # this are 7 tests of which 5 will be taken for the statistics
   for i in {0..6}; do
-    curl -s "$BASE/$RESOURCE_TYPE?$SEARCH_PARAMS&_summary=count" -o /dev/null -w '%{time_starttransfer}\n' >> "$TIMES_FILE"
+    curl -s "$BASE/$RESOURCE_TYPE?$SEARCH_PARAMS&_summary=count" -o /dev/null -w '%{time_total}\n' >> "$TIMES_FILE"
   done
 
   calc-print-stats "$TIMES_FILE" "$COUNT"
@@ -73,12 +73,13 @@ count-resources-raw-post() {
   RESOURCE_TYPE="$2"
   SEARCH_PARAMS="$3"
   TIMES_FILE="$4"
+  URL="$BASE/$RESOURCE_TYPE/_search?_summary=count"
 
-  COUNT=$(curl -s -d "$SEARCH_PARAMS" "$BASE/$RESOURCE_TYPE/_search?_summary=count" | jq .total)
+  COUNT=$(curl -s -d @<(echo -n "$SEARCH_PARAMS") "$URL" | jq .total)
 
   # this are 7 tests of which 5 will be taken for the statistics
   for i in {0..6}; do
-    curl -s -d "$SEARCH_PARAMS" "$BASE/$RESOURCE_TYPE/_search?_summary=count" -o /dev/null -w '%{time_starttransfer}\n' >> "$TIMES_FILE"
+    curl -s -d @<(echo -n "$SEARCH_PARAMS") "$URL" -o /dev/null -w '%{time_total}\n' >> "$TIMES_FILE"
   done
 
   calc-print-stats "$TIMES_FILE" "$COUNT"
@@ -111,11 +112,11 @@ download-resources-raw-post() {
   SEARCH_PARAMS="$3"
   TIMES_FILE="$4"
 
-  COUNT=$(curl -s -d "$SEARCH_PARAMS" "$BASE/$RESOURCE_TYPE/_search?_summary=count" | jq .total)
+  COUNT=$(curl -s -d @<(echo -n "$SEARCH_PARAMS") "$BASE/$RESOURCE_TYPE/_search?_summary=count" | jq .total)
 
   # this are 5 tests of which 3 will be taken for the statistics
   for i in {0..4}; do
-    DOWNLOAD_COUNT=$($TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" "$RESOURCE_TYPE" -p -q "$SEARCH_PARAMS&_count=1000" 2>/dev/null | wc -l | xargs)
+    DOWNLOAD_COUNT=$($TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" "$RESOURCE_TYPE" -p -q @<(echo -n "$SEARCH_PARAMS&_count=1000") 2>/dev/null | wc -l | xargs)
 
     if [ "$COUNT" != "$DOWNLOAD_COUNT" ]; then
       echo "🆘 the number of downloaded resources ($DOWNLOAD_COUNT) doesn't match the count of $COUNT"
@@ -124,4 +125,10 @@ download-resources-raw-post() {
   done
 
   calc-print-stats "$TIMES_FILE" "$COUNT"
+}
+
+add_system() {
+    local system="$1"
+    local codes="$2"
+    echo "$codes" | sed "s#^#${system}|#" | paste -sd ',' -
 }
