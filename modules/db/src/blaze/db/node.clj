@@ -249,7 +249,7 @@
       (when (and (= 1 (count compartment-clauses)) (seq other-clauses))
         (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
           (when (seq patient-ids)
-            (batch-db/->PatientTypeQuery
+            (batch-db/patient-type-query
              (codec/tid type)
              patient-ids
              compartment-clause

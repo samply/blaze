@@ -143,11 +143,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with multiple codes.
 
-The following top 20 LOINC codes were used:
+The following codes were used:
 
-```
-72514-3,49765-1,20565-8,2069-3,38483-4,2339-0,6298-4,2947-0,6299-2,85354-9,29463-7,8867-4,9279-1,8302-2,72166-2,39156-5,93025-5,74006-8,55758-7,33914-3
-```
+* 10 LOINC codes from [observation-codes-10.txt](fhir-search/observation-codes-10.txt)
 
 ### Counting
 
@@ -157,11 +155,9 @@ Counting was performed using the following `curl` command:
 curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&_summary=count"
 ```
 
-| System | Dataset |  # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|--------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 328.6 M |   155.15 |  0.315 |   2.1 M |
-| LEA58  | 1M      | 328.6 M |   143.78 |  0.472 |   2.3 M |
-| A5N46  | 1M      | 328.6 M |    72.00 |  0.117 |   4.6 M |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      | 10    | 27.9 M |    11.52 |  0.215 |   2.4 M |
 
 ¹ resources per second
 
@@ -177,11 +173,9 @@ Downloads were performed using the following `blazectl` command:
 blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&_count=1000" > /dev/null
 ```
 
-| System | Dataset |  # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|--------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 328.6 M | 10359.24 | 43.717 |  31.7 k |
-| LEA58  | 1M      | 328.6 M |  9160.37 | 33.960 |  35.9 k |
-| A5N46  | 1M      | 328.6 M |  5584.68 | 27.818 |  58.8 k |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      | 10    | 27.9 M |   732.37 | 43.498 |  38.1 k |
 
 ¹ resources per second
 
@@ -495,13 +489,14 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 ## Multiple Codes and Patient Search
 
-This section evaluates the performance of FHIR Search for selecting Observation resources with multiple codes for 1000 patients.
+This section evaluates the performance of FHIR Search for selecting Observation and Condition resources with multiple codes for 1000 patients.
 
-The following top 20 LOINC codes were used:
+The following codes were used:
 
-```
-72514-3,49765-1,20565-8,2069-3,38483-4,2339-0,6298-4,2947-0,6299-2,85354-9,29463-7,8867-4,9279-1,8302-2,72166-2,39156-5,93025-5,74006-8,55758-7,33914-3
-```
+* 10 LOINC codes from [observation-codes-10.txt](fhir-search/observation-codes-10.txt)
+* 100 LOINC codes from [observation-codes-100.txt](fhir-search/observation-codes-100.txt)
+* 1k SNOMED CT codes from [condition-codes-disease-1k.txt](fhir-search/condition-codes-disease-1k.txt)
+* 10k SNOMED CT codes from [condition-codes-disease-10k.txt](fhir-search/condition-codes-disease-10k.txt)
 
 ### Counting
 
@@ -511,11 +506,16 @@ Counting was performed using the following `curl` command:
 curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&patient=$PATIENT_IDS&_summary=count"
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  1.1 M |     1.96 |  0.011 | 558.2 k |
-| LEA58  | 1M      |  1.1 M |     1.95 |  0.017 | 562.3 k |
-| A5N46  | 1M      |  1.1 M |     1.03 |  0.006 |   1.1 M |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|------:|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |    10 |   46 k |     0.14 |  0.006 | 333.1 k |
+| LEA47  | 1M      |   100 |  1.1 M |     2.38 |  0.070 | 461.7 k |
+| LEA47  | 1M      |    1k |    247 |     3.04 |  0.040 |      81 |
+| LEA47  | 1M      |   10k |    1 k |    43.17 |  0.487 |      29 |
+| A5N46  | 1M      |    10 |   46 k |     0.07 |  0.003 | 658.9 k |
+| A5N46  | 1M      |   100 |  1.1 M |     1.18 |  0.004 | 933.1 k |
+| A5N46  | 1M      |    1k |    247 |     1.35 |  0.008 |     184 |
+| A5N46  | 1M      |   10k |    1 k |    20.69 |  0.133 |      61 |
 
 ¹ resources per second
 
@@ -529,11 +529,16 @@ Downloads were performed using the following `blazectl` command:
 blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&patient=$PATIENT_IDS&_count=1000" > /dev/null
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  1.1 M |    17.26 |  0.022 |  63.5 k |
-| LEA58  | 1M      |  1.1 M |    17.42 |  0.057 |  62.9 k |
-| A5N46  | 1M      |  1.1 M |    13.33 |  0.052 |  82.4 k |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|------:|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |    10 |   46 k |     0.75 |  0.071 |  61.7 k |
+| LEA47  | 1M      |   100 |  1.1 M |    15.52 |  0.187 |  70.7 k |
+| LEA47  | 1M      |    1k |    247 |     3.01 |  0.024 |      82 |
+| LEA47  | 1M      |   10k |    1 k |    41.68 |  0.095 |      30 |
+| A5N46  | 1M      |    10 |   46 k |     0.36 |  0.005 | 129.7 k |
+| A5N46  | 1M      |   100 |  1.1 M |     7.21 |  0.026 | 152.2 k |
+| A5N46  | 1M      |    1k |    247 |     1.34 |  0.000 |     184 |
+| A5N46  | 1M      |   10k |    1 k |    20.61 |  0.141 |      61 |
 
 ¹ resources per second
 

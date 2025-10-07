@@ -309,31 +309,40 @@
         start-patient-handle (coll/first (spc/targets batch-db start-handle patient-code-hash))]
     (codec/id-byte-string (rh/id start-patient-handle))))
 
-(defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses]
+;; A type query over resources with `tid` and patients with `patient-ids`.
+(defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses
+                             compartment-query]
   p/Query
   (-count [query batch-db]
     (ac/completed-future (count (p/-execute query batch-db))))
   (-execute [_ batch-db]
-    (coll/eduction
-     (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses))
-     patient-ids))
+    (coll/eduction (mapcat #(compartment-query batch-db %)) patient-ids))
   (-execute [_ batch-db start-id]
     (let [start-id (codec/id-byte-string start-id)
           start-patient-id (start-patient-id batch-db tid start-id)]
       (coll/eduction
        cat
-       [(index/compartment-query
-         batch-db [patient-compartment-hash start-patient-id] tid clauses
-         start-id)
+       [(compartment-query batch-db start-patient-id start-id)
         (coll/eduction
          (comp (drop-while #(not= start-patient-id %))
                (drop 1)
-               (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses)))
+               (mapcat #(compartment-query batch-db %)))
          patient-ids)])))
   (-query-clauses [_]
     (decode-clauses (into [compartment-clause] clauses)))
   (-query-plan [_ _]
     (index/compartment-query-plan clauses)))
+
+(defn patient-type-query [tid patient-ids compartment-clause clauses]
+  (->PatientTypeQuery
+   tid patient-ids compartment-clause clauses
+   (fn
+     ([batch-db patient-id]
+      (index/compartment-query
+       batch-db [patient-compartment-hash patient-id] tid clauses))
+     ([batch-db patient-id start-id]
+      (index/compartment-query
+       batch-db [patient-compartment-hash patient-id] tid clauses start-id)))))
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
