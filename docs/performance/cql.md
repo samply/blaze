@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-For the CQL queries analyzed here, the relative performance of query evaluation in patients/s stays the same for datasets with 1 million patients compared to datasets with 100 thousand patients if the system resources are sufficient and Blaze performs equally or better for datasets with more patient history. In all cases the performance increases with rising system resources.  
+For the CQL queries analyzed here, the relative performance of query evaluation in patients/s stays the same for datasets with 1 million patients compared to datasets with 100 thousand patients if the system resources are sufficient and Blaze performs equally or better for datasets with more patient history. In all cases the performance increases with rising system resources.
 
 ## Systems
 
@@ -102,15 +102,15 @@ The third bar chart shows the results for the 1M dataset. For the two bigger sys
 | 1M      | LEA36  | 17861-6 |   25 k |     0.48 |  0.003 | 2.081 M | 
 | 1M      | LEA36  | 8310-5  |  603 k |     4.74 |  0.038 | 211.1 k | 
 | 1M      | LEA36  | 72514-3 |  998 k |     7.15 |  0.032 | 139.8 k |
-| 1M      | LEA47  | 17861-6 |   25 k |     0.49 |  0.012 | 2.054 M | 
-| 1M      | LEA47  | 8310-5  |  603 k |     0.67 |  0.010 | 1.488 M | 
-| 1M      | LEA47  | 72514-3 |  998 k |     1.00 |  0.010 | 995.1 k |
-| 1M      | LEA58  | 17861-6 |   25 k |     0.52 |  0.012 | 1.930 M |
-| 1M      | LEA58  | 8310-5  |  603 k |     0.66 |  0.007 | 1.505 M | 
-| 1M      | LEA58  | 72514-3 |  998 k |     0.78 |  0.019 | 1.287 M |
-| 1M      | A5N46  | 17861-6 |   25 k |     0.22 |  0.008 | 4.514 M |
-| 1M      | A5N46  | 8310-5  |  603 k |     0.39 |  0.001 | 2.545 M | 
-| 1M      | A5N46  | 72514-3 |  998 k |     1.71 |  0.008 | 586.3 k |
+| 1M      | LEA47  | 17861-6 |   25 k |     0.54 |  0.008 | 1.837 M | 
+| 1M      | LEA47  | 8310-5  |  603 k |     0.76 |  0.011 | 1.321 M | 
+| 1M      | LEA47  | 72514-3 |  998 k |     0.89 |  0.009 | 1.120 M |
+| 1M      | LEA58  | 17861-6 |   25 k |     0.44 |  0.009 | 2.252 M |
+| 1M      | LEA58  | 8310-5  |  603 k |     0.48 |  0.012 | 2.092 M | 
+| 1M      | LEA58  | 72514-3 |  998 k |     0.57 |  0.014 | 1.741 M |
+| 1M      | A5N46  | 17861-6 |   25 k |     0.21 |  0.009 | 4.692 M |
+| 1M      | A5N46  | 8310-5  |  603 k |     0.33 |  0.005 | 3.045 M | 
+| 1M      | A5N46  | 72514-3 |  998 k |     1.68 |  0.009 | 596.2 k |
 
 ### Example CQL Query
 
@@ -171,15 +171,15 @@ The second chart shows the results for the 1M dataset. Here the performance of t
 | 1M      | LEA36  | 29463-7 | 13.6 kg |   99 k |     1.17 |  0.017 | 856.6 k | 
 | 1M      | LEA36  | 29463-7 | 75.3 kg |  500 k |     3.19 |  0.052 | 313.6 k | 
 | 1M      | LEA36  | 29463-7 |  185 kg |  998 k |    10.83 |  0.084 |  92.3 k |
-| 1M      | LEA47  | 29463-7 | 13.6 kg |   99 k |     0.60 |  0.011 | 1.667 M | 
-| 1M      | LEA47  | 29463-7 | 75.3 kg |  500 k |     1.63 |  0.023 | 612.6 k | 
-| 1M      | LEA47  | 29463-7 |  185 kg |  998 k |     2.19 |  0.037 | 456.8 k |
-| 1M      | LEA58  | 29463-7 | 13.6 kg |   99 k |     0.59 |  0.007 | 1.709 M |  
-| 1M      | LEA58  | 29463-7 | 75.3 kg |  500 k |     1.01 |  0.013 | 993.3 k | 
-| 1M      | LEA58  | 29463-7 |  185 kg |  998 k |     1.42 |  0.026 | 702.4 k |
-| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.26 |  0.006 | 3.865 M | 
-| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.47 |  0.032 | 2.114 M |
-| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.78 |  0.047 | 560.7 k |
+| 1M      | LEA47  | 29463-7 | 13.6 kg |   99 k |     0.47 |  0.007 | 2.147 M | 
+| 1M      | LEA47  | 29463-7 | 75.3 kg |  500 k |     0.73 |  0.004 | 1.366 M | 
+| 1M      | LEA47  | 29463-7 |  185 kg |  998 k |     1.13 |  0.025 | 881.3 k |
+| 1M      | LEA58  | 29463-7 | 13.6 kg |   99 k |     0.42 |  0.008 | 2.371 M |  
+| 1M      | LEA58  | 29463-7 | 75.3 kg |  500 k |     0.50 |  0.020 | 2.005 M | 
+| 1M      | LEA58  | 29463-7 |  185 kg |  998 k |     0.65 |  0.036 | 1.545 M |
+| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.22 |  0.013 | 4.464 M | 
+| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.37 |  0.020 | 2.678 M |
+| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.73 |  0.051 | 577.3 k |
 
 ### CQL Query
 
@@ -245,12 +245,12 @@ The third chart shows the results for the 1M dataset. As with the Code Value Sea
 | 1M      | LEA25  |  954 k |    10.93 |  0.068 |  91.5 k |
 | 1M      | LEA36  |    4 k |     0.57 |  0.011 | 1.766 M |
 | 1M      | LEA36  |  954 k |     5.65 |  0.033 | 177.1 k |
-| 1M      | LEA47  |    4 k |     0.55 |  0.005 | 1.813 M |
-| 1M      | LEA47  |  954 k |     0.97 |  0.016 | 1.029 M |
-| 1M      | LEA58  |    4 k |     0.56 |  0.013 | 1.800 M |
-| 1M      | LEA58  |  954 k |     0.84 |  0.007 | 1.191 M |
-| 1M      | A5N46  |    4 k |     0.23 |  0.003 | 4.385 M |
-| 1M      | A5N46  |  954 k |     0.53 |  0.003 | 1.875 M |
+| 1M      | LEA47  |    4 k |     0.41 |  0.007 | 2.435 M |
+| 1M      | LEA47  |  954 k |     0.83 |  0.009 | 1.204 M |
+| 1M      | LEA58  |    4 k |     0.41 |  0.006 | 2.420 M |
+| 1M      | LEA58  |  954 k |     0.53 |  0.015 | 1.897 M |
+| 1M      | A5N46  |    4 k |     0.20 |  0.010 | 5.003 M |
+| 1M      | A5N46  |  954 k |     0.41 |  0.002 | 2.442 M |
 
 ### CQL Query Frequent
 
@@ -326,9 +326,9 @@ cql/search.sh condition-ten-rare
 | 100k-fh | LEA58  |  100 k |     0.10 |  0.001 | 1.038 M |
 | 1M      | LEA25  |  995 k |    11.78 |  0.068 |  84.9 k |
 | 1M      | LEA36  |  995 k |     5.96 |  0.015 | 167.7 k |
-| 1M      | LEA47  |  995 k |     1.05 |  0.008 | 952.9 k |
-| 1M      | LEA58  |  995 k |     0.86 |  0.006 | 1.164 M |
-| 1M      | A5N46  |  995 k |     0.56 |  0.001 | 1.777 M |
+| 1M      | LEA47  |  995 k |     1.02 |  0.015 | 981.3 k |
+| 1M      | LEA58  |  995 k |     0.60 |  0.018 | 1.674 M |
+| 1M      | A5N46  |  995 k |     0.44 |  0.002 | 2.260 M |
 
 ### CQL Query
 
@@ -354,9 +354,9 @@ cql/search.sh condition-all
 | 100k-fh | LEA58  |    2 k |     0.54 |  0.006 | 184.4 k |
 | 1M      | LEA25  |   16 k |     7.69 |  0.108 | 130.0 k |
 | 1M      | LEA36  |   16 k |     3.90 |  0.041 | 256.7 k |
-| 1M      | LEA47  |   16 k |     1.88 |  0.025 | 531.2 k |
-| 1M      | LEA58  |   16 k |     1.21 |  0.014 | 823.8 k |
-| 1M      | A5N46  |   16 k |     0.74 |  0.047 | 1.347 M |
+| 1M      | LEA47  |   16 k |     1.24 |  0.008 | 805.0 k |
+| 1M      | LEA58  |   16 k |     0.68 |  0.018 | 1.478 M |
+| 1M      | A5N46  |   16 k |     0.57 |  0.003 | 1.741 M |
 
 ### CQL Query
 

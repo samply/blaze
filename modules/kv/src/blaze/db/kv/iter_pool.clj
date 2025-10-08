@@ -8,15 +8,12 @@
   Instead of opening a new iterator, available, existing iterators are borrowed
   from the pool. Instead of closing an iterator, it will be returned to the
   pool. Iterators returned to the pool will never expire because snapshots
-  itself are shorted lived and iterators are closed when the snapshot is closed.
+  itself are short-lived and iterators are closed when the snapshot is closed.
 
   The pool is implemented by using a ConcurrentHashMap that holds a state for
-  each column family. The state is a Java class with three fields: outputIdx,
-  iterators and iterState, were outputIdx holds the index of the iterator that
-  will be returned next, iterators is a list holding all iterators and iterState
-  holds the borrowed/returned state of all iterators. The outputIdx field is used
-  to be able to detect whether an iterator could be borrowed from the previous
-  state or not.
+  each column family. The state is implemented in Java as mutable class holding
+  a deque of returned iterators. The iterators will be removed from that queue
+  if borrowed and added again if returned.
 
   The initial state is empty. State transitions are documented as JavaDoc at the
   State class.
