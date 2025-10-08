@@ -70,9 +70,6 @@
 (defn- iterator-closed-anom? [anom]
   (and (ba/fault? anom) (= "The iterator is closed." (::anom/message anom))))
 
-(defn- output [state]
-  (.output ^State state))
-
 (defn- borrowed [state]
   (.borrowed ^State state))
 
@@ -87,7 +84,6 @@
       (testing "snapshot state after borrowing an iterator"
         (given (curr-state snapshot)
           count := 1
-          [:a output] := (orig-iter pooled-iter)
           [:a borrowed] := [(orig-iter pooled-iter)]
           [:a returned] := []))
 
@@ -105,7 +101,6 @@
       (testing "snapshot state after closing the pooled iterator"
         (given (curr-state snapshot)
           count := 1
-          [:a output] := nil
           [:a borrowed] := []
           [:a returned] := [(orig-iter pooled-iter)]))
 
@@ -129,7 +124,6 @@
       (testing "snapshot state after borrowing two iterators"
         (given (curr-state snapshot)
           count := 1
-          [:a output] := (orig-iter pooled-iter-2)
           [:a borrowed] := [(orig-iter pooled-iter-1) (orig-iter pooled-iter-2)]
           [:a returned] := []))
 
@@ -151,7 +145,6 @@
       (testing "snapshot state after closing the pooled iterators"
         (given (curr-state snapshot)
           count := 1
-          [:a output] := nil
           [:a borrowed] := []
           [:a returned] := [(orig-iter pooled-iter-1) (orig-iter pooled-iter-2)]))
 
@@ -197,10 +190,8 @@
       (testing "snapshot state after borrowing both iterators"
         (given (curr-state snapshot)
           count := 2
-          [:a output] := (orig-iter pooled-iter-2)
           [:a borrowed] := [(orig-iter pooled-iter-1) (orig-iter pooled-iter-2)]
           [:a returned] := []
-          [:b output] := nil
           [:b borrowed] := [(orig-iter pooled-iter-3)]
           [:b returned] := [(orig-iter pooled-iter-4)]))
 
@@ -233,7 +224,6 @@
         (testing "snapshot state after borrowing an iterator"
           (given (curr-state snapshot)
             count := 1
-            [:a output] := (orig-iter pooled-iter)
             [:a borrowed] := [(orig-iter pooled-iter)]
             [:a returned] := []))
 
@@ -254,10 +244,8 @@
         (testing "snapshot state after borrowing an iterator"
           (given (curr-state snapshot)
             count := 2
-            [:a output] := nil
             [:a borrowed] := []
             [:a returned] := [(orig-iter pooled-iter-a)]
-            [:b output] := (orig-iter pooled-iter-b)
             [:b borrowed] := [(orig-iter pooled-iter-b)]
             [:b returned] := []))
 
@@ -286,25 +274,22 @@
         (testing "snapshot state"
           (given (curr-state snapshot)
             count := 3
-            [:a output] := nil
             [:a borrowed] := []
-            [:a returned count #(<= % 100)] := true
-            [:b output] := nil
+            [:a returned count] :? #(<= % 100)
             [:b borrowed] := []
-            [:b returned count #(<= % 100)] := true
-            [:c output] := nil
+            [:b returned count] :? #(<= % 100)
             [:c borrowed] := []
-            [:c returned count #(<= % 100)] := true))))))
+            [:c returned count] :? #(<= % 100)))))))
 
 (comment
   (require '[criterium.core :refer [bench quick-bench]])
   (st/unstrument)
 
-  ;; 38 ns
+  ;; 31 ns
   (with-open [snapshot (ip/pooling-snapshot (snapshot))]
     (quick-bench (close (p/-new-iterator snapshot :a))))
 
-  ;; 74 ns
+  ;; 63 ns
   (with-open [snapshot (ip/pooling-snapshot (snapshot))]
     (quick-bench
      (let [i1 (p/-new-iterator snapshot :a)
@@ -312,7 +297,7 @@
        (close i1)
        (close i2))))
 
-  ;; 150 ns
+  ;; 121 ns
   (with-open [snapshot (ip/pooling-snapshot (snapshot))]
     (quick-bench
      (let [i1 (p/-new-iterator snapshot :a)
