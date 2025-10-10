@@ -1,7 +1,6 @@
 (ns blaze.terminology-service.local.code-system.loinc.filter.equals
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
-   [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.loinc.context :as context :refer [url]]
    [blaze.terminology-service.local.code-system.loinc.filter.core :as core]
    [clojure.string :as str]))
@@ -35,20 +34,20 @@
       (fn [_] (ba/incorrect (format "Invalid ORDER_OBS = filter value `%s` in code system `%s`." value url))))))
 
 (defmethod core/expand-filter :=
-  [code-system {:keys [property value]}]
-  (condp = (type/value property)
-    "COMPONENT" (expand-filter code-system :component-index (type/value value))
-    "PROPERTY" (expand-filter code-system :property-index (type/value value))
-    "TIME_ASPCT" (expand-filter code-system :time-index (type/value value))
-    "SYSTEM" (expand-filter code-system :system-index (type/value value))
-    "SCALE_TYP" (expand-filter code-system :scale-index (type/value value))
-    "METHOD_TYP" (expand-filter code-system :method-index (type/value value))
-    "CLASS" (expand-filter code-system :class-index (type/value value))
-    "STATUS" (expand-filter-status code-system (type/value value))
-    "CLASSTYPE" (expand-filter-class-type code-system (type/value value))
-    "ORDER_OBS" (expand-filter-order-obs code-system (type/value value))
+  [code-system {{property :value} :property {:keys [value]} :value}]
+  (condp = property
+    "COMPONENT" (expand-filter code-system :component-index value)
+    "PROPERTY" (expand-filter code-system :property-index value)
+    "TIME_ASPCT" (expand-filter code-system :time-index value)
+    "SYSTEM" (expand-filter code-system :system-index value)
+    "SCALE_TYP" (expand-filter code-system :scale-index value)
+    "METHOD_TYP" (expand-filter code-system :method-index value)
+    "CLASS" (expand-filter code-system :class-index value)
+    "STATUS" (expand-filter-status code-system value)
+    "CLASSTYPE" (expand-filter-class-type code-system value)
+    "ORDER_OBS" (expand-filter-order-obs code-system value)
     nil (ba/incorrect (format "Missing = filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." (type/value property) url))))
+    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." property url))))
 
 (defn- satisfies-filter [key value {:loinc/keys [properties] :as concept}]
   (if (nil? value)
@@ -95,19 +94,19 @@
       concept)))
 
 (defmethod core/satisfies-filter :=
-  [_ {:keys [property value]} concept]
-  (condp = (type/value property)
-    "COMPONENT" (satisfies-filter :component (type/value value) concept)
-    "PROPERTY" (satisfies-filter :property (type/value value) concept)
-    "TIME_ASPCT" (satisfies-filter :time (type/value value) concept)
-    "SYSTEM" (satisfies-filter :system (type/value value) concept)
-    "SCALE_TYP" (satisfies-filter :scale (type/value value) concept)
-    "METHOD_TYP" (satisfies-filter :method (type/value value) concept)
-    "CLASS" (satisfies-filter :class (type/value value) concept)
-    "STATUS" (satisfies-filter-status (type/value value) concept)
-    "CLASSTYPE" (satisfies-filter-class-type (type/value value) concept)
-    "ORDER_OBS" (satisfies-filter-order-obs (type/value value) concept)
-    "LIST" (satisfies-filter-list (type/value value) concept)
-    "answer-list" (satisfies-filter-answer-list (type/value value) concept)
+  [_ {{property :value} :property {:keys [value]} :value} concept]
+  (condp = property
+    "COMPONENT" (satisfies-filter :component value concept)
+    "PROPERTY" (satisfies-filter :property value concept)
+    "TIME_ASPCT" (satisfies-filter :time value concept)
+    "SYSTEM" (satisfies-filter :system value concept)
+    "SCALE_TYP" (satisfies-filter :scale value concept)
+    "METHOD_TYP" (satisfies-filter :method value concept)
+    "CLASS" (satisfies-filter :class value concept)
+    "STATUS" (satisfies-filter-status value concept)
+    "CLASSTYPE" (satisfies-filter-class-type value concept)
+    "ORDER_OBS" (satisfies-filter-order-obs value concept)
+    "LIST" (satisfies-filter-list value concept)
+    "answer-list" (satisfies-filter-answer-list value concept)
     nil (ba/incorrect (format "Missing = filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." (type/value property) url))))
+    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." property url))))

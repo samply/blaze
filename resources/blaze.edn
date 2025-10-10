@@ -411,14 +411,13 @@
   ;; content hashes. It speeds up access to resources which are stored in the
   ;; key-value store in encoded format.
   ;;
-  ;; The env var DB_RESOURCE_CACHE_SIZE can be used to specify the maximum
-  ;; number of resources, the cache can hold. Please note that the actual memory
-  ;; size used depends on resource sizes. Please choose a cache size depending
-  ;; on your use case while monitoring JVM heap size.
+  ;; The env var DB_RESOURCE_CACHE_SIZE_RATIO can be used to specify the maximum
+  ;; ratio of JVM heap size that is allocated to the resource cache. Please
+  ;; choose a ratio depending on your use case while monitoring JVM heap size.
   ;;
   :blaze.db/resource-cache
   {:resource-store #blaze/ref :blaze.db/resource-store
-   :max-size #blaze/cfg ["DB_RESOURCE_CACHE_SIZE" nat-int? 100000]}
+   :max-size-ratio #blaze/cfg ["DB_RESOURCE_CACHE_SIZE_RATIO" double? 0.25]}
 
   ;;
   ;; Search Param Registry

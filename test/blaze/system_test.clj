@@ -3,6 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type.system :refer [parse-date-time]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.interaction.conditional-delete-type]
@@ -207,7 +208,7 @@
    {:job-scheduler (ig/ref :blaze/job-scheduler)}
    ::rest-api/capabilities-handler
    {:version "0.1.0"
-    :release-date "2024-01-07"
+    :release-date (parse-date-time "2024-01-07")
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :terminology-service (ig/ref ::ts/local)

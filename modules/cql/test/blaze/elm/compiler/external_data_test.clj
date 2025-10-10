@@ -23,7 +23,6 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.local :as ts-local]
-   [blaze.terminology-service.protocols :as p]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -394,10 +393,20 @@
 
   (testing "Specimen context"
     (testing "Patient"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in mem-node-config [:blaze.db/node :enforce-referential-integrity] false)]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Specimen :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put {:fhir/type :fhir/Specimen :id "1"}]
+          [:put {:fhir/type :fhir/Group :id "0"}]
+          [:put {:fhir/type :fhir/Specimen :id "2"
+                 :subject #fhir/Reference{:reference #fhir/string "Group/0"}}]
+          [:put {:fhir/type :fhir/Specimen :id "3"
+                 :subject #fhir/Reference{:reference #fhir/string "invalid"}}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Specimen :id "4"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]
+         [[:delete "Patient" "1"]]]
 
         (let [context
               {:node node
@@ -405,13 +414,26 @@
                :library {}}
               expr (c/compile context ctu/patient-retrieve-elm)
               db (d/db node)
-              specimen (ctu/resource db "Specimen" "0")]
+              eval-ctx (eval-context db)]
 
           (testing "eval"
-            (given (expr/eval (eval-context db) expr specimen)
-              count := 1
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "0"))
+            (testing "specimen with patient subject"
+              (given (expr/eval eval-ctx expr (ctu/resource db "Specimen" "0"))
+                count := 1
+                [0 :fhir/type] := :fhir/Patient
+                [0 :id] := "0"))
+
+            (testing "specimen without subject"
+              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "1")))))
+
+            (testing "specimen with group subject"
+              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "2")))))
+
+            (testing "specimen with invalid subject reference"
+              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "3")))))
+
+            (testing "specimen with deleted patient subject"
+              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "4"))))))
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
