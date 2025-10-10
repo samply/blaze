@@ -17,7 +17,7 @@
    [cognitect.anomalies :as anom]
    [reitit.core :as reitit])
   (:import
-   [java.time Instant ZoneId ZonedDateTime]
+   [java.time OffsetDateTime ZoneId ZonedDateTime]
    [java.time.format DateTimeFormatter]
    [java.util.concurrent TimeUnit]))
 
@@ -254,9 +254,9 @@
     return-preference :blaze.preference/return
     :or {context-path ""}}
    {{:keys [method url]
-     if-none-match :ifNoneMatch
-     if-match :ifMatch
-     if-none-exist :ifNoneExist
+     {if-none-match :value} :ifNoneMatch
+     {if-match :value} :ifMatch
+     {if-none-exist :value} :ifNoneExist
      :as request}
     :request :keys [resource]}]
   (let [url (-> url type/value u/strip-leading-slashes)
@@ -298,7 +298,7 @@
 (defn- convert-http-date
   "Converts string `s` representing an HTTP date into a FHIR instant."
   [s]
-  (Instant/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)))
+  (type/instant (OffsetDateTime/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s))))
 
 (defn- bundle-response
   {:arglists '([ring-response])}

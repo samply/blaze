@@ -78,12 +78,12 @@
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
                #elm/scope-property ["R" "value"]]
-      {:fhir/type :fhir/Observation :value #fhir/dateTime "2019-09-04"}
-      #fhir/dateTime "2019-09-04"
+      {:fhir/type :fhir/Observation :value #fhir/dateTime #system/date-time "2019-09-04"}
+      #fhir/dateTime #system/date-time "2019-09-04"
 
       #elm/as ["{http://hl7.org/fhir}Quantity"
                #elm/scope-property ["R" "value"]]
-      {:fhir/type :fhir/Observation :value #fhir/dateTime "2019-09-04"}
+      {:fhir/type :fhir/Observation :value #fhir/dateTime #system/date-time "2019-09-04"}
       nil))
 
   (testing "ELM types"
@@ -1012,7 +1012,7 @@
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
                #elm/scope-property ["R" "value"]]
-      {:fhir/type :fhir/Observation :value #fhir/dateTime "2019-09-04"})
+      {:fhir/type :fhir/Observation :value #fhir/dateTime #system/date-time "2019-09-04"})
 
     (are [elm resource] (false? (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/is ["{http://hl7.org/fhir}boolean"
@@ -1037,7 +1037,7 @@
 
       #elm/is ["{http://hl7.org/fhir}url"
                #elm/scope-property ["R" "address"]]
-      {:fhir/type :fhir/Endpoint :address #fhir/dateTime "2019-09-04"}
+      {:fhir/type :fhir/Endpoint :address #fhir/dateTime #system/date-time "2019-09-04"}
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
                #elm/scope-property ["R" "value"]]
@@ -1045,7 +1045,7 @@
 
       #elm/is ["{http://hl7.org/fhir}Quantity"
                #elm/scope-property ["R" "value"]]
-      {:fhir/type :fhir/Observation :value #fhir/dateTime "2019-09-04"}))
+      {:fhir/type :fhir/Observation :value #fhir/dateTime #system/date-time "2019-09-04"}))
 
   (testing "ELM types"
     (are [elm] (true? (core/-eval (c/compile {} elm) {} nil nil))

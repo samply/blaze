@@ -26,3 +26,7 @@
 (s/fdef iu/keep?
   :args (s/cat :tx-op (s/nilable :blaze.db/tx-op))
   :ret boolean?)
+
+(s/fdef iu/instant
+  :args (s/cat :tx :blaze.db/tx)
+  :ret :fhir/instant)

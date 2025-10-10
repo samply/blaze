@@ -29,7 +29,7 @@
     :code #fhir/code "s"}))
 
 (defn- request-bundle-ref [job]
-  (if-let [reference (-> (job-util/input-value job parameter-uri "bundle") :reference type/value)]
+  (if-let [reference (-> (job-util/input-value job parameter-uri "bundle") :reference :value)]
     (or (fsr/split-literal-ref reference)
         (ba/incorrect (format "Invalid request bundle reference `%s`." reference)))
     (ba/incorrect "Missing request bundle reference.")))
