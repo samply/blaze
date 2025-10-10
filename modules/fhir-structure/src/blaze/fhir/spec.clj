@@ -1,12 +1,11 @@
 (ns blaze.fhir.spec
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.fhir.hash.spec]
    [blaze.fhir.spec.impl :as impl]
    [blaze.fhir.spec.resource :as res]
    [blaze.fhir.spec.spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
@@ -14,6 +13,7 @@
    [clojure.walk :as walk]
    [cognitect.anomalies :as anom])
   (:import
+   [blaze.fhir.spec.type Primitive]
    [java.io ByteArrayOutputStream]
    [java.nio.charset StandardCharsets]
    [java.util.regex Pattern]))
@@ -46,23 +46,10 @@
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
 
-(defn fhir-type
-  "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
-  `x` has no FHIR type."
-  [x]
-  (type/type x))
-
-(defn primitive?
-  "Primitive FHIR type like `id`."
-  [spec]
-  (and (keyword? spec)
-       (= "fhir" (namespace spec))
-       (Character/isLowerCase ^char (first (name spec)))))
-
 (defn primitive-val?
   "Returns true if `x` is a primitive FHIR value."
   [x]
-  (primitive? (fhir-type x)))
+  (instance? Primitive x))
 
 (defn write-json
   "Writes `value` to output stream `out` closing it if done."
@@ -72,23 +59,24 @@
 (defn write-json-as-bytes
   [context value]
   (let [out (ByteArrayOutputStream.)]
-    (write-json context out value)
-    (.toByteArray out)))
+    (when-ok [_ (write-json context out value)]
+      (.toByteArray out))))
 
 (defn write-json-as-string
   [context value]
-  (String. ^bytes (write-json-as-bytes context value) StandardCharsets/UTF_8))
+  (when-ok [bytes (write-json-as-bytes context value)]
+    (String. ^bytes bytes StandardCharsets/UTF_8)))
 
 (defn write-cbor
   [context x]
   (let [out (ByteArrayOutputStream.)]
-    (res/write-cbor context out x)
-    (.toByteArray out)))
+    (when-ok [_ (res/write-cbor context out x)]
+      (.toByteArray out))))
 
 (defn unform-xml
   "Returns the XML representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.xml" (name (type/type resource)))]
+  (let [key (keyword "fhir.xml" (name (:fhir/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))

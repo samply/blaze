@@ -9,11 +9,21 @@ import java.time.temporal.Temporal;
 import java.time.temporal.TemporalField;
 import java.time.temporal.TemporalUnit;
 
+import static blaze.fhir.spec.type.Base.MEM_SIZE_OBJECT_HEADER;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 import static java.time.temporal.ChronoField.YEAR;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class DateTimeYearMonth implements DateTime, Comparable<DateTimeYearMonth> {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - year
+     * 4 byte - month
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 8;
 
     private final int year;
     private final int month;
@@ -96,9 +106,14 @@ public final class DateTimeYearMonth implements DateTime, Comparable<DateTimeYea
 
     @Override
     public void hashInto(PrimitiveSink sink) {
-        sink.putByte((byte) 6);
+        sink.putByte(HASH_MARKER);
         sink.putInt(year);
         sink.putInt(month);
+    }
+
+    @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT;
     }
 
     public DateYearMonth toDate() {
@@ -173,15 +188,9 @@ public final class DateTimeYearMonth implements DateTime, Comparable<DateTimeYea
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof DateTimeYearMonth) {
-            return year == ((DateTimeYearMonth) obj).year &&
-                    month == ((DateTimeYearMonth) obj).month;
-        }
-        return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        return o instanceof DateTimeYearMonth that && year == that.year && month == that.month;
     }
 
     @Override

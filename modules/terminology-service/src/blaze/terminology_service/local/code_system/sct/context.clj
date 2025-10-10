@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
@@ -443,9 +444,9 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
         :code #fhir/code "read-only"}]}
-   :url (type/uri url)
+   :url (type/uri-interned url)
    :version (type/string (version-url module-id version))
    :title (type/string (find-fully-specified-name module-dependency-index
                                                   fully-specified-name-index
@@ -453,7 +454,7 @@
                                                   module-id))
    :status #fhir/code "active"
    :experimental #fhir/boolean false
-   :date (type/dateTime (str (LocalDate/parse (str version) DateTimeFormatter/BASIC_ISO_DATE)))
+   :date (type/dateTime (system/parse-date-time (str (LocalDate/parse (str version) DateTimeFormatter/BASIC_ISO_DATE))))
    :caseSensitive #fhir/boolean true
    :hierarchyMeaning #fhir/code "is-a"
    :versionNeeded #fhir/boolean false
@@ -491,7 +492,7 @@
     (apply f lines args)))
 
 (defn- has-core-version? [{:keys [version]}]
-  (str/starts-with? (type/value version) core-version-prefix))
+  (str/starts-with? (:value version) core-version-prefix))
 
 (defn- find-current-int-system [code-systems]
   (last (sort-by (comp :value :date) (filter has-core-version? code-systems))))

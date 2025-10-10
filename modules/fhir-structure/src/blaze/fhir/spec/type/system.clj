@@ -9,7 +9,8 @@
    * DateTime
    * Time
    * Quantity"
-  (:refer-clojure :exclude [boolean? decimal? integer? str string? time type])
+  (:refer-clojure :exclude [boolean? decimal? integer? str string? time type
+                            parse-boolean])
   (:require
    [blaze.anomaly :as ba]
    [blaze.util :refer [str]]
@@ -17,12 +18,10 @@
   (:import
    [blaze.fhir.spec.type.system
     Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear
-    DateYearMonth]
-   [com.google.common.hash PrimitiveSink]
+    DateYearMonth Times]
    [java.io Writer]
-   [java.nio.charset StandardCharsets]
    [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime ZoneOffset]
-   [java.time.format DateTimeFormatter DateTimeParseException]
+   [java.time.format DateTimeParseException]
    [java.time.temporal ChronoField]))
 
 (set! *warn-on-reflection* true)
@@ -30,8 +29,6 @@
 
 (defprotocol SystemType
   (-type [_])
-  (-to-string [_])
-  (-hash-into [_ sink])
   (-equals [_ x]))
 
 (defn value?
@@ -57,17 +54,16 @@
   Boolean
   (-type [_]
     :system/boolean)
-  (-to-string [b]
-    (.toString b))
-  (-hash-into [b sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 0))
-      (.putBoolean b)))
   (-equals [b x]
     (some->> x (.equals b))))
 
 (defn boolean? [x]
   (identical? :system/boolean (-type x)))
+
+(defn parse-boolean [s]
+  (if (#{"true" "false"} s)
+    (clojure.core/parse-boolean s)
+    (ba/incorrect (format "Invalid boolean value `%s`." s))))
 
 ;; ---- System.Integer --------------------------------------------------------
 
@@ -75,17 +71,17 @@
   Integer
   (-type [_]
     :system/integer)
-  (-to-string [i]
-    (.toString i))
-  (-hash-into [i sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 2))
-      (.putInt i)))
   (-equals [i x]
     (some->> x (.equals i))))
 
 (defn integer? [x]
   (identical? :system/integer (-type x)))
+
+(defn parse-integer [s]
+  (try
+    (Integer/valueOf ^String s)
+    (catch NumberFormatException _
+      (ba/incorrect (format "Invalid integer value `%s`." s)))))
 
 ;; ---- System.Long -----------------------------------------------------------
 
@@ -93,12 +89,6 @@
   Long
   (-type [_]
     :system/long)
-  (-to-string [i]
-    (.toString i))
-  (-hash-into [l sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 3))
-      (.putInt l)))
   (-equals [l x]
     (some->> x (.equals l))))
 
@@ -111,12 +101,6 @@
   String
   (-type [_]
     :system/string)
-  (-to-string [s]
-    s)
-  (-hash-into [s sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 1))
-      (.putString s StandardCharsets/UTF_8)))
   (-equals [s x]
     (some->> x (.equals s))))
 
@@ -129,12 +113,6 @@
   BigDecimal
   (-type [_]
     :system/decimal)
-  (-to-string [d]
-    (.toString d))
-  (-hash-into [d sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 4))
-      (.putString (str d) StandardCharsets/UTF_8)))
   (-equals [d x]
     (some->> x (.equals d))))
 
@@ -180,10 +158,6 @@
   DateYear
   (-type [date]
     (.type date))
-  (-to-string [date]
-    (.toString date))
-  (-hash-into [date sink]
-    (.hashInto date sink))
   (-equals [date x]
     (cond
       (instance? DateYear x) (.equals date x)
@@ -192,10 +166,6 @@
   DateYearMonth
   (-type [date]
     (.type date))
-  (-to-string [date]
-    (.toString date))
-  (-hash-into [date sink]
-    (.hashInto date sink))
   (-equals [date x]
     (cond
       (instance? DateYearMonth x) (.equals date x)
@@ -204,17 +174,13 @@
   DateDate
   (-type [date]
     (.type date))
-  (-to-string [date]
-    (.toString date))
-  (-hash-into [date sink]
-    (.hashInto date sink))
   (-equals [date x]
     (cond
       (instance? DateDate x) (.equals date x)
       (instance? DateTimeDate x) (.equals date (.toDate ^DateTimeDate x)))))
 
 (defmethod print-method DateYear [^DateYear date ^Writer w]
-  (.write w "#system/date\"")
+  (.write w "#system/date \"")
   (.write w (str date))
   (.write w "\""))
 
@@ -224,7 +190,7 @@
   (.write w ")"))
 
 (defmethod print-method DateYearMonth [^DateYearMonth date ^Writer w]
-  (.write w "#system/date\"")
+  (.write w "#system/date \"")
   (.write w (str date))
   (.write w "\""))
 
@@ -236,7 +202,7 @@
   (.write w ")"))
 
 (defmethod print-method DateDate [^DateDate date ^Writer w]
-  (.write w "#system/date\"")
+  (.write w "#system/date \"")
   (.write w (str date))
   (.write w "\""))
 
@@ -290,7 +256,7 @@
     (ba/try-one DateTimeException ::anom/incorrect (DateTime/parse s))))
 
 (defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
-  (.write w "#system/date-time\"")
+  (.write w "#system/date-time \"")
   (.write w (str date-time))
   (.write w "\""))
 
@@ -300,7 +266,7 @@
   (.write w ")"))
 
 (defmethod print-method DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
-  (.write w "#system/date-time\"")
+  (.write w "#system/date-time \"")
   (.write w (str date-time))
   (.write w "\""))
 
@@ -312,7 +278,7 @@
   (.write w ")"))
 
 (defmethod print-method DateTimeDate [^DateTimeDate date-time ^Writer w]
-  (.write w "#system/date-time\"")
+  (.write w "#system/date-time \"")
   (.write w (str date-time))
   (.write w "\""))
 
@@ -326,8 +292,8 @@
   (.write w ")"))
 
 (defmethod print-method LocalDateTime [^LocalDateTime dateTime ^Writer w]
-  (.write w "#system/date-time\"")
-  (.write w (str dateTime))
+  (.write w "#system/date-time \"")
+  (.write w (DateTime/toString dateTime))
   (.write w "\""))
 
 (defmethod print-dup LocalDateTime [^LocalDateTime dateTime ^Writer w]
@@ -348,8 +314,8 @@
   (.write w ")"))
 
 (defmethod print-method OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
-  (.write w "#system/date-time\"")
-  (.write w (str dateTime))
+  (.write w "#system/date-time \"")
+  (.write w (DateTime/toString dateTime))
   (.write w "\""))
 
 (defmethod print-dup OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
@@ -371,6 +337,11 @@
   (.write w (.getId (.getOffset dateTime)))
   (.write w "\"))"))
 
+(defmethod print-method LocalTime [^LocalTime time ^Writer w]
+  (.write w "#system/time \"")
+  (.write w (Times/toString time))
+  (.write w "\""))
+
 (defmethod print-dup LocalTime [^LocalTime time ^Writer w]
   (.write w "#=(java.time.LocalTime/of ")
   (.write w (str (.getHour time)))
@@ -386,10 +357,6 @@
   DateTimeYear
   (-type [date-time]
     (.type date-time))
-  (-to-string [date-time]
-    (.toString date-time))
-  (-hash-into [date-time sink]
-    (.hashInto date-time sink))
   (-equals [date-time x]
     (cond
       (instance? DateTimeYear x) (.equals date-time x)
@@ -398,10 +365,6 @@
   DateTimeYearMonth
   (-type [date-time]
     (.type date-time))
-  (-to-string [date-time]
-    (.toString date-time))
-  (-hash-into [date-time sink]
-    (.hashInto date-time sink))
   (-equals [date-time x]
     (cond
       (instance? DateTimeYearMonth x) (.equals date-time x)
@@ -410,10 +373,6 @@
   DateTimeDate
   (-type [date-time]
     (.type date-time))
-  (-to-string [date-time]
-    (.toString date-time))
-  (-hash-into [date-time sink]
-    (.hashInto date-time sink))
   (-equals [date-time x]
     (cond
       (instance? DateTimeDate x) (.equals date-time x)
@@ -422,18 +381,6 @@
   LocalDateTime
   (-type [_]
     :system/date-time)
-  (-to-string [date-time]
-    (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
-  (-hash-into [date-time sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 6))
-      (.putInt (.getYear date-time))
-      (.putInt (.getMonthValue date-time))
-      (.putInt (.getDayOfMonth date-time))
-      (.putInt (.getHour date-time))
-      (.putInt (.getMinute date-time))
-      (.putInt (.getSecond date-time))
-      (.putInt (.getNano date-time))))
   (-equals [date-time x]
     (cond
       (instance? LocalDateTime x) (.equals date-time x)))
@@ -441,19 +388,6 @@
   OffsetDateTime
   (-type [_]
     :system/date-time)
-  (-to-string [date-time]
-    (.format DateTimeFormatter/ISO_DATE_TIME date-time))
-  (-hash-into [date-time sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 6))
-      (.putInt (.getYear date-time))
-      (.putInt (.getMonthValue date-time))
-      (.putInt (.getDayOfMonth date-time))
-      (.putInt (.getHour date-time))
-      (.putInt (.getMinute date-time))
-      (.putInt (.getSecond date-time))
-      (.putInt (.getNano date-time))
-      (.putInt (.getTotalSeconds (.getOffset date-time)))))
   (-equals [date-time x]
     (cond
       (instance? OffsetDateTime x) (.equals date-time x))))
@@ -557,15 +491,6 @@
   LocalTime
   (-type [_]
     :system/time)
-  (-to-string [time]
-    (.format DateTimeFormatter/ISO_LOCAL_TIME time))
-  (-hash-into [time sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 7))
-      (.putInt (.getHour time))
-      (.putInt (.getMinute time))
-      (.putInt (.getSecond time))
-      (.putInt (.getNano time))))
   (-equals [time x]
     (some->> x (.equals time))))
 
@@ -593,14 +518,8 @@
 (extend-protocol SystemType
   Object
   (-type [_])
-  (-to-string [o]
-    (.toString o))
-  (-hash-into [_ _])
   (-equals [_ _] false)
 
   nil
   (-type [_])
-  (-to-string [_]
-    "nil")
-  (-hash-into [_ _])
   (-equals [_ _]))

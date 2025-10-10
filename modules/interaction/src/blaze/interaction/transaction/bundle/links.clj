@@ -6,7 +6,6 @@
   (:require
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
@@ -19,16 +18,16 @@
   (cond->> uri (fsr/split-literal-ref uri) (str base-url "/")))
 
 (defn- resolve-link [{:keys [base-url index]} link]
-  (let [uri (some->> (type/value link) (resolve-uri base-url))]
+  (let [uri (some->> (:value link) (resolve-uri base-url))]
     (if-let [{:fhir/keys [type] :keys [id]} (get index uri)]
-      (type/assoc-value link (str (name type) "/" id))
+      (assoc link :value (str (name type) "/" id))
       link)))
 
 (declare resolve-links)
 
 (defn- resolve-single-element-links
   [context value]
-  (let [type (fhir-spec/fhir-type value)]
+  (if-let [type (:fhir/type value)]
     (cond
       (identical? :fhir/Reference type)
       (update value :reference (partial resolve-link context))
@@ -37,15 +36,16 @@
           (identical? :fhir/url type))
       (resolve-link context value)
 
-      (fhir-spec/primitive? type)
+      (fhir-spec/primitive-val? value)
       value
 
       :else
-      (resolve-links context value))))
+      (resolve-links context value))
+    value))
 
 (defn- resolve-element-links [context value]
   (if (sequential? value)
-    (mapv (partial resolve-single-element-links context) value)
+    (mapv #(resolve-single-element-links context %) value)
     (resolve-single-element-links context value)))
 
 (defn- resolve-links [context complex-value]
@@ -60,10 +60,8 @@
 
 (defn- index-resources-by-full-url [entries]
   (reduce
-   (fn [r {:keys [fullUrl resource]}]
-     (if-let [fullUrl (type/value fullUrl)]
-       (assoc r fullUrl resource)
-       r))
+   (fn [r {{full-url :value} :fullUrl :keys [resource]}]
+     (cond-> r full-url (assoc full-url resource)))
    {}
    entries))
 
@@ -86,7 +84,7 @@
     (mapv
      (fn [{full-url :fullUrl :as entry}]
        (if-let [resource (:resource entry)]
-         (let [context {:index index :base-url (some-> (type/value full-url) base-url)}]
+         (let [context {:index index :base-url (some-> full-url :value base-url)}]
            (assoc entry :resource (resolve-links context resource)))
          entry))
      entries)))

@@ -1,17 +1,87 @@
 package blaze.fhir.spec.type.system;
 
 import clojure.lang.Keyword;
+import clojure.lang.RT;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.google.common.hash.PrimitiveSink;
 
+import java.io.IOException;
 import java.time.*;
+import java.time.chrono.IsoChronology;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.time.temporal.Temporal;
 import java.time.temporal.ValueRange;
 
+import static blaze.fhir.spec.type.Base.MEM_SIZE_OBJECT_HEADER;
+import static blaze.fhir.spec.type.Base.MEM_SIZE_REFERENCE;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+
 public interface DateTime extends JavaSystemType, Temporal {
 
-    Keyword TYPE = Keyword.intern("system", "date-time");
+    byte HASH_MARKER = 6;
+
+    DateTimeFormatter LOCAL_DATE_TIME = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(ISO_LOCAL_DATE)
+            .appendLiteral('T')
+            .append(Times.LOCAL_TIME)
+            .toFormatter()
+            .withResolverStyle(ResolverStyle.STRICT)
+            .withChronology(IsoChronology.INSTANCE);
+
+    DateTimeFormatter DATE_TIME = new DateTimeFormatterBuilder()
+            .append(LOCAL_DATE_TIME)
+            .appendOffsetId()
+            .toFormatter()
+            .withResolverStyle(ResolverStyle.STRICT)
+            .withChronology(IsoChronology.INSTANCE);
+
+    Keyword TYPE = RT.keyword("system", "date-time");
 
     ValueRange YEAR_RANGE = ValueRange.of(1, 9999);
+
+    /**
+     * Memory size LocalDate.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - year
+     * 2 byte - month
+     * 2 byte - day
+     */
+    int MEM_SIZE_OBJECT_LOCAL_DATE = MEM_SIZE_OBJECT_HEADER + 8;
+
+    /**
+     * Memory size LocalDate.
+     * <p>
+     * 8 byte - object header
+     * 1 byte - hour
+     * 1 byte - minute
+     * 1 byte - second
+     * 4 byte - nano
+     */
+    int MEM_SIZE_OBJECT_LOCAL_TIME = MEM_SIZE_OBJECT_HEADER + 8;
+
+    /**
+     * Memory size LocalDateTime.
+     * <p>
+     * 8 byte - object header
+     * 4 or 8 byte - LocalDate reference
+     * 4 or 8 byte - LocalTime reference
+     */
+    int MEM_SIZE_OBJECT_LOCAL_DATE_TIME = MEM_SIZE_OBJECT_HEADER + 2 * MEM_SIZE_REFERENCE + MEM_SIZE_OBJECT_LOCAL_DATE +
+            MEM_SIZE_OBJECT_LOCAL_TIME;
+
+    /**
+     * Memory size OffsetDateTime.
+     * <p>
+     * 8 byte - object header
+     * 4 or 8 byte - LocalDateTime reference
+     * 4 or 8 byte - ZoneOffset reference (shared)
+     */
+    int MEM_SIZE_OBJECT_OFFSET_DATE_TIME = MEM_SIZE_OBJECT_HEADER + 2 * MEM_SIZE_REFERENCE + MEM_SIZE_OBJECT_LOCAL_DATE_TIME;
 
     /**
      * Obtains an instance of {@code DateTimeYear}, {@code DateTimeYearMonth},
@@ -135,6 +205,61 @@ public interface DateTime extends JavaSystemType, Temporal {
             }
         }
         throw new DateTimeParseException("Text cannot be parsed to a DateTime. Expected one of `+`, `-` or `Z`.", s, idx);
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    static void hashInto(Temporal value, PrimitiveSink sink) {
+        if (value instanceof JavaSystemType systemType) {
+            systemType.hashInto(sink);
+        }
+        if (value instanceof LocalDateTime dateTime) {
+            sink.putByte(HASH_MARKER);
+            sink.putInt(dateTime.getYear());
+            sink.putInt(dateTime.getMonthValue());
+            sink.putInt(dateTime.getDayOfMonth());
+            sink.putInt(dateTime.getHour());
+            sink.putInt(dateTime.getMinute());
+            sink.putInt(dateTime.getSecond());
+            sink.putInt(dateTime.getNano());
+        }
+        if (value instanceof OffsetDateTime dateTime) {
+            hashInto(dateTime.toLocalDateTime(), sink);
+            sink.putInt(dateTime.getOffset().getTotalSeconds());
+        }
+    }
+
+    static int memSize(Temporal value) {
+        if (value == null) return 0;
+        return switch (value) {
+            case JavaSystemType systemType -> systemType.memSize();
+            case LocalDateTime x -> MEM_SIZE_OBJECT_LOCAL_DATE_TIME;
+            case OffsetDateTime x -> MEM_SIZE_OBJECT_OFFSET_DATE_TIME;
+            default -> 0;
+        };
+    }
+
+    static String toString(Temporal value) {
+        return switch (value) {
+            case LocalDateTime dateTime -> LOCAL_DATE_TIME.format(dateTime);
+            case OffsetDateTime dateTime -> DATE_TIME.format(dateTime);
+            default -> value.toString();
+        };
+    }
+
+    static void writeTo(Temporal value, JsonGenerator generator) throws IOException {
+        switch (value) {
+            case LocalDateTime dateTime -> {
+                var appendable = new AsciiByteArrayAppendable(29);
+                LOCAL_DATE_TIME.formatTo(dateTime, appendable);
+                generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
+            }
+            case OffsetDateTime dateTime -> {
+                var appendable = new AsciiByteArrayAppendable(35);
+                DATE_TIME.formatTo(dateTime, appendable);
+                generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
+            }
+            default -> generator.writeString(value.toString());
+        }
     }
 
     default Keyword type() {

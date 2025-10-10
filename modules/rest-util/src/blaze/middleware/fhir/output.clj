@@ -7,7 +7,6 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
@@ -40,7 +39,10 @@
     (write-body-to-stream [_body _response output-stream]
       (log/trace "generate JSON")
       (with-open [_ (prom/timer generate-duration-seconds "json")]
-        (fhir-spec/write-json writing-context output-stream body)))))
+        (try
+          (fhir-spec/write-json writing-context output-stream body)
+          (catch Throwable e
+            (log/error "Error while outputting JSON:" e)))))))
 
 (defn- generate-xml [body]
   (reify rp/StreamableResponseBody
@@ -48,14 +50,17 @@
       (log/trace "generate XML")
       (with-open [_ (prom/timer generate-duration-seconds "xml")]
         (with-open [writer (io/writer output-stream)]
-          (xml/emit (fhir-spec/unform-xml body) writer))))))
+          (try
+            (xml/emit (fhir-spec/unform-xml body) writer)
+            (catch Throwable e
+              (log/error "Error while outputting XML:" e))))))))
 
-(defn- generate-binary** [{:keys [data]}]
+(defn- generate-binary** [{{data :value} :data}]
   (when data
-    (.decode (Base64/getDecoder) ^String (type/value data))))
+    (.decode (Base64/getDecoder) ^String data)))
 
 (defn- binary-content-type [body]
-  (or (-> body :contentType type/value)
+  (or (-> body :contentType :value)
       "application/octet-stream"))
 
 (defn- generate-binary* [writing-context {:keys [body] :as response}]

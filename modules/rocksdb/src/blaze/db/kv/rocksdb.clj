@@ -314,7 +314,7 @@
 
 (defmethod ig/init-key ::env
   [_ _]
-  (log/info (format "Init RocksDB environment"))
+  (log/info "Init RocksDB environment")
   (doto (Env/getDefault)
     (.setBackgroundThreads 2 Priority/HIGH)
     (.setBackgroundThreads 6 Priority/LOW)))

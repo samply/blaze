@@ -21,13 +21,13 @@
   {:type :invoke :f :read :value nil})
 
 (defn w [_ _]
-  {:type :invoke :f :write :value (int (rand-int 100))})
+  {:type :invoke :f :write :value (rand-int 100)})
 
 (defn read [{:keys [base-uri] :as context} id]
   @(-> (fhir-client/read base-uri "Patient" id context)
        (ac/then-apply
         (fn [resource]
-          {:type :ok :value (:multipleBirth resource)}))
+          {:type :ok :value (-> resource :multipleBirth :value)}))
        (ac/exceptionally
         (fn [e]
           {:type (if (ba/not-found? e) :ok :fail) :value nil}))))
@@ -36,7 +36,7 @@
   @(-> (if (even? value)
          (fhir-client/update
           base-uri
-          {:fhir/type :fhir/Patient :id id :multipleBirth value}
+          {:fhir/type :fhir/Patient :id id :multipleBirth (type/integer value)}
           context)
          (fhir-client/transact
           base-uri
@@ -45,7 +45,7 @@
            :entry
            [{:fhir/type :fhir.Bundle/entry
              :resource
-             {:fhir/type :fhir/Patient :id id :multipleBirth value}
+             {:fhir/type :fhir/Patient :id id :multipleBirth (type/integer value)}
              :request
              {:fhir/type :fhir.Bundle.entry/request
               :method #fhir/code "PUT"

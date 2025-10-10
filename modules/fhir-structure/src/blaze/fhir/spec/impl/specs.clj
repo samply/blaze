@@ -1,6 +1,5 @@
 (ns blaze.fhir.spec.impl.specs
   "Custom Specs for primitive and complex types."
-  (:refer-clojure :exclude [meta])
   (:require
    [clojure.alpha.spec :as s]
    [clojure.alpha.spec.protocols :as sp]))
@@ -49,7 +48,7 @@
       sp/Spec
       (conform* [_ x _ settings]
         (if (instance? class x)
-          (loop [ret x [[k v] & ks] x]
+          (loop [ret (into {} x) [[k v] & ks] x]
             (if k
               (if (some? v)
                 (let [conformed (if-let [sp (@specs k)] (sp/conform* sp v k settings) v)]

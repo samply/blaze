@@ -9,7 +9,7 @@
 
 (def ^:private ^:const msg-auth-required
   #fhir/Coding
-   {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
+   {:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/operation-outcome"
     :code #fhir/code "MSG_AUTH_REQUIRED"})
 
 (defn not-authenticated-response [request]

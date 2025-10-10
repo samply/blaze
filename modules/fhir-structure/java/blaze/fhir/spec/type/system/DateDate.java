@@ -1,22 +1,34 @@
 package blaze.fhir.spec.type.system;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.chrono.IsoChronology;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoField;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalField;
 import java.time.temporal.TemporalUnit;
 
+import static blaze.fhir.spec.type.Base.MEM_SIZE_OBJECT_HEADER;
 import static java.time.temporal.ChronoField.*;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class DateDate implements Date, Comparable<DateDate> {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - year
+     * 2 byte - month
+     * 2 byte - day
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 8;
 
     /**
      * The number of days in a 400 year cycle.
@@ -143,10 +155,15 @@ public final class DateDate implements Date, Comparable<DateDate> {
 
     @Override
     public void hashInto(PrimitiveSink sink) {
-        sink.putByte((byte) 5);
+        sink.putByte(HASH_MARKER);
         sink.putInt(year);
         sink.putInt(month);
         sink.putInt(day);
+    }
+
+    @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT;
     }
 
     public DateTimeDate toDateTime() {
@@ -309,14 +326,9 @@ public final class DateDate implements Date, Comparable<DateDate> {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof DateDate) {
-            return compareTo((DateDate) obj) == 0;
-        }
-        return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        return o instanceof DateDate that && year == that.year && month == that.month && day == that.day;
     }
 
     @Override
@@ -342,5 +354,11 @@ public final class DateDate implements Date, Comparable<DateDate> {
                 .append(dayValue < 10 ? "-0" : "-")
                 .append(dayValue)
                 .toString();
+    }
+
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var appendable = new AsciiByteArrayAppendable(10);
+        appendable.append(toString());
+        generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
     }
 }

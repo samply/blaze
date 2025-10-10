@@ -14,7 +14,10 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
+   [java.time Instant ZoneOffset]
    [java.util.concurrent CompletionException]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private valid-return-preferences
   #{"minimal" "representation" "OperationOutcome"})
@@ -72,7 +75,7 @@
     (assoc
      :details
      {:coding
-      [{:system #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
+      [{:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/operation-outcome"
         :code (type/code operation-outcome)}]})
     message
     (assoc :diagnostics (type/string message))
@@ -237,3 +240,6 @@
   "A handler returning failed futures."
   (reitit.ring/create-default-handler
    {:method-not-allowed method-not-allowed-batch-handler}))
+
+(defn instant [{:blaze.db.tx/keys [instant]}]
+  (type/instant (.atOffset ^Instant instant ZoneOffset/UTC)))

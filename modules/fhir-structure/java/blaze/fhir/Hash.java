@@ -44,9 +44,7 @@ public final class Hash {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Hash hash = (Hash) o;
-        return l0 == hash.l0 && l1 == hash.l1 && l2 == hash.l2 && l3 == hash.l3;
+        return o instanceof Hash that && l0 == that.l0 && l1 == that.l1 && l2 == that.l2 && l3 == that.l3;
     }
 
     @Override

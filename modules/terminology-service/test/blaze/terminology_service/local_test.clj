@@ -262,15 +262,15 @@
   (some? (re-matches #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" s)))
 
 (defn- sort-expansion [value-set]
-  (update-in value-set [:expansion :contains] (partial sort-by (comp type/value :code))))
+  (update-in value-set [:expansion :contains] (partial sort-by (comp :value :code))))
 
 (defn- parameter [name]
   (fn [{:keys [parameter]}]
-    (filterv #(= name (type/value (:name %))) parameter)))
+    (filterv #(= name (:value (:name %))) parameter)))
 
 (defn- concept [code]
   (fn [concepts]
-    (filterv #(= code (type/value (:code %))) concepts)))
+    (filterv #(= code (:value (:code %))) concepts)))
 
 (deftest code-system-test
   (testing "with no code system"
@@ -478,7 +478,7 @@
 
     (testing "unsupported param"
       (given-failed-future (code-system-validate-code ts
-                             "date" #fhir/dateTime "2025")
+                             "date" #fhir/dateTime #system/date-time "2025")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `date`."))
 
@@ -1111,7 +1111,7 @@
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code "441510007"
           [(parameter "system") 0 :value] := #fhir/uri "http://snomed.info/sct"
-          [(parameter "version") 0 :value type/value] := output-version
+          [(parameter "version") 0 :value :value] := output-version
           [(parameter "display") 0 :value] := #fhir/string "Blood specimen with anticoagulant"))
 
       (testing "fully specified name display"
@@ -1343,7 +1343,7 @@
 
     (testing "unsupported param"
       (given-failed-future (expand-value-set ts
-                             "date" #fhir/dateTime "2025")
+                             "date" #fhir/dateTime #system/date-time "2025")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `date`."))
 
@@ -1702,7 +1702,7 @@
                :expansion
                {:fhir/type :fhir.ValueSet/expansion
                 :identifier #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
-                :timestamp #fhir/dateTime "1970-01-01T00:00:00Z"
+                :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
                 :contains
                 [{:fhir/type :fhir.ValueSet.expansion/contains
                   :system #fhir/uri "system-115910"
@@ -2285,8 +2285,8 @@
 
         (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
           :fhir/type := :fhir/ValueSet
-          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-180814"
-          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-115910"
+          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-115910"
+          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-180814"
           [:expansion :contains count] := 2
           [:expansion :contains 0 :system] := #fhir/uri "system-115910"
           [:expansion :contains 0 :code] := #fhir/code "code-115927"
@@ -2325,8 +2325,8 @@
 
         (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
           :fhir/type := :fhir/ValueSet
-          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-180814"
-          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-115910"
+          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-115910"
+          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-180814"
           [:expansion :contains count] := 4
           [:expansion :contains 0 :system] := #fhir/uri "system-115910"
           [:expansion :contains 0 :code] := #fhir/code "code-115927"
@@ -2377,8 +2377,8 @@
 
           (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
             :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-180814"
-            [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-115910"
+            [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-115910"
+            [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-180814"
             [:expansion :contains count] := 3
             [:expansion :contains 0 :system] := #fhir/uri "system-115910"
             [:expansion :contains 0 :code] := #fhir/code "code-115927"
@@ -2699,7 +2699,7 @@
                  :expansion
                  {:fhir/type :fhir.ValueSet/expansion
                   :identifier #fhir/uri "urn:uuid:78653bd7-1b0a-4c9c-afa7-0d5ccf8c6a71"
-                  :timestamp #fhir/dateTime "1970-01-01T00:00:00Z"
+                  :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
                   :contains
                   [{:fhir/type :fhir.ValueSet.expansion/contains
                     :system #fhir/uri "system-180814"
@@ -5117,8 +5117,8 @@
         :meta := nil
         :url := #fhir/uri "value-set-135750"
         :compose := nil
-        [:expansion :timestamp] := #fhir/dateTime "1970-01-01T00:00:00Z"
-        [:expansion :identifier type/value] :? uuid-urn?
+        [:expansion :timestamp] := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+        [:expansion :identifier :value] :? uuid-urn?
         [:expansion :total] := #fhir/integer 1
         [:expansion :contains count] := 1
         [:expansion :contains 0 :system] := #fhir/uri "system-115910"
@@ -5149,8 +5149,8 @@
         :meta := nil
         :url := #fhir/uri "value-set-135750"
         [:compose :include 0 :system] := #fhir/uri "system-115910"
-        [:expansion :timestamp] := #fhir/dateTime "1970-01-01T00:00:00Z"
-        [:expansion :identifier type/value] :? uuid-urn?
+        [:expansion :timestamp] := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+        [:expansion :identifier :value] :? uuid-urn?
         [:expansion :total] := #fhir/integer 1
         [:expansion :contains count] := 1
         [:expansion :contains 0 :system] := #fhir/uri "system-115910"
@@ -5337,7 +5337,7 @@
 
     (testing "unsupported param"
       (given-failed-future (value-set-validate-code ts
-                             "date" #fhir/dateTime "2025")
+                             "date" #fhir/dateTime #system/date-time "2025")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `date`."))
 

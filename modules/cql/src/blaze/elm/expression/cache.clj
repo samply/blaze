@@ -1,6 +1,6 @@
 (ns blaze.elm.expression.cache
   "Expression cache API."
-  (:refer-clojure :exclude [get list])
+  (:refer-clojure :exclude [get])
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]

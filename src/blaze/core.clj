@@ -8,7 +8,7 @@
   (:gen-class))
 
 (defn- max-memory []
-  (quot (.maxMemory (Runtime/getRuntime)) (* 1024 1024)))
+  (bit-shift-right (.maxMemory (Runtime/getRuntime)) 20))
 
 (defn- config-msg [config]
   (->> (sort-by key config)

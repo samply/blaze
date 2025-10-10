@@ -7,7 +7,7 @@
 
 (defn- tx-issue-type-coding [code]
   (type/coding
-   {:system #fhir/uri "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
+   {:system #fhir/uri-interned "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
     :code (type/code code)}))
 
 (def ^:private not-found-coding
@@ -37,10 +37,9 @@
 (defn- code [{:keys [code system]}]
   (cond->> code system (str system "#")))
 
-(defn- value-set-canonical [{:keys [url version]}]
-  (when-let [url (type/value url)]
-    (let [version (type/value version)]
-      (cond-> url version (str "|" version)))))
+(defn- value-set-canonical [{{url :value} :url {version :value} :version}]
+  (when url
+    (cond-> url version (str "|" version))))
 
 (defn- value-set-msg [value-set]
   (if-let [c (value-set-canonical value-set)]
@@ -94,7 +93,8 @@
 
 (defn invalid-display
   {:arglists '([clause concept lenient-display-validation])}
-  [{:keys [code system origin] expected-display :display} {actual-display :display} lenient-display-validation]
+  [{:keys [code system origin] expected-display :display}
+   {{actual-display :value} :display} lenient-display-validation]
   {:fhir/type :fhir.OperationOutcome/issue
    :severity (if lenient-display-validation #fhir/code "warning" #fhir/code "error")
    :code #fhir/code "invalid"
@@ -104,19 +104,19 @@
      :text
      (type/string
       (cond-> (format "Invalid display `%s` for code `%s`." expected-display (str system "#" code))
-        actual-display (str (format " A valid display is `%s`." (type/value actual-display)))))})
+        actual-display (str (format " A valid display is `%s`." actual-display))))})
    :expression [(type/string (cond->> "display" origin (str origin ".")))]})
 
 (defn cannot-infer
   {:arglists '([code-system clause])}
-  [{:keys [url]} {:keys [code]}]
+  [{{url :value} :url} {:keys [code]}]
   {:fhir/type :fhir.OperationOutcome/issue
    :severity #fhir/code "error"
    :code #fhir/code "not-found"
    :details
    (type/codeable-concept
     {:coding [cannot-infer-coding]
-     :text (type/string (format "The provided code `%s` is not known to belong to the inferred code system `%s`." code (type/value url)))})
+     :text (type/string (format "The provided code `%s` is not known to belong to the inferred code system `%s`." code url))})
    :expression [#fhir/string "code"]})
 
 (defn inactive-code

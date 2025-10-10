@@ -1,6 +1,5 @@
 (ns blaze.db.impl.index.compartment.search-param-value-resource
   "Functions for accessing the CompartmentSearchParamValueResource index."
-  (:refer-clojure :exclude [keys])
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]

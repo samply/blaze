@@ -49,7 +49,6 @@ services:
       ENABLE_ADMIN_API: "true"
       ENABLE_TERMINOLOGY_SERVICE: "true"
       ENABLE_TERMINOLOGY_LOINC: "true"
-      DB_RESOURCE_CACHE_SIZE: "10000"
       OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"
       OPENID_CLIENT_TRUST_STORE: "/app/keycloak-trust-store.p12"
       OPENID_CLIENT_TRUST_STORE_PASS: "insecure"

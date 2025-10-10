@@ -116,7 +116,7 @@
       (testing "birthDate"
         (let [patient {:fhir/type :fhir/Patient
                        :id "id-142629"
-                       :birthDate #fhir/date "2020-02-04"}
+                       :birthDate #fhir/date #system/date "2020-02-04"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries
@@ -135,7 +135,7 @@
         (let [patient
               {:fhir/type :fhir/Patient
                :id "id-142629"
-               :deceased #fhir/dateTime "2019-11-17T00:14:29+01:00"}
+               :deceased #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries
@@ -157,8 +157,8 @@
               {:fhir/type :fhir/Encounter :id "id-160224"
                :period
                #fhir/Period
-                {:start #fhir/dateTime "2019-11-17T00:14:29+01:00"
-                 :end #fhir/dateTime "2019-11-17T00:44:29+01:00"}}
+                {:start #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"
+                 :end #fhir/dateTime #system/date-time "2019-11-17T00:44:29+01:00"}}
               hash (hash/generate encounter)
               [[_ k0]]
               (index-entries
@@ -180,7 +180,7 @@
                 {:fhir/type :fhir/Encounter :id "id-160224"
                  :period
                  #fhir/Period
-                  {:end #fhir/dateTime "2019-11-17"}}
+                  {:end #fhir/dateTime #system/date-time "2019-11-17"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
                 (index-entries
@@ -201,7 +201,7 @@
                 {:fhir/type :fhir/Encounter :id "id-160224"
                  :period
                  #fhir/Period
-                  {:start #fhir/dateTime "2019-11-17T00:14:29+01:00"}}
+                  {:start #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
                 (index-entries
@@ -240,7 +240,7 @@
       (testing "issued"
         (let [patient {:fhir/type :fhir/DiagnosticReport
                        :id "id-155607"
-                       :issued #fhir/instant "2019-11-17T00:14:29.917+01:00"}
+                       :issued #fhir/instant #system/date-time "2019-11-17T00:14:29.917+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries

@@ -5,8 +5,10 @@
  fhir/integer blaze.fhir.spec.type/integer
  fhir/long blaze.fhir.spec.type/long
  fhir/string blaze.fhir.spec.type/string
+ fhir/string-interned blaze.fhir.spec.type/string-interned
  fhir/decimal blaze.fhir.spec.type/decimal
  fhir/uri blaze.fhir.spec.type/uri
+ fhir/uri-interned blaze.fhir.spec.type/uri-interned
  fhir/url blaze.fhir.spec.type/url
  fhir/canonical blaze.fhir.spec.type/canonical
  fhir/base64Binary blaze.fhir.spec.type/base64Binary
@@ -21,20 +23,46 @@
  fhir/unsignedInt blaze.fhir.spec.type/unsignedInt
  fhir/positiveInt blaze.fhir.spec.type/positiveInt
  fhir/uuid blaze.fhir.spec.type/uuid
- fhir/xhtml blaze.fhir.spec.type/->Xhtml
- fhir/Attachment blaze.fhir.spec.type/attachment
- fhir/Extension blaze.fhir.spec.type/extension
- fhir/Coding blaze.fhir.spec.type/coding
- fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
- fhir/Quantity blaze.fhir.spec.type/quantity
- fhir/Ratio blaze.fhir.spec.type/ratio
- fhir/Period blaze.fhir.spec.type/period
- fhir/Identifier blaze.fhir.spec.type/identifier
- fhir/HumanName blaze.fhir.spec.type/human-name
+ fhir/xhtml blaze.fhir.spec.type/xhtml
  fhir/Address blaze.fhir.spec.type/address
- fhir/Reference blaze.fhir.spec.type/reference
+ fhir/Age blaze.fhir.spec.type/age
+ fhir/Annotation blaze.fhir.spec.type/annotation
+ fhir/Attachment blaze.fhir.spec.type/attachment
+ fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
+ fhir/Coding blaze.fhir.spec.type/coding
+ fhir/ContactDetail blaze.fhir.spec.type/contact-detail
+ fhir/ContactPoint blaze.fhir.spec.type/contact-point
+ fhir/Contributor blaze.fhir.spec.type/contributor
+ fhir/Count blaze.fhir.spec.type/count
+ fhir/DataRequirement blaze.fhir.spec.type/data-requirement
+ fhir.DataRequirement/codeFilter blaze.fhir.spec.type/data-requirement-code-filter
+ fhir.DataRequirement/dateFilter blaze.fhir.spec.type/data-requirement-date-filter
+ fhir.DataRequirement/sort blaze.fhir.spec.type/data-requirement-sort
+ fhir/Distance blaze.fhir.spec.type/distance
+ fhir/Dosage blaze.fhir.spec.type/dosage
+ fhir.Dosage/doseAndRate blaze.fhir.spec.type/dosage-dose-and-rate
+ fhir/Duration blaze.fhir.spec.type/duration
+ fhir/Expression blaze.fhir.spec.type/expression
+ fhir/Extension blaze.fhir.spec.type/extension
+ fhir/HumanName blaze.fhir.spec.type/human-name
+ fhir/Identifier blaze.fhir.spec.type/identifier
  fhir/Meta blaze.fhir.spec.type/meta
- fhir/BundleEntrySearch blaze.fhir.spec.type/bundle-entry-search
+ fhir/Money blaze.fhir.spec.type/money
+ fhir/Narrative blaze.fhir.spec.type/narrative
+ fhir/ParameterDefinition blaze.fhir.spec.type/parameter-definition
+ fhir/Period blaze.fhir.spec.type/period
+ fhir/Quantity blaze.fhir.spec.type/quantity
+ fhir/Range blaze.fhir.spec.type/range
+ fhir/Ratio blaze.fhir.spec.type/ratio
+ fhir/Reference blaze.fhir.spec.type/reference
+ fhir/RelatedArtifact blaze.fhir.spec.type/related-artifact
+ fhir/SampledData blaze.fhir.spec.type/sampled-data
+ fhir/Signature blaze.fhir.spec.type/signature
+ fhir/Timing blaze.fhir.spec.type/timing
+ fhir.Timing/repeat blaze.fhir.spec.type/timing-repeat
+ fhir/TriggerDefinition blaze.fhir.spec.type/trigger-definition
+ fhir/UsageContext blaze.fhir.spec.type/usage-context
+ fhir.Bundle.entry/search blaze.fhir.spec.type/bundle-entry-search
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time
  system/time blaze.fhir.spec.type.system/parse-time}

@@ -6,7 +6,6 @@
    [blaze.async.flow :as flow]
    [blaze.byte-buffer :as bb]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]
    [clojure.java.io :as io]
    [cognitect.anomalies :as anom]
@@ -82,7 +81,7 @@
    handle-error))
 
 (defn- etag [resource]
-  (when-let [version-id (-> resource :meta :versionId type/value)]
+  (when-let [version-id (-> resource :meta :versionId :value)]
     (str "W/\"" version-id "\"")))
 
 (defn- generate-body [{:keys [writing-context]} resource]
@@ -145,7 +144,7 @@
    handle-error))
 
 (defn- next-url [page]
-  (type/value (:url (first (filter (comp #{"next"} type/value :relation) (:link page))))))
+  (:value (:url (first (filter (comp #{"next"} :value :relation) (:link page))))))
 
 (deftype PagingSubscription
          [^Flow$Subscriber subscriber volatile-uri opts]

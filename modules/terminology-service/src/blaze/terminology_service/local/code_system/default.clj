@@ -3,7 +3,6 @@
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.core :as c]
@@ -28,7 +27,7 @@
 
 (defn- code-system-not-required-content-msg [{:keys [url content]} required-content]
   (format "Can't use the code system `%s` because it's content is not one of %s. It's content is `%s`."
-          (type/value url) (str/join ", " required-content) (type/value content)))
+          (:value url) (str/join ", " required-content) (:value content)))
 
 (defn- code-system-not-required-content-anom [code-system required-content]
   (ba/conflict (code-system-not-required-content-msg code-system required-content)))
@@ -40,7 +39,7 @@
 
 (defn- get-graph
   [cache {:keys [id] {version :versionId} :meta :as code-system}]
-  (let [key [id (type/value version)]]
+  (let [key [id (:value version)]]
     (.get ^Cache cache key (fn [_] (graph/build-graph (:concept code-system))))))
 
 (defmethod c/find :default
@@ -49,7 +48,7 @@
    url & [version]]
   (do-sync [code-systems (d/pull-many db (vec (code-system-query db url version)))]
     (if-let [{:keys [content] :as code-system} (first (fu/sort-by-priority code-systems))]
-      (if (required-content (type/value content))
+      (if (required-content (:value content))
         (assoc code-system :default/graph (get-graph graph-cache code-system))
         (code-system-not-required-content-anom code-system required-content))
       (ba/not-found (not-found-msg url version)))))
@@ -61,17 +60,16 @@
 (defn- inactive? [{properties :property}]
   (some
    (fn [{:keys [code value]}]
-     (condp = (type/value code)
-       "status" (when (= "retired" (type/value value)) true)
-       "inactive" (type/value value)
+     (condp = (:value code)
+       "status" (when (= "retired" (:value value)) true)
+       "inactive" (:value value)
        nil))
    properties))
 
 (defn- not-selectable? [{properties :property}]
   (some
    (fn [{:keys [code value]}]
-     (and (= "notSelectable" (type/value code))
-          (type/value value)))
+     (and (= "notSelectable" (:value code)) (:value value)))
    properties))
 
 (defn- definition-property [definition]
@@ -89,7 +87,7 @@
       (inactive? concept) (assoc :inactive #fhir/boolean true)
       (not-selectable? concept) (assoc :abstract #fhir/boolean true)
       include-designations (assoc :designation (:designation concept))
-      (seq normal-properties) (assoc :property (filterv (comp (set normal-properties) type/value :code) (:property concept)))
+      (seq normal-properties) (assoc :property (filterv (comp (set normal-properties) :value :code) (:property concept)))
       (and definition (some #{"definition"} properties)) (update :property (fnil conj []) (definition-property definition)))))
 
 (defn- xf [params {:keys [url]}]
@@ -114,14 +112,14 @@
 (defn- concept-xf [params {:keys [url] {:keys [concepts]} :default/graph}]
   (keep
    (fn [{:keys [code display]}]
-     (when-let [concept (concepts (type/value code))]
+     (when-let [concept (concepts (:value code))]
        (cond-> (create-contains params url concept)
          display (assoc :display display))))))
 
 (defn- concept-active-xf [params {:keys [url] {:keys [concepts]} :default/graph}]
   (keep
    (fn [{:keys [code display]}]
-     (when-let [concept (concepts (type/value code))]
+     (when-let [concept (concepts (:value code))]
        (when-not (inactive? concept)
          (cond-> (create-contains params url concept)
            display (assoc :display display)))))))

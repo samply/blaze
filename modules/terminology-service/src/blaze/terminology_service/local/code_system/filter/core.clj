@@ -1,16 +1,14 @@
 (ns blaze.terminology-service.local.code-system.filter.core
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.fhir.spec.type :as type]))
+   [blaze.anomaly :as ba]))
 
 (defmulti filter-concepts
   "Returns all concepts that satisfy `filter` or an anomaly in case of errors."
   {:arglists '([code-system filter])}
-  (fn [_ {:keys [op]}] (-> op type/value keyword)))
+  (fn [_ {:keys [op]}] (-> op :value keyword)))
 
 (defn unsupported-filter-op-msg [{:keys [url]} {:keys [op]}]
-  (format "Unsupported filter operator `%s` in code system `%s`."
-          (type/value op) (type/value url)))
+  (format "Unsupported filter operator `%s` in code system `%s`." (:value op) (:value url)))
 
 (defmethod filter-concepts :default
   [code-system filter]
@@ -20,7 +18,7 @@
   "Returns the concept with `code` if it satisfies `filter` or an anomaly in
   case of errors."
   {:arglists '([code-system filter code])}
-  (fn [_ {:keys [op]} _] (-> op type/value keyword)))
+  (fn [_ {:keys [op]} _] (-> op :value keyword)))
 
 (defmethod find-concept :default
   [code-system filter _]

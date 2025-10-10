@@ -61,6 +61,9 @@ The script `simple-code-search.sh` is used.
 | LEA58  | 1M      | 8310-5  |  1.1 M |     0.39 |  0.009 |   3.0 M |
 | LEA58  | 1M      | 55758-7 | 10.1 M |     2.84 |  0.026 |   3.6 M |
 | LEA58  | 1M      | 72514-3 | 27.3 M |     7.52 |  0.138 |   3.6 M |
+| LEA79  | 1M      | 8310-5  |  1.1 M |     0.28 |  0.004 |   4.1 M |
+| LEA79  | 1M      | 55758-7 | 10.1 M |     1.44 |  0.022 |   7.1 M |
+| LEA79  | 1M      | 72514-3 | 27.3 M |     4.38 |  0.192 |   6.2 M |
 | A5N46  | 1M      | 8310-5  |  1.1 M |     0.20 |  0.008 |   5.8 M |
 | A5N46  | 1M      | 55758-7 | 10.1 M |     2.35 |  0.016 |   4.3 M |
 | A5N46  | 1M      | 72514-3 | 27.3 M |     4.75 |  0.074 |   5.8 M |
@@ -88,6 +91,9 @@ The script `simple-code-search.sh` is used.
 | LEA58  | 1M      | 8310-5  |  1.1 M |    20.70 |  0.320 |  56.0 k |         
 | LEA58  | 1M      | 55758-7 | 10.1 M |   171.60 |  4.241 |  59.1 k |         
 | LEA58  | 1M      | 72514-3 | 27.3 M |   497.29 | 26.969 |  55.0 k |
+| LEA79  | 1M      | 8310-5  |  1.1 M |    26.85 |  0.052 |  43.2 k |         
+| LEA79  | 1M      | 55758-7 | 10.1 M |   233.25 |  0.202 |  43.5 k |         
+| LEA79  | 1M      | 72514-3 | 27.3 M |   632.51 |  0.728 |  43.2 k |
 | A5N46  | 1M      | 8310-5  |  1.1 M |    10.55 |  0.034 | 109.8 k |         
 | A5N46  | 1M      | 55758-7 | 10.1 M |   121.64 |  0.312 |  83.3 k |        
 | A5N46  | 1M      | 72514-3 | 27.3 M |   294.11 |  0.523 |  93.0 k |
@@ -115,6 +121,9 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA58  | 1M      | 8310-5  |  1.1 M |    15.42 |  0.208 |   75.1 k |          
 | LEA58  | 1M      | 55758-7 | 10.1 M |   124.03 |  1.024 |   81.8 k |          
 | LEA58  | 1M      | 72514-3 | 27.3 M |   343.16 |  1.412 |   79.7 k |
+| LEA79  | 1M      | 8310-5  |  1.1 M |    18.99 |  0.078 |   61.0 k |          
+| LEA79  | 1M      | 55758-7 | 10.1 M |   156.54 |  0.367 |   64.8 k |          
+| LEA79  | 1M      | 72514-3 | 27.3 M |   407.08 |  1.076 |   67.2 k |
 | A5N46  | 1M      | 8310-5  |  1.1 M |     7.49 |  0.054 |  154.7 k |          
 | A5N46  | 1M      | 55758-7 | 10.1 M |    97.79 |  0.061 |  103.7 k |          
 | A5N46  | 1M      | 72514-3 | 27.3 M |   231.97 |  0.111 |  117.9 k |          
@@ -702,7 +711,7 @@ The dataset was generated with Synthea v3.1.1. The resource generation process i
 
 ## Controlling and Monitoring the Caches
 
-The size of the resource cache can be set with the `DB_RESOURCE_CACHE_SIZE` environment variable, which specifies the number of resources to cache. It is important to know the memory footprint of a resource, as it can vary widely. Monitoring heap usage is critical.
+The size of the resource cache can be set with the `DB_RESOURCE_CACHE_SIZE_RATIO` environment variable, which specifies the ratio of JVM heap size that is allocated to the resource cache.
 
 ### Monitoring 
 

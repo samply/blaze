@@ -1,17 +1,29 @@
 package blaze.fhir.spec.type.system;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.Year;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalField;
 import java.time.temporal.TemporalUnit;
 
+import static blaze.fhir.spec.type.Base.MEM_SIZE_OBJECT_HEADER;
 import static java.time.temporal.ChronoField.YEAR;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class DateYear implements Date, Comparable<DateYear> {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - year
+     * 4 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 8;
 
     private final int year;
 
@@ -42,8 +54,13 @@ public final class DateYear implements Date, Comparable<DateYear> {
 
     @Override
     public void hashInto(PrimitiveSink sink) {
-        sink.putByte((byte) 5);
+        sink.putByte(HASH_MARKER);
         sink.putInt(year);
+    }
+
+    @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT;
     }
 
     public DateTimeYear toDateTime() {
@@ -110,14 +127,9 @@ public final class DateYear implements Date, Comparable<DateYear> {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof DateYear) {
-            return year == ((DateYear) obj).year;
-        }
-        return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        return o instanceof DateYear that && year == that.year;
     }
 
     @Override
@@ -135,5 +147,11 @@ public final class DateYear implements Date, Comparable<DateYear> {
             buf.append(year);
         }
         return buf.toString();
+    }
+
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var appendable = new AsciiByteArrayAppendable(4);
+        appendable.append(toString());
+        generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
     }
 }

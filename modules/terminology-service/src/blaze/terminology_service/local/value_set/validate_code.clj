@@ -2,7 +2,6 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
-   [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.validate-code :as vc]
    [blaze.terminology-service.local.value-set :as vs]
@@ -22,17 +21,17 @@
     display (assoc :display display)))
 
 (defn- coding-clause [value-set coding origin]
-  (if-let [code (-> coding :code type/value)]
-    (if-let [system (-> coding :system type/value)]
-      (let [version (-> coding :version type/value)
-            display (-> coding :display type/value)]
+  (if-let [code (-> coding :code :value)]
+    (if-let [system (-> coding :system :value)]
+      (let [version (-> coding :version :value)
+            display (-> coding :display :value)]
         (cond-> {:code code :system system :origin origin}
           version (assoc :version version)
           display (assoc :display display)))
       (let [clause {:code code :origin origin}
             {{:keys [text]} :details :as not-in-vs} (issue/not-in-vs value-set clause)]
         (ba/incorrect
-         (type/value text)
+         (:value text)
          :code code
          :issues [not-in-vs (issue/missing-system clause)])))
     (ba/incorrect "Missing required parameter `coding.code`.")))
@@ -86,9 +85,9 @@
    (cond-> (ba/not-found (format "Code `%s` not found." code) :code code)
      system (assoc :system system)
      version (assoc :version version)))
-  ([{code-system-version :version} clause]
+  ([{{code-system-version :value} :version} clause]
    (cond-> (anom-clause clause)
-     (type/value code-system-version) (assoc :version (type/value code-system-version)))))
+     code-system-version (assoc :version code-system-version))))
 
 (defn- match-clause [system version clause]
   (cond
@@ -131,7 +130,7 @@
 
 (defn- find-concepts [code-system concepts {:keys [clause] :as params} matched-clause]
   (or (when-let [{:keys [code] :as concept} (cs/find-complete code-system (assoc params :clause matched-clause))]
-        (when (some (comp #{(type/value code)} type/value :code) concepts)
+        (when (some (comp #{(:value code)} :value :code) concepts)
           concept))
       (if (:system clause)
         (vc/issue-anom-clause matched-clause (issue/invalid-code matched-clause))
@@ -147,9 +146,9 @@
 
   Only the code, system and version is compared here."
   [context
-   {:keys [system version] concepts :concept filters :filter}
+   {{system :value} :system {version :value} :version concepts :concept filters :filter}
    {:keys [clause] :as params}]
-  (if-let [matched-clause (match-clause (type/value system) (ignore-star-version (type/value version)) clause)]
+  (if-let [matched-clause (match-clause system (ignore-star-version version) clause)]
     (if (and (seq concepts) (seq filters))
       (ac/completed-future (ba/incorrect "Incorrect combination of concept and filter."))
       (do-sync [code-system (find-code-system context matched-clause)]
@@ -177,7 +176,7 @@
       (ac/then-compose #(validate-code*** context % params))))
 
 (defn- find-concept-in-value-sets [context [value-set & more] params]
-  (-> (find-concept-in-value-set context (type/value value-set) params)
+  (-> (find-concept-in-value-set context (:value value-set) params)
       (ac/handle
        (fn [concept e]
          (cond
@@ -188,12 +187,12 @@
       (ac/then-compose identity)))
 
 (defn- find-concept-include
-  [context {:keys [system] value-sets :valueSet :as include} params]
+  [context {{system :value} :system value-sets :valueSet :as include} params]
   (cond
-    (and (type/value system) (seq value-sets))
+    (and system (seq value-sets))
     (ac/completed-future (ba/incorrect "Incorrect combination of system and valueSet."))
 
-    (type/value system) (find-concept-include-system context include params)
+    system (find-concept-include-system context include params)
     (seq value-sets) (find-concept-in-value-sets context value-sets params)
 
     :else (ac/completed-future (ba/incorrect "Missing system or valueSet."))))
@@ -212,7 +211,7 @@
 (defn- state-validator [inactive {:keys [clause active-only]}]
   (if (or active-only (false? inactive))
     (fn [concept]
-      (if (type/value (:inactive concept))
+      (if (:value (:inactive concept))
         (vc/issue-anom-concept concept (issue/inactive-code clause))
         concept))
     identity))
@@ -225,7 +224,7 @@
 (defn- validate-code***
   {:arglists '([context value-set params])}
   [context
-   {{:keys [inactive] includes :include excludes :exclude} :compose :as value-set}
+   {{{inactive :value} :inactive includes :include excludes :exclude} :compose :as value-set}
    {:keys [clause] :as params}]
   (if (seq includes)
     (-> (find-concept-includes (assoc context :value-set value-set) includes params)
@@ -237,7 +236,7 @@
                   (if e
                     concept
                     (anom-clause clause)))))))
-        (ac/then-apply (state-validator (type/value inactive) params)))
+        (ac/then-apply (state-validator inactive params)))
     (anom-clause clause)))
 
 (defn- validate-code**
@@ -248,9 +247,9 @@
        (fn [e]
          (cond-> e
            (not (:terminal e))
-           (as-> e (let [{{:keys [text]} :details :as issue} (issue/not-in-vs value-set clause)]
+           (as-> e (let [{{{text :value} :text} :details :as issue} (issue/not-in-vs value-set clause)]
                      (cond-> (update e :issues (partial into [issue]))
-                       (not (::message-important e)) (assoc ::anom/message (type/value text))))))))
+                       (not (::message-important e)) (assoc ::anom/message text)))))))
       (ac/then-apply (display-validator context params))
       (ac/then-apply #(vc/parameters-from-concept % params))
       (ac/exceptionally #(vc/fail-parameters-from-anom % params))))
@@ -258,7 +257,7 @@
 (defn- supplement-xf [context]
   (keep
    #(when (= "http://hl7.org/fhir/StructureDefinition/valueset-supplement" (:url %))
-      (let [[url version] (str/split (type/value (:value %)) #"\|")
+      (let [[url version] (str/split (-> % :value :value) #"\|")
             context (assoc context ::cs/required-content #{"supplement"})]
         (if version
           (cs/find context url version)

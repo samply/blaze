@@ -6,7 +6,6 @@
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
@@ -26,7 +25,7 @@
    [reitit.core :as reitit]
    [ring.util.response :as ring])
   (:import
-   [java.time Instant ZoneId ZonedDateTime]
+   [java.time Instant ZoneId ZoneOffset ZonedDateTime]
    [java.time.format DateTimeFormatter]))
 
 (set! *warn-on-reflection* true)
@@ -209,8 +208,8 @@
     (tu/satisfies-prop 1000
       (prop/for-all [name gen/string-alphanumeric
                      value fg/date-value]
-        (let [query-params {name value}]
-          (= (system/parse-date value) (fhir-util/date query-params name)))))))
+        (let [query-params {name (str value)}]
+          (= value (fhir-util/date query-params name)))))))
 
 (def router
   (reitit/router
@@ -807,7 +806,7 @@
                (= response
                   {:fhir/type :fhir.Bundle.entry/response
                    :status #fhir/string "200"
-                   :lastModified (time/truncate-to (:blaze.db.tx/instant tx) :seconds)
+                   :lastModified (type/instant (.atOffset ^Instant (time/truncate-to (:blaze.db.tx/instant tx) :seconds) ZoneOffset/UTC))
                    :etag (type/string (fhir-util/etag tx))
                    :location (type/uri location)})
                (= resource

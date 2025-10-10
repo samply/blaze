@@ -10,9 +10,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
    [cognitect.anomalies :as anom]
-   [juxt.iota :refer [given]])
-  (:import
-   [java.time Instant]))
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
@@ -27,7 +25,7 @@
                 :resource
                 {:fhir/type :fhir/Patient :id "id-220129"
                  :meta (type/meta {:versionId #fhir/id "1"
-                                   :lastUpdated Instant/EPOCH})}
+                                   :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code "POST"
@@ -42,7 +40,7 @@
                 :resource
                 {:fhir/type :fhir/Patient :id "id-220200"
                  :meta (type/meta {:versionId #fhir/id "1"
-                                   :lastUpdated Instant/EPOCH})}
+                                   :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code "POST"
@@ -60,7 +58,7 @@
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220200"
                    :meta (type/meta {:versionId #fhir/id "1"
-                                     :lastUpdated Instant/EPOCH})}
+                                     :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code "POST"
@@ -76,7 +74,7 @@
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220200"
                    :meta (type/meta {:versionId #fhir/id "1"
-                                     :lastUpdated Instant/EPOCH})}
+                                     :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code "POST"
@@ -92,7 +90,7 @@
                 :resource
                 {:fhir/type :fhir/Patient :id "id-214728"
                  :meta (type/meta {:versionId #fhir/id "1"
-                                   :lastUpdated Instant/EPOCH})}
+                                   :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code "PUT"
@@ -107,7 +105,7 @@
                   :resource
                   {:fhir/type :fhir/Patient :id "id-214728"
                    :meta (type/meta {:versionId #fhir/id "1"
-                                     :lastUpdated Instant/EPOCH})}
+                                     :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code "PUT"
@@ -125,7 +123,7 @@
                 :resource
                 {:fhir/type :fhir/Patient :id "id-214728"
                  :meta (type/meta {:versionId #fhir/id "1"
-                                   :lastUpdated Instant/EPOCH})}
+                                   :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code "PUT"
@@ -183,7 +181,7 @@
                   :resource
                   {:fhir/type :fhir/Patient :id "0"
                    :meta (type/meta {:versionId #fhir/id "1"
-                                     :lastUpdated Instant/EPOCH})
+                                     :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
                    :gender #fhir/code "male"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request

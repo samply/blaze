@@ -121,7 +121,6 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
-      DB_RESOURCE_CACHE_SIZE: "100000"
       ENABLE_ADMIN_API: "true"
       LOG_LEVEL: "debug"
     ports:
@@ -160,7 +159,6 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
-      DB_RESOURCE_CACHE_SIZE: "100000"
       ENABLE_ADMIN_API: "true"
       LOG_LEVEL: "debug"
     ports:

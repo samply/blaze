@@ -89,4 +89,4 @@
 (comment
   (def terminology-service (:blaze.terminology-service/extern system))
 
-  @(ts/value-set-validate-code terminology-service (fu/parameters "url" "foo")))
+  @(ts/value-set-validate-code terminology-service (fu/parameters "url" #fhir/uri "foo")))
