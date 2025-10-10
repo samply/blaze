@@ -5,7 +5,6 @@
    [blaze.db.api :as d]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
-   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.operation.graph.spec]
    [blaze.util :refer [str]]
@@ -21,7 +20,7 @@
   "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition")
 
 (defn- extension-value [url]
-  #(when (= url (:url %)) (type/value (:value %))))
+  #(when (= url (:url %)) (-> % :value :value)))
 
 (defn- camel->kebab [s]
   (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
@@ -64,8 +63,8 @@
 (defn- link-path-resource-handles [path]
   (fn [db source-resource _target-node]
     (let [[res & more] (fhir-path/eval noop-resolver path source-resource)]
-      (when (and (nil? more) (= :fhir/Reference (type/type res)))
-        (when-let [ref (-> res :reference type/value)]
+      (when (and (nil? more) (= :fhir/Reference (:fhir/type res)))
+        (when-let [ref (-> res :reference :value)]
           (when-let [[type id] (fsr/split-literal-ref ref)]
             (ba/map (fhir-util/resource-handle db type id) vector)))))))
 
@@ -85,7 +84,7 @@
     (let [ref (str (name type) "/" id)]
       (d/type-query db (:type target-node) (mapv #(% ref) clauses)))))
 
-(defn- link [{:keys [path] extensions :extension}]
+(defn- link [{{path :value} :path extensions :extension}]
   (let [link (base-link extensions)
         params (some (extension-value (str extension-base ".link.params")) extensions)]
     (cond

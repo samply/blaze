@@ -702,7 +702,7 @@ The dataset was generated with Synthea v3.1.1. The resource generation process i
 
 ## Controlling and Monitoring the Caches
 
-The size of the resource cache can be set with the `DB_RESOURCE_CACHE_SIZE` environment variable, which specifies the number of resources to cache. It is important to know the memory footprint of a resource, as it can vary widely. Monitoring heap usage is critical.
+The size of the resource cache can be set with the `DB_RESOURCE_CACHE_SIZE_RATIO` environment variable, which specifies the ratio of JVM heap size that is allocated to the resource cache.
 
 ### Monitoring 
 

@@ -16,11 +16,11 @@
   (p/-contains-concept value-set concept))
 
 (def ^:private result-pred
-  #(when (= "result" (type/value (:name %))) %))
+  #(when (= "result" (:value (:name %))) %))
 
 (defn- extract-result [response msg-fn]
   (try
-    (type/value (:value (some result-pred (:parameter @response))))
+    (:value (:value (some result-pred (:parameter @response))))
     (catch Exception e
       (ba/throw-anom (ba/fault (msg-fn (ex-message (ex-cause e))))))))
 

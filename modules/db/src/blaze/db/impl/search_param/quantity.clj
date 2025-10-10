@@ -13,8 +13,6 @@
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.string :as str]
@@ -26,27 +24,36 @@
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
-  (fn [_ value] (fhir-spec/fhir-type value)))
+  (fn [_ value] (:fhir/type value)))
 
 (defn- index-quantity-entries
-  [{:keys [value system code unit]}]
-  (let [system (type/value system)
-        code (type/value code)
-        unit (type/value unit)]
-    (when-let [value (type/value value)]
-      (cond-> [[nil (codec/quantity nil value)]]
-        code
-        (conj [nil (codec/quantity code value)])
-        (and unit (not= unit code))
-        (conj [nil (codec/quantity unit value)])
-        (and system code)
-        (conj [nil (codec/quantity (str system "|" code) value)])))))
+  [{:keys [value] {system :value} :system {code :value} :code {unit :value} :unit}]
+  (when-let [value (:value value)]
+    (cond-> [[nil (codec/quantity nil value)]]
+      code
+      (conj [nil (codec/quantity code value)])
+      (and unit (not= unit code))
+      (conj [nil (codec/quantity unit value)])
+      (and system code)
+      (conj [nil (codec/quantity (str system "|" code) value)]))))
 
-(defmethod index-entries :fhir/Quantity
+(defmethod index-entries :fhir/Age
   [_ quantity]
   (index-quantity-entries quantity))
 
-(defmethod index-entries :fhir/Age
+(defmethod index-entries :fhir/Count
+  [_ quantity]
+  (index-quantity-entries quantity))
+
+(defmethod index-entries :fhir/Distance
+  [_ quantity]
+  (index-quantity-entries quantity))
+
+(defmethod index-entries :fhir/Duration
+  [_ quantity]
+  (index-quantity-entries quantity))
+
+(defmethod index-entries :fhir/Quantity
   [_ quantity]
   (index-quantity-entries quantity))
 
