@@ -99,13 +99,13 @@
   "Returns the error category of `job` in case it failed and an error category
   is available."
   [job]
-  (some->> (type/value (output-value job "error-category"))
+  (some->> (:value (output-value job "error-category"))
            (keyword "cognitect.anomalies")))
 
 (defn error-msg
   "Returns the error message of `job` in case it failed."
   [job]
-  (type/value (output-value job "error")))
+  (:value (output-value job "error")))
 
 (defn error
   "Returns the error as anomaly of `job` in case it failed."

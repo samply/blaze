@@ -36,7 +36,7 @@
              {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code "async-interaction"
               :display #fhir/string "Asynchronous Interaction Request"}]}
-   :authoredOn authored-on
+   :authoredOn (type/dateTime authored-on)
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))
     {:fhir/type :fhir.Task/input
@@ -84,7 +84,7 @@
 (defn response-bundle-ref
   "Returns the reference to the response bundle of `job` or nil if there is none."
   [job]
-  (-> (job-util/output-value job output-uri "bundle") :reference type/value))
+  (-> (job-util/output-value job output-uri "bundle") :reference :value))
 
 (defn- response-bundle [context entries]
   {:fhir/type :fhir/Bundle

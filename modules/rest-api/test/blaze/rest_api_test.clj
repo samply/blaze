@@ -5,6 +5,7 @@
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.structure-definition-repo.protocols :as sdrp]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
@@ -132,7 +133,7 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    ::rest-api/capabilities-handler
    {:version "version-131640"
-    :release-date "2024-05-23"
+    :release-date (system/parse-date-time "2024-05-23")
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :terminology-service (ig/ref ::ts/local)}

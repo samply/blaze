@@ -29,7 +29,7 @@
   (given (u/processing-duration (System/nanoTime))
     type/type := :fhir/Quantity
     [:value type/type] := :fhir/decimal
-    [:value type/value] :? #(and (decimal? %) (pos? %))
+    [:value :value] :? #(and (decimal? %) (pos? %))
     :unit := #fhir/string "s"
     :system := #fhir/uri "http://unitsofmeasure.org"
     :code := #fhir/code "s"))
