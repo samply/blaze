@@ -14,7 +14,6 @@
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry :as sr]
    [blaze.executors :as ex]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -44,19 +43,18 @@
   "Returns an entry into the :compartment-resource-type-index where `resource`
   is linked to `compartment`."
   {:arglists '([compartment resource])}
-  [[comp-code comp-id] {:keys [id] :as resource}]
+  [[comp-code comp-id] {:fhir/keys [type] :keys [id]}]
   (cr/index-entry
    [(codec/c-hash comp-code) (codec/id-byte-string comp-id)]
-   (codec/tid (name (fhir-spec/fhir-type resource)))
+   (codec/tid (name type))
    (codec/id-byte-string id)))
 
 (defn- compartment-resource-type-entries [resource compartments]
   (mapv #(compartment-resource-type-entry % resource) compartments))
 
-(defn- skip-indexing-msg [search-param resource cause-msg]
+(defn- skip-indexing-msg [search-param {:fhir/keys [type] :keys [id]} cause-msg]
   (format "Skip indexing for search parameter `%s` on resource `%s/%s`. Cause: %s"
-          (:url search-param) (name (fhir-spec/fhir-type resource))
-          (:id resource) (or cause-msg "<unknown>")))
+          (:url search-param) (name type) id (or cause-msg "<unknown>")))
 
 (defn- search-param-index-entries
   [search-param linked-compartments hash resource]
@@ -124,7 +122,7 @@
   {:arglists '([resource-indexer tx-data])}
   [{:keys [resource-store] :as resource-indexer}
    {:keys [tx-cmds] resources :local-payload last-updated :instant}]
-  (let [context (assoc resource-indexer :last-updated last-updated)]
+  (let [context (assoc resource-indexer :last-updated (node-util/instant last-updated))]
     (if resources
       (index-resources* context resources)
       (-> (rs/multi-get resource-store (cmd-rs-keys tx-cmds :complete))

@@ -5,7 +5,6 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]

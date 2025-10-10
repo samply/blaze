@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21.0.8_9-jre-noble@sha256:20e7f7288e1c18eebe8f06a442c9f7183342d9b022d3b9a9677cae2b558ddddd
+FROM eclipse-temurin:25-jre-noble
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -15,6 +15,7 @@ WORKDIR /app
 USER 1001
 
 ENV LD_PRELOAD="libjemalloc.so.2"
+ENV BASE_JAVA_TOOL_OPTIONS="-XX:+UseCompactObjectHeaders --enable-native-access=ALL-UNNAMED"
 ENV STORAGE="standalone"
 ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
@@ -22,4 +23,4 @@ ENV RESOURCE_DB_DIR="/app/data/resource"
 ENV ADMIN_INDEX_DB_DIR="/app/data/admin-index"
 ENV ADMIN_TRANSACTION_DB_DIR="/app/data/admin-transaction"
 
-CMD ["java", "-jar",  "blaze-1.1.2-standalone.jar"]
+CMD ["sh", "-c", "JAVA_TOOL_OPTIONS=\"${BASE_JAVA_TOOL_OPTIONS} ${JAVA_TOOL_OPTIONS}\" exec java -jar blaze-1.1.2-standalone.jar"]

@@ -13,8 +13,9 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
+   [blaze.fhir.spec.type Base]
    [com.github.benmanes.caffeine.cache
-    AsyncCacheLoader AsyncLoadingCache Caffeine]
+    AsyncCacheLoader AsyncLoadingCache Caffeine Weigher]
    [java.util.concurrent ForkJoinPool]))
 
 (set! *warn-on-reflection* true)
@@ -40,15 +41,21 @@
   (-> (.synchronous ^AsyncLoadingCache (.cache ^ResourceCache resource-cache))
       (.invalidateAll)))
 
+(def ^:private weigher
+  (reify Weigher
+    (weigh [_ _ resource]
+      (Base/memSize resource))))
+
 (defmethod m/pre-init-spec :blaze.db/resource-cache [_]
-  (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size]))
+  (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size-in-mb]))
 
 (defmethod ig/init-key :blaze.db/resource-cache
-  [_ {:keys [resource-store max-size] :or {max-size 0}}]
-  (log/info "Create resource cache with a size of" max-size "resources")
+  [_ {:keys [resource-store max-size-in-mb] :or {max-size-in-mb 100}}]
+  (log/info "Create resource cache with a memory size of" max-size-in-mb "MiB")
   (->ResourceCache
    (-> (Caffeine/newBuilder)
-       (.maximumSize max-size)
+       (.weigher weigher)
+       (.maximumWeight (bit-shift-left max-size-in-mb 20))
        (.recordStats)
        (.buildAsync
         (reify AsyncCacheLoader

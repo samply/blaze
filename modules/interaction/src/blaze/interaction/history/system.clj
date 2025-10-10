@@ -6,7 +6,6 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.interaction.search.util :as search-util]
@@ -30,7 +29,7 @@
   (->> (history-util/page-nav-url
         context query-params
         (:t resource-handle)
-        (-> resource-handle fhir-spec/fhir-type name)
+        (-> resource-handle :fhir/type name)
         (:id resource-handle))
        (link "next")))
 

@@ -8,7 +8,6 @@
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry.spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.module :as m]
    [blaze.util :refer [conj-vec str]]
    [clojure.java.io :as io]
@@ -122,7 +121,7 @@
       cat)
      conj
      #{}
-     (compartment-index (name (fhir-spec/fhir-type resource)))))
+     (compartment-index (name (:fhir/type resource)))))
 
   (-compartment-resources [_ compartment-type]
     (compartment-resource-index compartment-type []))

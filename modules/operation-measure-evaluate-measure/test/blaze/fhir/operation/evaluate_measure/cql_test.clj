@@ -10,7 +10,6 @@
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.cql-spec]
    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
-   [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]

@@ -1,9 +1,9 @@
 (ns blaze.fhir.hash
   (:require
-   [blaze.byte-buffer :as bb]
-   [blaze.fhir.spec.type :as type])
+   [blaze.byte-buffer :as bb])
   (:import
    [blaze.fhir Hash]
+   [blaze.fhir.spec.type Base]
    [com.fasterxml.jackson.core JsonGenerator]
    [com.fasterxml.jackson.databind.module SimpleModule]
    [com.fasterxml.jackson.databind.ser.std StdSerializer]
@@ -70,7 +70,7 @@
   resource, overwriting it."
   ^Hash [resource]
   (let [hasher (.newHasher (Hashing/sha256))]
-    (type/hash-into resource hasher)
+    (Base/hashInto resource hasher)
     (from-byte-buffer! (bb/wrap (.asBytes (.hash hasher))))))
 
 (defmethod print-method Hash [^Hash hash ^Writer w]

@@ -112,7 +112,7 @@
             (job-util/task-output "foo" "bar" #fhir/integer 1)]}
           "foo" "bar"
           (fn [value x]
-            (type/integer (+ (type/value value) x)))
+            (type/integer (+ (:value value) x)))
           1)
          {:fhir/type :fhir/Task
           :output

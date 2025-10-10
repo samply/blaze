@@ -5,7 +5,6 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.luid :as luid]
    [blaze.module :as m]
@@ -15,7 +14,7 @@
 
 (def ^:private read-only-tag
   #fhir/Coding
-   {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+   {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
     :code #fhir/code "read-only"})
 
 (defn- structure-definitions [db]
@@ -26,15 +25,15 @@
 
 (defn- structure-definition-urls [db]
   (do-sync [structure-definitions (structure-definitions db)]
-    (into #{} (comp (map (comp type/value :url)) url-filter) structure-definitions)))
+    (into #{} (comp (map (comp :value :url)) url-filter) structure-definitions)))
 
 (defn- tx-op [{:keys [url] :as structure-definition} luid-generator]
   [:create (assoc structure-definition :id (luid/head luid-generator))
-   [["url" (type/value url)]]])
+   [["url" (:value url)]]])
 
 (defn- tx-ops [context existing-urls structure-definitions]
   (transduce
-   (remove (comp existing-urls type/value :url))
+   (remove (comp existing-urls :value :url))
    (fn
      ([{:keys [tx-ops]}] tx-ops)
      ([{:keys [luid-generator] :as ret} structure-definition]

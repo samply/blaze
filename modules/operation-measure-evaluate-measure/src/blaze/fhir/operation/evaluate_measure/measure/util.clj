@@ -8,8 +8,8 @@
    [blaze.util :refer [str]]))
 
 (defn expression-name [population-path-fn criteria]
-  (let [language (-> criteria :language type/value)
-        expression (-> criteria :expression type/value)]
+  (let [language (-> criteria :language :value)
+        expression (-> criteria :expression :value)]
     (cond
       (nil? criteria)
       (ba/incorrect
@@ -35,8 +35,8 @@
 (defn list-reference [list-id]
   (type/reference {:reference (type/string (str "List/" list-id))}))
 
-(defn- resource-reference [{:keys [id] :as resource}]
-  (type/reference {:reference (type/string (str (name (type/type resource)) "/" id))}))
+(defn- resource-reference [{:fhir/keys [type] :keys [id]}]
+  (type/reference {:reference (type/string (str (name type) "/" id))}))
 
 (defn population-tx-ops [list-id handles]
   [[:create
@@ -71,8 +71,8 @@
       (ba/exceptionally reduced)))
 
 (defn- expression-name-of-expression [{:keys [language expression]}]
-  (when (#{"text/cql" "text/cql-identifier"} (type/value language))
-    (type/value expression)))
+  (when (#{"text/cql" "text/cql-identifier"} (:value language))
+    (:value expression)))
 
 (defn- expression-name-of-population [{:keys [criteria]}]
   (expression-name-of-expression criteria))

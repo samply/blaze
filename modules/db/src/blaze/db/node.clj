@@ -32,7 +32,6 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
@@ -172,7 +171,7 @@
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta #fhir/Meta{})
       (assoc :versionId (type/id (str t)))
-      (assoc :lastUpdated instant)))
+      (assoc :lastUpdated (node-util/instant instant))))
 
 (defn- mk-meta [handle tx]
   {:blaze.resource/hash (rh/hash handle)
@@ -189,12 +188,12 @@
 (defn- rs-keys-of-non-deleted [resource-handles variant]
   (into [] (comp (remove rh/deleted?) (map #(node-util/rs-key % variant))) resource-handles))
 
-(defn- deleted-resource [{:keys [id] :as resource-handle}]
-  {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
+(defn- deleted-resource [{:fhir/keys [type] :keys [id]}]
+  {:fhir/type type :id id})
 
 (defn- resource-content-not-found-msg [resource-handle]
   (format "The resource content of `%s/%s` with hash `%s` was not found."
-          (name (type/type resource-handle)) (:id resource-handle)
+          (name (:fhir/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
 (defn- resource-content-not-found-anom [resource-handle]

@@ -9,7 +9,6 @@
    [clojure.lang ILookup]
    [com.google.common.base CaseFormat]
    [java.time Instant]
-   [java.util List]
    [org.rocksdb
     AbstractEventListener AbstractEventListener$EnabledEventCallback
     BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
@@ -108,7 +107,7 @@
             (.setEnablePipelinedWrite true)
             (.setCreateIfMissing true)
             (.setCreateMissingColumnFamilies true)
-            (.setListeners ^List (list listener)))
+            (.setListeners [listener]))
     stats
     (.setStatistics ^Statistics stats)
     (int? compaction-readahead-size)

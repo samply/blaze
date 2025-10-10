@@ -52,7 +52,7 @@
         (log/debug "The job with id =" id "was unable to update itself. It may have been paused.")
         (fail-job-on-error node id e))
       (log/debug "The execution of the job with id =" id "ended with status ="
-                 (type/value status)))))
+                 (:value status)))))
 
 (defn- wrap-error [f context job]
   (try
@@ -134,12 +134,12 @@
         (ac/then-compose (partial current-job-number-observation context)))))
 
 (def ^:private inc-fhir-integer
-  (comp type/integer inc type/value))
+  (comp type/integer inc :value))
 
 (defn- job-number-identifier [job-number]
   (type/identifier
    {:use #fhir/code "official"
-    :system (type/uri job-util/job-number-url)
+    :system (type/uri-interned job-util/job-number-url)
     :value (type/string (str job-number))}))
 
 (defn- prepare-job [job id job-number]
@@ -159,7 +159,7 @@
                 node
                 (into
                  [[:put (update obs :value inc-fhir-integer) [:if-match (:blaze.db/t (:blaze.db/tx (meta obs)))]]
-                  [:create (prepare-job job id (inc (type/value job-number)))]]
+                  [:create (prepare-job job id (inc (:value job-number)))]]
                  (map (fn [resource] [:create resource]))
                  other-resources))
                (ac/then-compose
@@ -175,8 +175,7 @@
       (dissoc :statusReason)))
 
 (defn- cancel-conflict-msg [{:keys [id status]}]
-  (format "Can't cancel job `%s` because it's status is `%s`."
-          id (type/value status)))
+  (format "Can't cancel job `%s` because it's status is `%s`." id (:value status)))
 
 (defn cancel-job
   "Returns a CompletableFuture that will complete with a possibly cancelled job
@@ -190,11 +189,11 @@
   (log/debug "Try to cancel job with id =" id)
   (-> (job-util/pull-job node id)
       (ac/then-compose
-       (fn [{:keys [status] :as job}]
-         (if-not (#{#fhir/code "completed" #fhir/code "failed" #fhir/code "cancelled"} status)
+       (fn [{{status-value :value} :status :as job}]
+         (if-not (#{"completed" "failed" "cancelled"} status-value)
            (job-util/update-job node job cancel-job*)
            (ac/completed-future
-            (ba/conflict (cancel-conflict-msg job) :job/status (type/value status))))))))
+            (ba/conflict (cancel-conflict-msg job) :job/status status-value)))))))
 
 (defn- hold-job** [job reason]
   (assoc
@@ -215,7 +214,7 @@
 
 (defn- pause-conflict-msg [{:keys [id status]}]
   (format "Can't pause job `%s` because it isn't in-progress. It's status is `%s`."
-          id (type/value status)))
+          id (:value status)))
 
 (defn pause-job
   "Returns a CompletableFuture that will complete with a possibly paused job
@@ -227,7 +226,7 @@
 
 (defn- resume-conflict-msg [{:keys [id status]}]
   (format "Can't resume job `%s` because it isn't on-hold. It's status is `%s`."
-          id (type/value status)))
+          id (:value status)))
 
 (defn- resume-job** [job]
   (assoc
@@ -254,7 +253,7 @@
 
 (defn- shutdown-conflict-msg [{:keys [id status]}]
   (format "Can't put job `%s` on hold during shutdown because it isn't in-progress. It's status is `%s`."
-          id (type/value status)))
+          id (:value status)))
 
 (defn- shutdown [{:keys [context running-jobs]}]
   @(ac/all-of (mapv
