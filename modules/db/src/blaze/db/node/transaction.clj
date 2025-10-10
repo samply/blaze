@@ -5,7 +5,6 @@
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.fhir.hash :as hash]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [taoensso.timbre :as log]))
 
@@ -20,7 +19,7 @@
      :blaze.db/tx-cmd
      (cond->
       {:op (name op)
-       :type (name (fhir-spec/fhir-type resource))
+       :type (name (:fhir/type resource))
        :id (:id resource)
        :hash hash}
        (seq refs)
@@ -42,7 +41,7 @@
      :blaze.db/tx-cmd
      (cond->
       {:op (name op)
-       :type (name (fhir-spec/fhir-type resource))
+       :type (name (:fhir/type resource))
        :id (:id resource)
        :hash hash}
        (seq refs)

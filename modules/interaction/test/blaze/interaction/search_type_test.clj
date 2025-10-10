@@ -8,8 +8,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.query.plan.spec]
-   [blaze.db.resource-store :as rs]
-   [blaze.fhir.spec :as fhir-spec]
+   [blaze.db.resource-cache :as rc]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.search-type]
@@ -39,9 +38,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -664,13 +661,13 @@
                 :fhir/type := :fhir/Patient
                 :id := "0"
                 [:meta :versionId] := #fhir/id "1"
-                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
                 [:meta :tag (coding v3-ObservationValue) count] := 0
                 :multipleBirth := #fhir/boolean true))
 
             (testing "the entry has the right search mode"
               (given (:search first-entry)
-                fhir-spec/fhir-type := :fhir.Bundle.entry/search
+                :fhir/type := :fhir.Bundle.entry/search
                 :mode := #fhir/code "match")))))
 
       (testing "with param _summary equal to true"
@@ -704,13 +701,13 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
               [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code "SUBSETTED"
               :multipleBirth := nil))
 
           (testing "the entry has the right search mode"
             (given (:search first-entry)
-              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :fhir/type := :fhir.Bundle.entry/search
               :mode := #fhir/code "match"))))
 
       (testing "with param _summary equal to count"
@@ -934,7 +931,7 @@
                   {:params {"active" "false"}})]
 
             (testing "the total is zero"
-              (is (zero? (type/value (:total body)))))
+              (is (zero? (:value (:total body)))))
 
             (testing "has a self link"
               (is (= (str base-url context-path "/Patient?active=false&_count=50")
@@ -1006,7 +1003,7 @@
                    :params {"active" "false"}})]
 
             (testing "the total is zero"
-              (is (zero? (type/value (:total body)))))
+              (is (zero? (:value (:total body)))))
 
             (testing "has a self link"
               (is (= (str base-url context-path "/Patient?active=false&_count=50")
@@ -3017,7 +3014,7 @@
           (is (nil? (:value resource)))))))
 
   (testing "missing resource contents"
-    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+    (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
@@ -3043,7 +3040,7 @@
                        {:system #fhir/uri "http://loinc.org"
                         :code #fhir/code "94564-2"}]}
              :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :effective #fhir/dateTime "2025"}]]]
+             :effective #fhir/dateTime #system/date-time "2025"}]]]
 
     (testing "no search param"
       (let [{:keys [status] {[first-entry] :entry :as body} :body}

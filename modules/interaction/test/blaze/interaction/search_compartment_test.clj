@@ -5,8 +5,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.resource-store :as rs]
-   [blaze.fhir.spec.type]
+   [blaze.db.resource-cache :as rc]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.search-compartment]
    [blaze.interaction.search.nav-spec]
@@ -653,7 +652,7 @@
                   [:resource :id] := "1")))))
 
         (testing "missing resource contents"
-          (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+          (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]
             (let [{:keys [status body]} @(handler request)]
 
               (is (= 500 status))
