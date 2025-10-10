@@ -3,7 +3,6 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.fhir.spec.references :as fsr]
-   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.util :as handler-util]
    [blaze.job.async-interaction :as job-async]
@@ -19,7 +18,7 @@
     (-> (fhir-util/pull db "Task" id)
         (ac/then-compose
          (fn [{:keys [status] :as job}]
-           (case (type/value status)
+           (case (:value status)
              "ready"
              (-> (ring/status 202)
                  (ring/header "X-Progress" "ready")

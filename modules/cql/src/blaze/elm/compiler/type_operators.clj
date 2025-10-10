@@ -11,7 +11,6 @@
    [blaze.elm.protocols :as p]
    [blaze.elm.quantity :as quantity]
    [blaze.elm.util :as elm-util]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type.system :as system]))
 
 (set! *warn-on-reflection* true)
@@ -32,7 +31,7 @@
   (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
     (case type-ns
       "http://hl7.org/fhir"
-      [(symbol "fhir" type-name) (comp #{(keyword "fhir" type-name)} fhir-spec/fhir-type)]
+      [(symbol "fhir" type-name) (comp #{(keyword "fhir" type-name)} :fhir/type)]
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-fn type-name)
       (throw-anom
@@ -236,7 +235,7 @@
       "http://hl7.org/fhir"
       [(symbol "fhir" type-name)
        (let [fhir-type (keyword "fhir" type-name)]
-         #(identical? fhir-type (fhir-spec/fhir-type %)))]
+         #(identical? fhir-type (:fhir/type %)))]
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-is type-name))))
 

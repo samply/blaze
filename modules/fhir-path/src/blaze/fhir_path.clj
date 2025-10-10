@@ -4,7 +4,6 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.coll.core :as coll]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.string :as str]
@@ -73,21 +72,21 @@
 (defn- convertible?
   "See: http://hl7.org/fhirpath/index.html#conversion"
   [type item]
-  (if (identical? type (fhir-spec/fhir-type item))
+  (if (identical? type (system/type item))
     true
-    (case [(fhir-spec/fhir-type item) type]
-      ([:fhir/integer :fhir/decimal]
-       [:fhir/date :fhir/dateTime])
+    (case [(system/type item) type]
+      ([:system/integer :system/decimal]
+       [:system/date :system/date-time])
       true
       false)))
 
 (defn- convert
   "See: http://hl7.org/fhirpath/index.html#conversion"
   [type item]
-  (if (identical? type (fhir-spec/fhir-type item))
+  (if (identical? type (system/type item))
     item
-    (case [(fhir-spec/fhir-type item) type]
-      [:fhir/integer :fhir/decimal]
+    (case [(system/type item) type]
+      [:system/integer :system/decimal]
       (BigDecimal/valueOf (long item)))))
 
 (defn- convert-fhir-primitive
@@ -95,7 +94,7 @@
 
   See: https://build.fhir.org/fhirpath.html#types"
   [x]
-  (cond-> x (fhir-spec/primitive-val? x) (type/value)))
+  (cond-> x (fhir-spec/primitive-val? x) :value))
 
 ;; See: http://hl7.org/fhirpath/index.html#singleton-evaluation-of-collections
 (defn- singleton-evaluation-msg [coll]
@@ -103,10 +102,10 @@
 
 (defn- singleton [type coll]
   (case (coll/count coll)
-    1 (let [first (coll/nth coll 0)]
+    1 (let [value (convert-fhir-primitive (coll/nth coll 0))]
         (cond
-          (convertible? type first) (convert type first)
-          (identical? :fhir/boolean type) true
+          (convertible? type value) (convert type value)
+          (identical? :system/boolean type) true
           :else (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
 
     0 coll
@@ -125,16 +124,17 @@
 
 (defn- typed-start-expression [type-name]
   (let [fhir-type (keyword "fhir" type-name)
-        pred #(identical? fhir-type (fhir-spec/fhir-type %))]
+        pred #(identical? fhir-type (:fhir/type %))]
     (->TypedStartExpression ((filter pred) conj))))
 
-(deftype GetChildrenExpression [f]
+(deftype GetChildrenExpression [key f]
   Expression
   (-eval [_ _ coll]
     (.reduce ^IReduceInit coll f [])))
 
 (defn- get-children-expression [key]
   (->GetChildrenExpression
+   key
    (fn [res item]
      (let [val (get item key)]
        (cond
@@ -147,14 +147,16 @@
   (-eval [_ context coll]
     (-eval invocation context (-eval expression context coll))))
 
+;; 6.6.3. + (addition)
+
 (deftype PlusExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
-    (let [left (singleton :fhir/string (-eval left-expr context coll))
-          right (singleton :fhir/string (-eval right-expr context coll))]
+    (let [left (singleton :system/string (-eval left-expr context coll))
+          right (singleton :system/string (-eval right-expr context coll))]
       (cond
-        (empty? left) [right]
-        (empty? right) [left]
+        (empty? left) []
+        (empty? right) []
         :else [(str left right)]))))
 
 (defn- is-type-specifier-msg [coll]
@@ -168,7 +170,7 @@
       (case (coll/count coll)
         0 coll
 
-        1 [(identical? type-specifier (fhir-spec/fhir-type (coll/nth coll 0)))]
+        1 [(identical? type-specifier (:fhir/type (coll/nth coll 0)))]
 
         (throw-anom (ba/incorrect (is-type-specifier-msg coll)))))))
 
@@ -179,14 +181,14 @@
       (case (coll/count coll)
         0 []
 
-        1 (if (identical? type-specifier (fhir-spec/fhir-type (coll/nth coll 0)))
+        1 (if (identical? type-specifier (:fhir/type (coll/nth coll 0)))
             coll
             [])
 
         ;; HACK: normally multiple items should throw an error. However in R4 many
         ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
         ;; Please remove that hack for R5.
-        (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll)))))
+        (filterv #(identical? type-specifier (:fhir/type %)) coll)))))
 
 (deftype UnionExpression [e1 e2]
   Expression
@@ -239,11 +241,11 @@
 (deftype AndExpression [expr-a expr-b]
   Expression
   (-eval [_ context coll]
-    (let [a (singleton :fhir/boolean (-eval expr-a context coll))]
+    (let [a (singleton :system/boolean (-eval expr-a context coll))]
       (if (false? a)
         [false]
 
-        (let [b (singleton :fhir/boolean (-eval expr-b context coll))]
+        (let [b (singleton :system/boolean (-eval expr-b context coll))]
           (cond
             (false? b) [false]
             (and (true? a) (true? b)) [true]
@@ -255,19 +257,19 @@
     (case (coll/count coll)
       0 coll
 
-      1 (if (identical? type-specifier (fhir-spec/fhir-type (coll/nth coll 0)))
+      1 (if (identical? type-specifier (:fhir/type (coll/nth coll 0)))
           coll
           [])
 
       ;; HACK: normally multiple items should throw an error. However in R4 many
       ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
       ;; Please remove that hack for R5.
-      (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll))))
+      (filterv #(identical? type-specifier (:fhir/type %)) coll))))
 
 (deftype OfTypeFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
-    (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll)))
+    (filterv #(identical? type-specifier (:fhir/type %)) coll)))
 
 (deftype ExistsFunctionExpression []
   Expression
@@ -277,24 +279,23 @@
 (deftype ExistsWithCriteriaFunctionExpression [criteria]
   Expression
   (-eval [_ _ _]
-    (throw-anom (ba/unsupported "unsupported `exists` function"))))
+    (throw-anom (ba/unsupported "unsupported `exists` function with criteria"))))
 
-(defmulti ^IReduceInit resolve (fn [_ item] (fhir-spec/fhir-type item)))
+(defmulti ^IReduceInit resolve (fn [_ item] (or (:fhir/type item) (system/type item))))
 
 (defn- resolve* [resolver uri]
   (if-let [resource (-resolve resolver uri)]
     [resource]
     []))
 
-(defmethod resolve :fhir/string [{:keys [resolver]} uri]
-  (resolve* resolver (type/value uri)))
+(defmethod resolve :system/string [{:keys [resolver]} uri]
+  (resolve* resolver uri))
 
-(defmethod resolve :fhir/Reference [{:keys [resolver]} {:keys [reference]}]
-  (resolve* resolver (type/value reference)))
+(defmethod resolve :fhir/Reference [{:keys [resolver]} reference]
+  (resolve* resolver (-> reference :reference :value)))
 
-(defmethod resolve :default [_ item]
-  (log/warn (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item))
-                    (pr-str item)))
+(defmethod resolve :default [_ {:fhir/keys [type] :as item}]
+  (log/warn (format "Skip resolving %s `%s`." (name type) (pr-str item)))
   [])
 
 (deftype ResolveFunctionExpression []
@@ -319,9 +320,9 @@
 ;; 5.2.1. where(criteria : expression) : collection
 
 ;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
-(defn- non-boolean-result-msg [x]
+(defn- non-boolean-result-msg [{:fhir/keys [type] :as x}]
   (format "non-boolean result `%s` of type `%s` while evaluating where function criteria"
-          (pr-str x) (fhir-spec/fhir-type x)))
+          (pr-str x) type))
 
 (defn- multiple-result-msg [x]
   (format "multiple result items `%s` while evaluating where function criteria"
@@ -375,7 +376,7 @@
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)
-          idx (singleton :fhir/integer (-eval index context coll))
+          idx (singleton :system/integer (-eval index context coll))
           res (coll/nth coll idx nil)]
       (if (nil? res) [] [res]))))
 

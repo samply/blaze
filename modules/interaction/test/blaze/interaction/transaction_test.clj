@@ -44,9 +44,7 @@
    [reitit.ring]
    [ring.middleware.params :refer [wrap-params]]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -359,7 +357,7 @@
                       :status := #fhir/string "201"
                       :location := (type/uri (str base-url "/Patient/0/_history/1"))
                       :etag := #fhir/string "W/\"1\""
-                      :lastModified := Instant/EPOCH)))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
             (testing "with representation return preference"
               (with-handler [handler]
@@ -386,14 +384,14 @@
                       :fhir/type := :fhir/Patient
                       :id := "0"
                       [:meta :versionId] := #fhir/id "1"
-                      [:meta :lastUpdated] := Instant/EPOCH))
+                      [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
                   (testing "entry response"
                     (given response
                       :status := #fhir/string "201"
                       :location := (type/uri (str base-url "/Patient/0/_history/1"))
                       :etag := #fhir/string "W/\"1\""
-                      :lastModified := Instant/EPOCH)))))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
         (testing "and updated resource"
           (let [entries
@@ -435,7 +433,7 @@
                     (given response
                       :status := #fhir/string "200"
                       :etag := #fhir/string "W/\"2\""
-                      :lastModified := Instant/EPOCH)))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
             (testing "with representation return preference"
               (with-handler [handler]
@@ -466,13 +464,13 @@
                       :id := "0"
                       :gender := #fhir/code "male"
                       [:meta :versionId] := #fhir/id "2"
-                      [:meta :lastUpdated] := Instant/EPOCH))
+                      [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
                   (testing "entry response"
                     (given response
                       :status := #fhir/string "200"
                       :etag := #fhir/string "W/\"2\""
-                      :lastModified := Instant/EPOCH)))))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
         (testing "with identical content"
           (let [entries
@@ -480,7 +478,7 @@
                   :resource
                   {:fhir/type :fhir/Patient :id "0"
                    :meta (type/meta {:versionId #fhir/id "1"
-                                     :lastUpdated Instant/EPOCH})
+                                     :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
                    :gender #fhir/code "female"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
@@ -516,7 +514,7 @@
                     (given response
                       :status := #fhir/string "200"
                       :etag := #fhir/string "W/\"1\""
-                      :lastModified := Instant/EPOCH)))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
             (testing "with representation return preference"
               (with-handler [handler]
@@ -547,13 +545,13 @@
                       :id := "0"
                       :gender := #fhir/code "female"
                       [:meta :versionId] := #fhir/id "1"
-                      [:meta :lastUpdated] := Instant/EPOCH))
+                      [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
                   (testing "entry response"
                     (given response
                       :status := #fhir/string "200"
                       :etag := #fhir/string "W/\"1\""
-                      :lastModified := Instant/EPOCH)))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
             (testing "and content changing transaction in between"
               (with-redefs [kv/put!
@@ -593,7 +591,7 @@
                       (given response
                         :status := #fhir/string "200"
                         :etag := #fhir/string "W/\"4\""
-                        :lastModified := Instant/EPOCH)))))))))
+                        :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))))
 
       (testing "and create interaction"
         (let [entries
@@ -632,7 +630,7 @@
                     :status := #fhir/string "201"
                     :location := (type/uri (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1"))
                     :etag := #fhir/string "W/\"1\""
-                    :lastModified := Instant/EPOCH)))))
+                    :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
           (testing "with representation return preference"
             (with-handler [handler]
@@ -659,14 +657,14 @@
                     :fhir/type := :fhir/Patient
                     :id := "AAAAAAAAAAAAAAAA"
                     [:meta :versionId] := #fhir/id "1"
-                    [:meta :lastUpdated] := Instant/EPOCH))
+                    [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
                 (testing "entry response"
                   (given response
                     :status := #fhir/string "201"
                     :location := (type/uri (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1"))
                     :etag := #fhir/string "W/\"1\""
-                    :lastModified := Instant/EPOCH)))))))
+                    :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
       (testing "and conditional create interaction"
         (testing "with empty property"
@@ -750,7 +748,7 @@
                       :status := #fhir/string "201"
                       :location := (type/uri (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/2"))
                       :etag := #fhir/string "W/\"2\""
-                      :lastModified := Instant/EPOCH))))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))
 
           (testing "with representation return preference"
             (with-handler [handler]
@@ -790,14 +788,14 @@
                       :fhir/type := :fhir/Patient
                       :id := "AAAAAAAAAAAAAAAA"
                       [:meta :versionId] := #fhir/id "2"
-                      [:meta :lastUpdated] := Instant/EPOCH))
+                      [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
                   (testing "entry response"
                     (given response
                       :status := #fhir/string "201"
                       :location := (type/uri (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/2"))
                       :etag := #fhir/string "W/\"2\""
-                      :lastModified := Instant/EPOCH)))))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
         (testing "with matching patient"
           (testing "without return preference"
@@ -840,7 +838,7 @@
                       :status := #fhir/string "200"
                       :location := nil
                       :etag := #fhir/string "W/\"1\""
-                      :lastModified := Instant/EPOCH))))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))
 
           (testing "with representation return preference"
             (with-handler [handler]
@@ -880,13 +878,13 @@
                       :fhir/type := :fhir/Patient
                       :id := "0"
                       [:meta :versionId] := #fhir/id "1"
-                      [:meta :lastUpdated] := Instant/EPOCH))
+                      [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
                   (testing "entry response"
                     (given response
                       :status := #fhir/string "200"
                       :etag := #fhir/string "W/\"1\""
-                      :lastModified := Instant/EPOCH))))))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
 
       (testing "and delete interaction"
         (let [entries
@@ -924,7 +922,7 @@
                   (given response
                     :status := #fhir/string "204"
                     :etag := #fhir/string "W/\"2\""
-                    :lastModified := Instant/EPOCH)))))))
+                    :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
       (testing "and read interaction"
         (testing "returns Not-Found on non-existing resource"
@@ -994,13 +992,13 @@
                   :fhir/type := :fhir/Patient
                   :id := "0"
                   [:meta :versionId] := #fhir/id "1"
-                  [:meta :lastUpdated] := Instant/EPOCH))
+                  [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
               (testing "entry response"
                 (given response
                   :status := #fhir/string "200"
                   :etag := #fhir/string "W/\"1\""
-                  :lastModified := Instant/EPOCH))))))))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
 
   (testing "On transaction bundle"
     (testing "on missing request"
@@ -1612,9 +1610,9 @@
       (testing "on multiple matching patients"
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :birthDate #fhir/date "2020"}]
+                   :birthDate #fhir/date #system/date "2020"}]
             [:put {:fhir/type :fhir/Patient :id "1"
-                   :birthDate #fhir/date "2020"}]]]
+                   :birthDate #fhir/date #system/date "2020"}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -1676,7 +1674,7 @@
                 (given response
                   :status := #fhir/string "201"
                   :etag := #fhir/string "W/\"1\""
-                  :lastModified := Instant/EPOCH)))))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
         (testing "on existing resource"
           (with-handler [handler]
@@ -1749,7 +1747,7 @@
                 (given response
                   :status := #fhir/string "204"
                   :etag := #fhir/string "W/\"2\""
-                  :lastModified := Instant/EPOCH)))))))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
     (testing "and read interaction after update interaction"
       (let [entries
@@ -1790,13 +1788,13 @@
                   :fhir/type := :fhir/Patient
                   :id := "111718"
                   [:meta :versionId] := #fhir/id "1"
-                  [:meta :lastUpdated] := Instant/EPOCH))
+                  [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
               (testing "the first entry has the right response"
                 (given (:response first-entry)
                   :status := #fhir/string "200"
                   :etag := #fhir/string "W/\"1\""
-                  :lastModified := Instant/EPOCH))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
               (testing "the second entry resource is nil"
                 (is (nil? (:resource second-entry))))
@@ -1805,7 +1803,7 @@
                 (given (:response second-entry)
                   :status := #fhir/string "201"
                   :etag := #fhir/string "W/\"1\""
-                  :lastModified := Instant/EPOCH))))))))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
 
   (testing "On batch bundle"
     (testing "on missing request"
@@ -2186,12 +2184,12 @@
                 :status := #fhir/string "201"
                 :location := (type/uri (str base-url "/Patient/0/_history/1"))
                 :etag := #fhir/string "W/\"1\""
-                :lastModified := Instant/EPOCH))))
+                :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))
 
         (testing "with identical content"
           (with-handler [handler]
             [[[:create {:fhir/type :fhir/Patient :id "0"
-                        :birthDate #fhir/date "2020"}]]]
+                        :birthDate #fhir/date #system/date "2020"}]]]
 
             (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
                   @(handler
@@ -2202,7 +2200,7 @@
                       [{:fhir/type :fhir.Bundle/entry
                         :resource
                         {:fhir/type :fhir/Patient :id "0"
-                         :birthDate #fhir/date "2020"}
+                         :birthDate #fhir/date #system/date "2020"}
                         :request
                         {:fhir/type :fhir.Bundle.entry/request
                          :method #fhir/code "PUT"
@@ -2218,7 +2216,7 @@
                 (given response
                   :status := #fhir/string "200"
                   :etag := #fhir/string "W/\"1\""
-                  :lastModified := Instant/EPOCH))))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))
 
           (testing "and content changing transaction in between"
             (with-redefs [kv/put!
@@ -2227,12 +2225,12 @@
                             (kv-p/-put store entries))]
               (with-handler [handler node]
                 [[[:create {:fhir/type :fhir/Patient :id "0"
-                            :birthDate #fhir/date "2020"}]]]
+                            :birthDate #fhir/date #system/date "2020"}]]]
 
                 ;; don't wait for the transaction to be finished because the handler
                 ;; call should see the first version of the patient
                 @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
-                                              :birthDate #fhir/date "2021"}]])
+                                              :birthDate #fhir/date #system/date "2021"}]])
 
                 (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
                       @(handler
@@ -2243,7 +2241,7 @@
                           [{:fhir/type :fhir.Bundle/entry
                             :resource
                             {:fhir/type :fhir/Patient :id "0"
-                             :birthDate #fhir/date "2020"}
+                             :birthDate #fhir/date #system/date "2020"}
                             :request
                             {:fhir/type :fhir.Bundle.entry/request
                              :method #fhir/code "PUT"
@@ -2259,7 +2257,7 @@
                     (given response
                       :status := #fhir/string "200"
                       :etag := #fhir/string "W/\"4\""
-                      :lastModified := Instant/EPOCH)))))))
+                      :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
         (testing "leading slash in URL is removed"
           (with-handler [handler]
@@ -2288,7 +2286,7 @@
                   :status := #fhir/string "201"
                   :location := (type/uri (str base-url "/Patient/0/_history/1"))
                   :etag := #fhir/string "W/\"1\""
-                  :lastModified := Instant/EPOCH))))))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))
 
       (testing "with representation return preference"
         (with-handler [handler]
@@ -2315,14 +2313,14 @@
                 :fhir/type := :fhir/Patient
                 :id := "0"
                 [:meta :versionId] := #fhir/id "1"
-                [:meta :lastUpdated] := Instant/EPOCH))
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
             (testing "entry response"
               (given response
                 :status := #fhir/string "201"
                 :location := (type/uri (str base-url "/Patient/0/_history/1"))
                 :etag := #fhir/string "W/\"1\""
-                :lastModified := Instant/EPOCH))))))
+                :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))
 
     (testing "and create interaction"
       (testing "on not-found type-level URL"
@@ -2423,9 +2421,9 @@
       (testing "on multiple matching patients"
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :birthDate #fhir/date "2020"}]
+                   :birthDate #fhir/date #system/date "2020"}]
             [:put {:fhir/type :fhir/Patient :id "1"
-                   :birthDate #fhir/date "2020"}]]]
+                   :birthDate #fhir/date #system/date "2020"}]]]
 
           (let [{:keys [status] {[{:keys [response]}] :entry} :body}
                 @(handler
@@ -2493,7 +2491,7 @@
                 (given response
                   :status := #fhir/string "201"
                   :etag := #fhir/string "W/\"1\""
-                  :lastModified := Instant/EPOCH)))))
+                  :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
         (testing "on existing resource"
           (with-handler [handler]
@@ -2593,7 +2591,7 @@
               [:entry 0 :resource :fhir/type] := :fhir/Patient
               [:entry 0 :resource :id] := "0"
               [:entry 0 :resource :meta :versionId] := #fhir/id "1"
-              [:entry 0 :resource :meta :lastUpdated] := Instant/EPOCH))
+              [:entry 0 :resource :meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "entry response"
             (given response
@@ -2634,10 +2632,10 @@
         (with-handler [handler]
           [[[:create
              {:fhir/type :fhir/Observation :id "0"
-              :effective #fhir/dateTime "2021-12-08T00:00:00+01:00"}]
+              :effective #fhir/dateTime #system/date-time "2021-12-08T00:00:00+01:00"}]
             [:create
              {:fhir/type :fhir/Observation :id "1"
-              :effective #fhir/dateTime "2021-12-09T00:00:00+01:00"}]]]
+              :effective #fhir/dateTime #system/date-time "2021-12-09T00:00:00+01:00"}]]]
 
           (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
                 @(handler

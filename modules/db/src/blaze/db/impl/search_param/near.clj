@@ -20,8 +20,8 @@
 (set! *warn-on-reflection* true)
 
 (defn- position->coords [{:keys [longitude latitude]}]
-  (let [lat-val (type/value latitude)
-        lon-val (type/value longitude)]
+  (let [lat-val (:value latitude)
+        lon-val (:value longitude)]
     (when (and lat-val lon-val)
       {:latitude lat-val
        :longitude lon-val})))
@@ -108,11 +108,10 @@
 (defn- distance-extension [distance]
   (type/extension
    {:url "http://hl7.org/fhir/StructureDefinition/location-distance"
-    :value {:fhir/type :fhir/Distance
-            :value (type/decimal distance)
-            :unit #fhir/string "m"
-            :system #fhir/uri "http://unitsofmeasure.org"
-            :code #fhir/code "m"}}))
+    :value (type/distance {:value (type/decimal distance)
+                           :unit #fhir/string "m"
+                           :system #fhir/uri "http://unitsofmeasure.org"
+                           :code #fhir/code "m"})}))
 
 (defn- add-match-extension [meta distance]
   (update meta ::sp/match-extension conj-vec (distance-extension distance)))

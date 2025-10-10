@@ -13,7 +13,6 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.spec]
-   [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -38,9 +37,9 @@
   (testing "conflict"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2020"}]
+               :birthDate #fhir/date #system/date "2020"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2020"}]]]
+               :birthDate #fhir/date #system/date "2020"}]]]
 
       (given (expand-tx-cmds
               node

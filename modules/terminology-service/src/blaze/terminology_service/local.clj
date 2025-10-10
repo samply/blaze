@@ -5,7 +5,6 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.module :as m]
    [blaze.spec]
    [blaze.terminology-service :as ts]
@@ -49,34 +48,33 @@
 
 (defn- validate-params [specs {params :parameter}]
   (reduce
-   (fn [new-params {:keys [name] :as param}]
-     (let [name (type/value name)]
-       (if-let [{:keys [action] :as spec} (specs name)]
-         (case action
-           :copy
-           (assoc-via new-params spec name (type/value (:value param)))
+   (fn [new-params {{name :value} :name :as param}]
+     (if-let [{:keys [action] :as spec} (specs name)]
+       (case action
+         :copy
+         (assoc-via new-params spec name (:value (:value param)))
 
-           :parse-nat-long
-           (let [value (type/value (:value param))]
-             (if-not (neg? value)
-               (assoc-via new-params spec name value)
-               (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name)))))
+         :parse-nat-long
+         (let [value (:value (:value param))]
+           (if-not (neg? value)
+             (assoc-via new-params spec name value)
+             (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name)))))
 
-           :parse
-           (assoc-via new-params spec name ((:parse spec) (type/value (:value param))))
+         :parse
+         (assoc-via new-params spec name ((:parse spec) (:value (:value param))))
 
-           :parse-canonical
-           (assoc-via new-params spec name (:value param))
+         :parse-canonical
+         (assoc-via new-params spec name (:value param))
 
-           :copy-complex-type
-           (assoc-via new-params spec name (:value param))
+         :copy-complex-type
+         (assoc-via new-params spec name (:value param))
 
-           :copy-resource
-           (assoc-via new-params spec name (:resource param))
+         :copy-resource
+         (assoc-via new-params spec name (:resource param))
 
-           (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
-                                    :http/status 400)))
-         new-params)))
+         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
+                                  :http/status 400)))
+       new-params))
    {}
    params))
 
@@ -95,10 +93,9 @@
     (ba/incorrect (format "Parameter `%s` differs from parameter `%s`."
                           param-name-1 param-name-2))))
 
-(defn- cs-coding-clause [{:keys [code display]} origin]
-  (if-let [code (type/value code)]
-    (cond-> {:code code :origin origin}
-      (type/value display) (assoc :display (type/value display)))
+(defn- cs-coding-clause [{{code :value} :code {display :value} :display} origin]
+  (if code
+    (cond-> {:code code :origin origin} display (assoc :display display))
     (ba/incorrect "Missing required parameter `coding.code`.")))
 
 (defn- cs-validate-code-more
@@ -112,8 +109,7 @@
         (ba/incorrect "Missing both parameters `url` and `codeSystem`."))
 
       coding
-      (let [system (-> coding :system type/value)
-            version (-> coding :version type/value)]
+      (let [{{system :value} :system {version :value} :version} coding]
         (if code-system
           (when-ok [clause (cs-coding-clause coding "coding")]
             (assoc params :clause clause))
@@ -128,8 +124,7 @@
       codeable-concept
       (let [{[fist-coding :as codings] :coding} codeable-concept]
         (condp = (count codings)
-          1 (let [system (-> fist-coding :system type/value)
-                  version (-> fist-coding :version type/value)]
+          1 (let [{{system :value} :system {version :value} :version} fist-coding]
               (if code-system
                 (when-ok [clause (cs-coding-clause fist-coding "codeableConcept")]
                   (assoc params :clause clause))

@@ -11,10 +11,16 @@ build: prep
 	clojure -T:build compile
 
 test: build
-	clojure -M:test:kaocha --profile :ci
+	clojure -M:test:kaocha --profile :ci --skip-meta :mem-size
+
+test-mem-size-normal-heap: build
+	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx4g -M:test:kaocha --profile :ci --focus-meta :mem-size
+
+test-mem-size-large-heap: build
+	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx32g -M:test:kaocha --profile :ci --focus-meta :mem-size
 
 test-coverage: build
-	clojure -M:test:coverage
+	clojure -M:test:coverage --skip-meta :mem-size
 
 deps-tree:
 	clojure -X:deps tree

@@ -46,17 +46,17 @@
     [:resource :fhir/type] := :fhir/Patient
     [:resource :id] := "0"
     [:search :mode] := #fhir/code "match"
-    [:search :extension] :? nil?)
+    [:search :extension] :? empty?)
 
   (let [resource (with-meta {:fhir/type :fhir/Patient :id "0"}
-                   {::sp/match-extension [:extension-100623]})]
+                   {::sp/match-extension [#fhir/Extension{:url "url-135131"}]})]
     (given (search-util/match-entry context resource)
       :fhir/type := :fhir.Bundle/entry
       :fullUrl := #fhir/uri "/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:search :mode] := #fhir/code "match"
-      [:search :extension] := [:extension-100623])))
+      [:search :extension] := [#fhir/Extension{:url "url-135131"}])))
 
 (deftest include-entry-test
   (given-thrown (search-util/include-entry {} {:fhir/type :fhir/Patient :id "0"})

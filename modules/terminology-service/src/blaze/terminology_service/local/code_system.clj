@@ -5,7 +5,6 @@
    [blaze.anomaly :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.bcp-13]
@@ -22,14 +21,14 @@
   "Keeps code systems with complete or fragment content and the special ones."
   [code-systems]
   (filterv
-   (fn [{:keys [url content]}]
-     (or (#{"complete" "fragment"} (type/value content))
+   (fn [{{url :value} :url {content :value} :content}]
+     (or (#{"complete" "fragment"} content)
          (#{"urn:ietf:bcp:13"
             "urn:ietf:bcp:47"
             "http://loinc.org"
             "http://snomed.info/sct"
             "http://unitsofmeasure.org"}
-          (type/value url))))
+          url)))
    code-systems))
 
 (defn- pull-code-systems [db]
@@ -48,7 +47,7 @@
      (map
       (fn [[url code-systems]]
         [url (fu/sort-by-priority code-systems)]))
-     (group-by (comp type/value :url) (filter-usable code-systems)))))
+     (group-by (comp :value :url) (filter-usable code-systems)))))
 
 (defn- assoc-graph [{concepts :concept :as code-system}]
   (assoc code-system :default/graph (graph/build-graph concepts)))
@@ -59,8 +58,8 @@
    (some
     (fn [{:fhir/keys [type] :as resource}]
       (when (identical? :fhir/CodeSystem type)
-        (when (= url (type/value (:url resource)))
-          (when (required-content (type/value (:content resource)))
+        (when (= url (:value (:url resource)))
+          (when (required-content (:value (:content resource)))
             (ac/completed-future (assoc-graph resource))))))
     tx-resources))
   ([{:keys [tx-resources] ::cs/keys [required-content]
@@ -68,9 +67,9 @@
    (some
     (fn [{:fhir/keys [type] :as resource}]
       (when (identical? :fhir/CodeSystem type)
-        (when (= url (type/value (:url resource)))
-          (when (= version (type/value (:version resource)))
-            (when (required-content (type/value (:content resource)))
+        (when (= url (:value (:url resource)))
+          (when (= version (:value (:version resource)))
+            (when (required-content (:value (:content resource)))
               (ac/completed-future (assoc-graph resource)))))))
     tx-resources)))
 
@@ -106,10 +105,8 @@
     (vc/parameters-from-concept concept params)
     #(vc/fail-parameters-from-anom % params)))
 
-(defn- assoc-system-info [clause {:keys [url version]}]
-  (cond-> clause
-    (type/value url) (assoc :system (type/value url))
-    (type/value version) (assoc :version (type/value version))))
+(defn- assoc-system-info [clause {{url :value} :url {version :value} :version}]
+  (cond-> clause url (assoc :system url) version (assoc :version version)))
 
 (defn validate-code
   "Returns a Parameters resource that contains the response of the validation

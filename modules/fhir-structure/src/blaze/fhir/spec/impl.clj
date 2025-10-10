@@ -2,11 +2,11 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
-   [blaze.fhir.spec.impl.intern :as intern]
    [blaze.fhir.spec.impl.specs :as specs]
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.alpha.spec :as s]
    [clojure.data.xml.name :as xml-name]
@@ -47,13 +47,6 @@
 (def id-matcher-form
   `(fn [~'s] (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" ~'s))))
 
-(def ^{:arglists '([s])} intern-string
-  "Returns an interned String without using String/intern."
-  (intern/intern-value identity))
-
-(def uri-matcher-form
-  `(specs/regex #"(?U)[\p{Print}&&[^\p{Blank}]]*" intern-string))
-
 (def conform-xml-value
   "Takes the value out of an XML element."
   (comp :value :attrs))
@@ -68,15 +61,9 @@
     nil `(s/and string? ~id-matcher-form)
     :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~id-matcher-form)))
 
-(defn uri-string-spec [modifier]
-  (case modifier
-    (nil :xmlAttr) `(s/and string? ~uri-matcher-form)
-    :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~uri-matcher-form)))
-
 (defn- string-spec [modifier type]
   (case (find-fhir-type type)
     "id" (id-string-spec modifier)
-    "uri" (uri-string-spec modifier)
     (if-let [regex (type-regex type)]
       `(s/and string? (fn [~'s] (.matches (re-matcher ~regex ~'s))))
       `string?)))
@@ -158,8 +145,257 @@
     :max max
     :spec-form
     (case path
-      ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-      (xml/primitive-xml-form `type/xml->InternedString)
+      ("Address.city"
+       "Address.district"
+       "Address.state"
+       "Address.postalCode"
+       "Address.country"
+       "Age.unit"
+       "Bundle.link.relation"
+       "Bundle.response.status"
+       "CodeableConcept.text"
+       "Coding.version"
+       "Coding.display"
+       "Count.unit"
+       "Distance.unit"
+       "Duration.unit"
+       "HumanName.family"
+       "HumanName.prefix"
+       "HumanName.suffix"
+       "Quantity.unit")
+      (xml/primitive-xml-form `type/string-interned `identity)
+      ("Resource.implicitRules"
+       "Account.implicitRules"
+       "ActivityDefinition.implicitRules"
+       "ActivityDefinition.url"
+       "AdverseEvent.implicitRules"
+       "Age.system"
+       "AllergyIntolerance.implicitRules"
+       "Appointment.implicitRules"
+       "AppointmentResponse.implicitRules"
+       "AuditEvent.implicitRules"
+       "AuditEvent.agent.policy"
+       "Basic.implicitRules"
+       "Binary.implicitRules"
+       "BiologicallyDerivedProduct.implicitRules"
+       "BodyStructure.implicitRules"
+       "Bundle.implicitRules"
+       "CapabilityStatement.implicitRules"
+       "CapabilityStatement.url"
+       "CarePlan.implicitRules"
+       "CarePlan.instantiatesUri"
+       "CarePlan.activity.detail.instantiatesUri"
+       "CareTeam.implicitRules"
+       "CatalogEntry.implicitRules"
+       "ChargeItem.implicitRules"
+       "ChargeItem.definitionUri"
+       "ChargeItemDefinition.implicitRules"
+       "ChargeItemDefinition.url"
+       "ChargeItemDefinition.derivedFromUri"
+       "Claim.implicitRules"
+       "ClaimResponse.implicitRules"
+       "ClinicalImpression.implicitRules"
+       "ClinicalImpression.protocol"
+       "CodeSystem.implicitRules"
+       "CodeSystem.url"
+       "CodeSystem.property.uri"
+       "Communication.implicitRules"
+       "Communication.instantiatesUri"
+       "CommunicationRequest.implicitRules"
+       "CompartmentDefinition.implicitRules"
+       "CompartmentDefinition.url"
+       "Composition.implicitRules"
+       "ConceptMap.implicitRules"
+       "ConceptMap.url"
+       "Condition.implicitRules"
+       "Consent.implicitRules"
+       "Consent.policy.authority"
+       "Consent.policy.uri"
+       "Contract.implicitRules"
+       "Contract.url"
+       "Contract.instantiatesUri"
+       "Count.system"
+       "Coverage.implicitRules"
+       "CoverageEligibilityRequest.implicitRules"
+       "CoverageEligibilityResponse.implicitRules"
+       "CoverageEligibilityResponse.insurance.item.authorizationUrl"
+       "DetectedIssue.implicitRules"
+       "Device.implicitRules"
+       "Device.udiCarrier.issuer"
+       "Device.udiCarrier.jurisdiction"
+       "Device.url"
+       "DeviceDefinition.implicitRules"
+       "DeviceDefinition.udiDeviceIdentifier.issuer"
+       "DeviceDefinition.udiDeviceIdentifier.jurisdiction"
+       "DeviceDefinition.url"
+       "DeviceDefinition.onlineInformation"
+       "DeviceMetric.implicitRules"
+       "DeviceRequest.implicitRules"
+       "DeviceRequest.instantiatesUri"
+       "DeviceUseStatement.implicitRules"
+       "DiagnosticReport.implicitRules"
+       "Distance.system"
+       "DocumentManifest.implicitRules"
+       "DocumentManifest.source"
+       "DocumentReference.implicitRules"
+       "DomainResource.implicitRules"
+       "Duration.system"
+       "EffectEvidenceSynthesis.implicitRules"
+       "EffectEvidenceSynthesis.url"
+       "Encounter.implicitRules"
+       "Endpoint.implicitRules"
+       "EnrollmentRequest.implicitRules"
+       "EnrollmentResponse.implicitRules"
+       "EpisodeOfCare.implicitRules"
+       "EventDefinition.implicitRules"
+       "EventDefinition.url"
+       "Evidence.implicitRules"
+       "Evidence.url"
+       "EvidenceVariable.implicitRules"
+       "EvidenceVariable.url"
+       "ExampleScenario.implicitRules"
+       "ExampleScenario.url"
+       "ExplanationOfBenefit.implicitRules"
+       "FamilyMemberHistory.implicitRules"
+       "FamilyMemberHistory.instantiatesUri"
+       "Flag.implicitRules"
+       "Goal.implicitRules"
+       "GraphDefinition.implicitRules"
+       "GraphDefinition.url"
+       "Group.implicitRules"
+       "GuidanceResponse.implicitRules"
+       "HealthcareService.implicitRules"
+       "ImagingStudy.implicitRules"
+       "Immunization.implicitRules"
+       "Immunization.education.reference"
+       "ImmunizationEvaluation.implicitRules"
+       "ImmunizationRecommendation.implicitRules"
+       "ImplementationGuide.implicitRules"
+       "ImplementationGuide.url"
+       "InsurancePlan.implicitRules"
+       "Invoice.implicitRules"
+       "Library.implicitRules"
+       "Library.url"
+       "Linkage.implicitRules"
+       "List.implicitRules"
+       "Location.implicitRules"
+       "Measure.implicitRules"
+       "Measure.url"
+       "MeasureReport.implicitRules"
+       "Media.implicitRules"
+       "Medication.implicitRules"
+       "MedicationAdministration.implicitRules"
+       "MedicationAdministration.instantiates"
+       "MedicationDispense.implicitRules"
+       "MedicationKnowledge.implicitRules"
+       "MedicationRequest.implicitRules"
+       "MedicationRequest.instantiatesUri"
+       "MedicationStatement.implicitRules"
+       "MedicinalProduct.implicitRules"
+       "MedicinalProductAuthorization.implicitRules"
+       "MedicinalProductContraindication.implicitRules"
+       "MedicinalProductIndication.implicitRules"
+       "MedicinalProductIngredient.implicitRules"
+       "MedicinalProductInteraction.implicitRules"
+       "MedicinalProductManufactured.implicitRules"
+       "MedicinalProductPackaged.implicitRules"
+       "MedicinalProductPharmaceutical.implicitRules"
+       "MedicinalProductUndesirableEffect.implicitRules"
+       "MessageDefinition.implicitRules"
+       "MessageDefinition.url"
+       "MessageHeader.implicitRules"
+       "MolecularSequence.implicitRules"
+       "MolecularSequence.repository.url"
+       "NamingSystem.implicitRules"
+       "NutritionOrder.implicitRules"
+       "NutritionOrder.instantiatesUri"
+       "NutritionOrder.instantiates"
+       "Observation.implicitRules"
+       "ObservationDefinition.implicitRules"
+       "OperationDefinition.implicitRules"
+       "OperationDefinition.url"
+       "OperationOutcome.implicitRules"
+       "Organization.implicitRules"
+       "OrganizationAffiliation.implicitRules"
+       "Parameters.implicitRules"
+       "Patient.implicitRules"
+       "PaymentNotice.implicitRules"
+       "PaymentReconciliation.implicitRules"
+       "Person.implicitRules"
+       "PlanDefinition.implicitRules"
+       "PlanDefinition.url"
+       "Practitioner.implicitRules"
+       "PractitionerRole.implicitRules"
+       "Procedure.implicitRules"
+       "Procedure.instantiatesUri"
+       "Provenance.implicitRules"
+       "Provenance.policy"
+       "Questionnaire.implicitRules"
+       "Questionnaire.url"
+       "Questionnaire.item.definition"
+       "QuestionnaireResponse.implicitRules"
+       "QuestionnaireResponse.item.definition"
+       "RelatedPerson.implicitRules"
+       "RequestGroup.implicitRules"
+       "RequestGroup.instantiatesUri"
+       "ResearchDefinition.implicitRules"
+       "ResearchDefinition.url"
+       "ResearchElementDefinition.implicitRules"
+       "ResearchElementDefinition.url"
+       "ResearchStudy.implicitRules"
+       "ResearchSubject.implicitRules"
+       "RiskAssessment.implicitRules"
+       "RiskEvidenceSynthesis.implicitRules"
+       "RiskEvidenceSynthesis.url"
+       "Schedule.implicitRules"
+       "SearchParameter.implicitRules"
+       "SearchParameter.url"
+       "ServiceRequest.implicitRules"
+       "ServiceRequest.instantiatesUri"
+       "Slot.implicitRules"
+       "Specimen.implicitRules"
+       "SpecimenDefinition.implicitRules"
+       "StructureDefinition.implicitRules"
+       "StructureDefinition.url"
+       "StructureDefinition.mapping.uri"
+       "StructureDefinition.type"
+       "StructureMap.implicitRules"
+       "StructureMap.url"
+       "Subscription.implicitRules"
+       "Substance.implicitRules"
+       "SubstanceNucleicAcid.implicitRules"
+       "SubstancePolymer.implicitRules"
+       "SubstanceProtein.implicitRules"
+       "SubstanceReferenceInformation.implicitRules"
+       "SubstanceSourceMaterial.implicitRules"
+       "SubstanceSpecification.implicitRules"
+       "SupplyDelivery.implicitRules"
+       "SupplyRequest.implicitRules"
+       "Task.implicitRules"
+       "Task.instantiatesUri"
+       "TerminologyCapabilities.implicitRules"
+       "TerminologyCapabilities.url"
+       "TestReport.implicitRules"
+       "TestReport.participant.uri"
+       "TestReport.setup.action.operation.detail"
+       "TestScript.implicitRules"
+       "TestScript.url"
+       "TestScript.metadata.link.url"
+       "TestScript.metadata.capability.link"
+       "ValueSet.implicitRules"
+       "ValueSet.url"
+       "ValueSet.compose.include.system"
+       "ValueSet.expansion.identifier"
+       "ValueSet.expansion.contains.system"
+       "VerificationResult.implicitRules"
+       "VisionPrescription.implicitRules"
+       "MetadataResource.implicitRules"
+       "MetadataResource.url"
+       "Coding.system"
+       "Identifier.system"
+       "Quantity.system"
+       "Reference.type")
+      (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/uri-interned `identity)
       (keyword "fhir.xml" (:code type)))}])
 
 (defn elem-def->spec-def
@@ -249,7 +485,7 @@
       child-spec-defs)))
 
 (defn- type-check-form [key]
-  `(fn [~'m] (identical? ~key (type/type ~'m))))
+  `(fn [~'m] (identical? ~key (:fhir/type ~'m))))
 
 (defn- internal-schema-spec-def [parent-path-parts path-part elem-def child-spec-defs]
   (let [key (spec-key "fhir" parent-path-parts path-part)]
@@ -258,19 +494,50 @@
      :max (:max elem-def)
      :spec-form
      (case key
-       (:fhir/Attachment
-        :fhir/Extension
-        :fhir/Coding
+       (:fhir/Address
+        :fhir/Age
+        :fhir/Annotation
+        :fhir/Attachment
         :fhir/CodeableConcept
-        :fhir/Quantity
-        :fhir/Ratio
-        :fhir/Period
-        :fhir/Identifier
+        :fhir/Coding
+        :fhir/ContactDetail
+        :fhir/ContactPoint
+        :fhir/Contributor
+        :fhir/Count
+        :fhir/DataRequirement
+        :fhir/Distance
+        :fhir/Dosage
+        :fhir/Duration
+        :fhir/Expression
+        :fhir/Extension
         :fhir/HumanName
-        :fhir/Address
+        :fhir/Identifier
+        :fhir/Meta
+        :fhir/Money
+        :fhir/Narrative
+        :fhir/ParameterDefinition
+        :fhir/Period
+        :fhir/Quantity
+        :fhir/Range
+        :fhir/Ratio
         :fhir/Reference
-        :fhir/Meta)
+        :fhir/RelatedArtifact
+        :fhir/SampledData
+        :fhir/Signature
+        :fhir/Timing
+        :fhir/TriggerDefinition
+        :fhir/UsageContext)
        (record-spec-form path-part child-spec-defs)
+       :fhir.DataRequirement/codeFilter
+       (record-spec-form "DataRequirement$CodeFilter" child-spec-defs)
+       :fhir.DataRequirement/dateFilter
+       (record-spec-form "DataRequirement$DateFilter" child-spec-defs)
+       :fhir.DataRequirement/sort
+       (record-spec-form "DataRequirement$Sort" child-spec-defs)
+       :fhir.Dosage/doseAndRate
+       (record-spec-form "Dosage$DoseAndRate" child-spec-defs)
+       :fhir.Timing/repeat
+       (record-spec-form "Timing$Repeat" child-spec-defs)
        :fhir.Bundle.entry/search
        (record-spec-form "BundleEntrySearch" child-spec-defs)
        `(s/and ~(type-check-form key) ~(schema-spec-form nil child-spec-defs)))}))
@@ -294,7 +561,7 @@
   "Add the type suffix to the key of a choice typed data element."
   [m key]
   (if-some [v (get m key)]
-    (-> (dissoc m key) (assoc (choice-type-key key (type/type v)) v))
+    (-> (dissoc m key) (assoc (choice-type-key key (:fhir/type v)) v))
     m))
 
 (defn- remap-choice-conformer-form
@@ -342,13 +609,13 @@
    content))
 
 (defn select-non-nil-keys [m ks]
-  (into {} (remove (comp nil? val)) (select-keys m ks)))
+  (into {} (keep (fn [entry] (when (ks (key entry)) entry))) m))
 
 (defn- xml-attrs-form [child-spec-defs]
   `(select-non-nil-keys
     ~'m
     ~(into
-      []
+      #{}
       (comp
        (filter :key)
        (filter :representation)
@@ -403,14 +670,15 @@
         `s/and))
 
 (defn- special-xml-schema-spec-form [kind type-name child-spec-defs]
-  (let [constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))
-        constructor (resolve constructor-sym)]
-    (conj (seq (conj (remap-choice-conformer-forms child-spec-defs)
-                     `(s/conformer ~constructor identity)))
-          (schema-spec-form :xml child-spec-defs)
-          `(s/conformer conform-xml
-                        ~(xml-unformer kind (keyword type-name) child-spec-defs))
-          `s/and)))
+  (let [constructor-sym (symbol "blaze.fhir.spec.type" (su/pascal->kebab type-name))]
+    (if-let [constructor (resolve constructor-sym)]
+      (conj (seq (conj (remap-choice-conformer-forms child-spec-defs)
+                       `(s/conformer ~constructor #(into {} %))))
+            (schema-spec-form :xml child-spec-defs)
+            `(s/conformer conform-xml
+                          ~(xml-unformer kind (keyword type-name) child-spec-defs))
+            `s/and)
+      (throw (Exception. (format "Can't resolve constructor `%s`." constructor-sym))))))
 
 (defn- xml-schema-spec-def
   [kind parent-path-parts path-part elem-def child-spec-defs]
@@ -421,19 +689,50 @@
      :modifier :xml
      :spec-form
      (case key
-       (:fhir.xml/Attachment
-        :fhir.xml/Extension
-        :fhir.xml/Coding
+       (:fhir.xml/Address
+        :fhir.xml/Age
+        :fhir.xml/Annotation
+        :fhir.xml/Attachment
         :fhir.xml/CodeableConcept
-        :fhir.xml/Quantity
-        :fhir.xml/Ratio
-        :fhir.xml/Period
-        :fhir.xml/Identifier
+        :fhir.xml/Coding
+        :fhir.xml/ContactDetail
+        :fhir.xml/ContactPoint
+        :fhir.xml/Contributor
+        :fhir.xml/Count
+        :fhir.xml/DataRequirement
+        :fhir.xml/Distance
+        :fhir.xml/Dosage
+        :fhir.xml/Duration
+        :fhir.xml/Expression
+        :fhir.xml/Extension
         :fhir.xml/HumanName
-        :fhir.xml/Address
+        :fhir.xml/Identifier
+        :fhir.xml/Meta
+        :fhir.xml/Money
+        :fhir.xml/Narrative
+        :fhir.xml/ParameterDefinition
+        :fhir.xml/Period
+        :fhir.xml/Quantity
+        :fhir.xml/Range
+        :fhir.xml/Ratio
         :fhir.xml/Reference
-        :fhir.xml/Meta)
+        :fhir.xml/RelatedArtifact
+        :fhir.xml/SampledData
+        :fhir.xml/Signature
+        :fhir.xml/Timing
+        :fhir.xml/TriggerDefinition
+        :fhir.xml/UsageContext)
        (special-xml-schema-spec-form kind (name key) child-spec-defs)
+       :fhir.xml.DataRequirement/codeFilter
+       (special-xml-schema-spec-form kind "DataRequirementCodeFilter" child-spec-defs)
+       :fhir.xml.DataRequirement/dateFilter
+       (special-xml-schema-spec-form kind "DataRequirementDateFilter" child-spec-defs)
+       :fhir.xml.DataRequirement/sort
+       (special-xml-schema-spec-form kind "DataRequirementSort" child-spec-defs)
+       :fhir.xml.Dosage/doseAndRate
+       (special-xml-schema-spec-form kind "DosageDoseAndRate" child-spec-defs)
+       :fhir.xml.Timing/repeat
+       (special-xml-schema-spec-form kind "TimingRepeat" child-spec-defs)
        :fhir.xml.Bundle.entry/search
        (special-xml-schema-spec-form kind "BundleEntrySearch" child-spec-defs)
        (xml-schema-spec-form kind (spec-key "fhir" parent-path-parts path-part)
@@ -504,18 +803,32 @@
 (defn- value-type [element]
   (some #(when (str/ends-with? (:path %) "value") (first (:type %))) element))
 
+(defn- pattern [name element]
+  (case name
+    "string" nil
+    "uri" #"(?U)[\p{Print}&&[^\p{Blank}]]*"
+    "url" #"(?U)[\p{Print}&&[^\p{Blank}]]*"
+    "canonical" #"(?U)[\p{Print}&&[^\p{Blank}]]*"
+    "code" nil
+    "markdown" nil
+    (type-regex (value-type element))))
+
 (defn- xml-spec-form [name {:keys [element]}]
-  (let [pattern (type-regex (value-type element))
-        constructor (str "xml->" (su/capital name))]
+  (let [pattern (pattern name element)]
     (case name
-      "string" (xml/primitive-xml-form `type/xml->String)
-      "uri" (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/xml->Uri)
-      "url" (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/xml->Url)
-      "canonical" (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/xml->Canonical)
-      "code" (xml/primitive-xml-form `type/xml->Code)
-      "markdown" (xml/primitive-xml-form `type/xml->Markdown)
-      "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
-      (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" constructor)))))
+      "boolean" (xml/primitive-xml-form pattern `type/boolean `system/parse-boolean)
+      "integer" (xml/primitive-xml-form pattern `type/integer `system/parse-integer)
+      "decimal" (xml/primitive-xml-form pattern `type/decimal `system/parse-decimal)
+      "instant" (xml/primitive-xml-form pattern `type/instant `system/parse-date-time)
+      "date" (xml/primitive-xml-form pattern `type/date `system/parse-date)
+      "dateTime" (xml/primitive-xml-form pattern `type/dateTime `system/parse-date-time)
+      "time" (xml/primitive-xml-form pattern `type/time `system/parse-time)
+      "unsignedInt" (xml/primitive-xml-form pattern `type/unsignedInt `system/parse-integer)
+      "positiveInt" (xml/primitive-xml-form pattern `type/positiveInt `system/parse-integer)
+      "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/xhtml-to-xml))
+      (if pattern
+        (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" name) `identity)
+        (xml/primitive-xml-form (symbol "blaze.fhir.spec.type" name) `identity)))))
 
 (defn primitive-type->spec-defs
   "Converts a primitive type structure definition into spec defs for XML and
@@ -553,8 +866,7 @@
 (defmulti resource (constantly :default))
 
 (defmethod resource :default [{:fhir/keys [type]}]
-  (when type
-    (keyword "fhir" (name type))))
+  type)
 
 (s/def :fhir/Resource
   (s/multi-spec resource :fhir/type))

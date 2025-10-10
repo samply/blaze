@@ -92,11 +92,17 @@ The size of the [block cache][2] of the DB in MiB. This cache is outside of the 
 
 **Default:** 128
 
-#### `DB_RESOURCE_CACHE_SIZE` <Badge type="warning" text="Since 0.8"/>
+#### `DB_RESOURCE_CACHE_SIZE` <Badge type="warning" text="Since 0.8"/> <Badge type="danger" text="unreleased"/>
 
-The size of the resource cache of the DB in number of resources.
+The size of the resource cache of the DB in number of resources. (Deprecated) Replaced with `DB_RESOURCE_CACHE_SIZE_RATIO`.
 
 **Default:** 100000
+
+#### `DB_RESOURCE_CACHE_SIZE_RATIO` <Badge type="warning" text="unreleased"/>
+
+The ratio of JVM heap size that is allocated to the resource cache. A value of 0 disables the resource cache and a value of 0.8 is the maximum. 
+
+**Default:** 0.25
 
 #### `DB_SCALE_FACTOR` <Badge type="warning" text="Since 1.4"/>
 
@@ -166,11 +172,17 @@ The size of the [block cache][2] of the DB in MiB. This cache is outside of the 
 
 **Default:** 128
 
-#### `DB_RESOURCE_CACHE_SIZE` <Badge type="warning" text="Since 0.8"/>
+#### `DB_RESOURCE_CACHE_SIZE` <Badge type="warning" text="Since 0.8"/> <Badge type="danger" text="unreleased"/>
 
-The size of the resource cache of the DB in number of resources.
+The size of the resource cache of the DB in number of resources. (Deprecated) Replaced with `DB_RESOURCE_CACHE_SIZE_RATIO`.
 
 **Default:** 100000
+
+#### `DB_RESOURCE_CACHE_SIZE_RATIO` <Badge type="warning" text="unreleased"/>
+
+The ratio of JVM heap size that is allocated to the resource cache. A value of 0 disables the resource cache and a value of 0.8 is the maximum.
+
+**Default:** 0.25
 
 #### `DB_MAX_BACKGROUND_JOBS` <Badge type="warning" text="Since 0.8"/>
 

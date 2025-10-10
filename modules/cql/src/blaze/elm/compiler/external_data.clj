@@ -63,13 +63,12 @@
   (reify-expr core/Expression
     (-eval [_ {:keys [db]} resource _]
       (prom/inc! retrieve-total)
-      (let [{{:keys [reference]} :subject} resource]
-        (when reference
-          (when-let [[type id] (fsr/split-literal-ref reference)]
-            (when (and (= "Patient" type) (string? id))
-              (when-let [handle (d/resource-handle db "Patient" id)]
-                (when-not (d/deleted? handle)
-                  [(cr/mk-resource db handle)])))))))
+      (when-let [reference (-> resource :subject :reference :value)]
+        (when-let [[type id] (fsr/split-literal-ref reference)]
+          (when (and (= "Patient" type) (string? id))
+            (when-let [handle (d/resource-handle db "Patient" id)]
+              (when-not (d/deleted? handle)
+                [(cr/mk-resource db handle)]))))))
     (-form [_]
       '(retrieve (Specimen) "Patient"))))
 

@@ -43,6 +43,6 @@ blazectl --server http://localhost:8080/fhir upload -c8 <dataset>
 | LEA58  | 100k-fh |               1 |    7.426 |       11843 |
 | LEA58  | 1M      |               4 |   26,480 |       10955 |
 | LEA79  | 1M      |               1 |   18.227 |       15915 |
-| LEA79  | 1M      |               4 |   12.583 |       23053 |
+| LEA79  | 1M      |               4 |   12.174 |       23829 |
 
 Read more about the DB Scale Factor in the [Environment Variables Section](../deployment/environment-variables.md).

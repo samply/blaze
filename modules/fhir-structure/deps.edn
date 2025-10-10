@@ -49,7 +49,10 @@
     {:local/root "../executor"}
 
     blaze/fhir-test-util
-    {:local/root "../fhir-test-util"}}}
+    {:local/root "../fhir-test-util"}
+
+    org.openjdk.jol/jol-core
+    {:mvn/version "0.17"}}}
 
   :kaocha
   {:extra-deps

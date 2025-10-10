@@ -77,7 +77,7 @@
 (defn- decode-key-set-handle
   {:argLists '([key-set-resource])}
   [{[{{:keys [data]} :attachment}] :content}]
-  (parse-key-set (type/value data)))
+  (parse-key-set (:value data)))
 
 (defn- decode-state [key-set-resource]
   (let [key-set-handle (decode-key-set-handle key-set-resource)]
@@ -93,7 +93,7 @@
     (log/trace "Got" (count document-reference-handles)
                "changed document-reference(s)")
     (run!
-     (fn [{[{:keys [value]}] :identifier :as document-reference}]
+     (fn [{[{{value :value} :value}] :identifier :as document-reference}]
        (when (= identifier value)
          (log/debug "Refresh key set")
          (reset! state (decode-state document-reference))))
@@ -116,7 +116,7 @@
     (assoc key-set-resource :content [(key-set-content (f handle))])))
 
 (defn- update-tx-op [{{version-id :versionId} :meta :as resource}]
-  [:put resource [:if-match (parse-long (type/value version-id))]])
+  [:put resource [:if-match (parse-long (:value version-id))]])
 
 (defn- update-resource [node resource f]
   (d/transact node [(update-tx-op (f resource))]))

@@ -11,8 +11,6 @@
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [cognitect.anomalies :as anom]
    [taoensso.timbre :as log]))
@@ -22,26 +20,26 @@
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
-  (fn [_ value] (fhir-spec/fhir-type value)))
+  (fn [_ value] (:fhir/type value)))
 
 (defmethod index-entries :fhir/date
   [_ date]
-  (when-let [value (type/value date)]
+  (when-let [value (:value date)]
     [[nil (codec-date/encode-range value)]]))
 
 (defmethod index-entries :fhir/dateTime
   [_ date-time]
-  (when-let [value (type/value date-time)]
+  (when-let [value (:value date-time)]
     [[nil (codec-date/encode-range value)]]))
 
 (defmethod index-entries :fhir/instant
   [_ date-time]
-  (when-let [value (type/value date-time)]
+  (when-let [value (:value date-time)]
     [[nil (codec-date/encode-range value)]]))
 
 (defmethod index-entries :fhir/Period
   [_ {:keys [start end]}]
-  [[nil (codec-date/encode-range (type/value start) (type/value end))]])
+  [[nil (codec-date/encode-range (:value start) (:value end))]])
 
 (defmethod index-entries :default
   [url value]

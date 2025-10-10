@@ -25,14 +25,14 @@
   (type/codeable-concept
    {:coding
     [(type/coding
-      {:system (type/uri status-reason-url)
+      {:system (type/uri-interned status-reason-url)
        :code (type/code reason)})]}))
 
 (defn- mk-sub-status [system-url code]
   (type/codeable-concept
    {:coding
     [(type/coding
-      {:system (type/uri system-url)
+      {:system (type/uri-interned system-url)
        :code (type/code code)})]}))
 
 (def orderly-shut-down-status-reason (mk-status-reason "orderly-shutdown"))
@@ -46,16 +46,14 @@
 (defn job-number
   {:arglists '([job])}
   [{:keys [identifier]}]
-  (some
-   #(when (= job-number-url (type/value (:system %))) (type/value (:value %)))
-   identifier))
+  (some #(when (= job-number-url (-> % :system :value)) (-> % :value :value)) identifier))
 
 (defn code-value
   "Returns the value of the code of the coding with `system` or nil if not
   found."
   {:arglists '([system codeable-concept])}
   [system {:keys [coding]}]
-  (some #(when (= system (type/value (:system %))) (type/value (:code %))) coding))
+  (some #(when (= system (-> % :system :value)) (-> % :code :value)) coding))
 
 (defn job-type
   "Returns the type of `job` as keyword."
@@ -99,13 +97,13 @@
   "Returns the error category of `job` in case it failed and an error category
   is available."
   [job]
-  (some->> (type/value (output-value job "error-category"))
+  (some->> (:value (output-value job "error-category"))
            (keyword "cognitect.anomalies")))
 
 (defn error-msg
   "Returns the error message of `job` in case it failed."
   [job]
-  (type/value (output-value job "error")))
+  (:value (output-value job "error")))
 
 (defn error
   "Returns the error as anomaly of `job` in case it failed."
@@ -127,7 +125,7 @@
    :type (type/codeable-concept
           {:coding
            [(type/coding
-             {:system (type/uri system)
+             {:system (type/uri-interned system)
               :code (type/code code)})]})
    :value value})
 
@@ -148,7 +146,7 @@
    (update job :output conj-output-value* system code value)))
 
 (defn- update-tx-op [{{version-id :versionId} :meta :as job}]
-  [:put job [:if-match (parse-long (type/value version-id))]])
+  [:put job [:if-match (parse-long (:value version-id))]])
 
 (defn- tx-ops [job other-resources]
   (into [(update-tx-op job)] (map (partial vector :create)) other-resources))

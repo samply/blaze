@@ -1,20 +1,19 @@
 (ns blaze.terminology-service.local.code-system.filter.equals
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.filter.core :as core]))
 
 (defn- pred [{:keys [url]} {:keys [property value]}]
-  (if-let [property (type/value property)]
-    (if-some [search-value (type/value value)]
+  (if-let [property (:value property)]
+    (if-some [search-value (:value value)]
       (fn [{properties :property}]
         (some
          (fn [{:keys [code value]}]
-           (and (= property (type/value code))
-                (= search-value (type/value value))))
+           (and (= property (:value code))
+                (= search-value (:value value))))
          properties))
-      (ba/incorrect (format "Missing %s = filter value in code system `%s`." property (type/value url))))
-    (ba/incorrect (format "Missing = filter property in code system `%s`." (type/value url)))))
+      (ba/incorrect (format "Missing %s = filter value in code system `%s`." property (:value url))))
+    (ba/incorrect (format "Missing = filter property in code system `%s`." (:value url)))))
 
 (defmethod core/filter-concepts :=
   [{{:keys [concepts]} :default/graph :as code-system} filter]

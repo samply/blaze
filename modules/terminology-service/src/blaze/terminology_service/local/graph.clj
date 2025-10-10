@@ -3,11 +3,11 @@
    [blaze.fhir.spec.type :as type]))
 
 (defn- property-pred [code value]
-  #(and (= code (type/value (:code %))) (= value (type/value (:value %)))))
+  #(and (= code (:value (:code %))) (= value (:value (:value %)))))
 
 (defn- conj-property [props {:keys [code value] :as prop}]
   (cond-> props
-    (not (some (property-pred (type/value code) (type/value value)) props))
+    (not (some (property-pred (:value code) (:value value)) props))
     (conj prop)))
 
 (defn- merge-properties
@@ -19,7 +19,7 @@
   "Returns all parent codes of `concept` as strings."
   {:arglists '([direction concept])}
   [direction {properties :property}]
-  (keep #(when (= direction (type/value (:code %))) (type/value (:value %))) properties))
+  (keep #(when (= direction (:value (:code %))) (:value (:value %))) properties))
 
 (defn- child-property [code]
   {:fhir/type :fhir.CodeSystem.concept/property
@@ -98,7 +98,7 @@
   [concepts]
   (reduce
    (fn [graph {:keys [code] :as concept}]
-     (let [code (type/value code)
+     (let [code (:value code)
            child-concepts (:concept concept)
            concept (dissoc concept :concept)
            parent-codes (hierarchy-codes "parent" concept)

@@ -20,13 +20,14 @@
 (defn- all-version-expansion-anom [url]
   (ba/unsupported (all-version-expansion-msg url)))
 
-(defn- find-code-system [{:keys [params] :as context} {:keys [system version]}]
-  (condp = (type/value version)
-    "*" (ac/completed-future (all-version-expansion-anom (type/value system)))
-    nil (if-let [version (vs-u/find-version params (type/value system))]
-          (cs/find context (type/value system) version)
-          (cs/find context (type/value system)))
-    (cs/find context (type/value system) (type/value version))))
+(defn- find-code-system
+  [{:keys [params] :as context} {{system :value} :system {version :value} :version}]
+  (condp = version
+    "*" (ac/completed-future (all-version-expansion-anom system))
+    nil (if-let [version (vs-u/find-version params system)]
+          (cs/find context system version)
+          (cs/find context system))
+    (cs/find context system version)))
 
 (defn- expand-filters [code-system filters params]
   (->> (map #(cs/expand-filter code-system % params) filters)
@@ -41,18 +42,16 @@
 (defn- used-codesystem-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string "used-codesystem"
-   :value (type/uri (cond-> url version (str "|" version)))})
+   :value (type/uri-interned (cond-> url version (str "|" version)))})
 
 (defn- version-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string "version"
-   :value (type/uri (str url "|" version))})
+   :value (type/uri-interned (str url "|" version))})
 
-(defn- code-system-parameters [{:keys [url version]}]
-  (let [url (type/value url)
-        version (type/value version)]
-    (cond-> #{(used-codesystem-parameter url version)}
-      version (conj (version-parameter url version)))))
+(defn- code-system-parameters [{{url :value} :url {version :value} :version}]
+  (cond-> #{(used-codesystem-parameter url version)}
+    version (conj (version-parameter url version))))
 
 (defn- include-system
   [{:keys [params] :as context} {concepts :concept filters :filter :as include}]
@@ -70,16 +69,16 @@
       (ac/then-compose (partial expand-value-set context))))
 
 (defn- include-value-sets [context value-sets]
-  (let [futures (mapv #(expand-value-set-by-canonical context (type/value %)) value-sets)]
+  (let [futures (mapv #(expand-value-set-by-canonical context (:value %)) value-sets)]
     (do-sync [_ (ac/all-of futures)]
       (transduce (map (comp #(select-keys % [:parameter :contains]) :expansion ac/join)) (partial merge-with into) futures))))
 
 (defn- include [context {:keys [system] value-sets :valueSet :as include}]
   (cond
-    (and (type/value system) value-sets)
+    (and system value-sets)
     (ac/completed-future (ba/incorrect "Incorrect combination of system and valueSet."))
 
-    (type/value system) (include-system context include)
+    system (include-system context include)
     value-sets (include-value-sets context value-sets)
 
     :else (ac/completed-future (ba/incorrect "Missing system or valueSet."))))
@@ -124,7 +123,7 @@
   (cond-> {:fhir/type :fhir.ValueSet.expansion/property
            :code (type/code property)}
     (#{"status" "definition"} property)
-    (assoc :uri (type/uri (str "http://hl7.org/fhir/concept-properties#" property)))))
+    (assoc :uri (type/uri-interned (str "http://hl7.org/fhir/concept-properties#" property)))))
 
 (defn- append-properties [properties]
   (mapv append-property properties))
@@ -135,8 +134,8 @@
   (cond->
    {:fhir/type :fhir.ValueSet/expansion
     :identifier (type/uri (str "urn:uuid:" (random-uuid)))
-    :timestamp (time/offset-date-time clock)
-    :total (clojure.core/count concepts)
+    :timestamp (type/dateTime (time/offset-date-time clock))
+    :total (type/integer (clojure.core/count concepts))
     :parameter (append-params parameters params)}
     (seq properties) (assoc :property (append-properties properties))
     (nil? count) (assoc :contains concepts)
@@ -145,8 +144,8 @@
 (defn- expand-value-set**
   [{{:keys [include-definition] :or {include-definition false}} :params
     :as context}
-   {{:keys [inactive] includes :include excludes :exclude} :compose :as value-set}]
-  (let [new-context (update-in context [:params :active-only] #(or % (false? (type/value inactive))))
+   {{{inactive :value} :inactive includes :include excludes :exclude} :compose :as value-set}]
+  (let [new-context (update-in context [:params :active-only] #(or % (false? inactive)))
         includes (expand-includes new-context includes)
         excludes (expand-includes new-context excludes)]
     (do-sync [_ (ac/all-of [includes excludes])]
@@ -160,8 +159,8 @@
           (expansion context (vec (:parameter includes)) concepts))
           (not include-definition) (dissoc :compose))))))
 
-(defn- expand-value-set-msg [{:keys [url]}]
-  (if-let [url (type/value url)]
+(defn- expand-value-set-msg [{{url :value} :url}]
+  (if url
     (format "Error while expanding the value set `%s`. " url)
     "Error while expanding the provided value set. "))
 

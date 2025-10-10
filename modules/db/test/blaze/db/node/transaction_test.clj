@@ -4,7 +4,6 @@
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.transaction-spec]
-   [blaze.fhir.spec.type]
    [blaze.fhir.test-util]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]

@@ -122,7 +122,7 @@
           #fhir/CodeableConcept
            {:coding
             [#fhir/Coding
-              {:system #fhir/uri "system-191514"
+              {:system #fhir/uri-interned "system-191514"
                :code #fhir/code "code-191518"}]}}]))
 
 (deftest type-test

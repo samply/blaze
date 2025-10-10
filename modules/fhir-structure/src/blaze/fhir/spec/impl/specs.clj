@@ -49,7 +49,7 @@
       sp/Spec
       (conform* [_ x _ settings]
         (if (instance? class x)
-          (loop [ret x [[k v] & ks] x]
+          (loop [ret (into {} x) [[k v] & ks] x]
             (if k
               (if (some? v)
                 (let [conformed (if-let [sp (@specs k)] (sp/conform* sp v k settings) v)]

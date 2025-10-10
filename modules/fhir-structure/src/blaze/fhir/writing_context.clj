@@ -3,9 +3,6 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec.resource :as res]
-   [blaze.fhir.spec.type :as type]
-   [blaze.fhir.spec.type.json :as json]
-   [blaze.fhir.spec.type.protocols :as p]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.structure-definition-repo.spec]
@@ -18,6 +15,7 @@
    [taoensso.timbre :as log])
   (:import
    [blaze ReducibleArray]
+   [blaze.fhir.spec.type Base Complex FieldName Primitive]
    [com.fasterxml.jackson.core JsonGenerator SerializableString]))
 
 (set! *warn-on-reflection* true)
@@ -34,7 +32,7 @@
    (map
     (fn [{:keys [code]}]
       [(keyword "fhir" code)
-       (json/field-name (str base-field-name (su/capital code)))]))
+       (FieldName/of (str base-field-name (su/capital code)))]))
    element-types))
 
 (defn- property-handler-definitions
@@ -49,7 +47,7 @@
    {:keys [path] content-reference :contentReference element-types :type}]
   (if content-reference
     (let [base-field-name (res/base-field-name parent-type path false)
-          field-name (json/field-name base-field-name)]
+          field-name (FieldName/of base-field-name)]
       (PropertyHandler.
        (keyword base-field-name)
        (fn [_type] field-name)
@@ -67,49 +65,66 @@
        (keyword base-field-name)
        (if polymorphic
          (polymorphic-field-names base-field-name element-types)
-         (let [field-name (json/field-name base-field-name)]
+         (let [field-name (FieldName/of base-field-name)]
            (fn [_type] field-name)))
        polymorphic
        (if complex-type
          (keyword "fhir" first-type-code)
-         (when element-type
-           (fhir-type-keyword path)))))))
+         (if element-type
+           (fhir-type-keyword path)
+           (when (= "http://hl7.org/fhirpath/System.String" first-type-code)
+             :system/string)))))))
 
 (defn- create-property-handlers
   "Returns a map of JSON property names to property handlers."
   [type element-definitions]
   (ReducibleArray. (map (partial property-handler-definitions type) element-definitions)))
 
-(defn- field-name ^SerializableString [^PropertyHandler property-handler type]
+(defn- field-name ^FieldName [^PropertyHandler property-handler type]
   ((.-field-name property-handler) type))
 
-(defn- write-field! [type-handlers ^JsonGenerator gen ^PropertyHandler property-handler value]
+(defn- write-system-string-field [^JsonGenerator generator ^SerializableString field-name value]
+  (.writeFieldName generator field-name)
+  (.writeString generator ^String value))
+
+(defn- write-field!
+  [type-handlers ^JsonGenerator gen ^PropertyHandler property-handler value]
   (if (sequential? value)
     (when-some [first-value (first value)]
-      (when-some [type (or (.-type property-handler) (type/type first-value))]
+      (when-some [type (or (.-type property-handler) (:fhir/type first-value))]
         (if-some [handler (type-handlers type)]
-          (do (.writeFieldName gen (field-name property-handler type))
+          (do (.writeFieldName gen (.normal (field-name property-handler type)))
               (.writeStartArray gen)
               (run! #(handler type-handlers gen %) value)
               (.writeEndArray gen))
-          (json/write-field gen (field-name property-handler type) value))))
-    (when-some [type (or (.-type property-handler) (type/type value))]
+          (Primitive/serializeJsonPrimitiveList value gen (field-name property-handler type)))))
+    (if-some [type (or (.-type property-handler) (:fhir/type value))]
       (if-some [handler (type-handlers type)]
-        (do (.writeFieldName gen (field-name property-handler type))
+        (do (.writeFieldName gen (.normal (field-name property-handler type)))
             (handler type-handlers gen value))
-        (json/write-field gen (field-name property-handler type) value)))))
+        (if (identical? :system/string type)
+          (write-system-string-field gen (.normal (field-name property-handler type)) value)
+          (.serializeJsonField ^Base value gen (field-name property-handler type))))
+      (throw (IllegalArgumentException. (format "Value `%s` is no FHIR type." value))))))
 
 (defn- write-fields! [type-handlers property-handlers gen m]
+  (when-not (map? m)
+    (throw (IllegalArgumentException. (format "Value `%s` is no FHIR type." m))))
   (run!
    (fn [property-handler]
      (when-some [value (m (.-key ^PropertyHandler property-handler))]
        (write-field! type-handlers gen property-handler value)))
    property-handlers))
 
-(def ^:private record-types
-  #{"Attachment" "Extension" "Coding" "CodeableConcept" "Quantity" "Ratio"
-    "Period" "Identifier" "HumanName" "Address" "Reference" "Meta"
-    "Bundle.entry.search"})
+(def ^:private complex-types
+  #{"Address" "Age" "Annotation" "Attachment" "Bundle.entry.search"
+    "CodeableConcept" "Coding" "ContactDetail" "ContactPoint" "Contributor"
+    "Count" "DataRequirement" "DataRequirement.codeFilter"
+    "DataRequirement.dateFilter" "DataRequirement.sort" "Distance" "Dosage"
+    "Dosage.doseAndRate" "Duration" "Expression" "Extension" "HumanName"
+    "Identifier" "Meta" "Money" "Narrative" "ParameterDefinition" "Period"
+    "Quantity" "Range" "Ratio" "Reference" "RelatedArtifact" "SampledData"
+    "Signature" "Timing" "Timing.repeat" "TriggerDefinition" "UsageContext"})
 
 (defn- create-type-handler
   "Creates a handler for `type` using `element-definitions`.
@@ -118,9 +133,9 @@
   Use the `separate-element-definitions` function to separate nested backbone
   element definitions."
   [kind type element-definitions]
-  (if (record-types type)
-    (fn record-type-handler [_type-handlers gen value]
-      (p/-serialize-json value gen))
+  (if (complex-types type)
+    (fn complex-java-type-handler [_type-handlers gen value]
+      (.serializeAsJsonValue ^Complex value gen))
     (let [property-handlers (create-property-handlers type element-definitions)]
       (condp = kind
         :resource

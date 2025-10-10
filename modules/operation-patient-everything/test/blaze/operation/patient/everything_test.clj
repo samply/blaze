@@ -4,7 +4,6 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.tx-log :as tx-log]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
@@ -253,11 +252,11 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))))))
 
 (deftest patient-with
@@ -297,11 +296,11 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
-              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :fhir/type := :fhir.Bundle.entry/search
               :mode := #fhir/code "match"))
 
           (testing "the second entry has the right fullUrl"
@@ -313,11 +312,11 @@
               :fhir/type := (keyword "fhir" type)
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
-              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :fhir/type := :fhir.Bundle.entry/search
               :mode := #fhir/code "match"))))))
 
   (testing "Patient with two Observations"
@@ -358,11 +357,11 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the second entry has the right fullUrl"
@@ -374,11 +373,11 @@
             :fhir/type := :fhir/Observation
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the third entry has the right fullUrl"
@@ -390,11 +389,11 @@
             :fhir/type := :fhir/Observation
             :id := "1"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))))))
 
 (deftest start-date
@@ -405,7 +404,7 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
+               :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry] :entry :as body} :body}
@@ -438,11 +437,11 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the second entry has the right fullUrl"
@@ -454,11 +453,11 @@
             :fhir/type := :fhir/Observation
             :id := "1"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))))))
 
 (deftest end-date
@@ -469,7 +468,7 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
+               :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry] :entry :as body} :body}
@@ -502,11 +501,11 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the second entry has the right fullUrl"
@@ -518,11 +517,11 @@
             :fhir/type := :fhir/Observation
             :id := "1"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match")))))
 
   (testing "Patient with various resources"
@@ -756,10 +755,10 @@
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]
+                 :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-05T23:45:50Z"}]]]
+                 :effective #fhir/dateTime #system/date-time "2024-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
                {[first-entry second-entry] :entry :as body} :body}
@@ -796,11 +795,11 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
-              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :fhir/type := :fhir.Bundle.entry/search
               :mode := #fhir/code "match"))
 
           (testing "the second entry has the right fullUrl"
@@ -812,11 +811,11 @@
               :fhir/type := :fhir/Observation
               :id := "1"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
-              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :fhir/type := :fhir.Bundle.entry/search
               :mode := #fhir/code "match")))
 
         (testing "following the next link"
@@ -859,13 +858,13 @@
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]
+                 :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-05T23:45:50Z"}]
+                 :effective #fhir/dateTime #system/date-time "2024-01-05T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "3"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2026-01-05T23:45:50Z"}]]]
+                 :effective #fhir/dateTime #system/date-time "2026-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
                {[first-entry second-entry] :entry :as body} :body}
@@ -903,11 +902,11 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
-              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :fhir/type := :fhir.Bundle.entry/search
               :mode := #fhir/code "match"))
 
           (testing "the second entry has the right fullUrl"
@@ -919,11 +918,11 @@
               :fhir/type := :fhir/Observation
               :id := "1"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
-              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :fhir/type := :fhir.Bundle.entry/search
               :mode := #fhir/code "match")))
 
         (testing "following the next link"
@@ -1009,7 +1008,7 @@
                       system-clock :blaze.test/system-clock} system-clock-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/Observation :id "0"
-             :subject #fhir/Reference{:reference "Patient/0"}}]]]
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
     (Thread/sleep 2000)
     (let [handler (wrap-middleware handler node page-id-cipher)
@@ -1017,7 +1016,7 @@
 
       (Thread/sleep 2000)
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
-                                :subject #fhir/Reference{:reference "Patient/0"}}]])
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
 
       (testing "since start of time"
         (let [{:keys [status]

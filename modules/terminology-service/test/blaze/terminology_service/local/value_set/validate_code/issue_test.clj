@@ -1,6 +1,5 @@
 (ns blaze.terminology-service.local.value-set.validate-code.issue-test
   (:require
-   [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]
    [blaze.terminology-service.local.value-set.validate-code.issue-spec]
    [blaze.test-util :as tu]
@@ -16,8 +15,8 @@
   (fn [codings]
     (some
      (fn [coding]
-       (and (= "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type" (type/value (:system coding)))
-            (= code (type/value (:code coding)))))
+       (and (= "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type" (:value (:system coding)))
+            (= code (:value (:code coding)))))
      codings)))
 
 (deftest not-in-vs-test

@@ -3,21 +3,20 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.fhir.spec.type :as type]
    [blaze.job.util :as job-util]
    [blaze.luid :as luid]
    [blaze.util :refer [str]])
   (:import
    [java.util.concurrent TimeUnit]))
 
-(defn combined-status [{:keys [status] :as job}]
+(defn combined-status [{{status :value} :status :as job}]
   (if-let [status-reason (job-util/status-reason job)]
     (if-let [cancelled-sub (job-util/cancelled-sub-status job)]
-      (keyword (str (type/value status) "." cancelled-sub) status-reason)
-      (keyword (type/value status) status-reason))
+      (keyword (str status "." cancelled-sub) status-reason)
+      (keyword status status-reason))
     (if-let [cancelled-sub (job-util/cancelled-sub-status job)]
-      (keyword (type/value status) cancelled-sub)
-      (keyword (type/value status)))))
+      (keyword status cancelled-sub)
+      (keyword status))))
 
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))

@@ -1,6 +1,5 @@
 (ns blaze.interaction.transaction.bundle.links-test
   (:require
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
    [blaze.interaction.transaction.bundle.links :as links]
@@ -433,7 +432,7 @@
             {:fhir/type :fhir/Observation :id "0"
              :code #fhir/CodeableConcept{}}}]]
       (given (links/resolve-entry-links entries)
-        [0 :resource :code fhir-spec/fhir-type] := :fhir/CodeableConcept)))
+        [0 :resource :code :fhir/type] := :fhir/CodeableConcept)))
 
   (testing "preserves references without reference"
     (let [entries

@@ -161,7 +161,7 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string "result"
-              [:parameter 0 :value type/value] := result)))
+              [:parameter 0 :value :value] := result)))
 
         (testing "ignores unknown parameter"
           (let [{:keys [status body]}
@@ -237,7 +237,7 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string "result"
-              [:parameter 0 :value type/value] := result))))
+              [:parameter 0 :value :value] := result))))
 
       (testing "and coding"
         (let [{:keys [status body]}

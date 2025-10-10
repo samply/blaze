@@ -17,7 +17,7 @@
    :type (type/codeable-concept
           {:coding
            [(type/coding
-             {:system (type/uri parameter-uri)
+             {:system (type/uri-interned parameter-uri)
               :code #fhir/code "bundle"})]})
    :value (type/reference {:reference (type/string reference)})})
 
@@ -25,11 +25,11 @@
   (type/quantity
    {:value (type/decimal (BigDecimal/valueOf (- (System/nanoTime) start) 9))
     :unit #fhir/string "s"
-    :system #fhir/uri "http://unitsofmeasure.org"
+    :system #fhir/uri-interned "http://unitsofmeasure.org"
     :code #fhir/code "s"}))
 
 (defn- request-bundle-ref [job]
-  (if-let [reference (-> (job-util/input-value job parameter-uri "bundle") :reference type/value)]
+  (if-let [reference (-> (job-util/input-value job parameter-uri "bundle") :reference :value)]
     (or (fsr/split-literal-ref reference)
         (ba/incorrect (format "Invalid request bundle reference `%s`." reference)))
     (ba/incorrect "Missing request bundle reference.")))

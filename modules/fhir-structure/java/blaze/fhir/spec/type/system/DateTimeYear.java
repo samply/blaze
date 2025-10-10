@@ -8,10 +8,20 @@ import java.time.temporal.Temporal;
 import java.time.temporal.TemporalField;
 import java.time.temporal.TemporalUnit;
 
+import static blaze.fhir.spec.type.Base.MEM_SIZE_OBJECT_HEADER;
 import static java.time.temporal.ChronoField.YEAR;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class DateTimeYear implements DateTime, Comparable<DateTimeYear> {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - year
+     * 4 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 8;
 
     private final int year;
 
@@ -42,8 +52,13 @@ public final class DateTimeYear implements DateTime, Comparable<DateTimeYear> {
 
     @Override
     public void hashInto(PrimitiveSink sink) {
-        sink.putByte((byte) 6);
+        sink.putByte(HASH_MARKER);
         sink.putInt(year);
+    }
+
+    @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT;
     }
 
     public DateYear toDate() {
@@ -114,14 +129,9 @@ public final class DateTimeYear implements DateTime, Comparable<DateTimeYear> {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof DateTimeYear) {
-            return year == ((DateTimeYear) obj).year;
-        }
-        return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        return o instanceof DateTimeYear that && year == that.year;
     }
 
     @Override

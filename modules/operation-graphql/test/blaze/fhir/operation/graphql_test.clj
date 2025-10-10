@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-cache :as rc]
    [blaze.db.spec]
    [blaze.executors :as ex]
    [blaze.fhir.operation.graphql :as graphql]
@@ -235,7 +235,7 @@
                 [:errors] :? empty?)))))))
 
   (testing "missing resource contents"
-    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+    (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 

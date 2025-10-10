@@ -9,13 +9,13 @@
    [integrant.core :as ig]))
 
 (def ^:const match
-  #fhir/BundleEntrySearch{:mode #fhir/code "match"})
+  #fhir.Bundle.entry/search{:mode #fhir/code "match"})
 
 (def ^:const include
-  #fhir/BundleEntrySearch{:mode #fhir/code "include"})
+  #fhir.Bundle.entry/search{:mode #fhir/code "include"})
 
 (def ^:const outcome
-  #fhir/BundleEntrySearch{:mode #fhir/code "outcome"})
+  #fhir.Bundle.entry/search{:mode #fhir/code "outcome"})
 
 (defn- full-url [context {:fhir/keys [type] :keys [id]}]
   (type/uri (fhir-util/instance-url context (name type) id)))
@@ -53,7 +53,7 @@
     "4.0.1"
     (fn link [relation url]
       {:fhir/type :fhir.Bundle/link
-       :relation (type/string relation)
+       :relation (type/string-interned relation)
        :url (type/uri url)})
     (fn link [relation url]
       {:fhir/type :fhir.Bundle/link
