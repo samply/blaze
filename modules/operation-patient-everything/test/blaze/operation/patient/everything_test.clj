@@ -23,9 +23,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -244,7 +242,7 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the entry has the right search mode"
           (given (:search first-entry)
@@ -287,7 +285,7 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
@@ -303,7 +301,7 @@
               :fhir/type := (keyword "fhir" type)
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
@@ -348,7 +346,7 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
@@ -364,7 +362,7 @@
             :fhir/type := :fhir/Observation
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
@@ -380,7 +378,7 @@
             :fhir/type := :fhir/Observation
             :id := "1"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
@@ -394,7 +392,7 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
+               :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry] :entry :as body} :body}
@@ -427,7 +425,7 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
@@ -443,7 +441,7 @@
             :fhir/type := :fhir/Observation
             :id := "1"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
@@ -457,7 +455,7 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
+               :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry] :entry :as body} :body}
@@ -490,7 +488,7 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
@@ -506,7 +504,7 @@
             :fhir/type := :fhir/Observation
             :id := "1"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
@@ -743,10 +741,10 @@
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]
+                 :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-05T23:45:50Z"}]]]
+                 :effective #fhir/dateTime #system/date-time "2024-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
                {[first-entry second-entry] :entry :as body} :body}
@@ -783,7 +781,7 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
@@ -799,7 +797,7 @@
               :fhir/type := :fhir/Observation
               :id := "1"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
@@ -846,13 +844,13 @@
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]
+                 :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-05T23:45:50Z"}]
+                 :effective #fhir/dateTime #system/date-time "2024-01-05T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "3"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2026-01-05T23:45:50Z"}]]]
+                 :effective #fhir/dateTime #system/date-time "2026-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
                {[first-entry second-entry] :entry :as body} :body}
@@ -890,7 +888,7 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
@@ -906,7 +904,7 @@
               :fhir/type := :fhir/Observation
               :id := "1"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)

@@ -66,8 +66,8 @@
   (:blaze.db/t (:blaze.db/tx (meta resource))))
 
 (def ^:private priority-cmp
-  (-> (Comparator/comparing #(-> % :status type/value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
-      (.thenComparing #(-> % :version type/value) version-cmp)
+  (-> (Comparator/comparing #(-> % :status :value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
+      (.thenComparing #(-> % :version :value) version-cmp)
       (.thenComparing t (Comparator/nullsFirst (Comparator/naturalOrder)))
       (.thenComparing #(% :id) (Comparator/naturalOrder))
       (.reversed)))

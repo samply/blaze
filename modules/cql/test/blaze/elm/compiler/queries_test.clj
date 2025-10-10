@@ -371,7 +371,7 @@
                    [{:type "With"
                      :expression #elm/retrieve{:type "Encounter"}
                      :alias "E"
-                     :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                     :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                            #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}]
 
           (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
@@ -390,7 +390,7 @@
                       (exists
                        (fn [E]
                          (equal
-                          (:reference (:encounter O))
+                          (call "ToString" (:reference (:encounter O)))
                           (concatenate "Encounter/" (:id E))))
                        (retrieve "Encounter"))))
                    distinct)
@@ -414,7 +414,7 @@
                        (exists
                         (fn [E]
                           (equal
-                           (:reference (:encounter O))
+                           (call "ToString" (:reference (:encounter O)))
                            (concatenate "Encounter/" (:id E))))
                         (retrieve "Encounter"))))
                     (retrieve "Observation")))))))
@@ -426,7 +426,7 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
                      :return {:expression #elm/scope-property ["O" "id"]}}]
 
@@ -445,7 +445,7 @@
                         (exists
                          (fn [E]
                            (equal
-                            (:reference (:encounter O))
+                            (call "ToString" (:reference (:encounter O)))
                             (concatenate "Encounter/" (:id E))))
                          (retrieve "Encounter"))))
                      (comp
@@ -472,7 +472,7 @@
                           (exists
                            (fn [E]
                              (equal
-                              (:reference (:encounter O))
+                              (call "ToString" (:reference (:encounter O)))
                               (concatenate "Encounter/" (:id E))))
                            (retrieve "Encounter"))))
                        (map
@@ -486,7 +486,7 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
                      :return {:distinct false :expression #elm/scope-property ["O" "id"]}}
                 expr (c/compile {:node node :eval-context "Patient"} elm)]
@@ -505,7 +505,7 @@
                       (exists
                        (fn [E]
                          (equal
-                          (:reference (:encounter O))
+                          (call "ToString" (:reference (:encounter O)))
                           (concatenate "Encounter/" (:id E))))
                        (retrieve "Encounter"))))
                    (map
@@ -519,7 +519,7 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
                      :where #elm/equal [#elm/string "1" #elm/scope-property ["O" "id"]]}]
 
@@ -538,7 +538,7 @@
                         (exists
                          (fn [E]
                            (equal
-                            (:reference (:encounter O))
+                            (call "ToString" (:reference (:encounter O)))
                             (concatenate "Encounter/" (:id E))))
                          (retrieve "Encounter"))))
                      distinct)
@@ -562,7 +562,7 @@
                           (exists
                            (fn [E]
                              (equal
-                              (:reference (:encounter O))
+                              (call "ToString" (:reference (:encounter O)))
                               (concatenate "Encounter/" (:id E))))
                            (retrieve "Encounter")))))
                       (retrieve "Observation"))))))))
@@ -574,12 +574,12 @@
                      [{:type "With"
                        :expression #elm/retrieve{:type "Encounter"}
                        :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}
                       {:type "With"
                        :expression #elm/retrieve{:type "Specimen"}
                        :alias "S"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "specimen"] "reference"]
+                       :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "specimen"] "reference"]]
                                              #elm/concatenate [#elm/string "Specimen/" #elm/scope-property ["S" "id"]]]}]}]
 
             (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
@@ -598,7 +598,7 @@
                         (exists
                          (fn [E]
                            (equal
-                            (:reference (:encounter O))
+                            (call "ToString" (:reference (:encounter O)))
                             (concatenate "Encounter/" (:id E))))
                          (retrieve "Encounter"))))
                      (filter
@@ -606,7 +606,7 @@
                         (exists
                          (fn [S]
                            (equal
-                            (:reference (:specimen O))
+                            (call "ToString" (:reference (:specimen O)))
                             (concatenate "Specimen/" (:id S))))
                          (retrieve "Specimen"))))
                      distinct)
@@ -631,7 +631,7 @@
                           (exists
                            (fn [E]
                              (equal
-                              (:reference (:encounter O))
+                              (call "ToString" (:reference (:encounter O)))
                               (concatenate "Encounter/" (:id E))))
                            (retrieve "Encounter"))))
                        (filter
@@ -639,7 +639,7 @@
                           (exists
                            (fn [S]
                              (equal
-                              (:reference (:specimen O))
+                              (call "ToString" (:reference (:specimen O)))
                               (concatenate "Specimen/" (:id S))))
                            (retrieve "Specimen")))))
                       (retrieve "Observation")))))))))))
@@ -661,7 +661,7 @@
                  [{:type "Without"
                    :expression #elm/retrieve{:type "Encounter"}
                    :alias "E"
-                   :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                   :suchThat #elm/equal [#elm/function-ref ["ToString" #elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]]
                                          #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}
             expr (c/compile {:node node :eval-context "Patient"} elm)
             db (d/db node)
@@ -682,7 +682,7 @@
                   (not-exists
                    (fn [E]
                      (equal
-                      (:reference (:encounter O))
+                      (call "ToString" (:reference (:encounter O)))
                       (concatenate "Encounter/" (:id E))))
                    (retrieve "Encounter"))))
                distinct)
@@ -694,10 +694,10 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime "2025-05-15"}}]
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-15"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime "2025-05-16"}}]]]
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-16"}}]]]
 
         (let [elm {:type "Query"
                    :source

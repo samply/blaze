@@ -84,7 +84,7 @@
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := #fhir/string "201"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"1\""))
 
   (testing "Initial version with client assigned id"
@@ -103,7 +103,7 @@
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := #fhir/string "201"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"1\""))
 
   (testing "Non-initial version"
@@ -122,7 +122,7 @@
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := #fhir/string "200"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"2\""))
 
   (testing "Deleted version"
@@ -139,7 +139,7 @@
       [:request :method] := #fhir/code "DELETE"
       [:request :url] := #fhir/uri "Patient/0"
       [:response :status] := #fhir/string "204"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"2\"")))
 
 (def ^:private config

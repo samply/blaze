@@ -1,6 +1,7 @@
 (ns blaze.fhir.spec.type-test-mem
   (:require
    [blaze.fhir.spec.memory :as mem]
+   [blaze.fhir.spec.type.system]
    [blaze.fhir.spec.type :as type]
    [blaze.test-util]
    [clojure.alpha.spec :as s2]
@@ -12,8 +13,6 @@
 (deftest mem-test
   (are [x size] (= (mem/total-size x) size)
     #fhir/integer 1 16
-
-    #fhir/long 1 24
 
     #fhir/string "" 40
     #fhir/string "a" 48
@@ -37,18 +36,18 @@
     #fhir/base64Binary "YQo=" 64
     #fhir/base64Binary "MTA1NjE0Cg==" 72
 
-    #fhir/date "2020" 16
-    #fhir/date "2020-01" 24
-    #fhir/date "2020-01-01" 24
+    #fhir/date #system/date "2020" 16
+    #fhir/date #system/date "2020-01" 24
+    #fhir/date #system/date "2020-01-01" 24
 
-    #fhir/dateTime "2020" 16
-    #fhir/dateTime "2020-01" 24
-    #fhir/dateTime "2020-01-01" 24
+    #fhir/dateTime #system/date-time "2020" 16
+    #fhir/dateTime #system/date-time "2020-01" 24
+    #fhir/dateTime #system/date-time "2020-01-01" 24
 
-    #fhir/dateTime "2020-01-01T00:00:00" 72
-    #fhir/dateTime "2020-01-01T00:00:00.000" 72
+    #fhir/dateTime #system/date-time "2020-01-01T00:00:00" 72
+    #fhir/dateTime #system/date-time "2020-01-01T00:00:00.000" 72
 
-    #fhir/time "13:53:21" 24
+    #fhir/time #system/time "13:53:21" 24
 
     #fhir/code "" 96
     #fhir/code "175718" 120
@@ -93,8 +92,8 @@
 
     #fhir/Address{} 80
     #fhir/Address{:extension [#fhir/Extension{:url "url-120620" :value #fhir/code "code-120656"}]} 392
-    #fhir/Address{:text "text-212402"} 136
-    #fhir/Address{:line ["line-212441"]} 200
+    #fhir/Address{:text #fhir/string "text-212402"} 136
+    #fhir/Address{:line [#fhir/string "line-212441"]} 200
 
     #fhir/Reference{} 56
 
@@ -116,14 +115,14 @@
 
   (testing "instant"
     (testing "backed by OffsetDateTime, taking into account shared offsets"
-      (is (= 112 (- (mem/total-size #fhir/instant "2020-01-01T00:00:00+02:00")
+      (is (= 112 (- (mem/total-size #fhir/instant #system/date-time "2020-01-01T00:00:00+02:00")
                     (mem/total-size ZoneOffset/UTC)))))
     (testing "backed by java.time.Instant"
       (is (= 24 (mem/total-size Instant/EPOCH)))))
 
   (testing "dateTime"
     (testing "instance size taking into account shared offsets"
-      (is (= 96 (- (mem/total-size #fhir/dateTime "2020-01-01T00:00:00Z")
+      (is (= 96 (- (mem/total-size #fhir/dateTime #system/date-time "2020-01-01T00:00:00Z")
                    (mem/total-size ZoneOffset/UTC))))))
 
   (testing "Meta"

@@ -1,5 +1,5 @@
 (ns blaze.fhir.spec.generators
-  (:refer-clojure :exclude [boolean meta str time])
+  (:refer-clojure :exclude [boolean meta range str time])
   (:require
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
@@ -77,30 +77,38 @@
   (gen/one-of [(gen/return "Z") zone-offset]))
 
 (def instant-value
-  (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-            (gen/tuple year month day hour minute time-second zone)))
+  (gen/fmap
+   system/parse-date-time
+   (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
+             (gen/tuple year month day hour minute time-second zone))))
 
 (def date-value
-  (gen/one-of
-   [(gen/fmap (partial format "%04d") year)
-    (gen/fmap (partial apply format "%04d-%02d")
-              (gen/tuple year month))
-    (gen/fmap (partial apply format "%04d-%02d-%02d")
-              (gen/tuple year month day))]))
+  (gen/fmap
+   system/parse-date
+   (gen/one-of
+    [(gen/fmap (partial format "%04d") year)
+     (gen/fmap (partial apply format "%04d-%02d")
+               (gen/tuple year month))
+     (gen/fmap (partial apply format "%04d-%02d-%02d")
+               (gen/tuple year month day))])))
 
 (defn dateTime-value [& {:keys [year] :or {year year}}]
-  (gen/one-of
-   [(gen/fmap (partial format "%04d") year)
-    (gen/fmap (partial apply format "%04d-%02d")
-              (gen/tuple year month))
-    (gen/fmap (partial apply format "%04d-%02d-%02d")
-              (gen/tuple year month day))
-    (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-              (gen/tuple year month day hour minute time-second zone))]))
+  (gen/fmap
+   system/parse-date-time
+   (gen/one-of
+    [(gen/fmap (partial format "%04d") year)
+     (gen/fmap (partial apply format "%04d-%02d")
+               (gen/tuple year month))
+     (gen/fmap (partial apply format "%04d-%02d-%02d")
+               (gen/tuple year month day))
+     (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
+               (gen/tuple year month day hour minute time-second zone))])))
 
 (def time-value
-  (gen/fmap (partial apply format "%02d:%02d:%02d")
-            (gen/tuple hour minute time-second)))
+  (gen/fmap
+   system/parse-time
+   (gen/fmap (partial apply format "%02d:%02d:%02d")
+             (gen/tuple hour minute time-second))))
 
 (def code-value
   (gen/such-that (partial re-matches #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*") gen/string 1000))
@@ -214,6 +222,19 @@
 (def uuid
   (primitive-gen type/uuid uuid-value))
 
+(declare reference)
+
+(defn annotation
+  [& {:keys [id extension author time text]
+      :or {id (often-nil id-value)
+           extension (gen/return nil)
+           author (rare-nil (gen/one-of [(reference) (string)]))
+           time (rare-nil (dateTime))
+           text (rare-nil (markdown))}}]
+  (->> (gen/tuple id extension author time text)
+       (to-map [:id :extension :author :time :text])
+       (gen/fmap type/annotation)))
+
 (defn attachment
   [& {:keys [id extension contentType language data url size hash title creation]
       :or {id (often-nil id-value)
@@ -264,6 +285,33 @@
        (to-map [:id :extension :coding :text])
        (gen/fmap type/codeable-concept)))
 
+(declare contact-point)
+
+(defn contact-detail
+  [& {:keys [id extension name telecom]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           name (rare-nil (string))
+           telecom (gen/vector (contact-point))}}]
+  (->> (gen/tuple id extension name telecom)
+       (to-map [:id :extension :name :telecom])
+       (gen/fmap type/contact-detail)))
+
+(declare period)
+
+(defn contact-point
+  [& {:keys [id extension system value use rank period]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           system (rare-nil (code))
+           value (rare-nil (string))
+           use (nilable (code))
+           rank (often-nil (positiveInt))
+           period (rare-nil (period))}}]
+  (->> (gen/tuple id extension system value use rank period)
+       (to-map [:id :extension :system :value :use :rank :period])
+       (gen/fmap type/contact-point)))
+
 (defn quantity
   [& {:keys [id extension value comparator unit system code]
       :or {id (often-nil id-value)
@@ -277,7 +325,15 @@
        (to-map [:id :extension :value :comparator :unit :system :code])
        (gen/fmap type/quantity)))
 
-;; TODO: Range
+(defn range
+  [& {:keys [id extension low high]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           low (nilable (quantity))
+           high (nilable (quantity))}}]
+  (->> (gen/tuple id extension low high)
+       (to-map [:id :extension :low :high])
+       (gen/fmap type/range)))
 
 (defn ratio
   [& {:keys [id extension numerator denominator]
@@ -306,8 +362,6 @@
     (gen/fmap type/period x)))
 
 ;; TODO: SampledData
-
-(declare reference)
 
 (defn identifier
   [& {:keys [id extension use type system value period assigner]
@@ -378,6 +432,19 @@
   (->> (gen/tuple id extension reference type identifier display)
        (to-map [:id :extension :reference :type :identifier :display])
        (gen/fmap type/reference)))
+
+(defn expression
+  [& {:keys [id extension description name language expression reference]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           description (often-nil (string))
+           name (often-nil (blaze.fhir.spec.generators/id))
+           language (rare-nil (code))
+           expression (rare-nil (string))
+           reference (often-nil (uri))}}]
+  (->> (gen/tuple id extension description name language expression reference)
+       (to-map [:id :extension :description :name :language :expression :reference])
+       (gen/fmap type/expression)))
 
 (defn meta
   [& {:keys [id extension versionId lastUpdated source profile security tag]
@@ -518,128 +585,3 @@
    type (codeable-concept)
    subject (rare-nil (gen/one-of [(codeable-concept) (reference :reference (gen/return nil))]))
    content (gen/vector (attachment))])
-
-(defn- code-system-concept
-  [& {:keys [code]
-      :or {code (code)}}]
-  (->> (gen/tuple code)
-       (to-map [:code])
-       (fhir-type :fhir.CodeSystem/concept)))
-
-(def-resource-gen code-system
-  [id id-value
-   meta (meta)
-   url (uri)
-   identifier (gen/vector (identifier))
-   version (rare-nil (string))
-   name (nilable (string))
-   title (nilable (string))
-   status (rare-nil (code))
-   experimental (nilable (boolean))
-   concept (gen/vector (code-system-concept))])
-
-(defn- value-set-compose
-  [& {:keys [inactive]
-      :or {inactive (often-nil (boolean))}}]
-  (->> (gen/tuple inactive)
-       (to-map [:inactive])
-       (fhir-type :fhir.ValueSet/compose)))
-
-(def-resource-gen value-set
-  [id id-value
-   meta (meta)
-   url (uri)
-   identifier (gen/vector (identifier))
-   version (rare-nil (string))
-   name (nilable (string))
-   title (nilable (string))
-   status (rare-nil (code))
-   experimental (nilable (boolean))
-   compose (value-set-compose)])
-
-(defn- task-value []
-  (gen/one-of [(quantity) (codeable-concept) (string) (boolean) (integer)
-               #_(range) #_(ratio) #_(sampled-data) (time) (dateTime) (period)]))
-
-(defn- task-input
-  [& {:keys [type value]
-      :or {type (codeable-concept)
-           value (task-value)}}]
-  (->> (gen/tuple type value)
-       (to-map [:type :value])
-       (fhir-type :fhir.Task/input)))
-
-(def-resource-gen task
-  [identifier (gen/vector (identifier))
-   status (rare-nil (code))
-   input (gen/vector (task-input))])
-
-(defn consent-policy
-  [& {:keys [id extension authority uri]
-      :or {id (often-nil id-value)
-           extension (extensions)
-           authority (nilable (uri))
-           uri (nilable (uri))}}]
-  (->> (gen/tuple id extension authority uri)
-       (to-map [:id :extension :authority :uri])
-       (fhir-type :fhir.Consent/policy)))
-
-(defn consent-verification
-  [& {:keys [id extension verified verifiedWith verificationDate]
-      :or {id (often-nil id-value)
-           extension (extensions)
-           verified (boolean)
-           verifiedWith (nilable (reference))
-           verificationDate (nilable (dateTime))}}]
-  (->> (gen/tuple id extension verified verifiedWith verificationDate)
-       (to-map [:id :extension :verified :verifiedWith :verificationDate])
-       (fhir-type :fhir.Consent/verification)))
-
-(defn consent-provision-actor
-  [& {:keys [id extension role reference]
-      :or {id (often-nil id-value)
-           extension (extensions)
-           role (codeable-concept)
-           reference (reference)}}]
-  (->> (gen/tuple id extension role reference)
-       (to-map [:id :extension :role :reference])
-       (fhir-type :fhir.Consent.provision/actor)))
-
-(defn consent-provision-data
-  [& {:keys [id extension meaning reference]
-      :or {id (often-nil id-value)
-           extension (extensions)
-           meaning (code)
-           reference (reference)}}]
-  (->> (gen/tuple id extension meaning reference)
-       (to-map [:id :extension :meaning :reference])
-       (fhir-type :fhir.Consent.provision/data)))
-
-(defn consent-provision
-  [& {:keys [id extension type period actor action securityLabel purpose class
-             code dataPeriod data]
-      :or {id (often-nil id-value)
-           extension (extensions)
-           type (nilable (code))
-           period (nilable (period))
-           actor (gen/vector (consent-provision-actor))
-           action (gen/vector (codeable-concept))
-           securityLabel (gen/vector (coding))
-           purpose (gen/vector (coding))
-           class (gen/vector (coding))
-           code (gen/vector (codeable-concept))
-           dataPeriod (nilable (blaze.fhir.spec.generators/period))
-           data (gen/vector (consent-provision-data))}}]
-  (->> (gen/tuple id extension type period actor action securityLabel purpose
-                  class code dataPeriod data)
-       (to-map [:id :extension :type :period :actor :action :securityLabel
-                :purpose :class :code :dataPeriod :data :provision])
-       (fhir-type :fhir.Consent/provision)))
-
-(def-resource-gen consent
-  [identifier (gen/vector (identifier))
-   status (code)
-   policy (gen/vector (consent-policy))
-   policyRule (nilable (codeable-concept))
-   verification (gen/vector (consent-verification))
-   provision (nilable (consent-provision {:provision (gen/vector (consent-provision))}))])

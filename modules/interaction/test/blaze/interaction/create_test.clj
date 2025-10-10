@@ -26,9 +26,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -206,7 +204,7 @@
             :fhir/type := :fhir/Patient
             :id := "AAAAAAAAAAAAAAAA"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH)))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))
 
       (testing "Meta source is preserved"
         (with-handler [handler]
@@ -284,7 +282,7 @@
             :fhir/type := :fhir/Patient
             :id := "AAAAAAAAAAAAAAAA"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))
 
     (testing "with return=OperationOutcome Prefer header"
       (with-handler [handler]
@@ -426,7 +424,7 @@
           :fhir/type := :fhir/Observation
           :id := "AAAAAAAAAAAAAAAA"
           [:meta :versionId] := #fhir/id "1"
-          [:meta :lastUpdated] := Instant/EPOCH
+          [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
           [:subject :reference] := #fhir/string "Patient/0"))))
 
   (testing "with a Bundle with references"
@@ -463,4 +461,4 @@
           :fhir/type := :fhir/Bundle
           :id := "AAAAAAAAAAAAAAAA"
           [:meta :versionId] := #fhir/id "1"
-          [:meta :lastUpdated] := Instant/EPOCH)))))
+          [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
