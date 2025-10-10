@@ -13,6 +13,5 @@ This module provides [specs][1] for the [FHIR Data Model][2] and functions to co
 ;;=> {:fhir/type :fhir/Patient :id "0"}
 ```
 
-
 [1]: <https://clojure.org/guides/spec>
 [2]: <../../docs/implementation/fhir-data-model.md>

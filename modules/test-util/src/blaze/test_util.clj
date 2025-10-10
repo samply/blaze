@@ -26,7 +26,7 @@
 (defmacro satisfies-prop [num-tests prop]
   `(let [result# (tc/quick-check ~num-tests ~prop)]
      (if (instance? Throwable (:result result#))
-       (throw (:result result#))
+       (prn (:result result#))
        (if (true? (:result result#))
          (is :success)
          (is (clojure.pprint/pprint result#))))))

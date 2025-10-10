@@ -188,12 +188,12 @@
    :wrap link-headers/wrap-link-headers})
 
 (def ^:private allowed-profiles
-  #{#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
-    #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
-    #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
+  #{"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
+    "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
+    "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
 
 (defn- check-profile [resource]
-  (if (some allowed-profiles (-> resource :meta :profile))
+  (if (some allowed-profiles (map :value (-> resource :meta :profile)))
     resource
     (ba/incorrect
      "No allowed profile found."
@@ -213,7 +213,7 @@
        (datafy/datafy)))
 
 (defn- error-issues [outcome]
-  (update outcome :issue (partial filterv (comp #{#fhir/code "error"} :severity))))
+  (update outcome :issue (partial filterv (comp #{"error"} :value :severity))))
 
 (def ^:private wrap-validate-job
   {:name :wrap-validate-job

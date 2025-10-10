@@ -8,6 +8,7 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.coerce-env :as ce]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.log]
    [blaze.path :refer [dir? path]]
    [blaze.spec]
@@ -240,7 +241,7 @@
 
 (defmethod ig/init-key :blaze/release-date
   [_ release-date]
-  release-date)
+  (system/parse-date-time release-date))
 
 (defmethod ig/init-key :blaze.db/storage
   [_ storage]

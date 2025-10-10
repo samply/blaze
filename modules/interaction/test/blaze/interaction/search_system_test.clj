@@ -6,7 +6,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-cache :as rc]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.search-system]
    [blaze.interaction.search.nav-spec]
@@ -31,9 +31,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -240,7 +238,7 @@
                 :fhir/type := :fhir/Patient
                 :id := "0"
                 [:meta :versionId] := #fhir/id "1"
-                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
                 [:meta :tag (coding v3-ObservationValue) count] := 0
                 :multipleBirth := #fhir/boolean true)))))
 
@@ -281,7 +279,7 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
               [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code "SUBSETTED"
               :multipleBirth := nil))))
 
@@ -427,7 +425,7 @@
             [:issue 0 :diagnostics] := #fhir/string "Missing search parameter code in _include search parameter with source type `Observation`.")))))
 
   (testing "missing resource contents"
-    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+    (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 

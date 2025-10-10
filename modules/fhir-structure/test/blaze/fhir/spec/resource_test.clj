@@ -81,6 +81,11 @@
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `string`."))
 
+  (testing "end of input"
+    (given (parse-json "Patient" "{\"id\":")
+      ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input."
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient"))
+
   (testing "type autodiscovery"
     (given-parse-json
      {:resourceType "Patient"
@@ -258,13 +263,18 @@
   (testing "birthDate"
     (given-parse-json "Patient"
       {:birthDate "2025"}
-      :birthDate := #fhir/date "2025")
+      :birthDate := #fhir/date #system/date "2025")
 
     (testing "invalid date"
       (given-parse-json "Patient"
         {:birthDate "2025-13"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-13`. Expected type is `date`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-13`. Expected type is `date`. Invalid value for MonthOfYear (valid values 1 - 12): 13"
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate")
+
+      (given (parse-json "Patient" "{\"birthDate\": 9223372036854775808}")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Numeric value (9223372036854775808) out of range of long (-9223372036854775808 - 9223372036854775807)"
         [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate")))
 
   (testing "deceasedBoolean"
@@ -276,7 +286,7 @@
   (testing "deceasedDateTime"
     (given-parse-json "Patient"
       {:deceasedDateTime "2025"}
-      :deceased := #fhir/dateTime "2025"))
+      :deceased := #fhir/dateTime #system/date-time "2025"))
 
   (testing "multipleBirthBoolean"
     (given-parse-json "Patient"
@@ -290,9 +300,20 @@
         :multipleBirth := #fhir/boolean{:id "id-172212" :value false})))
 
   (testing "multipleBirthInteger"
-    (given-parse-json "Patient"
-      {:multipleBirthInteger 2}
-      :multipleBirth := #fhir/integer 2))
+    (doseq [value [Integer/MIN_VALUE -1 0 1 Integer/MAX_VALUE]]
+      (given-parse-json "Patient"
+        {:multipleBirthInteger value}
+        :multipleBirth := (type/integer value)))
+
+    (testing "too large"
+      (given-parse-json "Patient"
+        {:multipleBirthInteger (inc Integer/MAX_VALUE)}
+        ::anom/message := "Invalid JSON representation of a resource. Invalid integer value `2147483648`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.multipleBirth")
+
+      (given (parse-json "Patient" "{\"multipleBirthInteger\": 9223372036854775808}")
+        ::anom/message := "Invalid JSON representation of a resource. Numeric value (9223372036854775808) out of range of long (-9223372036854775808 - 9223372036854775807)"
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.multipleBirth")))
 
   (testing "contact"
     (given-parse-json "Patient"
@@ -342,13 +363,13 @@
 (deftest parse-json-molecular-sequence-test
   (testing "multiple decimal values"
     (doseq [[values extended-properties]
-            [[1 [{:id "id-140530"}]]
+            [[1M [{:id "id-140530"}]]
              [1.1M [{:id "id-140530"}]]
-             [[1 2] [nil {:id "id-140556"}]]
-             [[1 1.1M] [{:id "id-140622"}]]
-             [[1.1M 1] [{:id "id-140636"} {:id "id-140636"}]]
-             [[1 2 3] [{:id "id-142643"}]]
-             [[nil 2 3] [{:id "id-142643"} nil {:id "id-142842"}]]]
+             [[1M 2M] [nil {:id "id-140556"}]]
+             [[1M 1.1M] [{:id "id-140622"}]]
+             [[1.1M 1M] [{:id "id-140636"} {:id "id-140636"}]]
+             [[1M 2M 3M] [{:id "id-142643"}]]
+             [[nil 2M 3M] [{:id "id-142643"} nil {:id "id-142842"}]]]
             :let [result-values (cond-> values (number? values) vector)
                   result (mapv #(type/decimal (assoc %2 :value %1))
                                result-values
@@ -380,13 +401,6 @@
           {:quality {:roc {:precision value}}}
           ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `decimal`."
           [:fhir/issues 0 :fhir.issues/expression] := "MolecularSequence.quality[0].roc.precision"))
-
-      (testing "long out of range"
-        (doseq [value ["{\"quality\":{\"roc\":{\"precision\":9999999999999999999}}}"
-                       "{\"quality\":{\"roc\":{\"precision\":[9999999999999999999]}}}"]]
-          (given (parse-json "MolecularSequence" value)
-            ::anom/message := "Invalid JSON representation of a resource. Numeric value (9999999999999999999) out of range of long (-9223372036854775808 - 9223372036854775807)"
-            [:fhir/issues 0 :fhir.issues/expression] := "MolecularSequence.quality[0].roc.precision")))
 
       (testing "end of input"
         (doseq [value ["{\"quality\":{\"roc\":{\"precision\":0"
@@ -420,7 +434,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueBase64Binary value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/base64Binary value)))
 
     (testing "invalid"
@@ -435,7 +449,7 @@
       (given-parse-cbor "Extension"
                         {:url "foo"
                          :valueBase64Binary "a"}
-                        type/type := :fhir/Extension
+                        :fhir/type := :fhir/Extension
                         :value := (type/base64Binary "a"))))
 
   (testing "boolean"
@@ -443,7 +457,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueBoolean value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/boolean value))))
 
   (testing "canonical"
@@ -451,7 +465,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueCanonical value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/canonical value)))
 
     (testing "invalid"
@@ -467,7 +481,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueCode value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/code value))))
 
   (testing "date"
@@ -475,16 +489,16 @@
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueDate value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :url := "url-204835"
-        :value := (type/date value))
+        :value := (type/date (system/parse-date value)))
 
       (testing "extended properties before value"
         (given-parse-json "Extension"
           {:url "url-204835"
            :_valueDate {:id "id-162932"}
            :valueDate value}
-          type/type := :fhir/Extension
+          :fhir/type := :fhir/Extension
           :url := "url-204835"
           :value := (type/date {:id "id-162932" :value (system/parse-date value)})))
 
@@ -493,7 +507,7 @@
           {:url "url-204835"
            :valueDate value
            :_valueDate {:id "id-162932"}}
-          type/type := :fhir/Extension
+          :fhir/type := :fhir/Extension
           :url := "url-204835"
           :value := (type/date {:id "id-162932" :value (system/parse-date value)}))))
 
@@ -502,21 +516,21 @@
         {:url "url-204835"
          :valueDate "foo"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `date`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `date`. Can't parse `foo` as System.Date because it doesn't has the right length."
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")
 
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueDate "abcd"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `abcd`. Expected type is `date`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `abcd`. Expected type is `date`. Invalid date component: For input string: \"abcd\""
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")
 
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueDate "2025-02-29"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-02-29`. Expected type is `date`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-02-29`. Expected type is `date`. Invalid date 'February 29' as '2025' is not a leap year"
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "dateTime"
@@ -525,9 +539,9 @@
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueDateTime value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :url := "url-204835"
-        :value := (type/dateTime value)))
+        :value := (type/dateTime (system/parse-date-time value))))
 
     (testing "extended properties before value"
       (doseq [date-time ["2025" "2025-03" "2025-03-15" "2025-03-15T15:22:13"
@@ -536,7 +550,7 @@
           {:url "url-204835"
            :_valueDateTime {:id "id-162932"}
            :valueDateTime date-time}
-          type/type := :fhir/Extension
+          :fhir/type := :fhir/Extension
           :url := "url-204835"
           :value := (type/dateTime {:id "id-162932" :value (system/parse-date-time date-time)}))))
 
@@ -547,7 +561,7 @@
           {:url "url-204835"
            :valueDateTime value
            :_valueDateTime {:id "id-162932"}}
-          type/type := :fhir/Extension
+          :fhir/type := :fhir/Extension
           :url := "url-204835"
           :value := (type/dateTime {:id "id-162932" :value (system/parse-date-time value)}))))
 
@@ -556,29 +570,29 @@
         {:url "url-204835"
          :valueDateTime "foo"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `date-time`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `date-time`. Text cannot be parsed to a DateTime"
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")
 
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueDateTime "abcd"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `abcd`. Expected type is `date-time`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `abcd`. Expected type is `date-time`. Invalid date component: For input string: \"abcd\""
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")
 
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueDateTime "2025-02-29"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-02-29`. Expected type is `date-time`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-02-29`. Expected type is `date-time`. Invalid date 'February 29' as '2025' is not a leap year"
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "decimal"
-    (doseq [value [-1 0 1 -1.1M 1.1M]]
+    (doseq [value [-1M 0M 1M -1.1M 1.1M]]
       (given-parse-json "Extension"
         {:url "foo"
          :valueDecimal value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/decimal value)))
 
     (testing "invalid"
@@ -601,7 +615,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueId value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/id value)))
 
     (testing "invalid"
@@ -624,8 +638,8 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueInstant value}
-        type/type := :fhir/Extension
-        :value := (type/instant value)))
+        :fhir/type := :fhir/Extension
+        :value := (type/instant (system/parse-date-time value))))
 
     (testing "invalid"
       (given-parse-json "Extension"
@@ -640,7 +654,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueInteger value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/integer value))))
 
   (testing "markdown"
@@ -648,7 +662,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueMarkdown value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/markdown value))))
 
   (testing "oid"
@@ -657,7 +671,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueOid value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/oid value)))
 
     (testing "invalid"
@@ -669,19 +683,26 @@
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "positiveInt"
-    (doseq [value [1 2]]
+    (doseq [value [1 2 Integer/MAX_VALUE]]
       (given-parse-json "Extension"
         {:url "foo"
          :valuePositiveInt value}
-        type/type := :fhir/Extension
-        :value := (type/positiveInt value))))
+        :fhir/type := :fhir/Extension
+        :value := (type/positiveInt value)))
+
+    (testing "too large"
+      (given-parse-json "Extension"
+        {:url "foo"
+         :valuePositiveInt (inc Integer/MAX_VALUE)}
+        ::anom/message := "Invalid JSON representation of a resource. Invalid positiveInt value `2147483648`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "string"
     (doseq [value ["value-204935" "𝗔𝗗𝗗𝗜𝗧𝗜𝗢𝗡𝗔𝗟 𝗨𝗦𝗖𝗗𝗜" "\t" "\r" "\n" "" "\001e"]]
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueString value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :url := "url-204835"
         :value := (type/string value))))
 
@@ -690,9 +711,9 @@
       (given-parse-json "Extension"
         {:url "url-204835"
          :valueTime value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :url := "url-204835"
-        :value := (type/time value)))
+        :value := (type/time (system/parse-time value))))
 
     (testing "extended properties before value"
       (doseq [value ["15:22:13" "15:22:13.1" "15:22:13.12" "15:22:13.123"]]
@@ -700,7 +721,7 @@
           {:url "url-204835"
            :_valueTime {:id "id-162932"}
            :valueTime value}
-          type/type := :fhir/Extension
+          :fhir/type := :fhir/Extension
           :url := "url-204835"
           :value := (type/time {:id "id-162932" :value (system/parse-time value)}))))
 
@@ -710,7 +731,7 @@
           {:url "url-204835"
            :valueTime value
            :_valueTime {:id "id-162932"}}
-          type/type := :fhir/Extension
+          :fhir/type := :fhir/Extension
           :url := "url-204835"
           :value := (type/time {:id "id-162932" :value (system/parse-time value)}))))
 
@@ -719,23 +740,30 @@
         {:url "url-204835"
          :valueTime "15:60:00"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `15:60:00`. Expected type is `time`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `15:60:00`. Expected type is `time`. Text '15:60:00' could not be parsed: Invalid value for MinuteOfHour (valid values 0 - 59): 60"
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "unsignedInt"
-    (doseq [value [0 1]]
+    (doseq [value [0 1 Integer/MAX_VALUE]]
       (given-parse-json "Extension"
         {:url "foo"
          :valueUnsignedInt value}
-        type/type := :fhir/Extension
-        :value := (type/unsignedInt value))))
+        :fhir/type := :fhir/Extension
+        :value := (type/unsignedInt value)))
+
+    (testing "too large"
+      (given-parse-json "Extension"
+        {:url "foo"
+         :valueUnsignedInt (inc Integer/MAX_VALUE)}
+        ::anom/message := "Invalid JSON representation of a resource. Invalid unsignedInt value `2147483648`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "uri"
     (doseq [value ["foo" "bar"]]
       (given-parse-json "Extension"
         {:url "foo"
          :valueUri value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/uri value)))
 
     (testing "invalid"
@@ -751,7 +779,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueUrl value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/url value)))
 
     (testing "with id"
@@ -759,7 +787,7 @@
         {:url "foo"
          :valueUrl "url-171021"
          :_valueUrl {:id "id-170249"}}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/url {:id "id-170249" :value "url-171021"})))
 
     (testing "with extension"
@@ -767,7 +795,7 @@
         {:url "foo"
          :valueUrl "url-171021"
          :_valueUrl {:extension {:url "url-170854"}}}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/url {:extension [#fhir/Extension{:url "url-170854"}] :value "url-171021"})))
 
     (testing "invalid"
@@ -783,7 +811,7 @@
       (given-parse-json "Extension"
         {:url "foo"
          :valueUuid value}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/uuid value)))
 
     (testing "with id"
@@ -791,7 +819,7 @@
         {:url "foo"
          :valueUuid "urn:uuid:29745744-6761-44a9-ab95-fea7e45fc903"
          :_valueUuid {:id "id-170249"}}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/uuid {:id "id-170249" :value "urn:uuid:29745744-6761-44a9-ab95-fea7e45fc903"})))
 
     (testing "with extension"
@@ -799,7 +827,7 @@
         {:url "foo"
          :valueUuid "urn:uuid:29745744-6761-44a9-ab95-fea7e45fc903"
          :_valueUuid {:extension {:url "url-170854"}}}
-        type/type := :fhir/Extension
+        :fhir/type := :fhir/Extension
         :value := (type/uuid {:extension [#fhir/Extension{:url "url-170854"}] :value "urn:uuid:29745744-6761-44a9-ab95-fea7e45fc903"})))
 
     (testing "invalid"
@@ -814,80 +842,70 @@
     (given-parse-json "Extension"
       {:url "foo"
        :valueAddress {:city "Leipzig"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Address{:city #fhir/string "Leipzig"}))
-
-  ;; TODO: Age
-  ;; TODO: Annotation
 
   (testing "Attachment"
     (given-parse-json "Extension"
       {:url "foo"
        :valueAttachment {:contentType "text/plain"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Attachment{:contentType #fhir/code "text/plain"}))
 
   (testing "CodeableConcept"
     (given-parse-json "Extension"
       {:url "foo"
        :valueCodeableConcept {:text "text-161119"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/CodeableConcept{:text #fhir/string "text-161119"}))
 
   (testing "Coding"
     (given-parse-json "Extension"
       {:url "foo"
        :valueCoding {:code "code-161220"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Coding{:code #fhir/code "code-161220"}))
 
   (testing "Coding"
     (given-parse-json "Extension"
       {:url "foo"
        :valueCoding {:code "code-161220"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Coding{:code #fhir/code "code-161220"}))
-
-  ;; TODO: ContactPoint
-  ;; TODO: Count
-  ;; TODO: Distance
-  ;; TODO: Duration
 
   (testing "HumanName"
     (given-parse-json "Extension"
       {:url "foo"
        :valueHumanName {:family "family-161430"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/HumanName{:family #fhir/string "family-161430"}))
 
   (testing "Identifier"
     (given-parse-json "Extension"
       {:url "foo"
        :valueIdentifier {:value "value-162019"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Identifier{:value #fhir/string "value-162019"}))
-
-  ;; TODO: Money
 
   (testing "Period"
     (given-parse-json "Extension"
       {:url "foo"
        :valuePeriod {:start "2025-03-21"}}
-      type/type := :fhir/Extension
-      :value := #fhir/Period{:start #fhir/dateTime "2025-03-21"}))
+      :fhir/type := :fhir/Extension
+      :value := #fhir/Period{:start #fhir/dateTime #system/date-time "2025-03-21"}))
 
   (testing "Quantity"
     (given-parse-json "Extension"
       {:url "foo"
        :valueQuantity {:value 3.141}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Quantity{:value #fhir/decimal 3.141M}))
 
   (testing "Range"
     (given-parse-json "Extension"
       {:url "foo"
        :valueRange {:low {:value 3.141}}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       [:value :fhir/type] := :fhir/Range
       [:value :low] := #fhir/Quantity{:value #fhir/decimal 3.141M}))
 
@@ -895,42 +913,29 @@
     (given-parse-json "Extension"
       {:url "foo"
        :valueRatio {:numerator {:value 3.141}}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 3.141M}}))
 
   (testing "Reference"
     (given-parse-json "Extension"
       {:url "foo"
        :valueReference {:reference "reference-165129"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Reference{:reference #fhir/string "reference-165129"}))
-
-  ;; TODO: SampledData
-  ;; TODO: Signature
-  ;; TODO: Timing
-  ;; TODO: ContactDetail
-  ;; TODO: Contributor
-  ;; TODO: DataRequirement
 
   (testing "Expression"
     (given-parse-json "Extension"
       {:url "foo"
        :valueExpression {:name "name-165516"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       [:value :fhir/type] := :fhir/Expression
       [:value :name] := #fhir/id "name-165516"))
-
-  ;; TODO: ParameterDefinition
-  ;; TODO: RelatedArtifact
-  ;; TODO: TriggerDefinition
-  ;; TODO: UsageContext
-  ;; TODO: Dosage
 
   (testing "Meta"
     (given-parse-json "Extension"
       {:url "foo"
        :valueMeta {:source "uri-171103"}}
-      type/type := :fhir/Extension
+      :fhir/type := :fhir/Extension
       :value := #fhir/Meta{:source #fhir/uri "uri-171103"})))
 
 (deftest parse-json-human-name-test
@@ -962,7 +967,7 @@
   (testing "Extension"
     (given-parse-json "HumanName"
       {:extension {:url "url-102118" :valueString "value-102132"}}
-      type/type := :fhir/HumanName
+      :fhir/type := :fhir/HumanName
       :extension := [#fhir/Extension
                       {:url "url-102118"
                        :value #fhir/string "value-102132"}]))
@@ -970,7 +975,7 @@
   (testing "family"
     (given-parse-json "HumanName"
       {:family "family-173154"}
-      type/type := :fhir/HumanName
+      :fhir/type := :fhir/HumanName
       :family := #fhir/string "family-173154"))
 
   (testing "given"
@@ -998,7 +1003,7 @@
           (doseq [extended-properties [{:id "id-165848"} [{:id "id-165848"}]]]
             (given-parse-json "HumanName"
               {:_given extended-properties}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string{:id "id-165848"}]))
 
           (testing "invalid"
@@ -1014,7 +1019,7 @@
                   extended-properties [{:extension extensions} [{:extension extensions}]]]
             (given-parse-json "HumanName"
               {:_given extended-properties}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string{:extension [#fhir/Extension{:url "url-182516"}]}]))
 
           (testing "invalid"
@@ -1032,7 +1037,7 @@
               (given-parse-json "HumanName"
                 {:given []
                  :_given extended-properties}
-                type/type := :fhir/HumanName
+                :fhir/type := :fhir/HumanName
                 :given := [#fhir/string{:id "id-211339"}]))
 
             (testing "invalid"
@@ -1049,19 +1054,19 @@
             (given-parse-json "HumanName"
               {:_given extended-properties
                :given []}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string{:id "id-151600"}])))))
 
     (testing "one given name"
       (given-parse-json "HumanName"
         {:given ["given-210928"]}
-        type/type := :fhir/HumanName
+        :fhir/type := :fhir/HumanName
         :given := [#fhir/string "given-210928"])
 
       (testing "without array"
         (given-parse-json "HumanName"
           {:given "given-205309"}
-          type/type := :fhir/HumanName
+          :fhir/type := :fhir/HumanName
           :given := [#fhir/string "given-205309"]))
 
       (testing "extended properties after value"
@@ -1070,7 +1075,7 @@
             (given-parse-json "HumanName"
               {:given ["given-210928"]
                :_given extended-properties}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string{:id "id-211339" :value "given-210928"}]))
 
           (testing "invalid"
@@ -1087,13 +1092,13 @@
           (given-parse-json "HumanName"
             {:_given extended-properties
              :given ["given-210928"]}
-            type/type := :fhir/HumanName
+            :fhir/type := :fhir/HumanName
             :given := [#fhir/string{:id "id-151600" :value "given-210928"}]))))
 
     (testing "two given names"
       (given-parse-json "HumanName"
         {:given ["given-210928" "given-211224"]}
-        type/type := :fhir/HumanName
+        :fhir/type := :fhir/HumanName
         :given := [#fhir/string "given-210928"
                    #fhir/string "given-211224"])
 
@@ -1101,7 +1106,7 @@
         (given-parse-json "HumanName"
           {:_given [{:id "id-151310"} {:id "id-151315"}]
            :given ["given-151318" "given-151323"]}
-          type/type := :fhir/HumanName
+          :fhir/type := :fhir/HumanName
           :given := [#fhir/string{:id "id-151310" :value "given-151318"}
                      #fhir/string{:id "id-151315" :value "given-151323"}])
 
@@ -1109,7 +1114,7 @@
           (given-parse-json "HumanName"
             {:_given [nil {:id "id-151315"}]
              :given ["given-151318" "given-151323"]}
-            type/type := :fhir/HumanName
+            :fhir/type := :fhir/HumanName
             :given := [#fhir/string "given-151318"
                        #fhir/string{:id "id-151315" :value "given-151323"}]))
 
@@ -1118,7 +1123,7 @@
             (given-parse-json "HumanName"
               {:_given extended-properties
                :given ["given-151318" "given-151323"]}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string{:id "id-151315" :value "given-151318"}
                          #fhir/string "given-151323"])))
 
@@ -1127,7 +1132,7 @@
             (given-parse-json "HumanName"
               {:_given extended-properties
                :given ["given-151318" "given-151323"]}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string "given-151318"
                          #fhir/string "given-151323"]))))
 
@@ -1135,7 +1140,7 @@
         (given-parse-json "HumanName"
           {:given ["given-151318" "given-151323"]
            :_given [{:id "id-151310"} {:id "id-151315"}]}
-          type/type := :fhir/HumanName
+          :fhir/type := :fhir/HumanName
           :given := [#fhir/string{:id "id-151310" :value "given-151318"}
                      #fhir/string{:id "id-151315" :value "given-151323"}])
 
@@ -1143,7 +1148,7 @@
           (given-parse-json "HumanName"
             {:given ["given-151318" "given-151323"]
              :_given [nil {:id "id-151315"}]}
-            type/type := :fhir/HumanName
+            :fhir/type := :fhir/HumanName
             :given := [#fhir/string "given-151318"
                        #fhir/string{:id "id-151315" :value "given-151323"}]))
 
@@ -1152,7 +1157,7 @@
             (given-parse-json "HumanName"
               {:given ["given-151318" "given-151323"]
                :_given extended-properties}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string{:id "id-151315" :value "given-151318"}
                          #fhir/string "given-151323"])))
 
@@ -1161,7 +1166,7 @@
             (given-parse-json "HumanName"
               {:given ["given-151318" "given-151323"]
                :_given extended-properties}
-              type/type := :fhir/HumanName
+              :fhir/type := :fhir/HumanName
               :given := [#fhir/string "given-151318"
                          #fhir/string "given-151323"])))
 
@@ -1170,77 +1175,77 @@
             {:given [nil "given-105549"]
              :_given [{:id "id-105603"} nil]}
             ::anom/message := nil
-            type/type := :fhir/HumanName
+            :fhir/type := :fhir/HumanName
             :given := [#fhir/string{:id "id-105603"}
                        #fhir/string "given-105549"])))))
 
   (testing "period"
     (given-parse-json "HumanName"
       {:period {:start "2025"}}
-      type/type := :fhir/HumanName
-      :period := #fhir/Period{:start #fhir/dateTime "2025"})))
+      :fhir/type := :fhir/HumanName
+      :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2025"})))
 
 (deftest parse-json-reference-test
   (testing "id"
     (given-parse-json "Reference"
       {:id "id-100759"}
-      type/type := :fhir/Reference
+      :fhir/type := :fhir/Reference
       :id := "id-100759"))
 
   (testing "extension"
     (given-parse-json "Reference"
       {:extension {:url "url-100907"}}
-      type/type := :fhir/Reference
+      :fhir/type := :fhir/Reference
       :extension := [#fhir/Extension{:url "url-100907"}]))
 
   (testing "reference"
     (given-parse-json "Reference"
       {:reference "reference-101044"}
-      type/type := :fhir/Reference
+      :fhir/type := :fhir/Reference
       :reference := #fhir/string "reference-101044"))
 
   (testing "type"
     (given-parse-json "Reference"
       {:type "type-101127"}
-      type/type := :fhir/Reference
+      :fhir/type := :fhir/Reference
       :type := #fhir/uri "type-101127"))
 
   (testing "identifier"
     (given-parse-json "Reference"
       {:identifier {:value "value-101215"}}
-      type/type := :fhir/Reference
+      :fhir/type := :fhir/Reference
       :identifier := #fhir/Identifier{:value #fhir/string "value-101215"}))
 
   (testing "display"
     (given-parse-json "Reference"
       {:display "display-101307"}
-      type/type := :fhir/Reference
+      :fhir/type := :fhir/Reference
       :display := #fhir/string "display-101307")))
 
 (deftest parse-json-meta-test
   (testing "versionId"
     (given-parse-json "Meta"
       {:versionId "versionId-104855"}
-      type/type := :fhir/Meta
+      :fhir/type := :fhir/Meta
       :versionId := #fhir/id "versionId-104855"))
 
   (testing "lastUpdated"
     (given-parse-json "Meta"
       {:lastUpdated "0001-01-01T00:00:00Z"}
-      type/type := :fhir/Meta
-      :lastUpdated := #fhir/instant "0001-01-01T00:00:00Z")
+      :fhir/type := :fhir/Meta
+      :lastUpdated := #fhir/instant #system/date-time "0001-01-01T00:00:00Z")
 
     (testing "extended properties after value"
       (given-parse-json "Meta"
         {:lastUpdated "0001-01-01T00:00:00Z"
          :_lastUpdated {:id "id-111214"}}
-        type/type := :fhir/Meta
-        :lastUpdated := #fhir/instant{:id "id-111214" :value "0001-01-01T00:00:00Z"})))
+        :fhir/type := :fhir/Meta
+        :lastUpdated := #fhir/instant{:id "id-111214" :value #system/date-time "0001-01-01T00:00:00Z"})))
 
   (testing "source"
     (given-parse-json "Meta"
       {:source "source-105040"}
-      type/type := :fhir/Meta
+      :fhir/type := :fhir/Meta
       :source := #fhir/uri "source-105040")))
 
 (deftest parse-json-quantity-test
@@ -1249,11 +1254,6 @@
       {:value "a"}
       ::anom/message := "Invalid JSON representation of a resource. Error on value `a`. Expected type is `decimal`."
       [:fhir/issues 0 :fhir.issues/expression] := "Quantity.value")
-
-    (testing "long out of range"
-      (given (parse-json "Quantity" "{\"value\":9999999999999999999}")
-        ::anom/message := "Invalid JSON representation of a resource. Numeric value (9999999999999999999) out of range of long (-9223372036854775808 - 9223372036854775807)"
-        [:fhir/issues 0 :fhir.issues/expression] := "Quantity.value"))
 
     (testing "end of input"
       (given (parse-json "Quantity" "{\"value\":0")

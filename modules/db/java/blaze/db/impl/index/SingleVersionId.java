@@ -1,9 +1,6 @@
 package blaze.db.impl.index;
 
 import blaze.ByteString;
-import com.google.common.io.BaseEncoding;
-
-import java.nio.ByteBuffer;
 
 import static java.util.Objects.requireNonNull;
 

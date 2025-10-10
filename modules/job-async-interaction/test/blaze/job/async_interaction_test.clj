@@ -15,7 +15,6 @@
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.references-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.handler.fhir.util-spec]
@@ -264,13 +263,13 @@
 
 (defn- processing-duration [job]
   (-> (job-util/output-value job job-async/output-uri "processing-duration")
-      :value type/value))
+      :value :value))
 
 (deftest simple-job-execution-test
   (testing "success"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-      @(js/create-job job-scheduler (job-async/job #fhir/dateTime "2024-05-30T10:26:00" "0" 0)
+      @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
                       (job-async/request-bundle "0" "GET" "Observation"))
 
       (testing "the job is completed"
@@ -278,7 +277,7 @@
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
           jtu/combined-status := :completed
-          :authoredOn := #fhir/dateTime "2024-05-30T10:26:00"
+          :authoredOn := #fhir/dateTime #system/date-time "2024-05-30T10:26:00"
           job-async/response-bundle-ref := "Bundle/AAAAAAAAAAAAAAAA"
           processing-duration :? decimal?))
 
@@ -299,7 +298,7 @@
     (testing "unknown FHIR type"
       (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-        @(js/create-job job-scheduler (job-async/job #fhir/dateTime "2024-05-30T10:26:00" "0" 0)
+        @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
                         (job-async/request-bundle "0" "GET" "Error"))
 
         (testing "the job is completed"
@@ -307,7 +306,7 @@
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
             jtu/combined-status := :completed
-            :authoredOn := #fhir/dateTime "2024-05-30T10:26:00"
+            :authoredOn := #fhir/dateTime #system/date-time "2024-05-30T10:26:00"
             job-async/response-bundle-ref := "Bundle/AAAAAAAAAAAAAAAA"
             processing-duration :? decimal?))
 
@@ -350,7 +349,7 @@
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
       @(js/create-job
         job-scheduler
-        (-> (job-async/job #fhir/dateTime "2024-05-30T10:26:00" "0" 0)
+        (-> (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
             (update :input (partial take 1)))
         (job-async/request-bundle "0" "GET" "Error"))
 
@@ -367,7 +366,7 @@
 (deftest cancellation-test
   (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-    @(js/create-job job-scheduler (job-async/job #fhir/dateTime "2024-05-30T10:26:00" "0" 0)
+    @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
                     (job-async/request-bundle "0" "GET" "Observation"))
 
     @(jtu/pull-job system :in-progress/started)
@@ -379,7 +378,7 @@
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :cancelled/finished
-        :authoredOn := #fhir/dateTime "2024-05-30T10:26:00"))
+        :authoredOn := #fhir/dateTime #system/date-time "2024-05-30T10:26:00"))
 
     (testing "job history"
       (given @(jtu/pull-job-history system)

@@ -70,8 +70,7 @@
        (comp (map :resource)
              (filter (comp #{"complex-type"} :kind))
              (remove :abstract)
-             ;; TODO: look into how to handle this special quantity types
-             (remove (comp #{"MoneyQuantity" "SimpleQuantity"} :name)))
+             (remove (comp #{"constraint"} :derivation)))
        (:entry (read-bundle "blaze/fhir/r4/profiles-types.json"))))
     (-resources [_]
       (into

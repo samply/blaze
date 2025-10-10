@@ -30,7 +30,7 @@
   #fhir/Quantity
    {:value #fhir/decimal 0M
     :unit #fhir/string "s"
-    :system #fhir/uri "http://unitsofmeasure.org"
+    :system #fhir/uri-interned "http://unitsofmeasure.org"
     :code #fhir/code "s"})
 
 (defn job
@@ -44,23 +44,23 @@
    #fhir/CodeableConcept
     {:coding
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
         :code #fhir/code "compact"
-        :display #fhir/string "Compact a Database Column Family"}]}
-   :authoredOn authored-on
+        :display #fhir/string-interned "Compact a Database Column Family"}]}
+   :authoredOn (type/dateTime authored-on)
    :input
    [{:fhir/type :fhir.Task/input
      :type (type/codeable-concept
             {:coding
              [(type/coding
-               {:system (type/uri parameter-system)
+               {:system (type/uri-interned parameter-system)
                 :code #fhir/code "database"})]})
      :value (type/code database)}
     {:fhir/type :fhir.Task/input
      :type (type/codeable-concept
             {:coding
              [(type/coding
-               {:system (type/uri parameter-system)
+               {:system (type/uri-interned parameter-system)
                 :code #fhir/code "column-family"})]})
      :value (type/code column-family)}]})
 
@@ -73,7 +73,7 @@
    [(task-output "processing-duration" initial-duration)]))
 
 (defn- increment-quantity-value [quantity x]
-  (update quantity :value #(type/decimal (+ (type/value %) x))))
+  (update quantity :value #(type/decimal (+ (:value %) x))))
 
 (defn- increment-duration [job duration]
   (job-util/update-output-value job output-system "processing-duration"
@@ -85,7 +85,7 @@
       (dissoc :statusReason)))
 
 (defn- database* [job]
-  (or (type/value (job-util/input-value job parameter-system "database"))
+  (or (:value (job-util/input-value job parameter-system "database"))
       (ba/incorrect "Missing `database` parameter.")))
 
 (defn- database [context job]
@@ -94,8 +94,8 @@
          (ba/incorrect (format "Unknown database `%s`." database)))))
 
 (defn- column-family [job]
-  (or (-> (job-util/input-value job parameter-system "column-family")
-          type/value keyword)
+  (or (some-> (job-util/input-value job parameter-system "column-family")
+              :value keyword)
       (ba/incorrect "Missing `column-family` parameter.")))
 
 (defn- assoc-duration [start result]
