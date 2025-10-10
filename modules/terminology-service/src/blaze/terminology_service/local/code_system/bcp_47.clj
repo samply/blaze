@@ -26,9 +26,9 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
         :code #fhir/code "read-only"}]}
-   :url #fhir/uri "urn:ietf:bcp:47"
+   :url #fhir/uri-interned "urn:ietf:bcp:47"
    :version #fhir/string "1.0.0"
    :name #fhir/string "BCP-47"
    :title #fhir/string "BCP-47 Tags for Identifying Languages"
@@ -75,8 +75,8 @@
    []
    (keep
     (fn [{:keys [code]}]
-      (when-let [display (display (type/value code))]
-        {:system #fhir/uri "urn:ietf:bcp:47"
+      (when-let [display (display (:value code))]
+        {:system #fhir/uri-interned "urn:ietf:bcp:47"
          :code code
          :display display})))
    concepts))

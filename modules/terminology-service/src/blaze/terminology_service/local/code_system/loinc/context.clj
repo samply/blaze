@@ -25,9 +25,9 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
         :code #fhir/code "read-only"}]}
-   :url (type/uri url)
+   :url (type/uri-interned url)
    :version (type/string version)
    :name #fhir/string "LOINC"
    :title #fhir/string "LOINC Code System"
@@ -45,52 +45,52 @@
    :property
    [{:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "COMPONENT"
-     :uri #fhir/uri "http://loinc.org/property/COMPONENT"
+     :uri #fhir/uri-interned "http://loinc.org/property/COMPONENT"
      :description #fhir/string "First major axis-component or analyte: Analyte Name, Analyte sub-class, Challenge"
      :type #fhir/code "Coding"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "PROPERTY"
-     :uri #fhir/uri "http://loinc.org/property/PROPERTY"
+     :uri #fhir/uri-interned "http://loinc.org/property/PROPERTY"
      :description #fhir/string "Second major axis-property observed: Kind of Property (also called kind of quantity)"
      :type #fhir/code "Coding"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "TIME_ASPCT"
-     :uri #fhir/uri "http://loinc.org/property/TIME_ASPCT"
+     :uri #fhir/uri-interned "http://loinc.org/property/TIME_ASPCT"
      :description #fhir/string "Third major axis-timing of the measurement: Time Aspect (Point or moment in time vs. time interval)"
      :type #fhir/code "Coding"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "SYSTEM"
-     :uri #fhir/uri "http://loinc.org/property/SYSTEM"
+     :uri #fhir/uri-interned "http://loinc.org/property/SYSTEM"
      :description #fhir/string "Fourth major axis-type of specimen or system: System (Sample) Type"
      :type #fhir/code "Coding"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "SCALE_TYP"
-     :uri #fhir/uri "http://loinc.org/property/SCALE_TYP"
+     :uri #fhir/uri-interned "http://loinc.org/property/SCALE_TYP"
      :description #fhir/string "Fifth major axis-scale of measurement: Type of Scale"
      :type #fhir/code "Coding"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "METHOD_TYP"
-     :uri #fhir/uri "http://loinc.org/property/METHOD_TYP"
+     :uri #fhir/uri-interned "http://loinc.org/property/METHOD_TYP"
      :description #fhir/string "Sixth major axis-method of measurement: Type of Method"
      :type #fhir/code "Coding"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "CLASS"
-     :uri #fhir/uri "http://loinc.org/property/CLASS"
+     :uri #fhir/uri-interned "http://loinc.org/property/CLASS"
      :description #fhir/string "An arbitrary classification of terms for grouping related observations together"
      :type #fhir/code "Coding"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "STATUS"
-     :uri #fhir/uri "http://loinc.org/property/STATUS"
+     :uri #fhir/uri-interned "http://loinc.org/property/STATUS"
      :description #fhir/string "Status of the term. Within LOINC, codes with STATUS=DEPRECATED are considered inactive. Current values: ACTIVE, TRIAL, DISCOURAGED, and DEPRECATED"
      :type #fhir/code "string"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "CLASSTYPE"
-     :uri #fhir/uri "http://loinc.org/property/CLASSTYPE"
+     :uri #fhir/uri-interned "http://loinc.org/property/CLASSTYPE"
      :description #fhir/string "1=Laboratory class; 2=Clinical class; 3=Claims attachments; 4=Surveys"
      :type #fhir/code "string"}
     {:fhir/type :fhir.CodeSystem/property
      :code #fhir/code "ORDER_OBS"
-     :uri #fhir/uri "http://loinc.org/property/ORDER_OBS"
+     :uri #fhir/uri-interned "http://loinc.org/property/ORDER_OBS"
      :description #fhir/string "Provides users with an idea of the intended use of the term by categorizing it as an order only, observation only, or both"
      :type #fhir/code "string"}]})
 
@@ -98,7 +98,7 @@
   [code long-common-name component-pair property-pair time-pair system-pair
    scale-pair method-pair class-pair status class-type order-obs]
   (cond->
-   {:system #fhir/uri "http://loinc.org"
+   {:system #fhir/uri-interned "http://loinc.org"
     :code (type/code code)
     :display (type/string long-common-name)
     :loinc/properties
@@ -195,7 +195,7 @@
        (rest (csv/read-csv reader))))))
 
 (defn- answer-concept [list-code code display]
-  {:system #fhir/uri "http://loinc.org"
+  {:system #fhir/uri-interned "http://loinc.org"
    :code (type/code code)
    :display (type/string display)
    :loinc/properties

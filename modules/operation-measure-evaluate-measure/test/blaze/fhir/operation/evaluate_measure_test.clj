@@ -60,9 +60,8 @@
        :code (type/code code)})]}))
 
 (defn- cql-expression [expr]
-  {:fhir/type :fhir/Expression
-   :language #fhir/code "text/cql-identifier"
-   :expression (type/string expr)})
+  (type/expression {:language #fhir/code "text/cql-identifier"
+                    :expression (type/string expr)}))
 
 (def cql-attachment
   #fhir/Attachment
@@ -251,9 +250,9 @@
                 :status := #fhir/code "complete"
                 :type := #fhir/code "summary"
                 :measure := #fhir/canonical "url-181501"
-                :date := #fhir/dateTime "1970-01-01T00:00:00Z"
-                [:period :start] := #fhir/dateTime "2014"
-                [:period :end] := #fhir/dateTime "2015")))))
+                :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+                [:period :start] := #fhir/dateTime #system/date-time "2014"
+                [:period :end] := #fhir/dateTime #system/date-time "2015")))))
 
       (testing "as POST request"
         (with-handler [handler]
@@ -270,8 +269,8 @@
                    :path-params {:id "0"}
                    :body
                    (fu/parameters
-                    "periodStart" #fhir/date "2014"
-                    "periodEnd" #fhir/date "2015")})]
+                    "periodStart" #fhir/date #system/date "2014"
+                    "periodEnd" #fhir/date #system/date "2015")})]
 
             (is (= 201 status))
 
@@ -284,9 +283,9 @@
               :status := #fhir/code "complete"
               :type := #fhir/code "summary"
               :measure := #fhir/canonical "url-181501"
-              :date := #fhir/dateTime "1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime "2014"
-              [:period :end] := #fhir/dateTime "2015"))))))
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+              [:period :start] := #fhir/dateTime #system/date-time "2014"
+              [:period :end] := #fhir/dateTime #system/date-time "2015"))))))
 
   (testing "Returns Not Found on Non-Existing Measure"
     (with-handler [handler]
@@ -383,7 +382,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "value"
-            [:issue 0 :diagnostics] := (type/string (format "The Library resource with canonical URI `%s` was not found." (type/value library-ref))))))))
+            [:issue 0 :diagnostics] := (type/string (format "The Library resource with canonical URI `%s` was not found." (:value library-ref))))))))
 
   (testing "Returns Server Error on Missing Measure Content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
@@ -492,13 +491,13 @@
                 [:extension 0 :value :code] := #fhir/code "s"
                 [:extension 0 :value :system] := #fhir/uri "http://unitsofmeasure.org"
                 [:extension 0 :value :unit] := #fhir/string "s"
-                [:extension 0 :value :value type/value] :? decimal?
+                [:extension 0 :value :value :value] :? decimal?
                 :status := #fhir/code "complete"
                 :type := #fhir/code "summary"
                 :measure := #fhir/canonical "url-181501"
-                :date := #fhir/dateTime "1970-01-01T00:00:00Z"
-                [:period :start] := #fhir/dateTime "2014"
-                [:period :end] := #fhir/dateTime "2015"
+                :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+                [:period :start] := #fhir/dateTime #system/date-time "2014"
+                [:period :end] := #fhir/dateTime #system/date-time "2015"
                 [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
                 [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
                 [:group 0 :population 0 :count] := #fhir/integer 1)))))
@@ -551,9 +550,9 @@
               :status := #fhir/code "complete"
               :type := #fhir/code "summary"
               :measure := #fhir/canonical "url-181501"
-              :date := #fhir/dateTime "1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime "2014"
-              [:period :end] := #fhir/dateTime "2015"
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+              [:period :start] := #fhir/dateTime #system/date-time "2014"
+              [:period :end] := #fhir/dateTime #system/date-time "2015"
               [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
               [:group 0 :population 0 :count] := #fhir/integer 3
@@ -583,8 +582,8 @@
                    :body
                    (fu/parameters
                     "measure" #fhir/string "url-181501"
-                    "periodStart" #fhir/date "2014"
-                    "periodEnd" #fhir/date "2015")})]
+                    "periodStart" #fhir/date #system/date "2014"
+                    "periodEnd" #fhir/date #system/date "2015")})]
 
             (is (= 201 status))
 
@@ -597,9 +596,9 @@
               :status := #fhir/code "complete"
               :type := #fhir/code "summary"
               :measure := #fhir/canonical "url-181501"
-              :date := #fhir/dateTime "1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime "2014"
-              [:period :end] := #fhir/dateTime "2015")
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+              [:period :start] := #fhir/dateTime #system/date-time "2014"
+              [:period :end] := #fhir/dateTime #system/date-time "2015")
 
             (testing "with return=minimal Prefer header"
               (with-handler [handler]
@@ -617,8 +616,8 @@
                          :body
                          (fu/parameters
                           "measure" #fhir/string "url-181501"
-                          "periodStart" #fhir/date "2014"
-                          "periodEnd" #fhir/date "2015")})]
+                          "periodStart" #fhir/date #system/date "2014"
+                          "periodEnd" #fhir/date #system/date "2015")})]
 
                   (is (= 201 status))
 
@@ -651,8 +650,8 @@
                     {:request-method :post
                      :body
                      (fu/parameters
-                      "periodStart" #fhir/date "2014"
-                      "periodEnd" #fhir/date "2015")})]
+                      "periodStart" #fhir/date #system/date "2014"
+                      "periodEnd" #fhir/date #system/date "2015")})]
 
               (is (= 422 status))
 
@@ -686,8 +685,8 @@
                     {:request-method :post
                      :body
                      (fu/parameters
-                      "periodStart" #fhir/date "2014"
-                      "periodEnd" #fhir/date "2015"
+                      "periodStart" #fhir/date #system/date "2014"
+                      "periodEnd" #fhir/date #system/date "2015"
                       "measure" #fhir/string "url-181501")})]
 
               (is (= 422 status))

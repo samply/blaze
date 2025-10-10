@@ -4,7 +4,6 @@
    [blaze.fhir-client :as fhir-client]
    [blaze.fhir-client-spec]
    [blaze.fhir.parsing-context]
-   [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [given-failed-future]]

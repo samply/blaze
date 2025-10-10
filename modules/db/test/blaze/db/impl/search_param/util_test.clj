@@ -34,7 +34,7 @@
 
 (deftest format-skip-indexing-msg-test
   (is (= (u/format-skip-indexing-msg #fhir/string "value-132537" "url-132522" "type-132528")
-         "Skip indexing value `value-132537` of type `:fhir/string` for search parameter `url-132522` with type `type-132528` because the rule is missing.")))
+         "Skip indexing value `String{id=null, extension=[], value='value-132537'}` of type `:fhir/string` for search parameter `url-132522` with type `type-132528` because the rule is missing.")))
 
 (deftest soundex-test
   (testing "question mark from issue #903"

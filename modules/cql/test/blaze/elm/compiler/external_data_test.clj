@@ -17,8 +17,6 @@
    [blaze.elm.expression-spec]
    [blaze.elm.literal :as elm]
    [blaze.elm.util-spec]
-   [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [with-system]]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]

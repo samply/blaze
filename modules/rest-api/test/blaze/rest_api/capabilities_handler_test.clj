@@ -5,7 +5,7 @@
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -41,7 +41,7 @@
    mem-node-config
    ::rest-api/capabilities-handler
    {:version "version-131640"
-    :release-date "2024-01-07"
+    :release-date (system/parse-date-time "2024-01-07")
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)}))
 
@@ -115,7 +115,7 @@
       (is (= 200 status))
 
       (testing "ETag header"
-        (is (= "W/\"c3a1c2c6\"" (get headers "ETag"))))
+        (is (= "W/\"707af296\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
@@ -181,7 +181,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"c3a1c2c6\"" "W/\"c3a1c2c6\", \"foo\""]]
+      (doseq [if-none-match ["W/\"707af296\"" "W/\"707af296\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -190,7 +190,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"c3a1c2c6\"" (get headers "ETag"))))))))
+            (is (= "W/\"707af296\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]
@@ -360,7 +360,7 @@
                  {:handler (fn [_])}}}]))
 
 (defn- search-param [name]
-  (fn [params] (some #(when (= name (-> % :name type/value)) %) params)))
+  (fn [params] (some #(when (= name (-> % :name :value)) %) params)))
 
 (deftest observation-read-interaction-test
   (with-handler [handler observation-read-interaction-config]

@@ -3,6 +3,7 @@
    [blaze.fhir.spec.type :as type]
    [clojure.string :as str])
   (:import
+   [blaze.fhir.spec.type Base]
    [java.util Comparator]))
 
 (set! *warn-on-reflection* true)
@@ -17,20 +18,22 @@
        (when (some? value)
          {:fhir/type :fhir.Parameters/parameter
           :name (type/string name)
-          (if (:fhir/type value) :resource :value) value})))
+          ;; TODO: improve resource detection
+          (if (instance? Base value) :value :resource) value})))
     (partition 2 nvs))})
 
 (def subsetted
+  "SUBSETTED Coding"
   #fhir/Coding
-   {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+   {:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
     :code #fhir/code "SUBSETTED"})
 
 (defn subsetted?
   "Checks whether `coding` is a SUBSETTED coding."
   {:arglists '([coding])}
-  [{:keys [system code]}]
-  (and (= #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
-       (= #fhir/code "SUBSETTED" code)))
+  [{{system-value :value} :system {code-value :value} :code}]
+  (and (= "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system-value)
+       (= "SUBSETTED" code-value)))
 
 (defn- nat-cmp [^Comparable x y]
   (.compareTo x y))
@@ -66,8 +69,8 @@
   (:blaze.db/t (:blaze.db/tx (meta resource))))
 
 (def ^:private priority-cmp
-  (-> (Comparator/comparing #(-> % :status type/value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
-      (.thenComparing #(-> % :version type/value) version-cmp)
+  (-> (Comparator/comparing #(-> % :status :value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
+      (.thenComparing #(-> % :version :value) version-cmp)
       (.thenComparing t (Comparator/nullsFirst (Comparator/naturalOrder)))
       (.thenComparing #(% :id) (Comparator/naturalOrder))
       (.reversed)))
