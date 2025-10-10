@@ -23,14 +23,14 @@ aside: false
 
 The following tables lists the minimum recommended system resources based on patient count, assuming approximately 1,000 resources per patient. Each configuration should be dedicated to a single Blaze instance. Avoid running other memory-intensive processes on the same system.
 
-| # Patients | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache | DB Scale Factor | CQL Cache |
-|-----------:|------:|--------:|-------:|---------:|------------:|---------------:|----------------:|----------:|
-|       10 k |     2 |   8 GiB | 100 GB |    2 GiB |       2 GiB |         0.25 M |               1 |   128 MiB | 
-|     < 50 k |     4 |  16 GiB | 250 GB |    4 GiB |       4 GiB |          0.5 M |               1 |   128 MiB | 
-|    < 100 k |     4 |  32 GiB | 500 GB |    8 GiB |       8 GiB |         1.25 M |               2 |   512 MiB | 
-|      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |          2.5 M |               2 |   512 MiB | 
-|        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |            5 M |               4 |     1 GiB | 
-|      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |           10 M |               4 |     1 GiB | 
+| # Patients | Cores |     RAM |    SSD | Heap Mem | Block Cache | DB Scale Factor | CQL Cache |
+|-----------:|------:|--------:|-------:|---------:|------------:|----------------:|----------:|
+|       10 k |     2 |   8 GiB | 100 GB |    2 GiB |       2 GiB |               1 |   128 MiB | 
+|     < 50 k |     4 |  16 GiB | 250 GB |    4 GiB |       4 GiB |               1 |   128 MiB | 
+|    < 100 k |     4 |  32 GiB | 500 GB |    8 GiB |       8 GiB |               2 |   512 MiB | 
+|      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |               2 |   512 MiB | 
+|        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |               4 |     1 GiB | 
+|      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |               4 |     1 GiB | 
 
 ### Memory Allocation Strategy
 
@@ -38,8 +38,6 @@ In general, available RAM should be distributed as follows:
 * <span class="text-emerald">**25%** → JVM heap memory</span>
 * <span class="text-blue">**25%** → RocksDB block cache</span>
 * <span class="text-purple">**50%** → OS page cache (for RocksDB database file access)</span>
-
-The resource cache is configured by the number of resources instead of the amount of memory. The resource numbers given assume a certain resource size taken from [Synthea][1] resources. For fine-tuning that number, the Metric `JVM Memory Used by Pool` should be used.
 
 > [!important]
 > Leave half of the available system memory "free" for the OS page cache  
@@ -70,7 +68,6 @@ The list of all environment variables can be found in the [Environment Variables
 |:-------------------------------|-------------------------|:--------|:------------------------------------------------------|
 | `JAVA_TOOL_OPTIONS`            | Heap Mem                | —       | -Xmx2g, -Xmx4g, -Xmx8g, -Xmx16g, -Xmx32g or -Xmx64g   |
 | `DB_BLOCK_CACHE_SIZE`          | Block Cache             | 128     | 2048, 4096, 8192, 16384, 32768 or 65536 (in megabyte) |
-| `DB_RESOURCE_CACHE_SIZE`       | Resource Cache          | 100000  | 250000, 500000, 1250000, 2500000, 5000000 or 10000000 |
 | `DB_SCALE_FACTOR`              | DB Buffers/File Sizes   | 1       | 1, 2, 4, 8 or 16                                      |
 | `CQL_EXPR_CACHE_SIZE`          | CQL Expression Cache    | —       | 128, 512, 1024 (in megabyte)                          |
 | `DB_RESOURCE_STORE_KV_THREADS` | Read-/Writing Resources | 4       | 4, 8, 16 or 32                                        |

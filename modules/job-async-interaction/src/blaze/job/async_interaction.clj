@@ -33,17 +33,17 @@
    :code #fhir/CodeableConcept
           {:coding
            [#fhir/Coding
-             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+             {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code "async-interaction"
-              :display #fhir/string "Asynchronous Interaction Request"}]}
-   :authoredOn authored-on
+              :display #fhir/string-interned "Asynchronous Interaction Request"}]}
+   :authoredOn (type/dateTime authored-on)
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))
     {:fhir/type :fhir.Task/input
      :type (type/codeable-concept
             {:coding
              [(type/coding
-               {:system (type/uri u/parameter-uri)
+               {:system (type/uri-interned u/parameter-uri)
                 :code #fhir/code "t"})]})
      :value (type/unsignedInt t)}]})
 
@@ -79,12 +79,12 @@
    :statusReason job-util/started-status-reason))
 
 (defn t [job]
-  (type/value (job-util/input-value job u/parameter-uri "t")))
+  (:value (job-util/input-value job u/parameter-uri "t")))
 
 (defn response-bundle-ref
   "Returns the reference to the response bundle of `job` or nil if there is none."
   [job]
-  (-> (job-util/output-value job output-uri "bundle") :reference type/value))
+  (-> (job-util/output-value job output-uri "bundle") :reference :value))
 
 (defn- response-bundle [context entries]
   {:fhir/type :fhir/Bundle

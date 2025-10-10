@@ -31,6 +31,9 @@
 (s/def :blaze.resource/elements
   (s/coll-of simple-keyword?))
 
+(s/def :fhir/value
+  (s/keys :req [:fhir/type]))
+
 (s/def :fhir/Resource
   #(s2/valid? :fhir/Resource %))
 

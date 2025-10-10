@@ -16,7 +16,6 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
@@ -289,7 +288,7 @@
   (output-value job "processing-duration"))
 
 (defn- next-resource [job]
-  (type/value (output-value job "next-resource")))
+  (:value (output-value job "next-resource")))
 
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))
@@ -318,8 +317,8 @@
             jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
-            [processing-duration :value type/type] := :fhir/decimal
-            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :value :fhir/type] := :fhir/decimal
+            [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
             [processing-duration :unit] := #fhir/string "s"
             [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code "s"
@@ -366,8 +365,8 @@
             jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
-            [processing-duration :value type/type] := :fhir/decimal
-            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :value :fhir/type] := :fhir/decimal
+            [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
             [processing-duration :unit] := #fhir/string "s"
             [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code "s"))
@@ -514,8 +513,8 @@
           jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value type/type] := :fhir/decimal
-          [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+          [processing-duration :value :fhir/type] := :fhir/decimal
+          [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
           [processing-duration :unit] := #fhir/string "s"
           [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code "s"))
@@ -567,8 +566,8 @@
           jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value type/type] := :fhir/decimal
-          [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+          [processing-duration :value :fhir/type] := :fhir/decimal
+          [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
           [processing-duration :unit] := #fhir/string "s"
           [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code "s"))

@@ -68,7 +68,7 @@
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := #fhir/string "201"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"1\""))
 
   (testing "Initial version with client assigned id"
@@ -87,7 +87,7 @@
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := #fhir/string "201"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"1\""))
 
   (testing "Non-initial version"
@@ -106,7 +106,7 @@
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := #fhir/string "200"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"2\""))
 
   (testing "Deleted version"
@@ -123,7 +123,7 @@
       [:request :method] := #fhir/code "DELETE"
       [:request :url] := #fhir/uri "Patient/0"
       [:response :status] := #fhir/string "204"
-      [:response :lastModified] := Instant/EPOCH
+      [:response :lastModified] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
       [:response :etag] := #fhir/string "W/\"2\"")))
 
 (def ^:private config
@@ -145,19 +145,19 @@
       (let [min-int 0]
         (with-system [{::keys [context]} config]
           (given (history-util/build-bundle context min-int {})
-            [:total type/value] := min-int))))
+            [:total :value] := min-int))))
 
     (testing "maximum allowed FHIR unsignedInt value"
       (let [max-int (dec (bit-shift-left 1 31))]
         (with-system [{::keys [context]} config]
           (given (history-util/build-bundle context max-int {})
-            [:total type/value] := max-int))))
+            [:total :value] := max-int))))
 
     (testing "one above the maximum allowed FHIR unsignedInt value"
       (let [overflowed-int (bit-shift-left 1 31)]
         (with-system [{::keys [context]} config]
           (given (history-util/build-bundle context overflowed-int {})
-            [:total type/value] := nil
+            [:total :value] := nil
             [:total :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
             [:total :extension 0 :value] := (type/string (str overflowed-int))))))
 
@@ -165,6 +165,6 @@
       (let [trillion-int 1000000000000]
         (with-system [{::keys [context]} config]
           (given (history-util/build-bundle context trillion-int {})
-            [:total type/value] := nil
+            [:total :value] := nil
             [:total :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
             [:total :extension 0 :value] := (type/string (str trillion-int))))))))

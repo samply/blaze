@@ -1,5 +1,4 @@
 (ns blaze.openid-auth
-  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :refer [if-ok]]
    [blaze.http-client.spec]

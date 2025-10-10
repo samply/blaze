@@ -1232,7 +1232,7 @@
                  :expansion
                  {:fhir/type :fhir.ValueSet/expansion
                   :identifier #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
-                  :timestamp #fhir/dateTime"1970-01-01T00:00:00Z"
+                  :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
                   :contains
                   [{:fhir/type :fhir.ValueSet.expansion/contains
                     :system #fhir/uri "http://hl7.org/fhir/administrative-gender"

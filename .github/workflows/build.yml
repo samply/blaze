@@ -256,6 +256,45 @@ jobs:
     - name: Test
       run: make -C modules/${{ matrix.module }} test-slow
 
+  test-mem-size:
+    strategy:
+      matrix:
+        kind:
+        - 'normal-heap'
+        - 'large-heap'
+
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
+      with:
+        cli: '1.12.3.1577'
+
+    - name: Check out Git repository
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-25-maven-fhir-structure-${{ hashFiles('modules/fhir-structure/deps.edn') }}
+
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-fhir-structure-${{ hashFiles('modules/fhir-structure/deps.edn') }}
+
+    - name: Test
+      run: make -C modules/fhir-structure test-mem-size-${{ matrix.kind }}
+
   # Special treatment, because it runs much longer as the other modules.
   test-coverage-db:
     strategy:
@@ -526,6 +565,9 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       with:
@@ -656,7 +698,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q36-parameter 86
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh fbb79d85457069c8e1926c949690deecd60d751942d5b0cd0b61c08e6029224c 86
+      run: .github/scripts/check-bloom-filter.sh 017a0f079c2a76a731db3cdf68637afc8e4fac34409b032b5ac93958923e0501 86
 
     - name: Evaluate CQL Query 36 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
@@ -668,7 +710,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q37-overlaps 24
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh 9fe779d821d7647831331b490939aa0cdf314d76c9b2a9518ffaf559353db043 24
+      run: .github/scripts/check-bloom-filter.sh e7d79fd90bce0a8c5abad06027e3b6d57b448076ff41fa36827e5e3b65ca10c2 24
 
     - name: Evaluate CQL Query 37 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
@@ -1329,6 +1371,18 @@ jobs:
     - name: Search for Location using near Search Param
       run: .github/scripts/search-location-near.sh
 
+    - name: Age Test
+      run: .github/scripts/age-test.sh
+
+    - name: Count Test
+      run: .github/scripts/count-test.sh
+
+    - name: Distance Test
+      run: .github/scripts/distance-test.sh
+
+    - name: Duration Test
+      run: .github/scripts/duration-test.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}
@@ -1356,6 +1410,9 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
+
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -1597,6 +1654,9 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
+
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -1972,6 +2032,9 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       with:
@@ -2065,6 +2128,9 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       with:
@@ -2108,6 +2174,9 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       with:
@@ -2144,6 +2213,9 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
+
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -2299,6 +2371,9 @@ jobs:
 
     - name: APT Update
       run: sudo apt-get update
+
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
 
     - name: Install Gnuplot
       run: sudo apt-get install gnuplot
@@ -2467,7 +2542,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_CACHE_SIZE=0 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2701,6 +2776,9 @@ jobs:
     - name: APT Update
       run: sudo apt-get update
 
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
     - name: Install Gnuplot
       run: sudo apt-get install gnuplot
 
@@ -2760,6 +2838,7 @@ jobs:
     - lint
     - test
     - test-slow
+    - test-mem-size
     - test-root
     - image-scan
     - cql-expr-cache-test

@@ -19,7 +19,6 @@
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]))
 
@@ -158,9 +157,8 @@
   {:arglists '([search-param linked-compartments hash resource])}
   [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
   (when-ok [triples (p/-index-values search-param stub-resolver resource)]
-    (let [{:keys [id]} resource
-          type (name (fhir-spec/fhir-type resource))
-          tid (codec/tid type)
+    (let [{:fhir/keys [type] :keys [id]} resource
+          tid (codec/tid (name type))
           id (codec/id-byte-string id)
           linked-compartments
           (mapv

@@ -6,5 +6,5 @@
 (s/def :blaze.db/resource-cache
   #(satisfies? p/ResourceCache %))
 
-(s/def :blaze.db.resource-cache/max-size
-  nat-int?)
+(s/def :blaze.db.resource-cache/max-size-ratio
+  (s/or :int int? :double double?))

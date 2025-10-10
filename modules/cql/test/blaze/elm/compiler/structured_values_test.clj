@@ -22,8 +22,7 @@
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
   (:import
-   [blaze.elm.code Code]
-   [java.time Instant]))
+   [blaze.elm.code Code]))
 
 (st/instrument)
 (ctu/instrument-compile)
@@ -59,27 +58,27 @@
 
   (is (= "value-170805" (p/get #fhir/base64Binary "value-170805" :value)))
 
-  (is (= Instant/EPOCH (p/get #fhir/instant "1970-01-01T00:00:00Z" :value)))
+  (is (= #system/date-time "1970-01-01T00:00:00Z" (p/get #fhir/instant #system/date-time "1970-01-01T00:00:00Z" :value)))
 
-  (is (= #system/date"2025" (p/get #fhir/date "2025" :value)))
+  (is (= #system/date"2025" (p/get #fhir/date #system/date "2025" :value)))
 
-  (is (= #system/date"2025-04" (p/get #fhir/date "2025-04" :value)))
+  (is (= #system/date"2025-04" (p/get #fhir/date #system/date "2025-04" :value)))
 
-  (is (= #system/date"2025-04-09" (p/get #fhir/date "2025-04-09" :value)))
+  (is (= #system/date"2025-04-09" (p/get #fhir/date #system/date "2025-04-09" :value)))
 
-  (is (= #system/date-time"2025" (p/get #fhir/dateTime "2025" :value)))
+  (is (= #system/date-time"2025" (p/get #fhir/dateTime #system/date-time "2025" :value)))
 
-  (is (= #system/date-time"2025-04" (p/get #fhir/dateTime "2025-04" :value)))
+  (is (= #system/date-time"2025-04" (p/get #fhir/dateTime #system/date-time "2025-04" :value)))
 
-  (is (= #system/date-time"2025-04-09" (p/get #fhir/dateTime "2025-04-09" :value)))
+  (is (= #system/date-time"2025-04-09" (p/get #fhir/dateTime #system/date-time "2025-04-09" :value)))
 
-  (is (= #system/date-time"2025-04-09T12:34:56" (p/get #fhir/dateTime "2025-04-09T12:34:56" :value)))
+  (is (= #system/date-time"2025-04-09T12:34:56" (p/get #fhir/dateTime #system/date-time "2025-04-09T12:34:56" :value)))
 
-  (is (= #system/date-time"2025-04-09T12:34:56Z" (p/get #fhir/dateTime "2025-04-09T12:34:56Z" :value)))
+  (is (= #system/date-time"2025-04-09T12:34:56Z" (p/get #fhir/dateTime #system/date-time "2025-04-09T12:34:56Z" :value)))
 
-  (is (= #system/date-time"2025-04-09T12:34:56+01:00" (p/get #fhir/dateTime "2025-04-09T12:34:56+01:00" :value)))
+  (is (= #system/date-time"2025-04-09T12:34:56+01:00" (p/get #fhir/dateTime #system/date-time "2025-04-09T12:34:56+01:00" :value)))
 
-  (is (= #system/time"17:20:08" (p/get #fhir/time "17:20:08" :value)))
+  (is (= #system/time"17:20:08" (p/get #fhir/time #system/time "17:20:08" :value)))
 
   (is (= "value-165314" (p/get #fhir/code "value-165314" :value)))
 
@@ -95,7 +94,7 @@
 
   (is (= 1 (p/get #fhir/positiveInt 1 :value)))
 
-  (is (= #uuid"6a989368-0d9a-48b0-8bdb-5b61e29f9b39" (p/get #fhir/uuid "urn:uuid:6a989368-0d9a-48b0-8bdb-5b61e29f9b39" :value))))
+  (is (= "urn:uuid:6a989368-0d9a-48b0-8bdb-5b61e29f9b39" (p/get #fhir/uuid "urn:uuid:6a989368-0d9a-48b0-8bdb-5b61e29f9b39" :value))))
 
 ;; 2.1. Tuple
 ;;
@@ -336,7 +335,7 @@
 
           (testing "eval"
             (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
-              #fhir/date "2023-05-07" #system/date"2023-05-07"
+              #fhir/date #system/date "2023-05-07" #system/date"2023-05-07"
               #fhir/date{:id "foo" :value #system/date"2023-05-07"} #system/date"2023-05-07"
               #fhir/date{:id "foo"} nil
               #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
@@ -510,7 +509,7 @@
 
         (testing "eval"
           (are [birth-date res] (= res (core/-eval expr {:expression-defs {"Patient" {:expression (source birth-date)}}} nil nil))
-            #fhir/date "2023-05-07" #system/date"2023-05-07"
+            #fhir/date #system/date "2023-05-07" #system/date"2023-05-07"
             #fhir/date{:id "foo" :value #system/date"2023-05-07"} #system/date"2023-05-07"
             #fhir/date{:id "foo"} nil
             #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
@@ -526,9 +525,9 @@
           (let [expr-def {:type "ExpressionDef"
                           :context "Patient"
                           :name "Patient"
-                          :expression (source #fhir/date "2023-05-07")}
+                          :expression (source #fhir/date #system/date "2023-05-07")}
                 expr (c/resolve-refs expr {"Patient" expr-def})]
-            (has-form expr (list :value (list :birthDate (source #fhir/date "2023-05-07"))))))
+            (has-form expr (list :value (list :birthDate (source #fhir/date #system/date "2023-05-07"))))))
 
         (testing "resolve parameters"
           (let [expr (c/resolve-params expr {})]

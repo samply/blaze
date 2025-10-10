@@ -23,7 +23,6 @@
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
    [blaze.fhir.hash :as hash]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
@@ -168,7 +167,7 @@
   (= (count tx-ops) (count (into #{} (map (comp :id second)) tx-ops))))
 
 (defn- create-tx [resource-gen max-ops]
-  (gen/such-that unique-ids? (gen/vector (create-tx-op resource-gen) 1 max-ops)))
+  (gen/such-that unique-ids? (gen/vector (create-tx-op resource-gen) 1 max-ops) 1000))
 
 (defn- kebab->pascal [s]
   (.to CaseFormat/LOWER_HYPHEN CaseFormat/UPPER_CAMEL s))
@@ -207,7 +206,7 @@
       (concat observations encounters procedures medication-administrations))))
 
 (defn- pull-resource [db type id]
-  (d/pull db (d/resource-handle db type id)))
+  (some->> (d/resource-handle db type id) (d/pull db)))
 
 (deftest transact-create-test
   (testing "one Patient"
@@ -276,9 +275,11 @@
    @(d/pull-many node-or-db (vec (d/type-list (ensure-db node-or-db) type start-id)))))
 
 (deftest ^:slow transact-create-property-test
-  (doseq [gen `[fg/patient fg/observation fg/encounter fg/procedure
-                fg/allergy-intolerance fg/diagnostic-report fg/library]]
-    (satisfies-prop 20
+  (doseq [gen `[fg/activity-definition fg/allergy-intolerance fg/bundle fg/claim
+                fg/code-system fg/condition fg/consent fg/diagnostic-report
+                fg/encounter fg/imaging-study fg/library fg/medication-administration
+                fg/observation fg/patient  fg/procedure fg/task fg/value-set]]
+    (satisfies-prop 10
       (prop/for-all [tx-ops (create-tx ((resolve gen)) 20)]
         (with-system-data [{:blaze.db/keys [node]} config]
           [tx-ops]
@@ -328,9 +329,9 @@
   (testing "on multiple matching Patients"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2020"}]
+               :birthDate #fhir/date #system/date "2020"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2020"}]]]
+               :birthDate #fhir/date #system/date "2020"}]]]
 
       (testing "causes a transaction abort with conflict"
         (given-failed-future
@@ -392,7 +393,7 @@
                :birthDate
                #fhir/date
                 {:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]
-                 :value "2022"}}]]]
+                 :value #system/date "2022"}}]]]
 
       (testing "the Patient was created"
         (given @(pull-resource (d/db node) "Patient" "0")
@@ -1797,14 +1798,13 @@
             (is (= 1 (d/since-t batch-db)))))
 
         (testing "multiple calls to since"
-          (st/unstrument)
           (is (= 1 (-> db-2 (d/since Instant/EPOCH) (d/since inst-1) d/since-t))))
 
         (let [db-1->2 (d/since db-2 inst-1)
               dbs [db-1->2 db-2]]
           (testing "since db looks the same as db"
             (doseq [db dbs]
-              (given @(d/pull node (d/resource-handle db "Patient" "0"))
+              (given @(pull-resource db "Patient" "0")
                 :id := "0"
                 [:meta :versionId] := #fhir/id "2"
                 :gender := #fhir/code "female"))
@@ -1888,7 +1888,7 @@
               dbs [db2->4 db-4]]
           (testing "since db looks the same as db for changed instances"
             (doseq [db dbs]
-              (given @(d/pull node (d/resource-handle db "Patient" "1"))
+              (given @(pull-resource db "Patient" "1")
                 :id := "1"
                 [:meta :versionId] := #fhir/id "4"
                 :gender := #fhir/code "female"))
@@ -1909,7 +1909,7 @@
 
             (is (nil? (d/resource-handle db2->4 "Patient" "0")))
 
-            (given @(d/pull node (d/resource-handle db2->4 "Patient" "1"))
+            (given @(pull-resource db2->4 "Patient" "1")
               :id := "1"
               [:meta :versionId] := #fhir/id "4")
 
@@ -2011,11 +2011,11 @@
 
       (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
 
-        (testing "is not deleted"
-          (is (not (d/deleted? resource-handle))))
-
         (testing "is actually one"
-          (is (d/resource-handle? resource-handle))))))
+          (is (some? (d/resource-handle? resource-handle))))
+
+        (testing "is not deleted"
+          (is (not (d/deleted? resource-handle)))))))
 
   (testing "doesn't find a resource handle mit prefix of it's id"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -2091,9 +2091,9 @@
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta fhir-spec/fhir-type] := :fhir/Meta
+          [0 :meta :fhir/type] := :fhir/Meta
           [0 :meta :versionId] := #fhir/id "1"
-          [0 :meta :lastUpdated] := Instant/EPOCH))))
+          [0 :meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))
 
   (testing "a node with one deleted patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -2496,7 +2496,7 @@
                :identifier [#fhir/Identifier{:value #fhir/string "0"}]
                :active #fhir/boolean false
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2020-02-08"
+               :birthDate #fhir/date #system/date "2020-02-08"
                :deceased #fhir/boolean true
                :address
                [#fhir/Address{:line [#fhir/string "Philipp-Rosenthal-Straße 27"]
@@ -2505,28 +2505,28 @@
         [:put {:fhir/type :fhir/Patient :id "id-1"
                :active #fhir/boolean true
                :gender #fhir/code "female"
-               :birthDate #fhir/date "2020-02"
+               :birthDate #fhir/date #system/date "2020-02"
                :address [#fhir/Address{:city #fhir/string "Berlin"}]
                :telecom
-               [{:fhir/type :fhir/ContactPoint
-                 :system #fhir/code "email"
-                 :value #fhir/string "foo@bar.baz"}
-                {:fhir/type :fhir/ContactPoint
-                 :system #fhir/code "phone"
-                 :value #fhir/string "0815"}]}]
+               [#fhir/ContactPoint
+                 {:system #fhir/code "email"
+                  :value #fhir/string "foo@bar.baz"}
+                #fhir/ContactPoint
+                 {:system #fhir/code "phone"
+                  :value #fhir/string "0815"}]}]
         [:put {:fhir/type :fhir/Patient :id "id-2"
                :active #fhir/boolean false
                :gender #fhir/code "female"
-               :birthDate #fhir/date "2020"
-               :deceased #fhir/dateTime "2020-03"
+               :birthDate #fhir/date #system/date "2020"
+               :deceased #fhir/dateTime #system/date-time "2020-03"
                :address
                [#fhir/Address{:line [#fhir/string "Liebigstraße 20a"]
                               :city #fhir/string "Leipzig"}]
                :name [#fhir/HumanName{:family #fhir/string "Schmidt"}]}]
         [:put {:fhir/type :fhir/Patient :id "id-3"
-               :birthDate #fhir/date "2019"}]
+               :birthDate #fhir/date #system/date "2019"}]
         [:put {:fhir/type :fhir/Patient :id "id-4"
-               :birthDate #fhir/date "2021"}]
+               :birthDate #fhir/date #system/date "2021"}]
         [:put {:fhir/type :fhir/Patient :id "id-5"}]]
        [[:delete "Patient" "id-5"]]]
 
@@ -3351,13 +3351,13 @@
         [:put {:fhir/type :fhir/TestScript
                :id "id-0"
                :useContext
-               [{:fhir/type :fhir/UsageContext
-                 :value
-                 #fhir/Quantity
-                  {:value #fhir/decimal 0M
-                   :unit #fhir/string "m"
-                   :code #fhir/code "m"
-                   :system #fhir/uri "http://unitsofmeasure.org"}}]}]]]
+               [#fhir/UsageContext
+                 {:value
+                  #fhir/Quantity
+                   {:value #fhir/decimal 0M
+                    :unit #fhir/string "m"
+                    :code #fhir/code "m"
+                    :system #fhir/uri "http://unitsofmeasure.org"}}]}]]]
 
       (testing "ResourceSearchParamValue index looks like it should"
         (is (= (r-sp-v-tu/decode-index-entries
@@ -3377,13 +3377,13 @@
                  "combo-value-quantity" #blaze/byte-string"9B780D9180"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
                  "_lastUpdated" #blaze/byte-string"80008001"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" "id-0" #blaze/hash-prefix"9668006A"
                  "context-quantity" #blaze/byte-string"0000000080"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" "id-0" #blaze/hash-prefix"9668006A"
                  "context-quantity" #blaze/byte-string"5C38E45A80"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" "id-0" #blaze/hash-prefix"9668006A"
                  "context-quantity" #blaze/byte-string"9B780D9180"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" "id-0" #blaze/hash-prefix"9668006A"
                  "_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "TestScript would be found"
@@ -3402,22 +3402,22 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient
                :id "id-0"
-               :birthDate #fhir/date "1900"}]
+               :birthDate #fhir/date #system/date "1900"}]
         [:put {:fhir/type :fhir/Patient
                :id "id-1"
-               :birthDate #fhir/date "1960"}]
+               :birthDate #fhir/date #system/date "1960"}]
         [:put {:fhir/type :fhir/Patient
                :id "id-2"
-               :birthDate #fhir/date "1970"}]
+               :birthDate #fhir/date #system/date "1970"}]
         [:put {:fhir/type :fhir/Patient
                :id "id-3"
-               :birthDate #fhir/date "1980"}]
+               :birthDate #fhir/date #system/date "1980"}]
         [:put {:fhir/type :fhir/Patient
                :id "id-4"
-               :birthDate #fhir/date "2020"}]
+               :birthDate #fhir/date #system/date "2020"}]
         [:put {:fhir/type :fhir/Patient
                :id "id-5"
-               :birthDate #fhir/date "2100"}]]]
+               :birthDate #fhir/date #system/date "2100"}]]]
 
       (given-type-query node "Patient" [["birthdate" "ge1900"]]
         count := 6
@@ -3441,13 +3441,13 @@
                       :code #fhir/code "code-164847"}]}
                  :prediction
                  [{:fhir/type :fhir.RiskAssessment/prediction
-                   :probability 0.9M}]}]
+                   :probability #fhir/decimal 0.9M}]}]
           [:put {:fhir/type :fhir/RiskAssessment
                  :id "id-1"
                  :status #fhir/code "final"
                  :prediction
                  [{:fhir/type :fhir.RiskAssessment/prediction
-                   :probability 0.1M}]}]
+                   :probability #fhir/decimal 0.1M}]}]
           [:put {:fhir/type :fhir/RiskAssessment
                  :id "id-2"
                  :method
@@ -3810,22 +3810,22 @@
         [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
          [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
          [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true
-                 :birthDate #fhir/date "2020"}]]]
+                 :birthDate #fhir/date #system/date "2020"}]]]
 
         (given-type-query node "Patient" [["active" "true"]]
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :birthDate] := #fhir/date "2020")))
+          [0 :birthDate] := #fhir/date #system/date "2020")))
 
     (testing "date search param"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true
-                 :birthDate #fhir/date "2025"}]]
+                 :birthDate #fhir/date #system/date "2025"}]]
          [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true
-                 :birthDate #fhir/date "2024"}]]
+                 :birthDate #fhir/date #system/date "2024"}]]
          [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true
-                 :birthDate #fhir/date "2025"
+                 :birthDate #fhir/date #system/date "2025"
                  :gender #fhir/code "female"}]]]
 
         (doseq [clauses [[["birthdate" "2025"]]
@@ -3842,7 +3842,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true
-               :birthDate #fhir/date "2020"}]]
+               :birthDate #fhir/date #system/date "2020"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]]
 
       (given-type-query node "Patient" [["active" "true"]]
@@ -4140,9 +4140,7 @@
                  {:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/icd-10-gm"
                   :code #fhir/code "C71.4"}]}
              :subject #fhir/Reference{:reference #fhir/string "Patient/id-0"}
-             :onset
-             {:fhir/type :fhir/Age
-              :value #fhir/decimal 63M}}]
+             :onset #fhir/Age{:value #fhir/decimal 63M}}]
       [:put {:fhir/type :fhir/Condition :id "id-1"}]]]
 
     (testing "patient"
@@ -4262,8 +4260,8 @@
              :status #fhir/code "final"
              :effective
              #fhir/Period
-              {:start #fhir/dateTime "2021-02-23T15:12:45+01:00"
-               :end #fhir/dateTime "2021-02-23T16:00:00+01:00"}
+              {:start #fhir/dateTime #system/date-time "2021-02-23T15:12:45+01:00"
+               :end #fhir/dateTime #system/date-time "2021-02-23T16:00:00+01:00"}
              :value
              #fhir/Quantity
               {:value #fhir/decimal 0M
@@ -4273,7 +4271,7 @@
       [:put {:fhir/type :fhir/Observation :id "id-1"
              :meta #fhir/Meta{:profile [#fhir/canonical "http://example.com/profile-uri-091902|1.1.0"]}
              :status #fhir/code "final"
-             :effective #fhir/dateTime "2021-02-25"
+             :effective #fhir/dateTime #system/date-time "2021-02-25"
              :value
              #fhir/Quantity
               {:value #fhir/decimal 1M
@@ -5585,10 +5583,10 @@
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/Patient :id "1"}]
       [:put {:fhir/type :fhir/Observation :id "0"
-             :effective #fhir/dateTime "1990-06-14T12:24:48Z"
+             :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"
              :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
       [:put {:fhir/type :fhir/Observation :id "1"
-             :effective #fhir/dateTime "1990-06-14T12:24:48Z"
+             :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"
              :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
 
     (testing "as first clause"
@@ -5742,15 +5740,13 @@
 (deftest type-query-encounter-test
   (testing "duplicates are removed"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Encounter
-               :id "0"
+      [[[:put {:fhir/type :fhir/Encounter :id "0"
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition #fhir/Reference{:reference #fhir/string "Condition/0"}}
                 {:fhir/type :fhir.Encounter/diagnosis
                  :condition #fhir/Reference{:reference #fhir/string "Condition/1"}}]}]
-        [:put {:fhir/type :fhir/Encounter
-               :id "1"
+        [:put {:fhir/type :fhir/Encounter :id "1"
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition #fhir/Reference{:reference #fhir/string "Condition/1"}}
@@ -5769,7 +5765,28 @@
       (testing "on pulling the second page"
         (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]] "1")
           count := 1
-          [0 :id] := "1")))))
+          [0 :id] := "1"))))
+
+  (testing "Encounter.length (Duration)"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Encounter :id "0"
+               :length #fhir/Duration{:value #fhir/decimal 1M :code #fhir/code"s"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1"
+               :length #fhir/Duration{:value #fhir/decimal 2M :code #fhir/code"s"}}]
+        [:put {:fhir/type :fhir/Encounter :id "2"
+               :length #fhir/Duration{:value #fhir/decimal 1M :code #fhir/code"s"}}]]]
+
+      (let [clauses [["length" "1|s"]]]
+        (testing "on pulling all resource handles"
+          (given-type-query node "Encounter" clauses
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "2"))
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Encounter" clauses "2")
+            count := 1
+            [0 :id] := "2"))))))
 
 (deftest type-query-multiple-clauses-test
   (testing "with two token search params"
@@ -5853,16 +5870,16 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Observation :id "0"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "2025"}]
+               :effective #fhir/dateTime #system/date-time "2025"}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :status #fhir/code "preliminary"
-               :effective #fhir/dateTime "2025"}]
+               :effective #fhir/dateTime #system/date-time "2025"}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "2026"}]
+               :effective #fhir/dateTime #system/date-time "2026"}]
         [:put {:fhir/type :fhir/Observation :id "3"
                :status #fhir/code "preliminary"
-               :effective #fhir/dateTime "2026"}]]]
+               :effective #fhir/dateTime #system/date-time "2026"}]]]
 
       (let [clauses [["status" "final"] ["date" "2025"]]]
         (given-type-query node "Observation" clauses
@@ -5910,19 +5927,19 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Observation :id "0"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:47Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:47Z"}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:48Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:48Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "3"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:48Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "4"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:49Z"}]]]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:49Z"}]]]
 
       (let [clauses [["date" "1990-06-14T12:24:48Z"]]]
         (given-type-query node "Observation" clauses
@@ -5969,19 +5986,19 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Observation :id "0"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:47Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:47Z"}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:48Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:48Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "3"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:48Z"}]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:48Z"}]
         [:put {:fhir/type :fhir/Observation :id "4"
                :status #fhir/code "final"
-               :effective #fhir/dateTime "1990-06-14T12:24:49Z"}]]]
+               :effective #fhir/dateTime #system/date-time "1990-06-14T12:24:49Z"}]]]
 
       (given-type-query node "Observation" [["date" "ne1990-06-14T12:24:48Z"]]
         count := 2
@@ -6010,11 +6027,11 @@
   (testing "year precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1990"}]
+               :birthDate #fhir/date #system/date "1990"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "1991"}]
+               :birthDate #fhir/date #system/date "1991"}]
         [:put {:fhir/type :fhir/Patient :id "2"
-               :birthDate #fhir/date "1992"}]]]
+               :birthDate #fhir/date #system/date "1992"}]]]
 
       (given-type-query node "Patient" [["birthdate" "gt1990"]]
         count := 2
@@ -6029,9 +6046,9 @@
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2022-12-15"}]]]
+               :birthDate #fhir/date #system/date "2022-12-15"}]]]
 
       (given-type-query node "Patient" [["birthdate" "gt2022-12-14"]]
         count := 1
@@ -6041,10 +6058,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-15"}]]]
+               :birthDate #fhir/date #system/date "2022-12-15"}]]]
 
       (given-type-query node "Patient" [["gender" "male"]
                                         ["birthdate" "gt2022-12-14"]]
@@ -6055,13 +6072,13 @@
   (testing "year precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1970"}]]
+               :birthDate #fhir/date #system/date "1970"}]]
        [[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1990"}]
+               :birthDate #fhir/date #system/date "1990"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "1989"}]
+               :birthDate #fhir/date #system/date "1989"}]
         [:put {:fhir/type :fhir/Patient :id "2"
-               :birthDate #fhir/date "1988"}]]]
+               :birthDate #fhir/date #system/date "1988"}]]]
 
       (doseq [clauses [[["birthdate" "lt1990"]]
                        [["birthdate" "lt1990" "le1989"]]]]
@@ -6078,9 +6095,9 @@
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2022-12-13"}]]]
+               :birthDate #fhir/date #system/date "2022-12-13"}]]]
 
       (given-type-query node "Patient" [["birthdate" "lt2022-12-14"]]
         count := 1
@@ -6090,10 +6107,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-13"}]]]
+               :birthDate #fhir/date #system/date "2022-12-13"}]]]
 
       (given-type-query node "Patient" [["gender" "male"]
                                         ["birthdate" "lt2022-12-14"]]
@@ -6104,11 +6121,11 @@
   (testing "year precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1990"}]
+               :birthDate #fhir/date #system/date "1990"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "1991"}]
+               :birthDate #fhir/date #system/date "1991"}]
         [:put {:fhir/type :fhir/Patient :id "2"
-               :birthDate #fhir/date "1992"}]]]
+               :birthDate #fhir/date #system/date "1992"}]]]
 
       (given-type-query node "Patient" [["birthdate" "ge1990"]]
         count := 3
@@ -6125,9 +6142,9 @@
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2022-12-15"}]]]
+               :birthDate #fhir/date #system/date "2022-12-15"}]]]
 
       (given-type-query node "Patient" [["birthdate" "ge2022-12-14"]]
         count := 2
@@ -6138,10 +6155,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-15"}]]]
+               :birthDate #fhir/date #system/date "2022-12-15"}]]]
 
       (given-type-query node "Patient" [["gender" "male"]
                                         ["birthdate" "ge2022-12-14"]]
@@ -6153,13 +6170,13 @@
   (testing "year precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1970"}]]
+               :birthDate #fhir/date #system/date "1970"}]]
        [[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1990"}]
+               :birthDate #fhir/date #system/date "1990"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "1989"}]
+               :birthDate #fhir/date #system/date "1989"}]
         [:put {:fhir/type :fhir/Patient :id "2"
-               :birthDate #fhir/date "1988"}]]]
+               :birthDate #fhir/date #system/date "1988"}]]]
 
       (given-type-query node "Patient" [["birthdate" "le1990"]]
         count := 3
@@ -6176,9 +6193,9 @@
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2022-12-13"}]]]
+               :birthDate #fhir/date #system/date "2022-12-13"}]]]
 
       (given-type-query node "Patient" [["birthdate" "le2022-12-14"]]
         count := 2
@@ -6189,10 +6206,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-13"}]]]
+               :birthDate #fhir/date #system/date "2022-12-13"}]]]
 
       (given-type-query node "Patient" [["gender" "male"]
                                         ["birthdate" "le2022-12-14"]]
@@ -6204,11 +6221,11 @@
   (testing "year precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1990"}]
+               :birthDate #fhir/date #system/date "1990"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "1991"}]
+               :birthDate #fhir/date #system/date "1991"}]
         [:put {:fhir/type :fhir/Patient :id "2"
-               :birthDate #fhir/date "1992"}]]]
+               :birthDate #fhir/date #system/date "1992"}]]]
 
       (given-type-query node "Patient" [["birthdate" "sa1990"]]
         count := 2
@@ -6223,9 +6240,9 @@
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2022-12-15"}]]]
+               :birthDate #fhir/date #system/date "2022-12-15"}]]]
 
       (given-type-query node "Patient" [["birthdate" "sa2022-12-14"]]
         count := 1
@@ -6235,10 +6252,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-15"}]]]
+               :birthDate #fhir/date #system/date "2022-12-15"}]]]
 
       (given-type-query node "Patient" [["gender" "male"]
                                         ["birthdate" "sa2022-12-14"]]
@@ -6249,13 +6266,13 @@
   (testing "year precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1970"}]]
+               :birthDate #fhir/date #system/date "1970"}]]
        [[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "1990"}]
+               :birthDate #fhir/date #system/date "1990"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "1989"}]
+               :birthDate #fhir/date #system/date "1989"}]
         [:put {:fhir/type :fhir/Patient :id "2"
-               :birthDate #fhir/date "1988"}]]]
+               :birthDate #fhir/date #system/date "1988"}]]]
 
       (given-type-query node "Patient" [["birthdate" "eb1990"]]
         count := 2
@@ -6270,9 +6287,9 @@
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2022-12-13"}]]]
+               :birthDate #fhir/date #system/date "2022-12-13"}]]]
 
       (given-type-query node "Patient" [["birthdate" "eb2022-12-14"]]
         count := 1
@@ -6282,10 +6299,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-14"}]
+               :birthDate #fhir/date #system/date "2022-12-14"}]
         [:put {:fhir/type :fhir/Patient :id "1"
                :gender #fhir/code "male"
-               :birthDate #fhir/date "2022-12-13"}]]]
+               :birthDate #fhir/date #system/date "2022-12-13"}]]]
 
       (given-type-query node "Patient" [["gender" "male"]
                                         ["birthdate" "eb2022-12-14"]]
@@ -6295,17 +6312,17 @@
 (deftest type-query-date-encounter-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Encounter :id "E1"
-             :period #fhir/Period{:start #fhir/dateTime "1999-08"
-                                  :end #fhir/dateTime "2000-04"}}]]
+             :period #fhir/Period{:start #fhir/dateTime #system/date-time "1999-08"
+                                  :end #fhir/dateTime #system/date-time "2000-04"}}]]
      [[:put {:fhir/type :fhir/Encounter :id "E2"
-             :period #fhir/Period{:start #fhir/dateTime "2000-03"
-                                  :end #fhir/dateTime "2000-10"}}]]
+             :period #fhir/Period{:start #fhir/dateTime #system/date-time "2000-03"
+                                  :end #fhir/dateTime #system/date-time "2000-10"}}]]
      [[:put {:fhir/type :fhir/Encounter :id "E3"
-             :period #fhir/Period{:start #fhir/dateTime "1999-11"
-                                  :end #fhir/dateTime "2001-04"}}]]
+             :period #fhir/Period{:start #fhir/dateTime #system/date-time "1999-11"
+                                  :end #fhir/dateTime #system/date-time "2001-04"}}]]
      [[:put {:fhir/type :fhir/Encounter :id "E4"
-             :period #fhir/Period{:start #fhir/dateTime "2000-09"
-                                  :end #fhir/dateTime "2001-07"}}]]]
+             :period #fhir/Period{:start #fhir/dateTime #system/date-time "2000-09"
+                                  :end #fhir/dateTime #system/date-time "2001-07"}}]]]
 
     (let [db (d/db node)
           num-encounter #(count (d/type-query db "Encounter" %))]
@@ -6333,7 +6350,7 @@
 
 (def encounter-gen
   (let [date-time (fg/dateTime :extension (gen/return nil)
-                               :value (gen/fmap (partial apply format "%04d-%02d-%02d")
+                               :value (gen/fmap (comp system/parse-date-time (partial apply format "%04d-%02d-%02d"))
                                                 (gen/tuple (gen/choose 1999 2001) fg/month fg/day)))]
     (fg/encounter
      :id (gen/fmap str gen/uuid)
@@ -6387,13 +6404,13 @@
    (system/date-time-upper-bound date-time)])
 
 (defn- fhir-date-time-range [x]
-  (condp = (type/type x)
+  (case (:fhir/type x)
     :fhir/Period
-    [(system/date-time-lower-bound (type/value (:start x)))
-     (system/date-time-upper-bound (type/value (:end x)))]
-    :fhir/dateTime
-    [(system/date-time-lower-bound (type/value x))
-     (system/date-time-upper-bound (type/value x))]))
+    [(system/date-time-lower-bound (:value (:start x)))
+     (system/date-time-upper-bound (:value (:end x)))]
+    (:fhir/dateTime :fhir/instant)
+    [(system/date-time-lower-bound (:value x))
+     (system/date-time-upper-bound (:value x))]))
 
 (defn- fully-contains? [[x1 x2] [y1 y2]]
   (<= x1 y1 y2 x2))
@@ -6489,7 +6506,7 @@
 
 (defn- every-found-observation-matches? [pred node prefix date-time]
   (let [pull (partial pull-type-query node "Observation")
-        pred (comp (pred (system/parse-date-time date-time)) :effective)
+        pred (comp (pred date-time) :effective)
         observations (pull [["date" (str prefix date-time)]])]
     (and (every? pred observations)
          (or (< (count observations) 2)
@@ -6505,12 +6522,28 @@
    :id (gen/fmap str gen/uuid)
    :meta (gen/return nil)
    :identifier (gen/return nil)
+   :basedOn (gen/return nil)
+   :partOf (gen/return nil)
    :status (gen/return #fhir/code "final")
    :category (gen/return nil)
    :code (gen/return nil)
    :subject (gen/return nil)
+   :focus (gen/return nil)
    :encounter (gen/return nil)
-   :value (gen/return nil)))
+   :issued (gen/return nil)
+   :performer (gen/return nil)
+   :value (gen/return nil)
+   :dataAbsentReason (gen/return nil)
+   :interpretation (gen/return nil)
+   :note (gen/return nil)
+   :bodySite (gen/return nil)
+   :method (gen/return nil)
+   :specimen (gen/return nil)
+   :device (gen/return nil)
+   :referenceRange (gen/return nil)
+   :hasMember (gen/return nil)
+   :derivedFrom (gen/return nil)
+   :component (gen/return nil)))
 
 (deftest ^:slow type-query-date-equal-generative-test
   (log/set-min-level! :warn)
@@ -6606,7 +6639,7 @@
   (testing "Encounter"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Encounter :id "0"
-               :period #fhir/Period{:start #fhir/dateTime "2016"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2016"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
@@ -6616,14 +6649,14 @@
                  #fhir/Reference{:reference #fhir/string "Condition/2"}}]}]
         [:put {:fhir/type :fhir/Encounter :id "1"
                :status #fhir/code "finished"
-               :period #fhir/Period{:start #fhir/dateTime "2016"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2016"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
                  #fhir/Reference{:reference #fhir/string "Condition/1"}}]}]
         [:put {:fhir/type :fhir/Encounter :id "2"
                :status #fhir/code "finished"
-               :period #fhir/Period{:start #fhir/dateTime "2016"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2016"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
@@ -6984,8 +7017,8 @@
    :identifier [(type/identifier {:value (type/string (str i))})]})
 
 (deftest type-query-identifier-non-matching-test
-  (st/unstrument)
   (log/set-min-level! :info)
+  (st/unstrument)
   (testing "doesn't return non-matching resources"
     (let [test-size 200000]
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -7195,41 +7228,41 @@
         (testing "with unit"
           (given-type-query node "Location" [in-leipzig]
             count := 1
-            [0 :name] := "Leipzig"))
+            [0 :name] := #fhir/string "Leipzig"))
 
         (testing "without unit"
           (given-type-query node "Location" [london-900km]
             count := 2
-            [0 :name] := "London"
-            [1 :name] := "Leipzig"))
+            [0 :name] := #fhir/string "London"
+            [1 :name] := #fhir/string "Leipzig"))
 
         (testing "with more than one value"
           (given-type-query node "Location" [london-florence-900km]
             count := 2
-            [0 :name] := "London"
-            [1 :name] := "Leipzig"))
+            [0 :name] := #fhir/string "London"
+            [1 :name] := #fhir/string "Leipzig"))
 
         (testing "it is possible to start with the second location"
           (given (pull-type-query node "Location" [london-900km] "1")
             count := 1
-            [0 :name] := "Leipzig")
+            [0 :name] := #fhir/string "Leipzig")
 
           (testing "with more than one value"
             (given (pull-type-query node "Location" [london-florence-900km] "1")
               count := 1
-              [0 :name] := "Leipzig"))))
+              [0 :name] := #fhir/string "Leipzig"))))
 
       (testing "status and near"
         (let [clauses [["status" "active"] langsa-1550km]]
           (given (pull-type-query node "Location" clauses)
             count := 1
-            [0 :name] := "Jakarta"))
+            [0 :name] := #fhir/string "Jakarta"))
 
         (testing "with more than one value"
           (let [clauses [["status" "active"] london-florence-900km]]
             (given (pull-type-query node "Location" clauses)
               count := 1
-              [0 :name] := "Leipzig")))
+              [0 :name] := #fhir/string "Leipzig")))
 
         (testing "with many values enforcing a seek for `near`"
           (with-system-data [{:blaze.db/keys [node]} config]
@@ -7253,7 +7286,7 @@
             (let [clauses [["status" "suspended"] london-900km]]
               (given (pull-type-query node "Location" clauses)
                 count := 1
-                [0 :name] := "London")
+                [0 :name] := #fhir/string "London")
 
               (given (explain-type-query node "Location" clauses)
                 :scan-type := :ordered
@@ -7578,9 +7611,9 @@
   (testing "date search param"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2025"}]
+               :birthDate #fhir/date #system/date "2025"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2023"}]]]
+               :birthDate #fhir/date #system/date "2023"}]]]
 
       (with-open-db [db node]
         (doseq [target [node db]
@@ -8188,10 +8221,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Condition :id "1"
-               :onset #fhir/dateTime "2025-07-25"
+               :onset #fhir/dateTime #system/date-time "2025-07-25"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Condition :id "2"
-               :onset #fhir/dateTime "2025-07-26"
+               :onset #fhir/dateTime #system/date-time "2025-07-26"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (testing "only returns the condition with onset <= 2025-07-25"
@@ -8368,7 +8401,7 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))
 
     (testing "summary"
       (testing "CodeSystem"
@@ -8389,7 +8422,7 @@
                 :fhir/type := :fhir/CodeSystem
                 :id := "0"
                 [:meta :versionId] := #fhir/id "1"
-                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
                 [:meta :tag 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
                 [:meta :tag 0 :code] := #fhir/code "SUBSETTED"
                 :url := #fhir/uri "system-115910"
@@ -8415,7 +8448,7 @@
                 :fhir/type := :fhir/ValueSet
                 :id := "0"
                 [:meta :versionId] := #fhir/id "1"
-                [:meta :lastUpdated] := Instant/EPOCH
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
                 [:meta :tag 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
                 [:meta :tag 0 :code] := #fhir/code "SUBSETTED"
                 :url := #fhir/uri "value-set-154043"
@@ -8513,7 +8546,7 @@
             [0 :fhir/type] := :fhir/CodeSystem
             [0 :id] := "0"
             [0 :meta :versionId] := #fhir/id "1"
-            [0 :meta :lastUpdated] := Instant/EPOCH
+            [0 :meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
             [0 :meta :tag 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
             [0 :meta :tag 0 :code] := #fhir/code "SUBSETTED"
             [0 :url] := #fhir/uri "system-115910"
@@ -8523,7 +8556,7 @@
             [1 :fhir/type] := :fhir/ValueSet
             [1 :id] := "0"
             [1 :meta :versionId] := #fhir/id "1"
-            [1 :meta :lastUpdated] := Instant/EPOCH
+            [1 :meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
             [1 :meta :tag 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
             [1 :meta :tag 0 :code] := #fhir/code "SUBSETTED"
             [1 :url] := #fhir/uri "value-set-154043"
@@ -9386,7 +9419,7 @@
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
+                 :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
         (let [db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
@@ -9405,7 +9438,7 @@
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime "2024-01-04T23:45:50Z"}}]]]
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}}]]]
 
         (let [db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
@@ -9424,7 +9457,7 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
+               :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
       (let [db (d/db node)
             patient (d/resource-handle db "Patient" "0")]
@@ -9443,10 +9476,10 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]
+               :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :effective #fhir/dateTime "2025-01-04T23:45:50Z"}]]]
+               :effective #fhir/dateTime #system/date-time "2025-01-04T23:45:50Z"}]]]
 
       (let [db (d/db node)
             patient (d/resource-handle db "Patient" "0")]
@@ -9582,7 +9615,7 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given @(d/pull batch-db (d/resource-handle batch-db "Patient" "0"))
+        (given @(pull-resource batch-db "Patient" "0")
           :fhir/type := :fhir/Patient
           :id := "0"
           [:meta :versionId] := #fhir/id "1"))))

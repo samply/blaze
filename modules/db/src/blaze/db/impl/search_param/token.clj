@@ -16,9 +16,8 @@
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
-   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.string :as str]
    [taoensso.timbre :as log]))
@@ -30,36 +29,40 @@
 
   Index entries are `[modifier value include-in-compartments?]` triples."
   {:arglists '([url value])}
-  (fn [_ value] (fhir-spec/fhir-type value)))
+  (fn [_ value] (or (:fhir/type value) (system/type value))))
 
 (defmethod index-entries :fhir/id
   [_ id]
-  (when-let [value (type/value id)]
+  (when-let [value (:value id)]
     [[nil (codec/v-hash value)]]))
 
 (defmethod index-entries :fhir/string
   [_ s]
-  (when-let [value (type/value s)]
+  (when-let [value (:value s)]
     [[nil (codec/v-hash value)]]))
 
 (defmethod index-entries :fhir/uri
   [_ uri]
-  (when-let [value (type/value uri)]
+  (when-let [value (:value uri)]
     [[nil (codec/v-hash value)]]))
 
 (defmethod index-entries :fhir/url
   [_ url]
-  (when-let [value (type/value url)]
+  (when-let [value (:value url)]
     [[nil (codec/v-hash value)]]))
 
 (defmethod index-entries :fhir/boolean
   [_ boolean]
-  (when-some [value (type/value boolean)]
+  (when-some [value (:value boolean)]
     [[nil (codec/v-hash (str value))]]))
 
+(defmethod index-entries :system/boolean
+  [_ value]
+  [[nil (codec/v-hash (str value))]])
+
 (defmethod index-entries :fhir/canonical
-  [_ uri]
-  (when-let [value (type/value uri)]
+  [_ canonical]
+  (when-let [value (:value canonical)]
     (let [[url version-parts] (u/canonical-parts value)]
       (into
        [[nil (codec/v-hash value)]
@@ -72,21 +75,19 @@
 (defmethod index-entries :fhir/code
   [_ code]
   ;; TODO: system
-  (when-let [value (type/value code)]
+  (when-let [value (:value code)]
     [[nil (codec/v-hash value) true]]))
 
-(defn token-coding-entries [{:keys [code system]}]
-  (let [code (type/value code)
-        system (type/value system)]
-    (cond-> []
-      code
-      (conj [nil (codec/v-hash code)])
-      system
-      (conj [nil (codec/v-hash (str system "|"))])
-      (and code system)
-      (conj [nil (codec/v-hash (str system "|" code)) true])
-      (and code (nil? system))
-      (conj [nil (codec/v-hash (str "|" code))]))))
+(defn token-coding-entries [{{code :value} :code {system :value} :system}]
+  (cond-> []
+    code
+    (conj [nil (codec/v-hash code)])
+    system
+    (conj [nil (codec/v-hash (str system "|"))])
+    (and code system)
+    (conj [nil (codec/v-hash (str system "|" code)) true])
+    (and code (nil? system))
+    (conj [nil (codec/v-hash (str "|" code))])))
 
 (defmethod index-entries :fhir/Coding
   [_ coding]
@@ -96,25 +97,24 @@
   [_ {:keys [coding]}]
   (coll/eduction (mapcat token-coding-entries) coding))
 
-(defn- identifier-entries [modifier {:keys [value system]}]
-  (let [value (type/value value)
-        system (type/value system)]
-    (cond-> []
-      value
-      (conj [modifier (codec/v-hash value)])
-      system
-      (conj [modifier (codec/v-hash (str system "|"))])
-      (and value system)
-      (conj [modifier (codec/v-hash (str system "|" value))])
-      (and value (nil? system))
-      (conj [modifier (codec/v-hash (str "|" value))]))))
+(defn- identifier-entries
+  [modifier {{:keys [value]} :value {system :value} :system}]
+  (cond-> []
+    value
+    (conj [modifier (codec/v-hash value)])
+    system
+    (conj [modifier (codec/v-hash (str system "|"))])
+    (and value system)
+    (conj [modifier (codec/v-hash (str system "|" value))])
+    (and value (nil? system))
+    (conj [modifier (codec/v-hash (str "|" value))])))
 
 (defmethod index-entries :fhir/Identifier
   [_ identifier]
   (identifier-entries nil identifier))
 
 (defn- literal-reference-entries [reference]
-  (when-let [value (type/value reference)]
+  (when-let [value (:value reference)]
     (if-let [[type id] (fsr/split-literal-ref value)]
       [[nil (codec/v-hash id)]
        [nil (codec/v-hash (str type "/" id))]
@@ -134,7 +134,7 @@
 
 (defmethod index-entries :fhir/ContactPoint
   [_ {:keys [value]}]
-  (when-let [value (type/value value)]
+  (when-let [value (:value value)]
     [[nil (codec/v-hash value)]]))
 
 (defmethod index-entries :default
@@ -245,8 +245,8 @@
       (coll/eduction
        (keep
         (fn [value]
-          (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
-            (when-let [reference (type/value (:reference value))]
+          (when (identical? :fhir/Reference (:fhir/type value))
+            (when-let [reference (:value (:reference value))]
               (when-let [[type id] (fsr/split-literal-ref reference)]
                 (when (= "Patient" type)
                   id))))))
@@ -262,18 +262,16 @@
 (def ^:private noop-resolver
   (reify fhir-path/Resolver (-resolve [_ _])))
 
-(defn- identifier-values [{:keys [value system]}]
-  (let [value (type/value value)
-        system (type/value system)]
-    (cond-> []
-      value
-      (conj value)
-      system
-      (conj (str system "|"))
-      (and value system)
-      (conj (str system "|" value))
-      (and value (nil? system))
-      (conj (str "|" value)))))
+(defn- identifier-values [{{:keys [value]} :value {system :value} :system}]
+  (cond-> []
+    value
+    (conj value)
+    system
+    (conj (str system "|"))
+    (and value system)
+    (conj (str system "|" value))
+    (and value (nil? system))
+    (conj (str "|" value))))
 
 (defn- matches-identifier-values? [db expression value-set resource-handle]
   (let [resource @(d/pull db resource-handle)

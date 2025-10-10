@@ -11,3 +11,7 @@
 (s/fdef handler-util/error-response
   :args (s/cat :error some?)
   :ret map?)
+
+(s/fdef handler-util/instant
+  :args (s/cat :tx :blaze.db/tx)
+  :ret :fhir/instant)

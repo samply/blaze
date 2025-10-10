@@ -4,12 +4,11 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :refer [do-sync]]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]
    [clojure.string :as str]))
 
-(defn- link-header-value [{:keys [relation url]}]
-  (str "<" (type/value url) ">;rel=\"" (type/value relation) "\""))
+(defn- link-header-value [{{relation :value} :relation {url :value} :url}]
+  (str "<" url ">;rel=\"" relation "\""))
 
 (defn- add-link-header [response links]
   (let [value (str/join "," (map link-header-value links))]

@@ -12,7 +12,7 @@ WORKDIR /app
 USER 1001
 
 ENV LD_PRELOAD="libjemalloc.so.2"
-ENV BASE_JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow"
+ENV BASE_JAVA_TOOL_OPTIONS="-XX:+UseCompactObjectHeaders --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow"
 ENV STORAGE="standalone"
 ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"

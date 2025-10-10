@@ -89,64 +89,76 @@ Although, this internal representation is nearly identical to the JSON represent
  * the name of the polymorphic property `deceased[x]` is changed from `deceasedBoolean` into just `deceased` because the boolean type is now obvious from the value alone. Like the other values, the value of the `birthDate` will be converted from a string into a fitting data type which is `java.time.Year` in this case.
 
 The rules for the internal representation are:
- * use Clojure maps for resources and complex data types
- * each map contains an entry with the key `:fhir/type` and the value of the type as keyword with the namespace `fhir`
- * primitive data types will use appropriate plain Java types, or wrappers able to hold extensions
+ * use Clojure maps for resources
+ * use specialized Java classes for complex and primitive data types
+ * resources and data types contain an entry with the key `:fhir/type` and the value of the type as keyword with the namespace `fhir`
+ * primitive data types use specialized Java classes that can hold both the value and extensions
 
-All types used to hold fhir data will implement the `FhirType` protocol. Clojure protocols are like Java interfaces but can be applied to existing types. More about protocols can be found [here][4].
+All internal FHIR types are implemented as Java classes in the `blaze.fhir.spec.type` package and implement the `Base` interface. This interface extends several Clojure interfaces like `IPersistentMap` and `IRecord`, allowing them to be used just like Clojure maps.
 
-```clojure
-(defprotocol FhirType
-  (-type [_])
-  (-value [_]))
+```java
+public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object>, IRecord, IObj, IHashEq {
+    boolean isInterned();
+    Stream<PersistentVector> references();
+    int memSize();
+}
 ```
 
-First, the `-type` method will return the FHIR type of a value and second the `-value` method will return the value of a primitive type as FHIRPath system type. The `FhirType` protocol will ensure that every Java type used for primitive types, together with the maps used for the other types, will look the same.
+Primitive types also implement the `Primitive` interface, which provides access to the underlying value as a FHIRPath system type.
 
-The following table shows the mapping from primitive FHIR types to Java types:
+```java
+public interface Primitive extends ExtensionValue {
+    Object value();
+    String valueAsString();
+}
+```
 
-| FHIR Type    | FHIRPath Type   | Java Type                                                                                                             | Heap Size                                                                  |
-|--------------|-----------------|-----------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
-| boolean      | System.Boolean  | Boolean                                                                                                               | interned                                                                   |
-| integer      | System.Integer  | Integer                                                                                                               | 16 bytes                                                                   |
-| string       | System.String   | String                                                                                                                | 40 bytes + content in 8 bytes increments                                   |
-| decimal      | System.Decimal  | BigDecimal                                                                                                            | 40 bytes for practical small decimals                                      |
-| uri          | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| url          | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| canonical    | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| base64Binary | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| instant      | System.DateTime | Instant or class with embedded OffsetDateTime                                                                         | 24 bytes or 112 bytes                                                      |
-| date         | System.Date     | Year, YearMonth, LocalDate                                                                                            | 16 bytes, 24 bytes, 24 bytes                                               |
-| dateTime     | System.DateTime | Class with embedded Year, Class with embedded YearMonth, Class with embedded LocalDate, LocalDateTime, OffsetDateTime | 32 bytes, 40 bytes, 40 bytes, 72 bytes, 96 bytes (zone offsets are cached) |
-| time         | System.Time     | LocalTime                                                                                                             | 24 bytes                                                                   |
-| code         | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| oid          | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| id           | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| markdown     | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
-| unsignedInt  | System.Integer  | Class with embedded int                                                                                               | 16 bytes                                                                   |
-| positiveInt  | System.Integer  | Class with embedded int                                                                                               | 16 bytes                                                                   |
-| uuid         | System.String   | java.util.UUID                                                                                                        | 32 bytes                                                                   |
+The use of specialized Java classes instead of plain Clojure maps or generic Java types allows for significant memory savings through interning of common values and a more compact data representation.
 
-For `boolean`, `integer` `string` and `decimal`, the obvious Java types are used. `BigDecimal` is used instead of `double` because FHIR recommends a decimal of basis 10.
+The following table shows the mapping from primitive FHIR types to their internal Java classes and FHIRPath system types:
 
-The types, `uri`, `url`, `canonical`, `base64Binary`, `code`, `oid`, `id` and `markdown` are based on the FHIRPath system type `System.String`, which means they have an internal value of type string, but can have extensions, like all other primitive FHIR types. For these types, a thin wrapper is used in case, no extension is given. This wrapper is necessary in order to differentiate it from plain Java strings. The wrapper itself is a Java class, extending the `FhirType` protocol to deliver the type and the internal value. The wrapper class costs 16 bytes of heap space. For this reason, instances of `uri` are 16 bytes bigger than instances of `string`.
+| FHIR Type    | FHIRPath Type   | Java Class                                | Heap Size (no extension)                                                   |
+|--------------|-----------------|-------------------------------------------|----------------------------------------------------------------------------|
+| boolean      | System.Boolean  | `blaze.fhir.spec.type.Boolean`            | interned                                                                   |
+| integer      | System.Integer  | `blaze.fhir.spec.type.Integer`            | 24 bytes                                                                   |
+| string       | System.String   | `blaze.fhir.spec.type.String`             | 32-48 bytes + content                                                      |
+| decimal      | System.Decimal  | `blaze.fhir.spec.type.Decimal`            | 48-64 bytes                                                                |
+| uri          | System.String   | `blaze.fhir.spec.type.Uri`                | 32-48 bytes + content                                                      |
+| url          | System.String   | `blaze.fhir.spec.type.Url`                | 32-48 bytes + content                                                      |
+| canonical    | System.String   | `blaze.fhir.spec.type.Canonical`          | 32-48 bytes + content                                                      |
+| base64Binary | System.String   | `blaze.fhir.spec.type.Base64Binary`       | 32-48 bytes + content                                                      |
+| instant      | System.DateTime | `blaze.fhir.spec.type.Instant`            | 24 bytes (UTC) or 112 bytes                                                |
+| date         | System.Date     | `blaze.fhir.spec.type.Date`               | 32 bytes                                                                   |
+| dateTime     | System.DateTime | `blaze.fhir.spec.type.DateTime`           | 32-112 bytes                                                               |
+| time         | System.Time     | `blaze.fhir.spec.type.Time`               | 32-40 bytes                                                                |
+| code         | System.String   | `blaze.fhir.spec.type.Code`               | 32-48 bytes + content                                                      |
+| oid          | System.String   | `blaze.fhir.spec.type.Oid`                | 32-48 bytes + content                                                      |
+| id           | System.String   | `blaze.fhir.spec.type.Id`                 | 32-48 bytes + content                                                      |
+| markdown     | System.String   | `blaze.fhir.spec.type.Markdown`           | 32-48 bytes + content                                                      |
+| unsignedInt  | System.Integer  | `blaze.fhir.spec.type.UnsignedInt`        | 16-24 bytes                                                                |
+| positiveInt  | System.Integer  | `blaze.fhir.spec.type.PositiveInt`        | 16-24 bytes                                                                |
+| uuid         | System.String   | `blaze.fhir.spec.type.Uuid`               | 40-48 bytes                                                                |
+| xhtml        | System.String   | `blaze.fhir.spec.type.Xhtml`              | 32-48 bytes + content                                                      |
 
-The type `instant` is either, backed by a `java.time.Instant` if the time zone is UTC or by a wrapper class with embedded `java.time.OffsetDateTime`. While using the `java.time.Instant` saves a lot of memory, it can't represent time zones other than UTC so the wrapped `java.time.OffsetDateTime` has to be used in cases where other time zones are used.
+For `boolean`, `integer`, `string` and `decimal`, specialized Blaze classes are used. `BigDecimal` is used internally for `decimal` because FHIR recommends a decimal of basis 10.
 
-The type `date` is represented with the help of the three `java.time` types `Year`, `YearMonth` and `LocalDate`, one for each precision the `date` type supports. Keeping track of the precision is important for FHIR `date` and `dateTime` types and the `java.time` types are a perfect fit here.
+The types `uri`, `url`, `canonical`, `base64Binary`, `code`, `oid`, `id`, `markdown` and `xhtml` are based on the FHIRPath system type `System.String`, which means they have an internal value of type string, but can have extensions. Using specialized classes allows differentiating them from plain `string` values and enables interning of common values.
 
-The type `dateTime` uses wrapper classes with the three former mentioned `java.time` types in order to differentiate them from the ones used for the `date` type. On top of that, `java.time.LocalDateTime` and `java.time.OffsetDateTime` are used to represent date time values with and without time zones.
+The type `instant` is either backed by a `java.time.Instant` if the time zone is UTC or by a `java.time.OffsetDateTime` otherwise.
 
-Last but not least the type `time` is represented by `java.time.LocalTime` and the type `uuid` by `java.util.UUID`.
+The type `date` is represented with the help of specialized system types `DateYear`, `DateYearMonth`, and `DateDate`, one for each precision the `date` type supports. Keeping track of the precision is important for FHIR `date` and `dateTime` types.
+
+Similarly, the type `dateTime` uses specialized system types or `java.time.LocalDateTime` and `java.time.OffsetDateTime` to represent date time values with varying precision and time zone information.
+
+The type `time` is represented by `java.time.LocalTime` and the type `uuid` by `java.util.UUID`, both wrapped in their respective Blaze classes to support extensions.
 
 ## Serialization for storage in the Document Store
 
-In the document store, FHIR resources are serialized in the CBOR format. CBOR stands for Concise Binary Object Representation and is defined in [RFC 7049][5]. CBOR is a binary serialization format.
+In the document store, FHIR resources are serialized in the CBOR format. CBOR stands for Concise Binary Object Representation and is defined in [RFC 7049][4]. CBOR is a binary serialization format.
 
 **TODO: continue...**
 
 [1]: <https://github.com/metosin/jsonista>
 [2]: <https://github.com/clojure/data.xml>
 [3]: <https://clojure.org/reference/data_structures>
-[4]: <https://clojure.org/reference/protocols>
-[5]: <https://tools.ietf.org/html/rfc7049>
+[4]: <https://tools.ietf.org/html/rfc7049>

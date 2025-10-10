@@ -8,8 +8,6 @@
    [blaze.db.impl.search-param.quantity :as spq]
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [cognitect.anomalies :as anom]
    [taoensso.timbre :as log]))
@@ -19,15 +17,15 @@
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
-  (fn [_ value] (fhir-spec/fhir-type value)))
+  (fn [_ value] (:fhir/type value)))
 
 (defmethod index-entries :fhir/decimal
-  [_ value]
-  [[nil (codec/number (type/value value))]])
+  [_ decimal]
+  [[nil (codec/number (:value decimal))]])
 
 (defn- encode-int [value]
   ;; TODO: we should not store the decimal form
-  (codec/number (BigDecimal/valueOf ^long (type/value value))))
+  (codec/number (BigDecimal/valueOf ^long (:value value))))
 
 (defmethod index-entries :fhir/integer
   [_ value]

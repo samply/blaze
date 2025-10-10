@@ -1,15 +1,19 @@
 package blaze.fhir.spec.type.system;
 
 import clojure.lang.Keyword;
+import clojure.lang.RT;
+import com.fasterxml.jackson.core.JsonGenerator;
 
+import java.io.IOException;
 import java.time.DateTimeException;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.Temporal;
 import java.time.temporal.ValueRange;
 
 public interface Date extends JavaSystemType, Temporal {
 
-    Keyword TYPE = Keyword.intern("system", "date");
+    byte HASH_MARKER = 5;
+
+    Keyword TYPE = RT.keyword("system", "date");
 
     ValueRange YEAR_RANGE = ValueRange.of(1, 9999);
 
@@ -18,6 +22,8 @@ public interface Date extends JavaSystemType, Temporal {
     }
 
     DateTime toDateTime();
+
+    void writeTo(JsonGenerator generator) throws IOException;
 
     static Date parse(String s) {
         return switch (s.length()) {

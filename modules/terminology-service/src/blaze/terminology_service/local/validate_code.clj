@@ -8,30 +8,29 @@
 
 (defn issue-anom-clause [{:keys [code system version]} issue]
   (let [{{:keys [text]} :details :as issue} issue]
-    (cond-> (ba/not-found (type/value text) :code code :issues [issue])
+    (cond-> (ba/not-found (:value text) :code code :issues [issue])
       system (assoc :system system)
       version (assoc :version version))))
 
 (defn issue-anom-concept [{:keys [code system version display inactive]} issue]
   (let [{{:keys [text]} :details :as issue} issue]
     (cond-> (ba/not-found
-             (type/value text)
-             :code (type/value code)
-             :system (type/value system)
+             (:value text)
+             :code (:value code)
+             :system (:value system)
              :issues [issue])
-      version (assoc :version (type/value version))
-      display (assoc :display (type/value display))
-      inactive (assoc :inactive (type/value inactive)))))
+      version (assoc :version (:value version))
+      display (assoc :display (:value display))
+      inactive (assoc :inactive (:value inactive)))))
 
 (defn- designation-pred
   ([display]
    (fn [{:keys [value]}]
-     (when (= display (type/value value))
+     (when (= display (:value value))
        value)))
   ([display languages]
    (fn [{:keys [value language]}]
-     (when (and (= display (type/value value))
-                (languages (type/value language)))
+     (when (and (= display (:value value)) (languages (:value language)))
        value))))
 
 (defn- check-display*
@@ -39,7 +38,7 @@
   [{{:keys [display] :as clause} :clause languages :display-languages
     :keys [lenient-display-validation]}
    {designations :designation :as concept}]
-  (if (= display (type/value (:display concept)))
+  (if (= display (:value (:display concept)))
     (assoc concept ::found-display (:display concept))
     (let [pred (if languages
                  (designation-pred display (set languages))
@@ -56,7 +55,7 @@
 (defn- enhance-concept [supplements concept]
   (reduce
    (fn [{:keys [code] :as concept} {{:keys [concepts]} :default/graph}]
-     (let [concept-supplement (concepts (type/value code))]
+     (let [concept-supplement (concepts (:value code))]
        (cond-> concept concept-supplement (merge-concept concept-supplement))))
    concept
    supplements))
@@ -88,7 +87,7 @@
       {:coding
        [(type/coding
          (cond->
-          {:system (type/uri (:system clause))
+          {:system (type/uri-interned (:system clause))
            :code (type/code (:code clause))}
            (:version clause) (assoc :version (type/string (:version clause)))
            (:display clause) (assoc :display (type/string (:display clause)))))]}))))
@@ -101,7 +100,7 @@
    "result" (type/boolean (or result-override false))
    "message" (type/string message)
    "code" (some-> code type/code)
-   "system" (some-> system type/uri)
+   "system" (some-> system type/uri-interned)
    "version" (some-> version type/string)
    "display" (some-> display type/string)
    "inactive" (some-> inactive type/boolean)
@@ -112,7 +111,7 @@
       {:coding
        [(type/coding
          (cond->
-          {:system (type/uri (:system clause))
+          {:system (type/uri-interned (:system clause))
            :code (type/code (:code clause))}
            (:version clause) (assoc :version (type/string (:version clause)))
            (:display clause) (assoc :display (type/string (:display clause)))))]}))))

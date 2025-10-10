@@ -3,7 +3,6 @@
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.loinc.context :as context :refer [url]]
@@ -35,13 +34,13 @@
 (defn- concept-xf [{{:keys [concept-index]} :loinc/context}]
   (keep
    (fn [{:keys [code]}]
-     (concept-index (type/value code)))))
+     (concept-index (:value code)))))
 
 (defn- active-concept-xf [{{:keys [concept-index]} :loinc/context}]
   (keep
    (fn [{:keys [code]}]
-     (when-let [concept (concept-index (type/value code))]
-       (when-not (-> concept :inactive type/value)
+     (when-let [concept (concept-index (:value code))]
+       (when-not (-> concept :inactive :value)
          concept)))))
 
 (defn- remove-properties [concept]
@@ -62,7 +61,7 @@
     (into
      #{}
      (comp
-      (if active-only (filter (comp not type/value :inactive)) identity)
+      (if active-only (filter (comp not :value :inactive)) identity)
       (map remove-properties))
      concepts)))
 

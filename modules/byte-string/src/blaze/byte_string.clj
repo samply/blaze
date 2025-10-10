@@ -1,5 +1,5 @@
 (ns blaze.byte-string
-  (:refer-clojure :exclude [< <= > >= concat empty nth subs])
+  (:refer-clojure :exclude [< <= > concat empty nth subs])
   (:require
    [blaze.byte-buffer :as bb]
    [clojure.string :as str])

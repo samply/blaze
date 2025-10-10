@@ -28,9 +28,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -359,7 +357,7 @@
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH)))))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
     (testing "with return=minimal Prefer header"
       (with-handler [handler]
@@ -451,7 +449,7 @@
                 :fhir/type := :fhir/Patient
                 :id := "0"
                 [:meta :versionId] := #fhir/id "3"
-                [:meta :lastUpdated] := Instant/EPOCH)))))))
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
   (testing "on successful update of an existing resource"
     (testing "with no Prefer header"
@@ -465,7 +463,7 @@
                    ::reitit/match patient-match
                    :headers {"if-match" if-match}
                    :body {:fhir/type :fhir/Patient :id "0"
-                          :birthDate #fhir/date "2020"}})]
+                          :birthDate #fhir/date #system/date "2020"}})]
 
             (testing "Returns 200"
               (is (= 200 status)))
@@ -480,15 +478,15 @@
               (given body
                 :fhir/type := :fhir/Patient
                 :id := "0"
-                :birthDate := #fhir/date "2020"
+                :birthDate := #fhir/date #system/date "2020"
                 [:meta :versionId] := #fhir/id "2"
-                [:meta :lastUpdated] := Instant/EPOCH)))))))
+                [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))))
 
   (testing "on update of an existing resource with identical content"
     (doseq [if-match [nil "W/\"1\"" "W/\"1\",W/\"2\""]]
       (with-handler [handler]
         [[[:create {:fhir/type :fhir/Patient :id "0"
-                    :birthDate #fhir/date "2020"}]]]
+                    :birthDate #fhir/date #system/date "2020"}]]]
 
         (let [{:keys [status headers body]}
               @(handler
@@ -497,8 +495,8 @@
                  :headers {"if-match" if-match}
                  :body {:fhir/type :fhir/Patient :id "0"
                         :meta (type/meta {:versionId #fhir/id "1"
-                                          :lastUpdated Instant/EPOCH})
-                        :birthDate #fhir/date "2020"}})]
+                                          :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
+                        :birthDate #fhir/date #system/date "2020"}})]
 
           (testing "Returns 200"
             (is (= 200 status)))
@@ -513,9 +511,9 @@
             (given body
               :fhir/type := :fhir/Patient
               :id := "0"
-              :birthDate := #fhir/date "2020"
+              :birthDate := #fhir/date #system/date "2020"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH)))))
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
     (testing "and content changing transaction in between"
       (with-redefs [kv/put!
@@ -525,12 +523,12 @@
         (doseq [if-match [nil "W/\"1\",W/\"2\""]]
           (with-handler [handler node]
             [[[:create {:fhir/type :fhir/Patient :id "0"
-                        :birthDate #fhir/date "2020"}]]]
+                        :birthDate #fhir/date #system/date "2020"}]]]
 
             ;; don't wait for the transaction to be finished because the handler
             ;; call should see the first version of the patient
             @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
-                                          :birthDate #fhir/date "2021"}]])
+                                          :birthDate #fhir/date #system/date "2021"}]])
 
             (let [{:keys [status headers body]}
                   @(handler
@@ -539,8 +537,8 @@
                      :headers {"if-match" if-match}
                      :body {:fhir/type :fhir/Patient :id "0"
                             :meta (type/meta {:versionId #fhir/id "1"
-                                              :lastUpdated Instant/EPOCH})
-                            :birthDate #fhir/date "2020"}})]
+                                              :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
+                            :birthDate #fhir/date #system/date "2020"}})]
 
               (testing "Returns 200"
                 (is (= 200 status)))
@@ -555,9 +553,9 @@
                 (given body
                   :fhir/type := :fhir/Patient
                   :id := "0"
-                  :birthDate := #fhir/date "2020"
+                  :birthDate := #fhir/date #system/date "2020"
                   [:meta :versionId] := #fhir/id "4"
-                  [:meta :lastUpdated] := Instant/EPOCH))))))))
+                  [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
 
   (testing "with disabled referential integrity check"
     (with-handler [handler]
@@ -590,7 +588,7 @@
             :fhir/type := :fhir/Observation
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH)))))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
   (testing "conditional update"
     (testing "if-none-match"

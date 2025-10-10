@@ -5,6 +5,7 @@
    [cognitect.anomalies :as anom]
    [java-time.api :as time])
   (:import
+   [java.time.temporal Temporal]
    [java.util Random]))
 
 ;; The base URL of Blaze without :blaze/context-path
@@ -15,7 +16,7 @@
   string?)
 
 (s/def :blaze/release-date
-  string?)
+  #(instance? Temporal %))
 
 (s/def :fhir/version
   #{"4.0.1" "6.0.0-ballot3"})

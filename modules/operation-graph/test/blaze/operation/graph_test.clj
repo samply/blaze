@@ -2,7 +2,6 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util-spec]
    [blaze.handler.fhir.util-spec]
@@ -239,7 +238,7 @@
 
         (testing "the entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match")))))
 
   (testing "returning the patient and one observation"
@@ -310,12 +309,12 @@
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match")))))
 
   (testing "returning the patient with one observation and one encounter"
@@ -410,17 +409,17 @@
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match")))))
 
   (testing "returning the patient with two observations and only one encounter"
@@ -528,22 +527,22 @@
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the fourth entry has the right search mode"
           (given (:search fourth-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match")))))
 
   (testing "circle between condition and encounter is not a problem"
@@ -644,15 +643,15 @@
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
-            fhir-spec/fhir-type := :fhir.Bundle.entry/search
+            :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))))))

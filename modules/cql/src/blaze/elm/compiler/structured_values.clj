@@ -11,12 +11,9 @@
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.protocols :as p]
    [blaze.elm.util :as elm-util]
-   [blaze.fhir.spec.type :as type]
    [clojure.string :as str])
   (:import
-   [clojure.lang ILookup IReduceInit]
-   [java.time Instant LocalDateTime LocalTime OffsetDateTime]
-   [java.util UUID]))
+   [clojure.lang ILookup IReduceInit]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,43 +33,7 @@
     (throw-anom (invalid-structured-type-access-anom coll key)))
   ILookup
   (get [m key]
-    (.valAt m key))
-  Boolean
-  (get [boolean key]
-    (when (identical? :value key)
-      boolean))
-  Integer
-  (get [int key]
-    (when (identical? :value key)
-      int))
-  String
-  (get [s key]
-    (when (identical? :value key)
-      s))
-  BigDecimal
-  (get [decimal key]
-    (when (identical? :value key)
-      decimal))
-  Instant
-  (get [instant key]
-    (when (identical? :value key)
-      instant))
-  LocalDateTime
-  (get [date-time key]
-    (when (identical? :value key)
-      date-time))
-  OffsetDateTime
-  (get [date-time key]
-    (when (identical? :value key)
-      date-time))
-  LocalTime
-  (get [time key]
-    (when (identical? :value key)
-      time))
-  UUID
-  (get [uuid key]
-    (when (identical? :value key)
-      uuid)))
+    (.valAt m key)))
 
 (defn- compile-elements [context elements]
   (reduce
@@ -195,7 +156,7 @@
     (-resolve-params [_ parameters]
       (source-property-value-expr (core/-resolve-params source parameters) key))
     (-eval [_ context resource scope]
-      (type/value (p/get (core/-eval source context resource scope) key)))
+      (:value (key (core/-eval source context resource scope))))
     (-form [_]
       `(:value (~key ~(core/-form source))))))
 
@@ -209,7 +170,7 @@
 (defn- scope-property-value-expr [scope-key key]
   (reify-expr core/Expression
     (-eval [_ _ _ scope]
-      (type/value (p/get (get scope scope-key) key)))
+      (:value (key (get scope scope-key))))
     (-form [_]
       `(:value (~key ~(symbol (name scope-key)))))))
 

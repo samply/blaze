@@ -23,7 +23,6 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.fhir.spec.impl :as impl]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
@@ -32,7 +31,8 @@
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
-   [clojure.lang PersistentArrayMap PersistentVector RT]
+   [blaze.fhir.spec.type Lists]
+   [clojure.lang PersistentArrayMap RT]
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
    [com.fasterxml.jackson.core.exc InputCoercionException]
    [com.fasterxml.jackson.core.io JsonEOFException]
@@ -75,18 +75,9 @@
   [parent-type element-definitions]
   (:types (separate-element-definitions* parent-type element-definitions)))
 
-(defn- find-fhir-type [{:keys [extension]}]
-  (some
-   #(when (= "http://hl7.org/fhir/StructureDefinition/structuredefinition-fhir-type" (:url %))
-      (:valueUrl %))
-   extension))
-
-(defn- prepare-element-type [{:keys [code] :as type} path]
+(defn- prepare-element-type [{:keys [code]} path]
   (condp = code
-    "http://hl7.org/fhirpath/System.String"
-    (if (= "uri" (find-fhir-type type))
-      :system.string/uri
-      :system/string)
+    "http://hl7.org/fhirpath/System.String" :system/string
     "http://hl7.org/fhirpath/System.Time" :system/time
     "http://hl7.org/fhirpath/System.Date" :system/date
     "http://hl7.org/fhirpath/System.DateTime" :system/date-time
@@ -95,11 +86,263 @@
     "http://hl7.org/fhirpath/System.Boolean" :system/boolean
     "Element" (keyword "element" path)
     "BackboneElement" (keyword "backboneElement" path)
-    (keyword
-     (if (Character/isLowerCase ^char (first code))
-       "primitive"
-       "complex")
-     code)))
+    (case path
+      ("Address.city"
+       "Address.district"
+       "Address.state"
+       "Address.postalCode"
+       "Address.country"
+       "Age.unit"
+       "Bundle.link.relation"
+       "Bundle.response.status"
+       "CodeableConcept.text"
+       "Coding.version"
+       "Coding.display"
+       "Count.unit"
+       "Distance.unit"
+       "Duration.unit"
+       "HumanName.family"
+       "HumanName.prefix"
+       "HumanName.suffix"
+       "Quantity.unit")
+      :primitive/string-interned
+      ("Resource.implicitRules"
+       "Account.implicitRules"
+       "ActivityDefinition.implicitRules"
+       "ActivityDefinition.url"
+       "AdverseEvent.implicitRules"
+       "Age.system"
+       "AllergyIntolerance.implicitRules"
+       "Appointment.implicitRules"
+       "AppointmentResponse.implicitRules"
+       "AuditEvent.implicitRules"
+       "AuditEvent.agent.policy"
+       "Basic.implicitRules"
+       "Binary.implicitRules"
+       "BiologicallyDerivedProduct.implicitRules"
+       "BodyStructure.implicitRules"
+       "Bundle.implicitRules"
+       "CapabilityStatement.implicitRules"
+       "CapabilityStatement.url"
+       "CarePlan.implicitRules"
+       "CarePlan.instantiatesUri"
+       "CarePlan.activity.detail.instantiatesUri"
+       "CareTeam.implicitRules"
+       "CatalogEntry.implicitRules"
+       "ChargeItem.implicitRules"
+       "ChargeItem.definitionUri"
+       "ChargeItemDefinition.implicitRules"
+       "ChargeItemDefinition.url"
+       "ChargeItemDefinition.derivedFromUri"
+       "Claim.implicitRules"
+       "ClaimResponse.implicitRules"
+       "ClinicalImpression.implicitRules"
+       "ClinicalImpression.protocol"
+       "CodeSystem.implicitRules"
+       "CodeSystem.url"
+       "CodeSystem.property.uri"
+       "Communication.implicitRules"
+       "Communication.instantiatesUri"
+       "CommunicationRequest.implicitRules"
+       "CompartmentDefinition.implicitRules"
+       "CompartmentDefinition.url"
+       "Composition.implicitRules"
+       "ConceptMap.implicitRules"
+       "ConceptMap.url"
+       "Condition.implicitRules"
+       "Consent.implicitRules"
+       "Consent.policy.authority"
+       "Consent.policy.uri"
+       "Contract.implicitRules"
+       "Contract.url"
+       "Contract.instantiatesUri"
+       "Count.system"
+       "Coverage.implicitRules"
+       "CoverageEligibilityRequest.implicitRules"
+       "CoverageEligibilityResponse.implicitRules"
+       "CoverageEligibilityResponse.insurance.item.authorizationUrl"
+       "DetectedIssue.implicitRules"
+       "Device.implicitRules"
+       "Device.udiCarrier.issuer"
+       "Device.udiCarrier.jurisdiction"
+       "Device.url"
+       "DeviceDefinition.implicitRules"
+       "DeviceDefinition.udiDeviceIdentifier.issuer"
+       "DeviceDefinition.udiDeviceIdentifier.jurisdiction"
+       "DeviceDefinition.url"
+       "DeviceDefinition.onlineInformation"
+       "DeviceMetric.implicitRules"
+       "DeviceRequest.implicitRules"
+       "DeviceRequest.instantiatesUri"
+       "DeviceUseStatement.implicitRules"
+       "DiagnosticReport.implicitRules"
+       "Distance.system"
+       "DocumentManifest.implicitRules"
+       "DocumentManifest.source"
+       "DocumentReference.implicitRules"
+       "DomainResource.implicitRules"
+       "Duration.system"
+       "EffectEvidenceSynthesis.implicitRules"
+       "EffectEvidenceSynthesis.url"
+       "Encounter.implicitRules"
+       "Endpoint.implicitRules"
+       "EnrollmentRequest.implicitRules"
+       "EnrollmentResponse.implicitRules"
+       "EpisodeOfCare.implicitRules"
+       "EventDefinition.implicitRules"
+       "EventDefinition.url"
+       "Evidence.implicitRules"
+       "Evidence.url"
+       "EvidenceVariable.implicitRules"
+       "EvidenceVariable.url"
+       "ExampleScenario.implicitRules"
+       "ExampleScenario.url"
+       "ExplanationOfBenefit.implicitRules"
+       "FamilyMemberHistory.implicitRules"
+       "FamilyMemberHistory.instantiatesUri"
+       "Flag.implicitRules"
+       "Goal.implicitRules"
+       "GraphDefinition.implicitRules"
+       "GraphDefinition.url"
+       "Group.implicitRules"
+       "GuidanceResponse.implicitRules"
+       "HealthcareService.implicitRules"
+       "ImagingStudy.implicitRules"
+       "Immunization.implicitRules"
+       "Immunization.education.reference"
+       "ImmunizationEvaluation.implicitRules"
+       "ImmunizationRecommendation.implicitRules"
+       "ImplementationGuide.implicitRules"
+       "ImplementationGuide.url"
+       "InsurancePlan.implicitRules"
+       "Invoice.implicitRules"
+       "Library.implicitRules"
+       "Library.url"
+       "Linkage.implicitRules"
+       "List.implicitRules"
+       "Location.implicitRules"
+       "Measure.implicitRules"
+       "Measure.url"
+       "MeasureReport.implicitRules"
+       "Media.implicitRules"
+       "Medication.implicitRules"
+       "MedicationAdministration.implicitRules"
+       "MedicationAdministration.instantiates"
+       "MedicationDispense.implicitRules"
+       "MedicationKnowledge.implicitRules"
+       "MedicationRequest.implicitRules"
+       "MedicationRequest.instantiatesUri"
+       "MedicationStatement.implicitRules"
+       "MedicinalProduct.implicitRules"
+       "MedicinalProductAuthorization.implicitRules"
+       "MedicinalProductContraindication.implicitRules"
+       "MedicinalProductIndication.implicitRules"
+       "MedicinalProductIngredient.implicitRules"
+       "MedicinalProductInteraction.implicitRules"
+       "MedicinalProductManufactured.implicitRules"
+       "MedicinalProductPackaged.implicitRules"
+       "MedicinalProductPharmaceutical.implicitRules"
+       "MedicinalProductUndesirableEffect.implicitRules"
+       "MessageDefinition.implicitRules"
+       "MessageDefinition.url"
+       "MessageHeader.implicitRules"
+       "MolecularSequence.implicitRules"
+       "MolecularSequence.repository.url"
+       "NamingSystem.implicitRules"
+       "NutritionOrder.implicitRules"
+       "NutritionOrder.instantiatesUri"
+       "NutritionOrder.instantiates"
+       "Observation.implicitRules"
+       "ObservationDefinition.implicitRules"
+       "OperationDefinition.implicitRules"
+       "OperationDefinition.url"
+       "OperationOutcome.implicitRules"
+       "Organization.implicitRules"
+       "OrganizationAffiliation.implicitRules"
+       "Parameters.implicitRules"
+       "Patient.implicitRules"
+       "PaymentNotice.implicitRules"
+       "PaymentReconciliation.implicitRules"
+       "Person.implicitRules"
+       "PlanDefinition.implicitRules"
+       "PlanDefinition.url"
+       "Practitioner.implicitRules"
+       "PractitionerRole.implicitRules"
+       "Procedure.implicitRules"
+       "Procedure.instantiatesUri"
+       "Provenance.implicitRules"
+       "Provenance.policy"
+       "Questionnaire.implicitRules"
+       "Questionnaire.url"
+       "Questionnaire.item.definition"
+       "QuestionnaireResponse.implicitRules"
+       "QuestionnaireResponse.item.definition"
+       "RelatedPerson.implicitRules"
+       "RequestGroup.implicitRules"
+       "RequestGroup.instantiatesUri"
+       "ResearchDefinition.implicitRules"
+       "ResearchDefinition.url"
+       "ResearchElementDefinition.implicitRules"
+       "ResearchElementDefinition.url"
+       "ResearchStudy.implicitRules"
+       "ResearchSubject.implicitRules"
+       "RiskAssessment.implicitRules"
+       "RiskEvidenceSynthesis.implicitRules"
+       "RiskEvidenceSynthesis.url"
+       "Schedule.implicitRules"
+       "SearchParameter.implicitRules"
+       "SearchParameter.url"
+       "ServiceRequest.implicitRules"
+       "ServiceRequest.instantiatesUri"
+       "Slot.implicitRules"
+       "Specimen.implicitRules"
+       "SpecimenDefinition.implicitRules"
+       "StructureDefinition.implicitRules"
+       "StructureDefinition.url"
+       "StructureDefinition.mapping.uri"
+       "StructureDefinition.type"
+       "StructureMap.implicitRules"
+       "StructureMap.url"
+       "Subscription.implicitRules"
+       "Substance.implicitRules"
+       "SubstanceNucleicAcid.implicitRules"
+       "SubstancePolymer.implicitRules"
+       "SubstanceProtein.implicitRules"
+       "SubstanceReferenceInformation.implicitRules"
+       "SubstanceSourceMaterial.implicitRules"
+       "SubstanceSpecification.implicitRules"
+       "SupplyDelivery.implicitRules"
+       "SupplyRequest.implicitRules"
+       "Task.implicitRules"
+       "Task.instantiatesUri"
+       "TerminologyCapabilities.implicitRules"
+       "TerminologyCapabilities.url"
+       "TestReport.implicitRules"
+       "TestReport.participant.uri"
+       "TestReport.setup.action.operation.detail"
+       "TestScript.implicitRules"
+       "TestScript.url"
+       "TestScript.metadata.link.url"
+       "TestScript.metadata.capability.link"
+       "ValueSet.implicitRules"
+       "ValueSet.url"
+       "ValueSet.compose.include.system"
+       "ValueSet.expansion.identifier"
+       "ValueSet.expansion.contains.system"
+       "VerificationResult.implicitRules"
+       "VisionPrescription.implicitRules"
+       "MetadataResource.implicitRules"
+       "MetadataResource.url"
+       "Coding.system"
+       "Identifier.system"
+       "Quantity.system"
+       "Reference.type")
+      :primitive/uri-interned
+      (keyword
+       (if (Character/isLowerCase ^char (first code))
+         "primitive"
+         "complex")
+       code))))
 
 (defn base-field-name
   "The field name without possible polymorphic type."
@@ -213,10 +456,17 @@
     JsonToken/START_ARRAY "array start"
     (format "token %s" (current-token parser))))
 
+(defn- incorrect-value-anom*
+  ([value locator expected-type]
+   (let [msg (format "Error on %s. Expected type is `%s`." value expected-type)]
+     (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
+  ([value locator expected-type reason-msg]
+   (let [msg (format "Error on %s. Expected type is `%s`. %s" value expected-type reason-msg)]
+     (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)]))))
+
 (defn- incorrect-value-anom [parser locator expected-type]
   (when-ok [value (get-current-value parser locator)]
-    (let [msg (format "Error on %s. Expected type is `%s`." value expected-type)]
-      (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)]))))
+    (incorrect-value-anom* value locator expected-type)))
 
 (defn- unknown-property-anom [locator name]
   (let [msg (format "Unknown property `%s`." name)]
@@ -291,18 +541,21 @@
   value."
   [field-name key m constructor value locator]
   (if-some [primitive-value (get-value m key)]
-    (if (some? (type/value primitive-value))
+    (if (some? (:value primitive-value))
       (duplicate-property-anom field-name locator)
-      (put-value! m key (type/assoc-value primitive-value value)))
-    (put-value! m key (constructor value))))
+      (put-value! m key (assoc primitive-value :value value)))
+    (if-ok [value (constructor value)]
+      (put-value! m key value)
+      #(let [msg (::anom/message %)]
+         (ba/incorrect msg :fhir/issues [(fhir-issue msg (cons (name key) locator))])))))
 
 (defn- assoc-primitive-many-value
   "Like `assoc-primitive-value` but with a single value for cardinality many."
   [{:keys [field-name key]} m constructor value locator]
   (if-some [primitive-value (first (get-value m key))]
-    (if (some? (type/value primitive-value))
+    (if (some? (:value primitive-value))
       (duplicate-property-anom field-name locator)
-      (put-value! m key [(type/assoc-value primitive-value value)]))
+      (put-value! m key [(assoc primitive-value :value value)]))
     (put-value! m key [(constructor value)])))
 
 (defn- primitive-boolean-value-handler
@@ -335,11 +588,11 @@
                  token
                  (when-ok [value (extract-value parser (cons path locator))]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (doto l (.set i (type/assoc-value primitive-value value))) (inc i)))
+                       (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
-                 JsonToken/END_ARRAY (put-value! m key (PersistentVector/create l))
+                 JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
                  JsonToken/VALUE_NULL
                  (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
                  (incorrect-value-anom parser (cons path locator) (str expected-type "[]")))))
@@ -369,18 +622,18 @@
                  token-1
                  (when-ok [value (extract-value-1 parser (cons path locator))]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (doto l (.set i (type/assoc-value primitive-value value))) (inc i)))
+                       (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
                  token-2
                  (when-ok [value (extract-value-2 parser (cons path locator))]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (doto l (.set i (type/assoc-value primitive-value value))) (inc i)))
+                       (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
-                 JsonToken/END_ARRAY (put-value! m key (PersistentVector/create l))
+                 JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
                  JsonToken/VALUE_NULL
                  (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
                  (incorrect-value-anom parser (cons path locator) expected-type))))
@@ -398,7 +651,7 @@
 
 (def ^:private primitive-id-handler
   "A property-handler for id properties."
-  (create-system-string-handler type/assoc-id "id" "string"))
+  (create-system-string-handler #(assoc %1 :id %2) "id" "string"))
 
 (defn- parse-complex-list [handler type-handlers parser locator]
   (loop [list (ArrayList.)]
@@ -406,7 +659,7 @@
       JsonToken/START_OBJECT
       (when-ok [value (handler type-handlers parser (cons (.size list) locator))]
         (recur (doto list (.add value))))
-      JsonToken/END_ARRAY (PersistentVector/create list)
+      JsonToken/END_ARRAY (Lists/intern list)
       (incorrect-value-anom parser (cons (.size list) locator) (handler)))))
 
 (defn- unsupported-type-anom [type]
@@ -424,15 +677,15 @@
           (cond-next-token parser locator
             JsonToken/START_ARRAY
             (when-ok [list (parse-complex-list extension-handler type-handlers parser (cons "extension" locator))]
-              (recur (type/assoc-extension data list)))
+              (recur (assoc data :extension list)))
             JsonToken/START_OBJECT
             (when-ok [extension (extension-handler type-handlers parser (cons 0 (cons "extension" locator)))]
-              (recur (type/assoc-extension data [extension])))
+              (recur (assoc data :extension (Lists/intern [extension]))))
             (incorrect-value-anom parser (cons "extension" locator) "Extension[]")))
         (unknown-property-anom locator (current-name parser)))
       JsonToken/END_OBJECT data)))
 
-(defn- trim-trailing-nils ^List [^List vector]
+(defn- trim-trailing-nils [^List vector]
   (loop [i (.size vector)]
     (if (zero? i)
       (ArrayList.)
@@ -466,7 +719,7 @@
                     (recur (doto l (.set i primitive-value)) (inc i)))
                   (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
                     (recur (set-value! l i (constructor data)) (inc i))))
-                JsonToken/END_ARRAY (put-value! m key (PersistentVector/create (trim-trailing-nils l)))
+                JsonToken/END_ARRAY (put-value! m key (Lists/intern (trim-trailing-nils l)))
                 JsonToken/VALUE_NULL
                 (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
                 (incorrect-value-anom parser (cons path locator) "primitive extension map"))))
@@ -503,30 +756,32 @@
   representation using `constructor`."
   [def]
   (->> (primitive-value-handler def type/decimal JsonToken/VALUE_NUMBER_INT
-                                get-long JsonToken/VALUE_NUMBER_FLOAT get-decimal
+                                get-decimal JsonToken/VALUE_NUMBER_FLOAT get-decimal
                                 "decimal")
        (primitive-handler def type/decimal)))
 
 (defn- get-text-pattern [pattern]
   (fn [parser locator expected-type]
-    (when-ok [s (get-text parser locator)]
-      (if (.matches (re-matcher pattern s))
-        s
-        (incorrect-value-anom parser locator (format "%s, regex %s" expected-type pattern))))))
+    (when-ok [text (get-text parser locator)]
+      (if (.matches (re-matcher pattern text))
+        text
+        (incorrect-value-anom* (format "value `%s`" text) locator (format "%s, regex %s" expected-type pattern))))))
+
+(defn- parse-text [system-parser locator expected-type text]
+  (if-ok [value (system-parser text)]
+    value
+    #(incorrect-value-anom* (format "value `%s`" text) locator expected-type (::anom/message %))))
 
 (defn- system-value-parser
   ([system-parser expected-type]
    (fn system-value-parser [parser locator]
      (when-ok [text (get-text parser locator)]
-       (let [value (system-parser text)]
-         (if (ba/anomaly? value)
-           (incorrect-value-anom parser locator expected-type)
-           value)))))
+       (parse-text system-parser locator expected-type text))))
   ([system-parser expected-type pattern]
    (let [get-text (get-text-pattern pattern)]
      (fn pattern-system-value-parser [parser locator]
        (when-ok [text (get-text parser locator expected-type)]
-         (system-parser text))))))
+         (parse-text system-parser locator expected-type text))))))
 
 (defn- primitive-string-handler
   "A handler that reads a string value and creates the internal representation
@@ -589,9 +844,6 @@
     :system/string
     {field-name (create-system-string-handler #(put-value! %1 key %2) (name key) "string")}
 
-    :system.string/uri
-    {field-name (create-system-string-handler #(put-value! %1 key (impl/intern-string %2)) (name key) "uri")}
-
     :primitive/boolean
     (primitive-handler def type/boolean (primitive-boolean-value-handler def))
 
@@ -601,11 +853,18 @@
     :primitive/string
     (primitive-string-handler def type/string identity "string")
 
+    :primitive/string-interned
+    (primitive-string-handler def type/string-interned identity "string")
+
     :primitive/decimal
     (primitive-decimal-handler def)
 
     :primitive/uri
     (primitive-string-handler def type/uri identity "uri"
+                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
+
+    :primitive/uri-interned
+    (primitive-string-handler def type/uri-interned identity "uri"
                               #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
 
     :primitive/url
@@ -658,11 +917,11 @@
                               #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" use-regex)
 
     :primitive/xhtml
-    (primitive-string-handler def type/->Xhtml identity "xhtml")
+    (primitive-string-handler def type/xhtml identity "xhtml")
 
     (if (#{"complex" "element" "backboneElement"} (namespace type))
       (create-complex-property-handler opts def)
-      (ba/unsupported (format "unsupported type: %s" (name type))))))
+      (unsupported-type-anom (name type)))))
 
 (defn- create-property-handlers
   "Returns a map of JSON property names to property handlers."
@@ -692,18 +951,44 @@
 (defn- complex-type-finalizer [type]
   (condp = type
     "Address" #(type/address (persist-array-map %))
+    "Age" #(type/age (persist-array-map %))
+    "Annotation" #(type/annotation (persist-array-map %))
     "Attachment" #(type/attachment (persist-array-map %))
+    "Bundle.entry.search" #(type/bundle-entry-search (persist-array-map %))
     "CodeableConcept" #(type/codeable-concept (persist-array-map %))
     "Coding" #(type/coding (persist-array-map %))
+    "ContactDetail" #(type/contact-detail (persist-array-map %))
+    "ContactPoint" #(type/contact-point (persist-array-map %))
+    "Contributor" #(type/contributor (persist-array-map %))
+    "Count" #(type/count (persist-array-map %))
+    "DataRequirement" #(type/data-requirement (persist-array-map %))
+    "DataRequirement.codeFilter" #(type/data-requirement-code-filter (persist-array-map %))
+    "DataRequirement.dateFilter" #(type/data-requirement-date-filter (persist-array-map %))
+    "DataRequirement.sort" #(type/data-requirement-sort (persist-array-map %))
+    "Distance" #(type/distance (persist-array-map %))
+    "Dosage" #(type/dosage (persist-array-map %))
+    "Dosage.doseAndRate" #(type/dosage-dose-and-rate (persist-array-map %))
+    "Duration" #(type/duration (persist-array-map %))
+    "Expression" #(type/expression (persist-array-map %))
     "Extension" #(type/extension (persist-array-map %))
     "HumanName" #(type/human-name (persist-array-map %))
     "Identifier" #(type/identifier (persist-array-map %))
+    "Meta" #(type/meta (persist-array-map %))
+    "Money" #(type/money (persist-array-map %))
+    "Narrative" #(type/narrative (persist-array-map %))
+    "ParameterDefinition" #(type/parameter-definition (persist-array-map %))
     "Period" #(type/period (persist-array-map %))
     "Quantity" #(type/quantity (persist-array-map %))
+    "Range" #(type/range (persist-array-map %))
     "Ratio" #(type/ratio (persist-array-map %))
     "Reference" #(type/reference (persist-array-map %))
-    "Meta" #(type/meta (persist-array-map %))
-    "Bundle.entry.search" #(type/bundle-entry-search (persist-array-map %))
+    "RelatedArtifact" #(type/related-artifact (persist-array-map %))
+    "SampledData" #(type/sampled-data (persist-array-map %))
+    "Signature" #(type/signature (persist-array-map %))
+    "Timing" #(type/timing (persist-array-map %))
+    "Timing.repeat" #(type/timing-repeat (persist-array-map %))
+    "TriggerDefinition" #(type/trigger-definition (persist-array-map %))
+    "UsageContext" #(type/usage-context (persist-array-map %))
     (let [fhir-type-kw (fhir-type-keyword type)]
       #(persist-map (put-value! % :fhir/type fhir-type-kw)))))
 
@@ -825,7 +1110,7 @@
              ;; skip the first token
              (next-token! parser locator)
              (type-handler type-handlers parser (if (empty? locator) [type] locator)))
-           (ba/unsupported (format "Unsupported resource type: %s" type)))
+           (unsupported-type-anom type))
          (let [msg "Missing property `resourceType`."]
            (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))))))
 
@@ -870,13 +1155,10 @@
     (.createParser ^JsonFactory factory source))
   String
   (-create-parser [source factory]
-    (.createParser ^JsonFactory factory source)))
-
-(extend byte/1
-  ParserFactory
-  {:-create-parser
-   (fn [source factory]
-     (.createParser ^JsonFactory factory ^bytes source))})
+    (.createParser ^JsonFactory factory source))
+  byte/1
+  (-create-parser [source factory]
+    (.createParser ^JsonFactory factory ^bytes source)))
 
 (def ^:private ^JsonFactory json-factory
   (doto (-> (JsonFactory/builder)
@@ -900,15 +1182,15 @@
    (if-some [handler (get type-handlers (keyword type))]
      (with-open [parser (-create-parser source json-factory)]
        (read-value type-handlers parser (RT/list type) handler))
-     (ba/unsupported (format "Unsupported resource type: %s" type)))))
+     (unsupported-type-anom type))))
 
 (defn write-json [type-handlers out value]
-  (if-some [type (type/type value)]
+  (if-some [type (:fhir/type value)]
     (if-some [handler (get type-handlers type)]
       (with-open [gen (.createGenerator json-factory ^OutputStream out)]
         (handler type-handlers gen value))
-      (ba/unsupported (format "Unsupported resource type: %s" (name type))))
-    (ba/incorrect (format "Missing resource type."))))
+      (unsupported-type-anom (name type)))
+    (ba/incorrect "Missing type.")))
 
 (def ^:private ^JsonFactory cbor-factory
   (doto (-> (CBORFactory/builder)
@@ -924,10 +1206,12 @@
   (if-some [handler (get type-handlers (if (= :summary variant) (keyword "summary" type) (keyword type)))]
     (with-open [parser (.createParser ^JsonFactory cbor-factory ^bytes source)]
       (read-value type-handlers parser (RT/list type) handler))
-    (ba/unsupported (format "Unsupported resource type: %s" type))))
+    (unsupported-type-anom type)))
 
 (defn write-cbor [type-handlers out value]
-  (if-some [handler (get type-handlers (type/type value))]
-    (with-open [gen (.createGenerator cbor-factory ^OutputStream out)]
-      (handler type-handlers gen value))
-    (ba/unsupported (format "Unsupported resource type: %s" (name (type/type value))))))
+  (if-some [type (:fhir/type value)]
+    (if-some [handler (get type-handlers type)]
+      (with-open [gen (.createGenerator cbor-factory ^OutputStream out)]
+        (handler type-handlers gen value))
+      (unsupported-type-anom (name type)))
+    (ba/incorrect "Missing type.")))

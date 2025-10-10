@@ -6,7 +6,7 @@
   collection of desired values that originated from a scan over a key-value
   store iterator, without having to deal with the low level and stateful API
   of the key-value store iterators."
-  (:refer-clojure :exclude [key keys])
+  (:refer-clojure :exclude [keys])
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]

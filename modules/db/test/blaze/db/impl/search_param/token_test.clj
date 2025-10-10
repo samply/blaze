@@ -519,7 +519,7 @@
         (let [patient
               {:fhir/type :fhir/Patient
                :id "id-142629"
-               :deceased #fhir/dateTime "2019-11-17T00:14:29+01:00"}
+               :deceased #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
               (index-entries

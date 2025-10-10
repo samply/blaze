@@ -7,7 +7,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef job-compact/job
-  :args (s/cat :authored-on :fhir/dateTime
+  :args (s/cat :authored-on :system/date-time
                :database string?
                :column-family string?)
   :ret :fhir/Task)

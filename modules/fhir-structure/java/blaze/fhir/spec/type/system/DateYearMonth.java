@@ -1,7 +1,9 @@
 package blaze.fhir.spec.type.system;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.YearMonth;
 import java.time.chrono.IsoChronology;
@@ -9,11 +11,21 @@ import java.time.temporal.Temporal;
 import java.time.temporal.TemporalField;
 import java.time.temporal.TemporalUnit;
 
+import static blaze.fhir.spec.type.Base.MEM_SIZE_OBJECT_HEADER;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 import static java.time.temporal.ChronoField.YEAR;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class DateYearMonth implements Date, Comparable<DateYearMonth> {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - year
+     * 4 byte - month
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 8;
 
     private final int year;
     private final int month;
@@ -96,9 +108,14 @@ public final class DateYearMonth implements Date, Comparable<DateYearMonth> {
 
     @Override
     public void hashInto(PrimitiveSink sink) {
-        sink.putByte((byte) 5);
+        sink.putByte(HASH_MARKER);
         sink.putInt(year);
         sink.putInt(month);
+    }
+
+    @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT;
     }
 
     public DateTimeYearMonth toDateTime() {
@@ -173,15 +190,9 @@ public final class DateYearMonth implements Date, Comparable<DateYearMonth> {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof DateYearMonth) {
-            return year == ((DateYearMonth) obj).year &&
-                    month == ((DateYearMonth) obj).month;
-        }
-        return false;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        return o instanceof DateYearMonth that && year == that.year && month == that.month;
     }
 
     @Override
@@ -201,5 +212,11 @@ public final class DateYearMonth implements Date, Comparable<DateYearMonth> {
         return buf.append(month < 10 ? "-0" : "-")
                 .append(month)
                 .toString();
+    }
+
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var appendable = new AsciiByteArrayAppendable(7);
+        appendable.append(toString());
+        generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
     }
 }
