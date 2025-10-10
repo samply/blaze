@@ -141,7 +141,7 @@
   Bigger expressions will not be cache to keep memory consumption under control.
 
   The current value is 10 kB."
-  (bit-shift-left 10 10))
+  (bit-shift-left 10 16))
 
 (def ^:private ^:const ^long concurrent-bloom-filter-creation-limit
   "Maximum number of concurrent Bloom filter creations allowed.
