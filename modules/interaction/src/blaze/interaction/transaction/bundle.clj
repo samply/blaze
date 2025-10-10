@@ -2,7 +2,6 @@
   "FHIR Bundle specific stuff."
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.transaction.bundle.links :as links]
    [blaze.interaction.util :as iu]
@@ -10,14 +9,14 @@
    [clojure.string :as str]
    [ring.util.codec :as ring-codec]))
 
-(defmulti entry-tx-op (fn [_ {{:keys [method]} :request}] (type/value method)))
+(defmulti entry-tx-op (fn [_ {{:keys [method]} :request}] (:value method)))
 
 (defn- conditional-clauses [if-none-exist]
   (when-not (str/blank? if-none-exist)
     (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
 (defmethod entry-tx-op "POST"
-  [_ {:keys [resource] {if-none-exist :ifNoneExist} :request :as entry}]
+  [_ {:keys [resource] {{if-none-exist :value} :ifNoneExist} :request :as entry}]
   (let [clauses (conditional-clauses if-none-exist)]
     (assoc entry
            :tx-op
@@ -27,17 +26,18 @@
              (conj clauses)))))
 
 (defmethod entry-tx-op "PUT"
-  [db {{if-match :ifMatch if-none-match :ifNoneMatch} :request :keys [resource]
-       :as entry}]
+  [db
+   {{{if-match :value} :ifMatch {if-none-match :value} :ifNoneMatch} :request
+    :keys [resource] :as entry}]
   (when-ok [tx-op (iu/update-tx-op db (iu/strip-meta resource) if-match
                                    if-none-match)]
     (assoc entry :tx-op tx-op)))
 
 (defmethod entry-tx-op "DELETE"
   [_ {{:keys [url]} :request :as entry}]
-  (if-let [[type id] (fhir-util/match-type-id (type/value url))]
+  (if-let [[type id] (fhir-util/match-type-id (:value url))]
     (assoc entry :tx-op [:delete type id])
-    (when-let [[type query-params] (fhir-util/match-type-query-params (type/value url))]
+    (when-let [[type query-params] (fhir-util/match-type-query-params (:value url))]
       (assoc entry :tx-op (cond-> [:conditional-delete type] (not (str/blank? query-params)) (conj (-> query-params ring-codec/form-decode uc/search-clauses)))))))
 
 (defmethod entry-tx-op :default

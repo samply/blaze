@@ -6,6 +6,7 @@
   be given to `init!``. The server port has a default of `8080`."
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.fhir.spec.type.system :as system]
    [blaze.log]
    [blaze.path :refer [dir? path]]
    [blaze.spec]
@@ -231,7 +232,7 @@
         config (-> (merge-with merge root-config config)
                    (resolve-config env))]
     (load-namespaces config)
-    (ig/init config)))
+    (-> config ig/expand ig/init)))
 
 (defn shutdown! [system]
   (ig/halt! system))
@@ -242,7 +243,7 @@
 
 (defmethod ig/init-key :blaze/release-date
   [_ release-date]
-  release-date)
+  (system/parse-date-time release-date))
 
 (defmethod ig/init-key :blaze.db/storage
   [_ storage]

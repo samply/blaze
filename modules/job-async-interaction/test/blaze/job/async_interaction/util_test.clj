@@ -8,7 +8,6 @@
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
    [blaze.fhir.spec.references-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util-spec]
    [blaze.job.async-interaction-spec]
    [blaze.job.async-interaction.util :as u]
@@ -27,9 +26,9 @@
 
 (deftest processing-duration-test
   (given (u/processing-duration (System/nanoTime))
-    type/type := :fhir/Quantity
-    [:value type/type] := :fhir/decimal
-    [:value type/value] :? #(and (decimal? %) (pos? %))
+    :fhir/type := :fhir/Quantity
+    [:value :fhir/type] := :fhir/decimal
+    [:value :value] :? #(and (decimal? %) (pos? %))
     :unit := #fhir/string "s"
     :system := #fhir/uri "http://unitsofmeasure.org"
     :code := #fhir/code "s"))

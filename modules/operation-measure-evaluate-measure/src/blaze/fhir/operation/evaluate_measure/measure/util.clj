@@ -8,8 +8,8 @@
    [blaze.util :refer [str]]))
 
 (defn expression-name [population-path-fn criteria]
-  (let [language (-> criteria :language type/value)
-        expression (-> criteria :expression type/value)]
+  (let [language (-> criteria :language :value)
+        expression (-> criteria :expression :value)]
     (cond
       (nil? criteria)
       (ba/incorrect
@@ -71,8 +71,8 @@
       (ba/exceptionally reduced)))
 
 (defn- expression-name-of-expression [{:keys [language expression]}]
-  (when (#{"text/cql" "text/cql-identifier"} (type/value language))
-    (type/value expression)))
+  (when (#{"text/cql" "text/cql-identifier"} (:value language))
+    (:value expression)))
 
 (defn- expression-name-of-population [{:keys [criteria]}]
   (expression-name-of-expression criteria))

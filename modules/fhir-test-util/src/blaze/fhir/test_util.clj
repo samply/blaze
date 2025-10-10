@@ -3,7 +3,6 @@
    [blaze.byte-buffer :as bb]
    [blaze.executors :as ex]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo]
    [integrant.core :as ig]
    [java-time.api :as time])
@@ -64,7 +63,7 @@
    (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 (defn link-url [body link-relation]
-  (->> body :link (filter (comp #{link-relation} type/value :relation)) first :url type/value))
+  (->> body :link (filter (comp #{link-relation} :value :relation)) first :url :value))
 
 (defmethod ig/init-key :blaze.test/page-id-cipher
   [_ _]

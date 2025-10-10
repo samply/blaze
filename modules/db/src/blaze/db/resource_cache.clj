@@ -16,8 +16,9 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
+   [blaze.fhir.spec.type Base]
    [com.github.benmanes.caffeine.cache
-    AsyncCacheLoader AsyncLoadingCache Caffeine]
+    AsyncCacheLoader AsyncLoadingCache Caffeine Weigher]
    [com.github.benmanes.caffeine.cache.stats CacheStats]
    [java.lang.reflect Array]
    [java.util ArrayList Collection Collections HashMap Map]
@@ -104,13 +105,24 @@
   (-> (.synchronous ^AsyncLoadingCache (.cache ^DefaultResourceCache resource-cache))
       (.invalidateAll)))
 
+(def ^:private weigher
+  (reify Weigher
+    (weigh [_ _ resource]
+      (Base/memSize resource))))
+
+(defmethod ig/expand-key :blaze.db/resource-cache
+  [k {:keys [max-size-ratio] :or {max-size-ratio 0.25} :as config}]
+  (let [max-memory (.maxMemory (Runtime/getRuntime))
+        max-size-ratio (if (< 0.8 max-size-ratio) 0.8 max-size-ratio)]
+    {k (assoc config :max-size-in-bytes (long (* max-memory max-size-ratio)))}))
+
 (defmethod m/pre-init-spec :blaze.db/resource-cache [_]
-  (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size]))
+  (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size-in-bytes]))
 
 (defmethod ig/init-key :blaze.db/resource-cache
-  [_ {:keys [resource-store max-size] :or {max-size 0}}]
-  (log/info "Create resource cache with a size of" max-size "resources")
-  (if (zero? max-size)
+  [_ {:keys [resource-store max-size-in-bytes] :or {max-size-in-bytes 0}}]
+  (log/info "Create resource cache with a memory size of" (bit-shift-right max-size-in-bytes 20) "MiB")
+  (if (zero? max-size-in-bytes)
     (reify
       p/ResourceCache
       (-get [_ key]
@@ -133,7 +145,8 @@
 
     (->DefaultResourceCache
      (-> (Caffeine/newBuilder)
-         (.maximumSize max-size)
+         (.weigher weigher)
+         (.maximumWeight max-size-in-bytes)
          (.recordStats)
          (.buildAsync
           (reify AsyncCacheLoader
