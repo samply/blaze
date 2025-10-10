@@ -39,16 +39,16 @@
                (ac/completed-future
                 (ring/response
                  {:fhir/type :fhir/Bundle
-                  :type #fhir/code"batch-response"
+                  :type #fhir/code "batch-response"
                   :entry
                   [{:fhir/type :fhir.Bundle/entry
                     :response {:fhir/type :fhir.Bundle.entry/response
-                               :status "200"}}]})))
+                               :status #fhir/string "200"}}]})))
              "failed"
              (ac/completed-future
               (ring/response
                {:fhir/type :fhir/Bundle
-                :type #fhir/code"batch-response"
+                :type #fhir/code "batch-response"
                 :entry
                 [{:fhir/type :fhir.Bundle/entry
                   :response (handler-util/bundle-error-response

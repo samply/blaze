@@ -29,9 +29,9 @@
 (def ^:private expr-form (comp c/form :expression))
 
 (defn- codeable-concept [system code]
-  (type/map->CodeableConcept
+  (type/codeable-concept
    {:coding
-    [(type/map->Coding
+    [(type/coding
       {:system (type/uri system)
        :code (type/code code)})]}))
 

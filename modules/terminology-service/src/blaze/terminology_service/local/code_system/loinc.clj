@@ -41,7 +41,7 @@
   (keep
    (fn [{:keys [code]}]
      (when-let [concept (concept-index (type/value code))]
-       (when-not (:inactive concept)
+       (when-not (-> concept :inactive type/value)
          concept)))))
 
 (defn- remove-properties [concept]
@@ -62,7 +62,7 @@
     (into
      #{}
      (comp
-      (if active-only (filter (comp not :inactive)) identity)
+      (if active-only (filter (comp not type/value :inactive)) identity)
       (map remove-properties))
      concepts)))
 

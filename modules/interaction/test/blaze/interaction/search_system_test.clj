@@ -182,7 +182,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is zero"
             (is (= #fhir/unsignedInt 0 (:total body))))
@@ -216,7 +216,7 @@
               (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
             (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
+              (is (= #fhir/code "searchset" (:type body))))
 
             (testing "the total count is 1"
               (is (= #fhir/unsignedInt 1 (:total body))))
@@ -233,13 +233,13 @@
 
             (testing "the entry has the right fullUrl"
               (is (= (str base-url "/Patient/0")
-                     (:fullUrl first-entry))))
+                     (-> first-entry :fullUrl :value))))
 
             (testing "the entry has the right resource"
               (given (:resource first-entry)
                 :fhir/type := :fhir/Patient
                 :id := "0"
-                [:meta :versionId] := #fhir/id"1"
+                [:meta :versionId] := #fhir/id "1"
                 [:meta :lastUpdated] := Instant/EPOCH
                 [:meta :tag (coding v3-ObservationValue) count] := 0
                 :multipleBirth := #fhir/boolean true)))))
@@ -257,7 +257,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
@@ -274,15 +274,15 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH
-              [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code"SUBSETTED"
+              [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code "SUBSETTED"
               :multipleBirth := nil))))
 
       (testing "with param _summary equal to count"
@@ -298,7 +298,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
@@ -323,7 +323,7 @@
             (is (= :fhir/Bundle (:fhir/type body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
@@ -422,9 +422,9 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`.")))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "Missing search parameter code in _include search parameter with source type `Observation`.")))))
 
   (testing "missing resource contents"
     (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
@@ -438,6 +438,6 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"incomplete"
-            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "incomplete"
+            [:issue 0 :diagnostics] := #fhir/string "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))

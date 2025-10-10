@@ -111,7 +111,7 @@
              :id "id-163630"
              :prediction
              [{:fhir/type :fhir.RiskAssessment/prediction
-               :probability 0.9M}]}
+               :probability #fhir/decimal 0.9M}]}
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
             (index-entries

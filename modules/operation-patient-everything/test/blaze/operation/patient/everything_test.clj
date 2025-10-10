@@ -159,9 +159,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `Patient/145801` was not found."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-found"
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/145801` was not found."))))
 
   (testing "Patient deleted"
     (with-handler [handler]
@@ -175,9 +175,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"deleted"
-          [:issue 0 :diagnostics] := "Resource `Patient/150158` was deleted."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "deleted"
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/150158` was deleted."))))
 
   (testing "invalid start date"
     (with-handler [handler]
@@ -191,9 +191,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "The value `invalid` of the query param `start` is no valid date."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `start` is no valid date."))))
 
   (testing "invalid end date"
     (with-handler [handler]
@@ -207,9 +207,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "The value `invalid` of the query param `end` is no valid date."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `end` is no valid date."))))
 
   (testing "Patient only"
     (with-handler [handler]
@@ -227,7 +227,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 1"
           (is (= #fhir/unsignedInt 1 (:total body))))
@@ -237,26 +237,26 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (doseq [type ["Observation" "Specimen"]]
     (testing (str "Patient with one " type)
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type (keyword "fhir" type) :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
               @(handler {:path-params {:id "0"}})]
@@ -270,7 +270,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -280,43 +280,43 @@
 
           (testing "the first entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the first entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
-              :mode := #fhir/code"match"))
+              :mode := #fhir/code "match"))
 
           (testing "the second entry has the right fullUrl"
             (is (= (str base-url context-path (format "/%s/0" type))
-                   (:fullUrl second-entry))))
+                   (-> second-entry :fullUrl :value))))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
               :fhir/type := (keyword "fhir" type)
               :id := "0"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
-              :mode := #fhir/code"match"))))))
+              :mode := #fhir/code "match"))))))
 
   (testing "Patient with two Observations"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -331,7 +331,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 3"
           (is (= #fhir/unsignedInt 3 (:total body))))
@@ -341,60 +341,60 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/0")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the second entry has the right resource"
           (given (:resource second-entry)
             :fhir/type := :fhir/Observation
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/1")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the third entry has the right resource"
           (given (:resource third-entry)
             :fhir/type := :fhir/Observation
             :id := "1"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (testing "with start date"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry] :entry :as body} :body}
@@ -410,7 +410,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))
@@ -420,44 +420,44 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/1")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the second entry has the right resource"
           (given (:resource second-entry)
             :fhir/type := :fhir/Observation
             :id := "1"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (testing "with end date"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry] :entry :as body} :body}
@@ -473,7 +473,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))
@@ -483,45 +483,45 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/1")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the second entry has the right resource"
           (given (:resource second-entry)
             :fhir/type := :fhir/Observation
             :id := "1"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (testing "Patient with various resources"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Condition :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Specimen :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry fourth-entry] :entry
@@ -537,7 +537,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 4"
           (is (= #fhir/unsignedInt 4 (:total body))))
@@ -547,19 +547,19 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Condition/0")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/0")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the fourth entry has the right fullUrl"
           (is (= (str base-url context-path "/Specimen/0")
-                 (:fullUrl fourth-entry)))))))
+                 (-> fourth-entry :fullUrl :value)))))))
 
   (testing "Patient with MedicationAdministration because it is reachable twice
             via the search param `patient` and `subject`.
@@ -569,7 +569,7 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
             @(handler {:path-params {:id "0"}})]
@@ -583,7 +583,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))
@@ -593,11 +593,11 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/MedicationAdministration/0")
-                 (:fullUrl second-entry)))))))
+                 (-> second-entry :fullUrl :value)))))))
 
   (testing "to many resources"
     (with-handler [handler]
@@ -605,7 +605,7 @@
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [i]
                [:put {:fhir/type :fhir/Observation :id (str i)
-                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
         (range 10000))]
 
       (let [{:keys [status body]}
@@ -615,9 +615,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"too-costly"
-          [:issue 0 :diagnostics] := "The compartment of the Patient with the id `0` has more than 10,000 resources which is too costly to output. Please use paging by specifying the _count query param."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "too-costly"
+          [:issue 0 :diagnostics] := #fhir/string "The compartment of the Patient with the id `0` has more than 10,000 resources which is too costly to output. Please use paging by specifying the _count query param."))))
 
   (testing "paging"
     (with-handler [handler _ page-id-cipher]
@@ -625,7 +625,7 @@
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [idx]
                [:put {:fhir/type :fhir/Observation :id (str idx)
-                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
         (range 4))]
 
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -642,7 +642,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is not given"
           (is (nil? (:total body))))
@@ -656,11 +656,11 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/0")
-                 (:fullUrl second-entry)))))
+                 (-> second-entry :fullUrl :value)))))
 
       (testing "following the first next link"
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -680,7 +680,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is not given"
             (is (nil? (:total body))))
@@ -694,11 +694,11 @@
 
           (testing "the first entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/1")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the second entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/2")
-                   (:fullUrl second-entry))))))
+                   (-> second-entry :fullUrl :value))))))
 
       (testing "following the second next link"
         (let [{:keys [status] {[entry] :entry :as body} :body}
@@ -718,7 +718,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is not given"
             (is (nil? (:total body))))
@@ -734,19 +734,19 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/3")
-                   (:fullUrl entry)))))))
+                   (-> entry :fullUrl :value)))))))
 
     (testing "with start date"
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :effective #fhir/dateTime"2024-01-05T23:45:50Z"}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :effective #fhir/dateTime "2024-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
                {[first-entry second-entry] :entry :as body} :body}
@@ -762,7 +762,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is not given"
             (is (nil? (:total body))))
@@ -776,35 +776,35 @@
 
           (testing "the first entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the first entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
-              :mode := #fhir/code"match"))
+              :mode := #fhir/code "match"))
 
           (testing "the second entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/1")
-                   (:fullUrl second-entry))))
+                   (-> second-entry :fullUrl :value))))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
               :fhir/type := :fhir/Observation
               :id := "1"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
-              :mode := #fhir/code"match")))
+              :mode := #fhir/code "match")))
 
         (testing "following the next link"
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -824,7 +824,7 @@
               (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
             (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
+              (is (= #fhir/code "searchset" (:type body))))
 
             (testing "the total count is not given"
               (is (nil? (:total body))))
@@ -837,22 +837,22 @@
 
             (testing "the entry has the right fullUrl"
               (is (= (str base-url context-path "/Observation/2")
-                     (:fullUrl first-entry))))))))
+                     (-> first-entry :fullUrl :value))))))))
 
     (testing "with start and end date"
       (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :effective #fhir/dateTime "2024-01-04T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :effective #fhir/dateTime"2024-01-05T23:45:50Z"}]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :effective #fhir/dateTime "2024-01-05T23:45:50Z"}]
           [:put {:fhir/type :fhir/Observation :id "3"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :effective #fhir/dateTime"2026-01-05T23:45:50Z"}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :effective #fhir/dateTime "2026-01-05T23:45:50Z"}]]]
 
         (let [{:keys [status]
                {[first-entry second-entry] :entry :as body} :body}
@@ -868,7 +868,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is not given"
             (is (nil? (:total body))))
@@ -883,35 +883,35 @@
 
           (testing "the first entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the first entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH))
 
           (testing "the first entry has the right search mode"
             (given (:search first-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
-              :mode := #fhir/code"match"))
+              :mode := #fhir/code "match"))
 
           (testing "the second entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/1")
-                   (:fullUrl second-entry))))
+                   (-> second-entry :fullUrl :value))))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
               :fhir/type := :fhir/Observation
               :id := "1"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH))
 
           (testing "the second entry has the right search mode"
             (given (:search second-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
-              :mode := #fhir/code"match")))
+              :mode := #fhir/code "match")))
 
         (testing "following the next link"
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -932,7 +932,7 @@
               (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
             (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
+              (is (= #fhir/code "searchset" (:type body))))
 
             (testing "the total count is not given"
               (is (nil? (:total body))))
@@ -945,7 +945,7 @@
 
             (testing "the entry has the right fullUrl"
               (is (= (str base-url context-path "/Observation/2")
-                     (:fullUrl first-entry)))))))))
+                     (-> first-entry :fullUrl :value)))))))))
 
   (testing "page size of 10,000"
     (with-handler [handler _ page-id-cipher]
@@ -953,7 +953,7 @@
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [i]
                [:put {:fhir/type :fhir/Observation :id (str i)
-                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
         (range 20000))]
 
       (let [{:keys [status body]}
@@ -970,7 +970,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is not given"
           (is (nil? (:total body))))

@@ -9,8 +9,8 @@
 
 (def ^:private ^:const msg-auth-required
   #fhir/Coding
-   {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-    :code #fhir/code"MSG_AUTH_REQUIRED"})
+   {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
+    :code #fhir/code "MSG_AUTH_REQUIRED"})
 
 (defn not-authenticated-response [request]
   (log/warn (format-request request) "- 401 - Unauthorized")
@@ -19,8 +19,8 @@
         {:fhir/type :fhir/OperationOutcome
          :issue
          [{:fhir/type :fhir.OperationOutcome/issue
-           :severity #fhir/code"error"
-           :code #fhir/code"login"
+           :severity #fhir/code "error"
+           :code #fhir/code "login"
            :details
            (type/codeable-concept
             {:coding [msg-auth-required]})}]})

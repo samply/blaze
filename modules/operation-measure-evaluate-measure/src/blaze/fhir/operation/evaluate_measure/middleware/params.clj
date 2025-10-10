@@ -44,7 +44,8 @@
 
 (defn- get-param-value-from-resource [body name]
   (when (identical? :fhir/Parameters (fhir-spec/fhir-type body))
-    (some #(when (= name (:name %)) (type/value (:value %))) (:parameter body))))
+    (some #(when (= name (-> % :name type/value)) (-> % :value type/value))
+          (:parameter body))))
 
 (defn- get-param-value* [{:keys [params body]} name coercer]
   (or (some->> (get params name) (coercer name))
@@ -100,7 +101,7 @@
 (defn- coerce-and-validate-report-type [_ value]
   (if-not (s/valid? ::measure/report-type value)
     (ba/incorrect (invalid-report-type-param-msg value) :fhir/issue "value")
-    (type/code value)))
+    value))
 
 (defn- invalid-subject-param-msg [subject]
   (format "Invalid parameter `subject` with value `%s`. Should be a reference."

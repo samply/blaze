@@ -1,6 +1,7 @@
 (ns blaze.middleware.link-headers-test
   (:require
    [blaze.async.comp :as ac]
+   [blaze.fhir.spec.type :as type]
    [blaze.middleware.link-headers :refer [wrap-link-headers]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -17,10 +18,15 @@
 (defn- handler [bundle]
   (ac/completed-future (ring/response bundle)))
 
+(defn- bundle-link [{:keys [relation url]}]
+  {:fhir/type :fhir.Bundle/link
+   :relation (type/string relation)
+   :url (type/uri url)})
+
 (defn- bundle [& links]
   (cond-> {:fhir/type :fhir/Bundle}
     (seq links)
-    (assoc :link (vec links))))
+    (assoc :link (mapv bundle-link links))))
 
 (deftest wrap-link-headers-test
   (testing "no links"

@@ -19,10 +19,10 @@
     :fhir/type := :fhir/Parameters
     :parameter :? empty?)
 
-  (given (fu/parameters "foo" #fhir/string"bar")
+  (given (fu/parameters "foo" #fhir/string "bar")
     :fhir/type := :fhir/Parameters
-    [:parameter 0 :name] := #fhir/string"foo"
-    [:parameter 0 :value] := #fhir/string"bar")
+    [:parameter 0 :name] := #fhir/string "foo"
+    [:parameter 0 :value] := #fhir/string "bar")
 
   (given (fu/parameters "foo" nil)
     :fhir/type := :fhir/Parameters
@@ -30,17 +30,17 @@
 
   (given (fu/parameters "foo" {:fhir/type :fhir/ValueSet})
     :fhir/type := :fhir/Parameters
-    [:parameter 0 :name] := #fhir/string"foo"
+    [:parameter 0 :name] := #fhir/string "foo"
     [:parameter 0 :resource] := {:fhir/type :fhir/ValueSet}))
 
 (deftest subsetted-test
   (are [coding] (fu/subsetted? coding)
-    {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-     :code #fhir/code"SUBSETTED"})
+    {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+     :code #fhir/code "SUBSETTED"})
 
   (are [coding] (not (fu/subsetted? coding))
-    {:code #fhir/code"SUBSETTED"}
-    {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"}))
+    {:code #fhir/code "SUBSETTED"}
+    {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"}))
 
 (deftest version-cmp-test
   (is (zero? (fu/version-cmp nil nil)))
@@ -73,37 +73,37 @@
     (testing "active comes first"
       (is (= (fu/sort-by-priority
               [{:fhir/type :fhir/CodeSystem
-                :status #fhir/code"draft"}
+                :status #fhir/code "draft"}
                {:fhir/type :fhir/CodeSystem
-                :status #fhir/code"active"}])
+                :status #fhir/code "active"}])
              [{:fhir/type :fhir/CodeSystem
-               :status #fhir/code"active"}
+               :status #fhir/code "active"}
               {:fhir/type :fhir/CodeSystem
-               :status #fhir/code"draft"}])))
+               :status #fhir/code "draft"}])))
 
     (testing "without status comes last"
       (is (= (fu/sort-by-priority
               [{:fhir/type :fhir/CodeSystem}
                {:fhir/type :fhir/CodeSystem
-                :status #fhir/code"draft"}])
+                :status #fhir/code "draft"}])
              [{:fhir/type :fhir/CodeSystem
-               :status #fhir/code"draft"}
+               :status #fhir/code "draft"}
               {:fhir/type :fhir/CodeSystem}])))
 
     (testing "active 1.0.0 comes before draft 2.0.0-alpha.1"
       (is (= (fu/sort-by-priority
               [{:fhir/type :fhir/CodeSystem
-                :version #fhir/string"2.0.0-alpha.1"
-                :status #fhir/code"draft"}
+                :version #fhir/string "2.0.0-alpha.1"
+                :status #fhir/code "draft"}
                {:fhir/type :fhir/CodeSystem
-                :version #fhir/string"1.0.0"
-                :status #fhir/code"active"}])
+                :version #fhir/string "1.0.0"
+                :status #fhir/code "active"}])
              [{:fhir/type :fhir/CodeSystem
-               :version #fhir/string"1.0.0"
-               :status #fhir/code"active"}
+               :version #fhir/string "1.0.0"
+               :status #fhir/code "active"}
               {:fhir/type :fhir/CodeSystem
-               :version #fhir/string"2.0.0-alpha.1"
-               :status #fhir/code"draft"}])))
+               :version #fhir/string "2.0.0-alpha.1"
+               :status #fhir/code "draft"}])))
 
     (testing "newest comes first"
       (is (= (fu/sort-by-priority

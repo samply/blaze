@@ -91,8 +91,8 @@
                                              "Patient" "0"
                                              opts)
         ::anom/category := ::anom/not-found
-        [:fhir/issues 0 :severity] := #fhir/code"error"
-        [:fhir/issues 0 :code] := #fhir/code"not-found")))
+        [:fhir/issues 0 :severity] := #fhir/code "error"
+        [:fhir/issues 0 :code] := #fhir/code "not-found")))
 
   (testing "Invalid JSON response"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)]
@@ -188,7 +188,7 @@
   (testing "with meta versionId"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
+                    :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -203,7 +203,7 @@
   (testing "stale update"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
+                    :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -219,7 +219,7 @@
                                                resource
                                                opts)
         ::anom/category := ::anom/conflict
-        [:fhir/issues 0 :severity] := #fhir/code"error"))))
+        [:fhir/issues 0 :severity] := #fhir/code "error"))))
 
 (deftest delete-test
   (testing "204 No Content"
@@ -255,15 +255,15 @@
 (deftest transact-test
   (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
         bundle {:fhir/type :fhir/Bundle
-                :type #fhir/code"transaction"
+                :type #fhir/code "transaction"
                 :entry
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "0"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code"PUT"
-                   :url #fhir/uri"Patient/0"}}]}]
+                   :method #fhir/code "PUT"
+                   :url #fhir/uri "Patient/0"}}]}]
 
     (-> (.onPost http-client "http://localhost:8080/fhir")
         (.doReturn (j/write-value-as-string {:resourceType "Bundle"}))

@@ -25,17 +25,17 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code"read-only"}]}
-   :url #fhir/uri"http://unitsofmeasure.org"
-   :version #fhir/string"2013.10.21"
-   :name #fhir/string"UCUM"
-   :title #fhir/string"Unified Code for Units of Measure (UCUM)"
-   :status #fhir/code"active"
+       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+        :code #fhir/code "read-only"}]}
+   :url #fhir/uri "http://unitsofmeasure.org"
+   :version #fhir/string "2013.10.21"
+   :name #fhir/string "UCUM"
+   :title #fhir/string "Unified Code for Units of Measure (UCUM)"
+   :status #fhir/code "active"
    :experimental #fhir/boolean false
-   :date #fhir/dateTime"2013-10-21"
+   :date #fhir/dateTime "2013-10-21"
    :caseSensitive #fhir/boolean true
-   :content #fhir/code"not-present"})
+   :content #fhir/code "not-present"})
 
 (defmethod c/find :ucum
   [& _]
@@ -59,7 +59,7 @@
    (keep
     (fn [{:keys [code]}]
       (when (valid? (type/value code))
-        {:system #fhir/uri"http://unitsofmeasure.org"
+        {:system #fhir/uri "http://unitsofmeasure.org"
          :code code})))
    concepts))
 

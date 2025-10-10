@@ -223,7 +223,7 @@
           (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
             :fhir/type := :fhir/Patient
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [meta :blaze.db/op] := :create))))
 
     (testing "with failing resource storage"

@@ -20,15 +20,15 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code"read-only"}]}
-   :url #fhir/uri"urn:ietf:bcp:13"
-   :version #fhir/string"1.0.0"
-   :name #fhir/string"BCP-13"
-   :title #fhir/string"BCP-13 Multipurpose Internet Mail Extensions (MIME) types"
-   :status #fhir/code"active"
+       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+        :code #fhir/code "read-only"}]}
+   :url #fhir/uri "urn:ietf:bcp:13"
+   :version #fhir/string "1.0.0"
+   :name #fhir/string "BCP-13"
+   :title #fhir/string "BCP-13 Multipurpose Internet Mail Extensions (MIME) types"
+   :status #fhir/code "active"
    :experimental #fhir/boolean false
-   :content #fhir/code"not-present"})
+   :content #fhir/code "not-present"})
 
 (defmethod c/find :bcp-13
   [& _]
@@ -65,7 +65,7 @@
    (keep
     (fn [{:keys [code]}]
       (when (valid? (type/value code))
-        {:system #fhir/uri"urn:ietf:bcp:13"
+        {:system #fhir/uri "urn:ietf:bcp:13"
          :code code})))
    concepts))
 

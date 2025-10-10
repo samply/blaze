@@ -17,8 +17,8 @@
   [{:keys [url] :as code-system} {:keys [property value]}]
   (condp = (type/value property)
     "concept" (expand-filter code-system (type/value value))
-    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." (type/value property) url))))
+    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." (type/value url)))
+    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." (type/value property) (type/value url)))))
 
 (defn- find-filter
   [{:keys [url] :default/keys [graph]} value code]
@@ -30,5 +30,5 @@
   [{:keys [url] :as code-system} {:keys [property value]} code]
   (condp = (type/value property)
     "concept" (find-filter code-system (type/value value) code)
-    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." (type/value property) url))))
+    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." (type/value url)))
+    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." (type/value property) (type/value url)))))

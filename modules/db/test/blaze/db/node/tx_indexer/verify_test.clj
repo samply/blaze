@@ -40,14 +40,14 @@
 (test/use-fixtures :each tu/fixture)
 
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
-(def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
+(def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def observation-0 {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}})
+                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})
 (def observation-1 {:fhir/type :fhir/Observation :id "1"
-                    :subject #fhir/Reference{:reference "Patient/0"}})
+                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})
 (def allergy-intolerance-0 {:fhir/type :fhir/AllergyIntolerance :id "0"
-                            :patient #fhir/Reference{:reference "Patient/0"}})
+                            :patient #fhir/Reference{:reference #fhir/string "Patient/0"}})
 
 (defn- verify-tx-cmds [{:keys [read-only-matcher] :as node} t tx-cmds]
   (with-open [db (d/new-batch-db (d/db node))]
@@ -651,8 +651,8 @@
           (is (empty? (verify-tx-cmds node 2 [{:op "delete-history" :type "Patient" :id "0"}]))))))
 
     (testing "with two versions"
-      (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active false}
-            patient-v2 {:fhir/type :fhir/Patient :id "0" :active true}
+      (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
+            patient-v2 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}
             hash-v1 (hash/generate patient-v1)]
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:create patient-v1]]
@@ -682,9 +682,9 @@
             [4 2 ss-tu/decode-val] := {:total 1 :num-changes 1}))))
 
     (testing "with three versions"
-      (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active false}
-            patient-v2 {:fhir/type :fhir/Patient :id "0" :active true}
-            patient-v3 {:fhir/type :fhir/Patient :id "0" :active false}
+      (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
+            patient-v2 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}
+            patient-v3 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
             hash-v1 (hash/generate patient-v1)
             hash-v2 (hash/generate patient-v2)]
         (with-system-data [{:blaze.db/keys [node]} config]

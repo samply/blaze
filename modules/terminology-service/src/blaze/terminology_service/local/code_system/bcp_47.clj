@@ -26,15 +26,15 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code"read-only"}]}
-   :url #fhir/uri"urn:ietf:bcp:47"
-   :version #fhir/string"1.0.0"
-   :name #fhir/string"BCP-47"
-   :title #fhir/string"BCP-47 Tags for Identifying Languages"
-   :status #fhir/code"active"
+       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+        :code #fhir/code "read-only"}]}
+   :url #fhir/uri "urn:ietf:bcp:47"
+   :version #fhir/string "1.0.0"
+   :name #fhir/string "BCP-47"
+   :title #fhir/string "BCP-47 Tags for Identifying Languages"
+   :status #fhir/code "active"
    :experimental #fhir/boolean false
-   :content #fhir/code"not-present"})
+   :content #fhir/code "not-present"})
 
 (defn- blank-to-nil [s]
   (when-not (str/blank? s)
@@ -76,7 +76,7 @@
    (keep
     (fn [{:keys [code]}]
       (when-let [display (display (type/value code))]
-        {:system #fhir/uri"urn:ietf:bcp:47"
+        {:system #fhir/uri "urn:ietf:bcp:47"
          :code code
          :display display})))
    concepts))

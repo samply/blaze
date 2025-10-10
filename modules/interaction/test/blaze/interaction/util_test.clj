@@ -3,6 +3,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.db.tx-log.spec]
+   [blaze.fhir.hash :as hash]
    [blaze.interaction.util :as iu]
    [blaze.interaction.util-spec]
    [blaze.module.test-util :refer [with-system]]
@@ -57,10 +58,10 @@
                    [:put {:fhir/type :fhir/Patient :id "0"} (into [:if-match] ts)])))))))
 
   (testing "with an existing, identical patient; the other patient is there in order to show that the t depends only on the matching patient"
-    (let [hash #blaze/hash"9D4C35D80AFF36B057C99523FDF18423110AAB69ED4F744EB85445F9C7D16443"
-          male-patient {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
+    (let [male-patient {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}
+          hash (hash/generate male-patient)]
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
          [[:put male-patient]]
          [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 

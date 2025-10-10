@@ -64,7 +64,7 @@
   (sexp [nil {:value value}]))
 
 (def ^:private string-extension
-  #fhir/Extension{:url #fhir/uri"foo" :valueString "bar"})
+  #fhir/Extension{:url "foo" :value #fhir/string "bar"})
 
 (defn interned? [x y]
   (and (identical? x y) (p/-interned x) (p/-interned y)))
@@ -76,10 +76,10 @@
        (not (p/-interned y))))
 
 (def ^:private internable-extension
-  #fhir/Extension{:url "url-130945" :value #fhir/code"value-130953"})
+  #fhir/Extension{:url "url-130945" :value #fhir/code "value-130953"})
 
 (def ^:private not-internable-extension
-  #fhir/Extension{:url "url-205325" :value #fhir/string"value-205336"})
+  #fhir/Extension{:url "url-205325" :value #fhir/string "value-205336"})
 
 (deftest nil-test
   (testing "all FhirType methods can be called on nil"
@@ -111,7 +111,7 @@
       (is (= "0" (murmur3 nil))))
 
     (testing "references"
-      (is (nil? (type/references nil))))))
+      (is (empty? (type/references nil))))))
 
 (deftest Object-test
   (testing "arbitrary instances have no fhir type"
@@ -135,7 +135,7 @@
     (is (= #fhir/boolean{:value true} #fhir/boolean true)))
 
   (testing "interned"
-    (is (interned? true true))
+    (is (interned? #fhir/boolean true #fhir/boolean true))
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
@@ -161,19 +161,19 @@
     (testing "already extended"
       (is (= (type/assoc-id #fhir/boolean{:id "foo"} "bar")
              #fhir/boolean{:id "bar"}))
-      (is (= (type/assoc-id #fhir/boolean{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/boolean{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/boolean{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/boolean{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/boolean true #fhir/Extension{:url "foo"})
-             #fhir/boolean{:extension #fhir/Extension{:url "foo"} :value true})))
+      (is (= (type/assoc-extension #fhir/boolean true [#fhir/Extension{:url "foo"}])
+             #fhir/boolean{:extension [#fhir/Extension{:url "foo"}] :value true})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/boolean{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/boolean{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/boolean{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/boolean{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/boolean{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/boolean{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/boolean{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/boolean{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (true? (type/value x))
@@ -193,8 +193,8 @@
 
   (testing "to-xml"
     (are [b s] (= (sexp-value s) (type/to-xml b))
-      true "true"
-      false "false"))
+      #fhir/boolean true "true"
+      #fhir/boolean false "false"))
 
   (testing "equals"
     (is (= #fhir/boolean{:extension [#fhir/Extension{:url ""}] :value false}
@@ -218,9 +218,7 @@
       #fhir/boolean{:extension [#fhir/Extension{:url "0"} #fhir/Extension{:url "0"}]} "d1fda5de"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      true
-      nil))
+    (is (empty? (type/references #fhir/boolean true))))
 
   (testing "print"
     (are [boolean s] (= (pr-str boolean) s)
@@ -268,19 +266,19 @@
     (testing "already extended"
       (is (= (type/assoc-id #fhir/integer{:id "foo"} "bar")
              #fhir/integer{:id "bar"}))
-      (is (= (type/assoc-id #fhir/integer{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/integer{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/integer{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/integer{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/integer 1 #fhir/Extension{:url "foo"})
-             #fhir/integer{:extension #fhir/Extension{:url "foo"} :value 1})))
+      (is (= (type/assoc-extension #fhir/integer 1 [#fhir/Extension{:url "foo"}])
+             #fhir/integer{:extension [#fhir/Extension{:url "foo"}] :value 1})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/integer{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/integer{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/integer{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/integer{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/integer{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/integer{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/integer{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/integer{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= 1 (type/value x))
@@ -308,9 +306,7 @@
       #fhir/integer{:extension [#fhir/Extension{:url "foo"}]} "b353ef83"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/integer 0
-      nil)))
+    (is (empty? (type/references #fhir/integer 0)))))
 
 (deftest long-test
   (testing "long?"
@@ -401,16 +397,16 @@
 (deftest string-test
   (testing "string?"
     (are [x] (type/string? x)
-      #fhir/string""
+      #fhir/string ""
       #fhir/string{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/string (type/type x))
-      #fhir/string""
+      #fhir/string ""
       #fhir/string{:id "foo"}))
 
   (testing "string"
-    (is (= #fhir/string{:value "181312"} #fhir/string"181312")))
+    (is (= #fhir/string{:value "181312"} #fhir/string "181312")))
 
   (testing "interned"
     (is (not-interned? (String. "165645") (String. "165645")))
@@ -420,8 +416,8 @@
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
-        (type/string {:extension [internable-extension] :value #fhir/string"174230"})
-        (type/string {:extension [internable-extension] :value #fhir/string"174230"}))
+        (type/string {:extension [internable-extension] :value "174230"})
+        (type/string {:extension [internable-extension] :value "174230"}))
 
       (are [x y] (interned? x y)
         (type/string {:extension [internable-extension]})
@@ -429,56 +425,54 @@
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/string"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/string "165645" "id-111030")
              #fhir/string{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/string{:id "foo"} "bar")
              #fhir/string{:id "bar"}))
-      (is (= (type/assoc-id #fhir/string{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/string{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/string{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/string"165645" #fhir/Extension{:url "foo"})
-             #fhir/string{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/string "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/string{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/string{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/string{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/string{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/string{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/string{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/string{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/string{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/string{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "175227" (type/value x))
-      #fhir/string"175227"
+      #fhir/string "175227"
       #fhir/string{:value "175227"}))
 
   (testing "assoc value"
-    (is (= #fhir/string"bar" (type/assoc-value #fhir/string"foo" "bar"))))
+    (is (= #fhir/string "bar" (type/assoc-value #fhir/string "foo" "bar"))))
 
   (testing "to-json"
-    (is (= "\"105406\"" (gen-json-string #fhir/string"105406"))))
+    (is (= "\"105406\"" (gen-json-string #fhir/string "105406"))))
 
   (testing "to-xml"
-    (is (= (sexp-value "121344") (type/to-xml #fhir/string"121344"))))
+    (is (= (sexp-value "121344") (type/to-xml #fhir/string "121344"))))
 
   (testing "equals"
-    (is (= #fhir/string"foo" #fhir/string{:value "foo"})))
+    (is (= #fhir/string "foo" #fhir/string{:value "foo"})))
 
   (testing "hash-into"
     (are [s hex] (= hex (murmur3 s))
-      #fhir/string"" "126916b"
-      #fhir/string"foo" "ba7851a6"
+      #fhir/string "" "126916b"
+      #fhir/string "foo" "ba7851a6"
       #fhir/string{:value "foo"} "ba7851a6"
       #fhir/string{:id "foo"} "88650112"
       #fhir/string{:id "foo" :value "foo"} "28b14e8f"
       #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "b2f98d95"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      "151736"
-      nil))
+    (is (empty? (type/references #fhir/string "151736"))))
 
   (testing "toString"
     (satisfies-prop 10
@@ -504,7 +498,7 @@
     (is (= #fhir/decimal{:value 1M} #fhir/decimal 1M)))
 
   (testing "interned"
-    (is (not-interned? 165746M 165746M)))
+    (is (not-interned? #fhir/decimal 165746M #fhir/decimal 165746M)))
 
   (testing "assoc id"
     (testing "non-extended"
@@ -514,19 +508,19 @@
     (testing "already extended"
       (is (= (type/assoc-id #fhir/decimal{:id "foo"} "bar")
              #fhir/decimal{:id "bar"}))
-      (is (= (type/assoc-id #fhir/decimal{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/decimal{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/decimal{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/decimal{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/decimal 1M #fhir/Extension{:url "foo"})
-             #fhir/decimal{:extension #fhir/Extension{:url "foo"} :value 1M})))
+      (is (= (type/assoc-extension #fhir/decimal 1M [#fhir/Extension{:url "foo"}])
+             #fhir/decimal{:extension [#fhir/Extension{:url "foo"}] :value 1M})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/decimal{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/decimal{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/decimal{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/decimal{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/decimal{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/decimal{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/decimal{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/decimal{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= 1M (type/value x))
@@ -545,7 +539,7 @@
       1.1M "1.1"))
 
   (testing "to-xml"
-    (is (= (sexp-value "1.1") (type/to-xml 1.1M))))
+    (is (= (sexp-value "1.1") (type/to-xml #fhir/decimal 1.1M))))
 
   (testing "hash-into"
     (are [d hex] (= hex (murmur3 d))
@@ -557,26 +551,24 @@
       #fhir/decimal{:extension [#fhir/Extension{:url "foo"}]} "df35c8c9"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/decimal 0M
-      nil)))
+    (is (empty? (type/references #fhir/decimal 0M)))))
 
 (deftest uri-test
   (testing "uri?"
     (are [x] (type/uri? x)
-      #fhir/uri""
+      #fhir/uri ""
       #fhir/uri{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/uri (type/type x))
-      #fhir/uri""
+      #fhir/uri ""
       #fhir/uri{:id "foo"}))
 
   (testing "uri"
-    (is (= #fhir/uri{:value "181424"} #fhir/uri"181424")))
+    (is (= #fhir/uri{:value "181424"} #fhir/uri "181424")))
 
   (testing "interned"
-    (is (interned? #fhir/uri"165823" #fhir/uri"165823"))
+    (is (interned? #fhir/uri "165823" #fhir/uri "165823"))
 
     (testing "with extension"
       (are [x y] (interned? x y)
@@ -595,66 +587,64 @@
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/uri"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/uri "165645" "id-111030")
              #fhir/uri{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/uri{:id "foo"} "bar")
              #fhir/uri{:id "bar"}))
-      (is (= (type/assoc-id #fhir/uri{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/uri{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/uri{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/uri{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/uri"165645" #fhir/Extension{:url "foo"})
-             #fhir/uri{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/uri "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/uri{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/uri{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/uri{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/uri{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/uri{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/uri{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/uri{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/uri{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/uri{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
-      #fhir/uri"105614"
+      #fhir/uri "105614"
       #fhir/uri{:id "foo" :value "105614"}))
 
   (testing "assoc value"
-    (is (= #fhir/uri"bar" (type/assoc-value #fhir/uri"foo" "bar"))))
+    (is (= #fhir/uri "bar" (type/assoc-value #fhir/uri "foo" "bar"))))
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/uri"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/uri "foo" ::not-found)))))
 
   (testing "to-json"
-    (is (= "\"105846\"" (gen-json-string #fhir/uri"105846"))))
+    (is (= "\"105846\"" (gen-json-string #fhir/uri "105846"))))
 
   (testing "to-xml"
-    (is (= (sexp-value "105846") (type/to-xml #fhir/uri"105846"))))
+    (is (= (sexp-value "105846") (type/to-xml #fhir/uri "105846"))))
 
   (testing "equals"
-    (is (= #fhir/uri"142334" #fhir/uri"142334"))
-    (is (not= #fhir/uri"142334" #fhir/uri"215930"))
-    (is (not= #fhir/uri"142334" "142334")))
+    (is (= #fhir/uri "142334" #fhir/uri "142334"))
+    (is (not= #fhir/uri "142334" #fhir/uri "215930"))
+    (is (not= #fhir/uri "142334" "142334")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/uri"" "51a99a01"
-      #fhir/uri"foo" "dc60f982"
+      #fhir/uri "" "51a99a01"
+      #fhir/uri "foo" "dc60f982"
       #fhir/uri{:value "foo"} "dc60f982"
       #fhir/uri{:id "foo"} "7c797680"
       #fhir/uri{:id "foo" :value "foo"} "52e1c640"
       #fhir/uri{:extension [#fhir/Extension{:url "foo"}]} "435d07d9"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/uri"151758"
-      nil))
+    (is (empty? (type/references #fhir/uri "151758"))))
 
   (testing "print"
     (are [uri s] (= (pr-str uri) s)
-      #fhir/uri"142600" "#fhir/uri\"142600\""
+      #fhir/uri "142600" "#fhir/uri\"142600\""
       #fhir/uri{:id "0"} "#fhir/uri{:id \"0\"}"))
 
   (testing "toString"
@@ -691,16 +681,16 @@
 (deftest url-test
   (testing "url?"
     (are [x] (type/url? x)
-      #fhir/url""
+      #fhir/url ""
       #fhir/url{}))
 
   (testing "type"
     (are [x] (= :fhir/url (type/type x))
-      #fhir/url""
+      #fhir/url ""
       #fhir/url{}))
 
   (testing "interned"
-    (is (not-interned? #fhir/url"165852" #fhir/url"165852"))
+    (is (not-interned? #fhir/url "165852" #fhir/url "165852"))
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
@@ -713,66 +703,64 @@
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/url"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/url "165645" "id-111030")
              #fhir/url{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/url{:id "foo"} "bar")
              #fhir/url{:id "bar"}))
-      (is (= (type/assoc-id #fhir/url{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/url{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/url{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/url{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/url"165645" #fhir/Extension{:url "foo"})
-             #fhir/url{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/url "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/url{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/url{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/url{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/url{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/url{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/url{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/url{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/url{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/url{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
-      #fhir/url"105614"
+      #fhir/url "105614"
       #fhir/url{:id "foo" :value "105614"}))
 
   (testing "assoc value"
-    (is (= #fhir/url"bar" (type/assoc-value #fhir/url"foo" "bar"))))
+    (is (= #fhir/url "bar" (type/assoc-value #fhir/url "foo" "bar"))))
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/url"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/url "foo" ::not-found)))))
 
   (testing "to-json"
-    (is (= "\"105846\"" (gen-json-string #fhir/url"105846"))))
+    (is (= "\"105846\"" (gen-json-string #fhir/url "105846"))))
 
   (testing "to-xml"
-    (is (= (sexp-value "105846") (type/to-xml #fhir/url"105846"))))
+    (is (= (sexp-value "105846") (type/to-xml #fhir/url "105846"))))
 
   (testing "equals"
-    (is (let [url #fhir/url"142334"] (= url url)))
-    (is (= #fhir/url"142334" #fhir/url"142334"))
-    (is (not= #fhir/url"142334" #fhir/url"220025"))
-    (is (not= #fhir/url"142334" "142334")))
+    (is (let [url #fhir/url "142334"] (= url url)))
+    (is (= #fhir/url "142334" #fhir/url "142334"))
+    (is (not= #fhir/url "142334" #fhir/url "220025"))
+    (is (not= #fhir/url "142334" "142334")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/url"" "39b10d82"
-      #fhir/url"foo" "7acc4e54"
+      #fhir/url "" "39b10d82"
+      #fhir/url "foo" "7acc4e54"
       #fhir/url{:id "foo"} "78133d84"
       #fhir/url{:id "foo" :value "foo"} "43940bd2"
       #fhir/url{:extension [#fhir/Extension{:url "foo"}]} "95f50bf4"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/url"151809"
-      nil))
+    (is (empty? (type/references #fhir/url "151809"))))
 
   (testing "print"
     (are [x s] (= (pr-str x) s)
-      #fhir/url"142600"
+      #fhir/url "142600"
       "#fhir/url\"142600\""
 
       #fhir/url{:id "id-191655"}
@@ -792,19 +780,19 @@
 (deftest canonical-test
   (testing "canonical?"
     (are [x] (type/canonical? x)
-      #fhir/canonical""
+      #fhir/canonical ""
       #fhir/canonical{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/canonical (type/type x))
-      #fhir/canonical""
+      #fhir/canonical ""
       #fhir/canonical{:id "foo"}))
 
   (testing "canonical"
-    (is (= #fhir/canonical{:value "182040"} #fhir/canonical"182040")))
+    (is (= #fhir/canonical{:value "182040"} #fhir/canonical "182040")))
 
   (testing "interned"
-    (is (interned? #fhir/canonical"165936" #fhir/canonical"165936"))
+    (is (interned? #fhir/canonical "165936" #fhir/canonical "165936"))
 
     (testing "with extension"
       (are [x y] (interned? x y)
@@ -823,65 +811,63 @@
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/canonical"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/canonical "165645" "id-111030")
              #fhir/canonical{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/canonical{:id "foo"} "bar")
              #fhir/canonical{:id "bar"}))
-      (is (= (type/assoc-id #fhir/canonical{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/canonical{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/canonical{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/canonical{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/canonical"165645" #fhir/Extension{:url "foo"})
-             #fhir/canonical{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/canonical "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/canonical{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/canonical{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/canonical{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/canonical{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/canonical{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/canonical{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/canonical{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/canonical{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/canonical{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "105614" (type/value x) (:value x) (:value x ::foo))
-      #fhir/canonical"105614"
+      #fhir/canonical "105614"
       #fhir/canonical{:id "foo" :value "105614"}))
 
   (testing "assoc value"
-    (is (= #fhir/canonical"bar" (type/assoc-value #fhir/canonical"foo" "bar"))))
+    (is (= #fhir/canonical "bar" (type/assoc-value #fhir/canonical "foo" "bar"))))
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/canonical"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/canonical "foo" ::not-found)))))
 
   (testing "to-json"
-    (is (= "\"105846\"" (gen-json-string #fhir/canonical"105846"))))
+    (is (= "\"105846\"" (gen-json-string #fhir/canonical "105846"))))
 
   (testing "to-xml"
-    (is (= (sexp-value "105846") (type/to-xml #fhir/canonical"105846"))))
+    (is (= (sexp-value "105846") (type/to-xml #fhir/canonical "105846"))))
 
   (testing "equals"
-    (is (= #fhir/canonical"142334" #fhir/canonical"142334"))
-    (is (not= #fhir/canonical"142334" #fhir/canonical"220056"))
-    (is (not= #fhir/canonical"142334" "142334")))
+    (is (= #fhir/canonical "142334" #fhir/canonical "142334"))
+    (is (not= #fhir/canonical "142334" #fhir/canonical "220056"))
+    (is (not= #fhir/canonical "142334" "142334")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/canonical"" "53c915fd"
-      #fhir/canonical"foo" "e42e9c7e"
+      #fhir/canonical "" "53c915fd"
+      #fhir/canonical "foo" "e42e9c7e"
       #fhir/canonical{:id "foo"} "b039419d"
       #fhir/canonical{:id "foo" :value "foo"} "83587524"
       #fhir/canonical{:extension [#fhir/Extension{:url "foo"}]} "3f1c8be1"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/canonical"151819"
-      nil))
+    (is (empty? (type/references #fhir/canonical "151819"))))
 
   (testing "print"
     (are [c s] (= s (pr-str c))
-      #fhir/canonical"142600"
+      #fhir/canonical "142600"
       "#fhir/canonical\"142600\""
 
       #fhir/canonical{:id "211202"}
@@ -923,20 +909,20 @@
 
 (deftest base64Binary-test
   (testing "base64Binary?"
-    (are [x] (type/base64Binary x)
-      #fhir/base64Binary""
+    (are [x] (type/base64Binary? x)
+      #fhir/base64Binary ""
       #fhir/base64Binary{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/base64Binary (type/type x))
-      #fhir/base64Binary""
+      #fhir/base64Binary ""
       #fhir/base64Binary{:id "foo"}))
 
   (testing "base64Binary"
-    (is (= #fhir/base64Binary{:value "MTA1NjE0Cg=="} #fhir/base64Binary"MTA1NjE0Cg==")))
+    (is (= #fhir/base64Binary{:value "MTA1NjE0Cg=="} #fhir/base64Binary "MTA1NjE0Cg==")))
 
   (testing "interned"
-    (is (not-interned? #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"MTA1NjE0Cg=="))
+    (is (not-interned? #fhir/base64Binary "MTA1NjE0Cg==" #fhir/base64Binary "MTA1NjE0Cg=="))
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
@@ -949,65 +935,63 @@
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/base64Binary"MTA1NjE0Cg==" "id-111030")
+      (is (= (type/assoc-id #fhir/base64Binary "MTA1NjE0Cg==" "id-111030")
              #fhir/base64Binary{:id "id-111030" :value "MTA1NjE0Cg=="})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/base64Binary{:id "foo"} "bar")
              #fhir/base64Binary{:id "bar"}))
-      (is (= (type/assoc-id #fhir/base64Binary{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/base64Binary{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/base64Binary{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/base64Binary{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/base64Binary"MTA1NjE0Cg==" #fhir/Extension{:url "foo"})
-             #fhir/base64Binary{:extension #fhir/Extension{:url "foo"} :value "MTA1NjE0Cg=="})))
+      (is (= (type/assoc-extension #fhir/base64Binary "MTA1NjE0Cg==" [#fhir/Extension{:url "foo"}])
+             #fhir/base64Binary{:extension [#fhir/Extension{:url "foo"}] :value "MTA1NjE0Cg=="})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/base64Binary{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/base64Binary{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/base64Binary{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/base64Binary{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/base64Binary{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/base64Binary{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/base64Binary{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/base64Binary{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "MTA1NjE0Cg==" (type/value x) (:value x) (:value x ::foo))
-      #fhir/base64Binary"MTA1NjE0Cg=="
+      #fhir/base64Binary "MTA1NjE0Cg=="
       #fhir/base64Binary{:id "foo" :value "MTA1NjE0Cg=="}))
 
   (testing "assoc value"
-    (is (= #fhir/base64Binary"bar" (type/assoc-value #fhir/base64Binary"foo" "bar"))))
+    (is (= #fhir/base64Binary "bar" (type/assoc-value #fhir/base64Binary "foo" "bar"))))
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/base64Binary"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/base64Binary "foo" ::not-found)))))
 
   (testing "to-json"
-    (is (= "\"MTA1NjE0Cg==\"" (gen-json-string #fhir/base64Binary"MTA1NjE0Cg=="))))
+    (is (= "\"MTA1NjE0Cg==\"" (gen-json-string #fhir/base64Binary "MTA1NjE0Cg=="))))
 
   (testing "to-xml"
-    (is (= (sexp-value "MTA1NjE0Cg==") (type/to-xml #fhir/base64Binary"MTA1NjE0Cg=="))))
+    (is (= (sexp-value "MTA1NjE0Cg==") (type/to-xml #fhir/base64Binary "MTA1NjE0Cg=="))))
 
   (testing "equals"
-    (is (let [base64Binary #fhir/base64Binary"MTA1NjE0Cg=="] (= base64Binary base64Binary)))
-    (is (= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"MTA1NjE0Cg=="))
-    (is (not= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"YQo="))
-    (is (not= #fhir/base64Binary"MTA1NjE0Cg==" "MTA1NjE0Cg==")))
+    (is (let [base64Binary #fhir/base64Binary "MTA1NjE0Cg=="] (= base64Binary base64Binary)))
+    (is (= #fhir/base64Binary "MTA1NjE0Cg==" #fhir/base64Binary "MTA1NjE0Cg=="))
+    (is (not= #fhir/base64Binary "MTA1NjE0Cg==" #fhir/base64Binary "YQo="))
+    (is (not= #fhir/base64Binary "MTA1NjE0Cg==" "MTA1NjE0Cg==")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/base64Binary"" "339ff20a"
-      #fhir/base64Binary"YQo=" "ed565602"
-      #fhir/base64Binary"MTA1NjE0Cg===" "24568b10"
+      #fhir/base64Binary "" "339ff20a"
+      #fhir/base64Binary "YQo=" "ed565602"
+      #fhir/base64Binary "MTA1NjE0Cg===" "24568b10"
       #fhir/base64Binary{:id "foo"} "331c84dc"
       #fhir/base64Binary{:extension [#fhir/Extension{:url "foo"}]} "4d9fc231"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/base64Binary"YQo="
-      nil))
+    (is (empty? (type/references #fhir/base64Binary "YQo="))))
 
   (testing "print"
-    (is (= "#fhir/base64Binary\"YQo=\"" (pr-str #fhir/base64Binary"YQo="))))
+    (is (= "#fhir/base64Binary\"YQo=\"" (pr-str #fhir/base64Binary "YQo="))))
 
   (testing "toString"
     (satisfies-prop 10
@@ -1017,8 +1001,8 @@
 (deftest instant-test
   (testing "instant?"
     (are [x] (type/instant? x)
-      #fhir/instant"1970-01-02T00:00:00Z"
-      #fhir/instant"1970-01-02T00:00:00+01:00"
+      #fhir/instant "1970-01-02T00:00:00Z"
+      #fhir/instant "1970-01-02T00:00:00+01:00"
       #fhir/instant{:id "foo"}
       #fhir/instant{:value "1970-01-02T00:00:00Z"}
       #fhir/instant{:value "1970-01-02T00:00:00+01:00"}))
@@ -1028,8 +1012,8 @@
 
   (testing "type"
     (are [x] (= :fhir/instant (type/type x))
-      #fhir/instant"1970-01-02T00:00:00Z"
-      #fhir/instant"1970-01-02T00:00:00+01:00"
+      #fhir/instant "1970-01-02T00:00:00Z"
+      #fhir/instant "1970-01-02T00:00:00+01:00"
       #fhir/instant{:id "foo"}
       #fhir/instant{:value "1970-01-02T00:00:00Z"}
       #fhir/instant{:value "1970-01-02T00:00:00+01:00"}))
@@ -1040,18 +1024,18 @@
 
   (testing "instant"
     (is (= #fhir/instant{:value "1970-01-02T00:00:00Z"}
-           #fhir/instant"1970-01-02T00:00:00Z"))
+           #fhir/instant "1970-01-02T00:00:00Z"))
 
-    (is (instance? Instant #fhir/instant"1970-01-02T00:00:00Z"))
+    (is (instance? Instant #fhir/instant "1970-01-02T00:00:00Z"))
 
     (is (instance? Instant (type/instant #system/date-time"2020-01-02T03:04:05Z"))))
 
   (testing "interned"
-    (is (not-interned? #fhir/instant"2020-01-01T00:00:00+02:00"
-                       #fhir/instant"2020-01-01T00:00:00+02:00"))
+    (is (not-interned? #fhir/instant "2020-01-01T00:00:00+02:00"
+                       #fhir/instant "2020-01-01T00:00:00+02:00"))
 
-    (is (not-interned? #fhir/instant"1970-01-02T00:00:00Z"
-                       #fhir/instant"1970-01-02T00:00:00Z"))
+    (is (not-interned? #fhir/instant "1970-01-02T00:00:00Z"
+                       #fhir/instant "1970-01-02T00:00:00Z"))
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
@@ -1069,67 +1053,67 @@
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/instant"1970-01-02T00:00:00Z" "id-111030")
+      (is (= (type/assoc-id #fhir/instant "1970-01-02T00:00:00Z" "id-111030")
              #fhir/instant{:id "id-111030" :value "1970-01-02T00:00:00Z"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/instant{:id "foo"} "bar")
              #fhir/instant{:id "bar"}))
-      (is (= (type/assoc-id #fhir/instant{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/instant{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/instant{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/instant"1970-01-02T00:00:00Z" #fhir/Extension{:url "foo"})
-             #fhir/instant{:extension #fhir/Extension{:url "foo"} :value "1970-01-02T00:00:00Z"})))
+      (is (= (type/assoc-extension #fhir/instant "1970-01-02T00:00:00Z" [#fhir/Extension{:url "foo"}])
+             #fhir/instant{:extension [#fhir/Extension{:url "foo"}] :value "1970-01-02T00:00:00Z"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/instant{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/instant{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/instant{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/instant{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/instant{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/instant{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/instant{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value is a System.DateTime which is a OffsetDateTime"
     (are [x] (= (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) (type/value x))
-      #fhir/instant"2020-01-01T00:00:00+02:00"
+      #fhir/instant "2020-01-01T00:00:00+02:00"
       #fhir/instant{:id "foo" :value "2020-01-01T00:00:00+02:00"})
 
     (are [x] (= (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) (type/value x))
-      #fhir/instant"1970-01-01T00:00:00Z"
+      #fhir/instant "1970-01-01T00:00:00Z"
       #fhir/instant{:id "foo" :value "1970-01-01T00:00:00Z"}))
 
   (testing "assoc value"
-    (is (= #fhir/instant"1970-01-02T00:00:00Z" (type/assoc-value #fhir/instant"2020-01-01T00:00:00+02:00" "1970-01-02T00:00:00Z")))
+    (is (= #fhir/instant "1970-01-02T00:00:00Z" (type/assoc-value #fhir/instant "2020-01-01T00:00:00+02:00" "1970-01-02T00:00:00Z")))
 
     (testing "invalid"
-      (is (s2/invalid? (type/assoc-value #fhir/instant"2020-01-01T00:00:00+02:00" "a")))))
+      (is (s2/invalid? (type/assoc-value #fhir/instant "2020-01-01T00:00:00+02:00" "a")))))
 
   (testing "to-json"
     (are [instant json] (= json (gen-json-string instant))
-      #fhir/instant"2020-01-01T00:00:00+02:00" "\"2020-01-01T00:00:00+02:00\""
+      #fhir/instant "2020-01-01T00:00:00+02:00" "\"2020-01-01T00:00:00+02:00\""
       Instant/EPOCH "\"1970-01-01T00:00:00Z\""))
 
   (testing "to-xml"
     (is (= (sexp-value "2020-01-01T00:00:00+02:00")
-           (type/to-xml #fhir/instant"2020-01-01T00:00:00+02:00")))
+           (type/to-xml #fhir/instant "2020-01-01T00:00:00+02:00")))
     (is (= (sexp-value "1970-01-01T00:00:00Z")
            (type/to-xml Instant/EPOCH))))
 
   (testing "equals"
-    (is (let [instant #fhir/instant"2020-01-01T00:00:00+02:00"] (= instant instant)))
-    (is (= #fhir/instant"2020-01-01T00:00:00+02:00"
-           #fhir/instant"2020-01-01T00:00:00+02:00"))
-    (is (not= #fhir/instant"2020-01-01T00:00:00+01:00"
-              #fhir/instant"2020-01-01T00:00:00+02:00"))
-    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00Z"))
-    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00+00:00")))
+    (is (let [instant #fhir/instant "2020-01-01T00:00:00+02:00"] (= instant instant)))
+    (is (= #fhir/instant "2020-01-01T00:00:00+02:00"
+           #fhir/instant "2020-01-01T00:00:00+02:00"))
+    (is (not= #fhir/instant "2020-01-01T00:00:00+01:00"
+              #fhir/instant "2020-01-01T00:00:00+02:00"))
+    (is (= Instant/EPOCH #fhir/instant "1970-01-01T00:00:00Z"))
+    (is (= Instant/EPOCH #fhir/instant "1970-01-01T00:00:00+00:00")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/instant"2020-01-01T00:00:00+00:00" "d81f6bc2"
-      #fhir/instant"2020-01-01T00:00:00+01:00" "4225df0d"
-      #fhir/instant"2020-01-01T00:00:00Z" "d81f6bc2"
-      #fhir/instant"1970-01-01T00:00:00Z" "93344244"
+      #fhir/instant "2020-01-01T00:00:00+00:00" "d81f6bc2"
+      #fhir/instant "2020-01-01T00:00:00+01:00" "4225df0d"
+      #fhir/instant "2020-01-01T00:00:00Z" "d81f6bc2"
+      #fhir/instant "1970-01-01T00:00:00Z" "93344244"
       #fhir/instant{:value "1970-01-01T00:00:00Z"} "93344244"
       Instant/EPOCH "93344244"
       #fhir/instant{:id "foo"} "b4705bd6"
@@ -1143,10 +1127,10 @@
 
   (testing "print"
     (are [i s] (= s (pr-str i))
-      #fhir/instant"2020-01-01T00:00:00Z"
+      #fhir/instant "2020-01-01T00:00:00Z"
       "#java/instant\"2020-01-01T00:00:00Z\""
 
-      #fhir/instant"2020-01-01T00:00:00+01:00"
+      #fhir/instant "2020-01-01T00:00:00+01:00"
       "#fhir/instant\"2020-01-01T00:00:00+01:00\""
 
       #fhir/instant{:id "211213"}
@@ -1156,15 +1140,15 @@
       "#java/instant\"2020-01-01T00:00:00Z\""))
 
   (testing "toString"
-    (is (= "2020-01-01T00:00:00Z" (str #fhir/instant"2020-01-01T00:00:00Z")))))
+    (is (= "2020-01-01T00:00:00Z" (str #fhir/instant "2020-01-01T00:00:00Z")))))
 
 (deftest date-test
   (testing "with year precision"
     (testing "date?"
       (are [x] (type/date? x)
-        #fhir/date"0001"
-        #fhir/date"9999"
-        #fhir/date"2022"
+        #fhir/date "0001"
+        #fhir/date "9999"
+        #fhir/date "2022"
         #fhir/date{:id "foo"}))
 
     (testing "invalid"
@@ -1172,15 +1156,15 @@
 
     (testing "type"
       (are [x] (= :fhir/date (type/type x))
-        #fhir/date"2022"
+        #fhir/date "2022"
         #fhir/date{:id "foo"}))
 
     (testing "date"
-      (is (= #fhir/date{:value "2022"} #fhir/date"2022"))
-      (is (= #fhir/date{:value #system/date"2022"} #fhir/date"2022")))
+      (is (= #fhir/date{:value "2022"} #fhir/date "2022"))
+      (is (= #fhir/date{:value #system/date"2022"} #fhir/date "2022")))
 
     (testing "interned"
-      (is (not-interned? #fhir/date"2020" #fhir/date"2020"))
+      (is (not-interned? #fhir/date "2020" #fhir/date "2020"))
 
       (testing "with extension"
         (are [x y] (not-interned? x y)
@@ -1199,39 +1183,39 @@
 
     (testing "assoc id"
       (testing "non-extended"
-        (is (= (type/assoc-id #fhir/date"2020" "id-111030")
+        (is (= (type/assoc-id #fhir/date "2020" "id-111030")
                #fhir/date{:id "id-111030" :value #system/date"2020"})))
 
       (testing "already extended"
         (is (= (type/assoc-id #fhir/date{:id "foo"} "bar")
                #fhir/date{:id "bar"}))
-        (is (= (type/assoc-id #fhir/date{:extension #fhir/Extension{:url "foo"}} "id-111902")
-               #fhir/date{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+        (is (= (type/assoc-id #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+               #fhir/date{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
     (testing "assoc extension"
       (testing "non-extended"
-        (is (= (type/assoc-extension #fhir/date"2020" #fhir/Extension{:url "foo"})
-               #fhir/date{:extension #fhir/Extension{:url "foo"} :value #system/date"2020"})))
+        (is (= (type/assoc-extension #fhir/date "2020" [#fhir/Extension{:url "foo"}])
+               #fhir/date{:extension [#fhir/Extension{:url "foo"}] :value #system/date"2020"})))
 
       (testing "already extended"
-        (is (= (type/assoc-extension #fhir/date{:id "id-111953"} #fhir/Extension{:url "foo"})
-               #fhir/date{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-        (is (= (type/assoc-extension #fhir/date{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-               #fhir/date{:extension #fhir/Extension{:url "bar"}}))))
+        (is (= (type/assoc-extension #fhir/date{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+               #fhir/date{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+        (is (= (type/assoc-extension #fhir/date{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+               #fhir/date{:extension [#fhir/Extension{:url "bar"}]}))))
 
     (testing "value"
       (are [x] (= #system/date"2020" (type/value x) (:value x) (:value x ::foo))
-        #fhir/date"2020"
+        #fhir/date "2020"
         #fhir/date{:id "foo" :value #system/date"2020"}))
 
     (testing "assoc value"
       (testing "non-extended"
-        (is (= (type/assoc-value #fhir/date"2020" #system/date"2022")
-               #fhir/date"2022"))
-        (is (= (type/assoc-value #fhir/date"2020" #system/date"2022-03")
-               #fhir/date"2022-03"))
-        (is (= (type/assoc-value #fhir/date"2020" #system/date"2022-03-16")
-               #fhir/date"2022-03-16")))
+        (is (= (type/assoc-value #fhir/date "2020" #system/date"2022")
+               #fhir/date "2022"))
+        (is (= (type/assoc-value #fhir/date "2020" #system/date"2022-03")
+               #fhir/date "2022-03"))
+        (is (= (type/assoc-value #fhir/date "2020" #system/date"2022-03-16")
+               #fhir/date "2022-03-16")))
 
       (testing "already extended"
         (is (= (type/assoc-value #fhir/date{:id "foo"} #system/date"2020")
@@ -1239,74 +1223,72 @@
 
     (testing "lookup"
       (testing "other keys are not found"
-        (is (= ::not-found (::other-key #fhir/date"1970" ::not-found)))))
+        (is (= ::not-found (::other-key #fhir/date "1970" ::not-found)))))
 
     (testing "to-json"
       (are [date json] (= json (gen-json-string date))
-        #fhir/date"0001" "\"0001\""
-        #fhir/date"9999" "\"9999\""
-        #fhir/date"2020" "\"2020\""))
+        #fhir/date "0001" "\"0001\""
+        #fhir/date "9999" "\"9999\""
+        #fhir/date "2020" "\"2020\""))
 
     (testing "to-xml"
       (are [date xml] (= (sexp-value xml) (type/to-xml date))
-        #fhir/date"0001" "0001"
-        #fhir/date"9999" "9999"
-        #fhir/date"2020" "2020"))
+        #fhir/date "0001" "0001"
+        #fhir/date "9999" "9999"
+        #fhir/date "2020" "2020"))
 
     (testing "equals"
-      (is (= #fhir/date"0001" #fhir/date{:id nil :value #system/date"0001"}))
-      (is (= #fhir/date"2020" #fhir/date"2020"))
-      (is (not= #fhir/date"2020" #fhir/date"2021"))
-      (is (not= #fhir/date"2020" "2020")))
+      (is (= #fhir/date "0001" #fhir/date{:id nil :value #system/date"0001"}))
+      (is (= #fhir/date "2020" #fhir/date "2020"))
+      (is (not= #fhir/date "2020" #fhir/date "2021"))
+      (is (not= #fhir/date "2020" "2020")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/date"2020" "c92be432"
+        #fhir/date "2020" "c92be432"
         #fhir/date{:value "2020"} "c92be432"
         #fhir/date{:id "foo"} "20832903"
         #fhir/date{:id "foo" :value #system/date"2020"} "e983029c"
         #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/date"2020"
-        nil))
+      (is (empty? (type/references #fhir/date "2020"))))
 
     (testing "print"
-      (is (= "#fhir/date\"2020\"" (pr-str #fhir/date"2020")))))
+      (is (= "#fhir/date\"2020\"" (pr-str #fhir/date "2020")))))
 
   (testing "with year-month precision"
     (testing "date?"
       (are [x] (type/date? x)
-        #fhir/date"0001-01"
-        #fhir/date"9999-12"
-        #fhir/date"2022-05"
+        #fhir/date "0001-01"
+        #fhir/date "9999-12"
+        #fhir/date "2022-05"
         #fhir/date{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/date (type/type x))
-        #fhir/date"2022-05"
+        #fhir/date "2022-05"
         #fhir/date{:id "foo"}))
 
     (testing "date"
-      (is (= #fhir/date{:value "2022-05"} #fhir/date"2022-05")))
+      (is (= #fhir/date{:value "2022-05"} #fhir/date "2022-05")))
 
     (testing "interned"
-      (is (not-interned? #fhir/date"2020-01" #fhir/date"2020-01")))
+      (is (not-interned? #fhir/date "2020-01" #fhir/date "2020-01")))
 
     (testing "value"
       (are [x] (= #system/date"2020-01" (type/value x) (:value x) (:value x ::foo))
-        #fhir/date"2020-01"
+        #fhir/date "2020-01"
         #fhir/date{:id "foo" :value "2020-01"}))
 
     (testing "assoc value"
       (testing "non-extended"
-        (is (= (type/assoc-value #fhir/date"2020-01" #system/date"2022")
-               #fhir/date"2022"))
-        (is (= (type/assoc-value #fhir/date"2020-01" #system/date"2022-03")
-               #fhir/date"2022-03"))
-        (is (= (type/assoc-value #fhir/date"2020-01" #system/date"2022-03-16")
-               #fhir/date"2022-03-16")))
+        (is (= (type/assoc-value #fhir/date "2020-01" #system/date"2022")
+               #fhir/date "2022"))
+        (is (= (type/assoc-value #fhir/date "2020-01" #system/date"2022-03")
+               #fhir/date "2022-03"))
+        (is (= (type/assoc-value #fhir/date "2020-01" #system/date"2022-03-16")
+               #fhir/date "2022-03-16")))
 
       (testing "already extended"
         (is (= (type/assoc-value #fhir/date{:id "foo"} #system/date"2020-01")
@@ -1314,71 +1296,69 @@
 
     (testing "lookup"
       (testing "other keys are not found"
-        (is (= ::not-found (::other-key #fhir/date"1970-01" ::not-found)))))
+        (is (= ::not-found (::other-key #fhir/date "1970-01" ::not-found)))))
 
     (testing "to-json"
       (are [date json] (= json (gen-json-string date))
-        #fhir/date"0001-01" "\"0001-01\""
-        #fhir/date"9999-12" "\"9999-12\""
-        #fhir/date"2020-01" "\"2020-01\""))
+        #fhir/date "0001-01" "\"0001-01\""
+        #fhir/date "9999-12" "\"9999-12\""
+        #fhir/date "2020-01" "\"2020-01\""))
 
     (testing "to-xml"
       (are [date xml] (= (sexp-value xml) (type/to-xml date))
-        #fhir/date"0001-01" "0001-01"
-        #fhir/date"9999-12" "9999-12"
-        #fhir/date"2020-01" "2020-01"))
+        #fhir/date "0001-01" "0001-01"
+        #fhir/date "9999-12" "9999-12"
+        #fhir/date "2020-01" "2020-01"))
 
     (testing "equals"
-      (is (= #fhir/date"2020-01" #fhir/date"2020-01"))
-      (is (not= #fhir/date"2020-01" #fhir/date"2020-02"))
-      (is (not= #fhir/date"2020-01" "2020-01")))
+      (is (= #fhir/date "2020-01" #fhir/date "2020-01"))
+      (is (not= #fhir/date "2020-01" #fhir/date "2020-02"))
+      (is (not= #fhir/date "2020-01" "2020-01")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/date"2020-01" "fbcdf97f"
+        #fhir/date "2020-01" "fbcdf97f"
         #fhir/date{:value #system/date"2020-01"} "fbcdf97f"
         #fhir/date{:id "foo"} "20832903"
         #fhir/date{:id "foo" :value #system/date"2020-01"} "4e6aead7"
         #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/date"2020-01"
-        nil))
+      (is (empty? (type/references #fhir/date "2020-01"))))
 
     (testing "print"
-      (is (= "#fhir/date\"2020-01\"" (pr-str #fhir/date"2020-01")))))
+      (is (= "#fhir/date\"2020-01\"" (pr-str #fhir/date "2020-01")))))
 
   (testing "with date precision"
     (testing "date?"
       (are [x] (type/date? x)
-        #fhir/date"2022-05-23"
+        #fhir/date "2022-05-23"
         #fhir/date{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/date (type/type x))
-        #fhir/date"2022-05-23"
+        #fhir/date "2022-05-23"
         #fhir/date{:id "foo"}))
 
     (testing "date"
-      (is (= #fhir/date{:value #system/date"2022-05-23"} #fhir/date"2022-05-23")))
+      (is (= #fhir/date{:value #system/date"2022-05-23"} #fhir/date "2022-05-23")))
 
     (testing "interned"
-      (is (not-interned? #fhir/date"2020-01-01" #fhir/date"2020-01-01")))
+      (is (not-interned? #fhir/date "2020-01-01" #fhir/date "2020-01-01")))
 
     (testing "value"
       (are [x] (= #system/date"2020-01-02" (type/value x) (:value x) (:value x ::foo))
-        #fhir/date"2020-01-02"
+        #fhir/date "2020-01-02"
         #fhir/date{:id "foo" :value "2020-01-02"}))
 
     (testing "assoc value"
       (testing "non-extended"
-        (is (= (type/assoc-value #fhir/date"2022-05-23" #system/date"2022")
-               #fhir/date"2022"))
-        (is (= (type/assoc-value #fhir/date"2022-05-23" #system/date"2022-03")
-               #fhir/date"2022-03"))
-        (is (= (type/assoc-value #fhir/date"2022-05-23" #system/date"2022-03-16")
-               #fhir/date"2022-03-16")))
+        (is (= (type/assoc-value #fhir/date "2022-05-23" #system/date"2022")
+               #fhir/date "2022"))
+        (is (= (type/assoc-value #fhir/date "2022-05-23" #system/date"2022-03")
+               #fhir/date "2022-03"))
+        (is (= (type/assoc-value #fhir/date "2022-05-23" #system/date"2022-03-16")
+               #fhir/date "2022-03-16")))
 
       (testing "already extended"
         (is (= (type/assoc-value #fhir/date{:id "foo"} #system/date"2022-05-23")
@@ -1386,12 +1366,12 @@
 
     (testing "lookup"
       (testing "other keys are not found"
-        (is (= ::not-found (::other-key #fhir/date"1970-01-01" ::not-found)))))
+        (is (= ::not-found (::other-key #fhir/date "1970-01-01" ::not-found)))))
 
     (testing "to-json"
       (are [date json] (= json (gen-json-string date))
-        #fhir/date"0001-01-01" "\"0001-01-01\""
-        #fhir/date"9999-12-31" "\"9999-12-31\"")
+        #fhir/date "0001-01-01" "\"0001-01-01\""
+        #fhir/date "9999-12-31" "\"9999-12-31\"")
 
       (satisfies-prop 100
         (prop/for-all [date (gen/fmap type/create-date (s/gen :system/date))]
@@ -1399,8 +1379,8 @@
 
     (testing "to-xml"
       (are [date xml] (= (sexp-value xml) (type/to-xml date))
-        #fhir/date"0001-01-01" "0001-01-01"
-        #fhir/date"9999-12-31" "9999-12-31")
+        #fhir/date "0001-01-01" "0001-01-01"
+        #fhir/date "9999-12-31" "9999-12-31")
 
       (satisfies-prop 100
         (prop/for-all [date (gen/fmap type/create-date (s/gen :system/date))]
@@ -1410,32 +1390,32 @@
       (satisfies-prop 100
         (prop/for-all [date (gen/fmap type/create-date (s/gen :system/date))]
           (= date date)))
-      (is (not= #fhir/date"2020-01-01" #fhir/date"2020-01-02"))
-      (is (not= #fhir/date"2020-01-01" "2020-01-01")))
+      (is (not= #fhir/date "2020-01-01" #fhir/date "2020-01-02"))
+      (is (not= #fhir/date "2020-01-01" "2020-01-01")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/date"2020-01-01" "cd20e081"
+        #fhir/date "2020-01-01" "cd20e081"
         #fhir/date{:value "2020-01-01"} "cd20e081"
         #fhir/date{:id "foo"} "20832903"
         #fhir/date{:id "foo" :value #system/date"2020-01-01"} "ef736a41"
         #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
     (testing "references"
-      (is (nil? (type/references #fhir/date"2020-01-01"))))
+      (is (empty? (type/references #fhir/date "2020-01-01"))))
 
     (testing "print"
-      (is (= "#fhir/date\"2020-01-01\"" (pr-str #fhir/date"2020-01-01"))))))
+      (is (= "#fhir/date\"2020-01-01\"" (pr-str #fhir/date "2020-01-01"))))))
 
 (deftest dateTime-test
   (testing "with year precision"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"0001"
-        #fhir/dateTime"9999"
-        #fhir/dateTime"2022"
-        #fhir/dateTime"2022-01"
-        #fhir/dateTime"2022-01-01"
+        #fhir/dateTime "0001"
+        #fhir/dateTime "9999"
+        #fhir/dateTime "2022"
+        #fhir/dateTime "2022-01"
+        #fhir/dateTime "2022-01-01"
         #fhir/dateTime{:id "foo"}
         #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]}))
 
@@ -1444,17 +1424,17 @@
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"0001"
-        #fhir/dateTime"9999"
-        #fhir/dateTime"2022"
+        #fhir/dateTime "0001"
+        #fhir/dateTime "9999"
+        #fhir/dateTime "2022"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2022"} #fhir/dateTime"2022"))
-      (is (= #fhir/dateTime{:value #system/date-time"2022"} #fhir/dateTime"2022")))
+      (is (= #fhir/dateTime{:value "2022"} #fhir/dateTime "2022"))
+      (is (= #fhir/dateTime{:value #system/date-time"2022"} #fhir/dateTime "2022")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2020" #fhir/dateTime"2020"))
+      (is (not-interned? #fhir/dateTime "2020" #fhir/dateTime "2020"))
 
       (testing "with extension"
         (are [x y] (not-interned? x y)
@@ -1473,17 +1453,17 @@
 
     (testing "value"
       (are [x] (= #system/date-time"2020" (type/value x) (:value x) (:value x ::foo))
-        #fhir/dateTime"2020"
+        #fhir/dateTime "2020"
         #fhir/dateTime{:id "foo" :value #system/date-time"2020"}))
 
     (testing "assoc value"
       (testing "non-extended"
-        (is (= (type/assoc-value #fhir/dateTime"2021" #system/date-time"2022")
-               #fhir/dateTime"2022"))
-        (is (= (type/assoc-value #fhir/dateTime"2021" #system/date-time"2022-03")
-               #fhir/dateTime"2022-03"))
-        (is (= (type/assoc-value #fhir/dateTime"2021" #system/date-time"2022-03-16")
-               #fhir/dateTime"2022-03-16")))
+        (is (= (type/assoc-value #fhir/dateTime "2021" #system/date-time"2022")
+               #fhir/dateTime "2022"))
+        (is (= (type/assoc-value #fhir/dateTime "2021" #system/date-time"2022-03")
+               #fhir/dateTime "2022-03"))
+        (is (= (type/assoc-value #fhir/dateTime "2021" #system/date-time"2022-03-16")
+               #fhir/dateTime "2022-03-16")))
 
       (testing "already extended"
         (is (= (type/assoc-value #fhir/dateTime{:id "foo"} #system/date-time"2020")
@@ -1491,13 +1471,13 @@
 
     (testing "lookup"
       (testing "other keys are not found"
-        (is (= ::not-found (::other-key #fhir/dateTime"1970" ::not-found)))))
+        (is (= ::not-found (::other-key #fhir/dateTime "1970" ::not-found)))))
 
     (testing "to-json"
       (are [date-time json] (= json (gen-json-string date-time))
-        #fhir/dateTime"0001" "\"0001\""
-        #fhir/dateTime"9999" "\"9999\""
-        #fhir/dateTime"2020" "\"2020\"")
+        #fhir/dateTime "0001" "\"0001\""
+        #fhir/dateTime "9999" "\"9999\""
+        #fhir/dateTime "2020" "\"2020\"")
 
       (satisfies-prop 100
         (prop/for-all [date-time (gen/fmap type/create-date-time (s/gen :system/date-time))]
@@ -1506,18 +1486,18 @@
 
     (testing "to-xml"
       (are [date-time xml] (= (sexp-value xml) (type/to-xml date-time))
-        #fhir/dateTime"0001" "0001"
-        #fhir/dateTime"9999" "9999"
-        #fhir/dateTime"2020" "2020"))
+        #fhir/dateTime "0001" "0001"
+        #fhir/dateTime "9999" "9999"
+        #fhir/dateTime "2020" "2020"))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020" #fhir/dateTime"2020"))
-      (is (not= #fhir/dateTime"2020" #fhir/dateTime"2021"))
-      (is (not= #fhir/dateTime"2020" "2020")))
+      (is (= #fhir/dateTime "2020" #fhir/dateTime "2020"))
+      (is (not= #fhir/dateTime "2020" #fhir/dateTime "2021"))
+      (is (not= #fhir/dateTime "2020" "2020")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020" "41e906ff"
+        #fhir/dateTime "2020" "41e906ff"
         #fhir/dateTime{:value #system/date-time"2020"} "41e906ff"
         #fhir/dateTime{:id "foo"} "fde903da"
         #fhir/dateTime{:id "foo" :value #system/date-time"2020"} "c7361227"
@@ -1525,43 +1505,43 @@
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020"
+        #fhir/dateTime "2020"
         nil))
 
     (testing "print"
-      (is (= "#fhir/dateTime\"2020\"" (pr-str #fhir/dateTime"2020")))))
+      (is (= "#fhir/dateTime\"2020\"" (pr-str #fhir/dateTime "2020")))))
 
   (testing "with year-month precision"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"2022-05"
+        #fhir/dateTime "2022-05"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2022-05"
+        #fhir/dateTime "2022-05"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2022-05"} #fhir/dateTime"2022-05"))
-      (is (= #fhir/dateTime{:value #system/date-time"2022-05"} #fhir/dateTime"2022-05")))
+      (is (= #fhir/dateTime{:value "2022-05"} #fhir/dateTime "2022-05"))
+      (is (= #fhir/dateTime{:value #system/date-time"2022-05"} #fhir/dateTime "2022-05")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2022-05" #fhir/dateTime"2022-05")))
+      (is (not-interned? #fhir/dateTime "2022-05" #fhir/dateTime "2022-05")))
 
     (testing "value"
       (are [x] (= #system/date-time"2020-01" (type/value x) (:value x) (:value x ::foo))
-        #fhir/dateTime"2020-01"
+        #fhir/dateTime "2020-01"
         #fhir/dateTime{:id "foo" :value #system/date-time"2020-01"}))
 
     (testing "assoc value"
       (testing "non-extended"
-        (is (= (type/assoc-value #fhir/dateTime"2021-04" #system/date-time"2022")
-               #fhir/dateTime"2022"))
-        (is (= (type/assoc-value #fhir/dateTime"2021-04" #system/date-time"2022-03")
-               #fhir/dateTime"2022-03"))
-        (is (= (type/assoc-value #fhir/dateTime"2021-04" #system/date-time"2022-03-16")
-               #fhir/dateTime"2022-03-16")))
+        (is (= (type/assoc-value #fhir/dateTime "2021-04" #system/date-time"2022")
+               #fhir/dateTime "2022"))
+        (is (= (type/assoc-value #fhir/dateTime "2021-04" #system/date-time"2022-03")
+               #fhir/dateTime "2022-03"))
+        (is (= (type/assoc-value #fhir/dateTime "2021-04" #system/date-time"2022-03-16")
+               #fhir/dateTime "2022-03-16")))
 
       (testing "already extended"
         (is (= (type/assoc-value #fhir/dateTime{:id "foo"} #system/date-time"2020-04")
@@ -1569,28 +1549,28 @@
 
     (testing "lookup"
       (testing "other keys are not found"
-        (is (= ::not-found (::other-key #fhir/dateTime"1970-01" ::not-found)))))
+        (is (= ::not-found (::other-key #fhir/dateTime "1970-01" ::not-found)))))
 
     (testing "to-json"
       (are [date-time json] (= json (gen-json-string date-time))
-        #fhir/dateTime"0001-01" "\"0001-01\""
-        #fhir/dateTime"9999-12" "\"9999-12\""
-        #fhir/dateTime"2020-01" "\"2020-01\""))
+        #fhir/dateTime "0001-01" "\"0001-01\""
+        #fhir/dateTime "9999-12" "\"9999-12\""
+        #fhir/dateTime "2020-01" "\"2020-01\""))
 
     (testing "to-xml"
       (are [date-time xml] (= (sexp-value xml) (type/to-xml date-time))
-        #fhir/dateTime"0001-01" "0001-01"
-        #fhir/dateTime"9999-12" "9999-12"
-        #fhir/dateTime"2020-01" "2020-01"))
+        #fhir/dateTime "0001-01" "0001-01"
+        #fhir/dateTime "9999-12" "9999-12"
+        #fhir/dateTime "2020-01" "2020-01"))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01" #fhir/dateTime"2020-01"))
-      (is (not= #fhir/dateTime"2020-01" #fhir/dateTime"2020-02"))
-      (is (not= #fhir/dateTime"2020-01" "2020-01")))
+      (is (= #fhir/dateTime "2020-01" #fhir/dateTime "2020-01"))
+      (is (not= #fhir/dateTime "2020-01" #fhir/dateTime "2020-02"))
+      (is (not= #fhir/dateTime "2020-01" "2020-01")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01" "9d6c5bd3"
+        #fhir/dateTime "2020-01" "9d6c5bd3"
         #fhir/dateTime{:value "2020-01"} "9d6c5bd3"
         #fhir/dateTime{:id "foo"} "fde903da"
         #fhir/dateTime{:id "foo" :value "2020-01"} "aa78aa13"
@@ -1598,43 +1578,43 @@
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01"
+        #fhir/dateTime "2020-01"
         nil))
 
     (testing "print"
-      (is (= "#fhir/dateTime\"2020-01\"" (pr-str #fhir/dateTime"2020-01")))))
+      (is (= "#fhir/dateTime\"2020-01\"" (pr-str #fhir/dateTime "2020-01")))))
 
   (testing "with date precision"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"2022-05-23"
+        #fhir/dateTime "2022-05-23"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2022-05-23"
+        #fhir/dateTime "2022-05-23"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2022-05-23"} #fhir/dateTime"2022-05-23"))
-      (is (= #fhir/dateTime{:value #system/date-time"2022-05-23"} #fhir/dateTime"2022-05-23")))
+      (is (= #fhir/dateTime{:value "2022-05-23"} #fhir/dateTime "2022-05-23"))
+      (is (= #fhir/dateTime{:value #system/date-time"2022-05-23"} #fhir/dateTime "2022-05-23")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2022-05-23" #fhir/dateTime"2022-05-23")))
+      (is (not-interned? #fhir/dateTime "2022-05-23" #fhir/dateTime "2022-05-23")))
 
     (testing "value"
       (are [x] (= #system/date-time"2022-05-23" (type/value x) (:value x) (:value x ::foo))
-        #fhir/dateTime"2022-05-23"
+        #fhir/dateTime "2022-05-23"
         #fhir/dateTime{:id "foo" :value #system/date-time"2022-05-23"}))
 
     (testing "assoc value"
       (testing "non-extended"
-        (is (= (type/assoc-value #fhir/dateTime"2022-05-23" #system/date-time"2022")
-               #fhir/dateTime"2022"))
-        (is (= (type/assoc-value #fhir/dateTime"2022-05-23" #system/date-time"2022-03")
-               #fhir/dateTime"2022-03"))
-        (is (= (type/assoc-value #fhir/dateTime"2022-05-23" #system/date-time"2022-03-16")
-               #fhir/dateTime"2022-03-16")))
+        (is (= (type/assoc-value #fhir/dateTime "2022-05-23" #system/date-time"2022")
+               #fhir/dateTime "2022"))
+        (is (= (type/assoc-value #fhir/dateTime "2022-05-23" #system/date-time"2022-03")
+               #fhir/dateTime "2022-03"))
+        (is (= (type/assoc-value #fhir/dateTime "2022-05-23" #system/date-time"2022-03-16")
+               #fhir/dateTime "2022-03-16")))
 
       (testing "already extended"
         (is (= (type/assoc-value #fhir/dateTime{:id "foo"} #system/date-time"2022-05-23")
@@ -1642,284 +1622,270 @@
 
     (testing "lookup"
       (testing "other keys are not found"
-        (is (= ::not-found (::other-key #fhir/dateTime"1970-01-01" ::not-found)))))
+        (is (= ::not-found (::other-key #fhir/dateTime "1970-01-01" ::not-found)))))
 
     (testing "to-json"
       (are [date-time json] (= json (gen-json-string date-time))
-        #fhir/dateTime"0001-01-01" "\"0001-01-01\""
-        #fhir/dateTime"9999-12-31" "\"9999-12-31\""
-        #fhir/dateTime"2020-01-01" "\"2020-01-01\""))
+        #fhir/dateTime "0001-01-01" "\"0001-01-01\""
+        #fhir/dateTime "9999-12-31" "\"9999-12-31\""
+        #fhir/dateTime "2020-01-01" "\"2020-01-01\""))
 
     (testing "to-xml"
       (are [date-time xml] (= (sexp-value xml) (type/to-xml date-time))
-        #fhir/dateTime"0001-01-01" "0001-01-01"
-        #fhir/dateTime"9999-12-31" "9999-12-31"
-        #fhir/dateTime"2020-01-01" "2020-01-01"))
+        #fhir/dateTime "0001-01-01" "0001-01-01"
+        #fhir/dateTime "9999-12-31" "9999-12-31"
+        #fhir/dateTime "2020-01-01" "2020-01-01"))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01-01" #fhir/dateTime"2020-01-01")))
+      (is (= #fhir/dateTime "2020-01-01" #fhir/dateTime "2020-01-01")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01" "39fe9bdb"
+        #fhir/dateTime "2020-01-01" "39fe9bdb"
         #fhir/dateTime{:value "2020-01-01"} "39fe9bdb"
         #fhir/dateTime{:id "foo"} "fde903da"
         #fhir/dateTime{:id "foo" :value "2020-01-01"} "7e36d416"
         #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} "15062059"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01-01"
-        nil))
+      (is (empty? (type/references #fhir/dateTime "2020-01-01"))))
 
     (testing "print"
-      (is (= "#fhir/dateTime\"2020-01-01\"" (pr-str #fhir/dateTime"2020-01-01")))))
+      (is (= "#fhir/dateTime\"2020-01-01\"" (pr-str #fhir/dateTime "2020-01-01")))))
 
   (testing "without timezone"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"0001-01-01T00:00:00"
-        #fhir/dateTime"9999-12-31T12:59:59"
-        #fhir/dateTime"2020-01-01T00:00:00"
+        #fhir/dateTime "0001-01-01T00:00:00"
+        #fhir/dateTime "9999-12-31T12:59:59"
+        #fhir/dateTime "2020-01-01T00:00:00"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2020-01-01T00:00:00"
+        #fhir/dateTime "2020-01-01T00:00:00"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00"} #fhir/dateTime"2020-01-01T00:00:00")))
+      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00"} #fhir/dateTime "2020-01-01T00:00:00")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2020-01-01T00:00:00"
-                         #fhir/dateTime"2020-01-01T00:00:00")))
+      (is (not-interned? #fhir/dateTime "2020-01-01T00:00:00"
+                         #fhir/dateTime "2020-01-01T00:00:00")))
 
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00\""
-             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00"))))
+             (gen-json-string #fhir/dateTime "2020-01-01T00:00:00"))))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01-01T00:00:00") (type/to-xml #fhir/dateTime"2020-01-01T00:00:00"))))
+      (is (= (sexp-value "2020-01-01T00:00:00") (type/to-xml #fhir/dateTime "2020-01-01T00:00:00"))))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01-01T00:00:00"
-             #fhir/dateTime"2020-01-01T00:00:00")))
+      (is (= #fhir/dateTime "2020-01-01T00:00:00"
+             #fhir/dateTime "2020-01-01T00:00:00")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00" "da537591"
+        #fhir/dateTime "2020-01-01T00:00:00" "da537591"
         #fhir/dateTime{:value "2020-01-01T00:00:00"} "da537591"
         #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00"} "f33b7808"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01-01T00:00:00"
-        nil)))
+      (is (empty? (type/references #fhir/dateTime "2020-01-01T00:00:00")))))
 
   (testing "without timezone but millis"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"2020-01-01T00:00:00.000"
+        #fhir/dateTime "2020-01-01T00:00:00.000"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2020-01-01T00:00:00.000"
+        #fhir/dateTime "2020-01-01T00:00:00.000"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00.000"} #fhir/dateTime"2020-01-01T00:00:00.000")))
+      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00.000"} #fhir/dateTime "2020-01-01T00:00:00.000")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2020-01-01T00:00:00.000"
-                         #fhir/dateTime"2020-01-01T00:00:00.000")))
+      (is (not-interned? #fhir/dateTime "2020-01-01T00:00:00.000"
+                         #fhir/dateTime "2020-01-01T00:00:00.000")))
 
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00.001\""
-             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00.001"))))
+             (gen-json-string #fhir/dateTime "2020-01-01T00:00:00.001"))))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01-01T00:00:00.001") (type/to-xml #fhir/dateTime"2020-01-01T00:00:00.001"))))
+      (is (= (sexp-value "2020-01-01T00:00:00.001") (type/to-xml #fhir/dateTime "2020-01-01T00:00:00.001"))))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01-01T00:00:00.000"
-             #fhir/dateTime"2020-01-01T00:00:00.000")))
+      (is (= #fhir/dateTime "2020-01-01T00:00:00.000"
+             #fhir/dateTime "2020-01-01T00:00:00.000")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00.000" "da537591"
+        #fhir/dateTime "2020-01-01T00:00:00.000" "da537591"
         #fhir/dateTime{:value "2020-01-01T00:00:00.000"} "da537591"
         #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00.000"} "f33b7808"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01-01T00:00:00.000"
-        nil)))
+      (is (empty? (type/references #fhir/dateTime "2020-01-01T00:00:00.000")))))
 
   (testing "with zulu timezone"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"2020-01-01T00:00:00Z"
+        #fhir/dateTime "2020-01-01T00:00:00Z"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2020-01-01T00:00:00Z"
+        #fhir/dateTime "2020-01-01T00:00:00Z"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00Z"} #fhir/dateTime"2020-01-01T00:00:00Z")))
+      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00Z"} #fhir/dateTime "2020-01-01T00:00:00Z")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2020-01-01T00:00:00Z"
-                         #fhir/dateTime"2020-01-01T00:00:00Z")))
+      (is (not-interned? #fhir/dateTime "2020-01-01T00:00:00Z"
+                         #fhir/dateTime "2020-01-01T00:00:00Z")))
 
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00Z\""
-             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00Z"))))
+             (gen-json-string #fhir/dateTime "2020-01-01T00:00:00Z"))))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01-01T00:00:00Z") (type/to-xml #fhir/dateTime"2020-01-01T00:00:00Z"))))
+      (is (= (sexp-value "2020-01-01T00:00:00Z") (type/to-xml #fhir/dateTime "2020-01-01T00:00:00Z"))))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01-01T00:00:00Z"
-             #fhir/dateTime"2020-01-01T00:00:00Z")))
+      (is (= #fhir/dateTime "2020-01-01T00:00:00Z"
+             #fhir/dateTime "2020-01-01T00:00:00Z")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00Z" "d541a45"
+        #fhir/dateTime "2020-01-01T00:00:00Z" "d541a45"
         #fhir/dateTime{:value "2020-01-01T00:00:00Z"} "d541a45"
         #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00Z"} "14a5cd29"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01-01T00:00:00Z"
-        nil)))
+      (is (empty? (type/references #fhir/dateTime "2020-01-01T00:00:00Z")))))
 
   (testing "with positive timezone offset"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"2020-01-01T00:00:00+01:00"
+        #fhir/dateTime "2020-01-01T00:00:00+01:00"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2020-01-01T00:00:00+01:00"
+        #fhir/dateTime "2020-01-01T00:00:00+01:00"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00+01:00"} #fhir/dateTime"2020-01-01T00:00:00+01:00")))
+      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00+01:00"} #fhir/dateTime "2020-01-01T00:00:00+01:00")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2020-01-01T00:00:00+01:00"
-                         #fhir/dateTime"2020-01-01T00:00:00+01:00")))
+      (is (not-interned? #fhir/dateTime "2020-01-01T00:00:00+01:00"
+                         #fhir/dateTime "2020-01-01T00:00:00+01:00")))
 
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00+01:00\""
-             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
+             (gen-json-string #fhir/dateTime "2020-01-01T00:00:00+01:00"))))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01-01T00:00:00+01:00") (type/to-xml #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
+      (is (= (sexp-value "2020-01-01T00:00:00+01:00") (type/to-xml #fhir/dateTime "2020-01-01T00:00:00+01:00"))))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01-01T00:00:00+01:00"
-             #fhir/dateTime"2020-01-01T00:00:00+01:00")))
+      (is (= #fhir/dateTime "2020-01-01T00:00:00+01:00"
+             #fhir/dateTime "2020-01-01T00:00:00+01:00")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00+01:00" "9c535d0d"
+        #fhir/dateTime "2020-01-01T00:00:00+01:00" "9c535d0d"
         #fhir/dateTime{:value "2020-01-01T00:00:00+01:00"} "9c535d0d"
         #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00+01:00"} "dbf5aa43"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01-01T00:00:00+01:00"
-        nil)))
+      (is (empty? (type/references #fhir/dateTime "2020-01-01T00:00:00+01:00")))))
 
   (testing "with negative timezone offset"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"2020-01-01T00:00:00-01:00"
+        #fhir/dateTime "2020-01-01T00:00:00-01:00"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2020-01-01T00:00:00-01:00"
+        #fhir/dateTime "2020-01-01T00:00:00-01:00"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00-01:00"} #fhir/dateTime"2020-01-01T00:00:00-01:00")))
+      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00-01:00"} #fhir/dateTime "2020-01-01T00:00:00-01:00")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2020-01-01T00:00:00-01:00"
-                         #fhir/dateTime"2020-01-01T00:00:00-01:00")))
+      (is (not-interned? #fhir/dateTime "2020-01-01T00:00:00-01:00"
+                         #fhir/dateTime "2020-01-01T00:00:00-01:00")))
 
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00-01:00\""
-             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
+             (gen-json-string #fhir/dateTime "2020-01-01T00:00:00-01:00"))))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01-01T00:00:00-01:00") (type/to-xml #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
+      (is (= (sexp-value "2020-01-01T00:00:00-01:00") (type/to-xml #fhir/dateTime "2020-01-01T00:00:00-01:00"))))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01-01T00:00:00-01:00"
-             #fhir/dateTime"2020-01-01T00:00:00-01:00")))
+      (is (= #fhir/dateTime "2020-01-01T00:00:00-01:00"
+             #fhir/dateTime "2020-01-01T00:00:00-01:00")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00-01:00" "839fd8a6"
+        #fhir/dateTime "2020-01-01T00:00:00-01:00" "839fd8a6"
         #fhir/dateTime{:value "2020-01-01T00:00:00-01:00"} "839fd8a6"
         #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00-01:00"} "c3a7cc0e"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01-01T00:00:00-01:00"
-        nil)))
+      (is (empty? (type/references #fhir/dateTime "2020-01-01T00:00:00-01:00")))))
 
   (testing "with zulu timezone and millis"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
-        #fhir/dateTime"2020-01-01T00:00:00.001Z"
+        #fhir/dateTime "2020-01-01T00:00:00.001Z"
         #fhir/dateTime{:id "foo"}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
-        #fhir/dateTime"2020-01-01T00:00:00.001Z"
+        #fhir/dateTime "2020-01-01T00:00:00.001Z"
         #fhir/dateTime{:id "foo"}))
 
     (testing "dateTime"
-      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00.001Z"} #fhir/dateTime"2020-01-01T00:00:00.001Z")))
+      (is (= #fhir/dateTime{:value "2020-01-01T00:00:00.001Z"} #fhir/dateTime "2020-01-01T00:00:00.001Z")))
 
     (testing "interned"
-      (is (not-interned? #fhir/dateTime"2020-01-01T00:00:00.001Z"
-                         #fhir/dateTime"2020-01-01T00:00:00.001Z")))
+      (is (not-interned? #fhir/dateTime "2020-01-01T00:00:00.001Z"
+                         #fhir/dateTime "2020-01-01T00:00:00.001Z")))
 
     (testing "value is a System.DateTime which is a OffsetDateTime"
       (is (= (OffsetDateTime/of 2020 1 1 0 0 0 1000000 ZoneOffset/UTC)
-             (type/value #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
+             (type/value #fhir/dateTime "2020-01-01T00:00:00.001Z"))))
 
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00.001Z\""
-             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
+             (gen-json-string #fhir/dateTime "2020-01-01T00:00:00.001Z"))))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01-01T00:00:00.001Z") (type/to-xml #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
+      (is (= (sexp-value "2020-01-01T00:00:00.001Z") (type/to-xml #fhir/dateTime "2020-01-01T00:00:00.001Z"))))
 
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01-01T00:00:00.001Z"
-             #fhir/dateTime"2020-01-01T00:00:00.001Z")))
+      (is (= #fhir/dateTime "2020-01-01T00:00:00.001Z"
+             #fhir/dateTime "2020-01-01T00:00:00.001Z")))
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00.001Z" "f46a0b1b"
+        #fhir/dateTime "2020-01-01T00:00:00.001Z" "f46a0b1b"
         #fhir/dateTime{:value "2020-01-01T00:00:00.001Z"} "f46a0b1b"
         #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00.001Z"} "c6a5ea73"))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        #fhir/dateTime"2020-01-01T00:00:00.001Z"
-        nil)))
+      (is (empty? (type/references #fhir/dateTime "2020-01-01T00:00:00.001Z")))))
 
   (testing "with extensions"
     (let [extended-date-time (type/dateTime {:extension [string-extension] :value #system/date-time"2020"})
@@ -1945,17 +1911,15 @@
 
       (testing "hash-into"
         (are [x hex] (= hex (murmur3 x))
-          extended-date-time "c10cb51"))
+          extended-date-time "c8805e69"))
 
       (testing "references"
-        (are [x refs] (= refs (type/references x))
-          extended-date-time
-          [])))))
+        (is (empty? (type/references extended-date-time)))))))
 
 (deftest time-test
   (testing "time?"
     (are [x] (type/time? x)
-      #fhir/time"15:27:45"
+      #fhir/time "15:27:45"
       #fhir/time{:id "foo"}))
 
   (testing "invalid"
@@ -1963,85 +1927,83 @@
 
   (testing "type"
     (are [x] (= :fhir/time (type/type x))
-      #fhir/time"15:27:45"
+      #fhir/time "15:27:45"
       #fhir/time{:id "foo"}))
 
   (testing "time"
-    (is (= #fhir/time{:value "15:27:45"} #fhir/time"15:27:45")))
+    (is (= #fhir/time{:value "15:27:45"} #fhir/time "15:27:45")))
 
   (testing "interned"
-    (is (not-interned? #fhir/time"13:53:21" #fhir/time"13:53:21")))
+    (is (not-interned? #fhir/time "13:53:21" #fhir/time "13:53:21")))
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/time"13:53:21" "id-111030")
+      (is (= (type/assoc-id #fhir/time "13:53:21" "id-111030")
              #fhir/time{:id "id-111030" :value #system/time"13:53:21"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/time{:id "foo"} "bar")
              #fhir/time{:id "bar"}))
-      (is (= (type/assoc-id #fhir/time{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/time{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/time{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/time{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/time"13:53:21" #fhir/Extension{:url "foo"})
-             #fhir/time{:extension #fhir/Extension{:url "foo"} :value #system/time"13:53:21"})))
+      (is (= (type/assoc-extension #fhir/time "13:53:21" [#fhir/Extension{:url "foo"}])
+             #fhir/time{:extension [#fhir/Extension{:url "foo"}] :value #system/time "13:53:21"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/time{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/time{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/time{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/time{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/time{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/time{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/time{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/time{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value is a System.Time which is a LocalTime"
     (are [x] (= #system/time"13:53:21" (type/value x))
-      #fhir/time"13:53:21"
+      #fhir/time "13:53:21"
       #fhir/time{:id "foo" :value "13:53:21"}
       #fhir/time{:id "foo" :value #system/time"13:53:21"}))
 
   (testing "assoc value"
     (testing "non-extended"
-      (is (= (type/assoc-value #fhir/time"13:53:21" #system/time"13:34:45")
-             #fhir/time"13:34:45")))
+      (is (= (type/assoc-value #fhir/time "13:53:21" #system/time"13:34:45")
+             #fhir/time "13:34:45")))
 
     (testing "already extended"
       (is (= (type/assoc-value #fhir/time{:id "foo"} #system/time"13:34:45")
              (type/time {:id "foo" :value #system/time"13:34:45"})))))
 
   (testing "to-json"
-    (is (= "\"13:53:21\"" (gen-json-string #fhir/time"13:53:21"))))
+    (is (= "\"13:53:21\"" (gen-json-string #fhir/time "13:53:21"))))
 
   (testing "to-xml"
     (is (= (sexp-value "13:53:21")
-           (type/to-xml #fhir/time"13:53:21"))))
+           (type/to-xml #fhir/time "13:53:21"))))
 
   (testing "equals"
-    (is (= #fhir/time"13:53:21" #fhir/time"13:53:21"))
-    (is (not= #fhir/time"13:53:21" #fhir/time"13:53:22"))
-    (is (not= #fhir/time"13:53:21" "13:53:21")))
+    (is (= #fhir/time "13:53:21" #fhir/time "13:53:21"))
+    (is (not= #fhir/time "13:53:21" #fhir/time "13:53:22"))
+    (is (not= #fhir/time "13:53:21" "13:53:21")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/time"13:53:21" "faa37be9"
+      #fhir/time "13:53:21" "faa37be9"
       #fhir/time{:value "13:53:21"} "faa37be9"
       #fhir/time{:id "foo"} "1547f086"
       #fhir/time{:id "foo" :value "13:53:21"} "52a81d69"
       #fhir/time{:extension [#fhir/Extension{:url "foo"}]} "9e94d20a"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/time"13:53:21"
-      nil)))
+    (is (empty? (type/references #fhir/time "13:53:21")))))
 
 (def gender-extension
   #fhir/Extension
-   {:url #fhir/uri"http://fhir.de/StructureDefinition/gender-amtlich-de"
+   {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
     :value
     #fhir/Coding
-     {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-      :code #fhir/code"D"
-      :display #fhir/string"divers"}})
+     {:system #fhir/uri "http://fhir.de/CodeSystem/gender-amtlich-de"
+      :code #fhir/code "D"
+      :display #fhir/string "divers"}})
 
 (def extended-gender-code
   (type/code {:extension [gender-extension] :value "other"}))
@@ -2052,16 +2014,16 @@
 (deftest code-test
   (testing "code?"
     (are [x] (type/code? x)
-      #fhir/code""
+      #fhir/code ""
       #fhir/code{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/code (type/type x))
-      #fhir/code""
+      #fhir/code ""
       #fhir/code{:id "foo"}))
 
   (testing "interned"
-    (is (interned? #fhir/code"code-123745" #fhir/code"code-123745"))
+    (is (interned? #fhir/code "code-123745" #fhir/code "code-123745"))
 
     (testing "instances with id's are not interned"
       (is (not-interned? #fhir/code{:id "id-171649" :value "code-123745"}
@@ -2070,44 +2032,44 @@
     (testing "instances with interned extensions are interned"
       (is (interned? #fhir/code{:extension
                                 [#fhir/Extension{:url "url-171902"
-                                                 :value true}]
+                                                 :value #fhir/boolean true}]
                                 :value "code-123745"}
                      #fhir/code{:extension
                                 [#fhir/Extension{:url "url-171902"
-                                                 :value true}]
+                                                 :value #fhir/boolean true}]
                                 :value "code-123745"}))))
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/code"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/code "165645" "id-111030")
              #fhir/code{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/code{:id "foo"} "bar")
              #fhir/code{:id "bar"}))
-      (is (= (type/assoc-id #fhir/code{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/code{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/code{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/code{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/code"165645" #fhir/Extension{:url "foo"})
-             #fhir/code{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/code "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/code{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/code{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/code{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/code{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/code{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/code{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/code{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/code{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/code{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "code-123745" (type/value x) (:value x) (:value x ::foo))
-      #fhir/code"code-123745"
+      #fhir/code "code-123745"
       #fhir/code{:id "foo" :value "code-123745"}))
 
   (testing "assoc value"
     (testing "non-extended"
-      (is (= (type/assoc-value #fhir/code"code-165634" "code-165643")
-             #fhir/code"code-165643")))
+      (is (= (type/assoc-value #fhir/code "code-165634" "code-165643")
+             #fhir/code "code-165643")))
 
     (testing "already extended"
       (is (= (type/assoc-value #fhir/code{:id "foo"} "code-171046")
@@ -2115,26 +2077,26 @@
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/code"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/code "foo" ::not-found)))))
 
   (testing "to-json"
     (are [code json] (= json (gen-json-string code))
-      #fhir/code"code-123745" "\"code-123745\""))
+      #fhir/code "code-123745" "\"code-123745\""))
 
   (testing "to-xml"
     (is (= (sexp-value "code-123745")
-           (type/to-xml #fhir/code"code-123745")))
+           (type/to-xml #fhir/code "code-123745")))
     (is (= extended-gender-code-element (type/to-xml extended-gender-code))))
 
   (testing "equals"
-    (is (= #fhir/code"175726" #fhir/code"175726"))
-    (is (identical? #fhir/code"175726" #fhir/code"175726"))
-    (is (not= #fhir/code"175726" #fhir/code"165817"))
-    (is (not= #fhir/code"175726" "175726")))
+    (is (= #fhir/code "175726" #fhir/code "175726"))
+    (is (identical? #fhir/code "175726" #fhir/code "175726"))
+    (is (not= #fhir/code "175726" #fhir/code "165817"))
+    (is (not= #fhir/code "175726" "175726")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/code"175726" "9c96c20f"
+      #fhir/code "175726" "9c96c20f"
       #fhir/code{:value "175726"} "9c96c20f"
       #fhir/code{:id "170837"} "70f42552"
       #fhir/code{:id "170837" :value "175726"} "fc8af973"
@@ -2142,17 +2104,17 @@
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      #fhir/code"code-150839"
+      #fhir/code "code-150839"
       nil
 
       #fhir/code
        {:extension
         [#fhir/Extension
-          {:value #fhir/Reference{:reference "Patient/1"}}]}
+          {:value #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
       [["Patient" "1"]]))
 
   (testing "print"
-    (is (= "#fhir/code\"175718\"" (pr-str #fhir/code"175718"))))
+    (is (= "#fhir/code\"175718\"" (pr-str #fhir/code "175718"))))
 
   (testing "toString"
     (satisfies-prop 10
@@ -2188,51 +2150,51 @@
 (deftest oid-test
   (testing "oid?"
     (are [x] (type/oid? x)
-      #fhir/oid""
+      #fhir/oid ""
       #fhir/oid{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/oid (type/type x))
-      #fhir/oid""
+      #fhir/oid ""
       #fhir/oid{:id "foo"}))
 
   (testing "oid"
-    (is (= #fhir/oid{:value "182040"} #fhir/oid"182040")))
+    (is (= #fhir/oid{:value "182040"} #fhir/oid "182040")))
 
   (testing "interned"
-    (is (not-interned? #fhir/oid"oid-123745" #fhir/oid"oid-123745")))
+    (is (not-interned? #fhir/oid "oid-123745" #fhir/oid "oid-123745")))
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/oid"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/oid "165645" "id-111030")
              #fhir/oid{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/oid{:id "foo"} "bar")
              #fhir/oid{:id "bar"}))
-      (is (= (type/assoc-id #fhir/oid{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/oid{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/oid{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/oid{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/oid"165645" #fhir/Extension{:url "foo"})
-             #fhir/oid{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/oid "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/oid{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/oid{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/oid{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/oid{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/oid{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/oid{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/oid{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/oid{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/oid{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "oid-123745" (type/value x) (:value x) (:value x ::foo))
-      #fhir/oid"oid-123745"
+      #fhir/oid "oid-123745"
       #fhir/oid{:id "foo" :value "oid-123745"}))
 
   (testing "assoc value"
     (testing "non-extended"
-      (is (= (type/assoc-value #fhir/oid"oid-165634" "oid-165643")
-             #fhir/oid"oid-165643")))
+      (is (= (type/assoc-value #fhir/oid "oid-165634" "oid-165643")
+             #fhir/oid "oid-165643")))
 
     (testing "already extended"
       (is (= (type/assoc-value #fhir/oid{:id "foo"} "oid-171046")
@@ -2240,85 +2202,83 @@
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/oid"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/oid "foo" ::not-found)))))
 
   (testing "to-json"
-    (is (= "\"oid-123745\"" (gen-json-string #fhir/oid"oid-123745"))))
+    (is (= "\"oid-123745\"" (gen-json-string #fhir/oid "oid-123745"))))
 
   (testing "to-xml"
     (is (= (sexp-value "oid-123745")
-           (type/to-xml #fhir/oid"oid-123745"))))
+           (type/to-xml #fhir/oid "oid-123745"))))
 
   (testing "equals"
-    (is (let [oid #fhir/oid"175726"] (= oid oid)))
-    (is (= #fhir/oid"175726" #fhir/oid"175726"))
-    (is (not= #fhir/oid"175726" #fhir/oid"171055"))
-    (is (not= #fhir/oid"175726" "175726")))
+    (is (let [oid #fhir/oid "175726"] (= oid oid)))
+    (is (= #fhir/oid "175726" #fhir/oid "175726"))
+    (is (not= #fhir/oid "175726" #fhir/oid "171055"))
+    (is (not= #fhir/oid "175726" "175726")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/oid"175726" "a73ea817"
+      #fhir/oid "175726" "a73ea817"
       #fhir/oid{:value "175726"} "a73ea817"
       #fhir/oid{:id "foo"} "4daaecfb"
       #fhir/oid{:id "foo" :value "175726"} "5e076060"
       #fhir/oid{:extension [#fhir/Extension{:url "foo"}]} "c114dd42"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/oid"151329"
-      nil))
+    (is (empty? (type/references #fhir/oid "151329"))))
 
   (testing "print"
-    (is (= "#fhir/oid\"175718\"" (pr-str #fhir/oid"175718")))))
+    (is (= "#fhir/oid\"175718\"" (pr-str #fhir/oid "175718")))))
 
 (deftest id-test
   (testing "id?"
     (are [x] (type/id? x)
-      #fhir/id""
+      #fhir/id ""
       #fhir/id{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/id (type/type x))
-      #fhir/id""
+      #fhir/id ""
       #fhir/id{:id "foo"}))
 
   (testing "id"
-    (is (= #fhir/id{:value "182040"} #fhir/id"182040")))
+    (is (= #fhir/id{:value "182040"} #fhir/id "182040")))
 
   (testing "interned"
-    (is (not-interned? #fhir/id"id-123745" #fhir/id"id-123745")))
+    (is (not-interned? #fhir/id "id-123745" #fhir/id "id-123745")))
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/id"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/id "165645" "id-111030")
              #fhir/id{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/id{:id "foo"} "bar")
              #fhir/id{:id "bar"}))
-      (is (= (type/assoc-id #fhir/id{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/id{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/id{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/id{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/id"165645" #fhir/Extension{:url "foo"})
-             #fhir/id{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/id "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/id{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/id{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/id{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/id{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/id{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/id{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/id{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/id{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/id{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "id-123745" (type/value x) (:value x) (:value x ::foo))
-      #fhir/id"id-123745"
+      #fhir/id "id-123745"
       #fhir/id{:id "foo" :value "id-123745"}))
 
   (testing "assoc value"
     (testing "non-extended"
-      (is (= (type/assoc-value #fhir/id"id-165634" "id-165643")
-             #fhir/id"id-165643")))
+      (is (= (type/assoc-value #fhir/id "id-165634" "id-165643")
+             #fhir/id "id-165643")))
 
     (testing "already extended"
       (is (= (type/assoc-value #fhir/id{:id "foo"} "id-171046")
@@ -2326,86 +2286,84 @@
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/id"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/id "foo" ::not-found)))))
 
   (testing "to-json"
-    (is (= "\"id-123745\"" (gen-json-string #fhir/id"id-123745"))))
+    (is (= "\"id-123745\"" (gen-json-string #fhir/id "id-123745"))))
 
   (testing "to-xml"
     (is (= (sexp-value "id-123745")
-           (type/to-xml #fhir/id"id-123745"))))
+           (type/to-xml #fhir/id "id-123745"))))
 
   (testing "equals"
-    (is (let [id #fhir/id"175726"] (= id id)))
-    (is (= #fhir/id"175726" #fhir/id"175726"))
-    (is (not= #fhir/id"175726" #fhir/id"171108"))
-    (is (not= #fhir/id"175726" "175726")))
+    (is (let [id #fhir/id "175726"] (= id id)))
+    (is (= #fhir/id "175726" #fhir/id "175726"))
+    (is (not= #fhir/id "175726" #fhir/id "171108"))
+    (is (not= #fhir/id "175726" "175726")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/id"175726" "e56cbac6"
+      #fhir/id "175726" "e56cbac6"
       #fhir/id{:value "175726"} "e56cbac6"
       #fhir/id{:id "foo"} "59a2c68a"
       #fhir/id{:id "foo" :value "175726"} "3dbaa84e"
       #fhir/id{:extension [#fhir/Extension{:url "foo"}]} "1e8120f7"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/id"151408"
-      nil))
+    (is (empty? (type/references #fhir/id "151408"))))
 
   (testing "print"
-    (is (= "#fhir/id\"175718\"" (pr-str #fhir/id"175718")))))
+    (is (= "#fhir/id\"175718\"" (pr-str #fhir/id "175718")))))
 
 (deftest markdown-test
   (testing "markdown?"
     (are [x] (type/markdown? x)
-      #fhir/markdown""
+      #fhir/markdown ""
       #fhir/markdown{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/markdown (type/type x))
-      #fhir/markdown""
+      #fhir/markdown ""
       #fhir/markdown{:id "foo"}))
 
   (testing "markdown"
-    (is (= #fhir/markdown{:value "182040"} #fhir/markdown"182040")))
+    (is (= #fhir/markdown{:value "182040"} #fhir/markdown "182040")))
 
   (testing "interned"
-    (is (not-interned? #fhir/markdown"markdown-123745"
-                       #fhir/markdown"markdown-123745")))
+    (is (not-interned? #fhir/markdown "markdown-123745"
+                       #fhir/markdown "markdown-123745")))
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/markdown"165645" "id-111030")
+      (is (= (type/assoc-id #fhir/markdown "165645" "id-111030")
              #fhir/markdown{:id "id-111030" :value "165645"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/markdown{:id "foo"} "bar")
              #fhir/markdown{:id "bar"}))
-      (is (= (type/assoc-id #fhir/markdown{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/markdown{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/markdown{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/markdown{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/markdown"165645" #fhir/Extension{:url "foo"})
-             #fhir/markdown{:extension #fhir/Extension{:url "foo"} :value "165645"})))
+      (is (= (type/assoc-extension #fhir/markdown "165645" [#fhir/Extension{:url "foo"}])
+             #fhir/markdown{:extension [#fhir/Extension{:url "foo"}] :value "165645"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/markdown{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/markdown{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/markdown{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/markdown{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/markdown{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/markdown{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/markdown{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/markdown{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "markdown-123745" (type/value x) (:value x) (:value x ::foo))
-      #fhir/markdown"markdown-123745"
+      #fhir/markdown "markdown-123745"
       #fhir/markdown{:id "foo" :value "markdown-123745"}))
 
   (testing "assoc value"
     (testing "non-extended"
-      (is (= (type/assoc-value #fhir/markdown"markdown-165634" "markdown-165643")
-             #fhir/markdown"markdown-165643")))
+      (is (= (type/assoc-value #fhir/markdown "markdown-165634" "markdown-165643")
+             #fhir/markdown "markdown-165643")))
 
     (testing "already extended"
       (is (= (type/assoc-value #fhir/markdown{:id "foo"} "markdown-171046")
@@ -2413,37 +2371,35 @@
 
   (testing "lookup"
     (testing "other keys are not found"
-      (is (= ::not-found (::other-key #fhir/markdown"foo" ::not-found)))))
+      (is (= ::not-found (::other-key #fhir/markdown "foo" ::not-found)))))
 
   (testing "to-json"
     (is (= "\"markdown-123745\""
-           (gen-json-string #fhir/markdown"markdown-123745"))))
+           (gen-json-string #fhir/markdown "markdown-123745"))))
 
   (testing "to-xml"
     (is (= (sexp-value "markdown-123745")
-           (type/to-xml #fhir/markdown"markdown-123745"))))
+           (type/to-xml #fhir/markdown "markdown-123745"))))
 
   (testing "equals"
-    (is (let [markdown #fhir/markdown"175726"] (= markdown markdown)))
-    (is (= #fhir/markdown"175726" #fhir/markdown"175726"))
-    (is (not= #fhir/markdown"175726" #fhir/markdown"171153"))
-    (is (not= #fhir/markdown"175726" "175726")))
+    (is (let [markdown #fhir/markdown "175726"] (= markdown markdown)))
+    (is (= #fhir/markdown "175726" #fhir/markdown "175726"))
+    (is (not= #fhir/markdown "175726" #fhir/markdown "171153"))
+    (is (not= #fhir/markdown "175726" "175726")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/markdown"175726" "444928f7"
+      #fhir/markdown "175726" "444928f7"
       #fhir/markdown{:value "175726"} "444928f7"
       #fhir/markdown{:id "foo"} "999ebb88"
       #fhir/markdown{:id "foo" :value "175726"} "c9b526e9"
       #fhir/markdown{:extension [#fhir/Extension{:url "foo"}]} "8d0712c5"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/markdown"151424"
-      nil))
+    (is (empty? (type/references #fhir/markdown "151424"))))
 
   (testing "print"
-    (is (= "#fhir/markdown\"175718\"" (pr-str #fhir/markdown"175718")))))
+    (is (= "#fhir/markdown\"175718\"" (pr-str #fhir/markdown "175718")))))
 
 (deftest unsignedInt-test
   (testing "unsignedInt?"
@@ -2471,19 +2427,19 @@
     (testing "already extended"
       (is (= (type/assoc-id #fhir/unsignedInt{:id "foo"} "bar")
              #fhir/unsignedInt{:id "bar"}))
-      (is (= (type/assoc-id #fhir/unsignedInt{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/unsignedInt{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/unsignedInt{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/unsignedInt{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/unsignedInt 165645 #fhir/Extension{:url "foo"})
-             #fhir/unsignedInt{:extension #fhir/Extension{:url "foo"} :value 165645})))
+      (is (= (type/assoc-extension #fhir/unsignedInt 165645 [#fhir/Extension{:url "foo"}])
+             #fhir/unsignedInt{:extension [#fhir/Extension{:url "foo"}] :value 165645})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/unsignedInt{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/unsignedInt{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/unsignedInt{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/unsignedInt{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/unsignedInt{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/unsignedInt{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/unsignedInt{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/unsignedInt{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= 160845 (type/value x) (:value x) (:value x ::foo))
@@ -2524,9 +2480,7 @@
       #fhir/unsignedInt{:extension [#fhir/Extension{:url "foo"}]} "8117a763"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/unsignedInt 151440
-      nil))
+    (is (empty? (type/references #fhir/unsignedInt 151440))))
 
   (testing "print"
     (are [x s] (= (pr-str x) s)
@@ -2568,19 +2522,19 @@
     (testing "already extended"
       (is (= (type/assoc-id #fhir/positiveInt{:id "foo"} "bar")
              #fhir/positiveInt{:id "bar"}))
-      (is (= (type/assoc-id #fhir/positiveInt{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/positiveInt{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/positiveInt{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/positiveInt{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/positiveInt 165645 #fhir/Extension{:url "foo"})
-             #fhir/positiveInt{:extension #fhir/Extension{:url "foo"} :value 165645})))
+      (is (= (type/assoc-extension #fhir/positiveInt 165645 [#fhir/Extension{:url "foo"}])
+             #fhir/positiveInt{:extension [#fhir/Extension{:url "foo"}] :value 165645})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/positiveInt{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/positiveInt{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/positiveInt{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/positiveInt{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/positiveInt{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/positiveInt{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/positiveInt{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/positiveInt{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= 160845 (type/value x) (:value x) (:value x ::foo))
@@ -2621,9 +2575,7 @@
       #fhir/positiveInt{:extension [#fhir/Extension{:url "foo"}]} "7c036682"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/positiveInt 151500
-      nil))
+    (is (empty? (type/references #fhir/positiveInt 151500))))
 
   (testing "print"
     (is (= "#fhir/positiveInt 160845" (pr-str #fhir/positiveInt 160845)))))
@@ -2631,20 +2583,20 @@
 (deftest uuid-test
   (testing "uuid?"
     (are [x] (type/uuid? x)
-      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+      #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
       #fhir/uuid{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/uuid (type/type x))
-      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+      #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
       #fhir/uuid{:id "foo"}))
 
   (testing "uuid"
-    (is (= #fhir/uuid{:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))
+    (is (= #fhir/uuid{:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))
 
   (testing "interned"
-    (is (not-interned? #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
-                       #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))
+    (is (not-interned? #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+                       #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))
 
     (testing "with extension"
       (are [x y] (not-interned? x y)
@@ -2663,35 +2615,35 @@
 
   (testing "assoc id"
     (testing "non-extended"
-      (is (= (type/assoc-id #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "id-111030")
+      (is (= (type/assoc-id #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "id-111030")
              #fhir/uuid{:id "id-111030" :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"})))
 
     (testing "already extended"
       (is (= (type/assoc-id #fhir/uuid{:id "foo"} "bar")
              #fhir/uuid{:id "bar"}))
-      (is (= (type/assoc-id #fhir/uuid{:extension #fhir/Extension{:url "foo"}} "id-111902")
-             #fhir/uuid{:id "id-111902" :extension #fhir/Extension{:url "foo"}}))))
+      (is (= (type/assoc-id #fhir/uuid{:extension [#fhir/Extension{:url "foo"}]} "id-111902")
+             #fhir/uuid{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
 
   (testing "assoc extension"
     (testing "non-extended"
-      (is (= (type/assoc-extension #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" #fhir/Extension{:url "foo"})
-             #fhir/uuid{:extension #fhir/Extension{:url "foo"} :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"})))
+      (is (= (type/assoc-extension #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" [#fhir/Extension{:url "foo"}])
+             #fhir/uuid{:extension [#fhir/Extension{:url "foo"}] :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"})))
 
     (testing "already extended"
-      (is (= (type/assoc-extension #fhir/uuid{:id "id-111953"} #fhir/Extension{:url "foo"})
-             #fhir/uuid{:id "id-111953" :extension #fhir/Extension{:url "foo"}}))
-      (is (= (type/assoc-extension #fhir/uuid{:extension #fhir/Extension{:url "foo"}} #fhir/Extension{:url "bar"})
-             #fhir/uuid{:extension #fhir/Extension{:url "bar"}}))))
+      (is (= (type/assoc-extension #fhir/uuid{:id "id-111953"} [#fhir/Extension{:url "foo"}])
+             #fhir/uuid{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (type/assoc-extension #fhir/uuid{:extension [#fhir/Extension{:url "foo"}]} [#fhir/Extension{:url "bar"}])
+             #fhir/uuid{:extension [#fhir/Extension{:url "bar"}]}))))
 
   (testing "value"
     (are [x] (= "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" (type/value x))
-      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+      #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
       #fhir/uuid{:id "foo" :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"}))
 
   (testing "assoc value"
     (testing "non-extended"
-      (is (= (type/assoc-value #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")
-             #fhir/uuid"urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")))
+      (is (= (type/assoc-value #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")
+             #fhir/uuid "urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")))
 
     (testing "already extended"
       (is (= (type/assoc-value #fhir/uuid{:id "foo"} "urn:uuid:224c0729-05a7-4703-8ffd-acaa98d2d217")
@@ -2699,32 +2651,30 @@
 
   (testing "to-json"
     (is (= "\"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3\""
-           (gen-json-string #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
+           (gen-json-string #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
 
   (testing "to-xml"
     (is (= (sexp-value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")
-           (type/to-xml #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
+           (type/to-xml #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
 
   (testing "equals"
-    (is (= #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
-           #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))
-    (is (not= #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
-              #fhir/uuid"urn:uuid:ccd4a49d-a288-4387-b842-56dd0f896851"))
-    (is (not= #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+    (is (= #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+           #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))
+    (is (not= #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+              #fhir/uuid "urn:uuid:ccd4a49d-a288-4387-b842-56dd0f896851"))
+    (is (not= #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
               "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "f894ff2b"
+      #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "f894ff2b"
       #fhir/uuid{:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} "f894ff2b"
       #fhir/uuid{:id "foo"} "3b18b5b7"
       #fhir/uuid{:id "foo" :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} "c23eebae"
       #fhir/uuid{:extension [#fhir/Extension{:url "foo"}]} "9160d648"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/uuid"urn:uuid:89ddf6ab-8813-4c75-9500-dd07560fe817"
-      nil)))
+    (is (empty? (type/references #fhir/uuid "urn:uuid:89ddf6ab-8813-4c75-9500-dd07560fe817")))))
 
 (def xhtml-element
   (sexp
@@ -2733,71 +2683,69 @@
 
 (deftest xhtml-test
   (testing "xhtml?"
-    (is (type/xhtml? #fhir/xhtml"xhtml-123745")))
+    (is (type/xhtml? #fhir/xhtml "xhtml-123745")))
 
   (testing "from XML"
-    (is (= #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"
+    (is (= #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"
            (type/xml->Xhtml xhtml-element))))
 
   (testing "type"
-    (is (= :fhir/xhtml (type/type #fhir/xhtml""))))
+    (is (= :fhir/xhtml (type/type #fhir/xhtml ""))))
 
   (testing "interned"
-    (is (not-interned? #fhir/xhtml"xhtml-123745"
-                       #fhir/xhtml"xhtml-123745")))
+    (is (not-interned? #fhir/xhtml "xhtml-123745"
+                       #fhir/xhtml "xhtml-123745")))
 
   (testing "value"
-    (is (= "xhtml-123745" (type/value #fhir/xhtml"xhtml-123745"))))
+    (is (= "xhtml-123745" (type/value #fhir/xhtml "xhtml-123745"))))
 
   (testing "assoc value"
-    (is (= (type/assoc-value #fhir/xhtml"xhtml-165634" "xhtml-165643")
-           #fhir/xhtml"xhtml-165643")))
+    (is (= (type/assoc-value #fhir/xhtml "xhtml-165634" "xhtml-165643")
+           #fhir/xhtml "xhtml-165643")))
 
   (testing "to-json"
-    (is (= "\"xhtml-123745\"" (gen-json-string #fhir/xhtml"xhtml-123745"))))
+    (is (= "\"xhtml-123745\"" (gen-json-string #fhir/xhtml "xhtml-123745"))))
 
   (testing "to-xml"
     (testing "plain text"
-      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"xhtml-123745"))
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml "xhtml-123745"))
              "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">xhtml-123745</div>")))
 
     (testing "not closed tag"
-      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"<foo>"))
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml "<foo>"))
              "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;foo></div>")))
 
     (testing "invalid tag"
-      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"<foo"))
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml "<foo"))
              "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;foo</div>")))
 
     (testing "CDATA"
-      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"<![CDATA[foo]]>"))
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml "<![CDATA[foo]]>"))
              "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;![CDATA[foo]]&gt;</div>")))
 
     (testing "CDATA end"
-      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"]]>"))
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml "]]>"))
              "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">]]&gt;</div>")))
 
-    (is (= xhtml-element (type/to-xml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))
+    (is (= xhtml-element (type/to-xml #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))
 
   (testing "equals"
-    (is (= #fhir/xhtml"175726" #fhir/xhtml"175726"))
-    (is (not= #fhir/xhtml"175726" #fhir/xhtml"171511"))
-    (is (not= #fhir/xhtml"175726" "175726")))
+    (is (= #fhir/xhtml "175726" #fhir/xhtml "175726"))
+    (is (not= #fhir/xhtml "175726" #fhir/xhtml "171511"))
+    (is (not= #fhir/xhtml "175726" "175726")))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/xhtml"175726" "e90ddf05"))
+      #fhir/xhtml "175726" "e90ddf05"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/xhtml"151551"
-      nil))
+    (is (empty? (type/references #fhir/xhtml "151551"))))
 
   (testing "print"
-    (is (= "#fhir/xhtml\"175718\"" (pr-str #fhir/xhtml"175718"))))
+    (is (= "#fhir/xhtml\"175718\"" (pr-str #fhir/xhtml "175718"))))
 
   (testing "toString"
-    (is (= "175718" (str #fhir/xhtml"175718")))))
+    (is (= "175718" (str #fhir/xhtml "175718")))))
 
 (deftest attachment-test
   (testing "type"
@@ -2809,8 +2757,8 @@
       #fhir/Attachment{:id "foo"})
 
     (are [x y] (interned? x y)
-      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}))
+      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Attachment{})))
@@ -2827,34 +2775,32 @@
       #fhir/Attachment{:extension [#fhir/Extension{}]}
       "4947bc16"
 
-      #fhir/Attachment{:contentType #fhir/code"text/plain"}
+      #fhir/Attachment{:contentType #fhir/code "text/plain"}
       "21d5985e"
 
-      #fhir/Attachment{:language #fhir/code"de"}
+      #fhir/Attachment{:language #fhir/code "de"}
       "223e2e7f"
 
-      #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+      #fhir/Attachment{:data #fhir/base64Binary "MTA1NjE0Cg=="}
       "d2a23543"
 
-      #fhir/Attachment{:url #fhir/url"url-210424"}
+      #fhir/Attachment{:url #fhir/url "url-210424"}
       "67f9de2f"
 
       #fhir/Attachment{:size #fhir/unsignedInt 1}
       "180724c5"
 
-      #fhir/Attachment{:hash #fhir/base64Binary"MTA1NjE0Cg=="}
+      #fhir/Attachment{:hash #fhir/base64Binary "MTA1NjE0Cg=="}
       "26e1ef66"
 
-      #fhir/Attachment{:title "title-210622"}
+      #fhir/Attachment{:title #fhir/string "title-210622"}
       "fce4d064"
 
-      #fhir/Attachment{:creation #fhir/dateTime"2021"}
+      #fhir/Attachment{:creation #fhir/dateTime "2021"}
       "1f9bf068"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Attachment{}
-      []))
+    (is (empty? (type/references #fhir/Attachment{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -2868,29 +2814,29 @@
   (testing "interned"
     (testing "instances with code values are interned"
       (are [x y] (interned? x y)
-        #fhir/Extension{:url "foo" :value #fhir/code"bar"}
-        #fhir/Extension{:url "foo" :value #fhir/code"bar"}))
+        #fhir/Extension{:url "foo" :value #fhir/code "bar"}
+        #fhir/Extension{:url "foo" :value #fhir/code "bar"}))
 
     (testing "instances with code values and interned extensions are interned"
       (are [x y] (interned? x y)
         #fhir/Extension
-         {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+         {:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]
           :url "foo"
-          :value #fhir/code"bar"}
+          :value #fhir/code "bar"}
         #fhir/Extension
-         {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+         {:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]
           :url "foo"
-          :value #fhir/code"bar"}))
+          :value #fhir/code "bar"}))
 
     (testing "instances with code values but id's are not interned"
       (are [x y] (not-interned? x y)
-        #fhir/Extension{:id "foo" :url "bar" :value #fhir/code"baz"}
-        #fhir/Extension{:id "foo" :url "bar" :value #fhir/code"baz"}))
+        #fhir/Extension{:id "foo" :url "bar" :value #fhir/code "baz"}
+        #fhir/Extension{:id "foo" :url "bar" :value #fhir/code "baz"}))
 
     (testing "instances with string values are not interned"
       (are [x y] (not-interned? x y)
-        #fhir/Extension{:url "foo" :value "bar"}
-        #fhir/Extension{:url "foo" :value "bar"})))
+        #fhir/Extension{:url "foo" :value #fhir/string "bar"}
+        #fhir/Extension{:url "foo" :value #fhir/string "bar"})))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Extension{})))
@@ -2921,13 +2867,11 @@
       #fhir/Extension{:url "url-130945"}
       "8204427a"
 
-      #fhir/Extension{:value #fhir/code"value-130953"}
+      #fhir/Extension{:value #fhir/code "value-130953"}
       "befce87a"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Extension{}
-      []))
+    (is (empty? (type/references #fhir/Extension{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -2977,22 +2921,20 @@
       #fhir/Coding{:extension [#fhir/Extension{}]}
       "e1d440bb"
 
-      #fhir/Coding{:system #fhir/uri"system-202808"}
+      #fhir/Coding{:system #fhir/uri "system-202808"}
       "da808d2d"
 
-      #fhir/Coding{:version #fhir/uri"version-154317"}
+      #fhir/Coding{:version #fhir/uri "version-154317"}
       "93fc58d9"
 
-      #fhir/Coding{:code #fhir/code"code-202828"}
+      #fhir/Coding{:code #fhir/code "code-202828"}
       "74e3328d"
 
-      #fhir/Coding{:display #fhir/string"display-154256"}
+      #fhir/Coding{:display #fhir/string "display-154256"}
       "baac923d"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Coding{}
-      []))
+    (is (empty? (type/references #fhir/Coding{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3036,13 +2978,11 @@
       #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
       "9c4509ed"
 
-      #fhir/CodeableConcept{:text #fhir/string"text-153829"}
+      #fhir/CodeableConcept{:text #fhir/string "text-153829"}
       "fe2e61f1"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/CodeableConcept{}
-      []))
+    (is (empty? (type/references #fhir/CodeableConcept{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3058,27 +2998,27 @@
       #fhir/Quantity{:id "foo"}
       #fhir/Quantity{:id "foo"}
 
-      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
       #fhir/Quantity{:value #fhir/decimal 1M}
       #fhir/Quantity{:value #fhir/decimal 1M})
 
     (are [x y] (interned? x y)
-      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/Quantity{:comparator #fhir/code"foo"}
-      #fhir/Quantity{:comparator #fhir/code"foo"}
+      #fhir/Quantity{:comparator #fhir/code "foo"}
+      #fhir/Quantity{:comparator #fhir/code "foo"}
 
-      #fhir/Quantity{:unit #fhir/string"foo"}
-      #fhir/Quantity{:unit #fhir/string"foo"}
+      #fhir/Quantity{:unit #fhir/string "foo"}
+      #fhir/Quantity{:unit #fhir/string "foo"}
 
-      #fhir/Quantity{:system #fhir/uri"foo"}
-      #fhir/Quantity{:system #fhir/uri"foo"}
+      #fhir/Quantity{:system #fhir/uri "foo"}
+      #fhir/Quantity{:system #fhir/uri "foo"}
 
-      #fhir/Quantity{:code #fhir/code"foo"}
-      #fhir/Quantity{:code #fhir/code"foo"}))
+      #fhir/Quantity{:code #fhir/code "foo"}
+      #fhir/Quantity{:code #fhir/code "foo"}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Quantity{})))
@@ -3098,22 +3038,20 @@
       #fhir/Quantity{:value #fhir/decimal 1M}
       "4adf97ab"
 
-      #fhir/Quantity{:comparator #fhir/code"comparator-153342"}
+      #fhir/Quantity{:comparator #fhir/code "comparator-153342"}
       "6339e3e8"
 
-      #fhir/Quantity{:unit #fhir/string"unit-153351"}
+      #fhir/Quantity{:unit #fhir/string "unit-153351"}
       "d8f92891"
 
-      #fhir/Quantity{:system #fhir/uri"system-153337"}
+      #fhir/Quantity{:system #fhir/uri "system-153337"}
       "98f918ba"
 
-      #fhir/Quantity{:code #fhir/code"code-153427"}
+      #fhir/Quantity{:code #fhir/code "code-153427"}
       "7ff49528"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Quantity{}
-      []))
+    (is (empty? (type/references #fhir/Quantity{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3129,8 +3067,8 @@
       #fhir/Ratio{:id "foo"}
       #fhir/Ratio{:id "foo"}
 
-      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
       #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}}
       #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}}
@@ -3139,14 +3077,14 @@
       #fhir/Ratio{:denominator #fhir/Quantity{:value #fhir/decimal 1M}})
 
     (are [x y] (interned? x y)
-      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code"foo"}}
-      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code"foo"}}
+      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code "foo"}}
+      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code "foo"}}
 
-      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code"foo"}}
-      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code"foo"}}))
+      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code "foo"}}
+      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code "foo"}}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Ratio{})))
@@ -3170,9 +3108,7 @@
       "7f2075fb"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Ratio{}
-      []))
+    (is (empty? (type/references #fhir/Ratio{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3188,15 +3124,15 @@
       #fhir/Period{:id "foo"}
       #fhir/Period{:id "foo"}
 
-      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
-      #fhir/Period{:start #fhir/dateTime"2020"}
-      #fhir/Period{:start #fhir/dateTime"2020"})
+      #fhir/Period{:start #fhir/dateTime "2020"}
+      #fhir/Period{:start #fhir/dateTime "2020"})
 
     (are [x y] (interned? x y)
-      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}))
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Period{})))
@@ -3213,16 +3149,14 @@
       #fhir/Period{:extension [#fhir/Extension{}]}
       "92e4ba37"
 
-      #fhir/Period{:start #fhir/dateTime"2020"}
+      #fhir/Period{:start #fhir/dateTime "2020"}
       "f1b7c952"
 
-      #fhir/Period{:end #fhir/dateTime"2020"}
+      #fhir/Period{:end #fhir/dateTime "2020"}
       "434787dd"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Period{}
-      []))
+    (is (empty? (type/references #fhir/Period{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3238,18 +3172,18 @@
       #fhir/Identifier{:id "foo"}
       #fhir/Identifier{:id "foo"}
 
-      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
-      #fhir/Identifier{:value "foo"}
-      #fhir/Identifier{:value "foo"})
+      #fhir/Identifier{:value #fhir/string "foo"}
+      #fhir/Identifier{:value #fhir/string "foo"})
 
     (are [x y] (interned? x y)
-      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/Identifier{:use #fhir/code"foo"}
-      #fhir/Identifier{:use #fhir/code"foo"}))
+      #fhir/Identifier{:use #fhir/code "foo"}
+      #fhir/Identifier{:use #fhir/code "foo"}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Identifier{})))
@@ -3266,16 +3200,16 @@
       #fhir/Identifier{:extension [#fhir/Extension{}]}
       "810b77ff"
 
-      #fhir/Identifier{:use #fhir/code"use-155144"}
+      #fhir/Identifier{:use #fhir/code "use-155144"}
       "4bf89602"
 
       #fhir/Identifier{:type #fhir/CodeableConcept{}}
       "736db874"
 
-      #fhir/Identifier{:system #fhir/uri"system-145514"}
+      #fhir/Identifier{:system #fhir/uri "system-145514"}
       "acbabb5d"
 
-      #fhir/Identifier{:value "value-145509"}
+      #fhir/Identifier{:value #fhir/string "value-145509"}
       "de7e521f"
 
       #fhir/Identifier{:period #fhir/Period{}}
@@ -3285,9 +3219,7 @@
       "aa994e1e"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Identifier{}
-      []))
+    (is (empty? (type/references #fhir/Identifier{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3303,21 +3235,21 @@
       #fhir/HumanName{:id "foo"}
       #fhir/HumanName{:id "foo"}
 
-      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
-      #fhir/HumanName{:text "foo"}
-      #fhir/HumanName{:text "foo"}
+      #fhir/HumanName{:text #fhir/string "foo"}
+      #fhir/HumanName{:text #fhir/string "foo"}
 
-      #fhir/HumanName{:family "foo"}
-      #fhir/HumanName{:family "foo"})
+      #fhir/HumanName{:family #fhir/string "foo"}
+      #fhir/HumanName{:family #fhir/string "foo"})
 
     (are [x y] (interned? x y)
-      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/HumanName{:use #fhir/code"foo"}
-      #fhir/HumanName{:use #fhir/code"foo"}))
+      #fhir/HumanName{:use #fhir/code "foo"}
+      #fhir/HumanName{:use #fhir/code "foo"}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/HumanName{})))
@@ -3334,40 +3266,38 @@
       #fhir/HumanName{:extension [#fhir/Extension{}]}
       "4947bc16"
 
-      #fhir/HumanName{:use #fhir/code"use-155144"}
+      #fhir/HumanName{:use #fhir/code "use-155144"}
       "60b2b58c"
 
-      #fhir/HumanName{:text "text-212402"}
+      #fhir/HumanName{:text #fhir/string "text-212402"}
       "b9ab5f61"
 
-      #fhir/HumanName{:family "family-212422"}
+      #fhir/HumanName{:family #fhir/string "family-212422"}
       "915831d8"
 
-      #fhir/HumanName{:given ["given-212441"]}
+      #fhir/HumanName{:given [#fhir/string "given-212441"]}
       "e26a58ee"
 
-      #fhir/HumanName{:given ["given-212448" "given-212454"]}
+      #fhir/HumanName{:given [#fhir/string "given-212448" #fhir/string "given-212454"]}
       "b46d5198"
 
-      #fhir/HumanName{:prefix ["prefix-212514"]}
+      #fhir/HumanName{:prefix [#fhir/string "prefix-212514"]}
       "1a411067"
 
-      #fhir/HumanName{:prefix ["prefix-212523" "prefix-212525"]}
+      #fhir/HumanName{:prefix [#fhir/string "prefix-212523" #fhir/string "prefix-212525"]}
       "32529f07"
 
-      #fhir/HumanName{:suffix ["suffix-212542"]}
+      #fhir/HumanName{:suffix [#fhir/string "suffix-212542"]}
       "3181f719"
 
-      #fhir/HumanName{:suffix ["suffix-212547" "suffix-212554"]}
+      #fhir/HumanName{:suffix [#fhir/string "suffix-212547" #fhir/string "suffix-212554"]}
       "69ca06e0"
 
       #fhir/HumanName{:period #fhir/Period{}}
       "18b2a823"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/HumanName{}
-      []))
+    (is (empty? (type/references #fhir/HumanName{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3383,21 +3313,21 @@
       #fhir/Address{:id "foo"}
       #fhir/Address{:id "foo"}
 
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
-      #fhir/Address{:text "foo"}
-      #fhir/Address{:text "foo"})
+      #fhir/Address{:text #fhir/string "foo"}
+      #fhir/Address{:text #fhir/string "foo"})
 
     (are [x y] (interned? x y)
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/Address{:use #fhir/code"foo"}
-      #fhir/Address{:use #fhir/code"foo"}
+      #fhir/Address{:use #fhir/code "foo"}
+      #fhir/Address{:use #fhir/code "foo"}
 
-      #fhir/Address{:type #fhir/code"foo"}
-      #fhir/Address{:type #fhir/code"foo"}))
+      #fhir/Address{:type #fhir/code "foo"}
+      #fhir/Address{:type #fhir/code "foo"}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Address{})))
@@ -3414,43 +3344,41 @@
       #fhir/Address{:extension [#fhir/Extension{}]}
       "2a3786e7"
 
-      #fhir/Address{:use #fhir/code"use-155144"}
+      #fhir/Address{:use #fhir/code "use-155144"}
       "b6cf1d48"
 
-      #fhir/Address{:type #fhir/code"type-084442"}
+      #fhir/Address{:type #fhir/code "type-084442"}
       "54c286c3"
 
-      #fhir/Address{:text "text-212402"}
+      #fhir/Address{:text #fhir/string "text-212402"}
       "15baed84"
 
-      #fhir/Address{:line ["line-212441"]}
+      #fhir/Address{:line [#fhir/string "line-212441"]}
       "eafac0f1"
 
-      #fhir/Address{:line ["line-212448" "line-212454"]}
+      #fhir/Address{:line [#fhir/string "line-212448" #fhir/string "line-212454"]}
       "62f4cf8f"
 
-      #fhir/Address{:city "city-084705"}
+      #fhir/Address{:city #fhir/string "city-084705"}
       "9765a1e9"
 
-      #fhir/Address{:district "district-084717"}
+      #fhir/Address{:district #fhir/string "district-084717"}
       "9e6dc6b8"
 
-      #fhir/Address{:state "state-084729"}
+      #fhir/Address{:state #fhir/string "state-084729"}
       "17a7640f"
 
-      #fhir/Address{:postalCode "postalCode-084832"}
+      #fhir/Address{:postalCode #fhir/string "postalCode-084832"}
       "8880561c"
 
-      #fhir/Address{:country "country-084845"}
+      #fhir/Address{:country #fhir/string "country-084845"}
       "57c51a7d"
 
       #fhir/Address{:period #fhir/Period{}}
       "fb17905a"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/Address{}
-      []))
+    (is (empty? (type/references #fhir/Address{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3466,24 +3394,24 @@
       #fhir/Reference{:id "foo"}
       #fhir/Reference{:id "foo"}
 
-      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
-      #fhir/Reference{:reference "foo"}
-      #fhir/Reference{:reference "foo"}
+      #fhir/Reference{:reference #fhir/string "foo"}
+      #fhir/Reference{:reference #fhir/string "foo"}
 
-      #fhir/Reference{:identifier #fhir/Identifier{:value "foo"}}
-      #fhir/Reference{:identifier #fhir/Identifier{:value "foo"}}
+      #fhir/Reference{:identifier #fhir/Identifier{:value #fhir/string "foo"}}
+      #fhir/Reference{:identifier #fhir/Identifier{:value #fhir/string "foo"}}
 
-      #fhir/Reference{:display "foo"}
-      #fhir/Reference{:display "foo"})
+      #fhir/Reference{:display #fhir/string "foo"}
+      #fhir/Reference{:display #fhir/string "foo"})
 
     (are [x y] (interned? x y)
-      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/Reference{:type #fhir/code"foo"}
-      #fhir/Reference{:type #fhir/code"foo"}))
+      #fhir/Reference{:type #fhir/uri "foo"}
+      #fhir/Reference{:type #fhir/uri "foo"}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Reference{})))
@@ -3500,16 +3428,16 @@
       #fhir/Reference{:extension [#fhir/Extension{}]}
       "210e3eb7"
 
-      #fhir/Reference{:reference #fhir/string"Patient/0"}
+      #fhir/Reference{:reference #fhir/string "Patient/0"}
       "cd80b8ac"
 
-      #fhir/Reference{:type #fhir/uri"type-161222"}
+      #fhir/Reference{:type #fhir/uri "type-161222"}
       "2fe271cd"
 
       #fhir/Reference{:identifier #fhir/Identifier{}}
       "eb066d27"
 
-      #fhir/Reference{:display #fhir/string"display-161314"}
+      #fhir/Reference{:display #fhir/string "display-161314"}
       "543cf75f"))
 
   (testing "references"
@@ -3524,24 +3452,24 @@
        {:extension
         [#fhir/Extension
           {:value #fhir/Reference
-                   {:reference #fhir/string"Patient/1"}}]}
+                   {:reference #fhir/string "Patient/1"}}]}
       [["Patient" "1"]]
 
-      #fhir/Reference{:reference #fhir/string"Patient/0"}
+      #fhir/Reference{:reference #fhir/string "Patient/0"}
       [["Patient" "0"]]
 
-      #fhir/Reference{:reference #fhir/string"Patient"}
+      #fhir/Reference{:reference #fhir/string "Patient"}
       []
 
-      #fhir/Reference{:reference #fhir/string""}
+      #fhir/Reference{:reference #fhir/string ""}
       []
 
       #fhir/Reference
        {:extension
         [#fhir/Extension
           {:value #fhir/Reference
-                   {:reference #fhir/string"Patient/1"}}]
-        :reference #fhir/string"Patient/0"}
+                   {:reference #fhir/string "Patient/1"}}]
+        :reference #fhir/string "Patient/0"}
       [["Patient" "0"] ["Patient" "1"]]
 
       #fhir/Reference
@@ -3567,30 +3495,30 @@
       #fhir/Meta{:id "foo"}
       #fhir/Meta{:id "foo"}
 
-      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
-      #fhir/Meta{:versionId #fhir/id"foo"}
-      #fhir/Meta{:versionId #fhir/id"foo"}
+      #fhir/Meta{:versionId #fhir/id "foo"}
+      #fhir/Meta{:versionId #fhir/id "foo"}
 
-      #fhir/Meta{:lastUpdated #fhir/instant"2020-01-01T00:00:00Z"}
-      #fhir/Meta{:lastUpdated #fhir/instant"2020-01-01T00:00:00Z"})
+      #fhir/Meta{:lastUpdated #fhir/instant "2020-01-01T00:00:00Z"}
+      #fhir/Meta{:lastUpdated #fhir/instant "2020-01-01T00:00:00Z"})
 
     (are [x y] (interned? x y)
-      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/Meta{:source #fhir/uri"foo"}
-      #fhir/Meta{:source #fhir/uri"foo"}
+      #fhir/Meta{:source #fhir/uri "foo"}
+      #fhir/Meta{:source #fhir/uri "foo"}
 
-      #fhir/Meta{:profile #fhir/canonical"foo"}
-      #fhir/Meta{:profile #fhir/canonical"foo"}
+      #fhir/Meta{:profile [#fhir/canonical "foo"]}
+      #fhir/Meta{:profile [#fhir/canonical "foo"]}
 
-      #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
-      #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
+      #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}
+      #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}
 
-      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
-      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}))
+      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}
+      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/Meta{})))
@@ -3607,16 +3535,16 @@
       #fhir/Meta{:extension [#fhir/Extension{}]}
       "aaf41f94"
 
-      #fhir/Meta{:versionId #fhir/id"versionId-161415"}
+      #fhir/Meta{:versionId #fhir/id "versionId-161415"}
       "9edaa9b"
 
       (type/meta {:lastUpdated Instant/EPOCH})
       "38b8dfe3"
 
-      #fhir/Meta{:source #fhir/uri"source-161629"}
+      #fhir/Meta{:source #fhir/uri "source-161629"}
       "bc99bc82"
 
-      #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
+      #fhir/Meta{:profile [#fhir/canonical "profile-uri-145024"]}
       "b13c3d52"
 
       #fhir/Meta{:security [#fhir/Coding{}]}
@@ -3635,7 +3563,7 @@
 
       #fhir/Meta
        {:extension
-        [#fhir/Extension{:value #fhir/Reference{:reference "Patient/2"}}]}
+        [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/2"}}]}
       [["Patient" "2"]]))
 
   (testing "print"
@@ -3652,18 +3580,18 @@
       #fhir/BundleEntrySearch{:id "foo"}
       #fhir/BundleEntrySearch{:id "foo"}
 
-      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
-      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/string "bar"}]}
 
       #fhir/BundleEntrySearch{:score #fhir/decimal 1M}
       #fhir/BundleEntrySearch{:score #fhir/decimal 1M})
 
     (are [x y] (interned? x y)
-      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/BundleEntrySearch{:mode #fhir/code"match"}
-      #fhir/BundleEntrySearch{:mode #fhir/code"match"}))
+      #fhir/BundleEntrySearch{:mode #fhir/code "match"}
+      #fhir/BundleEntrySearch{:mode #fhir/code "match"}))
 
   (testing "primary/secondary content"
     (is (true? (p/-has-primary-content #fhir/BundleEntrySearch{})))
@@ -3680,16 +3608,14 @@
       #fhir/BundleEntrySearch{:extension [#fhir/Extension{}]}
       "f24daf4f"
 
-      #fhir/BundleEntrySearch{:mode #fhir/code"match"}
+      #fhir/BundleEntrySearch{:mode #fhir/code "match"}
       "5912b48c"
 
-      #fhir/BundleEntrySearch{:score 1M}
+      #fhir/BundleEntrySearch{:score #fhir/decimal 1M}
       "2b2509dc"))
 
   (testing "references"
-    (are [x refs] (= refs (type/references x))
-      #fhir/BundleEntrySearch{}
-      []))
+    (is (empty? (type/references #fhir/BundleEntrySearch{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))

@@ -26,12 +26,12 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-220129"
-                 :meta (type/meta {:versionId #fhir/id"1"
+                 :meta (type/meta {:versionId #fhir/id "1"
                                    :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
-                 :method #fhir/code"POST"
-                 :url #fhir/uri"Patient"}}])
+                 :method #fhir/code "POST"
+                 :url #fhir/uri "Patient"}}])
         count := 1
         [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220129"}]))
 
@@ -41,13 +41,13 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-220200"
-                 :meta (type/meta {:versionId #fhir/id"1"
+                 :meta (type/meta {:versionId #fhir/id "1"
                                    :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
-                 :method #fhir/code"POST"
-                 :url #fhir/uri"Patient"
-                 :ifNoneExist "birthdate=2020"}}])
+                 :method #fhir/code "POST"
+                 :url #fhir/uri "Patient"
+                 :ifNoneExist #fhir/string "birthdate=2020"}}])
         count := 1
         [0 :tx-op] := [:create
                        {:fhir/type :fhir/Patient :id "id-220200"}
@@ -59,13 +59,13 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220200"
-                   :meta (type/meta {:versionId #fhir/id"1"
+                   :meta (type/meta {:versionId #fhir/id "1"
                                      :lastUpdated Instant/EPOCH})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code"POST"
-                   :url #fhir/uri"Patient"
-                   :ifNoneExist ""}}])
+                   :method #fhir/code "POST"
+                   :url #fhir/uri "Patient"
+                   :ifNoneExist #fhir/string ""}}])
           count := 1
           [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220200"}]))
 
@@ -75,13 +75,13 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220200"
-                   :meta (type/meta {:versionId #fhir/id"1"
+                   :meta (type/meta {:versionId #fhir/id "1"
                                      :lastUpdated Instant/EPOCH})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code"POST"
-                   :url #fhir/uri"Patient"
-                   :ifNoneExist "_sort=a"}}])
+                   :method #fhir/code "POST"
+                   :url #fhir/uri "Patient"
+                   :ifNoneExist #fhir/string "_sort=a"}}])
           count := 1
           [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220200"}])))
 
@@ -91,12 +91,12 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-214728"
-                 :meta (type/meta {:versionId #fhir/id"1"
+                 :meta (type/meta {:versionId #fhir/id "1"
                                    :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
-                 :method #fhir/code"PUT"
-                 :url #fhir/uri"Patient/id-214728"}}])
+                 :method #fhir/code "PUT"
+                 :url #fhir/uri "Patient/id-214728"}}])
         count := 1
         [0 :tx-op] := [:put {:fhir/type :fhir/Patient :id "id-214728"}])
 
@@ -106,13 +106,13 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "id-214728"
-                   :meta (type/meta {:versionId #fhir/id"1"
+                   :meta (type/meta {:versionId #fhir/id "1"
                                      :lastUpdated Instant/EPOCH})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code"PUT"
-                   :url #fhir/uri"Patient/id-214728"
-                   :ifMatch "W/\"215150\""}}])
+                   :method #fhir/code "PUT"
+                   :url #fhir/uri "Patient/id-214728"
+                   :ifMatch #fhir/string "W/\"215150\""}}])
           count := 1
           [0 :tx-op] := [:put
                          {:fhir/type :fhir/Patient :id "id-214728"}
@@ -124,13 +124,13 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-214728"
-                 :meta (type/meta {:versionId #fhir/id"1"
+                 :meta (type/meta {:versionId #fhir/id "1"
                                    :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
-                 :method #fhir/code"PUT"
-                 :url #fhir/uri"Patient/id-214728"
-                 :ifNoneMatch "*"}}])
+                 :method #fhir/code "PUT"
+                 :url #fhir/uri "Patient/id-214728"
+                 :ifNoneMatch #fhir/string "*"}}])
         count := 1
         [0 :tx-op] := [:put
                        {:fhir/type :fhir/Patient :id "id-214728"}
@@ -142,20 +142,20 @@
               [{:fhir/type :fhir.Bundle/entry
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
-                 :method #fhir/code"DELETE"
-                 :url #fhir/uri"Patient/id-215232"}}])
+                 :method #fhir/code "DELETE"
+                 :url #fhir/uri "Patient/id-215232"}}])
         count := 1
         [0 :tx-op] := [:delete "Patient" "id-215232"]))
 
     (testing "conditional delete"
       (testing "without search params"
-        (doseq [url [#fhir/uri"Patient" #fhir/uri"Patient?"]]
+        (doseq [url [#fhir/uri "Patient" #fhir/uri "Patient?"]]
           (given (bundle/assoc-tx-ops
                   (d/db node)
                   [{:fhir/type :fhir.Bundle/entry
                     :request
                     {:fhir/type :fhir.Bundle.entry/request
-                     :method #fhir/code"DELETE"
+                     :method #fhir/code "DELETE"
                      :url url}}])
             count := 1
             [0 :tx-op] := [:conditional-delete "Patient"])))
@@ -166,14 +166,14 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code"DELETE"
-                   :url #fhir/uri"Patient?name-170043=value-170047"}}])
+                   :method #fhir/code "DELETE"
+                   :url #fhir/uri "Patient?name-170043=value-170047"}}])
           count := 1
           [0 :tx-op] := [:conditional-delete "Patient" [["name-170043" "value-170047"]]]))))
 
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
-    [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
-     [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
+    [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
     (testing "update"
       (testing "with older precondition"
@@ -182,14 +182,14 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "0"
-                   :meta (type/meta {:versionId #fhir/id"1"
+                   :meta (type/meta {:versionId #fhir/id "1"
                                      :lastUpdated Instant/EPOCH})
-                   :gender #fhir/code"male"}
+                   :gender #fhir/code "male"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code"PUT"
-                   :url #fhir/uri"Patient/0"
-                   :ifMatch "W/\"1\""}}])
+                   :method #fhir/code "PUT"
+                   :url #fhir/uri "Patient/0"
+                   :ifMatch #fhir/string "W/\"1\""}}])
           ::anom/category := ::anom/conflict
           ::anom/message := "Precondition `W/\"1\"` failed on `Patient/0`."
           :http/status := 412)))))

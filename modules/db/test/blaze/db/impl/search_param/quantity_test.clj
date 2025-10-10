@@ -168,12 +168,12 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
-                {:value 140M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}
+                {:value #fhir/decimal 140M
+                 :code #fhir/code "mm[Hg]"
+                 :system #fhir/uri "http://unitsofmeasure.org"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -232,11 +232,11 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
-                {:value 140M
-                 :unit #fhir/string"mmHg"}}
+                {:value #fhir/decimal 140M
+                 :unit #fhir/string "mmHg"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (index-entries
@@ -279,12 +279,12 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
-                {:value 120M
-                 :unit #fhir/string"mm[Hg]"
-                 :code #fhir/code"mm[Hg]"}}
+                {:value #fhir/decimal 120M
+                 :unit #fhir/string "mm[Hg]"
+                 :code #fhir/code "mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (index-entries
@@ -327,12 +327,12 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
-                {:value 120M
-                 :unit #fhir/string"mmHg"
-                 :code #fhir/code"mm[Hg]"}}
+                {:value #fhir/decimal 120M
+                 :unit #fhir/string "mmHg"
+                 :code #fhir/code "mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -391,11 +391,11 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
-                {:code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}
+                {:code #fhir/code "mm[Hg]"
+                 :system #fhir/uri "http://unitsofmeasure.org"}}
               hash (hash/generate observation)]
 
           (is (empty? (index-entries
@@ -406,7 +406,7 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"}
+               :status #fhir/code "final"}
               hash (hash/generate observation)]
 
           (is (empty? (index-entries

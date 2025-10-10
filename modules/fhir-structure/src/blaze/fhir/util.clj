@@ -22,15 +22,15 @@
 
 (def subsetted
   #fhir/Coding
-   {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-    :code #fhir/code"SUBSETTED"})
+   {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+    :code #fhir/code "SUBSETTED"})
 
 (defn subsetted?
   "Checks whether `coding` is a SUBSETTED coding."
   {:arglists '([coding])}
   [{:keys [system code]}]
-  (and (= #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
-       (= #fhir/code"SUBSETTED" code)))
+  (and (= #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
+       (= #fhir/code "SUBSETTED" code)))
 
 (defn- nat-cmp [^Comparable x y]
   (.compareTo x y))

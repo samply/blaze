@@ -38,7 +38,7 @@
 (def code-system-0 {:fhir/type :fhir/CodeSystem :id "0"
                     :concept
                     [{:fhir/type :fhir.CodeSystem/concept
-                      :code #fhir/code"foo"}]})
+                      :code #fhir/code "foo"}]})
 
 (def patient-0-hash (hash/generate patient-0))
 (def patient-1-hash (hash/generate patient-1))
@@ -102,7 +102,7 @@
         ["Patient" patient-1-hash :complete] patient-1
         ["CodeSystem" code-system-0-hash :complete] code-system-0
         ["CodeSystem" code-system-0-hash :summary] {:fhir/type :fhir/CodeSystem :id "0"
-                                                    :meta (type/map->Meta {:tag [fu/subsetted]})}
+                                                    :meta (type/meta {:tag [fu/subsetted]})}
         ["CodeSystem" code-system-0-hash :complete] code-system-0)))
 
   (testing "not-found"

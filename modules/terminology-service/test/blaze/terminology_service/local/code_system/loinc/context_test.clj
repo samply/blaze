@@ -15,7 +15,7 @@
 (deftest build-test
   (given (context/build)
     [:code-systems count] := 1
-    [:concept-index "718-7" :display] := #fhir/string"Hemoglobin [Mass/volume] in Blood"
+    [:concept-index "718-7" :display] := #fhir/string "Hemoglobin [Mass/volume] in Blood"
     [:concept-index "718-7" :loinc/properties :component] := ["HEMOGLOBIN" "LP14449-0"]
     [:concept-index "718-7" :loinc/properties :property] := ["MCNC" "LP6827-2"]
     [:concept-index "718-7" :loinc/properties :time] := ["PT" "LP6960-1"]
@@ -31,7 +31,7 @@
 
     [:concept-index "100987-7" :loinc/properties :order-obs] := :order
 
-    [:concept-index "LA26421-0" :display] := #fhir/string"Consider alternative medication"
+    [:concept-index "LA26421-0" :display] := #fhir/string "Consider alternative medication"
 
     [:component-index count] :? #(< 10000 %)
     [:component-index #(get % nil) count] := 0
@@ -91,5 +91,5 @@
     [:class "CYTO"] := "LP7789-3"
 
     ;; Answer List Value Sets
-    [:value-sets "LL4049-4" :title] := "Medication usage suggestion"
-    [:value-set-concepts "LL4049-4" 0 :code] := #fhir/code"LA26421-0"))
+    [:value-sets "LL4049-4" :title] := #fhir/string "Medication usage suggestion"
+    [:value-set-concepts "LL4049-4" 0 :code] := #fhir/code "LA26421-0"))

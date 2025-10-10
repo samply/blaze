@@ -689,9 +689,9 @@
                          #fhir/CodeableConcept
                           {:coding
                            [#fhir/Coding
-                             {:system #fhir/uri"system-192253"
-                              :code #fhir/code"code-192300"}]}
-                         :subject (type/reference {:reference (str "Patient/" pat-id)})}]))
+                             {:system #fhir/uri "system-192253"
+                              :code #fhir/code "code-192300"}]}
+                         :subject (type/reference {:reference (type/string (str "Patient/" pat-id))})}]))
            (range 120)))
         (mapv (range 100)))
 
@@ -720,52 +720,52 @@
 
 (def re-index-job
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"]}
-   :status #fhir/code"draft"
-   :intent #fhir/code"order"
+   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"]}
+   :status #fhir/code "draft"
+   :intent #fhir/code "order"
    :code #fhir/CodeableConcept
           {:coding
            [#fhir/Coding
-             {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-              :code #fhir/code"re-index"
-              :display #fhir/string"(Re)Index a Search Parameter"}]}
-   :authoredOn #fhir/dateTime"2024-04-13T10:05:20.927Z"
+             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+              :code #fhir/code "re-index"
+              :display #fhir/string "(Re)Index a Search Parameter"}]}
+   :authoredOn #fhir/dateTime "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
             {:coding
              [#fhir/Coding
-               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
-                :code #fhir/code"search-param-url"}]}
-     :value #fhir/canonical"http://hl7.org/fhir/SearchParameter/Resource-profile"}]})
+               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
+                :code #fhir/code "search-param-url"}]}
+     :value #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-profile"}]})
 
 (def compact-job
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
-   :status #fhir/code"draft"
-   :intent #fhir/code"order"
+   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
+   :status #fhir/code "draft"
+   :intent #fhir/code "order"
    :code #fhir/CodeableConcept
           {:coding
            [#fhir/Coding
-             {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-              :code #fhir/code"compact"
-              :display #fhir/string"Compact a Database Column Family"}]}
-   :authoredOn #fhir/dateTime"2024-04-13T10:05:20.927Z"
+             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+              :code #fhir/code "compact"
+              :display #fhir/string "Compact a Database Column Family"}]}
+   :authoredOn #fhir/dateTime "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
             {:coding
              [#fhir/Coding
-               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
-                :code #fhir/code"database"}]}
-     :value #fhir/code"index"}
+               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
+                :code #fhir/code "database"}]}
+     :value #fhir/code "index"}
     {:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
             {:coding
              [#fhir/Coding
-               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
-                :code #fhir/code"column-family"}]}
-     :value #fhir/code"search-param-value-index"}]})
+               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
+                :code #fhir/code "column-family"}]}
+     :value #fhir/code "search-param-value-index"}]})
 
 (deftest create-job-test
   (testing "no profile"
@@ -777,8 +777,8 @@
                :headers {"content-type" "application/fhir+json"}
                :body (json-writer
                       {:fhir/type :fhir/Task
-                       :status #fhir/code"draft"
-                       :intent #fhir/code"order"})})]
+                       :status #fhir/code "draft"
+                       :intent #fhir/code "order"})})]
 
         (is (= 400 status))
 
@@ -797,9 +797,9 @@
                :headers {"content-type" "application/fhir+json"}
                :body (json-writer
                       {:fhir/type :fhir/Task
-                       :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/Foo"]}
-                       :status #fhir/code"draft"
-                       :intent #fhir/code"order"})})]
+                       :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/Foo"]}
+                       :status #fhir/code "draft"
+                       :intent #fhir/code "order"})})]
 
         (is (= 400 status))
 
@@ -850,7 +850,7 @@
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (json-writer (update-in re-index-job [:code :coding 0] merge {:code #fhir/code"compact" :display "Compact a Database Column Family"}))})]
+               :body (json-writer (update-in re-index-job [:code :coding 0] merge {:code #fhir/code "compact" :display #fhir/string "Compact a Database Column Family"}))})]
 
         (is (= 400 status))
 
@@ -868,7 +868,7 @@
                 {:request-method :post
                  :uri "/fhir/__admin/Task"
                  :headers {"content-type" "application/fhir+json"}
-                 :body (json-writer (assoc-in re-index-job [:input 0 :value] #fhir/canonical"foo"))})]
+                 :body (json-writer (assoc-in re-index-job [:input 0 :value] #fhir/canonical "foo"))})]
 
           (is (= 400 status))
 
@@ -909,7 +909,7 @@
                 {:request-method :post
                  :uri "/fhir/__admin/Task"
                  :headers {"content-type" "application/fhir+json"}
-                 :body (json-writer (assoc-in compact-job [:input 0 :value] #fhir/code"foo"))})]
+                 :body (json-writer (assoc-in compact-job [:input 0 :value] #fhir/code "foo"))})]
 
           (is (= 400 status))
 
@@ -1065,7 +1065,7 @@
    [js/pause-job
     (fn [_job-scheduler _id]
       (ac/completed-future
-       (with-meta (assoc re-index-job :status #fhir/code"on-hold")
+       (with-meta (assoc re-index-job :status #fhir/code "on-hold")
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]
@@ -1091,7 +1091,7 @@
    [js/resume-job
     (fn [_job-scheduler _id]
       (ac/completed-future
-       (with-meta (assoc re-index-job :status #fhir/code"in-progress")
+       (with-meta (assoc re-index-job :status #fhir/code "in-progress")
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]
@@ -1117,7 +1117,7 @@
    [js/cancel-job
     (fn [_job-scheduler _id]
       (ac/completed-future
-       (with-meta (assoc re-index-job :status #fhir/code"cancelled")
+       (with-meta (assoc re-index-job :status #fhir/code "cancelled")
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]

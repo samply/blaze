@@ -172,7 +172,7 @@
 
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta #fhir/Meta{})
-      (assoc :versionId (type/->Id (str t)))
+      (assoc :versionId (type/id (str t)))
       (assoc :lastUpdated instant)))
 
 (defn- mk-meta [handle tx]
