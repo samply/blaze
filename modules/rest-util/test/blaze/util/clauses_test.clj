@@ -23,11 +23,20 @@
     (is (empty? (uc/search-clauses {}))))
 
   (testing "empty key and value"
-    (is (= [["" ""]] (uc/clauses {"" ""})))
-    (is (= [["" ""]] (uc/search-clauses {"" ""}))))
+    (is (empty? (uc/clauses {"" ""})))
+    (is (empty? (uc/search-clauses {"" ""}))))
 
   (testing "empty key and two empty values"
-    (is (= [["" ""] ["" ""]] (uc/clauses {"" ["" ""]}))))
+    (is (empty? (uc/clauses {"" ["" ""]}))))
+
+  (testing "empty value"
+    (is (empty? (uc/clauses {"a" ""}))))
+
+  (testing "two empty values"
+    (is (empty? (uc/clauses {"a" ["" ""]}))))
+
+  (testing "one normal and one empty value"
+    (is (= [["a" "b"]] (uc/clauses {"a" ["b" ""]}))))
 
   (testing "one key"
     (testing "and one value"
@@ -37,10 +46,17 @@
         (is (= [["a" "b" "c"]] (uc/clauses {"a" "b,c"}))))
 
       (testing "with three parts"
-        (is (= [["a" "b" "c" "d"]] (uc/clauses {"a" "b,c,d"})))))
+        (is (= [["a" "b" "c" "d"]] (uc/clauses {"a" "b,c,d"}))))
+
+      (testing "duplicate parts are removed"
+        (is (= [["a" "b" "c"]] (uc/clauses {"a" "b,c,b"})))
+        (is (= [["a" "b" "c" "d"]] (uc/clauses {"a" "b,c,b,d"})))))
 
     (testing "and two values"
-      (is (= [["a" "b"] ["a" "c"]] (uc/clauses {"a" ["b" "c"]}))))
+      (is (= [["a" "b"] ["a" "c"]] (uc/clauses {"a" ["b" "c"]})))
+
+      (testing "that are duplicates"
+        (is (= [["a" "b"]] (uc/clauses {"a" ["b" "b"]})))))
 
     (testing "with leading whitespace"
       (is (= [["a" "b"]] (uc/clauses {"a" " b"})))
@@ -58,7 +74,10 @@
       (is (= [["a" "b"]] (uc/clauses {"a" " b "})))
 
       (testing "with two parts"
-        (is (= [["a" "b" "c"]] (uc/clauses {"a" " b , c "}))))))
+        (is (= [["a" "b" "c"]] (uc/clauses {"a" " b , c "})))
+
+        (testing "that are duplicates"
+          (is (= [["a" "b"]] (uc/clauses {"a" " b , b "})))))))
 
   (testing "one sort param"
     (testing "ascending"
