@@ -19,10 +19,10 @@
             [#fhir/Extension
               {:url "http://hl7.org/fhir/tools/StructureDefinion/valueset-expansion-param"
                :extension
-               [#fhir/Extension{:url "name" :value #fhir/code"displayLanguage"}
-                #fhir/Extension{:url "value" :value #fhir/code"en"}]}]}})
+               [#fhir/Extension{:url "name" :value #fhir/code "displayLanguage"}
+                #fhir/Extension{:url "value" :value #fhir/code "en"}]}]}})
          {:fhir/type :fhir/Parameters,
           :parameter
           [{:fhir/type :fhir.Parameters/parameter
-            :name #fhir/string"displayLanguage"
-            :value #fhir/code"en"}]})))
+            :name #fhir/string "displayLanguage"
+            :value #fhir/code "en"}]})))

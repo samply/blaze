@@ -331,10 +331,10 @@
    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
     :value
     (type/quantity
-     {:code #fhir/code"s"
-      :system #fhir/uri"http://unitsofmeasure.org"
-      :unit #fhir/string"s"
-      :value (bigdec duration)})}))
+     {:code #fhir/code "s"
+      :system #fhir/uri "http://unitsofmeasure.org"
+      :unit #fhir/string "s"
+      :value (type/decimal (bigdec duration))})}))
 
 (defn- bloom-filter-ratio
   "Creates an extension with a number of available Bloom filters over the total
@@ -345,9 +345,9 @@
     :value
     (type/ratio
      {:numerator
-      (type/quantity {:value (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters)))})
+      (type/quantity {:value (type/decimal (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters))))})
       :denominator
-      (type/quantity {:value (bigdec (count bloom-filters))})})}))
+      (type/quantity {:value (type/decimal (bigdec (count bloom-filters)))})})}))
 
 (defn- local-ref [handle]
   (str (name (fhir-spec/fhir-type handle)) "/" (:id handle)))
@@ -360,12 +360,12 @@
     :extension
     [(eval-duration duration)
      (bloom-filter-ratio bloom-filters)]
-    :status #fhir/code"complete"
+    :status #fhir/code "complete"
     :type
     (case report-type
-      "population" #fhir/code"summary"
-      "subject-list" #fhir/code"subject-list"
-      "subject" #fhir/code"individual")
+      "population" #fhir/code "summary"
+      "subject-list" #fhir/code "subject-list"
+      "subject" #fhir/code "individual")
     :measure (type/canonical (canonical context measure))
     :date now
     :period
@@ -374,7 +374,7 @@
       :end (type/dateTime (str end))})}
 
     subject-handle
-    (assoc :subject (type/reference {:reference (local-ref subject-handle)}))
+    (assoc :subject (type/reference {:reference (type/string (local-ref subject-handle))}))
 
     (seq result)
     (assoc :group result)))

@@ -46,7 +46,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:eval-context "Patient"} elm)]
@@ -61,7 +61,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
@@ -94,7 +94,7 @@
 
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
-                                  :subject #fhir/Reference{:reference "Patient/0"}}]])
+                                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
 
         (given (bloom-filter/recreate node bloom-filter expr)
           ::bloom-filter/t := 1
@@ -112,7 +112,7 @@
 
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]
                            [:put {:fhir/type :fhir/Observation :id "1"
-                                  :subject #fhir/Reference{:reference "Patient/1"}}]])
+                                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
 
         (given (bloom-filter/recreate node bloom-filter expr)
           ::bloom-filter/t := 2

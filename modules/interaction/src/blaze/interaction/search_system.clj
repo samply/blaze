@@ -63,8 +63,8 @@
   (cond->
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
-    :total (type/->UnsignedInt (d/system-total db))
+    :type #fhir/code "searchset"
+    :total (type/unsignedInt (d/system-total db))
     :entry (if (< page-size (count entries))
              (pop entries)
              entries)}
@@ -86,8 +86,8 @@
   (ac/completed-future
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
-    :total (type/->UnsignedInt (d/system-total db))
+    :type #fhir/code "searchset"
+    :total (type/unsignedInt (d/system-total db))
     :link [(self-link context)]}))
 
 (defn- search [{:keys [params] :as context}]

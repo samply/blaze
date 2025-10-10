@@ -188,9 +188,9 @@
    :wrap link-headers/wrap-link-headers})
 
 (def ^:private allowed-profiles
-  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
-    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
-    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
+  #{#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
+    #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
+    #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
 
 (defn- check-profile [resource]
   (if (some allowed-profiles (-> resource :meta :profile))
@@ -201,10 +201,10 @@
      {:fhir/type :fhir/OperationOutcome
       :issue
       [{:fhir/type :fhir.OperationOutcome/issue
-        :severity #fhir/code"error"
-        :code #fhir/code"value"
+        :severity #fhir/code "error"
+        :code #fhir/code "value"
         :details #fhir/CodeableConcept
-                  {:text "No allowed profile found."}}]})))
+                  {:text #fhir/string "No allowed profile found."}}]})))
 
 (defn- validate [^FhirValidator validator writing-context resource]
   (->> ^String (fhir-spec/write-json-as-string writing-context resource)
@@ -213,7 +213,7 @@
        (datafy/datafy)))
 
 (defn- error-issues [outcome]
-  (update outcome :issue (partial filterv (comp #{#fhir/code"error"} :severity))))
+  (update outcome :issue (partial filterv (comp #{#fhir/code "error"} :severity))))
 
 (def ^:private wrap-validate-job
   {:name :wrap-validate-job

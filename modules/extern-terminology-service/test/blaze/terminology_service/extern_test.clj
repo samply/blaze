@@ -98,6 +98,6 @@
         (.withHeader "content-type" "application/fhir+json"))
 
     (given @(expand-value-set ts
-              "url" #fhir/uri"http://hl7.org/fhir/ValueSet/administrative-gender")
+              "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")
       :fhir/type := :fhir/ValueSet
       :id := "0")))

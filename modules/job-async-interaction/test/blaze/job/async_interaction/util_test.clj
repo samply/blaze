@@ -28,10 +28,11 @@
 (deftest processing-duration-test
   (given (u/processing-duration (System/nanoTime))
     type/type := :fhir/Quantity
-    :value :? #(and (decimal? %) (pos? %))
-    :unit := #fhir/string"s"
-    :system := #fhir/uri"http://unitsofmeasure.org"
-    :code := #fhir/code"s"))
+    [:value type/type] := :fhir/decimal
+    [:value type/value] :? #(and (decimal? %) (pos? %))
+    :unit := #fhir/string "s"
+    :system := #fhir/uri "http://unitsofmeasure.org"
+    :code := #fhir/code "s"))
 
 (deftest pull-request-bundle-test
   (testing "missing request bundle reference"

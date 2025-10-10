@@ -312,13 +312,13 @@
     :response
     (cond->
      {:fhir/type :fhir.Bundle.entry/response
-      :status (str status)}
+      :status (type/string (str status))}
 
       location
       (assoc :location (type/uri location))
 
       etag
-      (assoc :etag etag)
+      (assoc :etag (type/string etag))
 
       last-modified
       (assoc :lastModified (convert-http-date last-modified)))}
@@ -330,7 +330,7 @@
   {:fhir/type :fhir.Bundle/entry :response response})
 
 (defn- with-entry-location* [issues idx]
-  (mapv #(assoc % :expression [(format "Bundle.entry[%d]" idx)]) issues))
+  (mapv #(assoc % :expression [(type/string (format "Bundle.entry[%d]" idx))]) issues))
 
 (defn- with-entry-location [outcome idx]
   (update outcome :issue with-entry-location* idx))

@@ -41,10 +41,10 @@
 
   (given (search-util/match-entry context {:fhir/type :fhir/Patient :id "0"})
     :fhir/type := :fhir.Bundle/entry
-    :fullUrl := "/Patient/0"
+    :fullUrl := #fhir/uri "/Patient/0"
     [:resource :fhir/type] := :fhir/Patient
     [:resource :id] := "0"
-    [:search :mode] #fhir/code"match"))
+    [:search :mode] #fhir/code "match"))
 
 (deftest include-entry-test
   (given-thrown (search-util/include-entry {} {:fhir/type :fhir/Patient :id "0"})
@@ -57,10 +57,10 @@
 
   (given (search-util/include-entry context {:fhir/type :fhir/Patient :id "0"})
     :fhir/type := :fhir.Bundle/entry
-    :fullUrl := "/Patient/0"
+    :fullUrl := #fhir/uri "/Patient/0"
     [:resource :fhir/type] := :fhir/Patient
     [:resource :id] := "0"
-    [:search :mode] #fhir/code"include"))
+    [:search :mode] #fhir/code "include"))
 
 (deftest outcome-entry-test
   (given-thrown (search-util/outcome-entry {} {:fhir/type :fhir/Patient :id "0"})
@@ -78,7 +78,7 @@
   (given (search-util/outcome-entry context {:fhir/type :fhir/OperationOutcome})
     :fhir/type := :fhir.Bundle/entry
     [:resource :fhir/type] := :fhir/OperationOutcome
-    [:search :mode] #fhir/code"outcome"))
+    [:search :mode] #fhir/code "outcome"))
 
 (deftest link-test
   (testing "init"

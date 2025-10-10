@@ -23,12 +23,12 @@
 
 (defn- child-property [code]
   {:fhir/type :fhir.CodeSystem.concept/property
-   :code #fhir/code"child"
+   :code #fhir/code "child"
    :value (type/code code)})
 
 (defn- parent-property [code]
   {:fhir/type :fhir.CodeSystem.concept/property
-   :code #fhir/code"parent"
+   :code #fhir/code "parent"
    :value (type/code code)})
 
 (defn- ensure-child-property

@@ -6,8 +6,8 @@
    [cognitect.anomalies :as anom]))
 
 (defn- tx-issue-type-coding [code]
-  (type/map->Coding
-   {:system #fhir/uri"http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
+  (type/coding
+   {:system #fhir/uri "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
     :code (type/code code)}))
 
 (def ^:private not-found-coding
@@ -55,10 +55,10 @@
   {:arglists '([value-set clause])}
   [value-set {:keys [origin] :as clause}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"error"
-   :code #fhir/code"code-invalid"
+   :severity #fhir/code "error"
+   :code #fhir/code "code-invalid"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [not-in-vs-coding]
      :text (type/string (not-in-vs-msg value-set clause))})
    :expression [(type/string (cond->> "code" origin (str origin ".")))]})
@@ -67,10 +67,10 @@
   {:arglists '([clause])}
   [{:keys [origin]}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"warning"
-   :code #fhir/code"invalid"
+   :severity #fhir/code "warning"
+   :code #fhir/code "invalid"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [invalid-data-coding]
      :text (type/string "Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided.")})
    :expression [(type/string origin)]})
@@ -84,10 +84,10 @@
   {:arglists '([clause])}
   [{:keys [code system version origin]}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"error"
-   :code #fhir/code"code-invalid"
+   :severity #fhir/code "error"
+   :code #fhir/code "code-invalid"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [invalid-code-coding]
      :text (type/string (format "Unknown code `%s` was not found in the %s." code (code-system-msg system version)))})
    :expression [(type/string (cond->> "code" origin (str origin ".")))]})
@@ -96,10 +96,10 @@
   {:arglists '([clause concept lenient-display-validation])}
   [{:keys [code system origin] expected-display :display} {actual-display :display} lenient-display-validation]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity (if lenient-display-validation #fhir/code"warning" #fhir/code"error")
-   :code #fhir/code"invalid"
+   :severity (if lenient-display-validation #fhir/code "warning" #fhir/code "error")
+   :code #fhir/code "invalid"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [invalid-display-coding]
      :text
      (type/string
@@ -111,32 +111,32 @@
   {:arglists '([code-system clause])}
   [{:keys [url]} {:keys [code]}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"error"
-   :code #fhir/code"not-found"
+   :severity #fhir/code "error"
+   :code #fhir/code "not-found"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [cannot-infer-coding]
      :text (type/string (format "The provided code `%s` is not known to belong to the inferred code system `%s`." code (type/value url)))})
-   :expression [#fhir/string"code"]})
+   :expression [#fhir/string "code"]})
 
 (defn inactive-code
   {:arglists '([clause])}
   [{:keys [code origin]}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"error"
-   :code #fhir/code"business-rule"
+   :severity #fhir/code "error"
+   :code #fhir/code "business-rule"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [code-rule-coding]
      :text (type/string (format "The code `%s` is valid but is not active." code))})
    :expression [(type/string (cond->> "code" origin (str origin ".")))]})
 
 (defn value-set-not-found [url]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"error"
-   :code #fhir/code"not-found"
+   :severity #fhir/code "error"
+   :code #fhir/code "not-found"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [not-found-coding]
      :text (type/string (format "A definition for the value Set `%s` could not be found." url))})})
 
@@ -144,20 +144,20 @@
   {:arglists '([clause])}
   [{:keys [system version origin]}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"error"
-   :code #fhir/code"not-found"
+   :severity #fhir/code "error"
+   :code #fhir/code "not-found"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [not-found-coding]
      :text (type/string (format "A definition for the code system `%s` could not be found, so the code cannot be validated." (cond-> system version (str "|" version))))})
    :expression [(type/string (cond->> "system" origin (str origin ".")))]})
 
 (defn unknown-value-set [value-set unknown-value-set-url]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"warning"
-   :code #fhir/code"not-found"
+   :severity #fhir/code "warning"
+   :code #fhir/code "not-found"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [vs-invalid-coding]
      :text (type/string (format "Unable to check whether the code is in the %s because the value set `%s` was not found."
                                 (value-set-msg value-set) unknown-value-set-url))})})
@@ -166,10 +166,10 @@
   {:arglists '([value-set clause])}
   [value-set {:keys [system version]}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"warning"
-   :code #fhir/code"not-found"
+   :severity #fhir/code "warning"
+   :code #fhir/code "not-found"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [vs-invalid-coding]
      :text (type/string (format "Unable to check whether the code is in the %s because the code system `%s` was not found."
                                 (value-set-msg value-set) (cond-> system version (str "|" version))))})})
@@ -178,10 +178,10 @@
   {:arglists '([value-set anomaly])}
   [value-set {::anom/keys [message]}]
   {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code"error"
-   :code #fhir/code"invalid"
+   :severity #fhir/code "error"
+   :code #fhir/code "invalid"
    :details
-   (type/map->CodeableConcept
+   (type/codeable-concept
     {:coding [vs-invalid-coding]
      :text (type/string (format "Unable to check whether the code is in the %s because the value set was invalid. %s"
                                 (value-set-msg value-set) message))})})

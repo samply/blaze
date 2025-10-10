@@ -26,10 +26,10 @@
       (.hasDetails issue)
       (assoc :details (datafy/datafy (.getDetails issue)))
       (.hasDiagnostics issue)
-      (assoc :diagnostics (.getDiagnostics issue))))
+      (assoc :diagnostics (type/string (.getDiagnostics issue)))))
 
   CodeableConcept
   (datafy [concept]
-    (cond-> {:fhir/type :fhir.CodeableConcept}
+    (cond-> #fhir/CodeableConcept{}
       (.hasText concept)
-      (assoc :text (.getText concept)))))
+      (assoc :text (type/string (.getText concept))))))

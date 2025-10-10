@@ -335,7 +335,7 @@
               (is (false? (expr/eval eval-context expr patient)))))
 
           (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
                 db-after @(d/transact node [tx-op])]
 
             (testing "has an Observation after transaction"
@@ -372,7 +372,7 @@
             (is (false? (expr/eval eval-context expr patient))))
 
           (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
                 db-after @(d/transact node [tx-op])]
 
             (testing "has an Observation after transaction"

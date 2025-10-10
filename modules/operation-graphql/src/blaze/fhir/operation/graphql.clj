@@ -5,6 +5,7 @@
    [blaze.db.api :as d]
    [blaze.executors :as ex]
    [blaze.fhir.operation.graphql.spec]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -13,6 +14,7 @@
    [com.walmartlabs.lacinia.schema :as ls]
    [com.walmartlabs.lacinia.util :as lu]
    [integrant.core :as ig]
+   [jsonista.core :as j]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
@@ -52,16 +54,22 @@
     (d/type-query db type (clauses args))
     (d/type-list db type)))
 
+(defn- read-json [source]
+  (j/read-value source j/keyword-keys-object-mapper))
+
+(defn- write-read-json [writing-context x]
+  (read-json (fhir-spec/write-json-as-bytes writing-context x)))
+
 (defn- to-error [{::anom/keys [message]}]
   {:message message})
 
-(defn- resolve-type-list [type {:blaze/keys [db]} args _]
+(defn- resolve-type-list [type {:keys [writing-context db]} args _]
   (log/trace (format "execute %sList query" type))
   (let [result (resolve/resolve-promise)]
     (-> (d/pull-many db (type-query db type args))
         (ac/when-complete
          (fn [r e]
-           (resolve/deliver! result r (some-> e to-error)))))
+           (resolve/deliver! result (mapv (partial write-read-json writing-context) r) (some-> e to-error)))))
     result))
 
 (defn- compile-schema [options]
@@ -71,21 +79,23 @@
         :Query/ObservationList (partial resolve-type-list "Observation")})
       (ls/compile options)))
 
-(defn- execute-query [schema db {:keys [request-method] :as request}]
-  (if (= :post request-method)
-    (let [{{:keys [query variables]} :body} request]
-      (lacinia/execute schema query variables {:blaze/db db}))
-    (lacinia/execute schema (get (:params request) "query") nil {:blaze/db db})))
+(defn- execute-query
+  [schema writing-context {:keys [request-method] :blaze/keys [db] :as request}]
+  (let [context {:writing-context writing-context :db db}]
+    (if (= :post request-method)
+      (let [{{:keys [query variables]} :body} request]
+        (lacinia/execute schema query variables context))
+      (lacinia/execute schema (get (:params request) "query") nil context))))
 
 (defmethod m/pre-init-spec ::handler [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
+  (s/keys :req-un [:blaze.db/node :blaze.fhir/writing-context ::executor]))
 
-(defmethod ig/init-key ::handler [_ {:keys [executor] :as context}]
+(defmethod ig/init-key ::handler [_ {:keys [writing-context executor] :as context}]
   (log/info "Init FHIR $graphql operation handler")
   (let [schema (compile-schema context)]
-    (fn [{:blaze/keys [db] :as request}]
+    (fn [request]
       (ac/supply-async
-       #(ring/response (execute-query schema db request))
+       #(ring/response (execute-query schema writing-context request))
        executor))))
 
 (defmethod m/pre-init-spec ::executor [_]

@@ -5,7 +5,7 @@
 (def data-absent-reason-unsupported
   #fhir/Extension
    {:url "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
-    :value #fhir/code"unsupported"})
+    :value #fhir/code "unsupported"})
 
 (def extension-base
   "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition")

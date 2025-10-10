@@ -99,12 +99,13 @@
   "Returns the error category of `job` in case it failed and an error category
   is available."
   [job]
-  (some->> (output-value job "error-category") (keyword "cognitect.anomalies")))
+  (some->> (type/value (output-value job "error-category"))
+           (keyword "cognitect.anomalies")))
 
 (defn error-msg
   "Returns the error message of `job` in case it failed."
   [job]
-  (output-value job "error"))
+  (type/value (output-value job "error")))
 
 (defn error
   "Returns the error as anomaly of `job` in case it failed."
@@ -213,7 +214,7 @@
   (and (= ::anom/conflict category) (= :update-job action)))
 
 (defn fail-job [job {::anom/keys [category message]}]
-  (-> (assoc job :status #fhir/code"failed")
+  (-> (assoc job :status #fhir/code "failed")
       (dissoc :statusReason :businessStatus)
-      (add-output "error-category" (name category))
-      (add-output "error" (or message "empty error message"))))
+      (add-output "error-category" (type/string (name category)))
+      (add-output "error" (type/string (or message "empty error message")))))

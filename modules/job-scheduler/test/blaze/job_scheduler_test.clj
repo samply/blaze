@@ -50,11 +50,11 @@
 (defn- start-job [job]
   (assoc
    job
-   :status #fhir/code"in-progress"
+   :status #fhir/code "in-progress"
    :statusReason job-util/started-status-reason))
 
 (defn- finish-job [job]
-  (-> (assoc job :status #fhir/code"completed")
+  (-> (assoc job :status #fhir/code "completed")
       (dissoc :statusReason)))
 
 (defn- async-delay [x]
@@ -296,26 +296,26 @@
 
 (defn- ready-job [type]
   {:fhir/type :fhir/Task
-   :status #fhir/code"ready"
+   :status #fhir/code "ready"
    :code (job-type type)})
 
 (defn bundle-referencing-job [bundle-id]
   {:fhir/type :fhir/Task
-   :status #fhir/code"ready"
+   :status #fhir/code "ready"
    :code (job-type "async-interaction")
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
             {:coding
              [#fhir/Coding
-               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
-                :code #fhir/code"bundle"}]}
-     :value (type/reference {:reference (str "Bundle/" bundle-id)})}]})
+               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
+                :code #fhir/code "bundle"}]}
+     :value (type/reference {:reference (type/string (str "Bundle/" bundle-id))})}]})
 
 (defn bundle [id]
   {:fhir/type :fhir/Bundle
    :id id
-   :type #fhir/code"batch"})
+   :type #fhir/code "batch"})
 
 (def ^:private job-id "AAAAAAAAAAAAAAAB")
 
@@ -419,38 +419,38 @@
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
             jtu/combined-status := :ready
-            bundle-input := (type/reference {:reference (str "Bundle/" bundle-id)})))
+            bundle-input := (type/reference {:reference (type/string (str "Bundle/" bundle-id))})))
 
         (testing "the bundle is created"
           (given @(d/pull node (d/resource-handle (d/db node) "Bundle" bundle-id))
             :fhir/type := :fhir/Bundle
-            :type := #fhir/code"batch"))))))
+            :type := #fhir/code "batch"))))))
 
 (defn- in-progress-job [type]
   {:fhir/type :fhir/Task
-   :status #fhir/code"in-progress"
+   :status #fhir/code "in-progress"
    :statusReason job-util/started-status-reason
    :code (job-type type)})
 
 (defn- completed-job [type]
   {:fhir/type :fhir/Task
-   :status #fhir/code"completed"
+   :status #fhir/code "completed"
    :code (job-type type)})
 
 (defn- failed-job [type]
   {:fhir/type :fhir/Task
-   :status #fhir/code"failed"
+   :status #fhir/code "failed"
    :code (job-type type)})
 
 (defn- cancellation-requested-job [type]
   {:fhir/type :fhir/Task
-   :status #fhir/code"cancelled"
+   :status #fhir/code "cancelled"
    :businessStatus job-util/cancellation-requested-sub-status
    :code (job-type type)})
 
 (defn- cancellation-finished-job [type]
   {:fhir/type :fhir/Task
-   :status #fhir/code"cancelled"
+   :status #fhir/code "cancelled"
    :businessStatus job-util/cancellation-finished-sub-status
    :code (job-type type)})
 
@@ -577,7 +577,7 @@
 
 (defn- on-hold-job [type]
   {:fhir/type :fhir/Task
-   :status #fhir/code"on-hold"
+   :status #fhir/code "on-hold"
    :code (job-type type)})
 
 (deftest resume-job-test

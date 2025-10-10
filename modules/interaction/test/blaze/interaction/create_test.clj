@@ -128,9 +128,9 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing HTTP body."))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "Missing HTTP body."))))
 
     (testing "type mismatch"
       (with-handler [handler]
@@ -143,11 +143,11 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invariant"
-            [:issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-            [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
-            [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`."))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invariant"
+            [:issue 0 :details :coding 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
+            [:issue 0 :details :coding 0 :code] := #fhir/code "MSG_RESOURCE_TYPE_MISMATCH"
+            [:issue 0 :diagnostics] := #fhir/string "Resource type `Observation` doesn't match the endpoint type `Patient`."))))
 
     (testing "violated referential integrity"
       (with-handler [handler]
@@ -155,15 +155,15 @@
               @(handler
                 {::reitit/match observation-match
                  :body {:fhir/type :fhir/Observation :id "0"
-                        :subject #fhir/Reference{:reference "Patient/0"}}})]
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
 
           (is (= 409 status))
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"conflict"
-            [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "conflict"
+            [:issue 0 :diagnostics] := #fhir/string "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
     (testing "missing resource content"
       (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
@@ -177,9 +177,9 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"incomplete"
-              [:issue 0 :diagnostics] := "The resource `Patient/AAAAAAAAAAAAAAAA` was successfully created but it's content with hash `C854DBB25D7D32AE87A7D1CD633145A775E139904408FF821FA7ABB77D311DFF` was not found during response creation."))))))
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "incomplete"
+              [:issue 0 :diagnostics] := #fhir/string "The resource `Patient/AAAAAAAAAAAAAAAA` was successfully created but it's content with hash `C854DBB25D7D32AE87A7D1CD633145A775E139904408FF821FA7ABB77D311DFF` was not found during response creation."))))))
 
   (testing "on newly created resource"
     (testing "with no Prefer header"
@@ -205,7 +205,7 @@
           (given body
             :fhir/type := :fhir/Patient
             :id := "AAAAAAAAAAAAAAAA"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH)))
 
       (testing "Meta source is preserved"
@@ -214,12 +214,12 @@
                 @(handler
                   {::reitit/match patient-match
                    :body {:fhir/type :fhir/Patient
-                          :meta #fhir/Meta{:source #fhir/uri"source-110438"}}})]
+                          :meta #fhir/Meta{:source #fhir/uri "source-110438"}}})]
 
             (is (= 201 status))
 
             (given body
-              [:meta :source] := #fhir/uri"source-110438"))))
+              [:meta :source] := #fhir/uri "source-110438"))))
 
       (testing "Meta versionId is removed"
         (with-redefs [rs/put!
@@ -232,7 +232,7 @@
                   @(handler
                     {::reitit/match patient-match
                      :body {:fhir/type :fhir/Patient
-                            :meta #fhir/Meta{:versionId #fhir/id"1"}}})]
+                            :meta #fhir/Meta{:versionId #fhir/id "1"}}})]
 
               (is (= 201 status)))))))
 
@@ -283,7 +283,7 @@
           (given body
             :fhir/type := :fhir/Patient
             :id := "AAAAAAAAAAAAAAAA"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))))
 
     (testing "with return=OperationOutcome Prefer header"
@@ -348,7 +348,7 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"
                    :identifier
-                   [#fhir/Identifier{:value #fhir/string"094808"}]}]]]
+                   [#fhir/Identifier{:value #fhir/string "094808"}]}]]]
 
           (let [{:keys [status]}
                 @(handler
@@ -363,7 +363,7 @@
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :identifier
-                 [#fhir/Identifier{:value #fhir/string"095156"}]}]]]
+                 [#fhir/Identifier{:value #fhir/string "095156"}]}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -381,9 +381,9 @@
     (testing "with multiple matching patients"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date"2020"}]
+                 :birthDate #fhir/date #system/date "2020"}]
           [:put {:fhir/type :fhir/Patient :id "1"
-                 :birthDate #fhir/date"2020"}]]]
+                 :birthDate #fhir/date #system/date "2020"}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -396,9 +396,9 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"conflict"
-              [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "conflict"
+              [:issue 0 :diagnostics] := #fhir/string "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
 
   (testing "with disabled referential integrity check"
     (with-system [{handler :blaze.interaction/create}
@@ -407,7 +407,7 @@
             @((-> handler wrap-defaults wrap-error)
               {::reitit/match observation-match
                :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference "Patient/0"}}})]
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
 
         (is (= 201 status))
 
@@ -425,9 +425,9 @@
         (given body
           :fhir/type := :fhir/Observation
           :id := "AAAAAAAAAAAAAAAA"
-          [:meta :versionId] := #fhir/id"1"
+          [:meta :versionId] := #fhir/id "1"
           [:meta :lastUpdated] := Instant/EPOCH
-          [:subject :reference] := "Patient/0"))))
+          [:subject :reference] := #fhir/string "Patient/0"))))
 
   (testing "with a Bundle with references"
     (with-handler [handler]
@@ -435,16 +435,16 @@
             @(handler
               {::reitit/match bundle-match
                :body {:fhir/type :fhir/Bundle
-                      :type #fhir/code"collection"
+                      :type #fhir/code "collection"
                       :entry
                       [{:fhir/type :fhir.Bundle/entry
                         :resource
                         {:fhir/type :fhir/Observation
-                         :subject #fhir/Reference{:reference "Patient/0"}}
+                         :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
                         :request
                         {:fhir/type :fhir.Bundle.entry/request
-                         :method #fhir/code"POST"
-                         :url #fhir/uri"Observation"}}]}})]
+                         :method #fhir/code "POST"
+                         :url #fhir/uri "Observation"}}]}})]
 
         (is (= 201 status))
 
@@ -462,5 +462,5 @@
         (given body
           :fhir/type := :fhir/Bundle
           :id := "AAAAAAAAAAAAAAAA"
-          [:meta :versionId] := #fhir/id"1"
+          [:meta :versionId] := #fhir/id "1"
           [:meta :lastUpdated] := Instant/EPOCH)))))

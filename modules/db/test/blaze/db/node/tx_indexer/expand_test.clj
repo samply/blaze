@@ -38,9 +38,9 @@
   (testing "conflict"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date"2020"}]
+               :birthDate #fhir/date "2020"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date"2020"}]]]
+               :birthDate #fhir/date "2020"}]]]
 
       (given (expand-tx-cmds
               node
@@ -53,7 +53,7 @@
   (testing "match"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "2"
-               :identifier [#fhir/Identifier{:value #fhir/string"120426"}]}]]]
+               :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
       (given (expand-tx-cmds
               node
@@ -71,7 +71,7 @@
     (testing "no match"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value #fhir/string"120426"}]}]]]
+                 :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
         (is (empty? (expand-tx-cmds
                      node
@@ -81,7 +81,7 @@
     (testing "one patient match"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value #fhir/string"120426"}]}]]]
+                 :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
         (given (expand-tx-cmds
                 node
@@ -97,7 +97,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [(vec (for [id ["0" "1"]]
                   [:create {:fhir/type :fhir/Patient :id id
-                            :identifier [#fhir/Identifier{:value #fhir/string"120426"}]}]))]
+                            :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]))]
 
           (given (expand-tx-cmds node
                                  [{:op "conditional-delete" :type "Patient"
@@ -110,7 +110,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [(vec (for [id (range 10001)]
                   [:create {:fhir/type :fhir/Patient :id (str id)
-                            :identifier [#fhir/Identifier{:value #fhir/string"120426"}]}]))]
+                            :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]))]
 
           (given (expand-tx-cmds node
                                  [{:op "conditional-delete" :type "Patient"
@@ -124,7 +124,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [(vec (for [id ["0" "1"]]
                   [:create {:fhir/type :fhir/Patient :id id
-                            :identifier [#fhir/Identifier{:value "120426"}]}]))]
+                            :identifier [#fhir/Identifier{:value #fhir/string  "120426"}]}]))]
 
           (given (expand-tx-cmds node
                                  [{:op "conditional-delete" :type "Patient"
@@ -165,7 +165,7 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]
         [:create {:fhir/type :fhir/Observation :id "0"
-                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (given (expand-tx-cmds node [{:op "patient-purge" :id "0"}])
         count := 2

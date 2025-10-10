@@ -83,15 +83,15 @@
                                   wrap-error)]
          ~@body))))
 
-(defn ready-job [authored-on bundle-id t]
+(defn- ready-job [authored-on bundle-id t]
   (job-async/job authored-on bundle-id t))
 
-(defn in-progress-job [authored-on bundle-id t]
-  (assoc (job-async/job authored-on bundle-id t) :status #fhir/code"in-progress"))
+(defn- in-progress-job [authored-on bundle-id t]
+  (assoc (job-async/job authored-on bundle-id t) :status #fhir/code "in-progress"))
 
-(defn completed-job [authored-on request-bundle-id t response-bundle-id]
+(defn- completed-job [authored-on request-bundle-id t response-bundle-id]
   (-> (job-async/job authored-on request-bundle-id t)
-      (assoc :status #fhir/code"completed")
+      (assoc :status #fhir/code "completed")
       (job-async/add-response-bundle-reference response-bundle-id)))
 
 (deftest async-status-cancel-handler-test
@@ -121,7 +121,7 @@
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]
         [:put {:fhir/type :fhir/Bundle
                :id "1"
-               :type #fhir/code"batch-response"
+               :type #fhir/code "batch-response"
                :entry
                [{:fhir/type :fhir.Bundle/entry
                  :resource
@@ -135,9 +135,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"conflict"
-          [:issue 0 :diagnostics] := "The asynchronous request with id `0` can't be cancelled because it's already completed."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "conflict"
+          [:issue 0 :diagnostics] := #fhir/string "The asynchronous request with id `0` can't be cancelled because it's already completed."))))
 
   (testing "with other conflict anomaly"
     (with-redefs [js/cancel-job
@@ -151,9 +151,9 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"conflict"
-            [:issue 0 :diagnostics] := "msg-171718")))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "conflict"
+            [:issue 0 :diagnostics] := #fhir/string "msg-171718")))))
 
   (testing "with other fault anomaly"
     (with-redefs [js/cancel-job
@@ -167,6 +167,6 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"exception"
-            [:issue 0 :diagnostics] := "msg-171957"))))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "exception"
+            [:issue 0 :diagnostics] := #fhir/string "msg-171957"))))))

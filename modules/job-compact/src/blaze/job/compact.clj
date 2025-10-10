@@ -28,25 +28,25 @@
 
 (def ^:private initial-duration
   #fhir/Quantity
-   {:value #fhir/decimal 0
-    :unit #fhir/string"s"
-    :system #fhir/uri"http://unitsofmeasure.org"
-    :code #fhir/code"s"})
+   {:value #fhir/decimal 0M
+    :unit #fhir/string "s"
+    :system #fhir/uri "http://unitsofmeasure.org"
+    :code #fhir/code "s"})
 
 (defn job
   "Creates a compact job resource."
   [authored-on database column-family]
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
-   :status #fhir/code"ready"
-   :intent #fhir/code"order"
+   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
+   :status #fhir/code "ready"
+   :intent #fhir/code "order"
    :code
    #fhir/CodeableConcept
     {:coding
      [#fhir/Coding
-       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-        :code #fhir/code"compact"
-        :display #fhir/string"Compact a Database Column Family"}]}
+       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+        :code #fhir/code "compact"
+        :display #fhir/string "Compact a Database Column Family"}]}
    :authoredOn authored-on
    :input
    [{:fhir/type :fhir.Task/input
@@ -54,20 +54,20 @@
             {:coding
              [(type/coding
                {:system (type/uri parameter-system)
-                :code #fhir/code"database"})]})
+                :code #fhir/code "database"})]})
      :value (type/code database)}
     {:fhir/type :fhir.Task/input
      :type (type/codeable-concept
             {:coding
              [(type/coding
                {:system (type/uri parameter-system)
-                :code #fhir/code"column-family"})]})
+                :code #fhir/code "column-family"})]})
      :value (type/code column-family)}]})
 
 (defn- start-job [job]
   (assoc
    job
-   :status #fhir/code"in-progress"
+   :status #fhir/code "in-progress"
    :statusReason job-util/started-status-reason
    :output
    [(task-output "processing-duration" initial-duration)]))
@@ -81,7 +81,7 @@
 
 (defn- complete-job [job {:keys [duration]}]
   (-> (increment-duration job duration)
-      (assoc :status #fhir/code"completed")
+      (assoc :status #fhir/code "completed")
       (dissoc :statusReason)))
 
 (defn- database* [job]

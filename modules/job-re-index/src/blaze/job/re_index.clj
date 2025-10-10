@@ -27,15 +27,15 @@
 
 (def ^:private initial-duration
   #fhir/Quantity
-   {:value #fhir/decimal 0
-    :unit #fhir/string"s"
-    :system #fhir/uri"http://unitsofmeasure.org"
-    :code #fhir/code"s"})
+   {:value #fhir/decimal 0M
+    :unit #fhir/string "s"
+    :system #fhir/uri "http://unitsofmeasure.org"
+    :code #fhir/code "s"})
 
 (defn- start-job [job total-resources]
   (assoc
    job
-   :status #fhir/code"in-progress"
+   :status #fhir/code "in-progress"
    :statusReason job-util/started-status-reason
    :output
    [(task-output "total-resources" (type/unsignedInt total-resources))
@@ -61,7 +61,7 @@
 
 (defn- set-next [job {:fhir/keys [type] :keys [id]}]
   (if type
-    (add-output job "next-resource" (str (name type) "/" id))
+    (add-output job "next-resource" (type/string (str (name type) "/" id)))
     (job-util/remove-output job output-system "next-resource")))
 
 (defn- increment-job [job {:keys [num-resources duration next]}]
@@ -72,16 +72,14 @@
 
 (defn- complete-job [job result]
   (-> (increment-job job result)
-      (assoc :status #fhir/code"completed")
+      (assoc :status #fhir/code "completed")
       (dissoc :statusReason)))
 
 (defn- search-param-url [job]
-  (some-> (job-util/input-value job parameter-system "search-param-url")
-          type/value))
+  (-> (job-util/input-value job parameter-system "search-param-url") type/value))
 
 (defn- next-resource [job]
-  (some-> (job-util/output-value job output-system "next-resource")
-          type/value))
+  (-> (job-util/output-value job output-system "next-resource") type/value))
 
 (defn- elapsed [clock job]
   (-> (time/duration (-> job :meta :lastUpdated) (time/instant clock))

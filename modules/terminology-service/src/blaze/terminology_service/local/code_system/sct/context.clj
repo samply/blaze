@@ -443,32 +443,32 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code"read-only"}]}
+       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+        :code #fhir/code "read-only"}]}
    :url (type/uri url)
    :version (type/string (version-url module-id version))
    :title (type/string (find-fully-specified-name module-dependency-index
                                                   fully-specified-name-index
                                                   module-id version
                                                   module-id))
-   :status #fhir/code"active"
+   :status #fhir/code "active"
    :experimental #fhir/boolean false
    :date (type/dateTime (str (LocalDate/parse (str version) DateTimeFormatter/BASIC_ISO_DATE)))
    :caseSensitive #fhir/boolean true
-   :hierarchyMeaning #fhir/code"is-a"
+   :hierarchyMeaning #fhir/code "is-a"
    :versionNeeded #fhir/boolean false
-   :content #fhir/code"not-present"
+   :content #fhir/code "not-present"
    :filter
    [{:fhir/type :fhir.CodeSystem/filter
-     :code #fhir/code"concept"
-     :description #fhir/string"Includes all concept ids that have a transitive is-a relationship with the code provided as the value."
-     :operator [#fhir/code"is-a"]
-     :value #fhir/string"A SNOMED CT code"}
+     :code #fhir/code "concept"
+     :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value."
+     :operator [#fhir/code "is-a"]
+     :value #fhir/string "A SNOMED CT code"}
     {:fhir/type :fhir.CodeSystem/filter
-     :code #fhir/code"concept"
-     :description #fhir/string"Includes all concept ids that have a transitive is-a relationship with the code provided as the value, excluding the code itself."
-     :operator [#fhir/code"descendent-of"]
-     :value #fhir/string"A SNOMED CT code"}]})
+     :code #fhir/code "concept"
+     :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value, excluding the code itself."
+     :operator [#fhir/code "descendent-of"]
+     :value #fhir/string "A SNOMED CT code"}]})
 
 (defn- build-code-systems
   "Generates a list of CodeSystem resources based on the `lines` of the module

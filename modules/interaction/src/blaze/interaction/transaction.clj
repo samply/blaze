@@ -98,9 +98,9 @@
     {:fhir/type :fhir.Bundle/entry
      :response
      {:fhir/type :fhir.Bundle.entry/response
-      :status "201"
+      :status #fhir/string "201"
       :location (type/uri (location context type id vid))
-      :etag (str "W/\"" vid "\"")
+      :etag (type/string (str "W/\"" vid "\""))
       :lastModified (:blaze.db.tx/instant tx)}}))
 
 (defn- noop-entry [db handle]
@@ -109,8 +109,8 @@
     {:fhir/type :fhir.Bundle/entry
      :response
      {:fhir/type :fhir.Bundle.entry/response
-      :status "200"
-      :etag (str "W/\"" vid "\"")
+      :status #fhir/string "200"
+      :etag (type/string (str "W/\"" vid "\""))
       :lastModified (:blaze.db.tx/instant tx)}}))
 
 (defn- conditional-clauses [if-none-exist]
@@ -162,8 +162,8 @@
      :response
      (cond->
       {:fhir/type :fhir.Bundle.entry/response
-       :status (if created "201" "200")
-       :etag (str "W/\"" vid "\"")
+       :status (type/string (if created "201" "200"))
+       :etag (type/string (str "W/\"" vid "\""))
        :lastModified (:blaze.db.tx/instant tx)}
        created
        (assoc :location (type/uri (location context type id vid))))}))
@@ -186,8 +186,8 @@
      {:fhir/type :fhir.Bundle/entry
       :response
       {:fhir/type :fhir.Bundle.entry/response
-       :status "204"
-       :etag (str "W/\"" t "\"")
+       :status #fhir/string "204"
+       :etag (type/string (str "W/\"" t "\""))
        :lastModified (:blaze.db.tx/instant (d/tx db t))}})))
 
 (defmethod build-response-entry "GET" [context idx entry]

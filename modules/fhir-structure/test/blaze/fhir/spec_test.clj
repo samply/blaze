@@ -110,19 +110,19 @@
       {:fhir/type :fhir/Condition :id "id-204446"
        :meta
        #fhir/Meta
-        {:versionId #fhir/id"1"
-         :profile [#fhir/canonical"url-164445"]}
+        {:versionId #fhir/id "1"
+         :profile [#fhir/canonical "url-164445"]}
        :code
        #fhir/CodeableConcept
         {:coding
          [#fhir/Coding
-           {:system #fhir/uri"system-204435"
-            :code #fhir/code"code-204441"}]}
-       :subject #fhir/Reference{:reference "Patient/id-145552"}
-       :onset #fhir/dateTime"2020-01-30"}
+           {:system #fhir/uri "system-204435"
+            :code #fhir/code "code-204441"}]}
+       :subject #fhir/Reference{:reference #fhir/string "Patient/id-145552"}
+       :onset #fhir/dateTime "2020-01-30"}
 
       {:fhir/type :fhir/Patient :id "0"
-       :birthDate #fhir/date{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}})))
+       :birthDate #fhir/date{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}})))
 
 (deftest fhir-type-test
   (testing "Patient"
@@ -142,9 +142,9 @@
 
 (deftest primitive-val-test
   (are [x] (fhir-spec/primitive-val? x)
-    "foo"
-    1
-    #fhir/code"bar")
+    #fhir/string "foo"
+    #fhir/integer 1
+    #fhir/code "bar")
 
   (are [x] (not (fhir-spec/primitive-val? x))
     #fhir/Coding{}
@@ -574,15 +574,15 @@
              (write-parse-json {:resourceType "Patient"})))))
 
   (testing "deceasedBoolean on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased true}
+    (is (= {:fhir/type :fhir/Patient :deceased #fhir/boolean true}
            (write-parse-json {:resourceType "Patient" :deceasedBoolean true}))))
 
   (testing "deceasedDateTime on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}
+    (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime "2020"}
            (write-parse-json {:resourceType "Patient" :deceasedDateTime "2020"}))))
 
   (testing "multipleBirthInteger on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :multipleBirth 2}
+    (is (= {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
            (write-parse-json {:resourceType "Patient" :multipleBirthInteger 2}))))
 
   (testing "with unknown property"
@@ -604,15 +604,15 @@
             #fhir/CodeableConcept
              {:coding
               [#fhir/Coding
-                {:system #fhir/uri"http://loinc.org"
-                 :code #fhir/code"39156-5"}]}}
+                {:system #fhir/uri "http://loinc.org"
+                 :code #fhir/code "39156-5"}]}}
            (write-parse-json
             {:resourceType "Observation"
              :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}))))
 
   (testing "Observation with valueTime"
     (is (= {:fhir/type :fhir/Observation
-            :value #fhir/time"16:26:42"}
+            :value #fhir/time "16:26:42"}
            (write-parse-json
             {:resourceType "Observation"
              :valueTime "16:26:42"}))))
@@ -637,11 +637,11 @@
     (is (= {:fhir/type :fhir/Questionnaire
             :item
             [{:fhir/type :fhir.Questionnaire/item
-              :type #fhir/code"group"
+              :type #fhir/code "group"
               :item
               [{:fhir/type :fhir.Questionnaire/item
-                :type #fhir/code"string"
-                :text "foo"}]}]}
+                :type #fhir/code "string"
+                :text #fhir/string "foo"}]}]}
            (write-parse-json
             {:resourceType "Questionnaire"
              :item
@@ -672,7 +672,7 @@
         (testing "one known key"
           (are [resource json] (= json (write-read-json resource))
             {:fhir/type :fhir/Bundle
-             :entry [{:fhir/type :fhir.Bundle/entry :request {:url #fhir/uri"bar"}}]}
+             :entry [{:fhir/type :fhir.Bundle/entry :request {:url #fhir/uri "bar"}}]}
             {:resourceType "Bundle"
              :entry [{:request {:url "bar"}}]})))
 
@@ -685,27 +685,27 @@
       (testing "DataRequirement.codeFilter"
         (are [resource json] (= json (write-read-json resource))
           {:fhir/type :fhir/DataRequirement
-           :codeFilter [{:searchParam #fhir/string"bar" :path #fhir/string"foo"}]}
+           :codeFilter [{:searchParam #fhir/string "bar" :path #fhir/string "foo"}]}
           {:codeFilter [{:path "foo" :searchParam "bar"}]}))))
 
   (testing "Patient with deceasedBoolean"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :deceased true}
+      {:fhir/type :fhir/Patient :deceased #fhir/boolean true}
       {:resourceType "Patient" :deceasedBoolean true}))
 
   (testing "Patient with deceasedDateTime"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}
+      {:fhir/type :fhir/Patient :deceased #fhir/dateTime "2020"}
       {:resourceType "Patient" :deceasedDateTime "2020"}))
 
   (testing "Patient with multipleBirthBoolean"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :multipleBirth false}
+      {:fhir/type :fhir/Patient :multipleBirth #fhir/boolean false}
       {:resourceType "Patient" :multipleBirthBoolean false}))
 
   (testing "Patient with multipleBirthInteger"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :multipleBirth (int 2)}
+      {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
       {:resourceType "Patient" :multipleBirthInteger 2}))
 
   (testing "Bundle with Patient"
@@ -725,8 +725,8 @@
        #fhir/CodeableConcept
         {:coding
          [#fhir/Coding
-           {:system #fhir/uri"http://loinc.org"
-            :code #fhir/code"39156-5"}]}}
+           {:system #fhir/uri "http://loinc.org"
+            :code #fhir/code "39156-5"}]}}
       {:resourceType "Observation"
        :code
        {:coding
@@ -738,10 +738,10 @@
       {:fhir/type :fhir/Observation
        :value
        #fhir/Quantity
-        {:value 36.6M
-         :unit #fhir/string"kg/m^2"
-         :system #fhir/uri"http://unitsofmeasure.org"
-         :code #fhir/code"kg/m2"}}
+        {:value #fhir/decimal 36.6M
+         :unit #fhir/string "kg/m^2"
+         :system #fhir/uri "http://unitsofmeasure.org"
+         :code #fhir/code "kg/m2"}}
       {:resourceType "Observation"
        :valueQuantity
        {:value 36.6
@@ -790,19 +790,19 @@
 (deftest write-cbor-test
   (testing "Patient with deceasedBoolean"
     (are [resource] (= resource (write-parse-cbor resource))
-      {:fhir/type :fhir/Patient :deceased true}))
+      {:fhir/type :fhir/Patient :deceased #fhir/boolean true}))
 
   (testing "Patient with deceasedDateTime"
     (are [resource] (= resource (write-parse-cbor resource))
-      {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}))
+      {:fhir/type :fhir/Patient :deceased #fhir/dateTime "2020"}))
 
   (testing "Patient with multipleBirthBoolean"
     (are [resource] (= resource (write-parse-cbor resource))
-      {:fhir/type :fhir/Patient :multipleBirth false}))
+      {:fhir/type :fhir/Patient :multipleBirth #fhir/boolean false}))
 
   (testing "Patient with multipleBirthInteger"
     (are [resource] (= resource (write-parse-cbor resource))
-      {:fhir/type :fhir/Patient :multipleBirth (int 2)}))
+      {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}))
 
   (testing "Bundle with Patient"
     (are [resource] (= resource (write-parse-cbor resource))
@@ -818,23 +818,23 @@
        #fhir/CodeableConcept
         {:coding
          [#fhir/Coding
-           {:system #fhir/uri"http://loinc.org"
-            :code #fhir/code"39156-5"}]}}))
+           {:system #fhir/uri "http://loinc.org"
+            :code #fhir/code "39156-5"}]}}))
 
   (testing "Observation with valueQuantity"
     (are [resource] (= resource (write-parse-cbor resource))
       {:fhir/type :fhir/Observation
        :value
        #fhir/Quantity
-        {:value 36.6M
-         :unit #fhir/string"kg/m^2"
-         :system #fhir/uri"http://unitsofmeasure.org"
-         :code #fhir/code"kg/m2"}}))
+        {:value #fhir/decimal 36.6M
+         :unit #fhir/string "kg/m^2"
+         :system #fhir/uri "http://unitsofmeasure.org"
+         :code #fhir/code "kg/m2"}}))
 
   (testing "Observation with valueTime"
     (are [resource] (= resource (write-parse-cbor resource))
       {:fhir/type :fhir/Observation
-       :value #fhir/time"00:00"}))
+       :value #fhir/time "00:00"}))
 
   (testing "Observation with valueTime with id"
     (are [resource] (= resource (write-parse-cbor resource))
@@ -907,15 +907,15 @@
            (conform-xml [::f/Patient [::f/id {:value "0"}]]))))
 
   (testing "deceasedBoolean on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased true}
+    (is (= {:fhir/type :fhir/Patient :deceased #fhir/boolean true}
            (conform-xml [::f/Patient [::f/deceasedBoolean {:value "true"}]]))))
 
   (testing "deceasedDateTime on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}
+    (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime "2020"}
            (conform-xml [::f/Patient [::f/deceasedDateTime {:value "2020"}]]))))
 
   (testing "multipleBirthInteger on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :multipleBirth 2}
+    (is (= {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
            (conform-xml [::f/Patient [::f/multipleBirthInteger {:value "2"}]]))))
 
   (testing "Observation with code"
@@ -924,8 +924,8 @@
             #fhir/CodeableConcept
              {:coding
               [#fhir/Coding
-                {:system #fhir/uri"http://loinc.org"
-                 :code #fhir/code"39156-5"}]}}
+                {:system #fhir/uri "http://loinc.org"
+                 :code #fhir/code "39156-5"}]}}
            (conform-xml
             [::f/Observation
              [::f/code
@@ -942,9 +942,9 @@
                 {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
                  :value
                  #fhir/Coding
-                  {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                   :code #fhir/code"D"
-                   :display #fhir/string"divers"}}]
+                  {:system #fhir/uri "http://fhir.de/CodeSystem/gender-amtlich-de"
+                   :code #fhir/code "D"
+                   :display #fhir/string "divers"}}]
               :value "other"}}
            (conform-xml
             [:Patient
@@ -964,11 +964,11 @@
     (is (= {:fhir/type :fhir/Questionnaire
             :item
             [{:fhir/type :fhir.Questionnaire/item
-              :type #fhir/code"group"
+              :type #fhir/code "group"
               :item
               [{:fhir/type :fhir.Questionnaire/item
-                :type #fhir/code"string"
-                :text "foo"}]}]}
+                :type #fhir/code "string"
+                :text #fhir/string "foo"}]}]}
            (conform-xml
             [::f/Questionnaire
              [::f/item
@@ -1028,9 +1028,9 @@
                  {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
                   :value
                   #fhir/Coding
-                   {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                    :code #fhir/code"D"
-                    :display #fhir/string"divers"}}]
+                   {:system #fhir/uri "http://fhir.de/CodeSystem/gender-amtlich-de"
+                    :code #fhir/code "D"
+                    :display #fhir/string "divers"}}]
                :value "other"}}))))
 
   (testing "Patient with Narrative"
@@ -1586,7 +1586,7 @@
 (deftest fhir-date-test
   (testing "valid"
     (are [x] (s2/valid? :fhir/date x)
-      #fhir/date{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}))
+      #fhir/date{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}))
 
   (testing "parsing"
     (testing "XML"
@@ -2121,17 +2121,17 @@
 (deftest fhir-xhtml-test
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/xhtml s)
-      #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"></div>"))
+      #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"></div>"))
 
   (testing "parsing"
     (testing "XML"
-      (is (= #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"
+      (is (= #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"
              (s2/conform :fhir.xml/xhtml xhtml-element)))))
 
   (testing "writing"
     (testing "XML"
       (is (= xhtml-element
-             (s2/unform :fhir.xml/xhtml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
+             (s2/unform :fhir.xml/xhtml #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
 
 ;; ---- Complex Types ---------------------------------------------------------
 
@@ -2176,7 +2176,7 @@
         #fhir/Attachment{}
 
         {:contentType "code-115735"}
-        #fhir/Attachment{:contentType #fhir/code"code-115735"}
+        #fhir/Attachment{:contentType #fhir/code "code-115735"}
 
         {:contentType "code-115735"
          :_contentType {:extension [{:url "url-101510"}]}}
@@ -2194,7 +2194,7 @@
           #fhir/code{:extension [#fhir/Extension{:url "url-101510"}]}}
 
         {:data "MTA1NjE0Cg=="}
-        #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+        #fhir/Attachment{:data #fhir/base64Binary "MTA1NjE0Cg=="}
 
         {:_data {:extension [{:url "url-115417"}]}}
         #fhir/Attachment{:data #fhir/base64Binary{:extension [#fhir/Extension{:url "url-115417"}]}}
@@ -2242,7 +2242,7 @@
         #fhir/Attachment{}
 
         (sexp [::f/Attachment {} [::f/contentType {:value "code-115735"}]])
-        #fhir/Attachment{:contentType #fhir/code"code-115735"}
+        #fhir/Attachment{:contentType #fhir/code "code-115735"}
 
         (sexp [::f/Attachment {} [::f/contentType {:value "code-115735"} [::f/extension {:url "url-101510"}]]])
         #fhir/Attachment{:contentType #fhir/code{:value "code-115735" :extension [#fhir/Extension{:url "url-101510"}]}}
@@ -2257,7 +2257,7 @@
         ::s2/invalid
 
         (sexp [::f/Attachment {} [::f/data {:value "MTA1NjE0Cg=="}]])
-        #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+        #fhir/Attachment{:data #fhir/base64Binary "MTA1NjE0Cg=="}
 
         (sexp [::f/Attachment {} [::f/data {} [::f/extension {:url "url-115417"}]]])
         #fhir/Attachment{:data #fhir/base64Binary{:extension [#fhir/Extension{:url "url-115417"}]}}
@@ -2286,7 +2286,7 @@
         #fhir/Attachment{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Attachment{:contentType #fhir/code"code-150209"}
+        #fhir/Attachment{:contentType #fhir/code "code-150209"}
         {:contentType "code-150209"}
 
         #fhir/Attachment{:contentType #fhir/code{:extension [#fhir/Extension{:url "url-101529"}]}}
@@ -2303,10 +2303,10 @@
         {:contentType "code-150225"
          :_contentType {:id "id-205544" :extension [{}]}}
 
-        #fhir/Attachment{:language #fhir/code"de"}
+        #fhir/Attachment{:language #fhir/code "de"}
         {:language "de"}
 
-        #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+        #fhir/Attachment{:data #fhir/base64Binary "MTA1NjE0Cg=="}
         {:data "MTA1NjE0Cg=="}
 
         #fhir/Attachment{:data #fhir/base64Binary{:extension [#fhir/Extension{:url "url-115417"}]}}
@@ -2316,7 +2316,7 @@
         {:data "MTA1NjE0Cg=="
          :_data {:extension [{}]}}
 
-        #fhir/Attachment{:url #fhir/url"url-210424"}
+        #fhir/Attachment{:url #fhir/url "url-210424"}
         {:url "url-210424"}
 
         #fhir/Attachment{:url #fhir/url{:extension [#fhir/Extension{:url "url-130143"}]}}
@@ -2332,10 +2332,10 @@
         {:size 204737
          :_size {:extension [{:url "url-131115"}]}}
 
-        #fhir/Attachment{:hash #fhir/base64Binary"MTA1NjE0Cg=="}
+        #fhir/Attachment{:hash #fhir/base64Binary "MTA1NjE0Cg=="}
         {:hash "MTA1NjE0Cg=="}
 
-        #fhir/Attachment{:title "title-210622"}
+        #fhir/Attachment{:title #fhir/string "title-210622"}
         {:title "title-210622"}
 
         #fhir/Attachment{:creation #fhir/dateTime{:extension [#fhir/Extension{:url "url-132312"}]}}
@@ -2359,7 +2359,7 @@
         #fhir/Attachment{:extension [#fhir/Extension{} #fhir/Extension{}]}
         (sexp [nil {} [::f/extension] [::f/extension]])
 
-        #fhir/Attachment{:contentType #fhir/code"code-150209"}
+        #fhir/Attachment{:contentType #fhir/code "code-150209"}
         (sexp [nil {} [::f/contentType {:value "code-150209"}]])
 
         #fhir/Attachment{:contentType #fhir/code{:extension [#fhir/Extension{}]}}
@@ -2374,16 +2374,16 @@
         #fhir/Attachment{:contentType #fhir/code{:id "id-205544" :extension [#fhir/Extension{}] :value "code-150225"}}
         (sexp [nil {} [::f/contentType {:id "id-205544" :value "code-150225"} [::f/extension]]])
 
-        #fhir/Attachment{:language #fhir/code"de"}
+        #fhir/Attachment{:language #fhir/code "de"}
         (sexp [nil {} [::f/language {:value "de"}]])
 
-        #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+        #fhir/Attachment{:data #fhir/base64Binary "MTA1NjE0Cg=="}
         (sexp [nil {} [::f/data {:value "MTA1NjE0Cg=="}]])
 
         #fhir/Attachment{:data #fhir/base64Binary{:extension [#fhir/Extension{:url "url-115417"}]}}
         (sexp [nil {} [::f/data {} [::f/extension {:url "url-115417"}]]])
 
-        #fhir/Attachment{:url #fhir/url"url-210424"}
+        #fhir/Attachment{:url #fhir/url "url-210424"}
         (sexp [nil {} [::f/url {:value "url-210424"}]])
 
         #fhir/Attachment{:url #fhir/url{:extension [#fhir/Extension{:url "url-130143"}]}}
@@ -2395,13 +2395,13 @@
         #fhir/Attachment{:size #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-130946"}]}}
         (sexp [nil {} [::f/size {} [::f/extension {:url "url-130946"}]]])
 
-        #fhir/Attachment{:hash #fhir/base64Binary"MTA1NjE0Cg=="}
+        #fhir/Attachment{:hash #fhir/base64Binary "MTA1NjE0Cg=="}
         (sexp [nil {} [::f/hash {:value "MTA1NjE0Cg=="}]])
 
-        #fhir/Attachment{:title "title-210622"}
+        #fhir/Attachment{:title #fhir/string "title-210622"}
         (sexp [nil {} [::f/title {:value "title-210622"}]])
 
-        #fhir/Attachment{:creation #fhir/dateTime"2021"}
+        #fhir/Attachment{:creation #fhir/dateTime "2021"}
         (sexp [nil {} [::f/creation {:value "2021"}]]))))
 
   (testing "summary parsing"
@@ -2492,19 +2492,19 @@
 
       (are [json fhir] (= fhir (write-parse-json "Extension" json))
         {:url "foo" :valueString "bar"}
-        #fhir/Extension{:url "foo" :value #fhir/string"bar"}
+        #fhir/Extension{:url "foo" :value #fhir/string "bar"}
 
         {:url "foo" :valueCode "bar"}
-        #fhir/Extension{:url "foo" :value #fhir/code"bar"}
+        #fhir/Extension{:url "foo" :value #fhir/code "bar"}
 
         {:url "foo" :valueReference {:reference "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "bar"}}
 
         {:url "foo" :valueCodeableConcept {:text "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string "bar"}}
 
         {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}
-        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}))
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code "qux"}]}}]}))
 
     (testing "XML"
       (testing "urls are interned"
@@ -2514,19 +2514,19 @@
 
       (are [xml fhir] (= fhir (s2/conform :fhir.xml/Extension xml))
         (sexp [nil {:url "foo"} [::f/valueString {:value "bar"}]])
-        #fhir/Extension{:url "foo" :value #fhir/string"bar"}
+        #fhir/Extension{:url "foo" :value #fhir/string "bar"}
 
         (sexp [nil {:url "foo"} [::f/valueCode {:value "bar"}]])
-        #fhir/Extension{:url "foo" :value #fhir/code"bar"}
+        #fhir/Extension{:url "foo" :value #fhir/code "bar"}
 
         (sexp [nil {:url "foo"} [::f/valueReference {} [::f/reference {:value "bar"}]]])
-        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "bar"}}
 
         (sexp [nil {:url "foo"} [::f/valueCodeableConcept {} [::f/text {:value "bar"}]]])
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string "bar"}}
 
         (sexp [nil {:url "foo"} [::f/extension {:url "bar"} [::f/valueDateTime {} [::f/extension {:url "baz"} [::f/valueCode {:value "qux"}]]]]])
-        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}))
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code "qux"}]}}]}))
 
     (testing "CBOR"
       (testing "urls are interned"
@@ -2536,19 +2536,19 @@
 
       (are [cbor fhir] (= fhir (write-parse-cbor "Extension" cbor))
         {:url "foo" :valueString "bar"}
-        #fhir/Extension{:url "foo" :value #fhir/string"bar"}
+        #fhir/Extension{:url "foo" :value #fhir/string "bar"}
 
         {:url "foo" :valueCode "bar"}
-        #fhir/Extension{:url "foo" :value #fhir/code"bar"}
+        #fhir/Extension{:url "foo" :value #fhir/code "bar"}
 
         {:url "foo" :valueReference {:reference "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "bar"}}
 
         {:url "foo" :valueCodeableConcept {:text "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string "bar"}}
 
         {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}
-        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]})))
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code "qux"}]}}]})))
 
   (testing "writing"
     (testing "JSON"
@@ -2568,7 +2568,7 @@
         #fhir/Extension{:url "url-135208"}
         {:url "url-135208"}
 
-        #fhir/Extension{:value #fhir/code"code-135234"}
+        #fhir/Extension{:value #fhir/code "code-135234"}
         {:valueCode "code-135234"}
 
         #fhir/Extension{:value #fhir/CodeableConcept{}}
@@ -2581,16 +2581,16 @@
         {:valueUuid "urn:uuid:935eb22d-cf35-4351-ae71-e517e49ebcbc"
          :_valueUuid {:id "id-172058"}}
 
-        #fhir/Extension{:value #fhir/CodeableConcept{:text #fhir/string"text-104840"}}
+        #fhir/Extension{:value #fhir/CodeableConcept{:text #fhir/string "text-104840"}}
         {:valueCodeableConcept {:text "text-104840"}}
 
-        #fhir/Extension{:value #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri"system-105127"}]}}
+        #fhir/Extension{:value #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "system-105127"}]}}
         {:valueCodeableConcept {:coding [{:system "system-105127"}]}}
 
         #fhir/Extension{:value {:fhir/type :fhir/Annotation :text "text-105422"}}
         {:valueAnnotation {:text "text-105422"}}
 
-        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code "qux"}]}}]}
         {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}))
 
     (testing "CBOR"
@@ -2610,7 +2610,7 @@
         #fhir/Extension{:url "url-135208"}
         {:url "url-135208"}
 
-        #fhir/Extension{:value #fhir/code"code-135234"}
+        #fhir/Extension{:value #fhir/code "code-135234"}
         {:valueCode "code-135234"}
 
         #fhir/Extension{:value #fhir/CodeableConcept{}}
@@ -2622,7 +2622,7 @@
         #fhir/Extension{:value #fhir/Address{:city "foo"}}
         {:valueAddress {:city "foo"}}
 
-        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code "qux"}]}}]}
         {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}))))
 
 (deftest coding-test
@@ -2663,12 +2663,12 @@
     (testing "JSON"
       (are [json fhir] (= fhir (write-parse-json "Coding" json))
         {:system "foo" :code "bar"}
-        #fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}))
+        #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (write-parse-cbor "Coding" json))
         {:system "foo" :code "bar"}
-        #fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"})
+        #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"})
 
       (testing "interning works"
         (is (identical?
@@ -2690,16 +2690,16 @@
         #fhir/Coding{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Coding{:system #fhir/uri"system-185812"}
+        #fhir/Coding{:system #fhir/uri "system-185812"}
         {:system "system-185812"}
 
-        #fhir/Coding{:version #fhir/string"version-185951"}
+        #fhir/Coding{:version #fhir/string "version-185951"}
         {:version "version-185951"}
 
-        #fhir/Coding{:code #fhir/code"code-190226"}
+        #fhir/Coding{:code #fhir/code "code-190226"}
         {:code "code-190226"}
 
-        #fhir/Coding{:display #fhir/string"display-190327"}
+        #fhir/Coding{:display #fhir/string "display-190327"}
         {:display "display-190327"}))
 
     (testing "XML"
@@ -2716,16 +2716,16 @@
         #fhir/Coding{:extension [#fhir/Extension{} #fhir/Extension{}]}
         (sexp [nil {} [::f/extension] [::f/extension]])
 
-        #fhir/Coding{:system #fhir/uri"system-185812"}
+        #fhir/Coding{:system #fhir/uri "system-185812"}
         (sexp [nil {} [::f/system {:value "system-185812"}]])
 
-        #fhir/Coding{:version #fhir/uri"version-185951"}
+        #fhir/Coding{:version #fhir/string "version-185951"}
         (sexp [nil {} [::f/version {:value "version-185951"}]])
 
-        #fhir/Coding{:code #fhir/uri"code-190226"}
+        #fhir/Coding{:code #fhir/code "code-190226"}
         (sexp [nil {} [::f/code {:value "code-190226"}]])
 
-        #fhir/Coding{:display #fhir/uri"display-190327"}
+        #fhir/Coding{:display #fhir/string "display-190327"}
         (sexp [nil {} [::f/display {:value "display-190327"}]])))))
 
 (deftest codeable-concept-test
@@ -2770,7 +2770,7 @@
         {:coding [{}]}
         #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
         {:text "text-223528"}
-        #fhir/CodeableConcept{:text #fhir/string"text-223528"}))
+        #fhir/CodeableConcept{:text #fhir/string "text-223528"}))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (write-parse-cbor "CodeableConcept" json))
@@ -2779,9 +2779,9 @@
         {:coding [{}]}
         #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
         {:coding [{:system "foo" :code "bar"}]}
-        #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
+        #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}
         {:text "text-223528"}
-        #fhir/CodeableConcept{:text #fhir/string"text-223528"})
+        #fhir/CodeableConcept{:text #fhir/string "text-223528"})
 
       (testing "interning works"
         (is (identical?
@@ -2806,7 +2806,7 @@
         #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
         {:coding [{}]}
 
-        #fhir/CodeableConcept{:text #fhir/string"text-223528"}
+        #fhir/CodeableConcept{:text #fhir/string "text-223528"}
         {:text "text-223528"}))))
 
 (deftest quantity-test
@@ -2894,16 +2894,16 @@
         #fhir/Quantity{:value #fhir/decimal 1M}
         {:value 1}
 
-        #fhir/Quantity{:comparator #fhir/code"code-153342"}
+        #fhir/Quantity{:comparator #fhir/code "code-153342"}
         {:comparator "code-153342"}
 
-        #fhir/Quantity{:unit #fhir/string"string-153351"}
+        #fhir/Quantity{:unit #fhir/string "string-153351"}
         {:unit "string-153351"}
 
-        #fhir/Quantity{:system #fhir/uri"system-153337"}
+        #fhir/Quantity{:system #fhir/uri "system-153337"}
         {:system "system-153337"}
 
-        #fhir/Quantity{:code #fhir/code"code-153427"}
+        #fhir/Quantity{:code #fhir/code "code-153427"}
         {:code "code-153427"}))))
 
 (deftest ratio-test
@@ -3031,7 +3031,7 @@
         #fhir/Period{:extension [#fhir/Extension{}]}
 
         {:start "2020"}
-        #fhir/Period{:start #fhir/dateTime"2020"})
+        #fhir/Period{:start #fhir/dateTime "2020"})
 
       (testing "invalid"
         (given (write-parse-json "Period" {:start "foo"})
@@ -3056,10 +3056,10 @@
         #fhir/Period{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Period{:start #fhir/dateTime"2020"}
+        #fhir/Period{:start #fhir/dateTime "2020"}
         {:start "2020"}
 
-        #fhir/Period{:end #fhir/dateTime"2020"}
+        #fhir/Period{:end #fhir/dateTime "2020"}
         {:end "2020"}))))
 
 (deftest identifier-test
@@ -3103,10 +3103,10 @@
         #fhir/Identifier{}
 
         {:use "usual"}
-        #fhir/Identifier{:use #fhir/code"usual"}
+        #fhir/Identifier{:use #fhir/code "usual"}
 
         {:value "value-151311"}
-        #fhir/Identifier{:value #fhir/string"value-151311"})
+        #fhir/Identifier{:value #fhir/string "value-151311"})
 
       (testing "invalid"
         (given (write-parse-json "Identifier" {:use 1})
@@ -3131,16 +3131,16 @@
         #fhir/Identifier{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Identifier{:use #fhir/code"use-155449"}
+        #fhir/Identifier{:use #fhir/code "use-155449"}
         {:use "use-155449"}
 
         #fhir/Identifier{:type #fhir/CodeableConcept{}}
         {:type {}}
 
-        #fhir/Identifier{:system #fhir/uri"system-160011"}
+        #fhir/Identifier{:system #fhir/uri "system-160011"}
         {:system "system-160011"}
 
-        #fhir/Identifier{:value "value-160034"}
+        #fhir/Identifier{:value #fhir/string "value-160034"}
         {:value "value-160034"}
 
         #fhir/Identifier{:period #fhir/Period{}}
@@ -3163,16 +3163,16 @@
         #fhir/Identifier{:extension [#fhir/Extension{} #fhir/Extension{}]}
         (sexp [nil {} [::f/extension] [::f/extension]])
 
-        #fhir/Identifier{:use #fhir/code"use-155449"}
+        #fhir/Identifier{:use #fhir/code "use-155449"}
         (sexp [nil {} [::f/use {:value "use-155449"}]])
 
         #fhir/Identifier{:type #fhir/CodeableConcept{}}
         (sexp [nil {} [::f/type]])
 
-        #fhir/Identifier{:system #fhir/uri"system-160011"}
+        #fhir/Identifier{:system #fhir/uri "system-160011"}
         (sexp [nil {} [::f/system {:value "system-160011"}]])
 
-        #fhir/Identifier{:value "value-160034"}
+        #fhir/Identifier{:value #fhir/string "value-160034"}
         (sexp [nil {} [::f/value {:value "value-160034"}]])
 
         #fhir/Identifier{:period #fhir/Period{}}
@@ -3230,10 +3230,10 @@
         #fhir/HumanName{}
 
         {:use "usual"}
-        #fhir/HumanName{:use #fhir/code"usual"}
+        #fhir/HumanName{:use #fhir/code "usual"}
 
         {:given ["given-212441"]}
-        #fhir/HumanName{:given ["given-212441"]}
+        #fhir/HumanName{:given [#fhir/string "given-212441"]}
 
         {:_given [{:extension [{:url "url-143610"}]}]}
         #fhir/HumanName{:given [#fhir/string{:extension [#fhir/Extension{:url "url-143610"}]}]}
@@ -3243,7 +3243,7 @@
         #fhir/HumanName{:given [#fhir/string{:extension [#fhir/Extension{:url "url-143619"}] :value "given-143625"}]}
 
         {:given ["given-212448" "given-212454"]}
-        #fhir/HumanName{:given ["given-212448" "given-212454"]}
+        #fhir/HumanName{:given [#fhir/string "given-212448" #fhir/string "given-212454"]}
 
         {:given ["given-143759" "given-143809"]
          :_given [{:extension [{:url "url-143750"}]} {:extension [{:url "url-143806"}]}]}
@@ -3258,7 +3258,7 @@
          :_given [nil {:extension [{:url "url-143806"}]}]}
         #fhir/HumanName
          {:given
-          [#fhir/string"given-143759"
+          [#fhir/string "given-143759"
            #fhir/string{:extension [#fhir/Extension{:url "url-143806"}]}]})
 
       (testing "invalid"
@@ -3275,10 +3275,10 @@
         #fhir/HumanName{}
 
         {:use "usual"}
-        #fhir/HumanName{:use #fhir/code"usual"}
+        #fhir/HumanName{:use #fhir/code "usual"}
 
         {:given ["given-212441"]}
-        #fhir/HumanName{:given ["given-212441"]})))
+        #fhir/HumanName{:given [#fhir/string "given-212441"]})))
 
   (testing "writing"
     (testing "JSON"
@@ -3295,16 +3295,16 @@
         #fhir/HumanName{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/HumanName{:use #fhir/code"use-155449"}
+        #fhir/HumanName{:use #fhir/code "use-155449"}
         {:use "use-155449"}
 
-        #fhir/HumanName{:text "text-141140"}
+        #fhir/HumanName{:text #fhir/string "text-141140"}
         {:text "text-141140"}
 
-        #fhir/HumanName{:family "family-141158"}
+        #fhir/HumanName{:family #fhir/string "family-141158"}
         {:family "family-141158"}
 
-        #fhir/HumanName{:given ["given-212441"]}
+        #fhir/HumanName{:given [#fhir/string "given-212441"]}
         {:given ["given-212441"]}
 
         #fhir/HumanName{:given [#fhir/string{:extension [#fhir/Extension{:url "url-143610"}]}]}
@@ -3314,7 +3314,7 @@
         {:given ["given-143625"]
          :_given [{:extension [{:url "url-143619"}]}]}
 
-        #fhir/HumanName{:given ["given-212448" "given-212454"]}
+        #fhir/HumanName{:given [#fhir/string "given-212448" #fhir/string "given-212454"]}
         {:given ["given-212448" "given-212454"]}
 
         #fhir/HumanName
@@ -3328,7 +3328,7 @@
 
         #fhir/HumanName
          {:given
-          [#fhir/string"given-143759"
+          [#fhir/string "given-143759"
            #fhir/string{:extension [#fhir/Extension{:url "url-143806"}]}]}
         {:given ["given-143759" nil]
          :_given [nil {:extension [{:url "url-143806"}]}]}
@@ -3350,19 +3350,19 @@
         #fhir/HumanName{:extension [#fhir/Extension{} #fhir/Extension{}]}
         (sexp [nil {} [::f/extension] [::f/extension]])
 
-        #fhir/HumanName{:use #fhir/code"use-155449"}
+        #fhir/HumanName{:use #fhir/code "use-155449"}
         (sexp [nil {} [::f/use {:value "use-155449"}]])
 
-        #fhir/HumanName{:text "text-141140"}
+        #fhir/HumanName{:text #fhir/string "text-141140"}
         (sexp [nil {} [::f/text {:value "text-141140"}]])
 
-        #fhir/HumanName{:family "family-141158"}
+        #fhir/HumanName{:family #fhir/string "family-141158"}
         (sexp [nil {} [::f/family {:value "family-141158"}]])
 
-        #fhir/HumanName{:given ["given-212441"]}
+        #fhir/HumanName{:given [#fhir/string "given-212441"]}
         (sexp [nil {} [::f/given {:value "given-212441"}]])
 
-        #fhir/HumanName{:given ["given-212441" "given-170006"]}
+        #fhir/HumanName{:given [#fhir/string "given-212441" #fhir/string "given-170006"]}
         (sexp [nil {}
                [::f/given {:value "given-212441"}]
                [::f/given {:value "given-170006"}]])
@@ -3419,7 +3419,7 @@
         #fhir/Address{}
 
         {:use "usual"}
-        #fhir/Address{:use #fhir/code"usual"})
+        #fhir/Address{:use #fhir/code "usual"})
 
       (testing "invalid"
         (given (write-parse-json "Address" {:use 1})
@@ -3444,31 +3444,31 @@
         #fhir/Address{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Address{:use #fhir/code"use-155449"}
+        #fhir/Address{:use #fhir/code "use-155449"}
         {:use "use-155449"}
 
-        #fhir/Address{:text "text-170345"}
+        #fhir/Address{:text #fhir/string "text-170345"}
         {:text "text-170345"}
 
-        #fhir/Address{:line ["line-171433"]}
+        #fhir/Address{:line [#fhir/string "line-171433"]}
         {:line ["line-171433"]}
 
-        #fhir/Address{:line ["line-171433" "line-171857"]}
+        #fhir/Address{:line [#fhir/string "line-171433" #fhir/string "line-171857"]}
         {:line ["line-171433" "line-171857"]}
 
-        #fhir/Address{:city "city-171937"}
+        #fhir/Address{:city #fhir/string "city-171937"}
         {:city "city-171937"}
 
-        #fhir/Address{:district "district-171937"}
+        #fhir/Address{:district #fhir/string "district-171937"}
         {:district "district-171937"}
 
-        #fhir/Address{:state "state-171937"}
+        #fhir/Address{:state #fhir/string "state-171937"}
         {:state "state-171937"}
 
-        #fhir/Address{:postalCode "postalCode-171937"}
+        #fhir/Address{:postalCode #fhir/string "postalCode-171937"}
         {:postalCode "postalCode-171937"}
 
-        #fhir/Address{:country "country-171937"}
+        #fhir/Address{:country #fhir/string "country-171937"}
         {:country "country-171937"}
 
         #fhir/Address{:period #fhir/Period{}}
@@ -3488,33 +3488,33 @@
         #fhir/Address{:extension [#fhir/Extension{} #fhir/Extension{}]}
         (sexp [nil {} [::f/extension] [::f/extension]])
 
-        #fhir/Address{:use #fhir/code"use-155449"}
+        #fhir/Address{:use #fhir/code "use-155449"}
         (sexp [nil {} [::f/use {:value "use-155449"}]])
 
-        #fhir/Address{:text "text-170345"}
+        #fhir/Address{:text #fhir/string "text-170345"}
         (sexp [nil {} [::f/text {:value "text-170345"}]])
 
-        #fhir/Address{:line ["line-171433"]}
+        #fhir/Address{:line [#fhir/string "line-171433"]}
         (sexp [nil {} [::f/line {:value "line-171433"}]])
 
-        #fhir/Address{:line ["line-171433" "line-171857"]}
+        #fhir/Address{:line [#fhir/string "line-171433" #fhir/string "line-171857"]}
         (sexp [nil {}
                [::f/line {:value "line-171433"}]
                [::f/line {:value "line-171857"}]])
 
-        #fhir/Address{:city "city-171937"}
+        #fhir/Address{:city #fhir/string "city-171937"}
         (sexp [nil {} [::f/city {:value "city-171937"}]])
 
-        #fhir/Address{:district "district-171937"}
+        #fhir/Address{:district #fhir/string "district-171937"}
         (sexp [nil {} [::f/district {:value "district-171937"}]])
 
-        #fhir/Address{:state "state-171937"}
+        #fhir/Address{:state #fhir/string "state-171937"}
         (sexp [nil {} [::f/state {:value "state-171937"}]])
 
-        #fhir/Address{:postalCode "postalCode-171937"}
+        #fhir/Address{:postalCode #fhir/string "postalCode-171937"}
         (sexp [nil {} [::f/postalCode {:value "postalCode-171937"}]])
 
-        #fhir/Address{:country "country-171937"}
+        #fhir/Address{:country #fhir/string "country-171937"}
         (sexp [nil {} [::f/country {:value "country-171937"}]])
 
         #fhir/Address{:period #fhir/Period{}}
@@ -3561,7 +3561,7 @@
         #fhir/Reference{}
 
         {:reference "Patient/1"}
-        #fhir/Reference{:reference "Patient/1"})
+        #fhir/Reference{:reference #fhir/string "Patient/1"})
 
       (testing "invalid"
         (given (write-parse-json "Reference" {:reference 1})
@@ -3586,16 +3586,16 @@
         #fhir/Reference{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Reference{:reference "Patient/1"}
+        #fhir/Reference{:reference #fhir/string "Patient/1"}
         {:reference "Patient/1"}
 
-        #fhir/Reference{:type #fhir/uri"type-161222"}
+        #fhir/Reference{:type #fhir/uri "type-161222"}
         {:type "type-161222"}
 
         #fhir/Reference{:identifier #fhir/Identifier{}}
         {:identifier {}}
 
-        #fhir/Reference{:display "display-161314"}
+        #fhir/Reference{:display #fhir/string "display-161314"}
         {:display "display-161314"}))))
 
 (deftest meta-test
@@ -3639,7 +3639,7 @@
         #fhir/Meta{}
 
         {:versionId "1"}
-        #fhir/Meta{:versionId #fhir/id"1"}
+        #fhir/Meta{:versionId #fhir/id "1"}
 
         {:lastUpdated "1970-01-01T00:00:00Z"}
         (type/meta {:lastUpdated Instant/EPOCH}))))
@@ -3659,16 +3659,16 @@
         #fhir/Meta{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Meta{:versionId #fhir/id"versionId-161812"}
+        #fhir/Meta{:versionId #fhir/id "versionId-161812"}
         {:versionId "versionId-161812"}
 
         (type/meta {:lastUpdated Instant/EPOCH})
         {:lastUpdated "1970-01-01T00:00:00Z"}
 
-        #fhir/Meta{:source #fhir/uri"source-162704"}
+        #fhir/Meta{:source #fhir/uri "source-162704"}
         {:source "source-162704"}
 
-        #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
+        #fhir/Meta{:profile [#fhir/canonical "profile-uri-145024"]}
         {:profile ["profile-uri-145024"]}
 
         #fhir/Meta{:security [#fhir/Coding{}]}
@@ -3717,7 +3717,7 @@
         #fhir/BundleEntrySearch{:id "id-134805"}
 
         {:mode "match"}
-        #fhir/BundleEntrySearch{:mode #fhir/code"match"})
+        #fhir/BundleEntrySearch{:mode #fhir/code "match"})
 
       (testing "invalid"
         (given (write-parse-json "Bundle.entry.search" {:id 1})
@@ -3736,7 +3736,7 @@
         #fhir/BundleEntrySearch{:id "id-134805"}
 
         {:mode "match"}
-        #fhir/BundleEntrySearch{:mode #fhir/code"match"})
+        #fhir/BundleEntrySearch{:mode #fhir/code "match"})
 
       (testing "invalid"
         (given (write-parse-cbor "Bundle.entry.search" {:id 1})
@@ -3761,10 +3761,10 @@
         #fhir/BundleEntrySearch{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/BundleEntrySearch{:mode #fhir/code"match"}
+        #fhir/BundleEntrySearch{:mode #fhir/code "match"}
         {:mode "match"}
 
-        #fhir/BundleEntrySearch{:score 1.1M}
+        #fhir/BundleEntrySearch{:score #fhir/decimal 1.1M}
         {:score 1.1}))
 
     (testing "CBOR"
@@ -3781,10 +3781,10 @@
         #fhir/BundleEntrySearch{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/BundleEntrySearch{:mode #fhir/code"match"}
+        #fhir/BundleEntrySearch{:mode #fhir/code "match"}
         {:mode "match"}
 
-        #fhir/BundleEntrySearch{:score 1.1M}
+        #fhir/BundleEntrySearch{:score #fhir/decimal 1.1M}
         {:score 1.1M}))))
 
 (deftest bundle-entry-reference-test
@@ -3817,7 +3817,7 @@
              {}))
       (is (= (write-read-json
               {:fhir/type :fhir.Bundle/entry
-               :fullUrl #fhir/uri"uri-155734"})
+               :fullUrl #fhir/uri "uri-155734"})
              {:fullUrl "uri-155734"}))))
 
   (testing "references"
@@ -3827,7 +3827,7 @@
                         (fg/observation
                          :subject
                          (fg/reference
-                          :reference (gen/return "Patient/0"))))]
+                          :reference (gen/return #fhir/string "Patient/0"))))]
         (empty? (type/references x))))))
 
 ;; ---- Resources -------------------------------------------------------------
@@ -3839,7 +3839,7 @@
               {:fhir/type :fhir/CapabilityStatement
                :rest
                [{:searchParam
-                 [{:name #fhir/string"name-151346"}]}]})
+                 [{:name #fhir/string "name-151346"}]}]})
              {:resourceType "CapabilityStatement"
               :rest
               [{:searchParam
@@ -3886,7 +3886,7 @@
               {:fhir/type :fhir/Bundle
                :entry
                [{:fhir/type :fhir.Bundle/entry
-                 :fullUrl #fhir/uri"url-104116"}]})
+                 :fullUrl #fhir/uri "url-104116"}]})
              {:resourceType "Bundle" :entry [{:fullUrl "url-104116"}]}))
 
       (is (= (write-read-json
@@ -3934,7 +3934,7 @@
              {:resourceType "Patient"}))
       (is (= (write-read-json
               {:fhir/type :fhir/Patient
-               :gender #fhir/code"female"
+               :gender #fhir/code "female"
                :active #fhir/boolean true})
              {:resourceType "Patient" :active true :gender "female"})))))
 
@@ -3944,9 +3944,9 @@
       {:fhir/type :fhir/List
        :entry
        [{:fhir/type :fhir.List/entry
-         :item #fhir/Reference{:reference "Patient/0"}}
+         :item #fhir/Reference{:reference #fhir/string "Patient/0"}}
         {:fhir/type :fhir.List/entry
-         :item #fhir/Reference{:reference "Patient/1"}}]}
+         :item #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
       [["Patient" "0"]
        ["Patient" "1"]])))
 
@@ -3999,7 +3999,7 @@
   (testing "references"
     (are [x refs] (= refs (type/references x))
       {:fhir/type :fhir/Observation
-       :subject #fhir/Reference{:reference "Patient/0"}}
+       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
       [["Patient" "0"]])))
 
 (deftest procedure-test
@@ -4033,20 +4033,20 @@
        [#fhir/uri
          {:extension
           [#fhir/Extension
-            {:value #fhir/Reference{:reference "Procedure/153904"}}]}
+            {:value #fhir/Reference{:reference #fhir/string "Procedure/153904"}}]}
         #fhir/uri
          {:extension
           [#fhir/Extension
-            {:value #fhir/Reference{:reference "Condition/153931"}}]}]
+            {:value #fhir/Reference{:reference #fhir/string "Condition/153931"}}]}]
        :instantiatesUri
        [#fhir/uri
          {:extension
           [#fhir/Extension
-            {:value #fhir/Reference{:reference "Patient/153540"}}]}
+            {:value #fhir/Reference{:reference #fhir/string "Patient/153540"}}]}
         #fhir/uri
          {:extension
           [#fhir/Extension
-            {:value #fhir/Reference{:reference "Observation/153628"}}]}]}
+            {:value #fhir/Reference{:reference #fhir/string "Observation/153628"}}]}]}
       [["Procedure" "153904"]
        ["Condition" "153931"]
        ["Patient" "153540"]
@@ -4107,8 +4107,8 @@
     (are [x refs] (= refs (type/references x))
       {:fhir/type :fhir/Provenance
        :target
-       [#fhir/Reference{:reference "Patient/204750"}
-        #fhir/Reference{:reference "Observation/204754"}]}
+       [#fhir/Reference{:reference #fhir/string "Patient/204750"}
+        #fhir/Reference{:reference #fhir/string "Observation/204754"}]}
       [["Patient" "204750"]
        ["Observation" "204754"]])))
 
@@ -4145,7 +4145,7 @@
         {:fhir/type :fhir/Task
          :output
          [{:fhir/type :fhir.Task/output
-           :value #fhir/Reference{:reference "bar"}}]})
+           :value #fhir/Reference{:reference #fhir/string "bar"}}]})
 
       (testing "bare value properties are result in an error"
         (given (write-parse-json "Task" {:resourceType "Task"
@@ -4163,7 +4163,7 @@
               {:fhir/type :fhir/Task
                :input
                [{:fhir/type :fhir.Task/input
-                 :value #fhir/code"code-173329"}]})
+                 :value #fhir/code "code-173329"}]})
              {:resourceType "Task"
               :input [{:valueCode "code-173329"}]})))))
 

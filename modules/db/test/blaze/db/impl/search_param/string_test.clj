@@ -76,7 +76,7 @@
       (testing "unmappable char in family is not a problem"
         (let [patient {:fhir/type :fhir/Patient
                        :id "id-164114"
-                       :name [#fhir/HumanName{:family "Õ"}]}
+                       :name [#fhir/HumanName{:family #fhir/string "Õ"}]}
               hash (hash/generate patient)]
 
           (is (empty? (index-entries
@@ -85,7 +85,7 @@
 
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
-                     :name [#fhir/HumanName{:family "family-102508"}]}
+                     :name [#fhir/HumanName{:family #fhir/string "family-102508"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
@@ -111,8 +111,8 @@
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
                      :address
-                     [#fhir/Address{:line ["line-120252"]
-                                    :city "city-105431"}]}
+                     [#fhir/Address{:line [#fhir/string "line-120252"]
+                                    :city #fhir/string "city-105431"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
@@ -156,7 +156,7 @@
     (testing "ActivityDefinition description"
       (let [resource {:fhir/type :fhir/ActivityDefinition
                       :id "id-121344"
-                      :description #fhir/markdown"desc-121328"}
+                      :description #fhir/markdown "desc-121328"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries

@@ -225,7 +225,7 @@
         [(into [[:put {:fhir/type :fhir/Patient :id "0"}]]
                (map (fn [id]
                       [:put {:fhir/type :fhir/Observation :id (str id)
-                             :subject #fhir/Reference{:reference "Patient/0"}}]))
+                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
                (range count))]
 
         (let [context

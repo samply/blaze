@@ -76,8 +76,8 @@
     {:fhir/type :fhir/OperationOutcome
      :issue
      [{:fhir/type :fhir.OperationOutcome/issue
-       :severity #fhir/code"information"
-       :code #fhir/code"informational"
+       :severity #fhir/code "information"
+       :code #fhir/code "informational"
        :diagnostics (type/string (query-plan/render plan))}]}))
 
 (defn- query-plan-entry [context query]
@@ -185,7 +185,7 @@
   [context clauses]
   {:fhir/type :fhir/Bundle
    :id (m/luid context)
-   :type #fhir/code"searchset"
+   :type #fhir/code "searchset"
    :total #fhir/unsignedInt 0
    :link [(self-link context clauses)]})
 
@@ -195,13 +195,13 @@
   (cond->
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
+    :type #fhir/code "searchset"
     :entry entries
     :link [(first-link context token clauses)]}
     (not= "page" (name route-name))
     (update :link conj (self-link context clauses))
     total
-    (assoc :total (type/->UnsignedInt total))))
+    (assoc :total (type/unsignedInt total))))
 
 (defn- gen-token! [{{:keys [token]} :params :keys [gen-token-fn]} clauses]
   (if token
@@ -225,8 +225,8 @@
   (ring/response
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
-    :total (type/->UnsignedInt total)
+    :type #fhir/code "searchset"
+    :total (type/unsignedInt total)
     :link [(self-link context clauses)]}))
 
 (defn no-query-summary-response [{:keys [type] :blaze/keys [db] :as context}]

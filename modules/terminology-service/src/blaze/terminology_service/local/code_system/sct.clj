@@ -90,17 +90,17 @@
       (find-fully-specified-name code-system code)))
 
 (defn- fully-specified-name-designation [term]
-  {:language #fhir/code"en"
-   :use #fhir/Coding{:system #fhir/uri"http://snomed.info/sct"
-                     :code #fhir/code"900000000000003001"
-                     :display #fhir/string"Fully specified name"}
+  {:language #fhir/code "en"
+   :use #fhir/Coding{:system #fhir/uri "http://snomed.info/sct"
+                     :code #fhir/code "900000000000003001"
+                     :display #fhir/string "Fully specified name"}
    :value (type/string term)})
 
 (defn- synonym-designation [[_id [language-code term]]]
   {:language (type/code language-code)
-   :use #fhir/Coding{:system #fhir/uri"http://snomed.info/sct"
-                     :code #fhir/code"900000000000013009"
-                     :display #fhir/string"Synonym"}
+   :use #fhir/Coding{:system #fhir/uri "http://snomed.info/sct"
+                     :code #fhir/code "900000000000013009"
+                     :display #fhir/string "Synonym"}
    :value (type/string term)})
 
 (defn- assoc-designations [concept code-system find-synonyms code]
@@ -113,7 +113,7 @@
   [code-system find-synonyms code
    {:keys [include-version include-designations] :as params}]
   (cond->
-   {:system #fhir/uri"http://snomed.info/sct"
+   {:system #fhir/uri "http://snomed.info/sct"
     :code (type/code (str code))
     :display (type/string (display code-system find-synonyms code params))}
     include-version (assoc :version (:version code-system))

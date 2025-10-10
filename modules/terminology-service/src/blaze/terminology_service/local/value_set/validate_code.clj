@@ -237,7 +237,7 @@
                   (if e
                     concept
                     (anom-clause clause)))))))
-        (ac/then-apply (state-validator inactive params)))
+        (ac/then-apply (state-validator (type/value inactive) params)))
     (anom-clause clause)))
 
 (defn- validate-code**
@@ -250,7 +250,7 @@
            (not (:terminal e))
            (as-> e (let [{{:keys [text]} :details :as issue} (issue/not-in-vs value-set clause)]
                      (cond-> (update e :issues (partial into [issue]))
-                       (not (::message-important e)) (assoc ::anom/message text)))))))
+                       (not (::message-important e)) (assoc ::anom/message (type/value text))))))))
       (ac/then-apply (display-validator context params))
       (ac/then-apply #(vc/parameters-from-concept % params))
       (ac/exceptionally #(vc/fail-parameters-from-anom % params))))
