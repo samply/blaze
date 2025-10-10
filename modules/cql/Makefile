@@ -11,7 +11,7 @@ cql-test:
     # Please remove --no-check-certificate if the certificate is ok gain.
     # We can do that because the check the SHA256 of the ZIP file.
 	wget --no-check-certificate https://cql.hl7.org/tests.zip
-	echo "0d48a7441c43b6ee46e71d73decfa0cf4ea81e2ce70951f20e9163c3bebfc49a  tests.zip" | sha256sum --check --status
+	echo "0d48a7441c43b6ee46e71d73decfa0cf4ea81e2ce70951f20e9163c3bebfc49a  tests.zip" | sha256sum --check --status -
 	unzip -jd cql-test tests.zip
 	rm tests.zip
 	# See: https://github.com/HL7/cql/pull/69

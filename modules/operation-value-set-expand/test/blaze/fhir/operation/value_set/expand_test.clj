@@ -72,7 +72,7 @@
 
 (defn- parameter [name]
   (fn [{:keys [parameter]}]
-    (some #(when (= name (type/value (:name %))) %) parameter)))
+    (some #(when (= name (:value (:name %))) %) parameter)))
 
 (deftest handler-test
   (testing "value set not found"

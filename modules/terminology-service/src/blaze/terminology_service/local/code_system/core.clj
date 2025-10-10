@@ -1,7 +1,5 @@
 (ns blaze.terminology-service.local.code-system.core
-  (:refer-clojure :exclude [find])
-  (:require
-   [blaze.fhir.spec.type :as type]))
+  (:refer-clojure :exclude [find]))
 
 (defmulti find
   {:arglists '([context url] [context url version])}
@@ -17,7 +15,7 @@
 (defmulti enhance
   {:arglists '([context code-system])}
   (fn [_ {:keys [url]}]
-    (condp = (type/value url)
+    (condp = (:value url)
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
@@ -28,7 +26,7 @@
 (defmulti expand-complete
   {:arglists '([code-system active-only])}
   (fn [{:keys [url]} _]
-    (condp = (type/value url)
+    (condp = (:value url)
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
@@ -39,7 +37,7 @@
 (defmulti expand-concept
   {:arglists '([code-system concepts params])}
   (fn [{:keys [url]} _ _]
-    (condp = (type/value url)
+    (condp = (:value url)
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
@@ -50,7 +48,7 @@
 (defmulti expand-filter
   {:arglists '([code-system filter params])}
   (fn [{:keys [url]} _ _]
-    (condp = (type/value url)
+    (condp = (:value url)
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       nil)))
@@ -59,7 +57,7 @@
   "Returns the concept according to `params` if it exists in `code-system`."
   {:arglists '([code-system params])}
   (fn [{:keys [url]} _]
-    (condp = (type/value url)
+    (condp = (:value url)
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       "urn:ietf:bcp:13" :bcp-13
@@ -70,7 +68,7 @@
 (defmulti find-filter
   {:arglists '([code-system filter params])}
   (fn [{:keys [url]} _ _]
-    (condp = (type/value url)
+    (condp = (:value url)
       "http://loinc.org" :loinc
       "http://snomed.info/sct" :sct
       nil)))

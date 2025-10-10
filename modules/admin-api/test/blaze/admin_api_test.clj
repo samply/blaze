@@ -735,7 +735,7 @@
              {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code "re-index"
               :display #fhir/string "(Re)Index a Search Parameter"}]}
-   :authoredOn #fhir/dateTime "2024-04-13T10:05:20.927Z"
+   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
@@ -756,7 +756,7 @@
              {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code "compact"
               :display #fhir/string "Compact a Database Column Family"}]}
-   :authoredOn #fhir/dateTime "2024-04-13T10:05:20.927Z"
+   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept

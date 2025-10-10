@@ -8,7 +8,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef job-async/job
-  :args (s/cat :authored-on :fhir/dateTime
+  :args (s/cat :authored-on :system/date-time
                :bundle-id :blaze.resource/id
                :t :blaze.db/t)
   :ret :fhir/Task)
