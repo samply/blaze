@@ -8,8 +8,7 @@
 (defhistogram duration-seconds
   "Durations in transaction indexer."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "tx_indexer_duration_seconds"}
+   :subsystem "db_tx_indexer"}
   (take 16 (iterate #(* 2 %) 0.0001))
   "op")
 

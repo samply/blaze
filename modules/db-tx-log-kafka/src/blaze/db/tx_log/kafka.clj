@@ -29,8 +29,7 @@
 (defhistogram duration-seconds
   "Durations in Kafka transaction log."
   {:namespace "blaze"
-   :subsystem "db_tx_log"
-   :name "duration_seconds"}
+   :subsystem "db_tx_log"}
   (take 12 (iterate #(* 2 %) 0.0001))
   "op")
 

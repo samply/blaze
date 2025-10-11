@@ -67,8 +67,7 @@
 (defhistogram duration-seconds
   "Node durations."
   {:namespace "blaze"
-   :subsystem "db_node"
-   :name "duration_seconds"}
+   :subsystem "db_node"}
   (take 16 (iterate #(* 2 %) 0.0001))
   "op")
 

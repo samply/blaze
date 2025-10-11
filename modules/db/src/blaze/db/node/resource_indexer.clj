@@ -29,16 +29,14 @@
 (defhistogram duration-seconds
   "Durations in resource indexer."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_indexer_duration_seconds"}
+   :subsystem "db_resource_indexer"}
   (take 14 (iterate #(* 2 %) 0.00001))
   "op")
 
 (defhistogram index-entries
   "Number of index entries of a resource."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_indexer_index_entries"}
+   :subsystem "db_resource_indexer"}
   (take 14 (iterate #(* 2 %) 1))
   "type")
 

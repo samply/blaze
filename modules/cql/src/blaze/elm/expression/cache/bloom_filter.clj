@@ -24,10 +24,10 @@
   (take 12 (iterate #(* 4 %) 1)))
 
 (defhistogram bloom-filter-creation-duration-seconds
-  "Durations in Cassandra resource store."
+  "Durations in Bloom filter creation."
   {:namespace "blaze"
    :subsystem "cql_expr_cache"}
-  (take 14 (iterate #(* 2 %) 0.1)))
+  (take 16 (iterate #(* 2 %) 0.1)))
 
 (defn might-contain?
   "Returns true if `resource` might have been put in `bloom-filter` or false if

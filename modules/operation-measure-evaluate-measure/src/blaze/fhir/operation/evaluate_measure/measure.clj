@@ -41,7 +41,7 @@
   "$evaluate-measure evaluating latencies in seconds."
   {:namespace "fhir"
    :subsystem "evaluate_measure"}
-  (take 22 (iterate #(* 1.4 %) 0.1))
+  (take 16 (iterate #(* 2 %) 0.1))
   "subject_type")
 
 ;; ---- Compilation -----------------------------------------------------------
