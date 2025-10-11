@@ -20,8 +20,9 @@
 (set! *warn-on-reflection* true)
 
 (defhistogram request-duration-seconds
-  "Terminology Service request latencies in seconds."
-  {:namespace "terminology_service"}
+  "Extern terminology service request latencies."
+  {:namespace "blaze"
+   :subsystem "terminology_service_extern"}
   (take 14 (iterate #(* 2 %) 0.001)))
 
 (defn- expand-value-set* [base-uri http-client parsing-context writing-context url]

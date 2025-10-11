@@ -34,8 +34,7 @@
 (defhistogram duration-seconds
   "Durations in local transaction log."
   {:namespace "blaze"
-   :subsystem "db_tx_log"
-   :name "duration_seconds"}
+   :subsystem "db_tx_log"}
   (take 16 (iterate #(* 2 %) 0.00001))
   "op")
 
