@@ -7,4 +7,9 @@ BASE="http://localhost:8080/fhir"
 HASH="$1"
 PATIENT_COUNT="$2"
 
-test "patient count" "$(curl -s "$BASE/__admin/cql/bloom-filters" | jq -r ".[] | select(.hash == \"$HASH\") | .patientCount")" "$PATIENT_COUNT"
+BLOOM_FILTERS="$(curl -s "$BASE/__admin/cql/bloom-filters")"
+
+echo "All Bloom filters:"
+echo "$BLOOM_FILTERS" | jq -r '.[]'
+
+test "patient count" "$(echo "$BLOOM_FILTERS" | jq -r ".[] | select(.hash == \"$HASH\") | .patientCount")" "$PATIENT_COUNT"

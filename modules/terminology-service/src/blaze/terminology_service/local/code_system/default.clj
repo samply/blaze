@@ -58,9 +58,9 @@
 (defn- inactive? [{properties :property}]
   (some
    (fn [{:keys [code value]}]
-     (condp = (type/value code)
-       "status" (when (= "retired" (type/value value)) true)
-       "inactive" (type/value value)
+     (condp = (:value code)
+       "status" (when (= "retired" (:value value)) true)
+       "inactive" (:value value)
        nil))
    properties))
 

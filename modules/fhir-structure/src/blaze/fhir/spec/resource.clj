@@ -34,8 +34,7 @@
    [com.fasterxml.jackson.databind JsonNode ObjectMapper]
    [com.fasterxml.jackson.databind.node TreeTraversingParser]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-   [java.io InputStream OutputStream Reader Writer]
-   [java.lang AutoCloseable]
+   [java.io InputStream OutputStream Reader]
    [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
@@ -241,18 +240,18 @@
   value."
   [field-name key m constructor value locator]
   (if-some [primitive-value (m key)]
-    (if (some? (type/value primitive-value))
+    (if (some? (:value primitive-value))
       (duplicate-property-anom field-name locator)
-      (assoc! m key (type/assoc-value primitive-value value)))
+      (assoc! m key (assoc primitive-value :value value)))
     (assoc! m key (constructor value))))
 
 (defn- assoc-primitive-many-value
   "Like `assoc-primitive-value` but with a single value for cardinality many."
   [{:keys [field-name key]} m constructor value locator]
   (if-some [primitive-value (first (m key))]
-    (if (some? (type/value primitive-value))
+    (if (some? (:value primitive-value))
       (duplicate-property-anom field-name locator)
-      (assoc! m key [(type/assoc-value primitive-value value)]))
+      (assoc! m key [(assoc primitive-value :value value)]))
     (assoc! m key [(constructor value)])))
 
 (defn- primitive-boolean-value-handler
@@ -285,9 +284,9 @@
                  token
                  (when-ok [value (extract-value parser (conj locator path))]
                    (if-some [primitive-value (get l i)]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (update l i type/assoc-value value) (inc i)))
+                       (recur (update l i assoc :value value) (inc i)))
                      (recur (assoc l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (assoc! m key l)
                  JsonToken/VALUE_NULL
@@ -319,16 +318,16 @@
                  token-1
                  (when-ok [value (extract-value-1 parser (conj locator path))]
                    (if-some [primitive-value (get l i)]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (update l i type/assoc-value value) (inc i)))
+                       (recur (update l i assoc :value value) (inc i)))
                      (recur (assoc l i (constructor value)) (inc i))))
                  token-2
                  (when-ok [value (extract-value-2 parser (conj locator path))]
                    (if-some [primitive-value (get l i)]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (update l i type/assoc-value value) (inc i)))
+                       (recur (update l i assoc :value value) (inc i)))
                      (recur (assoc l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (assoc! m key l)
                  JsonToken/VALUE_NULL
@@ -348,7 +347,7 @@
 
 (def ^:private primitive-id-handler
   "A property-handler for id properties."
-  (create-system-string-handler type/assoc-id "id" "string"))
+  (create-system-string-handler #(assoc %1 :id %2) "id" "string"))
 
 (defn- parse-complex-list [handler type-handlers parser locator]
   (loop [list (transient [])]
@@ -374,10 +373,10 @@
           (cond-next-token parser locator
             JsonToken/START_ARRAY
             (when-ok [list (parse-complex-list extension-handler type-handlers parser (conj locator "extension"))]
-              (recur (type/assoc-extension data list)))
+              (recur (assoc data :extension list)))
             JsonToken/START_OBJECT
             (when-ok [extension (extension-handler type-handlers parser (conj locator "extension" 0))]
-              (recur (type/assoc-extension data [extension])))
+              (recur (assoc data :extension [extension])))
             (incorrect-value-anom parser (conj locator "extension") "Extension[]")))
         (unknown-property-anom locator (current-name parser)))
       JsonToken/END_OBJECT data)))
@@ -453,7 +452,7 @@
   representation using `constructor`."
   [def]
   (->> (primitive-value-handler def type/decimal JsonToken/VALUE_NUMBER_INT
-                                get-long JsonToken/VALUE_NUMBER_FLOAT get-decimal
+                                get-decimal JsonToken/VALUE_NUMBER_FLOAT get-decimal
                                 "decimal")
        (primitive-handler def type/decimal)))
 
@@ -611,7 +610,7 @@
                               #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" use-regex)
 
     :primitive/xhtml
-    (primitive-string-handler def type/->Xhtml identity "xhtml")
+    (primitive-string-handler def type/xhtml identity "xhtml")
 
     (if (#{"complex" "element" "backboneElement"} (namespace type))
       (create-complex-property-handler opts def)
@@ -645,17 +644,23 @@
 (defn- finalize-complex-type [type value]
   (condp = type
     "Address" (type/address (persistent! value))
+    "Annotation" (type/annotation (persistent! value))
     "Attachment" (type/attachment (persistent! value))
     "CodeableConcept" (type/codeable-concept (persistent! value))
     "Coding" (type/coding (persistent! value))
+    "ContactDetail" (type/contact-detail (persistent! value))
+    "ContactPoint" (type/contact-point (persistent! value))
+    "Expression" (type/expression (persistent! value))
     "Extension" (type/extension (persistent! value))
     "HumanName" (type/human-name (persistent! value))
     "Identifier" (type/identifier (persistent! value))
+    "Meta" (type/meta (persistent! value))
     "Period" (type/period (persistent! value))
     "Quantity" (type/quantity (persistent! value))
+    "Range" (type/range (persistent! value))
     "Ratio" (type/ratio (persistent! value))
     "Reference" (type/reference (persistent! value))
-    "Meta" (type/meta (persistent! value))
+    "RelatedArtifact" (type/related-artifact (persistent! value))
     "Bundle.entry.search" (type/bundle-entry-search (persistent! value))
     (persistent! (assoc! value :fhir/type (fhir-type-keyword type)))))
 
@@ -848,21 +853,10 @@
        (read-value type-handlers parser [type] handler))
      (ba/unsupported (format "Unsupported resource type: %s" type)))))
 
-(defprotocol GeneratorFactory
-  (-create-generator ^AutoCloseable [out]))
-
-(extend-protocol GeneratorFactory
-  OutputStream
-  (-create-generator [out]
-    (.createGenerator json-factory out))
-  Writer
-  (-create-generator [out]
-    (.createGenerator json-factory out)))
-
 (defn write-json [type-handlers out value]
   (if-some [type (type/type value)]
     (if-some [handler (get type-handlers type)]
-      (with-open [gen (-create-generator out)]
+      (with-open [gen (.createGenerator json-factory ^OutputStream out)]
         (handler type-handlers gen value))
       (ba/unsupported (format "Unsupported resource type: %s" (name type))))
     (ba/incorrect (format "Missing resource type."))))

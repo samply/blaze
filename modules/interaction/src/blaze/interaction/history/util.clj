@@ -5,6 +5,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.util :as iu]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
    [blaze.util :as u :refer [str]]
@@ -108,7 +109,7 @@
     {:fhir/type :fhir.Bundle.entry/response
      :status (status resource)
      :etag (type/string (str "W/\"" (-> resource :meta :versionId type/value) "\""))
-     :lastModified (-> resource meta :blaze.db/tx :blaze.db.tx/instant)}}
+     :lastModified (-> resource meta :blaze.db/tx iu/instant)}}
     (-> resource meta :blaze.db/op #{:delete} not)
     (assoc :resource resource)))
 

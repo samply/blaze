@@ -31,10 +31,10 @@
   (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (read-json type x) {}))))))
 
 (comment
-  ;; 0,168 µs <> 0,169 µs
-  (bench-write-json #fhir/HumanName{:family "Doe" :given ["John"]})
+  ;; 0,154 µs <> 0,155 µs
+  (bench-write-json #fhir/HumanName{:family #fhir/string "Doe" :given [#fhir/string "John"]})
 
-  ;; 0,145 µs <> 0,146 µs
+  ;; 0,131 µs <> 0,131 µs
   (bench-write-json
    #fhir/CodeableConcept
     {:coding
@@ -42,12 +42,12 @@
        {:system #fhir/uri "http://loinc.org"
         :code #fhir/code "17861-6"}]})
 
-  ;; 2,380 µs <> 2,393 µs
+  ;; 1,976 µs <> 1,977 µs
   (bench-write-json
    {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
     :meta #fhir/Meta
            {:versionId #fhir/id "481283"
-            :lastUpdated #fhir/instant "2022-04-20T11:58:38.070Z"
+            :lastUpdated #fhir/instant #system/date-time "2022-04-20T11:58:38.070Z"
             :profile [#fhir/canonical "http://hl7.org/fhir/StructureDefinition/bmi"
                       #fhir/canonical "http://hl7.org/fhir/StructureDefinition/vitalsigns"]}
     :status #fhir/code "final"
@@ -62,17 +62,17 @@
            {:coding [#fhir/Coding{:system #fhir/uri "http://loinc.org"
                                   :code #fhir/code "39156-5"
                                   :display #fhir/string "Body Mass Index"}]
-            :text "Body Mass Index"}
+            :text #fhir/string "Body Mass Index"}
     :subject #fhir/Reference{:reference #fhir/string "Patient/DACG22233TWT7CKL"}
-    :effective #fhir/dateTime "2013-01-04T23:45:50Z"
-    :issued #fhir/instant "2013-01-04T23:45:50.072Z"
+    :effective #fhir/dateTime #system/date-time "2013-01-04T23:45:50Z"
+    :issued #fhir/instant #system/date-time "2013-01-04T23:45:50.072Z"
     :value #fhir/Quantity
-            {:value 14.97M
-             :unit "kg/m2"
+            {:value #fhir/decimal 14.97M
+             :unit #fhir/string "kg/m2"
              :system #fhir/uri "http://unitsofmeasure.org"
              :code #fhir/code "kg/m2"}})
 
-  ;; 2,770 µs <> 2,773 µs
+  ;; 2,233 µs <> 2,240 µs
   (bench-write-json
    {:fhir/type :fhir.Bundle/entry
     :fullUrl "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
@@ -80,7 +80,7 @@
     {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
      :meta #fhir/Meta
             {:versionId #fhir/id "481283"
-             :lastUpdated #fhir/instant "2022-04-20T11:58:38.070Z"
+             :lastUpdated #fhir/instant #system/date-time "2022-04-20T11:58:38.070Z"
              :profile [#fhir/canonical "http://hl7.org/fhir/StructureDefinition/bmi"
                        #fhir/canonical "http://hl7.org/fhir/StructureDefinition/vitalsigns"]}
      :status #fhir/code "final"
@@ -95,18 +95,18 @@
             {:coding [#fhir/Coding{:system #fhir/uri "http://loinc.org"
                                    :code #fhir/code "39156-5"
                                    :display #fhir/string "Body Mass Index"}]
-             :text "Body Mass Index"}
+             :text #fhir/string "Body Mass Index"}
      :subject #fhir/Reference{:reference #fhir/string "Patient/DACG22233TWT7CKL"}
-     :effective #fhir/dateTime "2013-01-04T23:45:50Z"
-     :issued #fhir/instant "2013-01-04T23:45:50.072Z"
+     :effective #fhir/dateTime #system/date-time "2013-01-04T23:45:50Z"
+     :issued #fhir/instant #system/date-time "2013-01-04T23:45:50.072Z"
      :value #fhir/Quantity
-             {:value 14.97M
-              :unit "kg/m2"
+             {:value #fhir/decimal 14.97M
+              :unit #fhir/string "kg/m2"
               :system #fhir/uri "http://unitsofmeasure.org"
               :code #fhir/code "kg/m2"}}
     :search #fhir/BundleEntrySearch{:mode #fhir/code "match"}})
 
-  ;; 581,264 µs <> 583,088 µs
+  ;; 538,660 µs <> 539,236 µs
   (bench-write-json (read-json "Bundle" (slurp kds-bundle-filename)))
 
   ;; Read Performance

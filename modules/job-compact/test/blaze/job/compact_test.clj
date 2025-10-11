@@ -213,7 +213,7 @@
             job-util/job-number := "1"
             jtu/combined-status := :completed
             [processing-duration :value type/type] := :fhir/decimal
-            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
             [processing-duration :unit] := #fhir/string "s"
             [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code "s"))
