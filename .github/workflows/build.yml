@@ -21,8 +21,8 @@ concurrency:
 
 env:
   # renovate: datasource=github-release-attachments depName=samply/blazectl
-  BLAZECTL_VERSION: v1.1.0
-  BLAZECTL_CHECKSUM: 42a1795372442fcf3bbc962b6d53560555d2b83eb2a1c31361ba049dc344c059
+  BLAZECTL_VERSION: v1.2.0
+  BLAZECTL_CHECKSUM: c0b2bf0b35c60ff0aa1d66f638d5b8d3a77c506211643932e4132784069cc759
 
 jobs:
   fmt:
