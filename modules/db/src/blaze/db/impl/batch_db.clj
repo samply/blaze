@@ -20,7 +20,6 @@
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.index.system-as-of :as sao]
    [blaze.db.impl.index.system-stats :as system-stats]
-   [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
@@ -151,24 +150,14 @@
   (-matcher-transducer [db matcher]
     (p/-transducer matcher db))
 
-  ;; ---- History Functions ---------------------------------------------------
-
-  (-stop-history-at [_ instant]
-    (let [t (t-by-instant/t-by-instant snapshot instant)]
-      (take-while
-       (fn [resource-handle]
-         (< t (rh/t resource-handle))))))
-
   ;; ---- Instance-Level History Functions ------------------------------------
 
   (-instance-history [_ tid id start-t]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
       (rao/instance-history snapshot t since-t tid id start-t)))
 
-  (-total-num-of-instance-changes [db tid id since]
-    (-> (if since (p/-since db (t-by-instant/t-by-instant snapshot since)) db)
-        (rao/instance-history tid id t)
-        (count)))
+  (-total-num-of-instance-changes [_ tid id]
+    (count (rao/instance-history snapshot t since-t tid id t)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
@@ -176,11 +165,10 @@
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
       (tao/type-history snapshot t since-t tid start-t start-id)))
 
-  (-total-num-of-type-changes [_ type since]
-    (let [tid (codec/tid type)
-          end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (- (:num-changes (type-stats/seek-value snapshot tid t) 0)
-         (:num-changes (some->> end-t (type-stats/seek-value snapshot tid)) 0))))
+  (-total-num-of-type-changes [_ tid]
+    (cond-> (:num-changes (type-stats/seek-value snapshot tid t) 0)
+      (pos? since-t)
+      (- (:num-changes (type-stats/seek-value snapshot tid since-t) 0))))
 
   ;; ---- System-Level History Functions --------------------------------------
 
@@ -188,10 +176,10 @@
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
       (sao/system-history db start-t start-tid start-id)))
 
-  (-total-num-of-system-changes [_ since]
-    (let [end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (- (:num-changes (system-stats/seek-value snapshot t) 0)
-         (:num-changes (some->> end-t (system-stats/seek-value snapshot)) 0))))
+  (-total-num-of-system-changes [_]
+    (cond-> (:num-changes (system-stats/seek-value snapshot t) 0)
+      (pos? since-t)
+      (- (:num-changes (system-stats/seek-value snapshot since-t) 0))))
 
   (-changes [_]
     (sao/changes snapshot t))
