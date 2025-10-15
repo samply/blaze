@@ -1691,6 +1691,9 @@
       (testing "the effective t of a DB as of 1 is 1"
         (is (= 1 (d/t (d/as-of db 1)))))
 
+      (testing "the as-of-t of a plain DB is nil"
+        (is (nil? (d/as-of-t db))))
+
       (testing "the as-of-t of a DB as of 1 is 1"
         (is (= 1 (d/as-of-t (d/as-of db 1))))))
 
@@ -8214,10 +8217,10 @@
                                          :active #fhir/boolean true}]])]
 
         (testing "has one history entry"
-          (is (= 1 (d/total-num-of-instance-changes db "Patient" "0" since))))
+          (is (= 1 (d/total-num-of-instance-changes (d/since db since) "Patient" "0"))))
 
         (testing "contains the patient"
-          (given (into [] (d/stop-history-at db since) (d/instance-history db "Patient" "0"))
+          (given @(pull-instance-history (d/since db since) "Patient" "0")
             count := 1
             [0 :id] := "0")))))
 
@@ -8338,16 +8341,16 @@
                        system-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (Thread/sleep 2000)
+      (Thread/sleep 200)
       (let [since (time/instant system-clock)
-            _ (Thread/sleep 2000)
+            _ (Thread/sleep 200)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 
         (testing "has one history entry"
-          (is (= 1 (d/total-num-of-type-changes db "Patient" since))))
+          (is (= 1 (d/total-num-of-type-changes (d/since db since) "Patient"))))
 
         (testing "contains the patient"
-          (given (into [] (d/stop-history-at db since) (d/type-history db "Patient"))
+          (given @(d/pull-many db (d/type-history (d/since db since) "Patient"))
             count := 1
             [0 :id] := "1")))))
 
@@ -8497,16 +8500,16 @@
                        system-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (Thread/sleep 2000)
+      (Thread/sleep 200)
       (let [since (time/instant system-clock)
-            _ (Thread/sleep 2000)
+            _ (Thread/sleep 200)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 
         (testing "has one history entry"
-          (is (= 1 (d/total-num-of-system-changes db since))))
+          (is (= 1 (d/total-num-of-system-changes (d/since db since)))))
 
         (testing "contains the patient"
-          (given (into [] (d/stop-history-at db since) (d/system-history db))
+          (given @(d/pull-many node (d/system-history (d/since db since)))
             count := 1
             [0 :id] := "1")))))
 
