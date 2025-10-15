@@ -27,11 +27,6 @@
       (catch DateTimeParseException _))
    (u/to-seq v)))
 
-(defn page-xform [db page-size since]
-  (cond->> (take (inc page-size))
-    since
-    (comp (d/stop-history-at db since))))
-
 (defn page-t
   "Returns the t (optional) to constrain the database in paging. Pages will
   start with a database as-of `page-t`."
