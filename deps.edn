@@ -103,7 +103,7 @@
     ;; Emacs middleware below this line
 
     cider/cider-nrepl
-    {:mvn/version "0.57.0"}
+    {:mvn/version "0.58.0"}
 
     refactor-nrepl/refactor-nrepl
     {:mvn/version "3.11.0"}
