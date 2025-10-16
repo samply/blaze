@@ -37,4 +37,11 @@
   (testing "nothing is found on empty db"
     (with-system [{kv-store ::kv/mem} config]
       (with-open [snapshot (kv/new-snapshot kv-store)]
+        (is (nil? (t-by-instant/t-by-instant snapshot Instant/EPOCH))))))
+
+  (testing "finds nothing, because instant is before the first entry"
+    (with-system [{kv-store ::kv/mem} config]
+      (kv/put! kv-store [(t-by-instant/index-entry (.plusMillis Instant/EPOCH 1) 1)])
+
+      (with-open [snapshot (kv/new-snapshot kv-store)]
         (is (nil? (t-by-instant/t-by-instant snapshot Instant/EPOCH)))))))

@@ -20,7 +20,6 @@
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.index.system-as-of :as sao]
    [blaze.db.impl.index.system-stats :as system-stats]
-   [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
@@ -37,9 +36,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- rev-include [db snapshot reference source-tid code]
+(defn- rev-include [batch-db snapshot reference source-tid code]
   (coll/eduction
-   (u/resource-handle-xf db source-tid)
+   (u/resource-handle-xf batch-db source-tid)
    (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
 
 (defn- sp-total
@@ -69,7 +68,26 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
-(defrecord BatchDb [node kv-store snapshot basis-t t]
+(defn- total-since
+  "Returns the total number of resources using `seek-fn` to determine the total number of `t`.
+  `seek-fn` is a fn with one argument, which will receive `t`. Will return an anomaly when since-t
+  is set, as total is unsupported for since-dbs."
+  {:arglists '([db seek-fn])}
+  [{:keys [t since-t]} seek-fn]
+  (if (zero? since-t)
+    (:total (seek-fn t) 0)
+    (ba/unsupported "Total is not supported on since-dbs.")))
+
+(defn- num-changes-since
+  "Returns the number of changes since `since-t`, using `seek-fn` to determine
+  the total number of `t` and `since-t`. `seek-fn` is a fn with one argument, which will
+  receive `t` and `since-t`"
+  {:arglists '([db seek-fn])}
+  [{:keys [t since-t]} seek-fn]
+  (- (:num-changes (seek-fn t) 0)
+     (:num-changes (when-not (zero? since-t) (seek-fn since-t)) 0)))
+
+(defrecord BatchDb [node kv-store snapshot basis-t t since-t]
   p/Db
   (-node [_]
     node)
@@ -77,13 +95,22 @@
   (-basis-t [_]
     basis-t)
 
+  (-as-of [_ _]
+    (ba/unsupported "As of is not supported on batch-db."))
+
   (-as-of-t [_]
     (when (not= basis-t t) t))
 
+  (-since [_ _]
+    (ba/unsupported "Since is not supported on batch-db."))
+
+  (-since-t [_]
+    since-t)
+
   ;; ---- Instance-Level Functions --------------------------------------------
 
-  (-resource-handle [_ tid id]
-    (rao/resource-handle snapshot tid id t))
+  (-resource-handle [db tid id]
+    (rao/resource-handle db tid id))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -93,8 +120,8 @@
   (-type-list [db tid start-id]
     (rao/type-list db tid start-id))
 
-  (-type-total [_ tid]
-    (:total (type-stats/seek-value snapshot tid t) 0))
+  (-type-total [db tid]
+    (total-since db #(type-stats/seek-value snapshot tid %)))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
@@ -104,8 +131,8 @@
   (-system-list [db start-tid start-id]
     (rao/system-list db start-tid start-id))
 
-  (-system-total [_]
-    (:total (system-stats/seek-value snapshot t) 0))
+  (-system-total [db]
+    (total-since db #(system-stats/seek-value snapshot %)))
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
@@ -138,51 +165,36 @@
   (-matcher-transducer [db matcher]
     (p/-transducer matcher db))
 
-  ;; ---- History Functions ---------------------------------------------------
-
-  (-stop-history-at [_ instant]
-    (let [t (t-by-instant/t-by-instant snapshot instant)]
-      (take-while
-       (fn [resource-handle]
-         (< t (rh/t resource-handle))))))
-
   ;; ---- Instance-Level History Functions ------------------------------------
 
-  (-instance-history [_ tid id start-t]
+  (-instance-history [db tid id start-t]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (rao/instance-history snapshot tid id t start-t)))
+      (rao/instance-history db tid id start-t)))
 
-  (-total-num-of-instance-changes [db tid id since]
-    (count
-     (cond->> (rao/instance-history snapshot tid id t t)
-       since
-       (coll/eduction (p/-stop-history-at db since)))))
+  (-total-num-of-instance-changes [db tid id]
+    (count (rao/instance-history db tid id t)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
-  (-type-history [_ tid start-t start-id]
+  (-type-history [db tid start-t start-id]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (tao/type-history snapshot tid t start-t start-id)))
+      (tao/type-history db tid start-t start-id)))
 
-  (-total-num-of-type-changes [_ type since]
-    (let [tid (codec/tid type)
-          end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (- (:num-changes (type-stats/seek-value snapshot tid t) 0)
-         (:num-changes (some->> end-t (type-stats/seek-value snapshot tid)) 0))))
+  (-total-num-of-type-changes [db type]
+    (let [tid (codec/tid type)]
+      (num-changes-since db #(type-stats/seek-value snapshot tid %))))
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id]
+  (-system-history [db start-t start-tid start-id]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (sao/system-history snapshot t start-t start-tid start-id)))
+      (sao/system-history db start-t start-tid start-id)))
 
-  (-total-num-of-system-changes [_ since]
-    (let [end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (- (:num-changes (system-stats/seek-value snapshot t) 0)
-         (:num-changes (some->> end-t (system-stats/seek-value snapshot)) 0))))
+  (-total-num-of-system-changes [db]
+    (num-changes-since db #(system-stats/seek-value snapshot %)))
 
   (-changes [_]
-    (sao/changes snapshot t))
+    (sao/changes snapshot t since-t))
 
   ;; ---- Include ---------------------------------------------------------------
 
@@ -394,6 +406,6 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^AutoCloseable
-  [{:keys [kv-store] :as node} basis-t t]
+  [{:keys [kv-store] :as node} basis-t t since-t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node kv-store snapshot basis-t t)))
+    (->BatchDb node kv-store snapshot basis-t t since-t)))
