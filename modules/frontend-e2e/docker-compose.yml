@@ -51,7 +51,7 @@ services:
     - "../ingress/keycloak-trust-store.p12:/app/keycloak-trust-store.p12:ro"
 
   keycloak:
-    image: "quay.io/keycloak/keycloak:26.4.0@sha256:5f3fb534cde6bf006d79f5912473e5d2c828c707cdfc52e16972803aca9d43dd"
+    image: "quay.io/keycloak/keycloak:26.4.1@sha256:bbb299c7e58a2c61c683dc3439da3e2698e005ca88ba6fd249629311d70250ab"
     command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true"
     environment:
       KEYCLOAK_ADMIN: admin
