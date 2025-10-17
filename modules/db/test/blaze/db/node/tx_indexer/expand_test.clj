@@ -38,9 +38,9 @@
   (testing "conflict"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date "2020"}]
+               :birthDate #fhir/date #system/date "2020"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date "2020"}]]]
+               :birthDate #fhir/date #system/date "2020"}]]]
 
       (given (expand-tx-cmds
               node

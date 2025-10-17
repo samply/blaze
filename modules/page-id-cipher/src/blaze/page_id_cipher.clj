@@ -93,7 +93,7 @@
     (log/trace "Got" (count document-reference-handles)
                "changed document-reference(s)")
     (run!
-     (fn [{[{:keys [value]}] :identifier :as document-reference}]
+     (fn [{[{{value :value} :value}] :identifier :as document-reference}]
        (when (= identifier value)
          (log/debug "Refresh key set")
          (reset! state (decode-state document-reference))))

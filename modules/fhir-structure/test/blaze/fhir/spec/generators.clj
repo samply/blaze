@@ -1,5 +1,5 @@
 (ns blaze.fhir.spec.generators
-  (:refer-clojure :exclude [boolean meta str time])
+  (:refer-clojure :exclude [boolean meta range str time])
   (:require
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
@@ -77,30 +77,38 @@
   (gen/one-of [(gen/return "Z") zone-offset]))
 
 (def instant-value
-  (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-            (gen/tuple year month day hour minute time-second zone)))
+  (gen/fmap
+   system/parse-date-time
+   (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
+             (gen/tuple year month day hour minute time-second zone))))
 
 (def date-value
-  (gen/one-of
-   [(gen/fmap (partial format "%04d") year)
-    (gen/fmap (partial apply format "%04d-%02d")
-              (gen/tuple year month))
-    (gen/fmap (partial apply format "%04d-%02d-%02d")
-              (gen/tuple year month day))]))
+  (gen/fmap
+   system/parse-date
+   (gen/one-of
+    [(gen/fmap (partial format "%04d") year)
+     (gen/fmap (partial apply format "%04d-%02d")
+               (gen/tuple year month))
+     (gen/fmap (partial apply format "%04d-%02d-%02d")
+               (gen/tuple year month day))])))
 
 (defn dateTime-value [& {:keys [year] :or {year year}}]
-  (gen/one-of
-   [(gen/fmap (partial format "%04d") year)
-    (gen/fmap (partial apply format "%04d-%02d")
-              (gen/tuple year month))
-    (gen/fmap (partial apply format "%04d-%02d-%02d")
-              (gen/tuple year month day))
-    (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-              (gen/tuple year month day hour minute time-second zone))]))
+  (gen/fmap
+   system/parse-date-time
+   (gen/one-of
+    [(gen/fmap (partial format "%04d") year)
+     (gen/fmap (partial apply format "%04d-%02d")
+               (gen/tuple year month))
+     (gen/fmap (partial apply format "%04d-%02d-%02d")
+               (gen/tuple year month day))
+     (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
+               (gen/tuple year month day hour minute time-second zone))])))
 
 (def time-value
-  (gen/fmap (partial apply format "%02d:%02d:%02d")
-            (gen/tuple hour minute time-second)))
+  (gen/fmap
+   system/parse-time
+   (gen/fmap (partial apply format "%02d:%02d:%02d")
+             (gen/tuple hour minute time-second))))
 
 (def code-value
   (gen/such-that (partial re-matches #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*") gen/string 1000))
@@ -214,6 +222,19 @@
 (def uuid
   (primitive-gen type/uuid uuid-value))
 
+(declare reference)
+
+(defn annotation
+  [& {:keys [id extension author time text]
+      :or {id (often-nil id-value)
+           extension (gen/return nil)
+           author (rare-nil (gen/one-of [(reference) (string)]))
+           time (rare-nil (dateTime))
+           text (rare-nil (markdown))}}]
+  (->> (gen/tuple id extension author time text)
+       (to-map [:id :extension :author :time :text])
+       (gen/fmap type/annotation)))
+
 (defn attachment
   [& {:keys [id extension contentType language data url size hash title creation]
       :or {id (often-nil id-value)
@@ -264,6 +285,33 @@
        (to-map [:id :extension :coding :text])
        (gen/fmap type/codeable-concept)))
 
+(declare contact-point)
+
+(defn contact-detail
+  [& {:keys [id extension name telecom]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           name (rare-nil (string))
+           telecom (gen/vector (contact-point))}}]
+  (->> (gen/tuple id extension name telecom)
+       (to-map [:id :extension :name :telecom])
+       (gen/fmap type/contact-detail)))
+
+(declare period)
+
+(defn contact-point
+  [& {:keys [id extension system value use rank period]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           system (rare-nil (code))
+           value (rare-nil (string))
+           use (nilable (code))
+           rank (often-nil (positiveInt))
+           period (rare-nil (period))}}]
+  (->> (gen/tuple id extension system value use rank period)
+       (to-map [:id :extension :system :value :use :rank :period])
+       (gen/fmap type/contact-point)))
+
 (defn quantity
   [& {:keys [id extension value comparator unit system code]
       :or {id (often-nil id-value)
@@ -277,7 +325,15 @@
        (to-map [:id :extension :value :comparator :unit :system :code])
        (gen/fmap type/quantity)))
 
-;; TODO: Range
+(defn range
+  [& {:keys [id extension low high]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           low (nilable (quantity))
+           high (nilable (quantity))}}]
+  (->> (gen/tuple id extension low high)
+       (to-map [:id :extension :low :high])
+       (gen/fmap type/range)))
 
 (defn ratio
   [& {:keys [id extension numerator denominator]
@@ -306,8 +362,6 @@
     (gen/fmap type/period x)))
 
 ;; TODO: SampledData
-
-(declare reference)
 
 (defn identifier
   [& {:keys [id extension use type system value period assigner]
@@ -378,6 +432,34 @@
   (->> (gen/tuple id extension reference type identifier display)
        (to-map [:id :extension :reference :type :identifier :display])
        (gen/fmap type/reference)))
+
+(defn expression
+  [& {:keys [id extension description name language expression reference]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           description (often-nil (string))
+           name (often-nil (blaze.fhir.spec.generators/id))
+           language (rare-nil (code))
+           expression (rare-nil (string))
+           reference (often-nil (uri))}}]
+  (->> (gen/tuple id extension description name language expression reference)
+       (to-map [:id :extension :description :name :language :expression :reference])
+       (gen/fmap type/expression)))
+
+(defn related-artifact
+  [& {:keys [id extension type label display citation url document resource]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           type (rare-nil (code))
+           label (nilable (string))
+           display (nilable (string))
+           citation (often-nil (markdown))
+           url (nilable (url))
+           document (nilable (attachment))
+           resource (nilable (canonical))}}]
+  (->> (gen/tuple id extension type label display citation url document resource)
+       (to-map [:id :extension :type :label :display :citation :url :document :resource])
+       (gen/fmap type/related-artifact)))
 
 (defn meta
   [& {:keys [id extension versionId lastUpdated source profile security tag]

@@ -61,7 +61,7 @@
   (reify-expr core/Expression
     (-eval [_ {:keys [db]} resource _]
       (prom/inc! retrieve-total)
-      (let [{{:keys [reference]} :subject} resource]
+      (let [{{{reference :value} :reference} :subject} resource]
         (when reference
           (when-let [[type id] (fsr/split-literal-ref reference)]
             (when (and (= "Patient" type) (string? id))

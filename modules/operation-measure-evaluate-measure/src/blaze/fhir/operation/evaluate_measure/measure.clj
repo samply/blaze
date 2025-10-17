@@ -16,6 +16,7 @@
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
    [blaze.module :as m]
@@ -367,11 +368,11 @@
       "subject-list" #fhir/code "subject-list"
       "subject" #fhir/code "individual")
     :measure (type/canonical (canonical context measure))
-    :date now
+    :date (type/dateTime now)
     :period
     (type/period
-     {:start (type/dateTime (str start))
-      :end (type/dateTime (str end))})}
+     {:start (type/dateTime (system/parse-date-time (str start)))
+      :end (type/dateTime (system/parse-date-time (str end)))})}
 
     subject-handle
     (assoc :subject (type/reference {:reference (type/string (local-ref subject-handle))}))

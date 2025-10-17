@@ -19,6 +19,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :refer [str]]
    [clojure.string :as str]
    [taoensso.timbre :as log]))
@@ -30,7 +31,7 @@
 
   Index entries are `[modifier value include-in-compartments?]` triples."
   {:arglists '([url value])}
-  (fn [_ value] (fhir-spec/fhir-type value)))
+  (fn [_ value] (or (type/type value) (system/type value))))
 
 (defmethod index-entries :fhir/id
   [_ id]
@@ -56,6 +57,10 @@
   [_ boolean]
   (when-some [value (type/value boolean)]
     [[nil (codec/v-hash (str value))]]))
+
+(defmethod index-entries :system/boolean
+  [_ value]
+  [[nil (codec/v-hash (str value))]])
 
 (defmethod index-entries :fhir/canonical
   [_ uri]

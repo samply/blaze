@@ -652,7 +652,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q36-parameter 86
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh fbb79d85457069c8e1926c949690deecd60d751942d5b0cd0b61c08e6029224c 86
+      run: .github/scripts/check-bloom-filter.sh 017a0f079c2a76a731db3cdf68637afc8e4fac34409b032b5ac93958923e0501 86
 
     - name: Evaluate CQL Query 36 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
@@ -664,7 +664,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q37-overlaps 24
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh 9fe779d821d7647831331b490939aa0cdf314d76c9b2a9518ffaf559353db043 24
+      run: .github/scripts/check-bloom-filter.sh e7d79fd90bce0a8c5abad06027e3b6d57b448076ff41fa36827e5e3b65ca10c2 24
 
     - name: Evaluate CQL Query 37 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
