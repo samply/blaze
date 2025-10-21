@@ -20,16 +20,19 @@
           (if (:fhir/type value) :resource :value) value})))
     (partition 2 nvs))})
 
+(def ^:private ^:const observation-value-system
+  #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/v3-ObservationValue")
+
 (def subsetted
-  #fhir/Coding
-   {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-    :code #fhir/code "SUBSETTED"})
+  (type/coding
+   {:system observation-value-system
+    :code #fhir/code "SUBSETTED"}))
 
 (defn subsetted?
   "Checks whether `coding` is a SUBSETTED coding."
   {:arglists '([coding])}
   [{:keys [system code]}]
-  (and (= #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
+  (and (= observation-value-system system)
        (= #fhir/code "SUBSETTED" code)))
 
 (defn- nat-cmp [^Comparable x y]

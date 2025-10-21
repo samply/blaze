@@ -2282,8 +2282,8 @@
 
         (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
           :fhir/type := :fhir/ValueSet
-          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-115910"
-          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-180814"
+          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-180814"
+          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-115910"
           [:expansion :contains count] := 2
           [:expansion :contains 0 :system] := #fhir/uri "system-115910"
           [:expansion :contains 0 :code] := #fhir/code "code-115927"
@@ -2322,8 +2322,8 @@
 
         (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
           :fhir/type := :fhir/ValueSet
-          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-115910"
-          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-180814"
+          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-180814"
+          [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-115910"
           [:expansion :contains count] := 4
           [:expansion :contains 0 :system] := #fhir/uri "system-115910"
           [:expansion :contains 0 :code] := #fhir/code "code-115927"
@@ -2374,8 +2374,8 @@
 
           (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
             :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-115910"
-            [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-180814"
+            [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri "system-180814"
+            [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri "system-115910"
             [:expansion :contains count] := 3
             [:expansion :contains 0 :system] := #fhir/uri "system-115910"
             [:expansion :contains 0 :code] := #fhir/code "code-115927"

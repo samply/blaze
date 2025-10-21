@@ -115,7 +115,7 @@
       (is (= 200 status))
 
       (testing "ETag header"
-        (is (= "W/\"c875f7a3\"" (get headers "ETag"))))
+        (is (= "W/\"ffa1406a\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
@@ -181,7 +181,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"c875f7a3\"" "W/\"c875f7a3\", \"foo\""]]
+      (doseq [if-none-match ["W/\"ffa1406a\"" "W/\"ffa1406a\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -190,7 +190,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"c875f7a3\"" (get headers "ETag"))))))))
+            (is (= "W/\"ffa1406a\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]

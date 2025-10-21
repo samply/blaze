@@ -1,15 +1,18 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
-import clojure.lang.*;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.List;
 import java.util.Objects;
-
-import static blaze.fhir.spec.type.Base.appendElement;
 
 public final class Id extends PrimitiveElement {
 
@@ -19,16 +22,26 @@ public final class Id extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 15;
 
-    private final java.lang.String value;
+    private static final Interner<ExtensionData, Id> INTERNER = Interners.weakInterner(k -> new Id(k, null));
+    private static final Id EMPTY = new Id(ExtensionData.EMPTY, null);
 
-    public Id(java.lang.String id, List<Extension> extension, java.lang.String value) {
-        super(id, extension);
+    private final String value;
+
+    private Id(ExtensionData extensionData, String value) {
+        super(extensionData);
         this.value = value;
     }
 
+    private static Id maybeIntern(ExtensionData extensionData, String value) {
+        return extensionData.isInterned() && value == null ? INTERNER.intern(extensionData) : new Id(extensionData, value);
+    }
+
+    public static Id create(String value) {
+        return value == null ? EMPTY : new Id(ExtensionData.EMPTY, value);
+    }
+
     public static Id create(IPersistentMap m) {
-        return new Id((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), 
-                (java.lang.String) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), (String) m.valAt(VALUE));
     }
 
     @Override
@@ -36,22 +49,22 @@ public final class Id extends PrimitiveElement {
         return FHIR_TYPE;
     }
 
-    public java.lang.String value() {
+    public String value() {
         return value;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Id empty() {
-        return new Id(null, PersistentVector.EMPTY, null);
+        return EMPTY;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Id assoc(Object key, Object val) {
-        if (key == VALUE) return new Id(id, extension, (java.lang.String) val);
-        if (key == EXTENSION) return new Id(id, (List<Extension>) val, value);
-        if (key == ID) return new Id((java.lang.String) val, extension, value);
+        if (key == VALUE) return maybeIntern(extensionData, (String) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), value);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Id.");
     }
 
@@ -73,7 +86,7 @@ public final class Id extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (value != null) {
             sink.putByte((byte) 2);
             Strings.hashInto(value, sink);
@@ -81,25 +94,25 @@ public final class Id extends PrimitiveElement {
     }
 
     @Override
+    public int memSize() {
+        return super.memSize() + Strings.memSize(value);
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Id c = (Id) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Id that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
-        return "Id{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
-                ", value=" + (value == null ? null : '\'' + value + '\'') +
-                '}';
+    public String toString() {
+        return "Id{" + extensionData + ", value=" + (value == null ? null : '\'' + value + '\'') + '}';
     }
 }

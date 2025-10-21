@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class ContactPoint extends Element implements Complex, ExtensionValue {
+public final class ContactPoint extends AbstractElement implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "ContactPoint");
 
@@ -35,15 +35,17 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
 
     private static final byte HASH_MARKER = 53;
 
+    private static final ContactPoint EMPTY = new ContactPoint(ExtensionData.EMPTY, null, null, null, null, null);
+
     private final Code system;
     private final String value;
     private final Code use;
     private final PositiveInt rank;
     private final Period period;
 
-    public ContactPoint(java.lang.String id, List<Extension> extension, Code system, String value, Code use,
-                        PositiveInt rank, Period period) {
-        super(id, extension);
+    private ContactPoint(ExtensionData extensionData, Code system, String value, Code use, PositiveInt rank,
+                         Period period) {
+        super(extensionData);
         this.system = system;
         this.value = value;
         this.use = use;
@@ -52,20 +54,13 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
     }
 
     public static ContactPoint create(IPersistentMap m) {
-        return new ContactPoint((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (Code) m.valAt(SYSTEM),
-                (String) m.valAt(VALUE), (Code) m.valAt(USE), (PositiveInt) m.valAt(RANK),
-                (Period) m.valAt(PERIOD));
+        return new ContactPoint(ExtensionData.fromMap(m), (Code) m.valAt(SYSTEM), (String) m.valAt(VALUE),
+                (Code) m.valAt(USE), (PositiveInt) m.valAt(RANK), (Period) m.valAt(PERIOD));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(system) && Base.isInterned(value) &&
-                Base.isInterned(use) && Base.isInterned(rank) && Base.isInterned(period);
     }
 
     public Code system() {
@@ -95,9 +90,7 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
         if (key == USE) return use;
         if (key == RANK) return rank;
         if (key == PERIOD) return period;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -108,13 +101,12 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
         seq = appendElement(seq, USE, use);
         seq = appendElement(seq, VALUE, value);
         seq = appendElement(seq, SYSTEM, system);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public ContactPoint empty() {
-        return new ContactPoint(null, PersistentVector.EMPTY, null, null, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -125,14 +117,15 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
     @Override
     @SuppressWarnings("unchecked")
     public ContactPoint assoc(Object key, Object val) {
-        if (key == ID) return new ContactPoint((java.lang.String) val, extension, system, value, use, rank, period);
+        if (key == SYSTEM) return new ContactPoint(extensionData, (Code) val, value, use, rank, period);
+        if (key == VALUE) return new ContactPoint(extensionData, system, (String) val, use, rank, period);
+        if (key == USE) return new ContactPoint(extensionData, system, value, (Code) val, rank, period);
+        if (key == RANK) return new ContactPoint(extensionData, system, value, use, (PositiveInt) val, period);
+        if (key == PERIOD) return new ContactPoint(extensionData, system, value, use, rank, (Period) val);
         if (key == EXTENSION)
-            return new ContactPoint(id, (List<Extension>) val, system, value, use, rank, period);
-        if (key == SYSTEM) return new ContactPoint(id, extension, (Code) val, value, use, rank, period);
-        if (key == VALUE) return new ContactPoint(id, extension, system, (String) val, use, rank, period);
-        if (key == USE) return new ContactPoint(id, extension, system, value, (Code) val, rank, period);
-        if (key == RANK) return new ContactPoint(id, extension, system, value, use, (PositiveInt) val, period);
-        if (key == PERIOD) return new ContactPoint(id, extension, system, value, use, rank, (Period) val);
+            return new ContactPoint(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), system, value, use, rank, period);
+        if (key == ID)
+            return new ContactPoint(extensionData.withId((java.lang.String) val), system, value, use, rank, period);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.ContactPoint.");
     }
 
@@ -168,7 +161,7 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (system != null) {
             sink.putByte((byte) 2);
             system.hashInto(sink);
@@ -194,10 +187,8 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ContactPoint that = (ContactPoint) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof ContactPoint that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(system, that.system) &&
                 Objects.equals(value, that.value) &&
                 Objects.equals(use, that.use) &&
@@ -207,14 +198,19 @@ public final class ContactPoint extends Element implements Complex, ExtensionVal
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, system, value, use, rank, period);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(system);
+        result = 31 * result + Objects.hashCode(value);
+        result = 31 * result + Objects.hashCode(use);
+        result = 31 * result + Objects.hashCode(rank);
+        result = 31 * result + Objects.hashCode(period);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "ContactPoint{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", system=" + system +
                 ", value=" + value +
                 ", use=" + use +

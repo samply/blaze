@@ -139,7 +139,7 @@
 (defn- job-number-identifier [job-number]
   (type/identifier
    {:use #fhir/code "official"
-    :system (type/uri job-util/job-number-url)
+    :system (type/uri-interned job-util/job-number-url)
     :value (type/string (str job-number))}))
 
 (defn- prepare-job [job id job-number]

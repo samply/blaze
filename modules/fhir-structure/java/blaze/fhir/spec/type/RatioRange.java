@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +14,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class RatioRange extends Element implements Complex, ExtensionValue {
+public final class RatioRange extends AbstractElement implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "RatioRange");
 
@@ -31,25 +32,22 @@ public final class RatioRange extends Element implements Complex, ExtensionValue
 
     private static final byte HASH_MARKER = 51;
 
+    private static final RatioRange EMPTY = new RatioRange(ExtensionData.EMPTY, null, null, null);
+
     private final Quantity lowNumerator;
     private final Quantity highNumerator;
     private final Quantity denominator;
 
-    public RatioRange(java.lang.String id, List<Extension> extension, Quantity lowNumerator, Quantity highNumerator, Quantity denominator) {
-        super(id, extension);
+    private RatioRange(ExtensionData extensionData, Quantity lowNumerator, Quantity highNumerator, Quantity denominator) {
+        super(extensionData);
         this.lowNumerator = lowNumerator;
         this.highNumerator = highNumerator;
         this.denominator = denominator;
     }
 
     public static RatioRange create(IPersistentMap m) {
-        return new RatioRange((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (Quantity) m.valAt(LOW_NUMERATOR), (Quantity) m.valAt(HIGH_NUMERATOR), (Quantity) m.valAt(DENOMINATOR));
-    }
-
-    public static IPersistentVector getBasis() {
-        return RT.vector(Symbol.intern(null, "id"), Symbol.intern(null, "extension"), Symbol.intern(null, "lowNumerator"),
-                Symbol.intern(null, "highNumerator"), Symbol.intern(null, "denominator"));
+        return new RatioRange(ExtensionData.fromMap(m), (Quantity) m.valAt(LOW_NUMERATOR), (Quantity) m.valAt(HIGH_NUMERATOR),
+                (Quantity) m.valAt(DENOMINATOR));
     }
 
     @Override
@@ -59,8 +57,8 @@ public final class RatioRange extends Element implements Complex, ExtensionValue
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(lowNumerator) &&
-                Base.isInterned(highNumerator) && Base.isInterned(denominator);
+        return extensionData.isInterned() && Base.isInterned(lowNumerator) && Base.isInterned(highNumerator) &&
+                Base.isInterned(denominator);
     }
 
     public Quantity lowNumerator() {
@@ -80,15 +78,21 @@ public final class RatioRange extends Element implements Complex, ExtensionValue
         if (key == LOW_NUMERATOR) return lowNumerator;
         if (key == HIGH_NUMERATOR) return highNumerator;
         if (key == DENOMINATOR) return denominator;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public ISeq seq() {
+        ISeq seq = PersistentList.EMPTY;
+        seq = appendElement(seq, DENOMINATOR, denominator);
+        seq = appendElement(seq, HIGH_NUMERATOR, highNumerator);
+        seq = appendElement(seq, LOW_NUMERATOR, lowNumerator);
+        return extensionData.append(seq);
+    }
+
+    @Override
     public RatioRange empty() {
-        return new RatioRange(null, PersistentVector.EMPTY, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -100,25 +104,16 @@ public final class RatioRange extends Element implements Complex, ExtensionValue
     @SuppressWarnings("unchecked")
     public RatioRange assoc(Object key, Object val) {
         if (key == ID)
-            return new RatioRange((java.lang.String) val, extension, lowNumerator, highNumerator, denominator);
+            return new RatioRange(extensionData.withId((String) val), lowNumerator, highNumerator, denominator);
         if (key == EXTENSION)
-            return new RatioRange(id, (List<Extension>) val, lowNumerator, highNumerator, denominator);
+            return new RatioRange(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), lowNumerator, highNumerator, denominator);
         if (key == LOW_NUMERATOR)
-            return new RatioRange(id, extension, (Quantity) val, highNumerator, denominator);
+            return new RatioRange(extensionData, (Quantity) val, highNumerator, denominator);
         if (key == HIGH_NUMERATOR)
-            return new RatioRange(id, extension, lowNumerator, (Quantity) val, denominator);
+            return new RatioRange(extensionData, lowNumerator, (Quantity) val, denominator);
         if (key == DENOMINATOR)
-            return new RatioRange(id, extension, lowNumerator, highNumerator, (Quantity) val);
-        throw new UnsupportedOperationException("The key `''' + key + '''` isn't supported on FHIR.RatioRange.");
-    }
-
-    @Override
-    public ISeq seq() {
-        ISeq seq = PersistentList.EMPTY;
-        seq = appendElement(seq, DENOMINATOR, denominator);
-        seq = appendElement(seq, HIGH_NUMERATOR, highNumerator);
-        seq = appendElement(seq, LOW_NUMERATOR, lowNumerator);
-        return appendBase(seq);
+            return new RatioRange(extensionData, lowNumerator, highNumerator, (Quantity) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.RatioRange.");
     }
 
     @Override
@@ -149,7 +144,7 @@ public final class RatioRange extends Element implements Complex, ExtensionValue
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (lowNumerator != null) {
             sink.putByte((byte) 2);
             lowNumerator.hashInto(sink);
@@ -167,10 +162,8 @@ public final class RatioRange extends Element implements Complex, ExtensionValue
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        RatioRange that = (RatioRange) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof RatioRange that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(lowNumerator, that.lowNumerator) &&
                 Objects.equals(highNumerator, that.highNumerator) &&
                 Objects.equals(denominator, that.denominator);
@@ -178,14 +171,17 @@ public final class RatioRange extends Element implements Complex, ExtensionValue
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, lowNumerator, highNumerator, denominator);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(lowNumerator);
+        result = 31 * result + Objects.hashCode(highNumerator);
+        result = 31 * result + Objects.hashCode(denominator);
+        return result;
     }
 
     @Override
-    public java.lang.String toString() {
+    public String toString() {
         return "RatioRange{" +
-                "id=" + (id == null ? null : "'''" + id + "'''") +
-                ", extension=" + extension +
+                extensionData +
                 ", lowNumerator=" + lowNumerator +
                 ", highNumerator=" + highNumerator +
                 ", denominator=" + denominator +

@@ -1,17 +1,16 @@
 package blaze.fhir.spec.type;
 
 import blaze.fhir.spec.type.system.Longs;
-import clojure.lang.*;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.SerializableString;
-import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.List;
 import java.util.Objects;
-
-import static blaze.fhir.spec.type.Base.appendElement;
 
 public final class Integer64 extends PrimitiveElement {
 
@@ -21,16 +20,17 @@ public final class Integer64 extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 2;
 
+    private static final Integer64 EMPTY = new Integer64(ExtensionData.EMPTY, null);
+
     private final Long value;
 
-    public Integer64(java.lang.String id, List<Extension> extension, Long value) {
-        super(id, extension);
+    private Integer64(ExtensionData extensionData, Long value) {
+        super(extensionData);
         this.value = value;
     }
 
     public static Integer64 create(IPersistentMap m) {
-        return new Integer64((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (Long) m.valAt(VALUE));
+        return new Integer64(ExtensionData.fromMap(m), (Long) m.valAt(VALUE));
     }
 
     @Override
@@ -43,17 +43,17 @@ public final class Integer64 extends PrimitiveElement {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Integer64 empty() {
-        return new Integer64(null, PersistentVector.EMPTY, null);
+        return EMPTY;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Integer64 assoc(Object key, Object val) {
-        if (key == VALUE) return new Integer64(id, extension, (Long) val);
-        if (key == EXTENSION) return new Integer64(id, (List<Extension>) val, value);
-        if (key == ID) return new Integer64((java.lang.String) val, extension, value);
+        if (key == VALUE) return new Integer64(extensionData, (Long) val);
+        if (key == EXTENSION)
+            return new Integer64(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+        if (key == ID) return new Integer64(extensionData.withId((String) val), value);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Integer64.");
     }
 
@@ -75,7 +75,7 @@ public final class Integer64 extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (value != null) {
             sink.putByte((byte) 2);
             Longs.hashInto(value, sink);
@@ -84,24 +84,19 @@ public final class Integer64 extends PrimitiveElement {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Integer64 c = (Integer64) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Integer64 that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
-        return "Integer64{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
-                ", value=" + value +
-                '}';
+    public String toString() {
+        return "Integer64{" + extensionData + ", value=" + value + '}';
     }
 }

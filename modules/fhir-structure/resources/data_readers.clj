@@ -5,8 +5,10 @@
  fhir/integer blaze.fhir.spec.type/integer
  fhir/long blaze.fhir.spec.type/long
  fhir/string blaze.fhir.spec.type/string
+ fhir/string-interned blaze.fhir.spec.type/string-interned
  fhir/decimal blaze.fhir.spec.type/decimal
  fhir/uri blaze.fhir.spec.type/uri
+ fhir/uri-interned blaze.fhir.spec.type/uri-interned
  fhir/url blaze.fhir.spec.type/url
  fhir/canonical blaze.fhir.spec.type/canonical
  fhir/base64Binary blaze.fhir.spec.type/base64Binary

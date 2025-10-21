@@ -31,7 +31,7 @@
   #fhir/Quantity
    {:value #fhir/decimal 0M
     :unit #fhir/string "s"
-    :system #fhir/uri "http://unitsofmeasure.org"
+    :system #fhir/uri-interned "http://unitsofmeasure.org"
     :code #fhir/code "s"})
 
 (defn- start-job [job total-resources]

@@ -6,6 +6,11 @@ import java.io.IOException;
 
 public interface Complex extends Base {
 
+    @Override
+    default boolean isInterned() {
+        return false;
+    }
+
     void serializeAsJsonValue(JsonGenerator generator) throws IOException;
 
     @Override

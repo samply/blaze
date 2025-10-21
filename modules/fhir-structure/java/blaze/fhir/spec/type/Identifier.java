@@ -1,5 +1,7 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
@@ -13,7 +15,22 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Identifier extends Element implements Complex, ExtensionValue {
+public final class Identifier extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - use reference
+     * 4 byte - type reference
+     * 4 byte - system reference
+     * 4 byte - value reference
+     * 4 byte - period reference
+     * 4 byte - assigner reference
+     * 4 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 32;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Identifier");
 
@@ -37,6 +54,8 @@ public final class Identifier extends Element implements Complex, ExtensionValue
 
     private static final byte HASH_MARKER = 42;
 
+    private static final Identifier EMPTY = new Identifier(ExtensionData.EMPTY, null, null, null, null, null, null);
+
     private final Code use;
     private final CodeableConcept type;
     private final Uri system;
@@ -44,9 +63,9 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     private final Period period;
     private final Reference assigner;
 
-    public Identifier(java.lang.String id, List<Extension> extension, Code use, CodeableConcept type, Uri system,
-                      String value, Period period, Reference assigner) {
-        super(id, extension);
+    private Identifier(ExtensionData extensionData, Code use, CodeableConcept type, Uri system, String value,
+                       Period period, Reference assigner) {
+        super(extensionData);
         this.use = use;
         this.type = type;
         this.system = system;
@@ -56,7 +75,7 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     }
 
     public static Identifier create(IPersistentMap m) {
-        return new Identifier((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (Code) m.valAt(USE),
+        return new Identifier(ExtensionData.fromMap(m), (Code) m.valAt(USE),
                 (CodeableConcept) m.valAt(TYPE), (Uri) m.valAt(SYSTEM), (String) m.valAt(VALUE), (Period) m.valAt(PERIOD),
                 (Reference) m.valAt(ASSIGNER));
     }
@@ -64,13 +83,6 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(use) && Base.isInterned(type) &&
-                Base.isInterned(system) && Base.isInterned(value) &&
-                Base.isInterned(period) && Base.isInterned(assigner);
     }
 
     public Code use() {
@@ -105,9 +117,7 @@ public final class Identifier extends Element implements Complex, ExtensionValue
         if (key == VALUE) return value;
         if (key == PERIOD) return period;
         if (key == ASSIGNER) return assigner;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -119,13 +129,12 @@ public final class Identifier extends Element implements Complex, ExtensionValue
         seq = appendElement(seq, SYSTEM, system);
         seq = appendElement(seq, TYPE, type);
         seq = appendElement(seq, USE, use);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Identifier empty() {
-        return new Identifier(null, PersistentVector.EMPTY, null, null, null, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -136,22 +145,17 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     @Override
     @SuppressWarnings("unchecked")
     public Identifier assoc(Object key, Object val) {
-        if (key == ID)
-            return new Identifier((java.lang.String) val, extension, use, type, system, value, period, assigner);
-        if (key == EXTENSION)
-            return new Identifier(id, (List<Extension>) val, use, type, system, value, period, assigner);
-        if (key == USE)
-            return new Identifier(id, extension, (Code) val, type, system, value, period, assigner);
+        if (key == USE) return new Identifier(extensionData, (Code) val, type, system, value, period, assigner);
         if (key == TYPE)
-            return new Identifier(id, extension, use, (CodeableConcept) val, system, value, period, assigner);
-        if (key == SYSTEM)
-            return new Identifier(id, extension, use, type, (Uri) val, value, period, assigner);
-        if (key == VALUE)
-            return new Identifier(id, extension, use, type, system, (String) val, period, assigner);
-        if (key == PERIOD)
-            return new Identifier(id, extension, use, type, system, value, (Period) val, assigner);
-        if (key == ASSIGNER)
-            return new Identifier(id, extension, use, type, system, value, period, (Reference) val);
+            return new Identifier(extensionData, use, (CodeableConcept) val, system, value, period, assigner);
+        if (key == SYSTEM) return new Identifier(extensionData, use, type, (Uri) val, value, period, assigner);
+        if (key == VALUE) return new Identifier(extensionData, use, type, system, (String) val, period, assigner);
+        if (key == PERIOD) return new Identifier(extensionData, use, type, system, value, (Period) val, assigner);
+        if (key == ASSIGNER) return new Identifier(extensionData, use, type, system, value, period, (Reference) val);
+        if (key == EXTENSION)
+            return new Identifier(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), use, type, system, value, period, assigner);
+        if (key == ID)
+            return new Identifier(extensionData.withId((java.lang.String) val), use, type, system, value, period, assigner);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Identifier.");
     }
 
@@ -192,7 +196,7 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (use != null) {
             sink.putByte((byte) 2);
             use.hashInto(sink);
@@ -220,12 +224,16 @@ public final class Identifier extends Element implements Complex, ExtensionValue
     }
 
     @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(use) + Base.memSize(type) + Base.memSize(system) +
+                Base.memSize(value) + Base.memSize(period);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Identifier that = (Identifier) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Identifier that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(use, that.use) &&
                 Objects.equals(type, that.type) &&
                 Objects.equals(system, that.system) &&
@@ -236,14 +244,20 @@ public final class Identifier extends Element implements Complex, ExtensionValue
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, use, type, system, value, period, assigner);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(use);
+        result = 31 * result + Objects.hashCode(type);
+        result = 31 * result + Objects.hashCode(system);
+        result = 31 * result + Objects.hashCode(value);
+        result = 31 * result + Objects.hashCode(period);
+        result = 31 * result + Objects.hashCode(assigner);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "Identifier{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", use=" + use +
                 ", type=" + type +
                 ", system=" + system +

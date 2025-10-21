@@ -135,7 +135,7 @@
                     :id "foo"
                     :name [#fhir/HumanName{:family #fhir/string "Doe" :given [#fhir/string "John" #fhir/string "Foo"]}]})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "unable to evaluate `[#fhir/string \"John\" #fhir/string \"Foo\"]` as singleton"))
+        ::anom/message := "unable to evaluate `[#fhir/string-interned \"John\" #fhir/string-interned \"Foo\"]` as singleton"))
 
     (testing "with non-convertible type"
       (given (eval "Patient.name.family + ', ' + Patient.name"
@@ -143,7 +143,7 @@
                     :id "foo"
                     :name [#fhir/HumanName{:family #fhir/string "Doe"}]})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "unable to evaluate `[#fhir/HumanName{:family #fhir/string \"Doe\"}]` as singleton")))
+        ::anom/message := "unable to evaluate `[#fhir/HumanName{:family #fhir/string-interned \"Doe\"}]` as singleton")))
 
   (testing "and expression"
     (testing "with one telecom"
@@ -172,7 +172,7 @@
                       {:value #fhir/string "bar"
                        :use #fhir/code "work"}]})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "unable to evaluate `[#fhir/ContactPoint{:value #fhir/string \"foo\" :use #fhir/code \"home\"} #fhir/ContactPoint{:value #fhir/string \"bar\" :use #fhir/code \"work\"}]` as singleton"))))
+        ::anom/message := "unable to evaluate `[#fhir/ContactPoint{:value #fhir/string-interned \"foo\" :use #fhir/code \"home\"} #fhir/ContactPoint{:value #fhir/string-interned \"bar\" :use #fhir/code \"work\"}]` as singleton"))))
 
 ;; 5. Functions
 
@@ -301,7 +301,7 @@
              :id "id-162953"
              :address [#fhir/Address{:line [#fhir/string "a" #fhir/string "b"]}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "multiple result items `[#fhir/string \"a\" #fhir/string \"b\"]` while evaluating where function criteria"))
+      ::anom/message := "multiple result items `[#fhir/string-interned \"a\" #fhir/string-interned \"b\"]` while evaluating where function criteria"))
 
   (testing "return error on non-boolean criteria result"
     (given (eval

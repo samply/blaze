@@ -29,6 +29,7 @@
    [jsonista.core :as j]
    [juxt.iota :refer [given]])
   (:import
+   [blaze.fhir.spec.type Base]
    [blaze.fhir.spec.type.system DateTimes Times]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
@@ -427,9 +428,9 @@
                          [{:extension [{:url "foo"} {:url 0}]} 1]]]
       (given (write-parse-json {:resourceType "Patient" :_gender value})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `uri`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on integer value 0. Expected type is `string`."
         [:fhir/issues 0 :fhir.issues/code] := "invariant"
-        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `uri`."
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 0. Expected type is `string`."
         [:fhir/issues 0 :fhir.issues/expression] := (format "Patient.gender.extension[%d].url" idx))))
 
   (testing "unknown property Patient.gender.extension.name-163857"
@@ -2675,7 +2676,16 @@
         {:coding [{}]}
         #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
         {:text "text-223528"}
-        #fhir/CodeableConcept{:text #fhir/string "text-223528"}))
+        #fhir/CodeableConcept{:text #fhir/string "text-223528"})
+
+      (testing "interned data elements"
+        (are [json key value] (identical? value (key (write-parse-json "CodeableConcept" json)))
+          {:text "143903"} :text #fhir/string-interned "143903")))
+
+    (testing "XML"
+      (testing "interned data elements"
+        (are [xml key value] (identical? value (key (s2/conform :fhir.xml/CodeableConcept xml)))
+          (sexp [nil {} [:text {:value "150413"}]]) :text #fhir/string-interned "150413")))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (write-parse-cbor "CodeableConcept" json))
@@ -2687,6 +2697,10 @@
         #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}
         {:text "text-223528"}
         #fhir/CodeableConcept{:text #fhir/string "text-223528"})
+
+      (testing "interned data elements"
+        (are [cbor key value] (identical? value (key (write-parse-cbor "CodeableConcept" cbor)))
+          {:text "143903"} :text #fhir/string-interned "143903"))
 
       (testing "interning works"
         (are [x y] (identical? x y)
@@ -2750,23 +2764,42 @@
         {:system "foo" :code "bar"}
         #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}
         {:display "foo"}
-        #fhir/Coding{:display #fhir/string "foo"}))
+        #fhir/Coding{:display #fhir/string "foo"})
+
+      (testing "interned data elements"
+        (are [json key value] (identical? value (key (write-parse-json "Coding" json)))
+          {:system "143123"} :system #fhir/uri-interned "143123"
+          {:version "143903"} :version #fhir/string-interned "143903"
+          {:display "143942"} :display #fhir/string-interned "143942")))
+
+    (testing "XML"
+      (testing "interned data elements"
+        (are [xml key value] (identical? value (key (s2/conform :fhir.xml/Coding xml)))
+          (sexp [nil {} [:system {:value "145550"}]]) :system #fhir/uri-interned "145550"
+          (sexp [nil {} [:version {:value "145938"}]]) :version #fhir/string-interned "145938"
+          (sexp [nil {} [:display {:value "150034"}]]) :display #fhir/string-interned "150034")))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (write-parse-cbor "Coding" json))
         {:system "foo" :code "bar"}
         #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"})
 
+      (testing "interned data elements"
+        (are [cbor key value] (identical? value (key (write-parse-cbor "Coding" cbor)))
+          {:system "143123"} :system #fhir/uri-interned "143123"
+          {:version "143903"} :version #fhir/string-interned "143903"
+          {:display "143942"} :display #fhir/string-interned "143942"))
+
       (testing "interning works"
         (are [x y] (identical? x y)
-          (write-parse-cbor "Coding" {:system "foo" :code "bar"})
-          (write-parse-cbor "Coding" {:system "foo" :code "bar"})
+          (write-parse-cbor "Coding" {:system "system-143620" :code "bar"})
+          (write-parse-cbor "Coding" {:system "system-143620" :code "bar"})
 
-          (write-parse-cbor "Coding" {:system "foo" :version "version-182229" :code "bar"})
-          (write-parse-cbor "Coding" {:system "foo" :version "version-182229" :code "bar"})
+          (write-parse-cbor "Coding" {:system "system-143620" :version "version-182229" :code "bar"})
+          (write-parse-cbor "Coding" {:system "system-143620" :version "version-182229" :code "bar"})
 
-          (write-parse-cbor "Coding" {:system "foo" :code "bar" :display "display-182103"})
-          (write-parse-cbor "Coding" {:system "foo" :code "bar" :display "display-182103"})))))
+          (write-parse-cbor "Coding" {:system "system-143620" :code "bar" :display "display-182103"})
+          (write-parse-cbor "Coding" {:system "system-143620" :code "bar" :display "display-182103"})))))
 
   (testing "writing"
     (testing "JSON"
@@ -2926,7 +2959,18 @@
           ::anom/message := "Invalid JSON representation of a resource. Error on value `1`. Expected type is `decimal`."
           [:fhir/issues 0 :fhir.issues/code] := "invariant"
           [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `1`. Expected type is `decimal`."
-          [:fhir/issues 0 :fhir.issues/expression] := "Quantity.value")))
+          [:fhir/issues 0 :fhir.issues/expression] := "Quantity.value"))
+
+      (testing "interned data elements"
+        (are [json key value] (identical? value (key (write-parse-json "Quantity" json)))
+          {:unit "151658"} :unit #fhir/string-interned "151658"
+          {:system "151641"} :system #fhir/uri-interned "151641")))
+
+    (testing "XML"
+      (testing "interned data elements"
+        (are [xml key value] (identical? value (key (s2/conform :fhir.xml/Quantity xml)))
+          (sexp [nil {} [:unit {:value "151938"}]]) :unit #fhir/string-interned "151938"
+          (sexp [nil {} [:system {:value "151921"}]]) :system #fhir/uri-interned "151921")))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (write-parse-cbor "Quantity" json))
@@ -2936,10 +2980,18 @@
         {:value 1M}
         #fhir/Quantity{:value #fhir/decimal 1M})
 
+      (testing "interned data elements"
+        (are [cbor key value] (identical? value (key (write-parse-cbor "Quantity" cbor)))
+          {:unit "151658"} :unit #fhir/string-interned "151658"
+          {:system "151641"} :system #fhir/uri-interned "151641"))
+
       (testing "interning works"
         (are [x y] (identical? x y)
           (write-parse-cbor "Quantity" {:unit "unit-183017"})
-          (write-parse-cbor "Quantity" {:unit "unit-183017"})))
+          (write-parse-cbor "Quantity" {:unit "unit-183017"})
+
+          (write-parse-cbor "Quantity" {:system "system-151829"})
+          (write-parse-cbor "Quantity" {:system "system-151829"})))
 
       (testing "invalid"
         (given (write-parse-cbor "Quantity" {:value "1"})
@@ -3175,7 +3227,21 @@
           ::anom/message := "Invalid JSON representation of a resource. Error on integer value 1. Expected type is `code`."
           [:fhir/issues 0 :fhir.issues/code] := "invariant"
           [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 1. Expected type is `code`."
-          [:fhir/issues 0 :fhir.issues/expression] := "Identifier.use"))))
+          [:fhir/issues 0 :fhir.issues/expression] := "Identifier.use"))
+
+      (testing "interned data elements"
+        (are [json key value] (identical? value (key (write-parse-json "Identifier" json)))
+          {:system "152132"} :system #fhir/uri-interned "152132")))
+
+    (testing "XML"
+      (testing "interned data elements"
+        (are [xml key value] (identical? value (key (s2/conform :fhir.xml/Identifier xml)))
+          (sexp [nil {} [:system {:value "152057"}]]) :system #fhir/uri-interned "152057")))
+
+    (testing "CBOR"
+      (testing "interned data elements"
+        (are [cbor key value] (identical? value (key (write-parse-json "Identifier" cbor)))
+          {:system "152229"} :system #fhir/uri-interned "152229"))))
 
   (testing "writing"
     (testing "JSON"
@@ -3481,7 +3547,24 @@
           ::anom/message := "Invalid JSON representation of a resource. Error on integer value 1. Expected type is `code`."
           [:fhir/issues 0 :fhir.issues/code] := "invariant"
           [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on integer value 1. Expected type is `code`."
-          [:fhir/issues 0 :fhir.issues/expression] := "Address.use"))))
+          [:fhir/issues 0 :fhir.issues/expression] := "Address.use"))
+
+      (testing "interned data elements"
+        (are [json key value] (identical? value (key (write-parse-json "Address" json)))
+          {:city "141600"} :city #fhir/string-interned "141600"
+          {:district "141612"} :district #fhir/string-interned "141612"
+          {:state "141621"} :state #fhir/string-interned "141621"
+          {:postalCode "141631"} :postalCode #fhir/string-interned "141631"
+          {:country "141643"} :country #fhir/string-interned "141643")))
+
+    (testing "XML"
+      (testing "interned data elements"
+        (are [xml key value] (identical? value (key (s2/conform :fhir.xml/Address xml)))
+          (sexp [nil {} [:city {:value "145938"}]]) :city #fhir/string-interned "145938"
+          (sexp [nil {} [:district {:value "145938"}]]) :district #fhir/string-interned "145938"
+          (sexp [nil {} [:state {:value "145938"}]]) :state #fhir/string-interned "145938"
+          (sexp [nil {} [:postalCode {:value "145938"}]]) :postalCode #fhir/string-interned "145938"
+          (sexp [nil {} [:country {:value "150034"}]]) :country #fhir/string-interned "150034"))))
 
   (testing "writing"
     (testing "JSON"
@@ -3924,6 +4007,11 @@
                   (parse-cbor "Bundle"))
              bundle)))))
 
+  (testing "interned data elements"
+    (are [json path value] (identical? value (get-in (write-parse-json "Bundle" json) path))
+      {:link [{:relation "141802"}]} [:link 0 :relation] #fhir/string-interned "141802"
+      {:entry [{:response {:status "200"}}]} [:entry 0 :response :status] #fhir/string-interned "200"))
+
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json {:fhir/type :fhir/Bundle})
@@ -3941,7 +4029,12 @@
                :entry
                [{:fhir/type :fhir.Bundle/entry
                  :resource {:fhir/type :fhir/Patient}}]})
-             {:resourceType "Bundle" :entry [{:resource {:resourceType "Patient"}}]})))))
+             {:resourceType "Bundle" :entry [{:resource {:resourceType "Patient"}}]}))))
+
+  (testing "mem-size"
+    (satisfies-prop 20
+      (prop/for-all [bundle (fg/bundle)]
+        (pos? (Base/memSize bundle))))))
 
 (deftest patient-test
   (testing "round-trip"
@@ -3983,7 +4076,12 @@
               {:fhir/type :fhir/Patient
                :gender #fhir/code "female"
                :active #fhir/boolean true})
-             {:resourceType "Patient" :active true :gender "female"})))))
+             {:resourceType "Patient" :active true :gender "female"}))))
+
+  (testing "mem-size"
+    (satisfies-prop 20
+      (prop/for-all [patient (fg/patient)]
+        (pos? (Base/memSize patient))))))
 
 (deftest list-test
   (testing "references"
@@ -4043,6 +4141,11 @@
               :valueString "value-201533"
               :_valueString {:id "id-201526"}}))))
 
+  (testing "mem-size"
+    (satisfies-prop 20
+      (prop/for-all [observation (fg/observation)]
+        (pos? (Base/memSize observation)))))
+
   (testing "references"
     (are [x refs] (= refs (type/references x))
       {:fhir/type :fhir/Observation
@@ -4072,6 +4175,11 @@
           (= (->> (write-cbor procedure)
                   (parse-cbor "Procedure"))
              procedure)))))
+
+  (testing "mem-size"
+    (satisfies-prop 20
+      (prop/for-all [procedure (fg/procedure)]
+        (pos? (Base/memSize procedure)))))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -4121,7 +4229,12 @@
         (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
           (= (->> (write-cbor allergy-intolerance)
                   (parse-cbor "AllergyIntolerance"))
-             allergy-intolerance))))))
+             allergy-intolerance)))))
+
+  (testing "mem-size"
+    (satisfies-prop 20
+      (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
+        (pos? (Base/memSize allergy-intolerance))))))
 
 (def ^:private code-system-non-summary-properties
   #{:description :purpose :copyright :concept})
@@ -4134,7 +4247,12 @@
               code-system (parse-cbor "CodeSystem" source :summary)]
           (and
            (->> code-system :meta :tag (some fu/subsetted?))
-           (not-any? code-system-non-summary-properties (keys code-system))))))))
+           (not-any? code-system-non-summary-properties (keys code-system)))))))
+
+  (testing "mem-size"
+    (satisfies-prop 20
+      (prop/for-all [code-system (fg/code-system)]
+        (pos? (Base/memSize code-system))))))
 
 (def ^:private value-set-non-summary-properties
   #{:description :purpose :copyright :compose :expansion})
@@ -4262,4 +4380,9 @@
               {:fhir/type :fhir/Consent
                :policyRule #fhir/CodeableConcept{}})
              {:resourceType "Consent"
-              :policyRule {}})))))
+              :policyRule {}}))))
+
+  (testing "mem-size"
+    (satisfies-prop 20
+      (prop/for-all [consent (fg/consent)]
+        (pos? (Base/memSize consent))))))

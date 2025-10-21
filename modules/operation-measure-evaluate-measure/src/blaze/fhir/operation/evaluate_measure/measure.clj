@@ -333,7 +333,7 @@
     :value
     (type/quantity
      {:code #fhir/code "s"
-      :system #fhir/uri "http://unitsofmeasure.org"
+      :system #fhir/uri-interned "http://unitsofmeasure.org"
       :unit #fhir/string "s"
       :value (type/decimal (bigdec duration))})}))
 

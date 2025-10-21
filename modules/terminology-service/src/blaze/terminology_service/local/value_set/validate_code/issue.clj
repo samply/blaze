@@ -7,7 +7,7 @@
 
 (defn- tx-issue-type-coding [code]
   (type/coding
-   {:system #fhir/uri "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
+   {:system #fhir/uri-interned "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
     :code (type/code code)}))
 
 (def ^:private not-found-coding

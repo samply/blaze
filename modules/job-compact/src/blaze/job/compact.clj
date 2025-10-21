@@ -30,7 +30,7 @@
   #fhir/Quantity
    {:value #fhir/decimal 0M
     :unit #fhir/string "s"
-    :system #fhir/uri "http://unitsofmeasure.org"
+    :system #fhir/uri-interned "http://unitsofmeasure.org"
     :code #fhir/code "s"})
 
 (defn job
@@ -44,23 +44,23 @@
    #fhir/CodeableConcept
     {:coding
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
         :code #fhir/code "compact"
-        :display #fhir/string "Compact a Database Column Family"}]}
+        :display #fhir/string-interned "Compact a Database Column Family"}]}
    :authoredOn (type/dateTime authored-on)
    :input
    [{:fhir/type :fhir.Task/input
      :type (type/codeable-concept
             {:coding
              [(type/coding
-               {:system (type/uri parameter-system)
+               {:system (type/uri-interned parameter-system)
                 :code #fhir/code "database"})]})
      :value (type/code database)}
     {:fhir/type :fhir.Task/input
      :type (type/codeable-concept
             {:coding
              [(type/coding
-               {:system (type/uri parameter-system)
+               {:system (type/uri-interned parameter-system)
                 :code #fhir/code "column-family"})]})
      :value (type/code column-family)}]})
 

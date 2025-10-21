@@ -3,29 +3,46 @@ package blaze.fhir.spec.type;
 import clojure.lang.ISeq;
 import clojure.lang.PersistentList;
 
-import java.lang.String;
-import java.util.List;
-
 import static blaze.fhir.spec.type.Base.appendElement;
 
-abstract class PrimitiveElement extends Element implements Primitive {
+abstract class PrimitiveElement extends AbstractElement implements Primitive {
 
-    public PrimitiveElement(String id, List<Extension> extension) {
-        super(id, extension);
+    /**
+     * Memory size of most primitive types.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - value reference
+     */
+    protected static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 8;
+
+    protected PrimitiveElement(ExtensionData extensionData) {
+        super(extensionData);
+    }
+
+    @Override
+    public boolean isInterned() {
+        return extensionData.isInterned() && !hasValue();
+    }
+
+    public boolean isExtended() {
+        return extensionData.isNotEmpty();
     }
 
     @Override
     public Object valAt(Object key, Object notFound) {
-        if (key == VALUE) return value();
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return key == VALUE ? value() : extensionData.valAt(key, notFound);
     }
 
     @Override
     public ISeq seq() {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, VALUE, value());
-        return appendBase(seq);
+        return extensionData.append(seq);
+    }
+
+    @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize();
     }
 }

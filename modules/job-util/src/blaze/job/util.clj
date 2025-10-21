@@ -25,14 +25,14 @@
   (type/codeable-concept
    {:coding
     [(type/coding
-      {:system (type/uri status-reason-url)
+      {:system (type/uri-interned status-reason-url)
        :code (type/code reason)})]}))
 
 (defn- mk-sub-status [system-url code]
   (type/codeable-concept
    {:coding
     [(type/coding
-      {:system (type/uri system-url)
+      {:system (type/uri-interned system-url)
        :code (type/code code)})]}))
 
 (def orderly-shut-down-status-reason (mk-status-reason "orderly-shutdown"))
@@ -127,7 +127,7 @@
    :type (type/codeable-concept
           {:coding
            [(type/coding
-             {:system (type/uri system)
+             {:system (type/uri-interned system)
               :code (type/code code)})]})
    :value value})
 

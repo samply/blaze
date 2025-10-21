@@ -17,7 +17,7 @@ import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-public final class Uri extends PrimitiveElement {
+public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Uri.Interned {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "uri");
 
@@ -25,35 +25,48 @@ public final class Uri extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 5;
 
-    private static final Interner<InternerKey, Uri> INTERNER = Interners.weakInterner(k -> create(null, k.extension, k.value));
-    private static final Uri EMPTY = new Uri(null, null, null);
-
-    private final SerializedString value;
-
-    private Uri(String id, List<Extension> extension, SerializedString value) {
-        super(id, extension);
-        this.value = value;
+    private Uri(ExtensionData extensionData) {
+        super(extensionData);
     }
 
-    private static Uri create(String id, List<Extension> extension, String value) {
-        return new Uri(id, extension, value == null ? null : new SerializedString(value));
+    private static Uri maybeIntern(ExtensionData extensionData, String value) {
+        return extensionData.isInterned() && (value == null || value.length() <= 4)
+                ? Interned.intern(extensionData, value)
+                : new Normal(extensionData, value);
     }
 
-    private static Uri intern(List<Extension> extension, String value) {
-        return INTERNER.intern(new InternerKey(extension, value));
-    }
-
-    private static Uri maybeIntern(String id, List<Extension> extension, String value) {
-        return id == null && Base.areAllInterned(extension) ? intern(extension, value) : create(id, extension, value);
-    }
-
-    @SuppressWarnings("unchecked")
     public static Uri create(String value) {
-        return intern(PersistentVector.EMPTY, requireNonNull(value));
+        return value.length() <= 4 ? Interned.intern(ExtensionData.EMPTY, value) : new Normal(ExtensionData.EMPTY, value);
     }
 
     public static Uri create(IPersistentMap m) {
-        return maybeIntern((String) m.valAt(ID), Base.listFrom(m, EXTENSION), (String) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), (String) m.valAt(VALUE));
+    }
+
+    public static Uri createForceIntern(String value) {
+        return Interned.intern(ExtensionData.EMPTY, requireNonNull(value));
+    }
+
+    public static Uri createForceIntern(IPersistentMap m) {
+        var extensionData = ExtensionData.fromMap(m);
+        var value = (String) m.valAt(VALUE);
+        return extensionData.isInterned() ? Interned.intern(extensionData, value) : new Normal(extensionData, value);
+    }
+
+    /**
+     * Creates the hash of a FHIR string with {@code value} without creating the
+     * FHIR string first.
+     *
+     * @param sink  the sink for the hash bytes
+     * @param value the string value to hash
+     */
+    @SuppressWarnings("UnstableApiUsage")
+    public static void hashIntoValue(PrimitiveSink sink, String value) {
+        sink.putByte(HASH_MARKER);
+        if (value != null) {
+            sink.putByte((byte) 2);
+            Strings.hashInto(value, sink);
+        }
     }
 
     @Override
@@ -62,27 +75,7 @@ public final class Uri extends PrimitiveElement {
     }
 
     @Override
-    public boolean isInterned() {
-        return isBaseInterned();
-    }
-
-    public String value() {
-        return value == null ? null : value.getValue();
-    }
-
-    @Override
-    public Uri empty() {
-        return EMPTY;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public Uri assoc(Object key, Object val) {
-        if (key == VALUE) return maybeIntern(id, extension, (String) val);
-        if (key == EXTENSION) return maybeIntern(id, (List<Extension>) (val == null ? PersistentVector.EMPTY : val), value());
-        if (key == ID) return maybeIntern((String) val, extension, value());
-        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Uri.");
-    }
+    public abstract String value();
 
     @Override
     public FieldName fieldNameExtensionValue() {
@@ -90,51 +83,161 @@ public final class Uri extends PrimitiveElement {
     }
 
     @Override
-    public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
-        if (hasValue()) {
-            generator.writeString(value);
-        } else {
-            generator.writeNull();
-        }
-    }
-
-    @Override
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (hasValue()) {
             sink.putByte((byte) 2);
-            Strings.hashInto(value.getValue(), sink);
+            Strings.hashInto(value(), sink);
         }
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Uri c = (Uri) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        return o instanceof Uri that &&
+                Objects.equals(extensionData, that.extensionData) &&
+                Objects.equals(value(), that.value());
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(id, extension, value);
+    public final int hashCode() {
+        return 31 * extensionData.hashCode() + Objects.hashCode(value());
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "Uri{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
-                ", value=" + (value == null ? null : '\'' + value() + '\'') +
+                extensionData +
+                ", value=" + (value() == null ? null : '\'' + value() + '\'') +
                 '}';
     }
 
-    private record InternerKey(List<Extension> extension, String value) {
+    public static final class Normal extends Uri {
+
+        private static final Normal EMPTY = new Normal(ExtensionData.EMPTY, null);
+
+        private final String value;
+
+        private Normal(ExtensionData extensionData, String value) {
+            super(extensionData);
+            this.value = value;
+        }
+
+        public static Normal create(IPersistentMap m) {
+            return new Normal(ExtensionData.fromMap(m), (String) m.valAt(VALUE));
+        }
+
+        @Override
+        public String value() {
+            return value;
+        }
+
+        @Override
+        public Normal empty() {
+            return EMPTY;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Uri assoc(Object key, Object val) {
+            if (key == VALUE) return maybeIntern(extensionData, (String) val);
+            if (key == EXTENSION)
+                return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+            if (key == ID) return maybeIntern(extensionData.withId((String) val), value);
+            throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Uri.");
+        }
+
+        @Override
+        public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+            if (hasValue()) {
+                generator.writeString(value);
+            } else {
+                generator.writeNull();
+            }
+        }
+
+        @Override
+        public int memSize() {
+            return super.memSize() + Strings.memSize(value);
+        }
+    }
+
+    public static final class Interned extends Uri {
+
+        private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, null);
+        private static final Interner<InternerKey, Interned> INTERNER = Interners.weakInterner(k -> create(k.extensionData, k.value));
+
+        private final SerializedString value;
+
+        private Interned(ExtensionData extensionData, SerializedString value) {
+            super(extensionData);
+            this.value = value;
+        }
+
+        private static Interned create(ExtensionData extensionData, String value) {
+            return new Interned(extensionData, value == null ? null : new SerializedString(value));
+        }
+
+        private static Uri maybeIntern(ExtensionData extensionData, String value) {
+            return extensionData.isInterned() ? intern(extensionData, value) : new Normal(extensionData, value);
+        }
+
+        private static Interned intern(ExtensionData extensionData, String value) {
+            return INTERNER.intern(new InternerKey(extensionData, value));
+        }
+
+        public static Interned create(IPersistentMap m) {
+            var extensionData = ExtensionData.fromMap(m);
+            var value = (String) m.valAt(VALUE);
+            if (extensionData.isInterned()) return intern(extensionData, value);
+            throw new IllegalArgumentException("Can't create an interned FHIR.Uri using non-interned extension data.");
+        }
+
+        @Override
+        public boolean isInterned() {
+            return true;
+        }
+
+        @Override
+        public String value() {
+            return value == null ? null : value.getValue();
+        }
+
+        @Override
+        public Interned empty() {
+            return EMPTY;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Uri assoc(Object key, Object val) {
+            if (key == VALUE) return maybeIntern(extensionData, (String) val);
+            if (key == EXTENSION)
+                return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value());
+            if (key == ID) return maybeIntern(extensionData.withId((String) val), value());
+            throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Uri.");
+        }
+
+        @Override
+        public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
+            if (hasValue()) {
+                generator.writeString(value);
+            } else {
+                generator.writeNull();
+            }
+        }
+
+        @Override
+        public int memSize() {
+            return 0;
+        }
+    }
+
+    private record InternerKey(ExtensionData extensionData, String value) {
         private InternerKey {
-            requireNonNull(extension);
+            requireNonNull(extensionData);
         }
     }
 }

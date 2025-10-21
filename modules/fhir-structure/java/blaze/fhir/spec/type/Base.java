@@ -1,5 +1,6 @@
 package blaze.fhir.spec.type;
 
+import blaze.fhir.spec.type.system.Strings;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
@@ -16,6 +17,13 @@ public interface Base extends IPersistentMap, Map<Object, Object>, IRecord {
     Keyword EXTENSION = Keyword.intern("extension");
     Keyword VALUE = Keyword.intern("value");
 
+    int MEM_SIZE_OBJECT_HEADER = 8;
+    int MEM_SIZE_PERSISTENT_VECTOR_OBJECT = 40;
+    int MEM_SIZE_PERSISTENT_ARRAY_MAP_OBJECT = 24;
+    int MEM_SIZE_PERSISTENT_HASH_MAP_OBJECT = 40;
+    int MEM_SIZE_ATOMIC_REFERENCE = 16;
+    int MEM_SIZE_REFERENCE = 4;
+
     IFn imapCons = RT.var("clojure.core", "imap-cons");
 
     static ISeq appendElement(ISeq base, Keyword name, Object value) {
@@ -28,7 +36,8 @@ public interface Base extends IPersistentMap, Map<Object, Object>, IRecord {
 
     @SuppressWarnings("unchecked")
     static <T> List<T> listFrom(IPersistentMap m, Keyword key) {
-        return (List<T>) m.valAt(key, PersistentVector.EMPTY);
+        var list = m.valAt(key);
+        return list == null ? PersistentVector.EMPTY : (List<T>) list;
     }
 
     Keyword fhirType();
@@ -59,12 +68,54 @@ public interface Base extends IPersistentMap, Map<Object, Object>, IRecord {
         return true;
     }
 
+    static int memSize(Object x) {
+        if (x == null) return 0;
+        return switch (x) {
+            case Base b -> b.memSize();
+            case PersistentArrayMap m -> m.isEmpty() ? 0 : memSizeArrayMap(m);
+            case PersistentHashMap m -> m.isEmpty() ? 0 : memSizeHashMap(m);
+            case PersistentVector v -> v.isEmpty() ? 0 : memSizeVector(v);
+            case java.lang.String s -> Strings.memSize(s);
+            default -> 0;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    static int memSizeArrayMap(PersistentArrayMap m) {
+        return MEM_SIZE_PERSISTENT_ARRAY_MAP_OBJECT + 16 +
+                ((m.size() * MEM_SIZE_REFERENCE * 2 + 3) & ~7) +
+                m.values().stream().mapToInt(Base::memSize).sum();
+    }
+
+    @SuppressWarnings("unchecked")
+    static int memSizeHashMap(PersistentHashMap m) {
+        // TODO: improve calculation
+        return MEM_SIZE_PERSISTENT_HASH_MAP_OBJECT + MEM_SIZE_ATOMIC_REFERENCE +
+                m.size() * MEM_SIZE_REFERENCE * 4 +
+                m.values().stream().mapToInt(Base::memSize).sum();
+    }
+
+    @SuppressWarnings("unchecked")
+    static int memSizeVector(PersistentVector list) {
+        // TODO: improve calculation for lists with more than 32 elements
+        return MEM_SIZE_PERSISTENT_VECTOR_OBJECT + 16 + ((list.size() * MEM_SIZE_REFERENCE + 3) & ~7) +
+                list.stream().mapToInt(Base::memSize).sum();
+    }
+
+    static int memSize(Base value) {
+        return value == null ? 0 : value.memSize();
+    }
+
     void serializeJsonPrimitiveExtension(JsonGenerator generator) throws IOException;
 
     void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException;
 
     @SuppressWarnings("UnstableApiUsage")
     void hashInto(PrimitiveSink sink);
+
+    default int memSize() {
+        return 0;
+    }
 
     @Override
     default boolean containsKey(Object key) {

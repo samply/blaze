@@ -25,35 +25,34 @@ public final class Code extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 13;
 
-    private static final Interner<InternerKey, Code> INTERNER = Interners.weakInterner(k -> create(null, k.extension, k.value));
-    private static final Code EMPTY = new Code(null, null, null);
+    private static final Interner<InternerKey, Code> INTERNER = Interners.weakInterner(k -> create(k.extensionData, k.value));
+    private static final Code EMPTY = new Code(ExtensionData.EMPTY, null);
 
     private final SerializedString value;
 
-    private Code(String id, List<Extension> extension, SerializedString value) {
-        super(id, extension);
+    private Code(ExtensionData extensionData, SerializedString value) {
+        super(extensionData);
         this.value = value;
     }
 
-    private static Code create(String id, List<Extension> extension, String value) {
-        return new Code(id, extension, value == null ? null : new SerializedString(value));
+    private static Code create(ExtensionData extensionData, String value) {
+        return new Code(extensionData, value == null ? null : new SerializedString(value));
     }
 
-    private static Code intern(List<Extension> extension, String value) {
-        return INTERNER.intern(new InternerKey(extension, value));
+    private static Code intern(ExtensionData extensionData, String value) {
+        return INTERNER.intern(new InternerKey(extensionData, value));
     }
 
-    private static Code maybeIntern(String id, List<Extension> extension, String value) {
-        return id == null && Base.areAllInterned(extension) ? intern(extension, value) : create(id, extension, value);
+    private static Code maybeIntern(ExtensionData extensionData, String value) {
+        return extensionData.isInterned() ? intern(extensionData, value) : create(extensionData, value);
     }
 
-    @SuppressWarnings("unchecked")
     public static Code create(String value) {
-        return intern(PersistentVector.EMPTY, requireNonNull(value));
+        return intern(ExtensionData.EMPTY, requireNonNull(value));
     }
 
     public static Code create(IPersistentMap m) {
-        return maybeIntern((String) m.valAt(ID), Base.listFrom(m, EXTENSION), (String) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), (String) m.valAt(VALUE));
     }
 
     @Override
@@ -63,7 +62,7 @@ public final class Code extends PrimitiveElement {
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned();
+        return extensionData.isInterned();
     }
 
     @Override
@@ -79,9 +78,10 @@ public final class Code extends PrimitiveElement {
     @Override
     @SuppressWarnings("unchecked")
     public Code assoc(Object key, Object val) {
-        if (key == VALUE) return maybeIntern(id, extension, (String) val);
-        if (key == EXTENSION) return maybeIntern(id, (List<Extension>) (val == null ? PersistentVector.EMPTY : val), value());
-        if (key == ID) return maybeIntern((String) val, extension, value());
+        if (key == VALUE) return maybeIntern(extensionData, (String) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value());
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), value());
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Code.");
     }
 
@@ -103,7 +103,7 @@ public final class Code extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (hasValue()) {
             sink.putByte((byte) 2);
             Strings.hashInto(value.getValue(), sink);
@@ -111,31 +111,34 @@ public final class Code extends PrimitiveElement {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : super.memSize() /* TODO: SerializedString mem size */;
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Code c = (Code) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Code that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
     public String toString() {
         return "Code{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", value=" + (value == null ? null : '\'' + value() + '\'') +
                 '}';
     }
 
-    private record InternerKey(List<Extension> extension, String value) {
+    private record InternerKey(ExtensionData extensionData, String value) {
         private InternerKey {
-            requireNonNull(extension);
+            requireNonNull(extensionData);
         }
     }
 }

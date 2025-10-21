@@ -2,7 +2,6 @@
   (:require
    [blaze.fhir.spec.impl :as impl]
    [blaze.fhir.spec.impl-spec]
-   [blaze.fhir.spec.impl.specs :as specs]
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.impl.xml-spec]
    [blaze.fhir.spec.type :as type]
@@ -296,10 +295,8 @@
 
   (testing "XML representation of Extension"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Extension")))
-      [:fhir.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
-      [:fhir.xml.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
+      [:fhir.Extension/url 0 :spec-form regexes->str] := `string?
+      [:fhir.xml.Extension/url 0 :spec-form regexes->str] := `string?
       [:fhir.xml.Extension/url 0 :representation] := :xmlAttr))
 
   (testing "XML representation of Coding"
@@ -324,7 +321,13 @@
 
   (testing "XML representation of Measure.url"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Measure")))
-      [:fhir.xml.Measure/url 0 :spec-form] := :fhir.xml/uri))
+      [:fhir.xml.Measure/url 0 :spec-form regexes->str]
+      := `(s2/and
+           xml/element?
+           (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
+           (s2/conformer xml/remove-character-content xml/set-extension-tag)
+           (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
+           (s2/conformer (xml/xml-constructor type/uri-interned identity) type/to-xml))))
 
   (testing "XML representation of Questionnaire.item contains recursive spec to itself"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Questionnaire")))
@@ -341,7 +344,7 @@
            (fn [~'e] (xml/value-matches? "[\\r\\n\\t\\u0020-\\uFFFF]+" ~'e))
            (s2/conformer xml/remove-character-content xml/set-extension-tag)
            (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-           (s2/conformer (xml/xml-constructor type/string identity) type/to-xml)))))
+           (s2/conformer (xml/xml-constructor type/string-interned identity) type/to-xml)))))
 
 (deftest elem-def->spec-def-test
   (testing "normal type"

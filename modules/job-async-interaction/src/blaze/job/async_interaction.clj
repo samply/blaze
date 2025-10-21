@@ -33,9 +33,9 @@
    :code #fhir/CodeableConcept
           {:coding
            [#fhir/Coding
-             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+             {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code "async-interaction"
-              :display #fhir/string "Asynchronous Interaction Request"}]}
+              :display #fhir/string-interned "Asynchronous Interaction Request"}]}
    :authoredOn (type/dateTime authored-on)
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))
@@ -43,7 +43,7 @@
      :type (type/codeable-concept
             {:coding
              [(type/coding
-               {:system (type/uri u/parameter-uri)
+               {:system (type/uri-interned u/parameter-uri)
                 :code #fhir/code "t"})]})
      :value (type/unsignedInt t)}]})
 

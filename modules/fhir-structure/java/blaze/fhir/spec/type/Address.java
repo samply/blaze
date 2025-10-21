@@ -12,8 +12,28 @@ import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
+import static java.util.Objects.requireNonNull;
 
-public final class Address extends Element implements Complex, ExtensionValue {
+public final class Address extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - use reference
+     * 4 byte - type reference
+     * 4 byte - text reference
+     * 4 byte - line reference
+     * 4 byte - city reference
+     * 4 byte - district reference
+     * 4 byte - state reference
+     * 4 byte - postalCode reference
+     * 4 byte - country reference
+     * 4 byte - period reference
+     * 4 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 48;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Address");
 
@@ -45,6 +65,10 @@ public final class Address extends Element implements Complex, ExtensionValue {
 
     private static final byte HASH_MARKER = 47;
 
+    @SuppressWarnings("unchecked")
+    private static final Address EMPTY = new Address(ExtensionData.EMPTY, null, null, null, PersistentVector.EMPTY,
+            null, null, null, null, null, null);
+
     private final Code use;
     private final Code type;
     private final String text;
@@ -56,14 +80,13 @@ public final class Address extends Element implements Complex, ExtensionValue {
     private final String country;
     private final Period period;
 
-    @SuppressWarnings("unchecked")
-    public Address(java.lang.String id, List<Extension> extension, Code use, Code type, String text, List<String> line,
-                   String city, String district, String state, String postalCode, String country, Period period) {
-        super(id, extension);
+    private Address(ExtensionData extensionData, Code use, Code type, String text, List<String> line,
+                    String city, String district, String state, String postalCode, String country, Period period) {
+        super(extensionData);
         this.use = use;
         this.type = type;
         this.text = text;
-        this.line = line == null ? PersistentVector.EMPTY : line;
+        this.line = requireNonNull(line);
         this.city = city;
         this.district = district;
         this.state = state;
@@ -73,24 +96,14 @@ public final class Address extends Element implements Complex, ExtensionValue {
     }
 
     public static Address create(IPersistentMap m) {
-        return new Address((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (Code) m.valAt(USE), (Code) m.valAt(TYPE), (String) m.valAt(TEXT), Base.listFrom(m, LINE),
-                (String) m.valAt(CITY), (String) m.valAt(DISTRICT), (String) m.valAt(STATE),
+        return new Address(ExtensionData.fromMap(m), (Code) m.valAt(USE), (Code) m.valAt(TYPE), (String) m.valAt(TEXT),
+                Base.listFrom(m, LINE), (String) m.valAt(CITY), (String) m.valAt(DISTRICT), (String) m.valAt(STATE),
                 (String) m.valAt(POSTAL_CODE), (String) m.valAt(COUNTRY), (Period) m.valAt(PERIOD));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(use) && Base.isInterned(type) &&
-                Base.isInterned(text) && Base.areAllInterned(line) && Base.isInterned(city) &&
-                Base.isInterned(district) && Base.isInterned(state) &&
-                Base.isInterned(postalCode) && Base.isInterned(country) &&
-                Base.isInterned(period);
     }
 
     public Code use() {
@@ -145,51 +158,7 @@ public final class Address extends Element implements Complex, ExtensionValue {
         if (key == POSTAL_CODE) return postalCode;
         if (key == COUNTRY) return country;
         if (key == PERIOD) return period;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public Address empty() {
-        return new Address(null, PersistentVector.EMPTY, null, null, null, PersistentVector.EMPTY, null, null, null,
-                null, null, null);
-    }
-
-    @Override
-    public Iterator<Map.Entry<Object, Object>> iterator() {
-        return new BaseIterator(this, FIELDS);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public Address assoc(Object key, Object val) {
-        if (key == ID)
-            return new Address((java.lang.String) val, extension, use, type, text, line, city, district, state, postalCode, country, period);
-        if (key == EXTENSION)
-            return new Address(id, (List<Extension>) val, use, type, text, line, city, district, state, postalCode, country, period);
-        if (key == USE)
-            return new Address(id, extension, (Code) val, type, text, line, city, district, state, postalCode, country, period);
-        if (key == TYPE)
-            return new Address(id, extension, use, (Code) val, text, line, city, district, state, postalCode, country, period);
-        if (key == TEXT)
-            return new Address(id, extension, use, type, (String) val, line, city, district, state, postalCode, country, period);
-        if (key == LINE)
-            return new Address(id, extension, use, type, text, (List<String>) val, city, district, state, postalCode, country, period);
-        if (key == CITY)
-            return new Address(id, extension, use, type, text, line, (String) val, district, state, postalCode, country, period);
-        if (key == DISTRICT)
-            return new Address(id, extension, use, type, text, line, city, (String) val, state, postalCode, country, period);
-        if (key == STATE)
-            return new Address(id, extension, use, type, text, line, city, district, (String) val, postalCode, country, period);
-        if (key == POSTAL_CODE)
-            return new Address(id, extension, use, type, text, line, city, district, state, (String) val, country, period);
-        if (key == COUNTRY)
-            return new Address(id, extension, use, type, text, line, city, district, state, postalCode, (String) val, period);
-        if (key == PERIOD)
-            return new Address(id, extension, use, type, text, line, city, district, state, postalCode, country, (Period) val);
-        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Address.");
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -207,7 +176,47 @@ public final class Address extends Element implements Complex, ExtensionValue {
         seq = appendElement(seq, TEXT, text);
         seq = appendElement(seq, TYPE, type);
         seq = appendElement(seq, USE, use);
-        return appendBase(seq);
+        return extensionData.append(seq);
+    }
+
+    @Override
+    public Address empty() {
+        return EMPTY;
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Address assoc(Object key, Object val) {
+        if (key == USE)
+            return new Address(extensionData, (Code) val, type, text, line, city, district, state, postalCode, country, period);
+        if (key == TYPE)
+            return new Address(extensionData, use, (Code) val, text, line, city, district, state, postalCode, country, period);
+        if (key == TEXT)
+            return new Address(extensionData, use, type, (String) val, line, city, district, state, postalCode, country, period);
+        if (key == LINE)
+            return new Address(extensionData, use, type, text, (List<String>) (val == null ? PersistentVector.EMPTY : val), city, district, state, postalCode, country, period);
+        if (key == CITY)
+            return new Address(extensionData, use, type, text, line, (String) val, district, state, postalCode, country, period);
+        if (key == DISTRICT)
+            return new Address(extensionData, use, type, text, line, city, (String) val, state, postalCode, country, period);
+        if (key == STATE)
+            return new Address(extensionData, use, type, text, line, city, district, (String) val, postalCode, country, period);
+        if (key == POSTAL_CODE)
+            return new Address(extensionData, use, type, text, line, city, district, state, (String) val, country, period);
+        if (key == COUNTRY)
+            return new Address(extensionData, use, type, text, line, city, district, state, postalCode, (String) val, period);
+        if (key == PERIOD)
+            return new Address(extensionData, use, type, text, line, city, district, state, postalCode, country, (Period) val);
+        if (key == EXTENSION)
+            return new Address(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), use, type, text, line, city, district, state, postalCode, country, period);
+        if (key == ID)
+            return new Address(extensionData.withId((java.lang.String) val), use, type, text, line, city, district, state, postalCode, country, period);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Address.");
     }
 
     @Override
@@ -257,7 +266,7 @@ public final class Address extends Element implements Complex, ExtensionValue {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (use != null) {
             sink.putByte((byte) 2);
             use.hashInto(sink);
@@ -304,12 +313,17 @@ public final class Address extends Element implements Complex, ExtensionValue {
     }
 
     @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(use) + Base.memSize(type) + Base.memSize(text) +
+                Base.memSize(line) + Base.memSize(city) + Base.memSize(district) + Base.memSize(state) +
+                Base.memSize(postalCode) + Base.memSize(country) + Base.memSize(period);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Address that = (Address) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Address that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(use, that.use) &&
                 Objects.equals(type, that.type) &&
                 Objects.equals(text, that.text) &&
@@ -324,15 +338,24 @@ public final class Address extends Element implements Complex, ExtensionValue {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, use, type, text, line, city,
-                district, state, postalCode, country, period);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(use);
+        result = 31 * result + Objects.hashCode(type);
+        result = 31 * result + Objects.hashCode(text);
+        result = 31 * result + Objects.hashCode(line);
+        result = 31 * result + Objects.hashCode(city);
+        result = 31 * result + Objects.hashCode(district);
+        result = 31 * result + Objects.hashCode(state);
+        result = 31 * result + Objects.hashCode(postalCode);
+        result = 31 * result + Objects.hashCode(country);
+        result = 31 * result + Objects.hashCode(period);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "Address{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", use=" + use +
                 ", type=" + type +
                 ", text=" + text +

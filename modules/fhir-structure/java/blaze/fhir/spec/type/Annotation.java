@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Annotation extends Element implements Complex, ExtensionValue {
+public final class Annotation extends AbstractElement implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Annotation");
 
@@ -32,30 +32,27 @@ public final class Annotation extends Element implements Complex, ExtensionValue
 
     private static final byte HASH_MARKER = 49;
 
+    private static final Annotation EMPTY = new Annotation(ExtensionData.EMPTY, null, null, null);
+
     private final Base author;
     private final DateTime time;
     private final Markdown text;
 
-    public Annotation(java.lang.String id, List<Extension> extension, Base author, DateTime time, Markdown text) {
-        super(id, extension);
+    private Annotation(ExtensionData extensionData, Base author, DateTime time, Markdown text) {
+        super(extensionData);
         this.author = author;
         this.time = time;
         this.text = text;
     }
 
     public static Annotation create(IPersistentMap m) {
-        return new Annotation((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (Base) m.valAt(AUTHOR), (DateTime) m.valAt(TIME), (Markdown) m.valAt(TEXT));
+        return new Annotation(ExtensionData.fromMap(m), (Base) m.valAt(AUTHOR), (DateTime) m.valAt(TIME),
+                (Markdown) m.valAt(TEXT));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(author) && Base.isInterned(time) && Base.isInterned(text);
     }
 
     public Base author() {
@@ -75,9 +72,7 @@ public final class Annotation extends Element implements Complex, ExtensionValue
         if (key == AUTHOR) return author;
         if (key == TIME) return time;
         if (key == TEXT) return text;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -86,13 +81,12 @@ public final class Annotation extends Element implements Complex, ExtensionValue
         seq = appendElement(seq, TEXT, text);
         seq = appendElement(seq, TIME, time);
         seq = appendElement(seq, AUTHOR, author);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Annotation empty() {
-        return new Annotation(null, PersistentVector.EMPTY, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -103,12 +97,12 @@ public final class Annotation extends Element implements Complex, ExtensionValue
     @Override
     @SuppressWarnings("unchecked")
     public Annotation assoc(Object key, Object val) {
-        if (key == ID) return new Annotation((java.lang.String) val, extension, author, time, text);
+        if (key == ID) return new Annotation(extensionData.withId((java.lang.String) val), author, time, text);
         if (key == EXTENSION)
-            return new Annotation(id, (List<Extension>) val, author, time, text);
-        if (key == AUTHOR) return new Annotation(id, extension, (Base) val, time, text);
-        if (key == TIME) return new Annotation(id, extension, author, (DateTime) val, text);
-        if (key == TEXT) return new Annotation(id, extension, author, time, (Markdown) val);
+            return new Annotation(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), author, time, text);
+        if (key == AUTHOR) return new Annotation(extensionData, (Base) val, time, text);
+        if (key == TIME) return new Annotation(extensionData, author, (DateTime) val, text);
+        if (key == TEXT) return new Annotation(extensionData, author, time, (Markdown) val);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Annotation.");
     }
 
@@ -142,7 +136,7 @@ public final class Annotation extends Element implements Complex, ExtensionValue
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (author != null) {
             sink.putByte((byte) 2);
             author.hashInto(sink);
@@ -160,10 +154,8 @@ public final class Annotation extends Element implements Complex, ExtensionValue
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Annotation that = (Annotation) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Annotation that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(author, that.author) &&
                 Objects.equals(time, that.time) &&
                 Objects.equals(text, that.text);
@@ -171,14 +163,17 @@ public final class Annotation extends Element implements Complex, ExtensionValue
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, author, time, text);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(author);
+        result = 31 * result + Objects.hashCode(time);
+        result = 31 * result + Objects.hashCode(text);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "Annotation{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", author=" + author +
                 ", time=" + time +
                 ", text=" + text +

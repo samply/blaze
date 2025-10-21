@@ -11,7 +11,18 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class BundleEntrySearch extends Element implements Complex {
+public final class BundleEntrySearch extends AbstractElement implements Complex {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - mode reference
+     * 4 byte - score reference
+     * 4 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 16;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir.Bundle.entry", "search");
 
@@ -25,28 +36,24 @@ public final class BundleEntrySearch extends Element implements Complex {
 
     private static final byte HASH_MARKER = 45;
 
+    private static final BundleEntrySearch EMPTY = new BundleEntrySearch(ExtensionData.EMPTY, null, null);
+
     private final Code mode;
     private final Decimal score;
 
-    public BundleEntrySearch(java.lang.String id, List<Extension> extension, Code mode, Decimal score) {
-        super(id, extension);
+    private BundleEntrySearch(ExtensionData extensionData, Code mode, Decimal score) {
+        super(extensionData);
         this.mode = mode;
         this.score = score;
     }
 
     public static BundleEntrySearch create(IPersistentMap m) {
-        return new BundleEntrySearch((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (Code) m.valAt(MODE),
-                (Decimal) m.valAt(SCORE));
+        return new BundleEntrySearch(ExtensionData.fromMap(m), (Code) m.valAt(MODE), (Decimal) m.valAt(SCORE));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(mode) && Base.isInterned(score);
     }
 
     public Code mode() {
@@ -61,9 +68,7 @@ public final class BundleEntrySearch extends Element implements Complex {
     public Object valAt(Object key, Object notFound) {
         if (key == MODE) return mode;
         if (key == SCORE) return score;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -71,13 +76,12 @@ public final class BundleEntrySearch extends Element implements Complex {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, SCORE, score);
         seq = appendElement(seq, MODE, mode);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public BundleEntrySearch empty() {
-        return new BundleEntrySearch(null, PersistentVector.EMPTY, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -88,10 +92,11 @@ public final class BundleEntrySearch extends Element implements Complex {
     @Override
     @SuppressWarnings("unchecked")
     public BundleEntrySearch assoc(Object key, Object val) {
-        if (key == ID) return new BundleEntrySearch((java.lang.String) val, extension, mode, score);
-        if (key == EXTENSION) return new BundleEntrySearch(id, (List<Extension>) val, mode, score);
-        if (key == MODE) return new BundleEntrySearch(id, extension, (Code) val, score);
-        if (key == SCORE) return new BundleEntrySearch(id, extension, mode, (Decimal) val);
+        if (key == ID) return new BundleEntrySearch(extensionData.withId((java.lang.String) val), mode, score);
+        if (key == EXTENSION)
+            return new BundleEntrySearch(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), mode, score);
+        if (key == MODE) return new BundleEntrySearch(extensionData, (Code) val, score);
+        if (key == SCORE) return new BundleEntrySearch(extensionData, mode, (Decimal) val);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.BundleEntrySearch.");
     }
 
@@ -112,7 +117,7 @@ public final class BundleEntrySearch extends Element implements Complex {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (mode != null) {
             sink.putByte((byte) 2);
             mode.hashInto(sink);
@@ -124,26 +129,31 @@ public final class BundleEntrySearch extends Element implements Complex {
     }
 
     @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(mode) + Base.memSize(score);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        BundleEntrySearch that = (BundleEntrySearch) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof BundleEntrySearch that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(mode, that.mode) &&
                 Objects.equals(score, that.score);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, mode, score);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(mode);
+        result = 31 * result + Objects.hashCode(score);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "BundleEntrySearch{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", mode=" + mode +
                 ", score=" + score +
                 '}';

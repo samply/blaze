@@ -6,24 +6,25 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.byte-string]
-   [blaze.fhir.spec.impl.intern :as intern]
    [blaze.fhir.spec.type.protocols :as p]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.util :refer [str]]
    [clojure.data.xml :as xml]
    [clojure.data.xml.name :as xml-name]
    [clojure.data.xml.node :as xml-node]
-   [clojure.string :as str])
+   [clojure.string :as str]
+   [cognitect.anomalies :as anom])
   (:import
    [blaze.fhir.spec.type
     Address Annotation Attachment Base Base64Binary BundleEntrySearch Canonical Code
     CodeableConcept Coding ContactDetail ContactPoint Date DateTime Decimal
     Expression Extension HumanName Id Identifier Instant Markdown Meta Oid
     Period PositiveInt Primitive Quantity Range Ratio Reference RelatedArtifact String$Interned String$Normal Time
-    UnsignedInt Uri Url Uuid Xhtml]
+    UnsignedInt Uri Uri$Interned Uri$Normal Url Uuid Xhtml]
    [clojure.lang IPersistentMap Keyword]
    [com.google.common.hash PrimitiveSink]
    [java.io Writer]
+   [java.time LocalTime OffsetDateTime]
    [java.util Comparator List Map$Entry]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -158,22 +159,11 @@
 (defn integer? [x]
   (instance? blaze.fhir.spec.type.Integer x))
 
-(defn- map->Integer [x]
-  (blaze.fhir.spec.type.Integer/create x))
-
-(def ^{:arglists '([x])} integer
-  (let [intern-extended (intern/intern-value map->Integer)]
-    (fn [x]
-      (cond
-        (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (blaze.fhir.spec.type.Integer. id extension (some-> value int))))
-
-        (int? x) (blaze.fhir.spec.type.Integer. nil [] (int x))
-
-        :else (ba/incorrect (format "Invalid integer value `%s`." x))))))
+(defn integer [x]
+  (cond
+    (map? x) (blaze.fhir.spec.type.Integer/create ^IPersistentMap x)
+    (int? x) (blaze.fhir.spec.type.Integer/create ^Number x)
+    :else (ba/incorrect (format "Invalid integer value `%s`." x))))
 
 (def-extend-protocol-primitive blaze.fhir.spec.type.Integer)
 
@@ -206,38 +196,21 @@
 (def-extend-protocol-primitive blaze.fhir.spec.type.String)
 
 (def-print-method-primitive String$Normal "string")
-(def-print-method-primitive String$Interned "string")
+(def-print-method-primitive String$Interned "string-interned")
 
 ;; ---- decimal ---------------------------------------------------------------
 
 (defn decimal? [x]
   (instance? Decimal x))
 
-(defn- map->Decimal [x]
-  (Decimal/create x))
-
-(def ^{:arglists '([x])} decimal
-  (let [intern-extended (intern/intern-value map->Decimal)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Decimal. id extension value)))
-        (Decimal. nil [] x)))))
+(defn decimal [x]
+  (if (clojure.core/decimal? x)
+    (Decimal/create ^BigDecimal x)
+    (Decimal/create ^IPersistentMap x)))
 
 (def-extend-protocol-primitive Decimal)
 
 (def-print-method-primitive decimal)
-
-(defmethod print-dup Decimal [^Decimal e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Decimal. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- uri -------------------------------------------------------------------
 
@@ -249,40 +222,29 @@
     (Uri/create ^String x)
     (Uri/create ^IPersistentMap x)))
 
+(defn uri-interned [x]
+  (if (clojure.core/string? x)
+    (Uri/createForceIntern ^String x)
+    (Uri/createForceIntern ^IPersistentMap x)))
+
 (def-extend-protocol-primitive Uri)
 
-(def-print-method-primitive uri)
+(def-print-method-primitive Uri$Normal "uri")
+(def-print-method-primitive Uri$Interned "uri-interned")
 
 ;; ---- url -------------------------------------------------------------------
 
 (defn url? [x]
   (instance? Url x))
 
-(defn- map->Url [x]
-  (Url/create x))
-
-(def ^{:arglists '([x])} url
-  (let [intern-extended (intern/intern-value map->Url)]
-    (fn [x]
-      (if (clojure.core/string? x)
-        (Url. nil [] x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Url. id extension value)))))))
+(defn url [x]
+  (if (clojure.core/string? x)
+    (Url/create ^String x)
+    (Url/create ^IPersistentMap x)))
 
 (def-extend-protocol-primitive Url)
 
 (def-print-method-primitive url)
-
-(defmethod print-dup Url [^Url e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Url. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- canonical -------------------------------------------------------------
 
@@ -303,155 +265,70 @@
 (defn base64Binary? [x]
   (instance? Base64Binary x))
 
-(defn- map->Base64Binary [x]
-  (Base64Binary/create x))
-
-(def ^{:arglists '([x])} base64Binary
-  (let [intern-extended (intern/intern-value map->Base64Binary)]
-    (fn [x]
-      (if (clojure.core/string? x)
-        (Base64Binary. nil [] x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Base64Binary. id extension value)))))))
+(defn base64Binary [x]
+  (if (clojure.core/string? x)
+    (Base64Binary/create ^String x)
+    (Base64Binary/create ^IPersistentMap x)))
 
 (def-extend-protocol-primitive Base64Binary)
 
 (def-print-method-primitive base64Binary)
-
-(defmethod print-dup Base64Binary [^Base64Binary e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Base64Binary. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- instant ---------------------------------------------------------------
 
 (defn instant? [x]
   (instance? Instant x))
 
-(defn- map->Instant [x]
-  (Instant/create x))
-
-(def ^{:arglists '([x])} instant
-  (let [intern-extended (intern/intern-value map->Instant)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Instant. id extension value)))
-        (Instant. nil [] x)))))
+(defn instant [x]
+  (if (map? x)
+    (Instant/create ^IPersistentMap x)
+    (Instant/create ^OffsetDateTime x)))
 
 (def-extend-protocol-primitive Instant)
 
 (def-print-method-primitive instant)
-
-(defmethod print-dup Instant [^Instant e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Instant. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; -- date --------------------------------------------------------------------
 
 (defn date? [x]
   (instance? Date x))
 
-(defn- map->Date [x]
-  (Date/create x))
-
-(def ^{:arglists '([x])} date
-  (let [intern-extended (intern/intern-value map->Date)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Date. id extension value)))
-        (Date. nil [] x)))))
+(defn date [x]
+  (if (map? x)
+    (Date/create ^IPersistentMap x)
+    (Date/create ^blaze.fhir.spec.type.system.Date x)))
 
 (def-extend-protocol-primitive Date)
 
 (def-print-method-primitive date)
-
-(defmethod print-dup Date [^Date e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Date. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; -- dateTime ----------------------------------------------------------------
 
 (defn dateTime? [x]
   (instance? DateTime x))
 
-(defn- map->DateTime [x]
-  (DateTime/create x))
-
-(def ^{:arglists '([x])} dateTime
-  (let [intern-extended (intern/intern-value map->DateTime)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (DateTime. id extension value)))
-        (DateTime. nil [] x)))))
+(defn dateTime [x]
+  (if (map? x)
+    (DateTime/create ^IPersistentMap x)
+    (DateTime/create ^blaze.fhir.spec.type.system.DateTime x)))
 
 (def-extend-protocol-primitive DateTime)
 
 (def-print-method-primitive dateTime)
-
-(defmethod print-dup DateTime [^DateTime e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.DateTime. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- time ------------------------------------------------------------------
 
 (defn time? [x]
   (instance? Time x))
 
-(defn- map->Time [x]
-  (Time/create x))
-
-(def ^{:arglists '([x])} time
-  (let [intern-extended (intern/intern-value map->Time)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Time. id extension value)))
-        (Time. nil [] x)))))
+(defn time [x]
+  (if (map? x)
+    (Time/create ^IPersistentMap x)
+    (Time/create ^LocalTime x)))
 
 (def-extend-protocol-primitive Time)
 
 (def-print-method-primitive time)
-
-(defmethod print-dup Time [^Time e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Time. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- code ------------------------------------------------------------------
 
@@ -472,212 +349,98 @@
 (defn oid? [x]
   (instance? Oid x))
 
-(defn- map->Oid [x]
-  (Oid/create x))
-
-(def ^{:arglists '([x])} oid
-  (let [intern-extended (intern/intern-value map->Oid)]
-    (fn [x]
-      (if (clojure.core/string? x)
-        (Oid. nil [] x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Oid. id extension value)))))))
+(defn oid [x]
+  (if (map? x)
+    (Oid/create ^IPersistentMap x)
+    (Oid/create ^String x)))
 
 (def-extend-protocol-primitive Oid)
 
 (def-print-method-primitive oid)
-
-(defmethod print-dup Oid [^Oid e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Oid. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- id --------------------------------------------------------------------
 
 (defn id? [x]
   (instance? Id x))
 
-(defn- map->Id [x]
-  (Id/create x))
-
-(def ^{:arglists '([x])} id
-  (let [intern-extended (intern/intern-value map->Id)]
-    (fn [x]
-      (if (clojure.core/string? x)
-        (Id. nil [] x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Id. id extension value)))))))
+(defn id [x]
+  (if (map? x)
+    (Id/create ^IPersistentMap x)
+    (Id/create ^String x)))
 
 (def-extend-protocol-primitive Id)
 
 (def-print-method-primitive id)
-
-(defmethod print-dup Id [^Id e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Id. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- markdown --------------------------------------------------------------
 
 (defn markdown? [x]
   (instance? Markdown x))
 
-(defn- map->Markdown [x]
-  (Markdown/create x))
-
-(def ^{:arglists '([x])} markdown
-  (let [intern-extended (intern/intern-value map->Markdown)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Markdown. id extension value)))
-        (Markdown. nil [] x)))))
+(defn markdown [x]
+  (if (map? x)
+    (Markdown/create ^IPersistentMap x)
+    (Markdown/create ^String x)))
 
 (def-extend-protocol-primitive Markdown)
 
 (def-print-method-primitive markdown)
-
-(defmethod print-dup Markdown [^Markdown e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Markdown. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- unsignedInt -----------------------------------------------------------
 
 (defn unsignedInt? [x]
   (instance? UnsignedInt x))
 
-(defn- map->UnsignedInt [x]
-  (UnsignedInt/create x))
-
-(def ^{:arglists '([x])} unsignedInt
-  (let [intern-extended (intern/intern-value map->UnsignedInt)]
-    (fn [x]
-      (cond
-        (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (UnsignedInt. id extension (some-> value int))))
-
-        (int? x) (UnsignedInt. nil [] (int x))
-
-        :else (ba/incorrect (format "Invalid unsignedInt value `%s`." x))))))
+(defn unsignedInt [x]
+  (cond
+    (map? x) (ba/try-one IllegalArgumentException ::anom/incorrect
+               (UnsignedInt/create ^IPersistentMap x))
+    (nat-int? x) (UnsignedInt/create ^Number x)
+    :else (ba/incorrect (format "Invalid unsignedInt value `%s`." x))))
 
 (def-extend-protocol-primitive UnsignedInt)
 
 (def-print-method-primitive unsignedInt)
-
-(defmethod print-dup UnsignedInt [^UnsignedInt e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.UnsignedInt. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- positiveInt -----------------------------------------------------------
 
 (defn positiveInt? [x]
   (instance? PositiveInt x))
 
-(defn- map->PositiveInt [x]
-  (PositiveInt/create x))
-
-(def ^{:arglists '([x])} positiveInt
-  (let [intern-extended (intern/intern-value map->PositiveInt)]
-    (fn [x]
-      (cond
-        (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (PositiveInt. id extension (some-> value int))))
-
-        (int? x) (PositiveInt. nil [] (int x))
-
-        :else (ba/incorrect (format "Invalid positiveInt value `%s`." x))))))
+(defn positiveInt [x]
+  (cond
+    (map? x) (ba/try-one IllegalArgumentException ::anom/incorrect
+               (PositiveInt/create ^IPersistentMap x))
+    (pos-int? x) (PositiveInt/create ^Number x)
+    :else (ba/incorrect (format "Invalid positiveInt value `%s`." x))))
 
 (def-extend-protocol-primitive PositiveInt)
 
 (def-print-method-primitive positiveInt)
-
-(defmethod print-dup PositiveInt [^PositiveInt e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.PositiveInt. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- uuid ------------------------------------------------------------------
 
 (defn uuid? [x]
   (instance? Uuid x))
 
-(defn- map->Uuid [x]
-  (Uuid/create x))
-
-(def ^{:arglists '([x])} uuid
-  (let [intern-extended (intern/intern-value map->Uuid)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Uuid. id extension value)))
-        (Uuid. nil [] x)))))
+(defn uuid [x]
+  (if (map? x)
+    (Uuid/create ^IPersistentMap x)
+    (Uuid/create ^String x)))
 
 (def-extend-protocol-primitive Uuid)
 
 (def-print-method-primitive uuid)
-
-(defmethod print-dup Uuid [^Uuid e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Uuid. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
 
 ;; ---- xhtml -----------------------------------------------------------------
 
 (defn xhtml? [x]
   (instance? Xhtml x))
 
-(defn- map->Xhtml [x]
-  (Xhtml/create x))
-
-(def ^{:arglists '([x])} xhtml
-  (let [intern-extended (intern/intern-value map->Xhtml)]
-    (fn [x]
-      (if (map? x)
-        (let [{:keys [id extension value]} x]
-          (if (and (nil? id) (Base/areAllInterned extension) (nil? value))
-            (intern-extended x)
-            (Xhtml. id extension value)))
-        (Xhtml. nil [] x)))))
+(defn xhtml [x]
+  (if (map? x)
+    (Xhtml/create ^IPersistentMap x)
+    (Xhtml/create ^String x)))
 
 (def-extend-protocol-primitive Xhtml)
 
@@ -698,7 +461,7 @@
 (defn xml->Xhtml
   "Creates a xhtml from XML `element`."
   [element]
-  (Xhtml. nil [] (subs (xml/emit-str element) xml-preamble-length)))
+  (Xhtml/create (subs (xml/emit-str element) xml-preamble-length)))
 
 (defn- wrap-div [s]
   (str "<div xmlns=\"http://www.w3.org/1999/xhtml\">" s "</div>"))
@@ -758,27 +521,43 @@
     (when-not (identical? :fhir.Bundle/entry (:fhir/type m))
       (into [] (comp (remove clojure.core/string?) (remove keyword?) (mapcat p/-references)) (vals m)))))
 
-(defmacro def-print-method-complex [name & data-element-names]
+(defmacro def-print-method-complex [name]
   `(defmethod print-method ~(symbol name)
      [~(with-meta 'v {:tag (symbol name)}) ~(with-meta 'w {:tag 'Writer})]
      (print-type ~name)))
 
+;; ---- Address ---------------------------------------------------------------
+
+(defn address [x]
+  (Address/create x))
+
+(extend-protocol p/FhirType
+  Address
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "Address")
+
+;; ---- Annotation ------------------------------------------------------------
+
+(defn annotation [x]
+  (Annotation/create x))
+
+(extend-protocol p/FhirType
+  Annotation
+  (-hash-into [e sink]
+    (.hashInto e sink))
+  (-references [e]
+    (p/-references (.extension e))))
+
+(def-print-method-complex "Annotation")
+
 ;; ---- Attachment ------------------------------------------------------------
 
-(defn- map->Attachment [x]
+(defn attachment [x]
   (Attachment/create x))
-
-(def ^{:arglists '([x])} attachment
-  (let [intern (intern/intern-value map->Attachment)]
-    (fn [{:keys [id extension contentType language data url size hash title creation]
-          :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned contentType)
-               (Base/isInterned language) (Base/isInterned data) (Base/isInterned url)
-               (Base/isInterned size) (Base/isInterned hash) (Base/isInterned title)
-               (Base/isInterned creation))
-        (intern x)
-        (Attachment. id extension contentType language data url size
-                     hash title creation)))))
 
 (extend-protocol p/FhirType
   Attachment
@@ -787,46 +566,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Attachment" "id" "extension" "contentType" "language"
-  "data" "url" "size" "hash" "title" "creation")
-
-(defmethod print-dup Attachment [^Attachment e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Attachment. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.contentType e) w)
-  (.write w " ")
-  (print-dup (.language e) w)
-  (.write w " ")
-  (print-dup (.data e) w)
-  (.write w " ")
-  (print-dup (.url e) w)
-  (.write w " ")
-  (print-dup (.sizeValue e) w)
-  (.write w " ")
-  (print-dup (.hash e) w)
-  (.write w " ")
-  (print-dup (.title e) w)
-  (.write w " ")
-  (print-dup (.creation e) w)
-  (.write w ")"))
+(def-print-method-complex "Attachment")
 
 ;; ---- Expression --------------------------------------------------------
 
-(defn- map->Expression [x]
+(defn expression [x]
   (Expression/create x))
-
-(def ^{:arglists '([x])} expression
-  (let [intern (intern/intern-value map->Expression)]
-    (fn [{:keys [id extension description name language expression reference]
-          :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned description)
-               (Base/isInterned name) (Base/isInterned language) (Base/isInterned expression)
-               (Base/isInterned reference))
-        (intern x)
-        (Expression. id extension description name language expression reference)))))
 
 (extend-protocol p/FhirType
   Expression
@@ -835,37 +580,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Expression" "id" "extension" "description" "name"
-  "language" "expression" "reference")
-
-(defmethod print-dup Expression [^Expression e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Expression. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.description e) w)
-  (.write w " ")
-  (print-dup (.name e) w)
-  (.write w " ")
-  (print-dup (.language e) w)
-  (.write w " ")
-  (print-dup (.expression e) w)
-  (.write w " ")
-  (print-dup (.reference e) w)
-  (.write w ")"))
+(def-print-method-complex "Expression")
 
 ;; ---- Extension --------------------------------------------------------
 
-(defn- map->Extension [x]
+(defn extension [x]
   (Extension/create x))
-
-(def ^{:arglists '([x])} extension
-  (let [intern (intern/intern-value map->Extension)]
-    (fn [{:keys [id extension url value] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned value))
-        (intern x)
-        (Extension. id extension url value)))))
 
 (extend-protocol p/FhirType
   Extension
@@ -877,18 +597,7 @@
         (into! (p/-references (.value e)))
         (persistent!))))
 
-(def-print-method-complex "Extension" "id" "extension" "url" "value")
-
-(defmethod print-dup Extension [^Extension e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Extension. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.url e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w ")"))
+(def-print-method-complex "Extension")
 
 ;; ---- Coding ----------------------------------------------------------------
 
@@ -902,38 +611,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Coding" "id" "extension" "system" "version" "code"
-  "display" "userSelected")
-
-(defmethod print-dup Coding [^Coding e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Coding. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.system e) w)
-  (.write w " ")
-  (print-dup (.version e) w)
-  (.write w " ")
-  (print-dup (.code e) w)
-  (.write w " ")
-  (print-dup (.display e) w)
-  (.write w " ")
-  (print-dup (.userSelected e) w)
-  (.write w ")"))
+(def-print-method-complex "Coding")
 
 ;; ---- CodeableConcept -------------------------------------------------------
 
-(defn- map->CodeableConcept [x]
+(defn codeable-concept [x]
   (CodeableConcept/create x))
-
-(def ^{:arglists '([x])} codeable-concept
-  (let [intern (intern/intern-value map->CodeableConcept)]
-    (fn [{:keys [id extension coding text] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension)
-               (Base/areAllInterned coding) (Base/isInterned text))
-        (intern x)
-        (CodeableConcept. id extension coding text)))))
 
 (extend-protocol p/FhirType
   CodeableConcept
@@ -942,33 +625,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "CodeableConcept" "id" "extension" "coding" "text")
-
-(defmethod print-dup CodeableConcept [^CodeableConcept e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.CodeableConcept. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.coding e) w)
-  (.write w " ")
-  (print-dup (.text e) w)
-  (.write w ")"))
+(def-print-method-complex "CodeableConcept")
 
 ;; ---- Quantity --------------------------------------------------------------
 
-(defn- map->Quantity [x]
+(defn quantity [x]
   (Quantity/create x))
-
-(def ^{:arglists '([x])} quantity
-  (let [intern (intern/intern-value map->Quantity)]
-    (fn [{:keys [id extension value comparator unit system code]
-          :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned value)
-               (Base/isInterned comparator) (Base/isInterned unit)
-               (Base/isInterned system) (Base/isInterned code))
-        (intern x)
-        (Quantity. id extension value comparator unit system code)))))
 
 (extend-protocol p/FhirType
   Quantity
@@ -977,38 +639,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Quantity" "id" "extension" "value" "comparator"
-  "unit" "system" "code")
-
-(defmethod print-dup Quantity [^Quantity e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Quantity. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w " ")
-  (print-dup (.comparator e) w)
-  (.write w ")")
-  (print-dup (.unit e) w)
-  (.write w ")")
-  (print-dup (.system e) w)
-  (.write w ")")
-  (print-dup (.comparator e) w)
-  (.write w ")"))
+(def-print-method-complex "Quantity")
 
 ;; ---- Range -----------------------------------------------------------------
 
-(defn- map->Range [x]
+(defn range [x]
   (Range/create x))
-
-(def ^{:arglists '([x])} range
-  (let [intern (intern/intern-value map->Range)]
-    (fn [{:keys [id extension low high] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned low)
-               (Base/isInterned high))
-        (intern x)
-        (Range. id extension low high)))))
 
 (extend-protocol p/FhirType
   Range
@@ -1017,31 +653,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Range" "id" "extension" "low" "high")
-
-(defmethod print-dup Range [^Range e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Range. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.low e) w)
-  (.write w " ")
-  (print-dup (.high e) w)
-  (.write w ")"))
+(def-print-method-complex "Range")
 
 ;; ---- Ratio -----------------------------------------------------------------
 
-(defn- map->Ratio [x]
+(defn ratio [x]
   (Ratio/create x))
-
-(def ^{:arglists '([x])} ratio
-  (let [intern (intern/intern-value map->Ratio)]
-    (fn [{:keys [id extension numerator denominator] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned numerator)
-               (Base/isInterned denominator))
-        (intern x)
-        (Ratio. id extension numerator denominator)))))
 
 (extend-protocol p/FhirType
   Ratio
@@ -1050,31 +667,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Ratio" "id" "extension" "numerator" "denominator")
-
-(defmethod print-dup Ratio [^Ratio e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Ratio. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.numerator e) w)
-  (.write w " ")
-  (print-dup (.denominator e) w)
-  (.write w ")"))
+(def-print-method-complex "Ratio")
 
 ;; ---- Period ----------------------------------------------------------------
 
-(defn- map->Period [x]
+(defn period [x]
   (Period/create x))
-
-(def ^{:arglists '([x])} period
-  (let [intern (intern/intern-value map->Period)]
-    (fn [{:keys [id extension start end] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned start)
-               (Base/isInterned end))
-        (intern x)
-        (Period. id extension start end)))))
 
 (extend-protocol p/FhirType
   Period
@@ -1083,33 +681,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Period" "id" "extension" "start" "end")
-
-(defmethod print-dup Period [^Period e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Period. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.start e) w)
-  (.write w " ")
-  (print-dup (.end e) w)
-  (.write w ")"))
+(def-print-method-complex "Period")
 
 ;; ---- Identifier ------------------------------------------------------------
 
-(defn- map->Identifier [x]
+(defn identifier [x]
   (Identifier/create x))
-
-(def ^{:arglists '([x])} identifier
-  (let [intern (intern/intern-value map->Identifier)]
-    (fn [{:keys [id extension use type system value period assigner]
-          :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned use)
-               (Base/isInterned type) (Base/isInterned value) (Base/isInterned period)
-               (Base/isInterned assigner))
-        (intern x)
-        (Identifier. id extension use type system value period assigner)))))
 
 (extend-protocol p/FhirType
   Identifier
@@ -1118,42 +695,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Identifier" "id" "extension" "use" "type" "system"
-  "value" "period" "assigner")
-
-(defmethod print-dup Identifier [^Identifier e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Identifier. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.use e) w)
-  (.write w " ")
-  (print-dup (.type e) w)
-  (.write w " ")
-  (print-dup (.system e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w " ")
-  (print-dup (.period e) w)
-  (.write w " ")
-  (print-dup (.assigner e) w)
-  (.write w ")"))
+(def-print-method-complex "Identifier")
 
 ;; ---- HumanName -------------------------------------------------------------
 
-(defn- map->HumanName [x]
+(defn human-name [x]
   (HumanName/create x))
-
-(def ^{:arglists '([x])} human-name
-  (let [intern (intern/intern-value map->HumanName)]
-    (fn [{:keys [id extension use text family given prefix suffix period] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned use)
-               (Base/isInterned text) (Base/isInterned family)
-               (Base/areAllInterned given) (Base/areAllInterned prefix)
-               (Base/areAllInterned suffix) (Base/isInterned period))
-        (intern x)
-        (HumanName. id extension use text family given prefix suffix period)))))
 
 (extend-protocol p/FhirType
   HumanName
@@ -1162,85 +709,7 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "HumanName" "id" "extension" "use" "text" "family"
-  "given" "prefix" "suffix" "period")
-
-(defmethod print-dup HumanName [^HumanName e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.HumanName. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.use e) w)
-  (.write w " ")
-  (print-dup (.text e) w)
-  (.write w " ")
-  (print-dup (.family e) w)
-  (.write w " ")
-  (print-dup (.given e) w)
-  (.write w " ")
-  (print-dup (.prefix e) w)
-  (.write w " ")
-  (print-dup (.suffix e) w)
-  (.write w " ")
-  (print-dup (.period e) w)
-  (.write w ")"))
-
-;; ---- Address ---------------------------------------------------------------
-
-(defn- map->Address [x]
-  (Address/create x))
-
-(def ^{:arglists '([x])} address
-  (let [intern (intern/intern-value map->Address)]
-    (fn [{:keys [id extension use type text line city district state postalCode
-                 country period] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned use)
-               (Base/isInterned type) (Base/isInterned text)
-               (Base/areAllInterned line) (Base/isInterned city)
-               (Base/isInterned district) (Base/isInterned state)
-               (Base/isInterned postalCode) (Base/isInterned country)
-               (Base/isInterned period))
-        (intern x)
-        (Address. id extension use type text line city district state postalCode
-                  country period)))))
-
-(extend-protocol p/FhirType
-  Address
-  (-hash-into [e sink]
-    (.hashInto e sink))
-  (-references [e]
-    (p/-references (.extension e))))
-
-(def-print-method-complex "Address" "id" "extension" "use" "type" "text" "line"
-  "city" "district" "state" "postalCode" "country" "period")
-
-(defmethod print-dup Address [^Address e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Address. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.use e) w)
-  (.write w " ")
-  (print-dup (.type e) w)
-  (.write w " ")
-  (print-dup (.text e) w)
-  (.write w " ")
-  (print-dup (.line e) w)
-  (.write w " ")
-  (print-dup (.city e) w)
-  (.write w " ")
-  (print-dup (.district e) w)
-  (.write w " ")
-  (print-dup (.state e) w)
-  (.write w " ")
-  (print-dup (.postalCode e) w)
-  (.write w " ")
-  (print-dup (.country e) w)
-  (.write w " ")
-  (print-dup (.period e) w)
-  (.write w ")"))
+(def-print-method-complex "HumanName")
 
 ;; ---- Reference --------------------------------------------------------
 
@@ -1253,18 +722,8 @@
     (when (valid-ref? ref)
       [ref])))
 
-(defn- map->Reference [x]
+(defn reference [x]
   (Reference/create x))
-
-(def ^{:arglists '([x])} reference
-  (let [intern (intern/intern-value map->Reference)]
-    (fn [{:keys [id extension reference type identifier display]
-          :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension)
-               (Base/isInterned reference) (Base/isInterned type)
-               (Base/isInterned identifier) (Base/isInterned display))
-        (intern x)
-        (Reference. id extension reference type identifier display)))))
 
 (extend-protocol p/FhirType
   Reference
@@ -1278,39 +737,12 @@
         (into! (p/-references (.display r)))
         (persistent!))))
 
-(def-print-method-complex "Reference" "id" "extension" "reference" "type"
-  "identifier" "display")
-
-(defmethod print-dup Reference [^Reference e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Reference. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.reference e) w)
-  (.write w " ")
-  (print-dup (.type e) w)
-  (.write w " ")
-  (print-dup (.identifier e) w)
-  (.write w " ")
-  (print-dup (.display e) w)
-  (.write w ")"))
+(def-print-method-complex "Reference")
 
 ;; ---- Meta ------------------------------------------------------------------
 
-(defn- map->Meta [x]
+(defn meta [x]
   (Meta/create x))
-
-(def ^{:arglists '([x])} meta
-  (let [intern (intern/intern-value map->Meta)]
-    (fn [{:keys [id extension versionId lastUpdated source profile security tag]
-          :or {extension [] profile [] security [] tag []} :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned versionId)
-               (Base/isInterned lastUpdated) (Base/isInterned source)
-               (Base/areAllInterned profile) (Base/areAllInterned security)
-               (Base/areAllInterned tag))
-        (intern x)
-        (Meta. id extension versionId lastUpdated source profile security tag)))))
 
 (extend-protocol p/FhirType
   Meta
@@ -1319,41 +751,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "Meta" "id" "extension" "versionId" "lastUpdated" "source" "profile" "security" "tag")
-
-(defmethod print-dup Meta [^Meta e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Meta. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.versionId e) w)
-  (.write w " ")
-  (print-dup (.lastUpdated e) w)
-  (.write w " ")
-  (print-dup (.source e) w)
-  (.write w " ")
-  (print-dup (.profile e) w)
-  (.write w " ")
-  (print-dup (.security e) w)
-  (.write w " ")
-  (print-dup (.tag e) w)
-  (.write w ")"))
+(def-print-method-complex "Meta")
 
 ;; ---- BundleEntrySearch -----------------------------------------------------
 
-(defn- map->BundleEntrySearch [x]
+(defn bundle-entry-search [x]
   (BundleEntrySearch/create x))
-
-(re-matches #"[ \r\n\t\S]+" "𝗔𝗗𝗗𝗜𝗧𝗜𝗢𝗡𝗔𝗟")
-
-(def ^{:arglists '([x])} bundle-entry-search
-  (let [intern (intern/intern-value map->BundleEntrySearch)]
-    (fn [{:keys [id extension mode score] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned mode)
-               (Base/isInterned score))
-        (intern x)
-        (BundleEntrySearch. id extension mode score)))))
 
 (extend-protocol p/FhirType
   BundleEntrySearch
@@ -1362,66 +765,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "BundleEntrySearch" "id" "extension" "mode" "score")
-
-(defmethod print-dup BundleEntrySearch [^BundleEntrySearch e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.BundleEntrySearch. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.mode e) w)
-  (.write w " ")
-  (print-dup (.score e) w)
-  (.write w ")"))
-
-;; ---- Annotation ------------------------------------------------------------
-
-(defn- map->Annotation [x]
-  (Annotation/create x))
-
-(def ^{:arglists '([x])} annotation
-  (let [intern (intern/intern-value map->Annotation)]
-    (fn [{:keys [id extension author time text] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned author)
-               (Base/isInterned time) (Base/isInterned text))
-        (intern x)
-        (Annotation. id extension author time text)))))
-
-(extend-protocol p/FhirType
-  Annotation
-  (-hash-into [e sink]
-    (.hashInto e sink))
-  (-references [e]
-    (p/-references (.extension e))))
-
-(def-print-method-complex "Annotation" "id" "extension" "author" "time" "text")
-
-(defmethod print-dup Annotation [^Annotation e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.Annotation. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.author e) w)
-  (.write w " ")
-  (print-dup (.time e) w)
-  (.write w " ")
-  (print-dup (.text e) w)
-  (.write w ")"))
+(def-print-method-complex "BundleEntrySearch")
 
 ;; ---- ContactDetail ------------------------------------------------------------
 
-(defn- map->ContactDetail [x]
+(defn contact-detail [x]
   (ContactDetail/create x))
-
-(def ^{:arglists '([x])} contact-detail
-  (let [intern (intern/intern-value map->ContactDetail)]
-    (fn [{:keys [id extension name telecom] :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned name)
-               (Base/areAllInterned telecom))
-        (intern x)
-        (ContactDetail. id extension name telecom)))))
 
 (extend-protocol p/FhirType
   ContactDetail
@@ -1430,33 +779,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "ContactDetail" "id" "extension" "name" "telecom")
-
-(defmethod print-dup ContactDetail [^ContactDetail e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.ContactDetail. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.name e) w)
-  (.write w " ")
-  (print-dup (.telecom e) w)
-  (.write w ")"))
+(def-print-method-complex "ContactDetail")
 
 ;; ---- ContactPoint ------------------------------------------------------------
 
-(defn- map->ContactPoint [x]
+(defn contact-point [x]
   (ContactPoint/create x))
-
-(def ^{:arglists '([x])} contact-point
-  (let [intern (intern/intern-value map->ContactPoint)]
-    (fn [{:keys [id extension system value use rank period]
-          :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned system)
-               (Base/isInterned value) (Base/isInterned use) (Base/isInterned rank)
-               (Base/isInterned period))
-        (intern x)
-        (ContactPoint. id extension system value use rank period)))))
 
 (extend-protocol p/FhirType
   ContactPoint
@@ -1465,41 +793,12 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "ContactPoint" "id" "extension" "system" "value" "use" "rank" "period")
-
-(defmethod print-dup ContactPoint [^ContactPoint e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.ContactPoint. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.system e) w)
-  (.write w " ")
-  (print-dup (.value e) w)
-  (.write w " ")
-  (print-dup (.use e) w)
-  (.write w " ")
-  (print-dup (.rank e) w)
-  (.write w " ")
-  (print-dup (.period e) w)
-  (.write w ")"))
+(def-print-method-complex "ContactPoint")
 
 ;; ---- RelatedArtifact ------------------------------------------------------------
 
-(defn- map->RelatedArtifact [x]
+(defn related-artifact [x]
   (RelatedArtifact/create x))
-
-(def ^{:arglists '([x])} related-artifact
-  (let [intern (intern/intern-value map->RelatedArtifact)]
-    (fn [{:keys [id extension type label display citation url document resource]
-          :as x}]
-      (if (and (nil? id) (Base/areAllInterned extension) (Base/isInterned type)
-               (Base/isInterned label) (Base/isInterned display)
-               (Base/isInterned citation) (Base/isInterned url)
-               (Base/isInterned document) (Base/isInterned resource))
-        (intern x)
-        (RelatedArtifact. id extension type label display citation url document
-                          resource)))))
 
 (extend-protocol p/FhirType
   RelatedArtifact
@@ -1508,26 +807,4 @@
   (-references [e]
     (p/-references (.extension e))))
 
-(def-print-method-complex "RelatedArtifact" "id" "extension" "type" "label"
-  "display" "citation" "url" "document" "resource")
-
-(defmethod print-dup RelatedArtifact [^RelatedArtifact e ^Writer w]
-  (.write w "#=(blaze.fhir.spec.type.RelatedArtifact. ")
-  (print-dup (.id e) w)
-  (.write w " ")
-  (print-dup (.extension e) w)
-  (.write w " ")
-  (print-dup (.type e) w)
-  (.write w " ")
-  (print-dup (.label e) w)
-  (.write w " ")
-  (print-dup (.display e) w)
-  (.write w " ")
-  (print-dup (.citation e) w)
-  (.write w " ")
-  (print-dup (.url e) w)
-  (.write w " ")
-  (print-dup (.document e) w)
-  (.write w " ")
-  (print-dup (.resource e) w)
-  (.write w ")"))
+(def-print-method-complex "RelatedArtifact")

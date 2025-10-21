@@ -31,11 +31,11 @@ public interface DateTimes {
             .withChronology(IsoChronology.INSTANCE);
 
     @SuppressWarnings("UnstableApiUsage")
-    static void hashInto(Temporal temporal, PrimitiveSink sink) {
-        if (temporal instanceof JavaSystemType systemType) {
+    static void hashInto(Temporal value, PrimitiveSink sink) {
+        if (value instanceof JavaSystemType systemType) {
             systemType.hashInto(sink);
         }
-        if (temporal instanceof LocalDateTime dateTime) {
+        if (value instanceof LocalDateTime dateTime) {
             sink.putByte((byte) 6);
             sink.putInt(dateTime.getYear());
             sink.putInt(dateTime.getMonthValue());
@@ -45,19 +45,27 @@ public interface DateTimes {
             sink.putInt(dateTime.getSecond());
             sink.putInt(dateTime.getNano());
         }
-        if (temporal instanceof OffsetDateTime dateTime) {
+        if (value instanceof OffsetDateTime dateTime) {
             hashInto(dateTime.toLocalDateTime(), sink);
             sink.putInt(dateTime.getOffset().getTotalSeconds());
         }
     }
 
-    static String toString(Temporal temporal) {
-        if (temporal instanceof LocalDateTime dateTime) {
-            return LOCAL_DATE_TIME.format(dateTime);
-        }
-        if (temporal instanceof OffsetDateTime dateTime) {
-            return DATE_TIME.format(dateTime);
-        }
-        return temporal.toString();
+    static int memSize(Temporal value) {
+        if (value == null) return 0;
+        return switch (value) {
+            case JavaSystemType systemType -> systemType.memSize();
+            case LocalDateTime x -> 48;
+            case OffsetDateTime x -> 64;
+            default -> 0;
+        };
+    }
+
+    static String toString(Temporal value) {
+        return switch (value) {
+            case LocalDateTime dateTime -> LOCAL_DATE_TIME.format(dateTime);
+            case OffsetDateTime dateTime -> DATE_TIME.format(dateTime);
+            default -> value.toString();
+        };
     }
 }

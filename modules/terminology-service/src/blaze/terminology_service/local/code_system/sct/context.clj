@@ -444,9 +444,9 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
         :code #fhir/code "read-only"}]}
-   :url (type/uri url)
+   :url (type/uri-interned url)
    :version (type/string (version-url module-id version))
    :title (type/string (find-fully-specified-name module-dependency-index
                                                   fully-specified-name-index

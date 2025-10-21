@@ -9,4 +9,8 @@ public interface JavaSystemType {
 
     @SuppressWarnings("UnstableApiUsage")
     void hashInto(PrimitiveSink sink);
+
+    default int memSize() {
+        return 0; // TODO: implement
+    }
 }

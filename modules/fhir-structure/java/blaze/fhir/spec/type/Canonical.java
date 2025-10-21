@@ -3,7 +3,6 @@ package blaze.fhir.spec.type;
 import blaze.Interner;
 import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
-import clojure.lang.IPersistentCollection;
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
 import clojure.lang.PersistentVector;
@@ -25,36 +24,35 @@ public final class Canonical extends PrimitiveElement {
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueCanonical");
 
     private static final byte HASH_MARKER = 7;
-    
-    private static final Interner<InternerKey, Canonical> INTERNER = Interners.weakInterner(k -> create(null, k.extension, k.value));
-    private static final Canonical EMPTY = new Canonical(null, null, null);
+
+    private static final Interner<InternerKey, Canonical> INTERNER = Interners.weakInterner(k -> create(k.extensionData, k.value));
+    private static final Canonical EMPTY = new Canonical(ExtensionData.EMPTY, null);
 
     private final SerializedString value;
 
-    private Canonical(java.lang.String id, List<Extension> extension, SerializedString value) {
-        super(id, extension);
+    private Canonical(ExtensionData extensionData, SerializedString value) {
+        super(extensionData);
         this.value = value;
     }
 
-    private static Canonical create(java.lang.String id, List<Extension> extension, java.lang.String value) {
-        return new Canonical(id, extension, value == null ? null : new SerializedString(value));
+    private static Canonical create(ExtensionData extensionData, String value) {
+        return new Canonical(extensionData, value == null ? null : new SerializedString(value));
     }
 
-    private static Canonical intern(List<Extension> extension, String value) {
-        return INTERNER.intern(new InternerKey(extension, value));
+    private static Canonical intern(ExtensionData extensionData, String value) {
+        return INTERNER.intern(new InternerKey(extensionData, value));
     }
 
-    private static Canonical maybeIntern(String id, List<Extension> extension, String value) {
-        return id == null && Base.areAllInterned(extension) ? intern(extension, value) : create(id, extension, value);
+    private static Canonical maybeIntern(ExtensionData extensionData, String value) {
+        return extensionData.isInterned() ? intern(extensionData, value) : create(extensionData, value);
     }
 
-    @SuppressWarnings("unchecked")
     public static Canonical create(String value) {
-        return intern(PersistentVector.EMPTY, requireNonNull(value));
+        return intern(ExtensionData.EMPTY, requireNonNull(value));
     }
 
     public static Canonical create(IPersistentMap m) {
-        return maybeIntern((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (java.lang.String) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), (String) m.valAt(VALUE));
     }
 
     @Override
@@ -64,10 +62,11 @@ public final class Canonical extends PrimitiveElement {
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned();
+        return extensionData.isInterned();
     }
 
-    public java.lang.String value() {
+    @Override
+    public String value() {
         return value == null ? null : value.getValue();
     }
 
@@ -79,9 +78,10 @@ public final class Canonical extends PrimitiveElement {
     @Override
     @SuppressWarnings("unchecked")
     public Canonical assoc(Object key, Object val) {
-        if (key == VALUE) return maybeIntern(id, extension, (String) val);
-        if (key == EXTENSION) return maybeIntern(id, (List<Extension>) (val == null ? PersistentVector.EMPTY : val), value());
-        if (key == ID) return maybeIntern((String) val, extension, value());
+        if (key == VALUE) return maybeIntern(extensionData, (String) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value());
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), value());
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Canonical.");
     }
 
@@ -103,7 +103,7 @@ public final class Canonical extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (hasValue()) {
             sink.putByte((byte) 2);
             Strings.hashInto(value.getValue(), sink);
@@ -111,31 +111,34 @@ public final class Canonical extends PrimitiveElement {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : super.memSize() /* TODO: SerializedString mem size */;
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Canonical c = (Canonical) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Canonical that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
+    public String toString() {
         return "Canonical{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", value=" + (value == null ? null : '\'' + value() + '\'') +
                 '}';
     }
 
-    private record InternerKey(List<Extension> extension, String value) {
+    private record InternerKey(ExtensionData extensionData, String value) {
         private InternerKey {
-            requireNonNull(extension);
+            requireNonNull(extensionData);
         }
     }
 }

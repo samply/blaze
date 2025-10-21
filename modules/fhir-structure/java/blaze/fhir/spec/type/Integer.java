@@ -1,20 +1,31 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import blaze.fhir.spec.type.system.Integers;
-import blaze.fhir.spec.type.system.Longs;
-import clojure.lang.*;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.SerializableString;
-import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.List;
 import java.util.Objects;
 
-import static blaze.fhir.spec.type.Base.appendElement;
-
 public final class Integer extends PrimitiveElement {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - int value
+     * 1 byte - boolean value
+     * 7 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 16;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "integer");
 
@@ -22,17 +33,31 @@ public final class Integer extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 1;
 
-    private final java.lang.Integer value;
+    private static final Interner<ExtensionData, Integer> INTERNER = Interners.weakInterner(k -> new Integer(k, 0, true));
+    private static final Integer EMPTY = new Integer(ExtensionData.EMPTY, 0, true);
 
-    public Integer(java.lang.String id, List<Extension> extension, java.lang.Integer value) {
-        super(id, extension);
+    private final int value;
+    private final boolean isValueNull;
+
+    private Integer(ExtensionData extensionData, int value, boolean isValueNull) {
+        super(extensionData);
         this.value = value;
+        this.isValueNull = isValueNull;
+    }
+
+    private static Integer maybeIntern(ExtensionData extensionData, int value, boolean isValueNull) {
+        return extensionData.isInterned() && isValueNull
+                ? INTERNER.intern(extensionData)
+                : new Integer(extensionData, value, isValueNull);
+    }
+
+    public static Integer create(Number value) {
+        return value == null ? EMPTY : new Integer(ExtensionData.EMPTY, value.intValue(), false);
     }
 
     public static Integer create(IPersistentMap m) {
         Number value = (Number) m.valAt(VALUE);
-        return new Integer((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), 
-                value == null ? null : value.intValue());
+        return maybeIntern(ExtensionData.fromMap(m), value == null ? 0 : value.intValue(), value == null);
     }
 
     @Override
@@ -40,22 +65,28 @@ public final class Integer extends PrimitiveElement {
         return FHIR_TYPE;
     }
 
-    public java.lang.Integer value() {
-        return value;
+    @Override
+    public boolean hasValue() {
+        return !isValueNull;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public java.lang.Integer value() {
+        return isValueNull ? null : value;
+    }
+
+    @Override
     public Integer empty() {
-        return new Integer(null, PersistentVector.EMPTY, null);
+        return EMPTY;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Integer assoc(Object key, Object val) {
-        if (key == VALUE) return new Integer(id, extension, (java.lang.Integer) val);
-        if (key == EXTENSION) return new Integer(id, (List<Extension>) val, value);
-        if (key == ID) return new Integer((java.lang.String) val, extension, value);
+        if (key == VALUE) return maybeIntern(extensionData, val == null ? 0 : ((Number) val).intValue(), val == null);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value, isValueNull);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), value, isValueNull);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Integer.");
     }
 
@@ -77,33 +108,33 @@ public final class Integer extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
-        if (value != null) {
+        extensionData.hashInto(sink);
+        if (hasValue()) {
             sink.putByte((byte) 2);
             Integers.hashInto(value, sink);
         }
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize();
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Integer c = (Integer) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Integer that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
-        return "Integer{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
-                ", value=" + value +
-                '}';
+    public String toString() {
+        return "Integer{" + extensionData + ", value=" + value + '}';
     }
 }

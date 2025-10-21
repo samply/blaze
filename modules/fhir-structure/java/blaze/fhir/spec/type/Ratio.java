@@ -1,11 +1,14 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +16,19 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Ratio extends Element implements Complex, ExtensionValue {
+public final class Ratio extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - numerator reference
+     * 4 byte - denominator boolean
+     * 1 byte - interned boolean
+     * 3 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 16;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Ratio");
 
@@ -29,23 +44,28 @@ public final class Ratio extends Element implements Complex, ExtensionValue {
 
     private static final byte HASH_MARKER = 48;
 
+    private static final Interner<ExtensionData, Ratio> INTERNER = Interners.weakInterner(k -> new Ratio(k, null, null, true));
+    private static final Ratio EMPTY = new Ratio(ExtensionData.EMPTY, null, null, true);
+
     private final Quantity numerator;
     private final Quantity denominator;
+    private final boolean interned;
 
-    public Ratio(java.lang.String id, List<Extension> extension, Quantity numerator, Quantity denominator) {
-        super(id, extension);
+    private Ratio(ExtensionData extensionData, Quantity numerator, Quantity denominator, boolean interned) {
+        super(extensionData);
         this.numerator = numerator;
         this.denominator = denominator;
+        this.interned = interned;
+    }
+
+    private static Ratio maybeIntern(ExtensionData extensionData, Quantity numerator, Quantity denominator) {
+        return extensionData.isInterned() && numerator == null && denominator == null
+                ? INTERNER.intern(extensionData)
+                : new Ratio(extensionData, numerator, denominator, false);
     }
 
     public static Ratio create(IPersistentMap m) {
-        return new Ratio((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (Quantity) m.valAt(NUMERATOR), (Quantity) m.valAt(DENOMINATOR));
-    }
-
-    public static IPersistentVector getBasis() {
-        return RT.vector(Symbol.intern(null, "id"), Symbol.intern(null, "extension"), Symbol.intern(null, "numerator"),
-                Symbol.intern(null, "denominator"));
+        return maybeIntern(ExtensionData.fromMap(m), (Quantity) m.valAt(NUMERATOR), (Quantity) m.valAt(DENOMINATOR));
     }
 
     @Override
@@ -55,7 +75,7 @@ public final class Ratio extends Element implements Complex, ExtensionValue {
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(numerator) && Base.isInterned(denominator);
+        return interned;
     }
 
     public Quantity numerator() {
@@ -70,15 +90,20 @@ public final class Ratio extends Element implements Complex, ExtensionValue {
     public Object valAt(Object key, Object notFound) {
         if (key == NUMERATOR) return numerator;
         if (key == DENOMINATOR) return denominator;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public ISeq seq() {
+        ISeq seq = PersistentList.EMPTY;
+        seq = appendElement(seq, DENOMINATOR, denominator);
+        seq = appendElement(seq, NUMERATOR, numerator);
+        return extensionData.append(seq);
+    }
+
+    @Override
     public Ratio empty() {
-        return new Ratio(null, PersistentVector.EMPTY, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -89,23 +114,12 @@ public final class Ratio extends Element implements Complex, ExtensionValue {
     @Override
     @SuppressWarnings("unchecked")
     public Ratio assoc(Object key, Object val) {
-        if (key == ID)
-            return new Ratio((java.lang.String) val, extension, numerator, denominator);
+        if (key == NUMERATOR) return maybeIntern(extensionData, (Quantity) val, denominator);
+        if (key == DENOMINATOR) return maybeIntern(extensionData, numerator, (Quantity) val);
         if (key == EXTENSION)
-            return new Ratio(id, (List<Extension>) val, numerator, denominator);
-        if (key == NUMERATOR)
-            return new Ratio(id, extension, (Quantity) val, denominator);
-        if (key == DENOMINATOR)
-            return new Ratio(id, extension, numerator, (Quantity) val);
-        throw new UnsupportedOperationException("The key `''' + key + '''` isn't supported on FHIR.Ratio.");
-    }
-
-    @Override
-    public ISeq seq() {
-        ISeq seq = PersistentList.EMPTY;
-        seq = appendElement(seq, DENOMINATOR, denominator);
-        seq = appendElement(seq, NUMERATOR, numerator);
-        return appendBase(seq);
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), numerator, denominator);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), numerator, denominator);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Ratio.");
     }
 
     @Override
@@ -132,7 +146,7 @@ public final class Ratio extends Element implements Complex, ExtensionValue {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (numerator != null) {
             sink.putByte((byte) 2);
             numerator.hashInto(sink);
@@ -144,28 +158,29 @@ public final class Ratio extends Element implements Complex, ExtensionValue {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(numerator) + Base.memSize(denominator);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Ratio that = (Ratio) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Ratio that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(numerator, that.numerator) &&
                 Objects.equals(denominator, that.denominator);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, numerator, denominator);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(numerator);
+        result = 31 * result + Objects.hashCode(denominator);
+        return result;
     }
 
     @Override
-    public java.lang.String toString() {
-        return "Ratio{" +
-                "id=" + (id == null ? null : "'''" + id + "'''") +
-                ", extension=" + extension +
-                ", numerator=" + numerator +
-                ", denominator=" + denominator +
-                '}';
+    public String toString() {
+        return "Ratio{" + extensionData + ", numerator=" + numerator + ", denominator=" + denominator + '}';
     }
 }

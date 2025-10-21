@@ -1,17 +1,18 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
-import clojure.lang.*;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.SerializableString;
-import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.List;
 import java.util.Objects;
-
-import static blaze.fhir.spec.type.Base.appendElement;
 
 public final class Markdown extends PrimitiveElement {
 
@@ -21,16 +22,26 @@ public final class Markdown extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 16;
 
-    private final java.lang.String value;
+    private static final Interner<ExtensionData, Markdown> INTERNER = Interners.weakInterner(k -> new Markdown(k, null));
+    private static final Markdown EMPTY = new Markdown(ExtensionData.EMPTY, null);
 
-    public Markdown(java.lang.String id, List<Extension> extension, java.lang.String value) {
-        super(id, extension);
+    private final String value;
+
+    private Markdown(ExtensionData extensionData, String value) {
+        super(extensionData);
         this.value = value;
     }
 
+    private static Markdown maybeIntern(ExtensionData extensionData, String value) {
+        return extensionData.isInterned() && value == null ? INTERNER.intern(extensionData) : new Markdown(extensionData, value);
+    }
+
+    public static Markdown create(String value) {
+        return value == null ? EMPTY : new Markdown(ExtensionData.EMPTY, value);
+    }
+
     public static Markdown create(IPersistentMap m) {
-        return new Markdown((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (java.lang.String) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), (String) m.valAt(VALUE));
     }
 
     @Override
@@ -38,22 +49,22 @@ public final class Markdown extends PrimitiveElement {
         return FHIR_TYPE;
     }
 
-    public java.lang.String value() {
+    public String value() {
         return value;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Markdown empty() {
-        return new Markdown(null, PersistentVector.EMPTY, null);
+        return EMPTY;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Markdown assoc(Object key, Object val) {
-        if (key == VALUE) return new Markdown(id, extension, (java.lang.String) val);
-        if (key == EXTENSION) return new Markdown(id, (List<Extension>) val, value);
-        if (key == ID) return new Markdown((java.lang.String) val, extension, value);
+        if (key == VALUE) return maybeIntern(extensionData, (String) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), value);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Markdown.");
     }
 
@@ -75,7 +86,7 @@ public final class Markdown extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (value != null) {
             sink.putByte((byte) 2);
             Strings.hashInto(value, sink);
@@ -83,25 +94,25 @@ public final class Markdown extends PrimitiveElement {
     }
 
     @Override
+    public int memSize() {
+        return super.memSize() + Strings.memSize(value);
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Markdown c = (Markdown) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Markdown that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
-        return "Markdown{"
-                + "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
-                ", value='" + value + "'" +
-                '}';
+    public String toString() {
+        return "Markdown{" + extensionData + ", value='" + value + "'" + '}';
     }
 }

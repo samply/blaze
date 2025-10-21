@@ -88,7 +88,7 @@
       {:coding
        [(type/coding
          (cond->
-          {:system (type/uri (:system clause))
+          {:system (type/uri-interned (:system clause))
            :code (type/code (:code clause))}
            (:version clause) (assoc :version (type/string (:version clause)))
            (:display clause) (assoc :display (type/string (:display clause)))))]}))))
@@ -101,7 +101,7 @@
    "result" (type/boolean (or result-override false))
    "message" (type/string message)
    "code" (some-> code type/code)
-   "system" (some-> system type/uri)
+   "system" (some-> system type/uri-interned)
    "version" (some-> version type/string)
    "display" (some-> display type/string)
    "inactive" (some-> inactive type/boolean)
@@ -112,7 +112,7 @@
       {:coding
        [(type/coding
          (cond->
-          {:system (type/uri (:system clause))
+          {:system (type/uri-interned (:system clause))
            :code (type/code (:code clause))}
            (:version clause) (assoc :version (type/string (:version clause)))
            (:display clause) (assoc :display (type/string (:display clause)))))]}))))

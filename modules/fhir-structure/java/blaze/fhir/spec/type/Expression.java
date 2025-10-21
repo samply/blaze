@@ -12,7 +12,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Expression extends Element implements Complex, ExtensionValue {
+public final class Expression extends AbstractElement implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Expression");
 
@@ -35,6 +35,8 @@ public final class Expression extends Element implements Complex, ExtensionValue
 
     private static final byte HASH_MARKER = 55;
 
+    private static final Expression EMPTY = new Expression(ExtensionData.EMPTY, null, null, null, null, null);
+
     private final String description;
     private final Id name;
     private final Code language;
@@ -42,9 +44,9 @@ public final class Expression extends Element implements Complex, ExtensionValue
     private final Uri reference;
 
 
-    public Expression(java.lang.String id, List<Extension> extension, String description, Id name, Code language,
-                      String expression, Uri reference) {
-        super(id, extension);
+    private Expression(ExtensionData extensionData, String description, Id name, Code language, String expression,
+                       Uri reference) {
+        super(extensionData);
         this.description = description;
         this.name = name;
         this.language = language;
@@ -53,20 +55,13 @@ public final class Expression extends Element implements Complex, ExtensionValue
     }
 
     public static Expression create(IPersistentMap m) {
-        return new Expression((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (String) m.valAt(DESCRIPTION),
-                (Id) m.valAt(NAME), (Code) m.valAt(LANGUAGE), (String) m.valAt(EXPRESSION), (Uri) m.valAt(REFERENCE));
+        return new Expression(ExtensionData.fromMap(m), (String) m.valAt(DESCRIPTION), (Id) m.valAt(NAME),
+                (Code) m.valAt(LANGUAGE), (String) m.valAt(EXPRESSION), (Uri) m.valAt(REFERENCE));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(description) && Base.isInterned(name) &&
-                Base.isInterned(language) && Base.isInterned(expression) &&
-                Base.isInterned(reference);
     }
 
     public String description() {
@@ -96,15 +91,23 @@ public final class Expression extends Element implements Complex, ExtensionValue
         if (key == LANGUAGE) return language;
         if (key == EXPRESSION) return expression;
         if (key == REFERENCE) return reference;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public ISeq seq() {
+        ISeq seq = PersistentList.EMPTY;
+        seq = appendElement(seq, REFERENCE, reference);
+        seq = appendElement(seq, EXPRESSION, expression);
+        seq = appendElement(seq, LANGUAGE, language);
+        seq = appendElement(seq, NAME, name);
+        seq = appendElement(seq, DESCRIPTION, description);
+        return extensionData.append(seq);
+    }
+
+    @Override
     public Expression empty() {
-        return new Expression(null, PersistentVector.EMPTY, null, null, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -116,31 +119,20 @@ public final class Expression extends Element implements Complex, ExtensionValue
     @SuppressWarnings("unchecked")
     public Expression assoc(Object key, Object val) {
         if (key == ID)
-            return new Expression((java.lang.String) val, extension, description, name, language, expression, reference);
+            return new Expression(extensionData.withId((java.lang.String) val), description, name, language, expression, reference);
         if (key == EXTENSION)
-            return new Expression(id, (List<Extension>) val, description, name, language, expression, reference);
+            return new Expression(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), description, name, language, expression, reference);
         if (key == DESCRIPTION)
-            return new Expression(id, extension, (String) val, name, language, expression, reference);
+            return new Expression(extensionData, (String) val, name, language, expression, reference);
         if (key == NAME)
-            return new Expression(id, extension, description, (Id) val, language, expression, reference);
+            return new Expression(extensionData, description, (Id) val, language, expression, reference);
         if (key == LANGUAGE)
-            return new Expression(id, extension, description, name, (Code) val, expression, reference);
+            return new Expression(extensionData, description, name, (Code) val, expression, reference);
         if (key == EXPRESSION)
-            return new Expression(id, extension, description, name, language, (String) val, reference);
+            return new Expression(extensionData, description, name, language, (String) val, reference);
         if (key == REFERENCE)
-            return new Expression(id, extension, description, name, language, expression, (Uri) val);
-        throw new UnsupportedOperationException("The key `''' + key + '''` isn't supported on FHIR.Expression.");
-    }
-
-    @Override
-    public ISeq seq() {
-        ISeq seq = PersistentList.EMPTY;
-        seq = appendElement(seq, REFERENCE, reference);
-        seq = appendElement(seq, EXPRESSION, expression);
-        seq = appendElement(seq, LANGUAGE, language);
-        seq = appendElement(seq, NAME, name);
-        seq = appendElement(seq, DESCRIPTION, description);
-        return appendBase(seq);
+            return new Expression(extensionData, description, name, language, expression, (Uri) val);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Expression.");
     }
 
     @Override
@@ -174,7 +166,7 @@ public final class Expression extends Element implements Complex, ExtensionValue
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (description != null) {
             sink.putByte((byte) 2);
             description.hashInto(sink);
@@ -190,7 +182,6 @@ public final class Expression extends Element implements Complex, ExtensionValue
         if (expression != null) {
             sink.putByte((byte) 5);
             expression.hashInto(sink);
-            ;
         }
         if (reference != null) {
             sink.putByte((byte) 6);
@@ -201,10 +192,8 @@ public final class Expression extends Element implements Complex, ExtensionValue
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Expression that = (Expression) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Expression that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(description, that.description) &&
                 Objects.equals(name, that.name) &&
                 Objects.equals(language, that.language) &&
@@ -214,14 +203,19 @@ public final class Expression extends Element implements Complex, ExtensionValue
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, description, name, language, expression, reference);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(description);
+        result = 31 * result + Objects.hashCode(name);
+        result = 31 * result + Objects.hashCode(language);
+        result = 31 * result + Objects.hashCode(expression);
+        result = 31 * result + Objects.hashCode(reference);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "Expression{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", description=" + description +
                 ", name=" + name +
                 ", language=" + language +

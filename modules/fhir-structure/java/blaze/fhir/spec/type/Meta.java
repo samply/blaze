@@ -1,19 +1,39 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
+import static java.util.Objects.requireNonNull;
 
-public final class Meta extends Element implements Complex, ExtensionValue {
+public final class Meta extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - versionId reference
+     * 4 byte - lastUpdated reference
+     * 4 byte - source reference
+     * 4 byte - profile reference
+     * 4 byte - security reference
+     * 4 byte - tag reference
+     * 1 byte - interned boolean
+     * 3 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 32;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Meta");
 
@@ -37,29 +57,44 @@ public final class Meta extends Element implements Complex, ExtensionValue {
 
     private static final byte HASH_MARKER = 44;
 
+    private static final Interner<InternerKey, Meta> INTERNER = Interners.weakInterner(
+            k -> new Meta(k.extensionData, null, null, k.source, k.profile, k.security, k.tag, true)
+    );
+    @SuppressWarnings("unchecked")
+    private static final Meta EMPTY = new Meta(ExtensionData.EMPTY, null, null, null, PersistentVector.EMPTY,
+            PersistentVector.EMPTY, PersistentVector.EMPTY, true);
+
     private final Id versionId;
     private final Instant lastUpdated;
     private final Uri source;
     private final List<Canonical> profile;
     private final List<Coding> security;
     private final List<Coding> tag;
+    private final boolean interned;
 
-    @SuppressWarnings("unchecked")
-    public Meta(java.lang.String id, List<Extension> extension, Id versionId, Instant lastUpdated, Uri source,
-                List<Canonical> profile, List<Coding> security, List<Coding> tag) {
-        super(id, extension);
+    private Meta(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source, List<Canonical> profile,
+                 List<Coding> security, List<Coding> tag, boolean interned) {
+        super(extensionData);
         this.versionId = versionId;
         this.lastUpdated = lastUpdated;
         this.source = source;
-        this.profile = profile == null ? PersistentVector.EMPTY : profile;
-        this.security = security == null ? PersistentVector.EMPTY : security;
-        this.tag = tag == null ? PersistentVector.EMPTY : tag;
+        this.profile = requireNonNull(profile);
+        this.security = requireNonNull(security);
+        this.tag = requireNonNull(tag);
+        this.interned = interned;
+    }
+
+    private static Meta maybeIntern(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source,
+                                    List<Canonical> profile, List<Coding> security, List<Coding> tag) {
+        return extensionData.isInterned() && versionId == null && lastUpdated == null && Base.isInterned(source) &&
+                Base.areAllInterned(profile) && Base.areAllInterned(security) && Base.areAllInterned(tag)
+                ? INTERNER.intern(new InternerKey(extensionData, source, profile, security, tag))
+                : new Meta(extensionData, versionId, lastUpdated, source, profile, security, tag, false);
     }
 
     public static Meta create(IPersistentMap m) {
-        return new Meta((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (Id) m.valAt(VERSION_ID),
-                (Instant) m.valAt(LAST_UPDATED), (Uri) m.valAt(SOURCE), Base.listFrom(m, PROFILE),
-                Base.listFrom(m, SECURITY), Base.listFrom(m, TAG));
+        return maybeIntern(ExtensionData.fromMap(m), (Id) m.valAt(VERSION_ID), (Instant) m.valAt(LAST_UPDATED),
+                (Uri) m.valAt(SOURCE), Base.listFrom(m, PROFILE), Base.listFrom(m, SECURITY), Base.listFrom(m, TAG));
     }
 
     @Override
@@ -69,9 +104,7 @@ public final class Meta extends Element implements Complex, ExtensionValue {
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(versionId) && Base.isInterned(lastUpdated) &&
-                Base.isInterned(source) && Base.areAllInterned(profile) &&
-                Base.areAllInterned(security) && Base.areAllInterned(tag);
+        return interned;
     }
 
     public Id versionId() {
@@ -106,43 +139,7 @@ public final class Meta extends Element implements Complex, ExtensionValue {
         if (key == PROFILE) return profile;
         if (key == SECURITY) return security;
         if (key == TAG) return tag;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public Meta empty() {
-        return new Meta(null, PersistentVector.EMPTY, null, null, null, PersistentVector.EMPTY, PersistentVector.EMPTY,
-                PersistentVector.EMPTY);
-    }
-
-    @Override
-    public Iterator<Map.Entry<Object, Object>> iterator() {
-        return new BaseIterator(this, FIELDS);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public Meta assoc(Object key, Object val) {
-        if (key == ID)
-            return new Meta((java.lang.String) val, extension, versionId, lastUpdated, source, profile, security, tag);
-        if (key == EXTENSION)
-            return new Meta(id, (List<Extension>) val, versionId, lastUpdated, source, profile, security, tag);
-        if (key == VERSION_ID)
-            return new Meta(id, extension, (Id) val, lastUpdated, source, profile, security, tag);
-        if (key == LAST_UPDATED)
-            return new Meta(id, extension, versionId, (Instant) val, source, profile, security, tag);
-        if (key == SOURCE)
-            return new Meta(id, extension, versionId, lastUpdated, (Uri) val, profile, security, tag);
-        if (key == PROFILE)
-            return new Meta(id, extension, versionId, lastUpdated, source, (List<Canonical>) val, security, tag);
-        if (key == SECURITY)
-            return new Meta(id, extension, versionId, lastUpdated, source, profile, (List<Coding>) val, tag);
-        if (key == TAG)
-            return new Meta(id, extension, versionId, lastUpdated, source, profile, security, (List<Coding>) val);
-        throw new UnsupportedOperationException("The key `''' + key + '''` isn't supported on FHIR.Meta.");
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -160,7 +157,39 @@ public final class Meta extends Element implements Complex, ExtensionValue {
         seq = appendElement(seq, SOURCE, source);
         seq = appendElement(seq, LAST_UPDATED, lastUpdated);
         seq = appendElement(seq, VERSION_ID, versionId);
-        return appendBase(seq);
+        return extensionData.append(seq);
+    }
+
+    @Override
+    public Meta empty() {
+        return EMPTY;
+    }
+
+    @Override
+    public Iterator<Map.Entry<Object, Object>> iterator() {
+        return new BaseIterator(this, FIELDS);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Meta assoc(Object key, Object val) {
+        if (key == VERSION_ID)
+            return maybeIntern(extensionData, (Id) val, lastUpdated, source, profile, security, tag);
+        if (key == LAST_UPDATED)
+            return maybeIntern(extensionData, versionId, (Instant) val, source, profile, security, tag);
+        if (key == SOURCE)
+            return maybeIntern(extensionData, versionId, lastUpdated, (Uri) val, profile, security, tag);
+        if (key == PROFILE)
+            return maybeIntern(extensionData, versionId, lastUpdated, source, (List<Canonical>) (val == null ? PersistentVector.EMPTY : val), security, tag);
+        if (key == SECURITY)
+            return maybeIntern(extensionData, versionId, lastUpdated, source, profile, (List<Coding>) (val == null ? PersistentVector.EMPTY : val), tag);
+        if (key == TAG)
+            return maybeIntern(extensionData, versionId, lastUpdated, source, profile, security, (List<Coding>) (val == null ? PersistentVector.EMPTY : val));
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), versionId, lastUpdated, source, profile, security, tag);
+        if (key == ID)
+            return maybeIntern(extensionData.withId((String) val), versionId, lastUpdated, source, profile, security, tag);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Meta.");
     }
 
     @Override
@@ -207,7 +236,7 @@ public final class Meta extends Element implements Complex, ExtensionValue {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (versionId != null) {
             sink.putByte((byte) 2);
             versionId.hashInto(sink);
@@ -244,30 +273,41 @@ public final class Meta extends Element implements Complex, ExtensionValue {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(versionId) +
+                Base.memSize(lastUpdated) + Base.memSize(source) + Base.memSize(profile) + Base.memSize(security) +
+                Base.memSize(tag);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Meta that = (Meta) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Meta that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(versionId, that.versionId) &&
                 Objects.equals(lastUpdated, that.lastUpdated) &&
                 Objects.equals(source, that.source) &&
-                Objects.equals(profile, that.profile) &&
-                Objects.equals(security, that.security) &&
-                Objects.equals(tag, that.tag);
+                profile.equals(that.profile) &&
+                security.equals(that.security) &&
+                tag.equals(that.tag);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, versionId, lastUpdated, source, profile, security, tag);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(versionId);
+        result = 31 * result + Objects.hashCode(lastUpdated);
+        result = 31 * result + Objects.hashCode(source);
+        result = 31 * result + profile.hashCode();
+        result = 31 * result + security.hashCode();
+        result = 31 * result + tag.hashCode();
+        return result;
     }
 
     @Override
-    public java.lang.String toString() {
+    public String toString() {
         return "Meta{" +
-                "id=" + (id == null ? null : "'''" + id + "'''") +
-                ", extension=" + extension +
+                extensionData +
                 ", versionId=" + versionId +
                 ", lastUpdated=" + lastUpdated +
                 ", source=" + source +
@@ -275,5 +315,15 @@ public final class Meta extends Element implements Complex, ExtensionValue {
                 ", security=" + security +
                 ", tag=" + tag +
                 '}';
+    }
+
+    private record InternerKey(ExtensionData extensionData, Uri source, List<Canonical> profile, List<Coding> security,
+                               List<Coding> tag) {
+        private InternerKey {
+            requireNonNull(extensionData);
+            requireNonNull(profile);
+            requireNonNull(security);
+            requireNonNull(tag);
+        }
     }
 }

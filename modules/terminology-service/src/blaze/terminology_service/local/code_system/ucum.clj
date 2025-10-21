@@ -25,9 +25,9 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
         :code #fhir/code "read-only"}]}
-   :url #fhir/uri "http://unitsofmeasure.org"
+   :url #fhir/uri-interned "http://unitsofmeasure.org"
    :version #fhir/string "2013.10.21"
    :name #fhir/string "UCUM"
    :title #fhir/string "Unified Code for Units of Measure (UCUM)"
@@ -59,7 +59,7 @@
    (keep
     (fn [{:keys [code]}]
       (when (valid? (type/value code))
-        {:system #fhir/uri "http://unitsofmeasure.org"
+        {:system #fhir/uri-interned "http://unitsofmeasure.org"
          :code code})))
    concepts))
 

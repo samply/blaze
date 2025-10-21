@@ -39,7 +39,7 @@
    #fhir/CodeableConcept
     {:coding
      [#fhir/Coding
-       {:system #fhir/uri "http://loinc.org"
+       {:system #fhir/uri-interned "http://loinc.org"
         :code #fhir/code "17861-6"}]})
 
   ;; 1,976 µs <> 1,977 µs
@@ -55,13 +55,13 @@
     [#fhir/CodeableConcept
       {:coding
        [#fhir/Coding
-         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/observation-category"
+         {:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/observation-category"
           :code #fhir/code "vital-signs"
-          :display #fhir/string "vital-signs"}]}]
+          :display #fhir/string-interned "vital-signs"}]}]
     :code #fhir/CodeableConcept
-           {:coding [#fhir/Coding{:system #fhir/uri "http://loinc.org"
+           {:coding [#fhir/Coding{:system #fhir/uri-interned "http://loinc.org"
                                   :code #fhir/code "39156-5"
-                                  :display #fhir/string "Body Mass Index"}]
+                                  :display #fhir/string-interned "Body Mass Index"}]
             :text #fhir/string "Body Mass Index"}
     :subject #fhir/Reference{:reference #fhir/string "Patient/DACG22233TWT7CKL"}
     :effective #fhir/dateTime #system/date-time "2013-01-04T23:45:50Z"
@@ -69,7 +69,7 @@
     :value #fhir/Quantity
             {:value #fhir/decimal 14.97M
              :unit #fhir/string "kg/m2"
-             :system #fhir/uri "http://unitsofmeasure.org"
+             :system #fhir/uri-interned "http://unitsofmeasure.org"
              :code #fhir/code "kg/m2"}})
 
   ;; 2,233 µs <> 2,240 µs
@@ -88,13 +88,13 @@
      [#fhir/CodeableConcept
        {:coding
         [#fhir/Coding
-          {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/observation-category"
+          {:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/observation-category"
            :code #fhir/code "vital-signs"
-           :display #fhir/string "vital-signs"}]}]
+           :display #fhir/string-interned "vital-signs"}]}]
      :code #fhir/CodeableConcept
-            {:coding [#fhir/Coding{:system #fhir/uri "http://loinc.org"
+            {:coding [#fhir/Coding{:system #fhir/uri-interned "http://loinc.org"
                                    :code #fhir/code "39156-5"
-                                   :display #fhir/string "Body Mass Index"}]
+                                   :display #fhir/string-interned "Body Mass Index"}]
              :text #fhir/string "Body Mass Index"}
      :subject #fhir/Reference{:reference #fhir/string "Patient/DACG22233TWT7CKL"}
      :effective #fhir/dateTime #system/date-time "2013-01-04T23:45:50Z"
@@ -102,7 +102,7 @@
      :value #fhir/Quantity
              {:value #fhir/decimal 14.97M
               :unit #fhir/string "kg/m2"
-              :system #fhir/uri "http://unitsofmeasure.org"
+              :system #fhir/uri-interned "http://unitsofmeasure.org"
               :code #fhir/code "kg/m2"}}
     :search #fhir/BundleEntrySearch{:mode #fhir/code "match"}})
 

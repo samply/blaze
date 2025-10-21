@@ -41,12 +41,12 @@
 (defn- used-codesystem-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string "used-codesystem"
-   :value (type/uri (cond-> url version (str "|" version)))})
+   :value (type/uri-interned (cond-> url version (str "|" version)))})
 
 (defn- version-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string "version"
-   :value (type/uri (str url "|" version))})
+   :value (type/uri-interned (str url "|" version))})
 
 (defn- code-system-parameters [{{url :value} :url {version :value} :version}]
   (cond-> #{(used-codesystem-parameter url version)}
@@ -122,7 +122,7 @@
   (cond-> {:fhir/type :fhir.ValueSet.expansion/property
            :code (type/code property)}
     (#{"status" "definition"} property)
-    (assoc :uri (type/uri (str "http://hl7.org/fhir/concept-properties#" property)))))
+    (assoc :uri (type/uri-interned (str "http://hl7.org/fhir/concept-properties#" property)))))
 
 (defn- append-properties [properties]
   (mapv append-property properties))

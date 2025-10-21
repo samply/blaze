@@ -2,8 +2,6 @@ package blaze.fhir.spec.type.system;
 
 import com.google.common.hash.PrimitiveSink;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 public interface Booleans {
 
     @SuppressWarnings("UnstableApiUsage")

@@ -1,10 +1,13 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +15,19 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Period extends Element implements Complex, ExtensionValue {
+public final class Period extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - start reference
+     * 4 byte - end boolean
+     * 1 byte - interned boolean
+     * 3 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 16;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Period");
 
@@ -28,23 +43,28 @@ public final class Period extends Element implements Complex, ExtensionValue {
 
     private static final byte HASH_MARKER = 41;
 
+    private static final Interner<ExtensionData, Period> INTERNER = Interners.weakInterner(k -> new Period(k, null, null, true));
+    private static final Period EMPTY = new Period(ExtensionData.EMPTY, null, null, true);
+
     private final DateTime start;
     private final DateTime end;
+    private final boolean interned;
 
-    public Period(java.lang.String id, List<Extension> extension, DateTime start, DateTime end) {
-        super(id, extension);
+    private Period(ExtensionData extensionData, DateTime start, DateTime end, boolean interned) {
+        super(extensionData);
         this.start = start;
         this.end = end;
+        this.interned = interned;
+    }
+
+    private static Period maybeIntern(ExtensionData extensionData, DateTime start, DateTime end) {
+        return extensionData.isInterned() && start == null && end == null
+                ? INTERNER.intern(extensionData)
+                : new Period(extensionData, start, end, false);
     }
 
     public static Period create(IPersistentMap m) {
-        return new Period((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (DateTime) m.valAt(START), (DateTime) m.valAt(END));
-    }
-
-    public static IPersistentVector getBasis() {
-        return RT.vector(Symbol.intern(null, "id"), Symbol.intern(null, "extension"), Symbol.intern(null, "start"),
-                Symbol.intern(null, "end"));
+        return maybeIntern(ExtensionData.fromMap(m), (DateTime) m.valAt(START), (DateTime) m.valAt(END));
     }
 
     @Override
@@ -54,7 +74,7 @@ public final class Period extends Element implements Complex, ExtensionValue {
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(start) && Base.isInterned(end);
+        return interned;
     }
 
     public DateTime start() {
@@ -69,9 +89,7 @@ public final class Period extends Element implements Complex, ExtensionValue {
     public Object valAt(Object key, Object notFound) {
         if (key == START) return start;
         if (key == END) return end;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -79,13 +97,12 @@ public final class Period extends Element implements Complex, ExtensionValue {
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, END, end);
         seq = appendElement(seq, START, start);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Period empty() {
-        return new Period(null, PersistentVector.EMPTY, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -96,10 +113,11 @@ public final class Period extends Element implements Complex, ExtensionValue {
     @Override
     @SuppressWarnings("unchecked")
     public Period assoc(Object key, Object val) {
-        if (key == ID) return new Period((java.lang.String) val, extension, start, end);
-        if (key == EXTENSION) return new Period(id, (List<Extension>) val, start, end);
-        if (key == START) return new Period(id, extension, (DateTime) val, end);
-        if (key == END) return new Period(id, extension, start, (DateTime) val);
+        if (key == START) return maybeIntern(extensionData, (DateTime) val, end);
+        if (key == END) return maybeIntern(extensionData, start, (DateTime) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), start, end);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), start, end);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Period.");
     }
 
@@ -125,7 +143,7 @@ public final class Period extends Element implements Complex, ExtensionValue {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (start != null) {
             sink.putByte((byte) 2);
             start.hashInto(sink);
@@ -137,28 +155,29 @@ public final class Period extends Element implements Complex, ExtensionValue {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(start) + Base.memSize(end);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Period that = (Period) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Period that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(start, that.start) &&
                 Objects.equals(end, that.end);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, start, end);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(start);
+        result = 31 * result + Objects.hashCode(end);
+        return result;
     }
 
     @Override
-    public java.lang.String toString() {
-        return "Period{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
-                ", start=" + start +
-                ", end=" + end +
-                '}';
+    public String toString() {
+        return "Period{" + extensionData + ", start=" + start + ", end=" + end + '}';
     }
 }

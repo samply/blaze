@@ -1,11 +1,14 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +16,19 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Range extends Element implements Complex, ExtensionValue {
+public final class Range extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - low reference
+     * 4 byte - high boolean
+     * 1 byte - interned boolean
+     * 3 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 16;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Range");
 
@@ -29,23 +44,28 @@ public final class Range extends Element implements Complex, ExtensionValue {
 
     private static final byte HASH_MARKER = 50;
 
+    private static final Interner<ExtensionData, Range> INTERNER = Interners.weakInterner(k -> new Range(k, null, null, true));
+    private static final Range EMPTY = new Range(ExtensionData.EMPTY, null, null, true);
+
     private final Quantity low;
     private final Quantity high;
+    private final boolean interned;
 
-    public Range(java.lang.String id, List<Extension> extension, Quantity low, Quantity high) {
-        super(id, extension);
+    private Range(ExtensionData extensionData, Quantity low, Quantity high, boolean interned) {
+        super(extensionData);
         this.low = low;
         this.high = high;
+        this.interned = interned;
+    }
+
+    private static Range maybeIntern(ExtensionData extensionData, Quantity low, Quantity high) {
+        return extensionData.isInterned() && low == null && high == null
+                ? INTERNER.intern(extensionData)
+                : new Range(extensionData, low, high, false);
     }
 
     public static Range create(IPersistentMap m) {
-        return new Range((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (Quantity) m.valAt(LOW), (Quantity) m.valAt(HIGH));
-    }
-
-    public static IPersistentVector getBasis() {
-        return RT.vector(Symbol.intern(null, "id"), Symbol.intern(null, "extension"), Symbol.intern(null, "low"),
-                Symbol.intern(null, "high"));
+        return maybeIntern(ExtensionData.fromMap(m), (Quantity) m.valAt(LOW), (Quantity) m.valAt(HIGH));
     }
 
     @Override
@@ -55,7 +75,7 @@ public final class Range extends Element implements Complex, ExtensionValue {
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(low) && Base.isInterned(high);
+        return interned;
     }
 
     public Quantity low() {
@@ -70,15 +90,20 @@ public final class Range extends Element implements Complex, ExtensionValue {
     public Object valAt(Object key, Object notFound) {
         if (key == LOW) return low;
         if (key == HIGH) return high;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public ISeq seq() {
+        ISeq seq = PersistentList.EMPTY;
+        seq = appendElement(seq, HIGH, high);
+        seq = appendElement(seq, LOW, low);
+        return extensionData.append(seq);
+    }
+
+    @Override
     public Range empty() {
-        return new Range(null, PersistentVector.EMPTY, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -89,23 +114,12 @@ public final class Range extends Element implements Complex, ExtensionValue {
     @Override
     @SuppressWarnings("unchecked")
     public Range assoc(Object key, Object val) {
-        if (key == ID)
-            return new Range((java.lang.String) val, extension, low, high);
+        if (key == LOW) return maybeIntern(extensionData, (Quantity) val, high);
+        if (key == HIGH) return maybeIntern(extensionData, low, (Quantity) val);
         if (key == EXTENSION)
-            return new Range(id, (List<Extension>) val, low, high);
-        if (key == LOW)
-            return new Range(id, extension, (Quantity) val, high);
-        if (key == HIGH)
-            return new Range(id, extension, low, (Quantity) val);
-        throw new UnsupportedOperationException("The key `''' + key + '''` isn't supported on FHIR.Range.");
-    }
-
-    @Override
-    public ISeq seq() {
-        ISeq seq = PersistentList.EMPTY;
-        seq = appendElement(seq, HIGH, high);
-        seq = appendElement(seq, LOW, low);
-        return appendBase(seq);
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), low, high);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), low, high);
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Range.");
     }
 
     @Override
@@ -132,7 +146,7 @@ public final class Range extends Element implements Complex, ExtensionValue {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (low != null) {
             sink.putByte((byte) 2);
             low.hashInto(sink);
@@ -144,28 +158,29 @@ public final class Range extends Element implements Complex, ExtensionValue {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(low) + Base.memSize(high);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Range that = (Range) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Range that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(low, that.low) &&
                 Objects.equals(high, that.high);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, low, high);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(low);
+        result = 31 * result + Objects.hashCode(high);
+        return result;
     }
 
     @Override
-    public java.lang.String toString() {
-        return "Range{" +
-                "id=" + (id == null ? null : "'''" + id + "'''") +
-                ", extension=" + extension +
-                ", low=" + low +
-                ", high=" + high +
-                '}';
+    public String toString() {
+        return "Range{" + extensionData + ", low=" + low + ", high=" + high + '}';
     }
 }

@@ -24,39 +24,32 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
 
     private static final byte HASH_MARKER = 3;
 
-    private String(java.lang.String id, List<Extension> extension) {
-        super(id, extension);
+    private String(ExtensionData extensionData) {
+        super(extensionData);
     }
 
-    private static String maybeIntern(java.lang.String id, List<Extension> extension, java.lang.String value) {
-        return id == null && Base.areAllInterned(extension) && (value == null || value.length() <= 4)
-                ? Interned.intern(extension, value)
-                : new Normal(id, extension, value);
+    private static String maybeIntern(ExtensionData extensionData, java.lang.String value) {
+        return extensionData.isInterned() && (value == null || value.length() <= 4)
+                ? Interned.intern(extensionData, value)
+                : new Normal(extensionData, value);
     }
 
-    @SuppressWarnings("unchecked")
     public static String create(java.lang.String value) {
-        return value.length() <= 4
-                ? Interned.intern(PersistentVector.EMPTY, value)
-                : new Normal(null, null, value);
+        return value.length() <= 4 ? Interned.intern(ExtensionData.EMPTY, value) : new Normal(ExtensionData.EMPTY, value);
     }
 
     public static String create(IPersistentMap m) {
-        return maybeIntern((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (java.lang.String) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), (java.lang.String) m.valAt(VALUE));
     }
 
-    @SuppressWarnings("unchecked")
     public static String createForceIntern(java.lang.String value) {
-        return Interned.intern(PersistentVector.EMPTY, requireNonNull(value));
+        return Interned.intern(ExtensionData.EMPTY, requireNonNull(value));
     }
 
     public static String createForceIntern(IPersistentMap m) {
-        var id = (java.lang.String) m.valAt(ID);
-        List<Extension> extension = Base.listFrom(m, EXTENSION);
+        var extensionData = ExtensionData.fromMap(m);
         var value = (java.lang.String) m.valAt(VALUE);
-        return id == null && Base.areAllInterned(extension)
-                ? Interned.intern(extension, value)
-                : new Normal(id, extension, value);
+        return extensionData.isInterned() ? Interned.intern(extensionData, value) : new Normal(extensionData, value);
     }
 
     /**
@@ -92,7 +85,7 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (hasValue()) {
             sink.putByte((byte) 2);
             Strings.hashInto(value(), sink);
@@ -100,40 +93,39 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof String s)) return false;
-        return Objects.equals(id, s.id) &&
-                Objects.equals(extension, s.extension) &&
-                Objects.equals(value(), s.value());
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        return o instanceof String that &&
+                Objects.equals(extensionData, that.extensionData) &&
+                Objects.equals(value(), that.value());
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(id, extension, value());
+    public final int hashCode() {
+        return 31 * extensionData.hashCode() + Objects.hashCode(value());
     }
 
     @Override
-    public java.lang.String toString() {
+    public final java.lang.String toString() {
         return "String{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", value=" + (value() == null ? null : '\'' + value() + '\'') +
                 '}';
     }
 
     public static final class Normal extends String {
 
-        private static final Normal EMPTY = new Normal(null, null, null);
+        private static final Normal EMPTY = new Normal(ExtensionData.EMPTY, null);
 
         private final java.lang.String value;
 
-        private Normal(java.lang.String id, List<Extension> extension, java.lang.String value) {
-            super(id, extension);
+        private Normal(ExtensionData extensionData, java.lang.String value) {
+            super(extensionData);
             this.value = value;
         }
 
         public static Normal create(IPersistentMap m) {
-            return new Normal((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (java.lang.String) m.valAt(VALUE));
+            return new Normal(ExtensionData.fromMap(m), (java.lang.String) m.valAt(VALUE));
         }
 
         @Override
@@ -149,9 +141,10 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         @Override
         @SuppressWarnings("unchecked")
         public String assoc(Object key, Object val) {
-            if (key == VALUE) return maybeIntern(id, extension, (java.lang.String) val);
-            if (key == EXTENSION) return maybeIntern(id, (List<Extension>) val, value);
-            if (key == ID) return maybeIntern((java.lang.String) val, extension, value);
+            if (key == VALUE) return maybeIntern(extensionData, (java.lang.String) val);
+            if (key == EXTENSION)
+                return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+            if (key == ID) return maybeIntern(extensionData.withId((java.lang.String) val), value);
             throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.String.");
         }
 
@@ -163,46 +156,47 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
                 generator.writeNull();
             }
         }
+
+        @Override
+        public int memSize() {
+            return super.memSize() + Strings.memSize(value);
+        }
     }
 
     public static final class Interned extends String {
 
-        private static final Interned EMPTY = new Interned(null, null, null);
-        private static final Interner<InternerKey, Interned> INTERNER = Interners.weakInterner(k -> create(null, k.extension, k.value));
+        private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, null);
+        private static final Interner<InternerKey, Interned> INTERNER = Interners.weakInterner(k -> create(k.extensionData, k.value));
 
         private final SerializedString value;
 
-        private Interned(java.lang.String id, List<Extension> extension, SerializedString value) {
-            super(id, extension);
+        private Interned(ExtensionData extensionData, SerializedString value) {
+            super(extensionData);
             this.value = value;
         }
 
-        private static Interned create(java.lang.String id, List<Extension> extension, java.lang.String value) {
-            return new Interned(id, extension, value == null ? null : new SerializedString(value));
+        private static Interned create(ExtensionData extensionData, java.lang.String value) {
+            return new Interned(extensionData, value == null ? null : new SerializedString(value));
         }
 
-        private static String maybeIntern(java.lang.String id, List<Extension> extension, java.lang.String value) {
-            return id == null && Base.areAllInterned(extension)
-                    ? intern(extension, value)
-                    : new Normal(id, extension, value);
+        private static String maybeIntern(ExtensionData extensionData, java.lang.String value) {
+            return extensionData.isInterned() ? intern(extensionData, value) : new Normal(extensionData, value);
         }
 
-        private static Interned intern(List<Extension> extension, java.lang.String value) {
-            return INTERNER.intern(new InternerKey(extension, value));
+        private static Interned intern(ExtensionData extensionData, java.lang.String value) {
+            return INTERNER.intern(new InternerKey(extensionData, value));
         }
 
         public static Interned create(IPersistentMap m) {
-            var id = (java.lang.String) m.valAt(ID);
-            List<Extension> extension = Base.listFrom(m, EXTENSION);
+            var extensionData = ExtensionData.fromMap(m);
             var value = (java.lang.String) m.valAt(VALUE);
-            return id == null && Base.areAllInterned(extension)
-                    ? intern(extension, value)
-                    : create(id, extension, value);
+            if (extensionData.isInterned()) return intern(extensionData, value);
+            throw new IllegalArgumentException("Can't create an interned FHIR.String using non-interned extension data.");
         }
 
         @Override
         public boolean isInterned() {
-            return isBaseInterned();
+            return true;
         }
 
         @Override
@@ -218,9 +212,10 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         @Override
         @SuppressWarnings("unchecked")
         public String assoc(Object key, Object val) {
-            if (key == VALUE) return maybeIntern(id, extension, (java.lang.String) val);
-            if (key == EXTENSION) return maybeIntern(id, (List<Extension>) val, value());
-            if (key == ID) return maybeIntern((java.lang.String) val, extension, value());
+            if (key == VALUE) return maybeIntern(extensionData, (java.lang.String) val);
+            if (key == EXTENSION)
+                return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value());
+            if (key == ID) return maybeIntern(extensionData.withId((java.lang.String) val), value());
             throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.String.");
         }
 
@@ -232,11 +227,16 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
                 generator.writeNull();
             }
         }
+
+        @Override
+        public int memSize() {
+            return 0;
+        }
     }
 
-    private record InternerKey(List<Extension> extension, java.lang.String value) {
+    private record InternerKey(ExtensionData extensionData, java.lang.String value) {
         private InternerKey {
-            requireNonNull(extension);
+            requireNonNull(extensionData);
         }
     }
 }

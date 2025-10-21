@@ -13,7 +13,20 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class Reference extends Element implements Complex, ExtensionValue {
+public final class Reference extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - reference reference
+     * 4 byte - type reference
+     * 4 byte - identifier reference
+     * 4 byte - display reference
+     * 4 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 24;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Reference");
 
@@ -33,13 +46,15 @@ public final class Reference extends Element implements Complex, ExtensionValue 
 
     private static final byte HASH_MARKER = 43;
 
+    private static final Reference EMPTY = new Reference(ExtensionData.EMPTY, null, null, null, null);
+
     private final String reference;
     private final Uri type;
     private final Identifier identifier;
     private final String display;
 
-    public Reference(java.lang.String id, List<Extension> extension, String reference, Uri type, Identifier identifier, String display) {
-        super(id, extension);
+    private Reference(ExtensionData extensionData, String reference, Uri type, Identifier identifier, String display) {
+        super(extensionData);
         this.reference = reference;
         this.type = type;
         this.identifier = identifier;
@@ -47,25 +62,13 @@ public final class Reference extends Element implements Complex, ExtensionValue 
     }
 
     public static Reference create(IPersistentMap m) {
-        return new Reference((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (String) m.valAt(REFERENCE), (Uri) m.valAt(TYPE), (Identifier) m.valAt(IDENTIFIER),
-                (String) m.valAt(DISPLAY));
-    }
-
-    public static IPersistentVector getBasis() {
-        return RT.vector(Symbol.intern(null, "id"), Symbol.intern(null, "extension"), Symbol.intern(null, "reference"),
-                Symbol.intern(null, "type"), Symbol.intern(null, "identifier"), Symbol.intern(null, "display"));
+        return new Reference(ExtensionData.fromMap(m), (String) m.valAt(REFERENCE), (Uri) m.valAt(TYPE),
+                (Identifier) m.valAt(IDENTIFIER), (String) m.valAt(DISPLAY));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(reference) && Base.isInterned(type) &&
-                Base.isInterned(identifier) && Base.isInterned(display);
     }
 
     public String reference() {
@@ -90,9 +93,7 @@ public final class Reference extends Element implements Complex, ExtensionValue 
         if (key == TYPE) return type;
         if (key == IDENTIFIER) return identifier;
         if (key == DISPLAY) return display;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -102,13 +103,12 @@ public final class Reference extends Element implements Complex, ExtensionValue 
         seq = appendElement(seq, IDENTIFIER, identifier);
         seq = appendElement(seq, TYPE, type);
         seq = appendElement(seq, REFERENCE, reference);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Reference empty() {
-        return new Reference(null, PersistentVector.EMPTY, null, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -120,17 +120,17 @@ public final class Reference extends Element implements Complex, ExtensionValue 
     @SuppressWarnings("unchecked")
     public Reference assoc(Object key, Object val) {
         if (key == ID)
-            return new Reference((java.lang.String) val, extension, reference, type, identifier, display);
+            return new Reference(extensionData.withId((java.lang.String) val), reference, type, identifier, display);
         if (key == EXTENSION)
-            return new Reference(id, (List<Extension>) val, reference, type, identifier, display);
+            return new Reference(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), reference, type, identifier, display);
         if (key == REFERENCE)
-            return new Reference(id, extension, (String) val, type, identifier, display);
+            return new Reference(extensionData, (String) val, type, identifier, display);
         if (key == TYPE)
-            return new Reference(id, extension, reference, (Uri) val, identifier, display);
+            return new Reference(extensionData, reference, (Uri) val, identifier, display);
         if (key == IDENTIFIER)
-            return new Reference(id, extension, reference, type, (Identifier) val, display);
+            return new Reference(extensionData, reference, type, (Identifier) val, display);
         if (key == DISPLAY)
-            return new Reference(id, extension, reference, type, identifier, (String) val);
+            return new Reference(extensionData, reference, type, identifier, (String) val);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Reference.");
     }
 
@@ -163,7 +163,7 @@ public final class Reference extends Element implements Complex, ExtensionValue 
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (reference != null) {
             sink.putByte((byte) 2);
             reference.hashInto(sink);
@@ -183,12 +183,16 @@ public final class Reference extends Element implements Complex, ExtensionValue 
     }
 
     @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(reference) + Base.memSize(type) +
+                Base.memSize(identifier) + Base.memSize(display);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Reference that = (Reference) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Reference that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(reference, that.reference) &&
                 Objects.equals(type, that.type) &&
                 Objects.equals(identifier, that.identifier) &&
@@ -197,14 +201,18 @@ public final class Reference extends Element implements Complex, ExtensionValue 
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, reference, type, identifier, display);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(reference);
+        result = 31 * result + Objects.hashCode(type);
+        result = 31 * result + Objects.hashCode(identifier);
+        result = 31 * result + Objects.hashCode(display);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "Reference{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", reference='" + reference + '\'' +
                 ", type=" + type +
                 ", identifier=" + identifier +

@@ -21,7 +21,7 @@
    {:fhir/type :fhir.ValueSet/compose
     :include
     [{:fhir/type :fhir.ValueSet.compose/include
-      :system #fhir/uri "http://loinc.org"
+      :system #fhir/uri-interned "http://loinc.org"
       :concept
       (mapv
        #(-> (assoc % :fhir/type :fhir.ValueSet.compose.include/concept)

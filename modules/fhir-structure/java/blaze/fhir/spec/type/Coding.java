@@ -15,7 +15,22 @@ import java.util.Objects;
 import static blaze.fhir.spec.type.Base.appendElement;
 import static java.util.Objects.requireNonNull;
 
-public final class Coding extends Element implements Complex, ExtensionValue {
+public final class Coding extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - system reference
+     * 4 byte - version reference
+     * 4 byte - code reference
+     * 4 byte - display reference
+     * 4 byte - userSelected reference
+     * 1 byte - interned boolean
+     * 7 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 32;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Coding");
     private static final Keyword SYSTEM = Keyword.intern("system");
@@ -37,9 +52,9 @@ public final class Coding extends Element implements Complex, ExtensionValue {
     private static final byte HASH_MARKER = 38;
 
     private static final Interner<InternerKey, Coding> INTERNER = Interners.weakInterner(
-            k -> new Coding(null, k.extension, k.system, k.version, k.code, k.display, k.userSelected, true)
+            k -> new Coding(k.extensionData, k.system, k.version, k.code, k.display, k.userSelected, true)
     );
-    public static final Coding EMPTY = new Coding(null, null, null, null, null, null, null, true);
+    public static final Coding EMPTY = new Coding(ExtensionData.EMPTY, null, null, null, null, null, true);
 
     private final Uri system;
     private final String version;
@@ -48,9 +63,9 @@ public final class Coding extends Element implements Complex, ExtensionValue {
     private final Boolean userSelected;
     private final boolean interned;
 
-    public Coding(java.lang.String id, List<Extension> extension, Uri system, String version, Code code, String display,
-                  Boolean userSelected, boolean interned) {
-        super(id, extension);
+    private Coding(ExtensionData extensionData, Uri system, String version, Code code, String display,
+                   Boolean userSelected, boolean interned) {
+        super(extensionData);
         this.system = system;
         this.version = version;
         this.code = code;
@@ -59,23 +74,17 @@ public final class Coding extends Element implements Complex, ExtensionValue {
         this.interned = interned;
     }
 
-    private static Coding intern(List<Extension> extension, Uri system, String version, Code code, String display,
-                                 Boolean userSelected) {
-        return INTERNER.intern(new InternerKey(extension, system, version, code, display, userSelected));
-    }
-
-    private static Coding maybeIntern(java.lang.String id, List<Extension> extension, Uri system, String version,
-                                      Code code, String display, Boolean userSelected) {
-        return id == null && Base.areAllInterned(extension) && Base.isInterned(system) && Base.isInterned(version) &&
+    private static Coding maybeIntern(ExtensionData extensionData, Uri system, String version, Code code, String display,
+                                      Boolean userSelected) {
+        return extensionData.isInterned() && Base.isInterned(system) && Base.isInterned(version) &&
                 Base.isInterned(code) && Base.isInterned(display) && Base.isInterned(userSelected)
-                ? intern(extension, system, version, code, display, userSelected)
-                : new Coding(id, extension, system, version, code, display, userSelected, false);
+                ? INTERNER.intern(new InternerKey(extensionData, system, version, code, display, userSelected))
+                : new Coding(extensionData, system, version, code, display, userSelected, false);
     }
 
     public static Coding create(IPersistentMap m) {
-        return maybeIntern((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (Uri) m.valAt(SYSTEM), (String) m.valAt(VERSION), (Code) m.valAt(CODE),
-                (String) m.valAt(DISPLAY), (Boolean) m.valAt(USER_SELECTED));
+        return maybeIntern(ExtensionData.fromMap(m), (Uri) m.valAt(SYSTEM), (String) m.valAt(VERSION),
+                (Code) m.valAt(CODE), (String) m.valAt(DISPLAY), (Boolean) m.valAt(USER_SELECTED));
     }
 
     @Override
@@ -114,10 +123,19 @@ public final class Coding extends Element implements Complex, ExtensionValue {
         if (key == SYSTEM) return system;
         if (key == VERSION) return version;
         if (key == DISPLAY) return display;
-        if (key == EXTENSION) return extension;
         if (key == USER_SELECTED) return userSelected;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
+    }
+
+    @Override
+    public ISeq seq() {
+        ISeq seq = PersistentList.EMPTY;
+        seq = appendElement(seq, USER_SELECTED, userSelected);
+        seq = appendElement(seq, DISPLAY, display);
+        seq = appendElement(seq, CODE, code);
+        seq = appendElement(seq, VERSION, version);
+        seq = appendElement(seq, SYSTEM, system);
+        return extensionData.append(seq);
     }
 
     @Override
@@ -133,25 +151,16 @@ public final class Coding extends Element implements Complex, ExtensionValue {
     @Override
     @SuppressWarnings("unchecked")
     public Coding assoc(Object key, Object val) {
-        if (key == CODE) return maybeIntern(id, extension, system, version, (Code) val, display, userSelected);
-        if (key == SYSTEM) return maybeIntern(id, extension, (Uri) val, version, code, display, userSelected);
-        if (key == VERSION) return maybeIntern(id, extension, system, (String) val, code, display, userSelected);
-        if (key == DISPLAY) return maybeIntern(id, extension, system, version, code, (String) val, userSelected);
-        if (key == EXTENSION) return maybeIntern(id, (List<Extension>) val, system, version, code, display, userSelected);
-        if (key == USER_SELECTED) return maybeIntern(id, extension, system, version, code, display, (Boolean) val);
-        if (key == ID) return maybeIntern((java.lang.String) val, extension, system, version, code, display, userSelected);
+        if (key == CODE) return maybeIntern(extensionData, system, version, (Code) val, display, userSelected);
+        if (key == SYSTEM) return maybeIntern(extensionData, (Uri) val, version, code, display, userSelected);
+        if (key == VERSION) return maybeIntern(extensionData, system, (String) val, code, display, userSelected);
+        if (key == DISPLAY) return maybeIntern(extensionData, system, version, code, (String) val, userSelected);
+        if (key == USER_SELECTED) return maybeIntern(extensionData, system, version, code, display, (Boolean) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), system, version, code, display, userSelected);
+        if (key == ID)
+            return maybeIntern(extensionData.withId((java.lang.String) val), system, version, code, display, userSelected);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Coding.");
-    }
-
-    @Override
-    public ISeq seq() {
-        ISeq seq = PersistentList.EMPTY;
-        seq = appendElement(seq, USER_SELECTED, userSelected);
-        seq = appendElement(seq, DISPLAY, display);
-        seq = appendElement(seq, CODE, code);
-        seq = appendElement(seq, VERSION, version);
-        seq = appendElement(seq, SYSTEM, system);
-        return appendBase(seq);
     }
 
     @Override
@@ -185,7 +194,7 @@ public final class Coding extends Element implements Complex, ExtensionValue {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (system != null) {
             sink.putByte((byte) 2);
             system.hashInto(sink);
@@ -209,28 +218,38 @@ public final class Coding extends Element implements Complex, ExtensionValue {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(system) +
+                Base.memSize(version) + Base.memSize(code) + Base.memSize(display) + Base.memSize(userSelected);
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Coding e = (Coding) o;
-        return Objects.equals(id, e.id) &&
-                extension.equals(e.extension) &&
-                Objects.equals(system, e.system) &&
-                Objects.equals(version, e.version) &&
-                Objects.equals(code, e.code) &&
-                Objects.equals(display, e.display) &&
-                Objects.equals(userSelected, e.userSelected);
+        if (this == o) return true;
+        return o instanceof Coding that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(system, that.system) &&
+                Objects.equals(version, that.version) &&
+                Objects.equals(code, that.code) &&
+                Objects.equals(display, that.display) &&
+                Objects.equals(userSelected, that.userSelected);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, system, version, code, display, userSelected);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(system);
+        result = 31 * result + Objects.hashCode(version);
+        result = 31 * result + Objects.hashCode(code);
+        result = 31 * result + Objects.hashCode(display);
+        result = 31 * result + Objects.hashCode(userSelected);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "Coding{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", system=" + system +
                 ", version=" + version +
                 ", code=" + code +
@@ -239,10 +258,10 @@ public final class Coding extends Element implements Complex, ExtensionValue {
                 '}';
     }
 
-    private record InternerKey(List<Extension> extension, Uri system, String version, Code code, String display,
+    private record InternerKey(ExtensionData extensionData, Uri system, String version, Code code, String display,
                                Boolean userSelected) {
         private InternerKey {
-            requireNonNull(extension);
+            requireNonNull(extensionData);
         }
     }
 }

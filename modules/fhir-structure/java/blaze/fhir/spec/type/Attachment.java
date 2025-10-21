@@ -1,5 +1,7 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
@@ -11,8 +13,26 @@ import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
+import static java.util.Objects.requireNonNull;
 
-public final class Attachment extends Element implements Complex, ExtensionValue {
+public final class Attachment extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - contentType reference
+     * 4 byte - language reference
+     * 4 byte - data reference
+     * 4 byte - url reference
+     * 4 byte - size reference
+     * 4 byte - hash reference
+     * 4 byte - title reference
+     * 4 byte - creation reference
+     * 4 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 40;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "Attachment");
 
@@ -40,6 +60,8 @@ public final class Attachment extends Element implements Complex, ExtensionValue
 
     private static final byte HASH_MARKER = 46;
 
+    private static final Attachment EMPTY = new Attachment(ExtensionData.EMPTY, null, null, null, null, null, null, null, null);
+
     private final Code contentType;
     private final Code language;
     private final Base64Binary data;
@@ -49,8 +71,9 @@ public final class Attachment extends Element implements Complex, ExtensionValue
     private final String title;
     private final DateTime creation;
 
-    public Attachment(java.lang.String id, List<Extension> extension, Code contentType, Code language, Base64Binary data, Url url, UnsignedInt size, Base64Binary hash, String title, DateTime creation) {
-        super(id, extension);
+    private Attachment(ExtensionData extensionData, Code contentType, Code language, Base64Binary data, Url url,
+                       UnsignedInt size, Base64Binary hash, String title, DateTime creation) {
+        super(extensionData);
         this.contentType = contentType;
         this.language = language;
         this.data = data;
@@ -62,21 +85,14 @@ public final class Attachment extends Element implements Complex, ExtensionValue
     }
 
     public static Attachment create(IPersistentMap m) {
-        return new Attachment((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (Code) m.valAt(CONTENT_TYPE),
-                (Code) m.valAt(LANGUAGE), (Base64Binary) m.valAt(DATA), (Url) m.valAt(URL), (UnsignedInt) m.valAt(SIZE),
+        return new Attachment(ExtensionData.fromMap(m), (Code) m.valAt(CONTENT_TYPE), (Code) m.valAt(LANGUAGE),
+                (Base64Binary) m.valAt(DATA), (Url) m.valAt(URL), (UnsignedInt) m.valAt(SIZE),
                 (Base64Binary) m.valAt(HASH), (String) m.valAt(TITLE), (DateTime) m.valAt(CREATION));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(contentType) && Base.isInterned(language) && Base.isInterned(data) &&
-                Base.isInterned(url) && Base.isInterned(size) && Base.isInterned(hash) && Base.isInterned(title) && 
-                Base.isInterned(creation);
     }
 
     public Code contentType() {
@@ -121,9 +137,7 @@ public final class Attachment extends Element implements Complex, ExtensionValue
         if (key == HASH) return hash;
         if (key == TITLE) return title;
         if (key == CREATION) return creation;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -137,13 +151,12 @@ public final class Attachment extends Element implements Complex, ExtensionValue
         seq = appendElement(seq, DATA, data);
         seq = appendElement(seq, LANGUAGE, language);
         seq = appendElement(seq, CONTENT_TYPE, contentType);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Attachment empty() {
-        return new Attachment(null, PersistentVector.EMPTY, null, null, null, null, null, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -155,25 +168,27 @@ public final class Attachment extends Element implements Complex, ExtensionValue
     @SuppressWarnings("unchecked")
     public Attachment assoc(Object key, Object val) {
         if (key == ID)
-            return new Attachment((java.lang.String) val, extension, contentType, language, data, url, size, hash, title, creation);
+            return new Attachment(extensionData.withId((java.lang.String) val), contentType, language, data, url, size,
+                    hash, title, creation);
         if (key == EXTENSION)
-            return new Attachment(id, (List<Extension>) val, contentType, language, data, url, size, hash, title, creation);
+            return new Attachment(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)),
+                    contentType, language, data, url, size, hash, title, creation);
         if (key == CONTENT_TYPE)
-            return new Attachment(id, extension, (Code) val, language, data, url, size, hash, title, creation);
+            return new Attachment(extensionData, (Code) val, language, data, url, size, hash, title, creation);
         if (key == LANGUAGE)
-            return new Attachment(id, extension, contentType, (Code) val, data, url, size, hash, title, creation);
+            return new Attachment(extensionData, contentType, (Code) val, data, url, size, hash, title, creation);
         if (key == DATA)
-            return new Attachment(id, extension, contentType, language, (Base64Binary) val, url, size, hash, title, creation);
+            return new Attachment(extensionData, contentType, language, (Base64Binary) val, url, size, hash, title, creation);
         if (key == URL)
-            return new Attachment(id, extension, contentType, language, data, (Url) val, size, hash, title, creation);
+            return new Attachment(extensionData, contentType, language, data, (Url) val, size, hash, title, creation);
         if (key == SIZE)
-            return new Attachment(id, extension, contentType, language, data, url, (UnsignedInt) val, hash, title, creation);
+            return new Attachment(extensionData, contentType, language, data, url, (UnsignedInt) val, hash, title, creation);
         if (key == HASH)
-            return new Attachment(id, extension, contentType, language, data, url, size, (Base64Binary) val, title, creation);
+            return new Attachment(extensionData, contentType, language, data, url, size, (Base64Binary) val, title, creation);
         if (key == TITLE)
-            return new Attachment(id, extension, contentType, language, data, url, size, hash, (String) val, creation);
+            return new Attachment(extensionData, contentType, language, data, url, size, hash, (String) val, creation);
         if (key == CREATION)
-            return new Attachment(id, extension, contentType, language, data, url, size, hash, title, (DateTime) val);
+            return new Attachment(extensionData, contentType, language, data, url, size, hash, title, (DateTime) val);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Attachment.");
     }
 
@@ -217,7 +232,7 @@ public final class Attachment extends Element implements Complex, ExtensionValue
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (contentType != null) {
             sink.putByte((byte) 2);
             contentType.hashInto(sink);
@@ -253,12 +268,17 @@ public final class Attachment extends Element implements Complex, ExtensionValue
     }
 
     @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(contentType) + Base.memSize(language) +
+                Base.memSize(data) + Base.memSize(url) + Base.memSize(size) + Base.memSize(hash) + Base.memSize(title) +
+                Base.memSize(creation);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Attachment that = (Attachment) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof Attachment that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(contentType, that.contentType) &&
                 Objects.equals(language, that.language) &&
                 Objects.equals(data, that.data) &&
@@ -271,21 +291,29 @@ public final class Attachment extends Element implements Complex, ExtensionValue
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, contentType, language, data, url, size, hash, title, creation);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(contentType);
+        result = 31 * result + Objects.hashCode(language);
+        result = 31 * result + Objects.hashCode(data);
+        result = 31 * result + Objects.hashCode(url);
+        result = 31 * result + Objects.hashCode(size);
+        result = 31 * result + Objects.hashCode(hash);
+        result = 31 * result + Objects.hashCode(title);
+        result = 31 * result + Objects.hashCode(creation);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "Attachment{" +
-                "id=" + (id == null ? null : "'" + id + "'") +
-                ", extension=" + extension +
+                extensionData +
                 ", contentType=" + contentType +
                 ", language=" + language +
                 ", data=" + data +
                 ", url=" + url +
                 ", size=" + size +
                 ", hash=" + hash +
-                ", title=" + (title == null ? null : "'" + title + "'") +
+                ", title=" + title +
                 ", creation=" + creation +
                 '}';
     }

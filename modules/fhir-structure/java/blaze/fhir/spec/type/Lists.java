@@ -4,13 +4,14 @@ import blaze.Interner;
 import blaze.Interners;
 import clojure.lang.PersistentVector;
 
+import java.lang.String;
 import java.util.List;
 
 public final class Lists {
 
     private static final Interner<List<?>, PersistentVector> INTERNER = Interners.weakInterner(PersistentVector::create);
 
-    public Lists() {
+    private Lists() {
     }
 
     /**

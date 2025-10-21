@@ -5,10 +5,12 @@ import blaze.Interners;
 import blaze.fhir.spec.type.system.Booleans;
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,8 +18,8 @@ import static java.util.Objects.requireNonNull;
 
 public final class Boolean extends PrimitiveElement {
 
-    public static final Boolean TRUE = new Boolean(null, null, java.lang.Boolean.TRUE);
-    public static final Boolean FALSE = new Boolean(null, null, java.lang.Boolean.FALSE);
+    public static final Boolean TRUE = new Boolean(ExtensionData.EMPTY, java.lang.Boolean.TRUE);
+    public static final Boolean FALSE = new Boolean(ExtensionData.EMPTY, java.lang.Boolean.FALSE);
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "boolean");
 
@@ -25,26 +27,26 @@ public final class Boolean extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 0;
 
-    private static final Interner<InternerKey, Boolean> INTERNER = Interners.weakInterner(k -> new Boolean(null, k.extension, k.value));
-    private static final Boolean EMPTY = new Boolean(null, null, null);
+    private static final Interner<InternerKey, Boolean> INTERNER = Interners.weakInterner(k -> new Boolean(k.extensionData, k.value));
+    private static final Boolean EMPTY = new Boolean(ExtensionData.EMPTY, null);
 
     private final java.lang.Boolean value;
 
-    public Boolean(java.lang.String id, List<Extension> extension, java.lang.Boolean value) {
-        super(id, extension);
+    private Boolean(ExtensionData extensionData, java.lang.Boolean value) {
+        super(extensionData);
         this.value = value;
     }
 
-    private static Boolean intern(List<Extension> extension, java.lang.Boolean value) {
-        return INTERNER.intern(new InternerKey(extension, value));
+    private static Boolean intern(ExtensionData extensionData, java.lang.Boolean value) {
+        return INTERNER.intern(new InternerKey(extensionData, value));
     }
 
-    private static Boolean maybeIntern(java.lang.String id, List<Extension> extension, java.lang.Boolean value) {
-        return id == null && Base.areAllInterned(extension) ? intern(extension, value) : new Boolean(id, extension, value);
+    private static Boolean maybeIntern(ExtensionData extensionData, java.lang.Boolean value) {
+        return extensionData.isInterned() ? intern(extensionData, value) : new Boolean(extensionData, value);
     }
 
     public static Boolean create(IPersistentMap m) {
-        return maybeIntern((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (java.lang.Boolean) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), (java.lang.Boolean) m.valAt(VALUE));
     }
 
     @Override
@@ -54,7 +56,7 @@ public final class Boolean extends PrimitiveElement {
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned();
+        return extensionData.isInterned();
     }
 
     public java.lang.Boolean value() {
@@ -69,9 +71,10 @@ public final class Boolean extends PrimitiveElement {
     @Override
     @SuppressWarnings("unchecked")
     public Boolean assoc(Object key, Object val) {
-        if (key == VALUE) return maybeIntern(id, extension, (java.lang.Boolean) val);
-        if (key == EXTENSION) return maybeIntern(id, (List<Extension>) val, value);
-        if (key == ID) return maybeIntern((java.lang.String) val, extension, value);
+        if (key == VALUE) return maybeIntern(extensionData, (java.lang.Boolean) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), value);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Boolean.");
     }
 
@@ -93,7 +96,7 @@ public final class Boolean extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (value != null) {
             sink.putByte((byte) 2);
             Booleans.hashInto(value, sink);
@@ -101,31 +104,34 @@ public final class Boolean extends PrimitiveElement {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : super.memSize() /* TODO: Boolean mem size */;
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Boolean c = (Boolean) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Boolean that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
+    public String toString() {
         return "Boolean{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", value=" + value +
                 '}';
     }
 
-    private record InternerKey(List<Extension> extension, java.lang.Boolean value) {
+    private record InternerKey(ExtensionData extensionData, java.lang.Boolean value) {
         private InternerKey {
-            requireNonNull(extension);
+            requireNonNull(extensionData);
         }
     }
 }

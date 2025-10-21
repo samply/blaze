@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
-public final class RelatedArtifact extends Element implements Complex, ExtensionValue {
+public final class RelatedArtifact extends AbstractElement implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "RelatedArtifact");
 
@@ -39,6 +39,8 @@ public final class RelatedArtifact extends Element implements Complex, Extension
 
     private static final byte HASH_MARKER = 54;
 
+    private static final RelatedArtifact EMPTY = new RelatedArtifact(ExtensionData.EMPTY, null, null, null, null, null, null, null);
+
     private final Code type;
     private final String label;
     private final String display;
@@ -47,9 +49,9 @@ public final class RelatedArtifact extends Element implements Complex, Extension
     private final Attachment document;
     private final Canonical resource;
 
-    public RelatedArtifact(java.lang.String id, List<Extension> extension, Code type, String label, String display,
-                           Markdown citation, Url url, Attachment document, Canonical resource) {
-        super(id, extension);
+    private RelatedArtifact(ExtensionData extensionData, Code type, String label, String display, Markdown citation,
+                            Url url, Attachment document, Canonical resource) {
+        super(extensionData);
         this.type = type;
         this.label = label;
         this.display = display;
@@ -60,22 +62,14 @@ public final class RelatedArtifact extends Element implements Complex, Extension
     }
 
     public static RelatedArtifact create(IPersistentMap m) {
-        return new RelatedArtifact((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), (Code) m.valAt(TYPE),
-                (String) m.valAt(LABEL), (String) m.valAt(DISPLAY), (Markdown) m.valAt(CITATION), (Url) m.valAt(URL),
+        return new RelatedArtifact(ExtensionData.fromMap(m), (Code) m.valAt(TYPE), (String) m.valAt(LABEL),
+                (String) m.valAt(DISPLAY), (Markdown) m.valAt(CITATION), (Url) m.valAt(URL),
                 (Attachment) m.valAt(DOCUMENT), (Canonical) m.valAt(RESOURCE));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(type) && Base.isInterned(label) &&
-                Base.isInterned(display) && Base.isInterned(citation) &&
-                Base.isInterned(url) && Base.isInterned(document) &&
-                Base.isInterned(resource);
     }
 
     public Code type() {
@@ -115,9 +109,7 @@ public final class RelatedArtifact extends Element implements Complex, Extension
         if (key == URL) return url;
         if (key == DOCUMENT) return document;
         if (key == RESOURCE) return resource;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -130,13 +122,12 @@ public final class RelatedArtifact extends Element implements Complex, Extension
         seq = appendElement(seq, DISPLAY, display);
         seq = appendElement(seq, LABEL, label);
         seq = appendElement(seq, TYPE, type);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public RelatedArtifact empty() {
-        return new RelatedArtifact(null, PersistentVector.EMPTY, null, null, null, null, null, null, null);
+        return EMPTY;
     }
 
     @Override
@@ -147,15 +138,24 @@ public final class RelatedArtifact extends Element implements Complex, Extension
     @Override
     @SuppressWarnings("unchecked")
     public RelatedArtifact assoc(Object key, Object val) {
-        if (key == ID) return new RelatedArtifact((java.lang.String) val, extension, type, label, display, citation, url, document, resource);
-        if (key == EXTENSION) return new RelatedArtifact(id, (List<Extension>) val, type, label, display, citation, url, document, resource);
-        if (key == TYPE) return new RelatedArtifact(id, extension, (Code) val, label, display, citation, url, document, resource);
-        if (key == LABEL) return new RelatedArtifact(id, extension, type, (String) val, display, citation, url, document, resource);
-        if (key == DISPLAY) return new RelatedArtifact(id, extension, type, label, (String) val, citation, url, document, resource);
-        if (key == CITATION) return new RelatedArtifact(id, extension, type, label, display, (Markdown) val, url, document, resource);
-        if (key == URL) return new RelatedArtifact(id, extension, type, label, display, citation, (Url) val, document, resource);
-        if (key == DOCUMENT) return new RelatedArtifact(id, extension, type, label, display, citation, url, (Attachment) val, resource);
-        if (key == RESOURCE) return new RelatedArtifact(id, extension, type, label, display, citation, url, document, (Canonical) val);
+        if (key == TYPE)
+            return new RelatedArtifact(extensionData, (Code) val, label, display, citation, url, document, resource);
+        if (key == LABEL)
+            return new RelatedArtifact(extensionData, type, (String) val, display, citation, url, document, resource);
+        if (key == DISPLAY)
+            return new RelatedArtifact(extensionData, type, label, (String) val, citation, url, document, resource);
+        if (key == CITATION)
+            return new RelatedArtifact(extensionData, type, label, display, (Markdown) val, url, document, resource);
+        if (key == URL)
+            return new RelatedArtifact(extensionData, type, label, display, citation, (Url) val, document, resource);
+        if (key == DOCUMENT)
+            return new RelatedArtifact(extensionData, type, label, display, citation, url, (Attachment) val, resource);
+        if (key == RESOURCE)
+            return new RelatedArtifact(extensionData, type, label, display, citation, url, document, (Canonical) val);
+        if (key == EXTENSION)
+            return new RelatedArtifact(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), type, label, display, citation, url, document, resource);
+        if (key == ID)
+            return new RelatedArtifact(extensionData.withId((java.lang.String) val), type, label, display, citation, url, document, resource);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.RelatedArtifact.");
     }
 
@@ -197,7 +197,7 @@ public final class RelatedArtifact extends Element implements Complex, Extension
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (type != null) {
             sink.putByte((byte) 2);
             type.hashInto(sink);
@@ -231,10 +231,8 @@ public final class RelatedArtifact extends Element implements Complex, Extension
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        RelatedArtifact that = (RelatedArtifact) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof RelatedArtifact that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(type, that.type) &&
                 Objects.equals(label, that.label) &&
                 Objects.equals(display, that.display) &&
@@ -246,14 +244,21 @@ public final class RelatedArtifact extends Element implements Complex, Extension
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, type, label, display, citation, url, document, resource);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(type);
+        result = 31 * result + Objects.hashCode(label);
+        result = 31 * result + Objects.hashCode(display);
+        result = 31 * result + Objects.hashCode(citation);
+        result = 31 * result + Objects.hashCode(url);
+        result = 31 * result + Objects.hashCode(document);
+        result = 31 * result + Objects.hashCode(resource);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "RelatedArtifact{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", type=" + type +
                 ", label=" + label +
                 ", display=" + display +

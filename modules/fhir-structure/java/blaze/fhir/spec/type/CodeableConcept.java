@@ -1,5 +1,7 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import clojure.lang.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
@@ -12,8 +14,21 @@ import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
+import static java.util.Objects.requireNonNull;
 
-public final class CodeableConcept extends Element implements Complex, ExtensionValue {
+public final class CodeableConcept extends AbstractElement implements Complex, ExtensionValue {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - extension data reference
+     * 4 byte - coding reference
+     * 4 byte - text reference
+     * 1 byte - interned boolean
+     * 3 byte - padding
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 16;
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "CodeableConcept");
 
@@ -28,19 +43,31 @@ public final class CodeableConcept extends Element implements Complex, Extension
 
     private static final byte HASH_MARKER = 39;
 
+    private static final Interner<InternerKey, CodeableConcept> INTERNER = Interners.weakInterner(
+            k -> new CodeableConcept(k.extensionData, k.coding, k.text, true)
+    );
+    @SuppressWarnings("unchecked")
+    private static final CodeableConcept EMPTY = new CodeableConcept(ExtensionData.EMPTY, PersistentVector.EMPTY, null, true);
+
     private final List<Coding> coding;
     private final String text;
+    private final boolean interned;
 
-    @SuppressWarnings("unchecked")
-    public CodeableConcept(java.lang.String id, List<Extension> extension, List<Coding> coding, String text) {
-        super(id, extension);
-        this.coding = coding == null ? PersistentVector.EMPTY : coding;
+    private CodeableConcept(ExtensionData extensionData, List<Coding> coding, String text, boolean interned) {
+        super(extensionData);
+        this.coding = requireNonNull(coding);
         this.text = text;
+        this.interned = interned;
+    }
+
+    private static CodeableConcept maybeIntern(ExtensionData extensionData, List<Coding> coding, String text) {
+        return extensionData.isInterned() && Base.areAllInterned(coding) && Base.isInterned(text)
+                ? INTERNER.intern(new InternerKey(extensionData, coding, text))
+                : new CodeableConcept(extensionData, coding, text, false);
     }
 
     public static CodeableConcept create(IPersistentMap m) {
-        return new CodeableConcept((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), Base.listFrom(m, CODING),
-                (String) m.valAt(TEXT));
+        return maybeIntern(ExtensionData.fromMap(m), Base.listFrom(m, CODING), (String) m.valAt(TEXT));
     }
 
     @Override
@@ -50,7 +77,7 @@ public final class CodeableConcept extends Element implements Complex, Extension
 
     @Override
     public boolean isInterned() {
-        return isBaseInterned() && Base.areAllInterned(coding) && Base.isInterned(text);
+        return interned;
     }
 
     public List<Coding> coding() {
@@ -65,9 +92,7 @@ public final class CodeableConcept extends Element implements Complex, Extension
     public Object valAt(Object key, Object notFound) {
         if (key == CODING) return coding;
         if (key == TEXT) return text;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -77,13 +102,12 @@ public final class CodeableConcept extends Element implements Complex, Extension
         if (!coding.isEmpty()) {
             seq = appendElement(seq, CODING, coding);
         }
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public CodeableConcept empty() {
-        return new CodeableConcept(null, PersistentVector.EMPTY, PersistentVector.EMPTY, null);
+        return EMPTY;
     }
 
     @Override
@@ -94,14 +118,12 @@ public final class CodeableConcept extends Element implements Complex, Extension
     @Override
     @SuppressWarnings("unchecked")
     public CodeableConcept assoc(Object key, Object val) {
-        if (key == ID)
-            return new CodeableConcept((java.lang.String) val, extension, coding, text);
-        if (key == EXTENSION)
-            return new CodeableConcept(id, (List<Extension>) val, coding, text);
         if (key == CODING)
-            return new CodeableConcept(id, extension, (List<Coding>) val, text);
-        if (key == TEXT)
-            return new CodeableConcept(id, extension, coding, (String) val);
+            return maybeIntern(extensionData, (List<Coding>) (val == null ? PersistentVector.EMPTY : val), text);
+        if (key == TEXT) return maybeIntern(extensionData, coding, (String) val);
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), coding, text);
+        if (key == ID) return maybeIntern(extensionData.withId((java.lang.String) val), coding, text);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.CodeableConcept.");
     }
 
@@ -132,7 +154,7 @@ public final class CodeableConcept extends Element implements Complex, Extension
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (!coding.isEmpty()) {
             sink.putByte((byte) 2);
             sink.putByte((byte) 36);
@@ -147,28 +169,41 @@ public final class CodeableConcept extends Element implements Complex, Extension
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(coding) +
+                Base.memSize(text);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        CodeableConcept that = (CodeableConcept) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof CodeableConcept that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(coding, that.coding) &&
                 Objects.equals(text, that.text);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, coding, text);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(coding);
+        result = 31 * result + Objects.hashCode(text);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "CodeableConcept{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", coding=" + coding +
                 ", text=" + text +
                 '}';
+    }
+
+    private record InternerKey(ExtensionData extensionData, List<Coding> coding, String text) {
+        private InternerKey {
+            requireNonNull(extensionData);
+            requireNonNull(coding);
+        }
     }
 }

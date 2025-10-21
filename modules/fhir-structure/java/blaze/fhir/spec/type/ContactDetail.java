@@ -12,8 +12,9 @@ import java.util.Map;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
+import static java.util.Objects.requireNonNull;
 
-public final class ContactDetail extends Element implements Complex, ExtensionValue {
+public final class ContactDetail extends AbstractElement implements Complex, ExtensionValue {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "ContactDetail");
 
@@ -29,34 +30,25 @@ public final class ContactDetail extends Element implements Complex, ExtensionVa
 
     private static final byte HASH_MARKER = 52;
 
+    @SuppressWarnings("unchecked")
+    private static final ContactDetail EMPTY = new ContactDetail(ExtensionData.EMPTY, null, PersistentVector.EMPTY);
+
     private final String name;
     private final List<ContactPoint> telecom;
 
-    @SuppressWarnings("unchecked")
-    public ContactDetail(java.lang.String id, List<Extension> extension, String name, List<ContactPoint> telecom) {
-        super(id, extension);
+    private ContactDetail(ExtensionData extensionData, String name, List<ContactPoint> telecom) {
+        super(extensionData);
         this.name = name;
-        this.telecom = telecom == null ? PersistentVector.EMPTY : telecom;
+        this.telecom = requireNonNull(telecom);
     }
 
     public static ContactDetail create(IPersistentMap m) {
-        return new ContactDetail((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (String) m.valAt(NAME), Base.listFrom(m, TELECOM));
-    }
-
-    public static IPersistentVector getBasis() {
-        return RT.vector(Symbol.intern(null, "id"), Symbol.intern(null, "extension"), Symbol.intern(null, "name"),
-                Symbol.intern(null, "telecom"));
+        return new ContactDetail(ExtensionData.fromMap(m), (String) m.valAt(NAME), Base.listFrom(m, TELECOM));
     }
 
     @Override
     public Keyword fhirType() {
         return FHIR_TYPE;
-    }
-
-    @Override
-    public boolean isInterned() {
-        return isBaseInterned() && Base.isInterned(name) && Base.areAllInterned(telecom);
     }
 
     public String name() {
@@ -71,9 +63,7 @@ public final class ContactDetail extends Element implements Complex, ExtensionVa
     public Object valAt(Object key, Object notFound) {
         if (key == NAME) return name;
         if (key == TELECOM) return telecom;
-        if (key == EXTENSION) return extension;
-        if (key == ID) return id;
-        return notFound;
+        return extensionData.valAt(key, notFound);
     }
 
     @Override
@@ -81,13 +71,12 @@ public final class ContactDetail extends Element implements Complex, ExtensionVa
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, TELECOM, telecom);
         seq = appendElement(seq, NAME, name);
-        return appendBase(seq);
+        return extensionData.append(seq);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public ContactDetail empty() {
-        return new ContactDetail(null, PersistentVector.EMPTY, null, PersistentVector.EMPTY);
+        return EMPTY;
     }
 
     @Override
@@ -98,10 +87,12 @@ public final class ContactDetail extends Element implements Complex, ExtensionVa
     @Override
     @SuppressWarnings("unchecked")
     public ContactDetail assoc(Object key, Object val) {
-        if (key == ID) return new ContactDetail((java.lang.String) val, extension, name, telecom);
-        if (key == EXTENSION) return new ContactDetail(id, (List<Extension>) val, name, telecom);
-        if (key == NAME) return new ContactDetail(id, extension, (String) val, telecom);
-        if (key == TELECOM) return new ContactDetail(id, extension, name, (List<ContactPoint>) val);
+        if (key == NAME) return new ContactDetail(extensionData, (String) val, telecom);
+        if (key == TELECOM)
+            return new ContactDetail(extensionData, name, (List<ContactPoint>) (val == null ? PersistentVector.EMPTY : val));
+        if (key == EXTENSION)
+            return new ContactDetail(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), name, telecom);
+        if (key == ID) return new ContactDetail(extensionData.withId((java.lang.String) val), name, telecom);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.ContactDetail.");
     }
 
@@ -132,7 +123,7 @@ public final class ContactDetail extends Element implements Complex, ExtensionVa
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (name != null) {
             sink.putByte((byte) 2);
             name.hashInto(sink);
@@ -149,24 +140,24 @@ public final class ContactDetail extends Element implements Complex, ExtensionVa
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ContactDetail that = (ContactDetail) o;
-        return Objects.equals(id, that.id) &&
-                extension.equals(that.extension) &&
+        return o instanceof ContactDetail that &&
+                extensionData.equals(that.extensionData) &&
                 Objects.equals(name, that.name) &&
                 Objects.equals(telecom, that.telecom);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, name, telecom);
+        int result = extensionData.hashCode();
+        result = 31 * result + Objects.hashCode(name);
+        result = 31 * result + Objects.hashCode(telecom);
+        return result;
     }
 
     @Override
     public java.lang.String toString() {
         return "ContactDetail{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", name=" + name +
                 ", telecom=" + telecom +
                 '}';

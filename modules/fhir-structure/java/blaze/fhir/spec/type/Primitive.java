@@ -4,6 +4,7 @@ import clojure.lang.Keyword;
 import com.fasterxml.jackson.core.JsonGenerator;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.Iterator;
 import java.util.List;
 
@@ -11,29 +12,18 @@ public interface Primitive extends ExtensionValue {
 
     Keyword[] FIELDS = {ID, EXTENSION, VALUE};
 
-    boolean isBaseInterned();
-
-    @Override
-    default boolean isInterned() {
-        return isBaseInterned() && value() == null;
-    }
-
     default boolean hasValue() {
         return value() != null;
     }
 
-    java.lang.String id();
-
     Object value();
 
-    default java.lang.String valueAsString() {
+    default String valueAsString() {
         var value = value();
         return value == null ? null : value.toString();
     }
 
     boolean isExtended();
-
-    List<Extension> extension();
 
     @Override
     default Iterator<Entry<Object, Object>> iterator() {

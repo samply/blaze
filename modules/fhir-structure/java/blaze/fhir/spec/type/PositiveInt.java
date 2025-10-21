@@ -1,17 +1,19 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import blaze.fhir.spec.type.system.Integers;
-import clojure.lang.*;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.SerializableString;
-import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.Integer;
+import java.lang.String;
 import java.util.List;
 import java.util.Objects;
-
-import static blaze.fhir.spec.type.Base.appendElement;
 
 public final class PositiveInt extends PrimitiveElement {
 
@@ -21,17 +23,43 @@ public final class PositiveInt extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 18;
 
-    private final java.lang.Integer value;
+    private static final Interner<ExtensionData, PositiveInt> INTERNER = Interners.weakInterner(k -> new PositiveInt(k, 0));
+    private static final PositiveInt EMPTY = new PositiveInt(ExtensionData.EMPTY, 0);
 
-    public PositiveInt(java.lang.String id, List<Extension> extension, java.lang.Integer value) {
-        super(id, extension);
+    private final int value;
+
+    private PositiveInt(ExtensionData extensionData, int value) {
+        super(extensionData);
         this.value = value;
+    }
+
+    private static PositiveInt maybeIntern(ExtensionData extensionData, int value) {
+        return extensionData.isInterned() && value == 0
+                ? INTERNER.intern(extensionData)
+                : new PositiveInt(extensionData, value);
+    }
+
+    public static PositiveInt create(Number value) {
+        if (value == null) {
+            return EMPTY;
+        }
+        int val = value.intValue();
+        if (val > 0) {
+            return new PositiveInt(ExtensionData.EMPTY, val);
+        }
+        throw invalidValueException(val);
     }
 
     public static PositiveInt create(IPersistentMap m) {
         Number value = (Number) m.valAt(VALUE);
-        return new PositiveInt((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION), 
-                value == null ? null : value.intValue());
+        if (value == null) {
+            return maybeIntern(ExtensionData.fromMap(m), 0);
+        }
+        int val = value.intValue();
+        if (val > 0) {
+            return maybeIntern(ExtensionData.fromMap(m), val);
+        }
+        throw invalidValueException(val);
     }
 
     @Override
@@ -39,23 +67,41 @@ public final class PositiveInt extends PrimitiveElement {
         return FHIR_TYPE;
     }
 
-    public java.lang.Integer value() {
-        return value;
+    @Override
+    public boolean hasValue() {
+        return value > 0;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
+    public Integer value() {
+        return hasValue() ? value : null;
+    }
+
+    @Override
     public PositiveInt empty() {
-        return new PositiveInt(null, PersistentVector.EMPTY, null);
+        return EMPTY;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public PositiveInt assoc(Object key, Object val) {
-        if (key == VALUE) return new PositiveInt(id, extension, (java.lang.Integer) val);
-        if (key == EXTENSION) return new PositiveInt(id, (List<Extension>) val, value);
-        if (key == ID) return new PositiveInt((java.lang.String) val, extension, value);
-        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.PositiveInt.");
+        if (key == VALUE) {
+            if (val == null) {
+                return maybeIntern(extensionData, -1);
+            }
+            int v = ((Number) val).intValue();
+            if (v > 0) {
+                return maybeIntern(extensionData, v);
+            }
+            throw invalidValueException(v);
+        }
+        if (key == EXTENSION) {
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+        }
+        if (key == ID) {
+            return maybeIntern(extensionData.withId((String) val), value);
+        }
+        throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.positiveInt.");
     }
 
     @Override
@@ -76,8 +122,8 @@ public final class PositiveInt extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
-        if (value != null) {
+        extensionData.hashInto(sink);
+        if (hasValue()) {
             sink.putByte((byte) 2);
             Integers.hashInto(value, sink);
         }
@@ -85,24 +131,23 @@ public final class PositiveInt extends PrimitiveElement {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        PositiveInt c = (PositiveInt) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof PositiveInt that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
-        return "PositiveInt{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
-                ", value=" + value +
-                '}';
+    public String toString() {
+        return "PositiveInt{" + extensionData + ", value=" + value + '}';
+    }
+
+    private static IllegalArgumentException invalidValueException(int val) {
+        return new IllegalArgumentException("Invalid positiveInt value `%s`.".formatted(val));
     }
 }

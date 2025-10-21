@@ -20,7 +20,11 @@ public interface Times {
             .toFormatter()
             .withResolverStyle(ResolverStyle.STRICT);
 
-    static String toString(LocalTime temporal) {
-        return LOCAL_TIME.format(temporal);
+    static int memSize(LocalTime value) {
+        return value == null ? 0 : 16;
+    }
+
+    static String toString(LocalTime value) {
+        return LOCAL_TIME.format(value);
     }
 }

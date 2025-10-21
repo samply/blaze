@@ -1,15 +1,18 @@
 package blaze.fhir.spec.type;
 
-import clojure.lang.*;
+import blaze.Interner;
+import blaze.Interners;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
+import java.lang.String;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-
-import static blaze.fhir.spec.type.Base.appendElement;
 
 public final class Uuid extends PrimitiveElement {
 
@@ -19,16 +22,28 @@ public final class Uuid extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 19;
 
+    private static final Interner<ExtensionData, Uuid> INTERNER = Interners.weakInterner(k -> new Uuid(k, null));
+    private static final Uuid EMPTY = new Uuid(ExtensionData.EMPTY, null);
+    private static final int MEM_SIZE_UUID = 24;
+
     private final UUID value;
 
-    public Uuid(java.lang.String id, List<Extension> extension, java.lang.String value) {
-        super(id, extension);
-        this.value = value == null ? null : UUID.fromString(value.substring(9));
+    private Uuid(ExtensionData extensionData, UUID value) {
+        super(extensionData);
+        this.value = value;
+    }
+
+    private static Uuid maybeIntern(ExtensionData extensionData, UUID value) {
+        return extensionData.isInterned() && value == null ? INTERNER.intern(extensionData) : new Uuid(extensionData, value);
+    }
+
+    public static Uuid create(String value) {
+        return value == null ? EMPTY : new Uuid(ExtensionData.EMPTY, UUID.fromString(value.substring(9)));
     }
 
     public static Uuid create(IPersistentMap m) {
-        return new Uuid((java.lang.String) m.valAt(ID), Base.listFrom(m, EXTENSION),
-                (java.lang.String) m.valAt(VALUE));
+        String value = (String) m.valAt(VALUE);
+        return maybeIntern(ExtensionData.fromMap(m), value == null ? null : UUID.fromString(value.substring(9)));
     }
 
     @Override
@@ -36,22 +51,23 @@ public final class Uuid extends PrimitiveElement {
         return FHIR_TYPE;
     }
 
-    public java.lang.String value() {
+    public String value() {
         return value == null ? null : "urn:uuid:" + value;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Uuid empty() {
-        return new Uuid(null, PersistentVector.EMPTY, null);
+        return EMPTY;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Uuid assoc(Object key, Object val) {
-        if (key == VALUE) return new Uuid(id, extension, (java.lang.String) val);
-        if (key == EXTENSION) return new Uuid(id, (List<Extension>) val, value());
-        if (key == ID) return new Uuid((java.lang.String) val, extension, value());
+        if (key == VALUE)
+            return maybeIntern(extensionData, val == null ? null : UUID.fromString(((String) val).substring(9)));
+        if (key == EXTENSION)
+            return maybeIntern(extensionData.withExtension((List<Extension>) (val == null ? PersistentVector.EMPTY : val)), value);
+        if (key == ID) return maybeIntern(extensionData.withId((String) val), value);
         throw new UnsupportedOperationException("The key `" + key + "` isn't supported on FHIR.Uuid.");
     }
 
@@ -73,7 +89,7 @@ public final class Uuid extends PrimitiveElement {
     @SuppressWarnings("UnstableApiUsage")
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
-        hashIntoBase(sink);
+        extensionData.hashInto(sink);
         if (value != null) {
             sink.putByte((byte) 2);
             sink.putLong(value.getMostSignificantBits());
@@ -82,24 +98,27 @@ public final class Uuid extends PrimitiveElement {
     }
 
     @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + (value == null ? 0 : MEM_SIZE_UUID);
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Uuid c = (Uuid) o;
-        return Objects.equals(id, c.id) &&
-                Objects.equals(extension, c.extension) &&
-                Objects.equals(value, c.value);
+        if (this == o) return true;
+        return o instanceof Uuid that &&
+                extensionData.equals(that.extensionData) &&
+                Objects.equals(value, that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, extension, value);
+        return 31 * extensionData.hashCode() + Objects.hashCode(value);
     }
 
     @Override
-    public java.lang.String toString() {
+    public String toString() {
         return "Uuid{" +
-                "id=" + (id == null ? null : '\'' + id + '\'') +
-                ", extension=" + extension +
+                extensionData +
                 ", value=" + (value == null ? null : "'" + value() + '\'') +
                 '}';
     }

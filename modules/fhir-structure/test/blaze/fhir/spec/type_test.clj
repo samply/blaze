@@ -177,6 +177,11 @@
       #fhir/boolean{:extension [#fhir/Extension{:url "1"}]} "1293ee18"
       #fhir/boolean{:extension [#fhir/Extension{:url "0"} #fhir/Extension{:url "0"}]} "d1fda5de"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/boolean true 0
+      #fhir/boolean{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/boolean true))))
 
@@ -187,6 +192,8 @@
 (deftest integer-test
   (testing "integer?"
     (are [x] (type/integer? x)
+      #fhir/integer -1
+      #fhir/integer 0
       #fhir/integer 1
       #fhir/integer{:id "foo"}))
 
@@ -263,6 +270,11 @@
       #fhir/integer{:id "foo"} "667e7a1b"
       #fhir/integer{:id "foo" :value 0} "fdd4f126"
       #fhir/integer{:extension [#fhir/Extension{:url "foo"}]} "b353ef83"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/integer 0 24
+      #fhir/integer{:id "foo"} 80))
 
   (testing "references"
     (is (empty? (type/references #fhir/integer 0)))))
@@ -344,15 +356,32 @@
       #fhir/string{:id "foo" :value "foo"} "28b14e8f"
       #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "b2f98d95"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/string{} 0
+      #fhir/string{:id "foo"} 72
+      #fhir/string{:extension [#fhir/Extension{:url "foo"}]} 0
+      #fhir/string "" 0
+      #fhir/string "1234" 0
+      #fhir/string "12345" 64
+      #fhir/string "123456" 64
+      #fhir/string "1234567" 64
+      #fhir/string "12345678" 64
+      #fhir/string "123456789" 64
+      #fhir/string "1234567890" 64
+      #fhir/string "12345678901" 64
+      #fhir/string "123456789012" 64
+      #fhir/string "1234567890123" 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/string "151736"))))
 
   (testing "print"
     (are [str s] (= (pr-str str) s)
-      #fhir/string "1234" "#fhir/string \"1234\""
+      #fhir/string "1234" "#fhir/string-interned \"1234\""
       #fhir/string "142600" "#fhir/string \"142600\""
       #fhir/string{:id "0"} "#fhir/string{:id \"0\"}"
-      #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "#fhir/string{:extension [#fhir/Extension{:url \"foo\"}]}")))
+      #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "#fhir/string-interned{:extension [#fhir/Extension{:url \"foo\"}]}")))
 
 (deftest decimal-test
   (testing "decimal?"
@@ -422,6 +451,11 @@
       #fhir/decimal{:id "foo" :value 0M} "4e9f9211"
       #fhir/decimal{:extension [#fhir/Extension{:url "foo"}]} "df35c8c9"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/decimal 0M 48
+      #fhir/decimal{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/decimal 0M)))))
 
@@ -440,24 +474,24 @@
     (is (= #fhir/uri{:value "181424"} #fhir/uri "181424")))
 
   (testing "interning"
-    (is (interned? #fhir/uri "165823" #fhir/uri "165823"))
-    (is (interned? (type/uri {:extension [] :value "145932"})
-                   (type/uri "145932")))
+    (is (interned? #fhir/uri-interned "165823" #fhir/uri-interned "165823"))
+    (is (interned? (type/uri-interned {:extension [] :value "145932"})
+                   (type/uri-interned "145932")))
 
     (testing "with extension"
       (are [x y] (interned? x y)
-        (type/uri {:extension [internable-extension]})
-        (type/uri {:extension [internable-extension]})
+        (type/uri-interned {:extension [internable-extension]})
+        (type/uri-interned {:extension [internable-extension]})
 
-        (type/uri {:extension [internable-extension] :value "185838"})
-        (type/uri {:extension [internable-extension] :value "185838"}))
+        (type/uri-interned {:extension [internable-extension] :value "185838"})
+        (type/uri-interned {:extension [internable-extension] :value "185838"}))
 
       (are [x y] (not-interned? x y)
-        (type/uri {:extension [not-internable-extension]})
-        (type/uri {:extension [not-internable-extension]})
+        (type/uri-interned {:extension [not-internable-extension]})
+        (type/uri-interned {:extension [not-internable-extension]})
 
-        (type/uri {:extension [not-internable-extension] :value "185838"})
-        (type/uri {:extension [not-internable-extension] :value "185838"}))))
+        (type/uri-interned {:extension [not-internable-extension] :value "185838"})
+        (type/uri-interned {:extension [not-internable-extension] :value "185838"}))))
 
   (testing "assoc id"
     (testing "non-extended"
@@ -512,6 +546,11 @@
       #fhir/uri{:id "foo"} "7c797680"
       #fhir/uri{:id "foo" :value "foo"} "52e1c640"
       #fhir/uri{:extension [#fhir/Extension{:url "foo"}]} "435d07d9"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/uri "" 0
+      #fhir/uri{:id "foo"} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/uri "151758"))))
@@ -597,6 +636,13 @@
       #fhir/url{:id "foo"} "78133d84"
       #fhir/url{:id "foo" :value "foo"} "43940bd2"
       #fhir/url{:extension [#fhir/Extension{:url "foo"}]} "95f50bf4"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/url "" 56
+      #fhir/url "1234" 56
+      #fhir/url "12345" 64
+      #fhir/url{:id "foo"} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/url "151809"))))
@@ -700,6 +746,11 @@
       #fhir/canonical{:id "foo" :value "foo"} "83587524"
       #fhir/canonical{:extension [#fhir/Extension{:url "foo"}]} "3f1c8be1"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/canonical "" 0
+      #fhir/canonical{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/canonical "151819"))))
 
@@ -793,6 +844,13 @@
       #fhir/base64Binary "MTA1NjE0Cg===" "24568b10"
       #fhir/base64Binary{:id "foo"} "331c84dc"
       #fhir/base64Binary{:extension [#fhir/Extension{:url "foo"}]} "4d9fc231"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/base64Binary "" 56
+      #fhir/base64Binary "YQo" 56
+      #fhir/base64Binary "MTA1NjE0Cg===" 72
+      #fhir/base64Binary{:id "foo"} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/base64Binary "YQo="))))
@@ -910,6 +968,11 @@
       #fhir/instant{:id "foo"} "b4705bd6"
       #fhir/instant{:id "foo" :value #system/date-time "1970-01-01T00:00:00Z"} "6ae7daa"
       #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} "8a7f7ddc"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/instant #system/date-time "2020-01-01T00:00:00+00:00" 80
+      #fhir/instant{:id "foo"} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))
@@ -1034,6 +1097,11 @@
         #fhir/date{:id "foo" :value #system/date "2020"} "e983029c"
         #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/date #system/date "2020" 32
+        #fhir/date{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/date #system/date "2020"))))
 
@@ -1105,6 +1173,11 @@
         #fhir/date{:id "foo"} "20832903"
         #fhir/date{:id "foo" :value #system/date "2020-01"} "4e6aead7"
         #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
+
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/date #system/date "2020-01" 32
+        #fhir/date{:id "foo"} 72))
 
     (testing "references"
       (is (empty? (type/references #fhir/date #system/date "2020-01"))))
@@ -1183,6 +1256,11 @@
         #fhir/date{:id "foo"} "20832903"
         #fhir/date{:id "foo" :value #system/date "2020-01-01"} "ef736a41"
         #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
+
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/date #system/date "2020-01-01" 32
+        #fhir/date{:id "foo"} 72))
 
     (testing "references"
       (is (empty? (type/references #fhir/date #system/date "2020-01-01"))))
@@ -1281,6 +1359,11 @@
         #fhir/dateTime{:id "foo" :value #system/date-time "2020"} "c7361227"
         #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} "15062059"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020" 32
+        #fhir/dateTime{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020"))))
 
@@ -1351,6 +1434,11 @@
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01"} "aa78aa13"
         #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} "15062059"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01" 32
+        #fhir/dateTime{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01"))))
 
@@ -1419,6 +1507,11 @@
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01-01"} "7e36d416"
         #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} "15062059"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01-01" 32
+        #fhir/dateTime{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01-01"))))
 
@@ -1461,6 +1554,11 @@
         #fhir/dateTime{:value #system/date-time "2020-01-01T00:00:00"} "da537591"
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01-01T00:00:00"} "f33b7808"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01-01T00:00:00" 64
+        #fhir/dateTime{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01-01T00:00:00")))))
 
@@ -1497,6 +1595,11 @@
         #fhir/dateTime #system/date-time "2020-01-01T00:00:00.000" "da537591"
         #fhir/dateTime{:value #system/date-time "2020-01-01T00:00:00.000"} "da537591"
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01-01T00:00:00.000"} "f33b7808"))
+
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01-01T00:00:00.000" 64
+        #fhir/dateTime{:id "foo"} 72))
 
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01-01T00:00:00.000")))))
@@ -1535,6 +1638,11 @@
         #fhir/dateTime{:value #system/date-time "2020-01-01T00:00:00Z"} "d541a45"
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01-01T00:00:00Z"} "14a5cd29"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01-01T00:00:00Z" 80
+        #fhir/dateTime{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01-01T00:00:00Z")))))
 
@@ -1572,6 +1680,11 @@
         #fhir/dateTime{:value #system/date-time "2020-01-01T00:00:00+01:00"} "9c535d0d"
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01-01T00:00:00+01:00"} "dbf5aa43"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01-01T00:00:00+01:00" 80
+        #fhir/dateTime{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01-01T00:00:00+01:00")))))
 
@@ -1608,6 +1721,11 @@
         #fhir/dateTime #system/date-time "2020-01-01T00:00:00-01:00" "839fd8a6"
         #fhir/dateTime{:value #system/date-time "2020-01-01T00:00:00-01:00"} "839fd8a6"
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01-01T00:00:00-01:00"} "c3a7cc0e"))
+
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01-01T00:00:00-01:00" 80
+        #fhir/dateTime{:id "foo"} 72))
 
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01-01T00:00:00-01:00")))))
@@ -1649,6 +1767,11 @@
         #fhir/dateTime{:value #system/date-time "2020-01-01T00:00:00.001Z"} "f46a0b1b"
         #fhir/dateTime{:id "foo" :value #system/date-time "2020-01-01T00:00:00.001Z"} "c6a5ea73"))
 
+    (testing "mem-size"
+      (are [s mem-size] (= mem-size (Base/memSize s))
+        #fhir/dateTime #system/date-time "2020-01-01T00:00:00.001Z" 80
+        #fhir/dateTime{:id "foo"} 72))
+
     (testing "references"
       (is (empty? (type/references #fhir/dateTime #system/date-time "2020-01-01T00:00:00.001Z")))))
 
@@ -1677,6 +1800,10 @@
       (testing "hash-into"
         (are [x hex] (= hex (murmur3 x))
           extended-date-time "f1c7cff4"))
+
+      (testing "mem-size"
+        (are [s mem-size] (= mem-size (Base/memSize s))
+          extended-date-time 32))
 
       (testing "references"
         (is (empty? (type/references extended-date-time)))))))
@@ -1753,6 +1880,11 @@
       #fhir/time{:id "foo"} "1547f086"
       #fhir/time{:id "foo" :value #system/time "13:53:21"} "52a81d69"
       #fhir/time{:extension [#fhir/Extension{:url "foo"}]} "9e94d20a"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/time #system/time "13:53:21" 32
+      #fhir/time{:id "foo"} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/time #system/time "13:53:21")))))
@@ -1876,6 +2008,11 @@
       #fhir/code{:id "170837" :value "175726"} "fc8af973"
       #fhir/code{:extension [#fhir/Extension{:url "181911"}]} "838ce6ff"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/code "175726" 0
+      #fhir/code{:id "foo"} 72))
+
   (testing "references"
     (are [x refs] (= refs (type/references x))
       #fhir/code "code-150839"
@@ -1974,6 +2111,11 @@
       #fhir/oid{:id "foo" :value "175726"} "5e076060"
       #fhir/oid{:extension [#fhir/Extension{:url "foo"}]} "c114dd42"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/oid "175726" 64
+      #fhir/oid{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/oid "151329"))))
 
@@ -2057,6 +2199,11 @@
       #fhir/id{:id "foo"} "59a2c68a"
       #fhir/id{:id "foo" :value "175726"} "3dbaa84e"
       #fhir/id{:extension [#fhir/Extension{:url "foo"}]} "1e8120f7"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/id "175726" 64
+      #fhir/id{:id "foo"} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/id "151408"))))
@@ -2143,6 +2290,11 @@
       #fhir/markdown{:id "foo" :value "175726"} "c9b526e9"
       #fhir/markdown{:extension [#fhir/Extension{:url "foo"}]} "8d0712c5"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/markdown "175726" 64
+      #fhir/markdown{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/markdown "151424"))))
 
@@ -2153,12 +2305,20 @@
   (testing "unsignedInt?"
     (are [x] (type/unsignedInt? x)
       #fhir/unsignedInt 0
+      (type/unsignedInt (dec (bit-shift-left 1 31)))
       #fhir/unsignedInt{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/unsignedInt (type/type x))
       #fhir/unsignedInt 0
+      (type/unsignedInt (dec (bit-shift-left 1 31)))
       #fhir/unsignedInt{:id "foo"}))
+
+  (testing "negative value"
+    (doseq [x [-1 {:value -1}]]
+      (given (type/unsignedInt x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid unsignedInt value `-1`.")))
 
   (testing "unsignedInt"
     (is (= #fhir/unsignedInt{:value 160845} #fhir/unsignedInt 160845)))
@@ -2227,6 +2387,11 @@
       #fhir/unsignedInt{:id "foo" :value 160845} "aa5dbbe7"
       #fhir/unsignedInt{:extension [#fhir/Extension{:url "foo"}]} "8117a763"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/unsignedInt 160845 16
+      #fhir/unsignedInt{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/unsignedInt 151440))))
 
@@ -2247,13 +2412,26 @@
 (deftest positiveInt-test
   (testing "positiveInt?"
     (are [x] (type/positiveInt? x)
-      #fhir/positiveInt 0
+      #fhir/positiveInt 1
+      (type/positiveInt (dec (bit-shift-left 1 31)))
       #fhir/positiveInt{:id "foo"}))
 
   (testing "type"
     (are [x] (= :fhir/positiveInt (type/type x))
-      #fhir/positiveInt 0
+      #fhir/positiveInt 1
+      (type/positiveInt (dec (bit-shift-left 1 31)))
       #fhir/positiveInt{:id "foo"}))
+
+  (testing "negative value"
+    (doseq [x [0 {:value 0}]]
+      (given (type/positiveInt x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid positiveInt value `0`."))
+
+    (doseq [x [-1 {:value -1}]]
+      (given (type/positiveInt x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid positiveInt value `-1`.")))
 
   (testing "positiveInt"
     (is (= #fhir/positiveInt{:value 160845} #fhir/positiveInt 160845)))
@@ -2321,6 +2499,11 @@
       #fhir/positiveInt{:id "foo"} "3f7dbd4e"
       #fhir/positiveInt{:id "foo" :value 160845} "2f1e63f"
       #fhir/positiveInt{:extension [#fhir/Extension{:url "foo"}]} "7c036682"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/positiveInt 160845 16
+      #fhir/positiveInt{:id "foo"} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/positiveInt 151500))))
@@ -2421,6 +2604,11 @@
       #fhir/uuid{:id "foo" :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} "64cb0e66"
       #fhir/uuid{:extension [#fhir/Extension{:url "foo"}]} "9160d648"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" 40
+      #fhir/uuid{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/uuid "urn:uuid:89ddf6ab-8813-4c75-9500-dd07560fe817")))))
 
@@ -2486,6 +2674,11 @@
     (are [x hex] (= hex (murmur3 x))
       #fhir/xhtml "175726" "e90ddf05"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/xhtml "175726" 64
+      #fhir/xhtml{:id "foo"} 72))
+
   (testing "references"
     (is (empty? (type/references #fhir/xhtml "151551"))))
 
@@ -2502,11 +2695,7 @@
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Attachment{:id "foo"}
-      #fhir/Attachment{:id "foo"})
-
-    (are [x y] (interned? x y)
-      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}))
+      #fhir/Attachment{:id "foo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2542,6 +2731,14 @@
 
       #fhir/Attachment{:creation #fhir/dateTime #system/date-time "2021"}
       "1f9bf068"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Attachment{:id "id-204201"} 112
+      #fhir/Attachment{:extension [#fhir/Extension{}]} 48
+      #fhir/Attachment{:contentType #fhir/code "text/plain"} 48
+      #fhir/Attachment{:language #fhir/code "de"} 48
+      #fhir/Attachment{:data #fhir/base64Binary "MTA1NjE0Cg=="} 112))
 
   (testing "references"
     (is (empty? (type/references #fhir/Attachment{}))))
@@ -2605,6 +2802,16 @@
       #fhir/Extension{:value #fhir/code "value-130953"}
       "befce87a"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Extension{} 0
+      #fhir/Extension{:id "id-204201"} 88
+      #fhir/Extension{:extension [#fhir/Extension{}]} 0
+      #fhir/Extension{:extension [#fhir/Extension{} #fhir/Extension{}]} 0
+      #fhir/Extension{:url "url-130945"} 0
+      #fhir/Extension{:value #fhir/code "value-130953"} 0
+      #fhir/Extension{:url "url-130945" :value #fhir/string "12345"} 88))
+
   (testing "references"
     (is (empty? (type/references #fhir/Extension{}))))
 
@@ -2660,6 +2867,17 @@
       #fhir/Coding{:display #fhir/string "display-154256"}
       "baac923d"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Coding{} 0
+      #fhir/Coding{:id "id-204201"} 104
+      #fhir/Coding{:extension [#fhir/Extension{}]} 0
+      #fhir/Coding{:system #fhir/uri-interned "system-202808"} 0
+      #fhir/Coding{:version #fhir/string-interned "version-154317"} 0
+      #fhir/Coding{:code #fhir/code "code-202828"} 0
+      #fhir/Coding{:display #fhir/string-interned "display-154256"} 0
+      #fhir/Coding{:display #fhir/string "display-154256"} 112))
+
   (testing "references"
     (is (empty? (type/references #fhir/Coding{}))))
 
@@ -2699,6 +2917,16 @@
 
       #fhir/CodeableConcept{:text #fhir/string "text-153829"}
       "fe2e61f1"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/CodeableConcept{} 0
+      #fhir/CodeableConcept{:id "id-141755"} 88
+      #fhir/CodeableConcept{:extension [#fhir/Extension{}]} 0
+      #fhir/CodeableConcept{:coding [#fhir/Coding{}]} 0
+      #fhir/CodeableConcept{:coding [#fhir/Coding{:id "foo"}]} 176
+      #fhir/CodeableConcept{:text #fhir/string-interned "text-153829"} 0
+      #fhir/CodeableConcept{:text #fhir/string "text-153829"} 88))
 
   (testing "references"
     (is (empty? (type/references #fhir/CodeableConcept{}))))
@@ -2765,6 +2993,18 @@
       #fhir/Quantity{:code #fhir/code "code-153427"}
       "7ff49528"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Quantity{} 0
+      #fhir/Quantity{:id "id-141848"} 96
+      #fhir/Quantity{:extension [#fhir/Extension{}]} 0
+      #fhir/Quantity{:value #fhir/decimal 1M} 80
+      #fhir/Quantity{:comparator #fhir/code "comparator-153342"} 0
+      #fhir/Quantity{:unit #fhir/string "unit-153351"} 96
+      #fhir/Quantity{:unit #fhir/string-interned "unit-153351"} 0
+      #fhir/Quantity{:system #fhir/uri-interned "system-153337"} 0
+      #fhir/Quantity{:code #fhir/code "code-153427"} 0))
+
   (testing "references"
     (is (empty? (type/references #fhir/Quantity{}))))
 
@@ -2793,13 +3033,7 @@
 
     (are [x y] (interned? x y)
       #fhir/Range{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/Range{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/Range{:low #fhir/Quantity{:code #fhir/code "foo"}}
-      #fhir/Range{:low #fhir/Quantity{:code #fhir/code "foo"}}
-
-      #fhir/Range{:high #fhir/Quantity{:code #fhir/code "foo"}}
-      #fhir/Range{:high #fhir/Quantity{:code #fhir/code "foo"}}))
+      #fhir/Range{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2817,6 +3051,15 @@
 
       #fhir/Range{:high #fhir/Quantity{:value #fhir/decimal 1M}}
       "56047f86"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Range{} 0
+      #fhir/Range{:id "id-130710"} 88
+      #fhir/Range{:extension [#fhir/Extension{}]} 0
+      #fhir/Range{:low #fhir/Quantity{:value #fhir/decimal 1M}} 104
+      #fhir/Range{:high #fhir/Quantity{:value #fhir/decimal 1M}} 104
+      #fhir/Range{:low #fhir/Quantity{:value #fhir/decimal 1M} :high #fhir/Quantity{:value #fhir/decimal 2M}} 184))
 
   (testing "references"
     (is (empty? (type/references #fhir/Range{}))))
@@ -2846,13 +3089,7 @@
 
     (are [x y] (interned? x y)
       #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code "foo"}}
-      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code "foo"}}
-
-      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code "foo"}}
-      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code "foo"}}))
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2870,6 +3107,14 @@
 
       #fhir/Ratio{:denominator #fhir/Quantity{:value #fhir/decimal 1M}}
       "7f2075fb"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Ratio{} 0
+      #fhir/Ratio{:id "id-130710"} 88
+      #fhir/Ratio{:extension [#fhir/Extension{}]} 0
+      #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}} 104
+      #fhir/Ratio{:denominator #fhir/Quantity{:value #fhir/decimal 1M}} 104))
 
   (testing "references"
     (is (empty? (type/references #fhir/Ratio{}))))
@@ -2915,6 +3160,15 @@
       #fhir/Period{:end #fhir/dateTime #system/date-time "2020"}
       "434787dd"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Period{} 0
+      #fhir/Period{:id "id-130710"} 88
+      #fhir/Period{:extension [#fhir/Extension{}]} 0
+      #fhir/Period{:start #fhir/dateTime #system/date-time "2020"} 56
+      #fhir/Period{:end #fhir/dateTime #system/date-time "2020"} 56
+      #fhir/Period{:start #fhir/dateTime #system/date-time "2020" :end #fhir/dateTime #system/date-time "2021"} 88))
+
   (testing "references"
     (is (empty? (type/references #fhir/Period{}))))
 
@@ -2936,14 +3190,7 @@
       #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/string "barbar"}]}
 
       #fhir/Identifier{:value #fhir/string "foofoo"}
-      #fhir/Identifier{:value #fhir/string "foofoo"})
-
-    (are [x y] (interned? x y)
-      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/Identifier{:use #fhir/code "foo"}
-      #fhir/Identifier{:use #fhir/code "foo"}))
+      #fhir/Identifier{:value #fhir/string "foofoo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2974,6 +3221,18 @@
       #fhir/Identifier{:assigner #fhir/Reference{}}
       "aa994e1e"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Identifier{} 40
+      #fhir/Identifier{:id "id-130739"} 104
+      #fhir/Identifier{:extension [#fhir/Extension{}]} 40
+      #fhir/Identifier{:use #fhir/code "use-155144"} 40
+      #fhir/Identifier{:type #fhir/CodeableConcept{}} 40
+      #fhir/Identifier{:system #fhir/uri-interned "system-145514"} 40
+      #fhir/Identifier{:value #fhir/string "value-145509"} 104
+      #fhir/Identifier{:period #fhir/Period{}} 40
+      #fhir/Identifier{:assigner #fhir/Reference{}} 40))
+
   (testing "references"
     (is (empty? (type/references #fhir/Identifier{}))))
 
@@ -2998,14 +3257,7 @@
       #fhir/HumanName{:text #fhir/string "foofoo"}
 
       #fhir/HumanName{:family #fhir/string "foofoo"}
-      #fhir/HumanName{:family #fhir/string "foofoo"})
-
-    (are [x y] (interned? x y)
-      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/HumanName{:use #fhir/code "foo"}
-      #fhir/HumanName{:use #fhir/code "foo"}))
+      #fhir/HumanName{:family #fhir/string "foofoo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -3048,6 +3300,22 @@
       #fhir/HumanName{:period #fhir/Period{}}
       "18b2a823"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/HumanName{} 40
+      #fhir/HumanName{:id "id-130739"} 104
+      #fhir/HumanName{:extension [#fhir/Extension{}]} 40
+      #fhir/HumanName{:use #fhir/code "use-155144"} 40
+      #fhir/HumanName{:text #fhir/string "text-212402"} 104
+      #fhir/HumanName{:family #fhir/string "family-212422"} 112
+      #fhir/HumanName{:given [#fhir/string "given-212441"]} 160
+      #fhir/HumanName{:given [#fhir/string "given-212448" #fhir/string "given-212454"]} 232
+      #fhir/HumanName{:prefix [#fhir/string "prefix-212514"]} 168
+      #fhir/HumanName{:prefix [#fhir/string "prefix-212523" #fhir/string "prefix-212525"]} 248
+      #fhir/HumanName{:suffix [#fhir/string "suffix-212542"]} 168
+      #fhir/HumanName{:suffix [#fhir/string "suffix-212547" #fhir/string "suffix-212554"]} 248
+      #fhir/HumanName{:period #fhir/Period{}} 40))
+
   (testing "references"
     (is (empty? (type/references #fhir/HumanName{}))))
 
@@ -3069,17 +3337,7 @@
       #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/string "barbar"}]}
 
       #fhir/Address{:text #fhir/string "foofoo"}
-      #fhir/Address{:text #fhir/string "foofoo"})
-
-    (are [x y] (interned? x y)
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/Address{:use #fhir/code "foo"}
-      #fhir/Address{:use #fhir/code "foo"}
-
-      #fhir/Address{:type #fhir/code "foo"}
-      #fhir/Address{:type #fhir/code "foo"}))
+      #fhir/Address{:text #fhir/string "foofoo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -3125,6 +3383,23 @@
       #fhir/Address{:period #fhir/Period{}}
       "fb17905a"))
 
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Address{} 56
+      #fhir/Address{:id "id-130739"} 120
+      #fhir/Address{:extension [#fhir/Extension{}]} 56
+      #fhir/Address{:use #fhir/code "use-155144"} 56
+      #fhir/Address{:type #fhir/code "type-084442"} 56
+      #fhir/Address{:text #fhir/string "text-212402"} 120
+      #fhir/Address{:line [#fhir/string "line-212441"]} 176
+      #fhir/Address{:line [#fhir/string "line-212448" #fhir/string "line-212454"]} 248
+      #fhir/Address{:city #fhir/string "city-084705"} 120
+      #fhir/Address{:district #fhir/string "district-084717"} 128
+      #fhir/Address{:state #fhir/string "state-084729"} 120
+      #fhir/Address{:postalCode #fhir/string "postalCode-084832"} 128
+      #fhir/Address{:country #fhir/string "country-084845"} 128
+      #fhir/Address{:period #fhir/Period{}} 56))
+
   (testing "references"
     (is (empty? (type/references #fhir/Address{}))))
 
@@ -3152,14 +3427,7 @@
       #fhir/Reference{:identifier #fhir/Identifier{:value #fhir/string "foofoo"}}
 
       #fhir/Reference{:display #fhir/string "foofoo"}
-      #fhir/Reference{:display #fhir/string "foofoo"})
-
-    (are [x y] (interned? x y)
-      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/Reference{:type #fhir/uri "foo"}
-      #fhir/Reference{:type #fhir/uri "foo"}))
+      #fhir/Reference{:display #fhir/string "foofoo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -3183,6 +3451,16 @@
 
       #fhir/Reference{:display #fhir/string "display-161314"}
       "543cf75f"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Reference{} 32
+      #fhir/Reference{:id "id-130802"} 96
+      #fhir/Reference{:extension [#fhir/Extension{}]} 32
+      #fhir/Reference{:reference #fhir/string "Patient/0"} 96
+      #fhir/Reference{:type #fhir/uri-interned "type-161222"} 32
+      #fhir/Reference{:identifier #fhir/Identifier{}} 72
+      #fhir/Reference{:display #fhir/string "display-161314"} 104))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -3278,7 +3556,7 @@
       #fhir/Meta{:versionId #fhir/id "versionId-161415"}
       "9edaa9b"
 
-      (type/meta {:lastUpdated #fhir/instant #system/date-time "2020-01-01T00:00:00Z"})
+      #fhir/Meta{:lastUpdated #fhir/instant #system/date-time "2020-01-01T00:00:00Z"}
       "df91eaa0"
 
       #fhir/Meta{:source #fhir/uri "source-161629"}
@@ -3292,6 +3570,18 @@
 
       #fhir/Meta{:tag [#fhir/Coding{}]}
       "96e4e336"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/Meta{} 0
+      #fhir/Meta{:id "id-130825"} 104
+      #fhir/Meta{:extension [#fhir/Extension{}]} 0
+      #fhir/Meta{:versionId #fhir/id "versionId-161415"} 112
+      #fhir/Meta{:lastUpdated #fhir/instant #system/date-time "2020-01-01T00:00:00Z"} 120
+      #fhir/Meta{:source #fhir/uri "source-161629"} 112
+      #fhir/Meta{:profile [#fhir/canonical "profile-uri-145024"]} 0
+      #fhir/Meta{:security [#fhir/Coding{}]} 0
+      #fhir/Meta{:tag [#fhir/Coding{}]} 0))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -3324,14 +3614,7 @@
       #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/string "barbar"}]}
 
       #fhir/BundleEntrySearch{:score #fhir/decimal 1M}
-      #fhir/BundleEntrySearch{:score #fhir/decimal 1M})
-
-    (are [x y] (interned? x y)
-      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/BundleEntrySearch{:mode #fhir/code "match"}
-      #fhir/BundleEntrySearch{:mode #fhir/code "match"}))
+      #fhir/BundleEntrySearch{:score #fhir/decimal 1M}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -3349,6 +3632,14 @@
 
       #fhir/BundleEntrySearch{:score #fhir/decimal 1M}
       "2b2509dc"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/BundleEntrySearch{} 24
+      #fhir/BundleEntrySearch{:id "id-130825"} 88
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{}]} 24
+      #fhir/BundleEntrySearch{:mode #fhir/code "match"} 24
+      #fhir/BundleEntrySearch{:score #fhir/decimal 1M} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/BundleEntrySearch{}))))

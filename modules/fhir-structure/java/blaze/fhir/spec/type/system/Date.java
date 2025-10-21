@@ -3,7 +3,6 @@ package blaze.fhir.spec.type.system;
 import clojure.lang.Keyword;
 
 import java.time.DateTimeException;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.Temporal;
 import java.time.temporal.ValueRange;
 
