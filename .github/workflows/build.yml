@@ -816,6 +816,15 @@ jobs:
     - name: Check that Encounter Resources don't contain Periods in Summary Mode
       run: .github/scripts/check-summary-mode.sh Encounter period
 
+    - name: Check that Condition Resources don't contain Categories in Summary Mode using search-system
+      run: .github/scripts/check-summary-mode-system.sh Condition category
+
+    - name: Check that Observation Resources don't contain Categories in Summary Mode using search-system
+      run: .github/scripts/check-summary-mode-system.sh Observation category
+
+    - name: Check that Encounter Resources don't contain Periods in Summary Mode using search-system
+      run: .github/scripts/check-summary-mode-system.sh Encounter period
+
     - name: Download Observation Resources with special LOINC Codes
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9" 2399
 
