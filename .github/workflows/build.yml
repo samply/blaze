@@ -1308,6 +1308,9 @@ jobs:
     - name: Check Capability Statement Supported Profiles
       run: .github/scripts/check-capability-statement-supported-profiles.sh
 
+    - name: Patient Everything Since
+      run: .github/scripts/patient-everything-since.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}
