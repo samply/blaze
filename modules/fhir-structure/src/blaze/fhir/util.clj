@@ -20,16 +20,19 @@
           (if (:fhir/type value) :resource :value) value})))
     (partition 2 nvs))})
 
+(def ^:private ^:const observation-value-system
+  #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/v3-ObservationValue")
+
 (def subsetted
-  #fhir/Coding
-   {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-    :code #fhir/code "SUBSETTED"})
+  (type/coding
+   {:system observation-value-system
+    :code #fhir/code "SUBSETTED"}))
 
 (defn subsetted?
   "Checks whether `coding` is a SUBSETTED coding."
   {:arglists '([coding])}
   [{:keys [system code]}]
-  (and (= #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
+  (and (= observation-value-system system)
        (= #fhir/code "SUBSETTED" code)))
 
 (defn- nat-cmp [^Comparable x y]
@@ -66,8 +69,8 @@
   (:blaze.db/t (:blaze.db/tx (meta resource))))
 
 (def ^:private priority-cmp
-  (-> (Comparator/comparing #(-> % :status type/value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
-      (.thenComparing #(-> % :version type/value) version-cmp)
+  (-> (Comparator/comparing #(-> % :status :value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
+      (.thenComparing #(-> % :version :value) version-cmp)
       (.thenComparing t (Comparator/nullsFirst (Comparator/naturalOrder)))
       (.thenComparing #(% :id) (Comparator/naturalOrder))
       (.reversed)))

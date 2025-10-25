@@ -10,8 +10,8 @@
    [blaze.util :refer [conj-vec str]]))
 
 (defn quantity-value [value]
-  (let [code (-> value :code type/value)]
-    (cond-> (str (-> value :value type/value)) code (str " " code))))
+  (let [code (-> value :code :value)]
+    (cond-> (str (-> value :value :value)) code (str " " code))))
 
 (defn- value-concept
   "Converts `value` into a CodeableConcept so that it can be used in a

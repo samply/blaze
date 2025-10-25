@@ -49,7 +49,7 @@
     "4.0.1"
     (fn link [relation url]
       {:fhir/type :fhir.Bundle/link
-       :relation (type/string relation)
+       :relation (type/string-interned relation)
        :url (type/uri url)})
     (fn link [relation url]
       {:fhir/type :fhir.Bundle/link

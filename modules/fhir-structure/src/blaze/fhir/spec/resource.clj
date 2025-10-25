@@ -19,7 +19,6 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.fhir.spec.impl :as impl]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
@@ -28,15 +27,15 @@
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
+   [blaze.fhir.spec.type Lists]
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
    [com.fasterxml.jackson.core.exc InputCoercionException]
    [com.fasterxml.jackson.core.io JsonEOFException]
    [com.fasterxml.jackson.databind JsonNode ObjectMapper]
    [com.fasterxml.jackson.databind.node TreeTraversingParser]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-   [java.io InputStream OutputStream Reader Writer]
-   [java.lang AutoCloseable]
-   [java.util Arrays]))
+   [java.io InputStream OutputStream Reader]
+   [java.util ArrayList Arrays]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,18 +70,9 @@
   [parent-type element-definitions]
   (:types (separate-element-definitions* parent-type element-definitions)))
 
-(defn- find-fhir-type [{:keys [extension]}]
-  (some
-   #(when (= "http://hl7.org/fhir/StructureDefinition/structuredefinition-fhir-type" (:url %))
-      (:valueUrl %))
-   extension))
-
-(defn- prepare-element-type [{:keys [code] :as type} path]
+(defn- prepare-element-type [{:keys [code]} path]
   (condp = code
-    "http://hl7.org/fhirpath/System.String"
-    (if (= "uri" (find-fhir-type type))
-      :system.string/uri
-      :system/string)
+    "http://hl7.org/fhirpath/System.String" :system/string
     "http://hl7.org/fhirpath/System.Time" :system/time
     "http://hl7.org/fhirpath/System.Date" :system/date
     "http://hl7.org/fhirpath/System.DateTime" :system/date-time
@@ -91,11 +81,255 @@
     "http://hl7.org/fhirpath/System.Boolean" :system/boolean
     "Element" (keyword "element" path)
     "BackboneElement" (keyword "backboneElement" path)
-    (keyword
-     (if (Character/isLowerCase ^char (first code))
-       "primitive"
-       "complex")
-     code)))
+    (case path
+      ("Address.city"
+       "Address.district"
+       "Address.state"
+       "Address.postalCode"
+       "Address.country"
+       "Bundle.link.relation"
+       "Bundle.response.status"
+       "HumanName.family"
+       "HumanName.prefix"
+       "HumanName.suffix"
+       "CodeableConcept.text"
+       "Coding.version"
+       "Coding.display"
+       "Quantity.unit")
+      :primitive/string-interned
+      ("Resource.implicitRules"
+       "Account.implicitRules"
+       "ActivityDefinition.implicitRules"
+       "ActivityDefinition.url"
+       "AdverseEvent.implicitRules"
+       "AllergyIntolerance.implicitRules"
+       "Appointment.implicitRules"
+       "AppointmentResponse.implicitRules"
+       "AuditEvent.implicitRules"
+       "AuditEvent.agent.policy"
+       "Basic.implicitRules"
+       "Binary.implicitRules"
+       "BiologicallyDerivedProduct.implicitRules"
+       "BodyStructure.implicitRules"
+       "Bundle.implicitRules"
+       "CapabilityStatement.implicitRules"
+       "CapabilityStatement.url"
+       "CarePlan.implicitRules"
+       "CarePlan.instantiatesUri"
+       "CarePlan.activity.detail.instantiatesUri"
+       "CareTeam.implicitRules"
+       "CatalogEntry.implicitRules"
+       "ChargeItem.implicitRules"
+       "ChargeItem.definitionUri"
+       "ChargeItemDefinition.implicitRules"
+       "ChargeItemDefinition.url"
+       "ChargeItemDefinition.derivedFromUri"
+       "Claim.implicitRules"
+       "ClaimResponse.implicitRules"
+       "ClinicalImpression.implicitRules"
+       "ClinicalImpression.protocol"
+       "CodeSystem.implicitRules"
+       "CodeSystem.url"
+       "CodeSystem.property.uri"
+       "Communication.implicitRules"
+       "Communication.instantiatesUri"
+       "CommunicationRequest.implicitRules"
+       "CompartmentDefinition.implicitRules"
+       "CompartmentDefinition.url"
+       "Composition.implicitRules"
+       "ConceptMap.implicitRules"
+       "ConceptMap.url"
+       "Condition.implicitRules"
+       "Consent.implicitRules"
+       "Consent.policy.authority"
+       "Consent.policy.uri"
+       "Contract.implicitRules"
+       "Contract.url"
+       "Contract.instantiatesUri"
+       "Coverage.implicitRules"
+       "CoverageEligibilityRequest.implicitRules"
+       "CoverageEligibilityResponse.implicitRules"
+       "CoverageEligibilityResponse.insurance.item.authorizationUrl"
+       "DetectedIssue.implicitRules"
+       "Device.implicitRules"
+       "Device.udiCarrier.issuer"
+       "Device.udiCarrier.jurisdiction"
+       "Device.url"
+       "DeviceDefinition.implicitRules"
+       "DeviceDefinition.udiDeviceIdentifier.issuer"
+       "DeviceDefinition.udiDeviceIdentifier.jurisdiction"
+       "DeviceDefinition.url"
+       "DeviceDefinition.onlineInformation"
+       "DeviceMetric.implicitRules"
+       "DeviceRequest.implicitRules"
+       "DeviceRequest.instantiatesUri"
+       "DeviceUseStatement.implicitRules"
+       "DiagnosticReport.implicitRules"
+       "DocumentManifest.implicitRules"
+       "DocumentManifest.source"
+       "DocumentReference.implicitRules"
+       "DomainResource.implicitRules"
+       "EffectEvidenceSynthesis.implicitRules"
+       "EffectEvidenceSynthesis.url"
+       "Encounter.implicitRules"
+       "Endpoint.implicitRules"
+       "EnrollmentRequest.implicitRules"
+       "EnrollmentResponse.implicitRules"
+       "EpisodeOfCare.implicitRules"
+       "EventDefinition.implicitRules"
+       "EventDefinition.url"
+       "Evidence.implicitRules"
+       "Evidence.url"
+       "EvidenceVariable.implicitRules"
+       "EvidenceVariable.url"
+       "ExampleScenario.implicitRules"
+       "ExampleScenario.url"
+       "ExplanationOfBenefit.implicitRules"
+       "FamilyMemberHistory.implicitRules"
+       "FamilyMemberHistory.instantiatesUri"
+       "Flag.implicitRules"
+       "Goal.implicitRules"
+       "GraphDefinition.implicitRules"
+       "GraphDefinition.url"
+       "Group.implicitRules"
+       "GuidanceResponse.implicitRules"
+       "HealthcareService.implicitRules"
+       "ImagingStudy.implicitRules"
+       "Immunization.implicitRules"
+       "Immunization.education.reference"
+       "ImmunizationEvaluation.implicitRules"
+       "ImmunizationRecommendation.implicitRules"
+       "ImplementationGuide.implicitRules"
+       "ImplementationGuide.url"
+       "InsurancePlan.implicitRules"
+       "Invoice.implicitRules"
+       "Library.implicitRules"
+       "Library.url"
+       "Linkage.implicitRules"
+       "List.implicitRules"
+       "Location.implicitRules"
+       "Measure.implicitRules"
+       "Measure.url"
+       "MeasureReport.implicitRules"
+       "Media.implicitRules"
+       "Medication.implicitRules"
+       "MedicationAdministration.implicitRules"
+       "MedicationAdministration.instantiates"
+       "MedicationDispense.implicitRules"
+       "MedicationKnowledge.implicitRules"
+       "MedicationRequest.implicitRules"
+       "MedicationRequest.instantiatesUri"
+       "MedicationStatement.implicitRules"
+       "MedicinalProduct.implicitRules"
+       "MedicinalProductAuthorization.implicitRules"
+       "MedicinalProductContraindication.implicitRules"
+       "MedicinalProductIndication.implicitRules"
+       "MedicinalProductIngredient.implicitRules"
+       "MedicinalProductInteraction.implicitRules"
+       "MedicinalProductManufactured.implicitRules"
+       "MedicinalProductPackaged.implicitRules"
+       "MedicinalProductPharmaceutical.implicitRules"
+       "MedicinalProductUndesirableEffect.implicitRules"
+       "MessageDefinition.implicitRules"
+       "MessageDefinition.url"
+       "MessageHeader.implicitRules"
+       "MolecularSequence.implicitRules"
+       "MolecularSequence.repository.url"
+       "NamingSystem.implicitRules"
+       "NutritionOrder.implicitRules"
+       "NutritionOrder.instantiatesUri"
+       "NutritionOrder.instantiates"
+       "Observation.implicitRules"
+       "ObservationDefinition.implicitRules"
+       "OperationDefinition.implicitRules"
+       "OperationDefinition.url"
+       "OperationOutcome.implicitRules"
+       "Organization.implicitRules"
+       "OrganizationAffiliation.implicitRules"
+       "Parameters.implicitRules"
+       "Patient.implicitRules"
+       "PaymentNotice.implicitRules"
+       "PaymentReconciliation.implicitRules"
+       "Person.implicitRules"
+       "PlanDefinition.implicitRules"
+       "PlanDefinition.url"
+       "Practitioner.implicitRules"
+       "PractitionerRole.implicitRules"
+       "Procedure.implicitRules"
+       "Procedure.instantiatesUri"
+       "Provenance.implicitRules"
+       "Provenance.policy"
+       "Questionnaire.implicitRules"
+       "Questionnaire.url"
+       "Questionnaire.item.definition"
+       "QuestionnaireResponse.implicitRules"
+       "QuestionnaireResponse.item.definition"
+       "RelatedPerson.implicitRules"
+       "RequestGroup.implicitRules"
+       "RequestGroup.instantiatesUri"
+       "ResearchDefinition.implicitRules"
+       "ResearchDefinition.url"
+       "ResearchElementDefinition.implicitRules"
+       "ResearchElementDefinition.url"
+       "ResearchStudy.implicitRules"
+       "ResearchSubject.implicitRules"
+       "RiskAssessment.implicitRules"
+       "RiskEvidenceSynthesis.implicitRules"
+       "RiskEvidenceSynthesis.url"
+       "Schedule.implicitRules"
+       "SearchParameter.implicitRules"
+       "SearchParameter.url"
+       "ServiceRequest.implicitRules"
+       "ServiceRequest.instantiatesUri"
+       "Slot.implicitRules"
+       "Specimen.implicitRules"
+       "SpecimenDefinition.implicitRules"
+       "StructureDefinition.implicitRules"
+       "StructureDefinition.url"
+       "StructureDefinition.mapping.uri"
+       "StructureDefinition.type"
+       "StructureMap.implicitRules"
+       "StructureMap.url"
+       "Subscription.implicitRules"
+       "Substance.implicitRules"
+       "SubstanceNucleicAcid.implicitRules"
+       "SubstancePolymer.implicitRules"
+       "SubstanceProtein.implicitRules"
+       "SubstanceReferenceInformation.implicitRules"
+       "SubstanceSourceMaterial.implicitRules"
+       "SubstanceSpecification.implicitRules"
+       "SupplyDelivery.implicitRules"
+       "SupplyRequest.implicitRules"
+       "Task.implicitRules"
+       "Task.instantiatesUri"
+       "TerminologyCapabilities.implicitRules"
+       "TerminologyCapabilities.url"
+       "TestReport.implicitRules"
+       "TestReport.participant.uri"
+       "TestReport.setup.action.operation.detail"
+       "TestScript.implicitRules"
+       "TestScript.url"
+       "TestScript.metadata.link.url"
+       "TestScript.metadata.capability.link"
+       "ValueSet.implicitRules"
+       "ValueSet.url"
+       "ValueSet.compose.include.system"
+       "ValueSet.expansion.identifier"
+       "ValueSet.expansion.contains.system"
+       "VerificationResult.implicitRules"
+       "VisionPrescription.implicitRules"
+       "MetadataResource.implicitRules"
+       "MetadataResource.url"
+       "Coding.system"
+       "Identifier.system"
+       "Quantity.system"
+       "Reference.type")
+      :primitive/uri-interned
+      (keyword
+       (if (Character/isLowerCase ^char (first code))
+         "primitive"
+         "complex")
+       code))))
 
 (defn base-field-name
   "The field name without possible polymorphic type."
@@ -241,18 +475,18 @@
   value."
   [field-name key m constructor value locator]
   (if-some [primitive-value (m key)]
-    (if (some? (type/value primitive-value))
+    (if (some? (:value primitive-value))
       (duplicate-property-anom field-name locator)
-      (assoc! m key (type/assoc-value primitive-value value)))
+      (assoc! m key (assoc primitive-value :value value)))
     (assoc! m key (constructor value))))
 
 (defn- assoc-primitive-many-value
   "Like `assoc-primitive-value` but with a single value for cardinality many."
   [{:keys [field-name key]} m constructor value locator]
   (if-some [primitive-value (first (m key))]
-    (if (some? (type/value primitive-value))
+    (if (some? (:value primitive-value))
       (duplicate-property-anom field-name locator)
-      (assoc! m key [(type/assoc-value primitive-value value)]))
+      (assoc! m key [(assoc primitive-value :value value)]))
     (assoc! m key [(constructor value)])))
 
 (defn- primitive-boolean-value-handler
@@ -285,9 +519,9 @@
                  token
                  (when-ok [value (extract-value parser (conj locator path))]
                    (if-some [primitive-value (get l i)]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (update l i type/assoc-value value) (inc i)))
+                       (recur (update l i assoc :value value) (inc i)))
                      (recur (assoc l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (assoc! m key l)
                  JsonToken/VALUE_NULL
@@ -319,16 +553,16 @@
                  token-1
                  (when-ok [value (extract-value-1 parser (conj locator path))]
                    (if-some [primitive-value (get l i)]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (update l i type/assoc-value value) (inc i)))
+                       (recur (update l i assoc :value value) (inc i)))
                      (recur (assoc l i (constructor value)) (inc i))))
                  token-2
                  (when-ok [value (extract-value-2 parser (conj locator path))]
                    (if-some [primitive-value (get l i)]
-                     (if (some? (type/value primitive-value))
+                     (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
-                       (recur (update l i type/assoc-value value) (inc i)))
+                       (recur (update l i assoc :value value) (inc i)))
                      (recur (assoc l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (assoc! m key l)
                  JsonToken/VALUE_NULL
@@ -348,16 +582,16 @@
 
 (def ^:private primitive-id-handler
   "A property-handler for id properties."
-  (create-system-string-handler type/assoc-id "id" "string"))
+  (create-system-string-handler #(assoc %1 :id %2) "id" "string"))
 
 (defn- parse-complex-list [handler type-handlers parser locator]
-  (loop [list (transient [])]
+  (loop [list (ArrayList.)]
     (cond-next-token parser locator
       JsonToken/START_OBJECT
-      (when-ok [value (handler type-handlers parser (conj locator (count list)))]
-        (recur (conj! list value)))
-      JsonToken/END_ARRAY (persistent! list)
-      (incorrect-value-anom parser (conj locator (count list)) (handler)))))
+      (when-ok [value (handler type-handlers parser (conj locator (.size list)))]
+        (recur (doto list (.add value))))
+      JsonToken/END_ARRAY (Lists/intern list)
+      (incorrect-value-anom parser (conj locator (.size list)) (handler)))))
 
 (defn- unsupported-type-anom [type]
   (ba/unsupported (format "Unsupported type `%s`." type)))
@@ -374,10 +608,10 @@
           (cond-next-token parser locator
             JsonToken/START_ARRAY
             (when-ok [list (parse-complex-list extension-handler type-handlers parser (conj locator "extension"))]
-              (recur (type/assoc-extension data list)))
+              (recur (assoc data :extension list)))
             JsonToken/START_OBJECT
             (when-ok [extension (extension-handler type-handlers parser (conj locator "extension" 0))]
-              (recur (type/assoc-extension data [extension])))
+              (recur (assoc data :extension (Lists/intern [extension]))))
             (incorrect-value-anom parser (conj locator "extension") "Extension[]")))
         (unknown-property-anom locator (current-name parser)))
       JsonToken/END_OBJECT data)))
@@ -453,7 +687,7 @@
   representation using `constructor`."
   [def]
   (->> (primitive-value-handler def type/decimal JsonToken/VALUE_NUMBER_INT
-                                get-long JsonToken/VALUE_NUMBER_FLOAT get-decimal
+                                get-decimal JsonToken/VALUE_NUMBER_FLOAT get-decimal
                                 "decimal")
        (primitive-handler def type/decimal)))
 
@@ -539,9 +773,6 @@
     :system/string
     {field-name (create-system-string-handler #(assoc! %1 key %2) (name key) "string")}
 
-    :system.string/uri
-    {field-name (create-system-string-handler #(assoc! %1 key (impl/intern-string %2)) (name key) "uri")}
-
     :primitive/boolean
     (primitive-handler def type/boolean (primitive-boolean-value-handler def))
 
@@ -552,11 +783,19 @@
     (primitive-string-handler def type/string identity "string"
                               #"[\r\n\t\u0020-\uFFFF]+" use-regex)
 
+    :primitive/string-interned
+    (primitive-string-handler def type/string-interned identity "string"
+                              #"[\r\n\t\u0020-\uFFFF]+" use-regex)
+
     :primitive/decimal
     (primitive-decimal-handler def)
 
     :primitive/uri
     (primitive-string-handler def type/uri identity "uri"
+                              #"[\u0021-\uFFFF]*" use-regex)
+
+    :primitive/uri-interned
+    (primitive-string-handler def type/uri-interned identity "uri"
                               #"[\u0021-\uFFFF]*" use-regex)
 
     :primitive/url
@@ -611,7 +850,7 @@
                               #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" use-regex)
 
     :primitive/xhtml
-    (primitive-string-handler def type/->Xhtml identity "xhtml")
+    (primitive-string-handler def type/xhtml identity "xhtml")
 
     (if (#{"complex" "element" "backboneElement"} (namespace type))
       (create-complex-property-handler opts def)
@@ -645,17 +884,23 @@
 (defn- finalize-complex-type [type value]
   (condp = type
     "Address" (type/address (persistent! value))
+    "Annotation" (type/annotation (persistent! value))
     "Attachment" (type/attachment (persistent! value))
     "CodeableConcept" (type/codeable-concept (persistent! value))
     "Coding" (type/coding (persistent! value))
+    "ContactDetail" (type/contact-detail (persistent! value))
+    "ContactPoint" (type/contact-point (persistent! value))
+    "Expression" (type/expression (persistent! value))
     "Extension" (type/extension (persistent! value))
     "HumanName" (type/human-name (persistent! value))
     "Identifier" (type/identifier (persistent! value))
+    "Meta" (type/meta (persistent! value))
     "Period" (type/period (persistent! value))
     "Quantity" (type/quantity (persistent! value))
+    "Range" (type/range (persistent! value))
     "Ratio" (type/ratio (persistent! value))
     "Reference" (type/reference (persistent! value))
-    "Meta" (type/meta (persistent! value))
+    "RelatedArtifact" (type/related-artifact (persistent! value))
     "Bundle.entry.search" (type/bundle-entry-search (persistent! value))
     (persistent! (assoc! value :fhir/type (fhir-type-keyword type)))))
 
@@ -848,21 +1093,10 @@
        (read-value type-handlers parser [type] handler))
      (ba/unsupported (format "Unsupported resource type: %s" type)))))
 
-(defprotocol GeneratorFactory
-  (-create-generator ^AutoCloseable [out]))
-
-(extend-protocol GeneratorFactory
-  OutputStream
-  (-create-generator [out]
-    (.createGenerator json-factory out))
-  Writer
-  (-create-generator [out]
-    (.createGenerator json-factory out)))
-
 (defn write-json [type-handlers out value]
   (if-some [type (type/type value)]
     (if-some [handler (get type-handlers type)]
-      (with-open [gen (-create-generator out)]
+      (with-open [gen (.createGenerator json-factory ^OutputStream out)]
         (handler type-handlers gen value))
       (ba/unsupported (format "Unsupported resource type: %s" (name type))))
     (ba/incorrect (format "Missing resource type."))))

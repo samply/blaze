@@ -72,7 +72,7 @@
     (assoc
      :details
      {:coding
-      [{:system #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
+      [{:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/operation-outcome"
         :code (type/code operation-outcome)}]})
     message
     (assoc :diagnostics (type/string message))

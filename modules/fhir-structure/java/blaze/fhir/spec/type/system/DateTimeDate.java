@@ -11,10 +11,21 @@ import java.time.temporal.Temporal;
 import java.time.temporal.TemporalField;
 import java.time.temporal.TemporalUnit;
 
+import static blaze.fhir.spec.type.Base.MEM_SIZE_OBJECT_HEADER;
 import static java.time.temporal.ChronoField.*;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class DateTimeDate implements DateTime, Comparable<DateTimeDate> {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 byte - year
+     * 2 byte - month
+     * 2 byte - day
+     */
+    private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 8;
 
     private final int year;
     private final short month;
@@ -90,6 +101,11 @@ public final class DateTimeDate implements DateTime, Comparable<DateTimeDate> {
         sink.putInt(year);
         sink.putInt(month);
         sink.putInt(day);
+    }
+
+    @Override
+    public int memSize() {
+        return MEM_SIZE_OBJECT;
     }
 
     public DateDate toDate() {

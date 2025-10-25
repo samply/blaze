@@ -31,9 +31,7 @@
    [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Instant]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -248,7 +246,7 @@
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH))
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
         (testing "the second entry has the right request"
           (given (:request first-entry)
@@ -259,7 +257,7 @@
           (given (:response first-entry)
             :status := #fhir/string "201"
             :etag := #fhir/string "W/\"1\""
-            :lastModified := Instant/EPOCH)))))
+            :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
   (testing "with one code system"
     (with-handler [handler]
@@ -307,7 +305,7 @@
             :fhir/type := :fhir/CodeSystem
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := Instant/EPOCH
+            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
             [:concept 0 :code] := #fhir/code "code-115927"))
 
         (testing "the second entry has the right request"
@@ -319,7 +317,7 @@
           (given (:response first-entry)
             :status := #fhir/string "201"
             :etag := #fhir/string "W/\"1\""
-            :lastModified := Instant/EPOCH)))
+            :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))
 
       (testing "in summary mode"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -359,7 +357,7 @@
               :fhir/type := :fhir/CodeSystem
               :id := "0"
               [:meta :versionId] := #fhir/id "1"
-              [:meta :lastUpdated] := Instant/EPOCH
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"
               [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code "SUBSETTED"
               :concept := nil))
 
@@ -372,7 +370,7 @@
             (given (:response first-entry)
               :status := #fhir/string "201"
               :etag := #fhir/string "W/\"1\""
-              :lastModified := Instant/EPOCH))))))
+              :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))
 
   (testing "with two patients in one transaction"
     (with-handler [handler node page-id-cipher]

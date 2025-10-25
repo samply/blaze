@@ -15,7 +15,7 @@
 
 (def ^:private read-only-tag
   #fhir/Coding
-   {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+   {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
     :code #fhir/code "read-only"})
 
 (defn- structure-definitions [db]

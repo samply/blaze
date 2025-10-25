@@ -5,8 +5,10 @@
  fhir/integer blaze.fhir.spec.type/integer
  fhir/long blaze.fhir.spec.type/long
  fhir/string blaze.fhir.spec.type/string
+ fhir/string-interned blaze.fhir.spec.type/string-interned
  fhir/decimal blaze.fhir.spec.type/decimal
  fhir/uri blaze.fhir.spec.type/uri
+ fhir/uri-interned blaze.fhir.spec.type/uri-interned
  fhir/url blaze.fhir.spec.type/url
  fhir/canonical blaze.fhir.spec.type/canonical
  fhir/base64Binary blaze.fhir.spec.type/base64Binary
@@ -21,20 +23,26 @@
  fhir/unsignedInt blaze.fhir.spec.type/unsignedInt
  fhir/positiveInt blaze.fhir.spec.type/positiveInt
  fhir/uuid blaze.fhir.spec.type/uuid
- fhir/xhtml blaze.fhir.spec.type/->Xhtml
+ fhir/xhtml blaze.fhir.spec.type/xhtml
  fhir/Attachment blaze.fhir.spec.type/attachment
+ fhir/Expression blaze.fhir.spec.type/expression
  fhir/Extension blaze.fhir.spec.type/extension
- fhir/Coding blaze.fhir.spec.type/coding
  fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
+ fhir/Coding blaze.fhir.spec.type/coding
+ fhir/ContactDetail blaze.fhir.spec.type/contact-detail
+ fhir/ContactPoint blaze.fhir.spec.type/contact-point
  fhir/Quantity blaze.fhir.spec.type/quantity
+ fhir/Range blaze.fhir.spec.type/range
  fhir/Ratio blaze.fhir.spec.type/ratio
  fhir/Period blaze.fhir.spec.type/period
  fhir/Identifier blaze.fhir.spec.type/identifier
  fhir/HumanName blaze.fhir.spec.type/human-name
  fhir/Address blaze.fhir.spec.type/address
  fhir/Reference blaze.fhir.spec.type/reference
+ fhir/RelatedArtifact blaze.fhir.spec.type/related-artifact
  fhir/Meta blaze.fhir.spec.type/meta
  fhir/BundleEntrySearch blaze.fhir.spec.type/bundle-entry-search
+ fhir/Annotation blaze.fhir.spec.type/annotation
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time
  system/time blaze.fhir.spec.type.system/parse-time}

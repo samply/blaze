@@ -2,10 +2,10 @@
   (:require
    [blaze.fhir.spec.impl :as impl]
    [blaze.fhir.spec.impl-spec]
-   [blaze.fhir.spec.impl.specs :as specs]
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.impl.xml-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.test-util :as tu]
    [clojure.alpha.spec :as s2]
@@ -57,7 +57,7 @@
                (fn [~'e] (xml/value-matches? "true|false" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Boolean type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/boolean system/parse-boolean) type/to-xml))}])))
 
   (testing "Integer"
     (is (= (-> (primitive-type "integer")
@@ -72,7 +72,7 @@
                (fn [~'e] (xml/value-matches? "-?([0]|([1-9][0-9]*))" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Integer type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/integer system/parse-integer) type/to-xml))}])))
 
   (testing "string"
     (is (= (-> (primitive-type "string")
@@ -87,7 +87,7 @@
                (fn [~'e] (xml/value-matches? "[\\r\\n\\t\\u0020-\\uFFFF]+" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->String type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/string identity) type/to-xml))}])))
 
   (testing "Decimal"
     (is (= (-> (primitive-type "decimal")
@@ -102,7 +102,7 @@
                (fn [~'e] (xml/value-matches? "-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Decimal type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/decimal system/parse-decimal) type/to-xml))}])))
 
   (testing "uri"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "uri"))
@@ -116,7 +116,7 @@
                (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Uri type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/uri identity) type/to-xml))}])))
 
   (testing "canonical"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "canonical"))
@@ -130,7 +130,7 @@
                (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Canonical type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/canonical identity) type/to-xml))}])))
 
   (testing "base64Binary"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "base64Binary"))
@@ -144,7 +144,7 @@
                (fn [~'e] (xml/value-matches? "([0-9a-zA-Z\\\\+/=]{4})+" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Base64Binary type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/base64Binary identity) type/to-xml))}])))
 
   (testing "code"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "code"))
@@ -158,7 +158,7 @@
                (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Code type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/code identity) type/to-xml))}])))
 
   (testing "unsignedInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "unsignedInt"))
@@ -172,7 +172,7 @@
                (fn [~'e] (xml/value-matches? "[0]|([1-9][0-9]*)" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->UnsignedInt type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/unsignedInt system/parse-integer) type/to-xml))}])))
 
   (testing "positiveInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "positiveInt"))
@@ -186,7 +186,7 @@
                (fn [~'e] (xml/value-matches? "[1-9][0-9]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->PositiveInt type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/positiveInt system/parse-integer) type/to-xml))}])))
 
   (testing "uuid"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "uuid"))
@@ -200,7 +200,7 @@
                (fn [~'e] (xml/value-matches? "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-               (s2/conformer type/xml->Uuid type/to-xml))}])))
+               (s2/conformer (xml/xml-constructor type/uuid identity) type/to-xml))}])))
 
   (testing "xhtml"
     (is (= (impl/primitive-type->spec-defs (primitive-type "xhtml"))
@@ -210,7 +210,7 @@
              :spec-form
              `(s2/and
                xml/element?
-               (s2/conformer type/xml->Xhtml type/to-xml))}]))))
+               (s2/conformer type/xml->Xhtml type/xhtml-to-xml))}]))))
 
 (defn- complex-type [name]
   (some #(when (= name (:name %)) %) (sdr/complex-types structure-definition-repo)))
@@ -259,7 +259,7 @@
               (when ~'m
                 (xml-node/element*
                  nil
-                 (impl/select-non-nil-keys ~'m [:id])
+                 (impl/select-non-nil-keys ~'m #{:id})
                  (-> []
                      (impl/conj-all ::f/extension (:extension ~'m))
                      (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
@@ -295,10 +295,8 @@
 
   (testing "XML representation of Extension"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Extension")))
-      [:fhir.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
-      [:fhir.xml.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
+      [:fhir.Extension/url 0 :spec-form regexes->str] := `string?
+      [:fhir.xml.Extension/url 0 :spec-form regexes->str] := `string?
       [:fhir.xml.Extension/url 0 :representation] := :xmlAttr))
 
   (testing "XML representation of Coding"
@@ -306,7 +304,7 @@
       [:fhir.xml/Coding 0 :spec-form 1 2 2 2]
       := `(xml-node/element*
            nil
-           (impl/select-non-nil-keys ~'m [:id])
+           (impl/select-non-nil-keys ~'m #{:id})
            (->
             []
             (impl/conj-all ::f/extension (:extension ~'m))
@@ -319,11 +317,17 @@
   (testing "XML representation of Measure unformer XML attributes"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Measure")))
       [:fhir.xml/Measure 0 :spec-form 1 2 2 2 2] :=
-      `(assoc (impl/select-non-nil-keys ~'m []) :xmlns "http://hl7.org/fhir")))
+      `(assoc (impl/select-non-nil-keys ~'m #{}) :xmlns "http://hl7.org/fhir")))
 
   (testing "XML representation of Measure.url"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Measure")))
-      [:fhir.xml.Measure/url 0 :spec-form] := :fhir.xml/uri))
+      [:fhir.xml.Measure/url 0 :spec-form regexes->str]
+      := `(s2/and
+           xml/element?
+           (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
+           (s2/conformer xml/remove-character-content xml/set-extension-tag)
+           (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
+           (s2/conformer (xml/xml-constructor type/uri-interned identity) type/to-xml))))
 
   (testing "XML representation of Questionnaire.item contains recursive spec to itself"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Questionnaire")))
@@ -340,7 +344,7 @@
            (fn [~'e] (xml/value-matches? "[\\r\\n\\t\\u0020-\\uFFFF]+" ~'e))
            (s2/conformer xml/remove-character-content xml/set-extension-tag)
            (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-           (s2/conformer type/xml->InternedString type/to-xml)))))
+           (s2/conformer (xml/xml-constructor type/string-interned identity) type/to-xml)))))
 
 (deftest elem-def->spec-def-test
   (testing "normal type"

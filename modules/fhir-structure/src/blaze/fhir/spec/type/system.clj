@@ -9,15 +9,15 @@
    * DateTime
    * Time
    * Quantity"
-  (:refer-clojure :exclude [boolean? decimal? integer? str string? time type])
+  (:refer-clojure :exclude [boolean? decimal? integer? str string? time type parse-boolean])
   (:require
    [blaze.anomaly :as ba]
    [blaze.util :refer [str]]
    [cognitect.anomalies :as anom])
   (:import
    [blaze.fhir.spec.type.system
-    Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear
-    DateYearMonth]
+    Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateTimes DateYear
+    DateYearMonth Times]
    [com.google.common.hash PrimitiveSink]
    [java.io Writer]
    [java.nio.charset StandardCharsets]
@@ -69,6 +69,11 @@
 (defn boolean? [x]
   (identical? :system/boolean (-type x)))
 
+(defn parse-boolean [s]
+  (if (#{"true" "false"} s)
+    (clojure.core/parse-boolean s)
+    (ba/incorrect (format "Invalid boolean value `%s`." s))))
+
 ;; ---- System.Integer --------------------------------------------------------
 
 (extend-protocol SystemType
@@ -86,6 +91,12 @@
 
 (defn integer? [x]
   (identical? :system/integer (-type x)))
+
+(defn parse-integer [s]
+  (try
+    (Integer/valueOf ^String s)
+    (catch NumberFormatException _
+      (ba/incorrect (format "Invalid integer value `%s`." s)))))
 
 ;; ---- System.Long -----------------------------------------------------------
 
@@ -214,7 +225,7 @@
       (instance? DateTimeDate x) (.equals date (.toDate ^DateTimeDate x)))))
 
 (defmethod print-method DateYear [^DateYear date ^Writer w]
-  (.write w "#system/date\"")
+  (.write w "#system/date \"")
   (.write w (str date))
   (.write w "\""))
 
@@ -224,7 +235,7 @@
   (.write w ")"))
 
 (defmethod print-method DateYearMonth [^DateYearMonth date ^Writer w]
-  (.write w "#system/date\"")
+  (.write w "#system/date \"")
   (.write w (str date))
   (.write w "\""))
 
@@ -236,7 +247,7 @@
   (.write w ")"))
 
 (defmethod print-method DateDate [^DateDate date ^Writer w]
-  (.write w "#system/date\"")
+  (.write w "#system/date \"")
   (.write w (str date))
   (.write w "\""))
 
@@ -299,7 +310,7 @@
     (ba/try-one DateTimeException ::anom/incorrect (parse-date-time* s))))
 
 (defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
-  (.write w "#system/date-time\"")
+  (.write w "#system/date-time \"")
   (.write w (str date-time))
   (.write w "\""))
 
@@ -309,7 +320,7 @@
   (.write w ")"))
 
 (defmethod print-method DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
-  (.write w "#system/date-time\"")
+  (.write w "#system/date-time \"")
   (.write w (str date-time))
   (.write w "\""))
 
@@ -321,7 +332,7 @@
   (.write w ")"))
 
 (defmethod print-method DateTimeDate [^DateTimeDate date-time ^Writer w]
-  (.write w "#system/date-time\"")
+  (.write w "#system/date-time \"")
   (.write w (str date-time))
   (.write w "\""))
 
@@ -335,8 +346,8 @@
   (.write w ")"))
 
 (defmethod print-method LocalDateTime [^LocalDateTime dateTime ^Writer w]
-  (.write w "#system/date-time\"")
-  (.write w (str dateTime))
+  (.write w "#system/date-time \"")
+  (.write w (DateTimes/toString dateTime))
   (.write w "\""))
 
 (defmethod print-dup LocalDateTime [^LocalDateTime dateTime ^Writer w]
@@ -357,8 +368,8 @@
   (.write w ")"))
 
 (defmethod print-method OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
-  (.write w "#system/date-time\"")
-  (.write w (str dateTime))
+  (.write w "#system/date-time \"")
+  (.write w (DateTimes/toString dateTime))
   (.write w "\""))
 
 (defmethod print-dup OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
@@ -379,6 +390,11 @@
   (.write w ",#=(java.time.ZoneOffset/of \"")
   (.write w (.getId (.getOffset dateTime)))
   (.write w "\"))"))
+
+(defmethod print-method LocalTime [^LocalTime time ^Writer w]
+  (.write w "#system/time \"")
+  (.write w (Times/toString time))
+  (.write w "\""))
 
 (defmethod print-dup LocalTime [^LocalTime time ^Writer w]
   (.write w "#=(java.time.LocalTime/of ")

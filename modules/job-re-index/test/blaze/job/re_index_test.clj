@@ -284,7 +284,7 @@
   (output-value job "processing-duration"))
 
 (defn- next-resource [job]
-  (type/value (output-value job "next-resource")))
+  (:value (output-value job "next-resource")))
 
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))
@@ -314,7 +314,7 @@
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
             [processing-duration :value type/type] := :fhir/decimal
-            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
             [processing-duration :unit] := #fhir/string "s"
             [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code "s"
@@ -362,7 +362,7 @@
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
             [processing-duration :value type/type] := :fhir/decimal
-            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
             [processing-duration :unit] := #fhir/string "s"
             [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code "s"))
@@ -510,7 +510,7 @@
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
           [processing-duration :value type/type] := :fhir/decimal
-          [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+          [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
           [processing-duration :unit] := #fhir/string "s"
           [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code "s"))
@@ -563,7 +563,7 @@
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
           [processing-duration :value type/type] := :fhir/decimal
-          [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+          [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
           [processing-duration :unit] := #fhir/string "s"
           [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code "s"))

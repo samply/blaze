@@ -25,14 +25,14 @@
   (type/codeable-concept
    {:coding
     [(type/coding
-      {:system (type/uri status-reason-url)
+      {:system (type/uri-interned status-reason-url)
        :code (type/code reason)})]}))
 
 (defn- mk-sub-status [system-url code]
   (type/codeable-concept
    {:coding
     [(type/coding
-      {:system (type/uri system-url)
+      {:system (type/uri-interned system-url)
        :code (type/code code)})]}))
 
 (def orderly-shut-down-status-reason (mk-status-reason "orderly-shutdown"))
@@ -99,13 +99,13 @@
   "Returns the error category of `job` in case it failed and an error category
   is available."
   [job]
-  (some->> (type/value (output-value job "error-category"))
+  (some->> (:value (output-value job "error-category"))
            (keyword "cognitect.anomalies")))
 
 (defn error-msg
   "Returns the error message of `job` in case it failed."
   [job]
-  (type/value (output-value job "error")))
+  (:value (output-value job "error")))
 
 (defn error
   "Returns the error as anomaly of `job` in case it failed."
@@ -127,7 +127,7 @@
    :type (type/codeable-concept
           {:coding
            [(type/coding
-             {:system (type/uri system)
+             {:system (type/uri-interned system)
               :code (type/code code)})]})
    :value value})
 

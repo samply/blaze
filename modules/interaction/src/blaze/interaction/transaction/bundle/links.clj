@@ -21,14 +21,14 @@
 (defn- resolve-link [{:keys [base-url index]} link]
   (let [uri (some->> (type/value link) (resolve-uri base-url))]
     (if-let [{:fhir/keys [type] :keys [id]} (get index uri)]
-      (type/assoc-value link (str (name type) "/" id))
+      (assoc link :value (str (name type) "/" id))
       link)))
 
 (declare resolve-links)
 
 (defn- resolve-single-element-links
   [context value]
-  (let [type (fhir-spec/fhir-type value)]
+  (if-let [type (fhir-spec/fhir-type value)]
     (cond
       (identical? :fhir/Reference type)
       (update value :reference (partial resolve-link context))
@@ -37,11 +37,12 @@
           (identical? :fhir/url type))
       (resolve-link context value)
 
-      (fhir-spec/primitive? type)
+      (fhir-spec/primitive-val? value)
       value
 
       :else
-      (resolve-links context value))))
+      (resolve-links context value))
+    value))
 
 (defn- resolve-element-links [context value]
   (if (sequential? value)

@@ -84,10 +84,10 @@
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid max-size"
-    (given-failed-system (assoc-in config [:blaze.db/resource-cache :max-size] ::invalid)
+    (given-failed-system (assoc-in config [:blaze.db/resource-cache :max-size-in-mb] ::invalid)
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [::resource-cache/max-size]
+      [:cause-data ::s/problems 0 :via] := [::resource-cache/max-size-in-mb]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest get-test
