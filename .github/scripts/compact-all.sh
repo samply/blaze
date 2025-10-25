@@ -18,3 +18,4 @@ blazectl --server "$BASE" compact index type-stats-index
 blazectl --server "$BASE" compact index system-stats-index
 blazectl --server "$BASE" compact index cql-bloom-filter
 blazectl --server "$BASE" compact index cql-bloom-filter-by-t
+blazectl --server "$BASE" compact resource default
