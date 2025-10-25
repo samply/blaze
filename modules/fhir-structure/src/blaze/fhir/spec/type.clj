@@ -19,7 +19,7 @@
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
   (:import
-   [blaze.fhir.spec.type.system Date]
+   [blaze.fhir.spec.type.system Date DateTime]
    [clojure.lang ILookup IPersistentMap Keyword]
    [com.fasterxml.jackson.core JsonGenerator]
    [com.google.common.hash PrimitiveSink]
@@ -974,7 +974,7 @@
 
 (defn- parse-date-time [value]
   (try
-    (create-date-time (system/parse-date-time* value))
+    (create-date-time (DateTime/parse value))
     (catch DateTimeException _
       ::s2/invalid)))
 
