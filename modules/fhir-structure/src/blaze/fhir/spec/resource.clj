@@ -817,8 +817,7 @@
   (-create-parser [source factory]
     (.createParser ^JsonFactory factory source)))
 
-;; TODO: use bytes/1 in extend-protocol if Clojure 1.12 can be used by Cloverage
-(extend (Class/forName "[B")
+(extend byte/1
   ParserFactory
   {:-create-parser
    (fn [source factory]

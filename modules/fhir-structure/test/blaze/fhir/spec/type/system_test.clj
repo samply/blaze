@@ -545,10 +545,13 @@
       "2020-01-02T03:04" (system/date-time 2020 1 2 3 4)
       "2020-01-02T03:04:05" (system/date-time 2020 1 2 3 4 5)
       "2020-01-02T03:04:05.006" (system/date-time 2020 1 2 3 4 5 6)
+      "2020-01-02T03:04Z" (system/date-time 2020 1 2 3 4 0 0 ZoneOffset/UTC)
       "2020-01-02T03:04:05Z" (system/date-time 2020 1 2 3 4 5 0 ZoneOffset/UTC)
+      "2020-01-02T03:04-01:00" (system/date-time 2020 1 2 3 4 0 0 (ZoneOffset/ofHours -1))
       "2020-01-02T03:04:05-01:00" (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours -1))
       "2020-01-02T03:04:05+01:00" (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours 1))
       "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
+      "2020-01-02T03:04:05.006000Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
       "2020-01-02T03:04:05.006-01:00" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours -1))
       "2020-01-02T03:04:05.006+01:00" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))))
 
@@ -564,10 +567,20 @@
       "20191"
       "2019-13"
       "2019-02-29"
+      "2019-02-28Taa"
       "2019-02-28T24"
+      "2019-02-28T23:aa"
       "2019-02-28T23:60"
+      "2019-02-28T23:59:"
+      "2019-02-28T23:59:aa"
       "2019-02-28T23:59:60"
-      "2019-02-28T23:59:59+99")))
+      "2019-02-28T23:59:59+aa"
+      "2019-02-28T23:59:59+99"
+      "2019-02-28T23:59:59+01:aa"
+      "2020-01-02T03:04Za"
+      "2020-01-02T03:04-01:00a"
+      "2020-01-02T03:04:05.006Za"
+      "2020-01-02T03:04:05.006+01:00a")))
 
 (deftest date-time-lower-bound-test
   (testing "date-times with increasing precision have the same lower bound"
