@@ -258,7 +258,14 @@
   (testing "birthDate"
     (given-parse-json "Patient"
       {:birthDate "2025"}
-      :birthDate := #fhir/date "2025"))
+      :birthDate := #fhir/date "2025")
+
+    (testing "invalid date"
+      (given-parse-json "Patient"
+        {:birthDate "2025-13"}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-13`. Expected type is `date`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate")))
 
   (testing "deceasedBoolean"
     (doseq [value [true false]]

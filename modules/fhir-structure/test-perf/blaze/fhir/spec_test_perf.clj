@@ -106,10 +106,10 @@
               :code #fhir/code "kg/m2"}}
     :search #fhir/BundleEntrySearch{:mode #fhir/code "match"}})
 
-  ;; 581,264 µs <> 583,088 µs
+  ;; 548,383 µs <> 549,193 µs
   (bench-write-json (read-json "Bundle" (slurp kds-bundle-filename)))
 
   ;; Read Performance
 
-  ;; 3461,458 µs <> 3470,343 µs
+  ;; 3071,643 µs <> 3078,915 µs
   (bench-read-json "Bundle" (slurp kds-bundle-filename)))
