@@ -149,7 +149,7 @@
   (-> (assoc config :blaze.test/system-clock {})
       (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/system-clock))))
 
-(defn wrap-defaults [handler]
+(defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
     (handler
      (cond-> (assoc request
@@ -158,7 +158,7 @@
        (nil? match)
        (assoc ::reitit/match default-match)))))
 
-(defn wrap-db [handler node page-id-cipher]
+(defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
       ((decrypt-page-id/wrap-decrypt-page-id
@@ -167,15 +167,19 @@
        request)
       ((db/wrap-db handler node 100) request))))
 
+(defn- wrap-middleware [handler node page-id-cipher]
+  (-> handler
+      wrap-defaults
+      (wrap-db node page-id-cipher)
+      wrap-error))
+
 (defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          page-id-cipher# :blaze.test/page-id-cipher
                          handler# :blaze.interaction.history/instance} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults
-                                  (wrap-db node# page-id-cipher#)
-                                  wrap-error)
+       (let [~handler-binding (wrap-middleware handler# node# page-id-cipher#)
              ~(or node-binding '_) node#
              ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
@@ -499,22 +503,27 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
       (Thread/sleep 2000)
-      (let [since (time/instant system-clock)
-            _ (Thread/sleep 2000)
-            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                        :gender #fhir/code "female"}]])
-            handler (-> handler wrap-defaults (wrap-db node page-id-cipher) wrap-error)
-            {:keys [body]}
-            @(handler
-              {:path-params {:id "0"}
-               :params {"_since" (str since)}})]
+      (let [after-init (time/instant system-clock)
+            handler (wrap-middleware handler node page-id-cipher)]
 
-        (testing "the total count is 1"
-          (is (= #fhir/unsignedInt 1 (:total body))))
+        (Thread/sleep 2000)
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :gender #fhir/code "female"}]])
 
-        (testing "it shows the second version"
-          (given (-> body :entry first)
-            [:resource :gender] := #fhir/code "female")))))
+        (testing "since after initialization"
+          (let [{:keys [status] {[first-entry] :entry :as body} :body}
+                @(handler
+                  {:path-params {:id "0"}
+                   :params {"_since" (str after-init)}})]
+
+            (is (= 200 status))
+
+            (testing "the total count is 1"
+              (is (= #fhir/unsignedInt 1 (:total body))))
+
+            (testing "it shows the second version"
+              (given (:resource first-entry)
+                :gender := #fhir/code "female")))))))
 
   (testing "missing resource contents"
     (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
