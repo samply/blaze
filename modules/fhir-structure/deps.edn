@@ -14,10 +14,10 @@
   {:local/root "../module-base"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.20.0"}
+  {:mvn/version "2.20.1"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
-  {:mvn/version "2.20.0"}
+  {:mvn/version "2.20.1"}
 
   metosin/jsonista
   {:mvn/version "0.3.13"}
