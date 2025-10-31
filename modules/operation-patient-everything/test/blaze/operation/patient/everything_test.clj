@@ -113,7 +113,7 @@
   (reitit/map->Match
    {:path (str context-path "/Patient/0/__everything-page")}))
 
-(defn wrap-defaults [handler]
+(defn- wrap-defaults [handler]
   (fn [request]
     (handler
      (assoc request
@@ -129,10 +129,16 @@
        request)
       ((db/wrap-db handler node 100) request))))
 
-(defn wrap-error [handler]
+(defn- wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
+
+(defn- wrap-middleware [handler node page-id-cipher]
+  (-> handler
+      wrap-defaults
+      (wrap-db node page-id-cipher)
+      wrap-error))
 
 (defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -140,9 +146,7 @@
                          page-id-cipher# :blaze.test/page-id-cipher
                          handler# :blaze.operation.patient/everything} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults
-                                  (wrap-db node# page-id-cipher#)
-                                  wrap-error)
+       (let [~handler-binding (wrap-middleware handler# node# page-id-cipher#)
              ~(or node-binding '_) node#
              ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
@@ -1006,53 +1010,55 @@
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/Observation :id "0"
              :subject #fhir/Reference{:reference "Patient/0"}}]]]
-    (let [start Instant/EPOCH
-          handler (-> handler wrap-defaults (wrap-db node page-id-cipher) wrap-error)
-          _ (Thread/sleep 200)
-          after-init (time/instant system-clock)
-          _ @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
-                                      :subject #fhir/Reference{:reference "Patient/0"}}]])
-          {:keys [status]
-           {[first-entry second-entry third-entry] :entry :as body} :body}
-          @(handler {:path-params {:id "0"}
-                     :query-params {"_since" (str start)}})]
+
+    (Thread/sleep 2000)
+    (let [handler (wrap-middleware handler node page-id-cipher)
+          after-init (time/instant system-clock)]
+
+      (Thread/sleep 2000)
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
+                                :subject #fhir/Reference{:reference "Patient/0"}}]])
 
       (testing "since start of time"
-        (is (= 200 status))
+        (let [{:keys [status]
+               {[first-entry second-entry third-entry] :entry :as body} :body}
+              @(handler {:path-params {:id "0"}
+                         :query-params {"_since" (str Instant/EPOCH)}})]
+          (is (= 200 status))
 
-        (testing "the body contains a bundle"
-          (is (= :fhir/Bundle (:fhir/type body))))
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
 
-        (testing "the bundle type is searchset"
-          (is (= #fhir/code "searchset" (:type body))))
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
 
-        (testing "the total count is 3"
-          (is (= #fhir/unsignedInt 3 (:total body))))
+          (testing "the total count is 3"
+            (is (= #fhir/unsignedInt 3 (:total body))))
 
-        (testing "the bundle contains two entries"
-          (is (= 3 (count (:entry body)))))
+          (testing "the bundle contains two entries"
+            (is (= 3 (count (:entry body)))))
 
-        (testing "the first entry has the right fullUrl"
-          (is (= (str base-url context-path "/Patient/0")
-                 (-> first-entry :fullUrl :value))))
+          (testing "the first entry has the right fullUrl"
+            (is (= (str base-url context-path "/Patient/0")
+                   (-> first-entry :fullUrl :value))))
 
-        (testing "the first entry has the right resource"
-          (given (:resource first-entry)
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id "1"))
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"))
 
-        (testing "the second entry has the right resource"
-          (given (:resource second-entry)
-            :fhir/type := :fhir/Observation
-            :id := "0"
-            [:meta :versionId] := #fhir/id "1"))
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"))
 
-        (testing "the third entry has the right resource"
-          (given (:resource third-entry)
-            :fhir/type := :fhir/Observation
-            :id := "1"
-            [:meta :versionId] := #fhir/id "2")))
+          (testing "the third entry has the right resource"
+            (given (:resource third-entry)
+              :fhir/type := :fhir/Observation
+              :id := "1"
+              [:meta :versionId] := #fhir/id "2"))))
 
       (testing "since after initialization"
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
