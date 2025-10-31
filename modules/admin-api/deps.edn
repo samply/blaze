@@ -88,7 +88,7 @@
    [io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
   com.fasterxml.jackson.datatype/jackson-datatype-jsr310
-  {:mvn/version "2.20.0"}
+  {:mvn/version "2.20.1"}
 
   org.fhir/ucum
   {:mvn/version "1.0.10"
