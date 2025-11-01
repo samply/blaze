@@ -99,7 +99,7 @@
     (map #(d/pull-many db % :summary))
 
     :else
-    (map (partial d/pull-many db))))
+    (map #(d/pull-many db %))))
 
 (defn- total-future
   "Calculates the total number of resources returned.

@@ -459,7 +459,7 @@
       [:code-systems 0 :title] := #fhir/string "Germany National Extension module (core metadata concept)"
       [:code-systems 0 :status] := #fhir/code "active"
       [:code-systems 0 :experimental] := #fhir/boolean false
-      [:code-systems 0 :date] := #fhir/dateTime "2023-11-15"
+      [:code-systems 0 :date] := #fhir/dateTime #system/date-time "2023-11-15"
       [:code-systems 0 :caseSensitive] := #fhir/boolean true
       [:code-systems 0 :hierarchyMeaning] := #fhir/code "is-a"
       [:code-systems 0 :versionNeeded] := #fhir/boolean false
@@ -478,14 +478,14 @@
 
       [:code-systems 1 :version] := #fhir/string "http://snomed.info/sct/11000274103/version/20240515"
       [:code-systems 1 :title] := #fhir/string "Germany National Extension module (core metadata concept)"
-      [:code-systems 1 :date] := #fhir/dateTime "2024-05-15"
+      [:code-systems 1 :date] := #fhir/dateTime #system/date-time "2024-05-15"
 
       [:code-systems 2 :version] := #fhir/string "http://snomed.info/sct/11000274103/version/20241115"
       [:code-systems 2 :title] := #fhir/string "Germany National Extension module (core metadata concept)"
-      [:code-systems 2 :date] := #fhir/dateTime "2024-11-15"
+      [:code-systems 2 :date] := #fhir/dateTime #system/date-time "2024-11-15"
 
       [:code-systems 3 :version] := #fhir/string "http://snomed.info/sct/900000000000207008/version/20220131"
       [:code-systems 3 :title] := #fhir/string "SNOMED CT core module (core metadata concept)"
-      [:code-systems 3 :date] := #fhir/dateTime "2022-01-31"
+      [:code-systems 3 :date] := #fhir/dateTime #system/date-time "2022-01-31"
 
-      [:current-int-system :date] := #fhir/dateTime "2024-10-01")))
+      [:current-int-system :date] := #fhir/dateTime #system/date-time "2024-10-01")))

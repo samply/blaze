@@ -4,7 +4,6 @@
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.codec :as codec]
    [blaze.fhir.hash :as hash]
-   [blaze.fhir.spec.type.protocols :as p]
    [blaze.util :refer [str]])
   (:import
    [clojure.lang ILookup Numbers]))
@@ -13,17 +12,13 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 (deftype ResourceHandle [^int tid id ^long t hash ^long num-changes op]
-  p/FhirType
-  (-type [_]
-   ;; TODO: maybe cache this
-    (keyword "fhir" (codec/tid->type tid)))
-
   ILookup
   (valAt [rh key]
     (.valAt rh key nil))
-  (valAt [rh key not-found]
+  (valAt [_ key not-found]
     (case key
-      :fhir/type (p/-type rh)
+      ;; TODO: maybe cache this
+      :fhir/type (keyword "fhir" (codec/tid->type tid))
       :tid tid
       :id id
       :t t

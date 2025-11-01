@@ -28,7 +28,6 @@
    [blaze.db.kv :as kv]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.search-param-registry :as sr]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]])
   (:import
    [java.io Writer]
@@ -195,7 +194,7 @@
 
   (-rev-include [db resource-handle]
     (let [search-param-registry (:search-param-registry node)
-          type (name (type/type resource-handle))
+          type (name (:fhir/type resource-handle))
           reference (rh/tid-id resource-handle)]
       (coll/eduction
        (comp

@@ -6,7 +6,6 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
-   [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.search-compartment]
    [blaze.interaction.search.nav-spec]

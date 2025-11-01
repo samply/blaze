@@ -296,9 +296,8 @@
   (assoc-in capability-statement-base [:implementation :url]
             (type/url (str base-url context-path))))
 
-(defn- profile-canonical [{:keys [url version]}]
-  (let [version (type/value version)]
-    (type/canonical (cond-> (type/value url) version (str "|" version)))))
+(defn- profile-canonical [{{url :value} :url {version :value} :version}]
+  (type/canonical (cond-> url version (str "|" version))))
 
 (defn- supported-profiles-query [db type]
   (d/type-query db "StructureDefinition" [["type" type] ["derivation" "constraint"]]))
@@ -308,7 +307,7 @@
     (mapv profile-canonical profiles)))
 
 (defn- assoc-supported-profiles** [db {:keys [type] :as resource}]
-  (do-sync [supported-profiles (supported-profiles db (type/value type))]
+  (do-sync [supported-profiles (supported-profiles db (:value type))]
     (cond-> resource
       (seq supported-profiles) (assoc :supportedProfile supported-profiles))))
 

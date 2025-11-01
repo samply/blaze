@@ -9,7 +9,6 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.response.create :as response]
-   [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
    [blaze.module :as m]
@@ -39,7 +38,7 @@
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully created but it's content with hash `%s` was not found during response creation."
-          (name (type/type resource-handle)) (:id resource-handle)
+          (name (:fhir/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
 (defn- handler [{:keys [node] :as context}]

@@ -17,7 +17,7 @@
    [cognitect.anomalies :as anom]
    [reitit.core :as reitit])
   (:import
-   [java.time Instant ZoneId ZonedDateTime]
+   [java.time OffsetDateTime ZoneId ZonedDateTime]
    [java.time.format DateTimeFormatter]
    [java.util.concurrent TimeUnit]))
 
@@ -242,7 +242,7 @@
 
 (def ^:private return-preference-pred
   #(when (= return-preference-url (:url %))
-     (keyword "blaze.preference" (type/value (:value %)))))
+     (keyword "blaze.preference" (-> % :value :value))))
 
 (defn- find-return-preference [{extensions :extension}]
   (some return-preference-pred extensions))
@@ -254,14 +254,14 @@
     return-preference :blaze.preference/return
     :or {context-path ""}}
    {{:keys [method url]
-     if-none-match :ifNoneMatch
-     if-match :ifMatch
-     if-none-exist :ifNoneExist
+     {if-none-match :value} :ifNoneMatch
+     {if-match :value} :ifMatch
+     {if-none-exist :value} :ifNoneExist
      :as request}
     :request :keys [resource]}]
-  (let [url (-> url type/value u/strip-leading-slashes)
+  (let [url (-> url :value u/strip-leading-slashes)
         [url query-string] (str/split url #"\?")
-        method (keyword (str/lower-case (type/value method)))
+        method (keyword (str/lower-case (:value method)))
         return-preference (or (find-return-preference request)
                               return-preference
                               (when (#{:post :put} method)
@@ -298,7 +298,7 @@
 (defn- convert-http-date
   "Converts string `s` representing an HTTP date into a FHIR instant."
   [s]
-  (Instant/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)))
+  (type/instant (OffsetDateTime/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s))))
 
 (defn- bundle-response
   {:arglists '([ring-response])}
@@ -481,8 +481,8 @@
   anomalies to indicate the position of the entry in the bundle."
   {:arglists '([idx entry])}
   [idx {:keys [request resource] :as entry}]
-  (let [method (some-> request :method type/value)
-        [url] (some-> request :url type/value u/strip-leading-slashes (str/split #"\?"))
+  (let [method (some-> request :method :value)
+        [url] (some-> request :url :value u/strip-leading-slashes (str/split #"\?"))
         {:keys [type id kind]} (some-> url match-url)]
     (cond
       (nil? request)

@@ -3,7 +3,6 @@
    [blaze.async.comp :as ac]
    [blaze.fhir-client :as fhir-client]
    [blaze.fhir.parsing-context.spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.http-client.spec]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.terminology-service :as ts]
@@ -34,8 +33,7 @@
                                  :query-params {:url url}}))
 
 (defn- extract-url [{parameters :parameter}]
-  (some #(when (= "url" (type/value (:name %))) (type/value (:value %)))
-        parameters))
+  (some #(when (= "url" (-> % :name :value)) (-> % :value :value)) parameters))
 
 (defn- expand-value-set [base-uri http-client parsing-context writing-context params]
   (let [timer (prom/timer request-duration-seconds)]

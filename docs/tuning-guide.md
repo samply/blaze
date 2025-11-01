@@ -23,12 +23,12 @@ As a general rule of thumb, 1/4 of the available memory should be assigned to th
 
 The list of all environment variables can be found in the [Environment Variables Section](deployment/environment-variables.md) under [Deployment](deployment.md). The variables important here are:
 
-| Name                   | Use for        | Default | Description                                               |
-|:-----------------------|----------------|:--------|:----------------------------------------------------------|
-| JAVA_TOOL_OPTIONS      | Heap Mem       | —       | eg. -Xmx2g, -Xmx4g, -Xmx8g, -Xmx16g, -Xmx32g or -Xmx64g   |
-| DB_BLOCK_CACHE_SIZE    | Block Cache    | 128     | eg. 2048, 4096, 8192, 16384, 32768 or 65536               |
-| DB_RESOURCE_CACHE_SIZE | Resource Cache | 100000  | eg. 50000, 100000, 2500000, 5000000, 10000000 or 20000000 |
-| CQL_EXPR_CACHE_SIZE    | Resource Cache | —       | eg. 128, 512, 1024                                        |
+| Name                   | Use for              | Default | Description                                               |
+|:-----------------------|----------------------|:--------|:----------------------------------------------------------|
+| JAVA_TOOL_OPTIONS      | Heap Mem             | —       | eg. -Xmx2g, -Xmx4g, -Xmx8g, -Xmx16g, -Xmx32g or -Xmx64g   |
+| DB_BLOCK_CACHE_SIZE    | Block Cache          | 128     | eg. 2048, 4096, 8192, 16384, 32768 or 65536 (in megabyte) |
+| DB_RESOURCE_CACHE_SIZE | Resource Cache       | 100000  | eg. 50000, 100000, 2500000, 5000000, 10000000 or 20000000 |
+| CQL_EXPR_CACHE_SIZE    | CQL Expression Cache | —       | eg. 128, 512, 1024 (in megabyte)                          |
 
 ### Other Tuning Options
 
