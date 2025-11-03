@@ -1737,13 +1737,20 @@
     (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
                        system-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
-      (with-open [batch-db (d/new-batch-db (d/db node))]
-        (is (ba/anomaly? (d/since batch-db Instant/EPOCH))))
 
-      (let [_ (Thread/sleep 200)
-            inst-1 (time/instant system-clock)
+      (testing "Since is not supported on batch-db"
+        (with-open [batch-db (d/new-batch-db (d/db node))]
+          (given (d/since batch-db Instant/EPOCH)
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Since is not supported on batch-db.")))
+
+      (Thread/sleep 2000)
+
+      (let [inst-1 (time/instant system-clock)
             _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
             db-2 (d/db node)]
+
+        (Thread/sleep 2000)
 
         (testing "since-t"
           (is (= 0 (d/since-t db-2)))
@@ -1792,7 +1799,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
       (let [inst-2 (time/instant system-clock)
-            _ (Thread/sleep 200)
+            _ (Thread/sleep 2000)
             _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
                                  [:put {:fhir/type :fhir/Condition :id "2"
                                         :code
@@ -1801,9 +1808,9 @@
                                           [#fhir/Coding
                                             {:system #fhir/uri "system"
                                              :code #fhir/code "code-a"}]}
-                                        :subject #fhir/Reference{:reference "Patient/1"}}]])
+                                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
             _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]])
-            _ (Thread/sleep 200)
+            _ (Thread/sleep 2000)
             inst-4 (time/instant system-clock)
             db-4 (d/db node)]
 
@@ -1848,6 +1855,7 @@
                 :id := "1"
                 [:meta :versionId] := #fhir/id "4"
                 :gender := #fhir/code "female"))
+
             (is (apply = (map d/t dbs)))
             (is (apply = (map d/basis-t dbs)))
             (is (apply = (map #(d/total-num-of-instance-changes % "Patient" "1") dbs))))
@@ -1856,14 +1864,18 @@
             (is (apply < (map d/total-num-of-system-changes dbs)))
             (is (apply < (map #(d/total-num-of-type-changes % "Patient") dbs)))
             (is (apply < (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
+
             (given @(d/pull-many node (d/type-list db2->4 "Patient"))
               count := 1
               [0 :id] := "1"
               [0 :meta :versionId] := #fhir/id "4")
+
             (is (nil? (d/resource-handle db2->4 "Patient" "0")))
+
             (given @(d/pull node (d/resource-handle db2->4 "Patient" "1"))
               :id := "1"
               [:meta :versionId] := #fhir/id "4")
+
             (given @(d/pull-many node (d/system-history db2->4))
               count := 3
               [0 :id] := "1"
@@ -1877,6 +1889,7 @@
               [2 :fhir/type] := :fhir/Patient
               [2 :meta :versionId] := #fhir/id "3"
               [2 :gender] := #fhir/code "male")
+
             (given @(d/pull-many node (d/system-list db2->4))
               count := 2
               [0 :id] := "2"
@@ -1886,9 +1899,11 @@
               [1 :fhir/type] := :fhir/Patient
               [1 :meta :versionId] := #fhir/id "4"
               [1 :gender] := #fhir/code "female")
+
             (given-type-query db2->4 "Patient" [["gender" "female"]]
               count := 1
               [0 :id] := "1")
+
             (given @(d/pull-many node (d/type-history db2->4 "Patient"))
               count := 2
               [0 :id] := "1"
@@ -1897,12 +1912,14 @@
               [1 :id] := "1"
               [1 :meta :versionId] := #fhir/id "3"
               [1 :gender] := #fhir/code "male")
+
             (given @(pull-instance-history db2->4 "Patient" "1")
               count := 2
               [0 :meta :versionId] := #fhir/id "4"
               [0 :gender] := #fhir/code "female"
               [1 :meta :versionId] := #fhir/id "3"
               [1 :gender] := #fhir/code "male")
+
             (let [clauses [["code" "system|code-a"]]]
               (given (pull-compartment-query node "Patient" "1" "Condition" clauses)
                 count := 1

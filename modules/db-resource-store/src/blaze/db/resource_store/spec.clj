@@ -9,4 +9,4 @@
   #(satisfies? rs/ResourceStore %))
 
 (s/def ::rs/key
-  (s/tuple :fhir.resource/type :blaze.resource/hash :blaze.resource/variant))
+  (s/tuple :fhir/type :blaze.resource/hash :blaze.resource/variant))

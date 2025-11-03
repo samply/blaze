@@ -1,9 +1,11 @@
 (ns blaze.db.impl.index.rts-as-of-test-util
   (:require
    [blaze.byte-buffer :as bb]
-   [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.fhir.hash :as hash]))
+   [blaze.fhir.hash :as hash])
+  (:import
+   [blaze.db.impl.index ResourceHandle]))
 
+(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn decode-val [byte-array]
@@ -12,7 +14,7 @@
         state (bb/get-long! buf)]
     (cond->
      {:hash hash
-      :num-changes (rh/state->num-changes state)
-      :op (rh/state->op state)}
+      :num-changes (ResourceHandle/numChanges state)
+      :op (ResourceHandle/op state)}
       (<= 8 (bb/remaining buf))
       (assoc :purged-at (bb/get-long! buf)))))

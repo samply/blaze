@@ -44,7 +44,7 @@
           hash cause-msg))
 
 (defn- parse-cbor [parsing-context row [type hash variant]]
-  (-> (fhir-spec/parse-cbor parsing-context type row variant)
+  (-> (fhir-spec/parse-cbor parsing-context (name type) row variant)
       (ba/exceptionally
        #(assoc %
                ::anom/message (parse-msg hash (::anom/message %))

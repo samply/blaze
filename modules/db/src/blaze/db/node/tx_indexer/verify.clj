@@ -7,7 +7,6 @@
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.patient-last-change :as plc]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.rts-as-of :as rts]
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
@@ -240,7 +239,7 @@
    :fhir/issue "too-costly"))
 
 (defn- purge-entry [tid id t rh]
-  (rts/index-entries tid id (rh/t rh) (rh/hash rh) (rh/num-changes rh) (rh/op rh) t))
+  (rts/index-entries tid id (:t rh) (:hash rh) (:num-changes rh) (:op rh) t))
 
 (defn- add-purge-entries [res tid id t resource-handles]
   (-> (update res :entries into (mapcat (partial purge-entry tid (codec/id-byte-string id) t)) resource-handles)
@@ -278,7 +277,7 @@
 
         :else
         (cond-> (add-purge-entries res tid id t instance-history)
-          (not (identical? :delete (rh/op (first instance-history))))
+          (not (identical? :delete (:op (first instance-history))))
           (-> (update :del-resources conj [type id])
               (update-in [:stats tid :total] dec-0)))))))
 
@@ -339,10 +338,13 @@
        (throw-anom (ba/conflict (ref-integrity-msg type id)))))
    references))
 
+(defn- local-ref-tuple [rh]
+  [(name (:fhir/type rh)) (:id rh)])
+
 (defn- rev-tuples [db-before resource-handle del-resources]
   (into
    []
-   (comp (map rh/local-ref-tuple) (remove del-resources) (take 2))
+   (comp (map local-ref-tuple) (remove del-resources) (take 2))
    (d/rev-include db-before resource-handle)))
 
 (defn- check-referential-integrity-delete!

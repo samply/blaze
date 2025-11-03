@@ -1,17 +1,16 @@
 (ns blaze.db.node.validation
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.fhir.spec :as fhir-spec]))
+   [blaze.anomaly :as ba]))
 
 (defmulti extract-type-id first)
 
 (defmethod extract-type-id :create
-  [[_ {:keys [id] :as resource}]]
-  [(name (fhir-spec/fhir-type resource)) id])
+  [[_ {:fhir/keys [type] :keys [id]}]]
+  [(name type) id])
 
 (defmethod extract-type-id :put
-  [[_ {:keys [id] :as resource}]]
-  [(name (fhir-spec/fhir-type resource)) id])
+  [[_ {:fhir/keys [type] :keys [id]}]]
+  [(name type) id])
 
 (defmethod extract-type-id :keep
   [[_ type id]]

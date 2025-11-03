@@ -1,7 +1,6 @@
 (ns blaze.db.node.util
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.util :refer [str]]
    [clojure.string :as str]))
 
@@ -21,4 +20,4 @@
 (defn rs-key
   "Returns the resource-store key of `resource-handle` in `variant`."
   [resource-handle variant]
-  [(rh/type resource-handle) (rh/hash resource-handle) variant])
+  [(:fhir/type resource-handle) (:hash resource-handle) variant])

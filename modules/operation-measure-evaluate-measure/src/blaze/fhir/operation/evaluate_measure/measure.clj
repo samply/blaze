@@ -14,7 +14,6 @@
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
@@ -108,7 +107,8 @@
 
 (defn- non-deleted-library-handle [db id]
   (when-let [handle (d/resource-handle db "Library" id)]
-    (when-not (= (:op handle) :delete) handle)))
+    (when-not (d/deleted? handle)
+      handle)))
 
 (defn- find-library-handle [db library-ref]
   (if-let [handle (first-library-by-url db library-ref)]
@@ -350,7 +350,7 @@
       (type/quantity {:value (type/decimal (bigdec (count bloom-filters)))})})}))
 
 (defn- local-ref [handle]
-  (str (name (fhir-spec/fhir-type handle)) "/" (:id handle)))
+  (str (name (:fhir/type handle)) "/" (:id handle)))
 
 (defn- measure-report
   [{:keys [now report-type subject-handle bloom-filters] :as context} measure

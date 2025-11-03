@@ -35,8 +35,8 @@
 (defn list-reference [list-id]
   (type/reference {:reference (type/string (str "List/" list-id))}))
 
-(defn- resource-reference [{:keys [id] :as resource}]
-  (type/reference {:reference (type/string (str (name (type/type resource)) "/" id))}))
+(defn- resource-reference [resource]
+  (type/reference {:reference (type/string (str (name (:fhir/type resource)) "/" (:id resource)))}))
 
 (defn population-tx-ops [list-id handles]
   [[:create

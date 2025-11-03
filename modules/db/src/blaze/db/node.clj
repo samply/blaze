@@ -32,7 +32,6 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
@@ -175,13 +174,13 @@
       (assoc :lastUpdated instant)))
 
 (defn- mk-meta [handle tx]
-  {:blaze.resource/hash (rh/hash handle)
-   :blaze.db/num-changes (rh/num-changes handle)
-   :blaze.db/op (rh/op handle)
+  {:blaze.resource/hash (:hash handle)
+   :blaze.db/num-changes (:num-changes handle)
+   :blaze.db/op (:op handle)
    :blaze.db/tx tx})
 
 (defn- enhance-resource [tx-cache handle resource]
-  (let [t (rh/t handle)
+  (let [t (:t handle)
         tx (tx-success/tx tx-cache t)]
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
@@ -189,12 +188,12 @@
 (defn- rs-keys-of-non-deleted [resource-handles variant]
   (into [] (comp (remove rh/deleted?) (map #(node-util/rs-key % variant))) resource-handles))
 
-(defn- deleted-resource [{:keys [id] :as resource-handle}]
-  {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
+(defn- deleted-resource [{:fhir/keys [type] :keys [id]}]
+  {:fhir/type type :id id})
 
 (defn- resource-content-not-found-msg [resource-handle]
   (format "The resource content of `%s/%s` with hash `%s` was not found."
-          (name (type/type resource-handle)) (:id resource-handle)
+          (name (:fhir/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
 (defn- resource-content-not-found-anom [resource-handle]
@@ -281,7 +280,7 @@
 
 (defn- changed-handles [node type t]
   (with-open [db (batch-db/new-batch-db node t t 0)]
-    (into [] (take-while #(= t (rh/t %))) (d/type-history db type))))
+    (into [] (take-while #(= t (:t %))) (d/type-history db type))))
 
 (defn- compile-system-matcher [search-param-registry clauses]
   (when-ok [clauses (index/resolve-search-params search-param-registry

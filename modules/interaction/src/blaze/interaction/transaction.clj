@@ -119,7 +119,7 @@
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The transaction was successful but the resource content of `%s/%s` with hash `%s` was not found during response creation."
-          (name (type/type resource-handle)) (:id resource-handle)
+          (name (:fhir/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
 (defn- resource-content-not-found-anom [e]

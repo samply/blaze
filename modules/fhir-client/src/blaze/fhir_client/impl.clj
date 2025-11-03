@@ -43,7 +43,7 @@
     (if (ba/anomaly? data)
       (assoc data ::anom/category ::anom/fault)
       (cond-> (anomaly* data)
-        (identical? :fhir/OperationOutcome (-> data :body fhir-spec/fhir-type))
+        (identical? :fhir/OperationOutcome (-> data :body :fhir/type))
         (assoc :fhir/issues (-> data :body :issue))))))
 
 (defn- handle-error [e]

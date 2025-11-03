@@ -77,7 +77,7 @@
   [batch-db tid]
   (rao/resource-handle-type-xf
    batch-db tid ih/id
-   (fn [mvi handle] (ih/matches-hash? mvi (rh/hash handle)))))
+   (fn [mvi handle] (ih/matches-hash? mvi (:hash handle)))))
 
 (defn missing-expression-msg [url]
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."

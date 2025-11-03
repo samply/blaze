@@ -6,7 +6,6 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.index-handle :as ih]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
@@ -15,8 +14,8 @@
    [blaze.fhir.spec]
    [clojure.string :as str])
   (:import
+   [blaze.db.impl.index ResourceHandle]
    [com.github.benmanes.caffeine.cache Cache Caffeine]
-   [java.util Comparator]
    [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
@@ -65,18 +64,13 @@
      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
                          (bs/size tid-byte-string) tid-byte-string))))
 
-(def ^:private id-cmp
-  (reify Comparator
-    (compare [_ a b]
-      (.compareTo ^String (rh/id a) (rh/id b)))))
-
 (defn- drop-lesser-ids [start-id]
-  (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
+  (drop-while #(neg? (let [^String id (:id %)] (.compareTo id start-id)))))
 
 (defn- resource-handles*
   [batch-db tid [search-param chain-search-param join-tid value]]
   (into
-   (sorted-set-by id-cmp)
+   (sorted-set-by ResourceHandle/ID_CMP)
    (comp (u/resource-handle-xf batch-db join-tid)
          (mapcat (partial resolve-resource-handles batch-db chain-search-param tid)))
    (p/-index-handles search-param batch-db join-tid nil value)))

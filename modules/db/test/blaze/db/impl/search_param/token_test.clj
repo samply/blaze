@@ -296,10 +296,10 @@
             :v-hash := (codec/v-hash "system-171339|")))))
 
     (testing "Patient active"
-      (doseq [active [#fhir/boolean true #fhir/boolean false]]
+      (doseq [active [true false]]
         (let [patient
               {:fhir/type :fhir/Patient :id "id-122929"
-               :active active}
+               :active (type/boolean active)}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
               (index-entries
@@ -310,7 +310,7 @@
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "active"
               :type := "Patient"
-              :v-hash := (codec/v-hash (str (type/value active)))
+              :v-hash := (codec/v-hash (str active))
               :id := "id-122929"
               :hash-prefix := (hash/prefix hash)))
 
@@ -320,7 +320,7 @@
               :id := "id-122929"
               :hash-prefix := (hash/prefix hash)
               :code := "active"
-              :v-hash := (codec/v-hash (str (type/value active)))))))
+              :v-hash := (codec/v-hash (str active))))))
 
       (testing "boolean without values doesn't produce index entries"
         (let [patient

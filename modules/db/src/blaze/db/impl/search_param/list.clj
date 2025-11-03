@@ -5,7 +5,6 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.index-handle :as ih]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.special :as special]
@@ -21,7 +20,7 @@
   (u/non-deleted-resource-handle batch-db list-tid list-id))
 
 (defn- list-hash [batch-db list-id]
-  (some-> (list-handle batch-db list-id) rh/hash))
+  (:hash (list-handle batch-db list-id)))
 
 (defn- referenced-index-handles
   "Returns a reducible collection of index handles of type `tid` that are

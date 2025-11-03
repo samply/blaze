@@ -35,7 +35,7 @@
   {:arglists '([bloom-filter resource])}
   [^BloomFilterContainer bloom-filter ^Resource resource]
   (or (< (.-t bloom-filter) (.-lastChangeT resource))
-      (.mightContain ^BloomFilter (.-filter bloom-filter) (.-id resource))))
+      (.mightContain ^BloomFilter (.-filter bloom-filter) (:id resource))))
 
 (defn merge [bloom-filter-a bloom-filter-b]
   (.merge ^BloomFilterContainer bloom-filter-a bloom-filter-b))

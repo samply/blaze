@@ -7,7 +7,6 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.response.create :as response]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
@@ -64,7 +63,7 @@
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully updated but it's content with hash `%s` was not found during response creation."
-          (name (type/type resource-handle)) (:id resource-handle)
+          (name (:fhir/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
 (defn- update-resource

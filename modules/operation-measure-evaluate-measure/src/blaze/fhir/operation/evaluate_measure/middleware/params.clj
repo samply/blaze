@@ -4,7 +4,6 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.operation.evaluate-measure.measure :as-alias measure]
    [blaze.fhir.operation.evaluate-measure.measure.spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [clojure.spec.alpha :as s]))
@@ -43,7 +42,7 @@
   (if (string? value) value (invalid-string-param-anom name value)))
 
 (defn- get-param-value-from-resource [body name]
-  (when (identical? :fhir/Parameters (fhir-spec/fhir-type body))
+  (when (identical? :fhir/Parameters (:fhir/type body))
     (some #(when (= name (-> % :name type/value)) (-> % :value type/value))
           (:parameter body))))
 
