@@ -7,7 +7,6 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.resource :as cr]
    [blaze.db.impl.index.index-handle :as ih]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param.util :as u]
@@ -238,7 +237,7 @@
       (index-handles batch-db tid first-clause start-id))
      (let [start-id (codec/id-string start-id)]
        (coll/eduction
-        (drop-while #(not= start-id (rh/id %)))
+        (drop-while #(not= start-id (:id %)))
         (unordered-resource-handles batch-db tid clauses))))))
 
 (defn type-query

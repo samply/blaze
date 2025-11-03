@@ -1,7 +1,6 @@
 (ns blaze.db.impl.index.single-version-id
   (:require
-   [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.resource-handle :as rh])
+   [blaze.db.impl.codec :as codec])
   (:import
    [blaze.db.impl.index SingleVersionId]
    [blaze.fhir Hash]))
@@ -12,8 +11,8 @@
   (SingleVersionId. id (.prefix ^Hash hash)))
 
 (defn from-resource-handle [resource-handle]
-  (SingleVersionId. (codec/id-byte-string (rh/id resource-handle))
-                    (.prefix ^Hash (rh/hash resource-handle))))
+  (SingleVersionId. (codec/id-byte-string (:id resource-handle))
+                    (.prefix ^Hash (:hash resource-handle))))
 
 (defn id [single-version-id]
   (.id ^SingleVersionId single-version-id))

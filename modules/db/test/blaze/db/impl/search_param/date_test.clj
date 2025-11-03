@@ -166,8 +166,7 @@
                  (sr/get search-param-registry "date" "Encounter")
                  [] hash encounter)]
 
-            (testing "the entry is about the min bound as lower bound and the
-                    upper bound of the end of the period"
+            (testing "the entry is about the min bound as lower bound and the upper bound of the end of the period"
               (given (sp-vr-tu/decode-key-human (bb/wrap k0))
                 :code := "date"
                 :type := "Encounter"
@@ -176,7 +175,7 @@
                 :id := "id-160224"
                 :hash-prefix := (hash/prefix hash)))))
 
-        (testing "Encounter date without end"
+        (testing "without end"
           (let [encounter
                 {:fhir/type :fhir/Encounter :id "id-160224"
                  :period
@@ -188,12 +187,30 @@
                  (sr/get search-param-registry "date" "Encounter")
                  [] hash encounter)]
 
-            (testing "the entry is about the lower bound of the start and the max
-                    upper bound"
+            (testing "the entry is about the lower bound of the start and the max upper bound"
               (given (sp-vr-tu/decode-key-human (bb/wrap k0))
                 :code := "date"
                 :type := "Encounter"
                 [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
+                [:v-hash upper-bound-instant] := (Instant/parse "9999-12-31T23:59:59Z")
+                :id := "id-160224"
+                :hash-prefix := (hash/prefix hash)))))
+
+        (testing "without start and end"
+          (let [encounter
+                {:fhir/type :fhir/Encounter :id "id-160224"
+                 :period #fhir/Period{}}
+                hash (hash/generate encounter)
+                [[_ k0]]
+                (index-entries
+                 (sr/get search-param-registry "date" "Encounter")
+                 [] hash encounter)]
+
+            (testing "the entry is about the min bound of the start and the max upper bound"
+              (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+                :code := "date"
+                :type := "Encounter"
+                [:v-hash lower-bound-instant] := (Instant/parse "0001-01-01T00:00:00Z")
                 [:v-hash upper-bound-instant] := (Instant/parse "9999-12-31T23:59:59Z")
                 :id := "id-160224"
                 :hash-prefix := (hash/prefix hash)))))))

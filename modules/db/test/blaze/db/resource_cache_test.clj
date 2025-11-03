@@ -98,17 +98,17 @@
                        code-system-0-hash code-system-0})
 
       (are [key resource] (= resource @(rs/get cache key))
-        ["Patient" patient-0-hash :complete] patient-0
-        ["Patient" patient-1-hash :complete] patient-1
-        ["CodeSystem" code-system-0-hash :complete] code-system-0
-        ["CodeSystem" code-system-0-hash :summary] {:fhir/type :fhir/CodeSystem :id "0"
-                                                    :meta (type/meta {:tag [fu/subsetted]})}
-        ["CodeSystem" code-system-0-hash :complete] code-system-0)))
+        [:fhir/Patient patient-0-hash :complete] patient-0
+        [:fhir/Patient patient-1-hash :complete] patient-1
+        [:fhir/CodeSystem code-system-0-hash :complete] code-system-0
+        [:fhir/CodeSystem code-system-0-hash :summary] {:fhir/type :fhir/CodeSystem :id "0"
+                                                        :meta (type/meta {:tag [fu/subsetted]})}
+        [:fhir/CodeSystem code-system-0-hash :complete] code-system-0)))
 
   (testing "not-found"
     (with-system [{cache :blaze.db/resource-cache} config]
 
-      (is (nil? @(rs/get cache ["Patient" patient-0-hash :complete]))))))
+      (is (nil? @(rs/get cache [:fhir/Patient patient-0-hash :complete]))))))
 
 (deftest multi-get-test
   (testing "found both"
@@ -116,29 +116,29 @@
       @(rs/put! store {patient-0-hash patient-0
                        patient-1-hash patient-1})
 
-      (is (= {["Patient" patient-0-hash :complete] patient-0
-              ["Patient" patient-1-hash :complete] patient-1}
+      (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
+              [:fhir/Patient patient-1-hash :complete] patient-1}
              @(st/with-instrument-disabled
-                (rs/multi-get cache [["Patient" patient-0-hash :complete]
-                                     ["Patient" patient-1-hash :complete]]))))))
+                (rs/multi-get cache [[:fhir/Patient patient-0-hash :complete]
+                                     [:fhir/Patient patient-1-hash :complete]]))))))
 
   (testing "found one"
     (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
       @(rs/put! store {patient-0-hash patient-0})
 
-      (is (= {["Patient" patient-0-hash :complete] patient-0}
+      (is (= {[:fhir/Patient patient-0-hash :complete] patient-0}
              @(st/with-instrument-disabled
-                (rs/multi-get cache [["Patient" patient-0-hash :complete]
-                                     ["Patient" patient-1-hash :complete]])))))))
+                (rs/multi-get cache [[:fhir/Patient patient-0-hash :complete]
+                                     [:fhir/Patient patient-1-hash :complete]])))))))
 
 (deftest put-test
   (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
     (is (nil? @(rs/put! cache {patient-0-hash patient-0
                                patient-1-hash patient-1})))
-    (is (= {["Patient" patient-0-hash :complete] patient-0
-            ["Patient" patient-1-hash :complete] patient-1}
-           @(rs/multi-get store [["Patient" patient-0-hash :complete]
-                                 ["Patient" patient-1-hash :complete]])))))
+    (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
+            [:fhir/Patient patient-1-hash :complete] patient-1}
+           @(rs/multi-get store [[:fhir/Patient patient-0-hash :complete]
+                                 [:fhir/Patient patient-1-hash :complete]])))))
 
 (deftest stats-test
   (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
@@ -146,13 +146,13 @@
     (is (zero? (ccp/-estimated-size cache)))
 
     @(rs/put! store {patient-0-hash patient-0})
-    @(rs/get cache ["Patient" patient-0-hash :complete])
+    @(rs/get cache [:fhir/Patient patient-0-hash :complete])
 
     (is (= 1 (.missCount ^CacheStats (ccp/-stats cache))))
     (is (zero? (.hitCount ^CacheStats (ccp/-stats cache))))
     (is (= 1 (ccp/-estimated-size cache)))
 
-    @(rs/get cache ["Patient" patient-0-hash :complete])
+    @(rs/get cache [:fhir/Patient patient-0-hash :complete])
 
     (is (= 1 (.missCount ^CacheStats (ccp/-stats cache))))
     (is (= 1 (.hitCount ^CacheStats (ccp/-stats cache))))
@@ -161,7 +161,7 @@
 (deftest invalidate-all-test
   (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
     @(rs/put! store {patient-0-hash patient-0})
-    @(rs/get cache ["Patient" patient-0-hash :complete])
+    @(rs/get cache [:fhir/Patient patient-0-hash :complete])
 
     (is (= 1 (ccp/-estimated-size cache)))
 

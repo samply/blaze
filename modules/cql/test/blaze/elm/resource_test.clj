@@ -10,7 +10,6 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]))
 
-(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
@@ -18,11 +17,36 @@
 (defn- resource [db type id]
   (cr/mk-resource db (d/resource-handle db type id)))
 
+(defn- fhir-type
+  "Keyword lookup site for testing lookup on other types still works.
+
+  Should be used with a resource and another value."
+  [x]
+  (:fhir/type x))
+
+(defn- id
+  "Keyword lookup site for testing lookup on other types still works.
+
+  Should be used with a resource and another value."
+  [x]
+  (:id x))
+
 (deftest resource-test
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
     (let [resource (resource (d/db node) "Patient" "0")]
+
+      (testing "type"
+        (is (= :fhir/Patient (fhir-type resource)))
+        (is (= :foo (fhir-type {:fhir/type :foo}))))
+
+      (testing "id"
+        (is (= "0" (id resource)))
+        (is (= :foo (id {:id :foo}))))
+
+      (testing "gender"
+        (is (= #fhir/code "female" (:gender resource))))
 
       (ctu/testing-constant resource)
 

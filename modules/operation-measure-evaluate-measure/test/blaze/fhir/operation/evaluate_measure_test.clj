@@ -323,6 +323,68 @@
           [:issue 0 :code] := #fhir/code "deleted"
           [:issue 0 :diagnostics] := #fhir/string "The Measure resource with the id `0` was deleted."))))
 
+  (testing "Returns Unprocessable Entity on Measure without Library"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Measure :id "0"}]]]
+
+      (let [{:keys [status body]}
+            @(handler
+              {:path-params {:id "0"}
+               :params {"periodStart" "2014"
+                        "periodEnd" "2015"}})]
+
+        (is (= 422 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-supported"
+          [:issue 0 :diagnostics] := #fhir/string "Missing primary library. Currently only CQL expressions together with one primary library are supported."))))
+
+  (testing "Returns Bad Request on Measure with Non-Existing Library"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Measure :id "0"
+               :library [#fhir/canonical "library-url-203737"]}]]]
+
+      (let [{:keys [status body]}
+            @(handler
+              {:path-params {:id "0"}
+               :params {"periodStart" "2014"
+                        "periodEnd" "2015"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "value"
+          [:issue 0 :diagnostics] := #fhir/string "The Library resource with canonical URI `library-url-203737` was not found."))))
+
+  (testing "Returns Bad Request on Measure with Deleted Library"
+    (doseq [library-ref [#fhir/canonical "library-url-203737"
+                         #fhir/canonical "Library/0"
+                         #fhir/canonical "/Library/0"]]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Measure :id "0"
+                 :library [library-ref]}]
+          [:put {:fhir/type :fhir/Library :id "0"
+                 :url #fhir/uri "library-url-203737"}]]
+         [[:delete "Library" "0"]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {:path-params {:id "0"}
+                 :params {"periodStart" "2014"
+                          "periodEnd" "2015"}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "value"
+            [:issue 0 :diagnostics] := (type/string (format "The Library resource with canonical URI `%s` was not found." (type/value library-ref))))))))
+
   (testing "Returns Server Error on Missing Measure Content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
       (with-handler [handler]

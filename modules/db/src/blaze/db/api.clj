@@ -121,7 +121,9 @@
   (log/trace "fetch resource handle of" (str type "/" id))
   (p/-resource-handle db (codec/tid type) (codec/id-byte-string id)))
 
-(defn resource-handle? [x]
+(defn resource-handle?
+  "Returns `true` if `x` is a resource handle."
+  [x]
   (rh/resource-handle? x))
 
 (defn deleted?

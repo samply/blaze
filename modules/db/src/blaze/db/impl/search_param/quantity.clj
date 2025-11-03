@@ -5,7 +5,6 @@
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.index.single-version-id :as svi]
@@ -207,7 +206,7 @@
        :lt (bs/< value exact-value)
        true))
    (fn [resource-handle]
-     (+ (r-sp-v/key-size (codec/id-byte-string (rh/id resource-handle)))
+     (+ (r-sp-v/key-size (codec/id-byte-string (:id resource-handle)))
         (long prefix-length)))
    values))
 

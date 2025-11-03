@@ -113,7 +113,7 @@
   (ac/all-of (mapv (partial async-index-resource context) entries)))
 
 (defn- cmd-rs-keys [tx-cmds variant]
-  (into [] (keep (fn [{:keys [type hash]}] (when hash [type hash variant]))) tx-cmds))
+  (into [] (keep (fn [{:keys [type hash]}] (when hash [(keyword "fhir" type) hash variant]))) tx-cmds))
 
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of

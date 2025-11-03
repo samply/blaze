@@ -47,7 +47,7 @@
 
 (defn- parse-cbor [parsing-context bytes [type hash variant]]
   (with-open [_ (prom/timer duration-seconds "parse-resource")]
-    (-> (fhir-spec/parse-cbor parsing-context type bytes variant)
+    (-> (fhir-spec/parse-cbor parsing-context (name type) bytes variant)
         (ba/exceptionally #(parse-anom % hash)))))
 
 (defn- get-content [kv-store hash]

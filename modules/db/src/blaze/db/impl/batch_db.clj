@@ -28,7 +28,6 @@
    [blaze.db.kv :as kv]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.search-param-registry :as sr]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]])
   (:import
    [java.io Writer]
@@ -195,7 +194,7 @@
 
   (-rev-include [db resource-handle]
     (let [search-param-registry (:search-param-registry node)
-          type (name (type/type resource-handle))
+          type (name (:fhir/type resource-handle))
           reference (rh/tid-id resource-handle)]
       (coll/eduction
        (comp
@@ -307,7 +306,7 @@
 (defn- start-patient-id [batch-db tid start-id]
   (let [start-handle (p/-resource-handle batch-db tid start-id)
         start-patient-handle (coll/first (spc/targets batch-db start-handle patient-code-hash))]
-    (codec/id-byte-string (rh/id start-patient-handle))))
+    (codec/id-byte-string (:id start-patient-handle))))
 
 ;; A type query over resources with `tid` and patients with `patient-ids`.
 (defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses

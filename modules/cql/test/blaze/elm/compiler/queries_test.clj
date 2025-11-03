@@ -16,7 +16,6 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.util-spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.fhir.spec.type.system.spec]
    [blaze.test-util :refer [satisfies-prop]]

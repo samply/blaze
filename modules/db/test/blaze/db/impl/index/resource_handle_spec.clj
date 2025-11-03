@@ -21,45 +21,9 @@
   :ret boolean?)
 
 (s/fdef rh/deleted?
-  :args (s/cat :rh rh/resource-handle?)
+  :args (s/cat :resource-handle :blaze.db/resource-handle)
   :ret boolean?)
 
-(s/fdef rh/tid
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.db/tid)
-
-(s/fdef rh/type
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :fhir.resource/type)
-
-(s/fdef rh/id
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.resource/id)
-
-(s/fdef rh/t
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.db/t)
-
-(s/fdef rh/hash
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.resource/hash)
-
-(s/fdef rh/num-changes
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.db/num-changes)
-
-(s/fdef rh/op
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.db/op)
-
-(s/fdef rh/reference
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.fhir/literal-ref)
-
-(s/fdef rh/local-ref-tuple
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.fhir/literal-ref-tuple)
-
 (s/fdef rh/tid-id
-  :args (s/cat :rh rh/resource-handle?)
+  :args (s/cat :resource-handle :blaze.db/resource-handle)
   :ret byte-string?)
