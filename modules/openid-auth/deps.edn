@@ -29,7 +29,7 @@
 
  :aliases
  {:test
-  {:extra-paths ["test"]
+  {:extra-paths ["test" "test-resources"]
 
    :extra-deps
    {blaze/module-test-util
