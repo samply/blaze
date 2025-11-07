@@ -24,6 +24,10 @@ env:
   BLAZECTL_VERSION: v1.2.0
   BLAZECTL_CHECKSUM: c0b2bf0b35c60ff0aa1d66f638d5b8d3a77c506211643932e4132784069cc759
 
+  # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
+  VALIDATOR_VERSION: 6.5.21
+  VALIDATOR_CHECKSUM: e6a0ff10247a77e48faa5b34eeec1b136d6a5580a0616d70274ccd4cf24b6040
+
 jobs:
   fmt:
     runs-on: ubuntu-24.04
