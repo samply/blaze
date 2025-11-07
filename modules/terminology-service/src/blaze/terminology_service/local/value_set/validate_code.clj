@@ -213,7 +213,8 @@
   (if (or active-only (false? inactive))
     (fn [concept]
       (if (type/value (:inactive concept))
-        (vc/issue-anom-concept concept (issue/inactive-code clause))
+        (-> (vc/issue-anom-concept concept [(issue/inactive-concept clause) (issue/inactive-code clause)])
+            (assoc ::message-important true ::message-concat true))
         concept))
     identity))
 
@@ -250,7 +251,8 @@
            (not (:terminal e))
            (as-> e (let [{{:keys [text]} :details :as issue} (issue/not-in-vs value-set clause)]
                      (cond-> (update e :issues (partial into [issue]))
-                       (not (::message-important e)) (assoc ::anom/message (type/value text))))))))
+                       (not (::message-important e)) (assoc ::anom/message (type/value text))
+                       (::message-concat e) (update ::anom/message str " " (type/value text))))))))
       (ac/then-apply (display-validator context params))
       (ac/then-apply #(vc/parameters-from-concept % params))
       (ac/exceptionally #(vc/fail-parameters-from-anom % params))))

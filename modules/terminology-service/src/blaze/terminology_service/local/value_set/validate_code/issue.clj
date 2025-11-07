@@ -31,6 +31,9 @@
 (def ^:private code-rule-coding
   (tx-issue-type-coding "code-rule"))
 
+(def ^:private code-comment-coding
+  (tx-issue-type-coding "code-comment"))
+
 (def ^:private vs-invalid-coding
   (tx-issue-type-coding "vs-invalid"))
 
@@ -130,6 +133,22 @@
     {:coding [code-rule-coding]
      :text (type/string (format "The code `%s` is valid but is not active." code))})
    :expression [(type/string (cond->> "code" origin (str origin ".")))]})
+
+(defn inactive-concept
+  {:arglists '([clause])}
+  [{:keys [code origin]}]
+  {:fhir/type :fhir.OperationOutcome/issue
+   :extension
+   [#fhir/Extension
+     {:url "http://hl7.org/fhir/StructureDefinition/operationoutcome-message-id"
+      :value #fhir/string "INACTIVE_CONCEPT_FOUND"}]
+   :severity #fhir/code "warning"
+   :code #fhir/code "business-rule"
+   :details
+   (type/codeable-concept
+    {:coding [code-comment-coding]
+     :text (type/string (format "The concept `%s` has a status of inactive and its use should be reviewed." code))})
+   :expression [(type/string origin)]})
 
 (defn value-set-not-found [url]
   {:fhir/type :fhir.OperationOutcome/issue

@@ -8480,23 +8480,29 @@
                 "activeOnly" #fhir/boolean true)
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := #fhir/string "The provided code `http://hl7.org/fhir/test/CodeSystem/inactive#codeInactive` was not found in the value set `http://hl7.org/fhir/test/ValueSet/inactive-all|5.0.0`."
+        [(parameter "message") 0 :value] := #fhir/string "The concept `codeInactive` has a status of inactive and its use should be reviewed. The provided code `http://hl7.org/fhir/test/CodeSystem/inactive#codeInactive` was not found in the value set `http://hl7.org/fhir/test/ValueSet/inactive-all|5.0.0`."
         [(parameter "code") 0 :value] := #fhir/code "codeInactive"
         [(parameter "system") 0 :value] := #fhir/uri "http://hl7.org/fhir/test/CodeSystem/inactive"
         [(parameter "version") 0 :value] := #fhir/string "0.1.0"
         [(parameter "display") 0 :value] := #fhir/string "Display inactive"
         [(parameter "inactive") 0 :value] := #fhir/boolean true
         [(parameter "system") 0 :value] := #fhir/uri "http://hl7.org/fhir/test/CodeSystem/inactive"
+        [(parameter "issues") 0 :resource :issue count] := 3
         [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
         [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "code-invalid"
         [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
         [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string "The provided code `http://hl7.org/fhir/test/CodeSystem/inactive#codeInactive` was not found in the value set `http://hl7.org/fhir/test/ValueSet/inactive-all|5.0.0`."
         [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string "Coding.code"]
-        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code "error"
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code "warning"
         [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code "business-rule"
-        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "code-rule")
-        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string "The code `codeInactive` is valid but is not active."
-        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string "Coding.code"]))
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "code-comment")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string "The concept `codeInactive` has a status of inactive and its use should be reviewed."
+        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string "Coding"]
+        [(parameter "issues") 0 :resource :issue 2 :severity] := #fhir/code "error"
+        [(parameter "issues") 0 :resource :issue 2 :code] := #fhir/code "business-rule"
+        [(parameter "issues") 0 :resource :issue 2 :details :coding] :? (tx-issue-type "code-rule")
+        [(parameter "issues") 0 :resource :issue 2 :details :text] := #fhir/string "The code `codeInactive` is valid but is not active."
+        [(parameter "issues") 0 :resource :issue 2 :expression] := [#fhir/string "Coding.code"]))
 
     (testing "validation-simple-codeableconcept-bad-code"
       (given @(value-set-validate-code ts
@@ -8508,6 +8514,7 @@
                     {:system #fhir/uri "http://hl7.org/fhir/test/CodeSystem/simple"
                      :code #fhir/code "code1x"}]})
         :fhir/type := :fhir/Parameters
+        [:parameter count] := 4
         [(parameter "result") 0 :value] := #fhir/boolean false
         [(parameter "message") 0 :value] := #fhir/string "The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
         [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
@@ -8515,7 +8522,6 @@
                                                       [#fhir/Coding
                                                         {:system #fhir/uri "http://hl7.org/fhir/test/CodeSystem/simple"
                                                          :code #fhir/code "code1x"}]}
-        [(parameter "system") 0 :value] := #fhir/uri "http://hl7.org/fhir/test/CodeSystem/simple"
         [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
         [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "code-invalid"
         [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")

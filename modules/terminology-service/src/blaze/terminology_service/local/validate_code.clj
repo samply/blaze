@@ -12,13 +12,13 @@
       system (assoc :system system)
       version (assoc :version version))))
 
-(defn issue-anom-concept [{:keys [code system version display inactive]} issue]
-  (let [{{:keys [text]} :details :as issue} issue]
+(defn issue-anom-concept [{:keys [code system version display inactive]} issues]
+  (let [[{{:keys [text]} :details}] issues]
     (cond-> (ba/not-found
              (type/value text)
              :code (type/value code)
              :system (type/value system)
-             :issues [issue])
+             :issues issues)
       version (assoc :version (type/value version))
       display (assoc :display (type/value display))
       inactive (assoc :inactive (type/value inactive)))))
@@ -47,7 +47,7 @@
       (if-let [display (some pred designations)]
         (cond-> concept
           languages (assoc ::found-display display))
-        (cond-> (issue-anom-concept concept (issue/invalid-display clause concept lenient-display-validation))
+        (cond-> (issue-anom-concept concept [(issue/invalid-display clause concept lenient-display-validation)])
           lenient-display-validation (assoc :result-override true))))))
 
 (defn- merge-concept [concept {designations :designation}]
@@ -97,22 +97,23 @@
   [{::anom/keys [message]
     :keys [code system version display inactive issues result-override]}
    {{:keys [origin] :as clause} :clause}]
-  (fu/parameters
-   "result" (type/boolean (or result-override false))
-   "message" (type/string message)
-   "code" (some-> code type/code)
-   "system" (some-> system type/uri)
-   "version" (some-> version type/string)
-   "display" (some-> display type/string)
-   "inactive" (some-> inactive type/boolean)
-   "issues" {:fhir/type :fhir/OperationOutcome :issue issues}
-   "codeableConcept"
-   (when (= "CodeableConcept.coding[0]" origin)
-     (type/codeable-concept
-      {:coding
-       [(type/coding
-         (cond->
-          {:system (type/uri (:system clause))
-           :code (type/code (:code clause))}
-           (:version clause) (assoc :version (type/string (:version clause)))
-           (:display clause) (assoc :display (type/string (:display clause)))))]}))))
+  (let [codeable-concept? (= "CodeableConcept.coding[0]" origin)]
+    (fu/parameters
+     "result" (type/boolean (or result-override false))
+     "message" (type/string message)
+     "code" (when-not codeable-concept? (some-> code type/code))
+     "system" (when-not codeable-concept? (some-> system type/uri))
+     "version" (some-> version type/string)
+     "display" (some-> display type/string)
+     "inactive" (some-> inactive type/boolean)
+     "issues" {:fhir/type :fhir/OperationOutcome :issue issues}
+     "codeableConcept"
+     (when codeable-concept?
+       (type/codeable-concept
+        {:coding
+         [(type/coding
+           (cond->
+            {:system (type/uri (:system clause))
+             :code (type/code (:code clause))}
+             (:version clause) (assoc :version (type/string (:version clause)))
+             (:display clause) (assoc :display (type/string (:display clause)))))]})))))
