@@ -4,11 +4,11 @@
    [blaze.http-client.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.openid-auth :as openid-auth]
-   [blaze.openid-auth.impl-test :refer [jwks-document-one-key]]
    [blaze.openid-auth.spec]
    [blaze.scheduler.spec]
    [blaze.test-util :as tu]
    [buddy.auth.protocols :as p]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -34,7 +34,7 @@
     (-> (.onGet http-client "http://localhost:8080/.well-known/openid-configuration")
         (.doReturnJSON "{\"jwks_uri\":\"http://localhost:8080/jwks\"}"))
     (-> (.onGet http-client "http://localhost:8080/jwks")
-        (.doReturnJSON jwks-document-one-key))
+        (.doReturnJSON (slurp (io/resource "blaze/openid_auth/google.json"))))
     http-client))
 
 (def config-not-found
@@ -93,9 +93,11 @@
   (testing "public key not found"
     (with-system [{::openid-auth/keys [backend]} config-not-found]
       (is (satisfies? p/IAuthentication backend))
-      (Thread/sleep 2000)))
+      (Thread/sleep 2000)
+      (is (nil? (p/-authenticate backend {} "")))))
 
   (testing "public key found"
     (with-system [{::openid-auth/keys [backend]} config-success]
       (is (satisfies? p/IAuthentication backend))
-      (Thread/sleep 2000))))
+      (Thread/sleep 2000)
+      (is (nil? (p/-authenticate backend {} ""))))))

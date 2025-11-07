@@ -11,19 +11,6 @@
    [hato.client :as hc]
    [taoensso.timbre :as log]))
 
-(defn- missing-key-msg [jwks-uri]
-  (format "Missing key in JWKS document config at `%s`." jwks-uri))
-
-(defn- public-key
-  "Take the first jwk with usage signature from the parsed jwks-json map and
-  converts it into a PublicKey.
-
-  Returns nil of no key was found."
-  [[jwks-uri jwks-document]]
-  (if-let [key (some #(when (= "sig" (:use %)) %) (:keys jwks-document))]
-    (keys/jwk->public-key key)
-    (ba/fault (missing-key-msg jwks-uri))))
-
 (def ^:private ^:const well-known-uri "/.well-known/openid-configuration")
 
 (defn- message [e]
@@ -52,9 +39,24 @@
       (ba/fault (missing-jwks-uri-msg url)))
     (partial prefix-msg "Error while fetching the OpenID configuration")))
 
-(defn fetch-public-key [http-client provider-url]
-  (when-ok [result (jwks-json http-client (str provider-url well-known-uri))]
-    (public-key result)))
+(def ^:private sig-keys-xf
+  (comp (filter (comp #{"sig"} :use)) (map keys/jwk->public-key)))
+
+(defn- public-keys
+  "Returns all JWKs with usage signature from the parsed jwks-json map and
+  converts it into a PublicKey."
+  [jwks-document]
+  (into [] sig-keys-xf (:keys jwks-document)))
+
+(defn- missing-key-msg [jwks-uri]
+  (format "Missing key in JWKS document config at `%s`." jwks-uri))
+
+(defn fetch-public-keys [http-client provider-url]
+  (when-ok [[jwks-uri jwks-document] (jwks-json http-client (str provider-url well-known-uri))]
+    (let [keys (public-keys jwks-document)]
+      (if (empty? keys)
+        (ba/fault (missing-key-msg jwks-uri))
+        keys))))
 
 (defn- parse-header [{{:strs [authorization]} :headers}]
   (some->> authorization (re-find #"^Bearer (.+)$") (second)))
@@ -63,15 +65,19 @@
   (try
     (jwt/unsign token public-key {:alg :rs256})
     (catch Exception e
-      (log/error "Error while unsigning:" (ex-message e)))))
+      (let [{:keys [type]} (ex-data e)]
+        (if (= :validation type)
+          (log/trace "Token validation unsuccessful. Will try next public key.")
+          (log/error "Error while unsigning:" (ex-message e)))))))
 
-(defrecord Backend [future public-key-state]
+(defrecord Backend [future public-keys-state]
   p/IAuthentication
   (-parse [_ request]
     (parse-header request))
 
   (-authenticate [_ _ token]
     (when token
-      (if-let [public-key @public-key-state]
-        (unsign token public-key)
-        (log/warn "Can't authenticate because the public key is missing.")))))
+      (let [public-keys @public-keys-state]
+        (if (empty? public-keys)
+          (log/warn "Can't authenticate because no public key is available.")
+          (some (partial unsign token) public-keys))))))
