@@ -29,11 +29,11 @@
        (link "next")))
 
 (defn- build-response
-  [{:blaze/keys [db] :as context} query-params total handles]
+  [{:blaze/keys [db] :as context} query-params page-t total handles]
   (let [page-size (fhir-util/page-size query-params)
         {:keys [handles next-handle]} (history-util/build-page page-size handles)
         next-link (partial next-link context query-params)]
-    (-> (d/pull-many db handles (history-util/pull-opts query-params))
+    (-> (d/pull-many db handles (history-util/pull-opts query-params page-t))
         (ac/exceptionally
          #(assoc %
                  ::anom/category ::anom/fault
@@ -72,4 +72,4 @@
                          ::reitit/router router
                          ::reitit/match (reitit/match-by-name router (keyword type "history"))
                          :page-match #(reitit/match-by-name router (keyword type "history-page") {:page-id %}))]
-      (build-response context params total version-handles))))
+      (build-response context params page-t total version-handles))))

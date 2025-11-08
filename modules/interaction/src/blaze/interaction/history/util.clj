@@ -115,5 +115,6 @@
        :next-handle (peek handles)}
       {:handles handles})))
 
-(defn pull-opts [query-params]
-  {:variant (fhir-util/summary query-params)})
+(defn pull-opts [query-params page-t]
+  (cond-> {:variant (fhir-util/summary query-params)}
+    page-t (assoc :skip-cache-insertion? true)))

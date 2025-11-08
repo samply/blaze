@@ -386,9 +386,13 @@
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-many [_ resource-handles opts]
-    (let [{:keys [variant elements] :or {variant :complete}} opts
-          keys (rs-keys-of-non-deleted resource-handles variant)]
-      (do-sync [resources (rc/multi-get resource-cache keys)]
+    (let [{:keys [variant elements skip-cache-insertion?]
+           :or {variant :complete}} opts
+          keys (rs-keys-of-non-deleted resource-handles variant)
+          multi-get (if skip-cache-insertion?
+                      rc/multi-get-skip-cache-insertion
+                      rc/multi-get)]
+      (do-sync [resources (multi-get resource-cache keys)]
         (into
          []
          (cond-> (comp (map #(to-resource tx-cache resources % variant))
