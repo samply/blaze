@@ -66,7 +66,7 @@
 (defn- resolve-type-list [type {:keys [writing-context db]} args _]
   (log/trace (format "execute %sList query" type))
   (let [result (resolve/resolve-promise)]
-    (-> (d/pull-many db (type-query db type args))
+    (-> (d/pull-many db (vec (type-query db type args)))
         (ac/when-complete
          (fn [r e]
            (resolve/deliver! result (mapv (partial write-read-json writing-context) r) (some-> e to-error)))))

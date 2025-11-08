@@ -32,6 +32,9 @@
           (type/value url))))
    code-systems))
 
+(defn- pull-code-systems [db]
+  (d/pull-many db (vec (d/type-list db "CodeSystem")) {:variant :summary}))
+
 (defn list
   "Returns a CompletableFuture that will complete with an index of CodeSystem
   resources or complete exceptionally in case of errors.
@@ -39,7 +42,7 @@
   The index consists of a map of CodeSystem URL to a list of CodeSystem
   resources ordered by falling priority."
   [db]
-  (do-sync [code-systems (d/pull-many db (d/type-list db "CodeSystem") :summary)]
+  (do-sync [code-systems (pull-code-systems db)]
     (into
      {}
      (map

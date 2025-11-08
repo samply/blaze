@@ -104,7 +104,7 @@
 
   (-pull-content [pull resource-handle variant])
 
-  (-pull-many [pull resource-handles variant]))
+  (-pull-many [pull resource-handles opts]))
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")

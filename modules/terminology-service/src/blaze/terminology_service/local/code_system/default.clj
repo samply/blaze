@@ -23,6 +23,9 @@
 (defn- clauses [url version]
   (cond-> [["url" url]] version (conj ["version" version])))
 
+(defn- code-system-query [db url version]
+  (d/type-query db "CodeSystem" (clauses url version)))
+
 (defn- code-system-not-required-content-msg [{:keys [url content]} required-content]
   (format "Can't use the code system `%s` because it's content is not one of %s. It's content is `%s`."
           (type/value url) (str/join ", " required-content) (type/value content)))
@@ -44,7 +47,7 @@
   [{:keys [db] ::cs/keys [required-content graph-cache]
     :or {required-content #{"complete" "fragment"}}}
    url & [version]]
-  (do-sync [code-systems (d/pull-many db (d/type-query db "CodeSystem" (clauses url version)))]
+  (do-sync [code-systems (d/pull-many db (vec (code-system-query db url version)))]
     (if-let [{:keys [content] :as code-system} (first (fu/sort-by-priority code-systems))]
       (if (required-content (type/value content))
         (assoc code-system :default/graph (get-graph graph-cache code-system))

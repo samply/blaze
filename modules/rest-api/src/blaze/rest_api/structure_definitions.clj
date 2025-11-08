@@ -19,7 +19,7 @@
     :code #fhir/code "read-only"})
 
 (defn- structure-definitions [db]
-  (d/pull-many db (d/type-list db "StructureDefinition")))
+  (d/pull-many db (vec (d/type-list db "StructureDefinition"))))
 
 (def ^:private url-filter
   (filter #(str/starts-with? % "http://hl7.org/fhir/StructureDefinition")))

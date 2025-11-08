@@ -25,6 +25,9 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- code-system-query [db url version]
+  (d/type-query db "CodeSystem" [["url" url] ["version" version]]))
+
 (defn- handles [db version]
   (cond
     (re-matches sct-u/module-only-version-pattern version)
@@ -34,7 +37,7 @@
        code-systems))
 
     :else
-    (d/pull-many db (d/type-query db "CodeSystem" [["url" url] ["version" version]]))))
+    (d/pull-many db (vec (code-system-query db url version)))))
 
 (defn- assoc-context [{:keys [version] :as code-system} context]
   (when-ok [[module-id version] (sct-u/module-version (type/value version))]

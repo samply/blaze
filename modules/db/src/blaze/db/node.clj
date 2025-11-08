@@ -200,7 +200,7 @@
   (ba/not-found (resource-content-not-found-msg resource-handle)
                 :blaze.db/resource-handle resource-handle))
 
-(defn- to-resource [tx-cache resources variant resource-handle]
+(defn- to-resource [tx-cache resources resource-handle variant]
   (if-let [resource (if (rh/deleted? resource-handle)
                       (deleted-resource resource-handle)
                       (get resources (node-util/rs-key resource-handle variant)))]
@@ -383,14 +383,13 @@
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
-  (-pull-many [_ resource-handles variant]
-    (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
-          [variant elements] (if (keyword? variant) [variant] [:complete variant])
+  (-pull-many [_ resource-handles opts]
+    (let [{:keys [variant elements] :or {variant :complete}} opts
           keys (rs-keys-of-non-deleted resource-handles variant)]
       (do-sync [resources (rs/multi-get resource-store keys)]
         (into
          []
-         (cond-> (comp (map (partial to-resource tx-cache resources variant))
+         (cond-> (comp (map #(to-resource tx-cache resources % variant))
                        (halt-when ba/anomaly?))
            elements (comp (subset-xf elements)))
          resource-handles))))

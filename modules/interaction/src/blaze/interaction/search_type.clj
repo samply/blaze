@@ -93,10 +93,10 @@
 (defn- pull-matches-xf [{:keys [summary elements]} db]
   (cond
     (seq elements)
-    (map #(d/pull-many db % elements))
+    (map #(d/pull-many db % {:elements elements}))
 
     (= "true" summary)
-    (map #(d/pull-many db % :summary))
+    (map #(d/pull-many db % {:variant :summary}))
 
     :else
     (map (partial d/pull-many db))))

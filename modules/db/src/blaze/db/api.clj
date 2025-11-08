@@ -528,17 +528,20 @@
   "Returns a CompletableFuture that will complete with a vector of all resources
   of all `resource-handles` in the same order.
 
-  Optional, `variant` can be given which is either a content variant like
-  :complete or :summary or a list of top-level keys to return instead of all
-  keys (elements). Certain mandatory and modifier elements are returned
-  regardless of if they are specified in `variant`. In addition the resources
-  are marked with the tag SUBSETTED in this case.
+  The following options are available:
+  * :variant - which is either :complete or :summary
+  * :elements - a list of top-level keys to return instead of all
+
+  Certain mandatory and modifier elements are returned regardless of not being
+  specified in :elements. In addition the resources are marked with the tag
+  SUBSETTED if one of :variant :summary or :elements are given.
 
   Returns a failed CompletableFuture if one pull fails."
+  {:arglists '([node-or-db resource-handles opts?])}
   ([node-or-db resource-handles]
-   (p/-pull-many node-or-db resource-handles :complete))
-  ([node-or-db resource-handles variant]
-   (p/-pull-many node-or-db resource-handles variant)))
+   (p/-pull-many node-or-db resource-handles {}))
+  ([node-or-db resource-handles opts]
+   (p/-pull-many node-or-db resource-handles opts)))
 
 ;; ---- (Re) Index ------------------------------------------------------------
 

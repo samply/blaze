@@ -237,8 +237,8 @@
   (-pull-content [_ resource-handle variant]
     (p/-pull-content node resource-handle variant))
 
-  (-pull-many [_ resource-handles variant]
-    (p/-pull-many node resource-handles variant)))
+  (-pull-many [_ resource-handles opts]
+    (p/-pull-many node resource-handles opts)))
 
 (defmethod print-method Db [^Db db ^Writer w]
   (.write w (format "Db[t=%d]" (.t db))))
