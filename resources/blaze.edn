@@ -314,7 +314,8 @@
    :tx-log #blaze/ref :blaze.db.main/tx-log
    :tx-cache #blaze/ref :blaze.db.main/tx-cache
    :indexer-executor #blaze/ref :blaze.db.node.main/indexer-executor
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-cache #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :kv-store #blaze/ref :blaze.db.main/index-kv-store
    :resource-indexer #blaze/ref :blaze.db.node.main/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
@@ -332,7 +333,8 @@
    :tx-log #blaze/ref :blaze.db.admin/tx-log
    :tx-cache #blaze/ref :blaze.db.admin/tx-cache
    :indexer-executor #blaze/ref :blaze.db.node.admin/indexer-executor
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-cache #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :kv-store #blaze/ref :blaze.db.admin/index-kv-store
    :resource-indexer #blaze/ref :blaze.db.node.admin/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
@@ -348,7 +350,7 @@
   ;;
   [:blaze.db.node/resource-indexer :blaze.db.node.main/resource-indexer]
   {:kv-store #blaze/ref :blaze.db.main/index-kv-store
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :executor #blaze/ref :blaze.db.node.resource-indexer.main/executor}
 
@@ -360,7 +362,7 @@
   ;;
   [:blaze.db.node/resource-indexer :blaze.db.node.admin/resource-indexer]
   {:kv-store #blaze/ref :blaze.db.admin/index-kv-store
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :executor #blaze/ref :blaze.db.node.resource-indexer.admin/executor}
 
