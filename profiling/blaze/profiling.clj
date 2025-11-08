@@ -4,7 +4,7 @@
   (:require
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.kv.rocksdb :as rocksdb]
-   [blaze.db.resource-cache :as resource-cache]
+   [blaze.db.resource-cache :as rc]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
    [blaze.system :as system]
@@ -42,12 +42,12 @@
 ;; Transaction Cache
 (comment
   (str (ccp/-stats (:blaze.db/tx-cache system)))
-  (resource-cache/invalidate-all! (:blaze.db/tx-cache system)))
+  (rc/invalidate-all! (:blaze.db/tx-cache system)))
 
 ;; Resource Cache
 (comment
   (str (ccp/-stats (:blaze.db/resource-cache system)))
-  (resource-cache/invalidate-all! (:blaze.db/resource-cache system)))
+  (rc/invalidate-all! (:blaze.db/resource-cache system)))
 
 ;; CQL Expression Cache
 (comment

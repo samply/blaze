@@ -28,6 +28,8 @@
    [blaze.db.node.util :as node-util]
    [blaze.db.node.validation :as validation]
    [blaze.db.node.version :as version]
+   [blaze.db.resource-cache :as rc]
+   [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.tx-log :as tx-log]
@@ -207,10 +209,10 @@
     (enhance-resource tx-cache resource-handle resource)
     (resource-content-not-found-anom resource-handle)))
 
-(defn- get-resource [resource-store resource-handle variant]
+(defn- get-resource [resource-cache resource-handle variant]
   (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
-    (rs/get resource-store (node-util/rs-key resource-handle variant))))
+    (rc/get resource-cache (node-util/rs-key resource-handle variant))))
 
 (defn- clause-with-code-fn? [codes]
   (fn [[search-param]]
@@ -287,8 +289,8 @@
                                                  "Resource" clauses false)]
     (batch-db/->Matcher clauses)))
 
-(defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
-                 search-param-registry resource-indexer read-only-matcher
+(defrecord Node [context tx-log tx-cache kv-store resource-cache resource-store
+                 sync-fn search-param-registry resource-indexer read-only-matcher
                  state run? poll-timeout finished]
   np/Node
   (-db [node]
@@ -374,19 +376,19 @@
 
   p/Pull
   (-pull [_ resource-handle variant]
-    (do-sync [resource (get-resource resource-store resource-handle variant)]
+    (do-sync [resource (get-resource resource-cache resource-handle variant)]
       (or (some->> resource (enhance-resource tx-cache resource-handle))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-content [_ resource-handle variant]
-    (do-sync [resource (get-resource resource-store resource-handle variant)]
+    (do-sync [resource (get-resource resource-cache resource-handle variant)]
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-many [_ resource-handles opts]
     (let [{:keys [variant elements] :or {variant :complete}} opts
           keys (rs-keys-of-non-deleted resource-handles variant)]
-      (do-sync [resources (rs/multi-get resource-store keys)]
+      (do-sync [resources (rc/multi-get resource-cache keys)]
         (into
          []
          (cond-> (comp (map #(to-resource tx-cache resources % variant))
@@ -505,6 +507,7 @@
     ::indexer-executor
     :blaze.db/kv-store
     ::resource-indexer
+    :blaze.db/resource-cache
     :blaze.db/resource-store
     :blaze.db/search-param-registry
     :blaze/scheduler]
@@ -514,13 +517,15 @@
 
 (defmethod ig/init-key :blaze.db/node
   [key {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
-               resource-store search-param-registry scheduler poll-timeout]
+               resource-cache resource-store search-param-registry scheduler
+               poll-timeout]
         :or {poll-timeout (time/seconds 1)}
         :as config}]
   (init-msg key config)
   (check-version! kv-store)
-  (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
-                     (sync-fn storage) search-param-registry resource-indexer
+  (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-cache
+                     resource-store (sync-fn storage) search-param-registry
+                     resource-indexer
                      (compile-read-only-matcher search-param-registry)
                      (atom (initial-state kv-store))
                      (volatile! true)

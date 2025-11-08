@@ -57,8 +57,7 @@
   (ac/delayed-executor 1 TimeUnit/SECONDS))
 
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
-  (reify
-    rs/ResourceStore
+  (reify rs/ResourceStore
     (-get [_ key]
       (-> (rs/get resource-store key)
           (ac/then-apply-async identity delayed-executor)))
@@ -75,22 +74,25 @@
    config
    {:blaze.db/node
     {:resource-store (ig/ref ::slow-resource-store)}
+    :blaze.db/resource-cache
+    {:resource-store (ig/ref ::slow-resource-store)}
     ::node/resource-indexer
     {:resource-store (ig/ref ::slow-resource-store)}
     ::slow-resource-store
     {:resource-store (ig/ref ::rs/kv)}}))
 
 (defmethod ig/init-key ::resource-store-failing-on-put [_ _]
-  (reify
-    rs/ResourceStore
+  (reify rs/ResourceStore
     (-put [_ _]
       (ac/completed-future {::anom/category ::anom/fault}))))
 
-(def resource-store-failing-on-put-system
+(def ^:private resource-store-failing-on-put-system
   (merge-with
    merge
    config
    {:blaze.db/node
+    {:resource-store (ig/ref ::resource-store-failing-on-put)}
+    :blaze.db/resource-cache
     {:resource-store (ig/ref ::resource-store-failing-on-put)}
     ::node/resource-indexer
     {:resource-store (ig/ref ::resource-store-failing-on-put)}
@@ -7927,8 +7929,7 @@
 
 (defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
   (let [store (atom {})]
-    (reify
-      rs/ResourceStore
+    (reify rs/ResourceStore
       (-get [_ key]
         (ac/completed-future (get @store (second key))))
       (-multi-get [_ keys]
@@ -7950,6 +7951,8 @@
    merge
    config
    {:blaze.db/node
+    {:resource-store (ig/ref ::defective-resource-store)}
+    :blaze.db/resource-cache
     {:resource-store (ig/ref ::defective-resource-store)}
     ::node/resource-indexer
     {:resource-store (ig/ref ::defective-resource-store)}

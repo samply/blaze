@@ -18,6 +18,7 @@
    [blaze.db.node.spec]
    [blaze.db.node.tx-indexer :as-alias tx-indexer]
    [blaze.db.node.version :as version]
+   [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.spec]
    [blaze.db.search-param-registry]
@@ -50,8 +51,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (defmethod ig/init-key ::resource-store-failing-on-get [_ _]
-  (reify
-    rs/ResourceStore
+  (reify rs/ResourceStore
     (-get [_ _]
       (ac/completed-future {::anom/category ::anom/fault}))
     (-multi-get [_ _]
@@ -65,6 +65,8 @@
    config
    {:blaze.db/node
     {:resource-store (ig/ref ::resource-store-failing-on-get)}
+    :blaze.db/resource-cache
+    {:resource-store (ig/ref ::resource-store-failing-on-get)}
     ::node/resource-indexer
     {:resource-store (ig/ref ::resource-store-failing-on-get)}
     ::resource-store-failing-on-get {}}))
@@ -73,8 +75,7 @@
   (ac/delayed-executor 100 TimeUnit/MILLISECONDS))
 
 (defmethod ig/init-key ::resource-store-slow-on-put [_ {:keys [resource-store]}]
-  (reify
-    rs/ResourceStore
+  (reify rs/ResourceStore
     (-get [_ key]
       (rs/get resource-store key))
     (-multi-get [_ keys]
@@ -88,6 +89,8 @@
    merge
    config
    {:blaze.db/node
+    {:resource-store (ig/ref ::resource-store-slow-on-put)}
+    :blaze.db/resource-cache
     {:resource-store (ig/ref ::resource-store-slow-on-put)}
     ::node/resource-indexer
     {:resource-store (ig/ref ::resource-store-slow-on-put)}
@@ -116,9 +119,10 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-cache))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
 
   (testing "invalid tx-log"
     (given-failed-system (assoc-in config [:blaze.db/node :tx-log] ::invalid)
@@ -153,6 +157,13 @@
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [::node/resource-indexer]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid resource-cache"
+    (given-failed-system (assoc-in config [:blaze.db/node :resource-cache] ::invalid)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/resource-cache]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid resource-store"

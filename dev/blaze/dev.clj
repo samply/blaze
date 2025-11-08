@@ -4,7 +4,7 @@
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
-   [blaze.db.resource-cache :as resource-cache]
+   [blaze.db.resource-cache :as rc]
    [blaze.db.resource-store :as rs]
    [blaze.db.tx-log :as tx-log]
    [blaze.elm.expression :as-alias expr]
@@ -50,13 +50,13 @@
 ;; Transaction Cache
 (comment
   (str (ccp/-stats (:blaze.db/tx-cache system)))
-  (resource-cache/invalidate-all! (:blaze.db/tx-cache system)))
+  (rc/invalidate-all! (:blaze.db/tx-cache system)))
 
 ;; Resource Cache
 (comment
   (str (ccp/-stats (:blaze.db/resource-cache system)))
   (ccp/-estimated-size (:blaze.db/resource-cache system))
-  (resource-cache/invalidate-all! (:blaze.db/resource-cache system)))
+  (rc/invalidate-all! (:blaze.db/resource-cache system)))
 
 ;; CQL Expression Cache
 (comment

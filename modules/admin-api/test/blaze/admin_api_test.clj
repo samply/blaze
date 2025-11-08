@@ -8,6 +8,7 @@
    [blaze.db.kv :as-alias kv]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.db.node :as node]
+   [blaze.db.resource-cache]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.tx-log :as tx-log]
@@ -62,6 +63,7 @@
      {:tx-log (ig/ref :blaze.db.main/tx-log)
       :tx-cache (ig/ref :blaze.db.main/tx-cache)
       :indexer-executor (ig/ref :blaze.db.node.main/indexer-executor)
+      :resource-cache (ig/ref :blaze.db/resource-cache)
       :resource-store (ig/ref :blaze.db/resource-store)
       :kv-store (ig/ref :blaze.db.main/index-kv-store)
       :resource-indexer (ig/ref :blaze.db.node.main/resource-indexer)
@@ -73,12 +75,16 @@
      {:tx-log (ig/ref :blaze.db.admin/tx-log)
       :tx-cache (ig/ref :blaze.db.admin/tx-cache)
       :indexer-executor (ig/ref :blaze.db.node.admin/indexer-executor)
+      :resource-cache (ig/ref :blaze.db/resource-cache)
       :resource-store (ig/ref :blaze.db/resource-store)
       :kv-store (ig/ref :blaze.db.admin/index-kv-store)
       :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
       :search-param-registry (ig/ref :blaze.db/search-param-registry)
       :scheduler (ig/ref :blaze/scheduler)
       :poll-timeout (time/millis 10)}
+
+     :blaze.db/resource-cache
+     {:resource-store (ig/ref :blaze.db/resource-store)}
 
      [::tx-log/local :blaze.db.main/tx-log]
      {:kv-store (ig/ref :blaze.db.main/transaction-kv-store)
