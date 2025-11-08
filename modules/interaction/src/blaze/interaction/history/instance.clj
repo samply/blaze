@@ -33,7 +33,7 @@
         next-link (partial next-link context query-params)]
     ;; we need to take here again because we take page-size + 1 above
     (-> (d/pull-many db (into [] (take page-size) paged-version-handles)
-                     (fhir-util/summary query-params))
+                     {:variant (fhir-util/summary query-params)})
         (ac/exceptionally
          #(assoc %
                  ::anom/category ::anom/fault

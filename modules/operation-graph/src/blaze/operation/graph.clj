@@ -26,8 +26,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- graph-def-query [db uri]
+  (d/type-query db "GraphDefinition" [["url" uri]]))
+
 (defn- find-graph-def [db uri]
-  (do-sync [graph-defs (d/pull-many db (d/type-query db "GraphDefinition" [["url" uri]]))]
+  (do-sync [graph-defs (d/pull-many db (vec (graph-def-query db uri)))]
     (or (first (fu/sort-by-priority graph-defs))
         (ba/not-found (format "The graph definition `%s` was not found." uri)
                       :http/status 400))))

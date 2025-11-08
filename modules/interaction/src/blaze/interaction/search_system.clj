@@ -32,7 +32,7 @@
   (into [] (take (inc page-size)) (handles* context)))
 
 (defn- entries [{:blaze/keys [db] :keys [pull-variant] :as context}]
-  (-> (d/pull-many db (handles context) pull-variant)
+  (-> (d/pull-many db (handles context) {:variant pull-variant})
       (ac/exceptionally
        #(assoc %
                ::anom/category ::anom/fault

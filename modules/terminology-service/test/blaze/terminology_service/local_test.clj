@@ -190,10 +190,13 @@
    ::loinc {}
    ::cs/sct {:release-path (path "sct-release")}))
 
+(defn- pull-type-list [node type]
+  @(d/pull-many node (vec (d/type-list (d/db node) type))))
+
 (deftest init-bcp-13-test
   (with-system [{:blaze.db/keys [node]} bcp-13-config]
     (testing "the BCP-13 code system is available"
-      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+      (given (pull-type-list node "CodeSystem")
         count := 1
         [0 :id] := "AAAAAAAAAAAAAAAA"
         [0 :url] := #fhir/uri "urn:ietf:bcp:13"))
@@ -206,7 +209,7 @@
 (deftest init-bcp-47-test
   (with-system [{:blaze.db/keys [node]} bcp-47-config]
     (testing "the BCP-47 code system is available"
-      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+      (given (pull-type-list node "CodeSystem")
         count := 1
         [0 :id] := "AAAAAAAAAAAAAAAA"
         [0 :url] := #fhir/uri "urn:ietf:bcp:47"))
@@ -219,7 +222,7 @@
 (deftest init-loinc-test
   (with-system [{:blaze.db/keys [node]} loinc-config]
     (testing "the LOINC code system is available"
-      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+      (given (pull-type-list node "CodeSystem")
         count := 1
         [0 :id] := "AAAAAAAAAAAAAAAA"
         [0 :url] := #fhir/uri "http://loinc.org"))
@@ -232,7 +235,7 @@
 (deftest init-sct-test
   (with-system [{:blaze.db/keys [node]} sct-config]
     (testing "SNOMED CT code systems are available"
-      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+      (given (pull-type-list node "CodeSystem")
         count := 25
         [0 :id] := "AAAAAAAAAAAAAAAA"
         [0 :url] := #fhir/uri "http://snomed.info/sct"))
@@ -245,7 +248,7 @@
 (deftest init-ucum-test
   (with-system [{:blaze.db/keys [node]} ucum-config]
     (testing "the UCUM code system is available"
-      (given @(d/pull-many node (d/type-list (d/db node) "CodeSystem"))
+      (given (pull-type-list node "CodeSystem")
         count := 1
         [0 :id] := "AAAAAAAAAAAAAAAA"
         [0 :url] := #fhir/uri "http://unitsofmeasure.org"))

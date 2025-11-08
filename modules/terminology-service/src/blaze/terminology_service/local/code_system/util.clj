@@ -7,7 +7,7 @@
    [blaze.module :as m]))
 
 (defn code-systems [db url]
-  (d/pull-many db (d/type-query db "CodeSystem" [["url" url]])))
+  (d/pull-many db (vec (d/type-query db "CodeSystem" [["url" url]]))))
 
 (defn code-system-versions [db url]
   (do-sync [code-systems (code-systems db url)]

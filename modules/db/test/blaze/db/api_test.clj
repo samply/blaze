@@ -262,6 +262,17 @@
         ::anom/category := ::anom/conflict
         ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again."))))
 
+(defn- ensure-db [node-or-db]
+  (cond-> node-or-db
+    (satisfies? np/Node node-or-db)
+    d/db))
+
+(defn- pull-type-list
+  ([node-or-db type]
+   @(d/pull-many node-or-db (vec (d/type-list (ensure-db node-or-db) type))))
+  ([node-or-db type start-id]
+   @(d/pull-many node-or-db (vec (d/type-list (ensure-db node-or-db) type start-id)))))
+
 (deftest ^:slow transact-create-property-test
   (doseq [gen `[fg/patient fg/observation fg/encounter fg/procedure
                 fg/allergy-intolerance fg/diagnostic-report fg/library]]
@@ -271,7 +282,7 @@
           [tx-ops]
 
           (= (count tx-ops)
-             (count @(d/pull-many node (d/type-list (d/db node) (kebab->pascal (name gen)))))))))))
+             (count (pull-type-list node (kebab->pascal (name gen))))))))))
 
 (deftest transact-conditional-create-test
   (testing "on empty database"
@@ -870,9 +881,27 @@
 
 (defn- pull-instance-history
   ([db type id]
-   (d/pull-many db (d/instance-history db type id)))
+   @(d/pull-many db (vec (d/instance-history db type id))))
   ([db type id start-t]
-   (d/pull-many db (d/instance-history db type id start-t))))
+   @(d/pull-many db (vec (d/instance-history db type id start-t)))))
+
+(defn- pull-type-history
+  ([db type]
+   @(d/pull-many db (vec (d/type-history db type))))
+  ([db type start-t]
+   @(d/pull-many db (vec (d/type-history db type start-t))))
+  ([db type start-t start-id]
+   @(d/pull-many db (vec (d/type-history db type start-t start-id)))))
+
+(defn- pull-system-history
+  ([db]
+   @(d/pull-many db (vec (d/system-history db))))
+  ([db start-t]
+   @(d/pull-many db (vec (d/system-history db start-t))))
+  ([db start-t start-type]
+   @(d/pull-many db (vec (d/system-history db start-t start-type))))
+  ([db start-t start-type start-id]
+   @(d/pull-many db (vec (d/system-history db start-t start-type start-id)))))
 
 (deftest transact-delete-history-test
   (testing "one patient with one version"
@@ -922,36 +951,36 @@
 
             (testing "the instance history contains only that patient"
               (is (= 1 (d/total-num-of-instance-changes db-after "Patient" "0")))
-              (is (= [patient] @(pull-instance-history db-after "Patient" "0"))))))
+              (is (= [patient] (pull-instance-history db-after "Patient" "0"))))))
 
         (testing "the type history contains only one entry"
           (is (= 1 (d/total-num-of-type-changes db-after "Patient")))
-          (given @(d/pull-many node (d/type-history db-after "Patient"))
+          (given (pull-type-history db-after "Patient")
             count := 1
             [0 :active] := #fhir/boolean true))
 
         (testing "the system history contains only one entry"
           (is (= 1 (d/total-num-of-system-changes db-after)))
-          (given @(d/pull-many node (d/system-history db-after))
+          (given (pull-system-history db-after)
             count := 1
             [0 :active] := #fhir/boolean true))
 
         (testing "the instance history of db-before still contains two entries"
-          (given @(pull-instance-history db-before "Patient" "0")
+          (given (pull-instance-history db-before "Patient" "0")
             count := 2
             [0 :active] := #fhir/boolean true
             [1 :active] := #fhir/boolean false))
 
         (testing "the type history of db-before still contains two entries"
           (is (= 2 (d/total-num-of-type-changes db-before "Patient")))
-          (given @(d/pull-many node (d/type-history db-before "Patient"))
+          (given (pull-type-history db-before "Patient")
             count := 2
             [0 :active] := #fhir/boolean true
             [1 :active] := #fhir/boolean false))
 
         (testing "the system history of db-before still contains two entries"
           (is (= 2 (d/total-num-of-system-changes db-before)))
-          (given @(d/pull-many node (d/system-history db-before))
+          (given (pull-system-history db-before)
             count := 2
             [0 :active] := #fhir/boolean true
             [1 :active] := #fhir/boolean false)))))
@@ -974,18 +1003,18 @@
 
             (testing "the instance history contains only that patient"
               (is (= 1 (d/total-num-of-instance-changes db-after "Patient" "1")))
-              (is (= [patient] @(pull-instance-history db-after "Patient" "1"))))))
+              (is (= [patient] (pull-instance-history db-after "Patient" "1"))))))
 
         (testing "the type history contains two entries"
           (is (= 2 (d/total-num-of-type-changes db-after "Patient")))
-          (given @(d/pull-many node (d/type-history db-after "Patient"))
+          (given (pull-type-history db-after "Patient")
             count := 2
             [0 :active] := #fhir/boolean true
             [1 :id] := "0"))
 
         (testing "the system history contains two entries"
           (is (= 2 (d/total-num-of-system-changes db-after)))
-          (given @(d/pull-many node (d/system-history db-after))
+          (given (pull-system-history db-after)
             count := 2
             [0 :active] := #fhir/boolean true
             [1 :id] := "0")))))
@@ -1054,39 +1083,39 @@
             :gender := #fhir/code "male"))
 
         (testing "the instance history contains two entries"
-          (given @(pull-instance-history db-after "Patient" "0")
+          (given (pull-instance-history db-after "Patient" "0")
             count := 2
             [0 :gender] := #fhir/code "male"
             [1 :active] := #fhir/boolean true))
 
         (testing "the type history contains two entries"
           (is (= 2 (d/total-num-of-type-changes db-after "Patient")))
-          (given @(d/pull-many node (d/type-history db-after "Patient"))
+          (given (pull-type-history db-after "Patient")
             count := 2
             [0 :gender] := #fhir/code "male"
             [1 :active] := #fhir/boolean true))
 
         (testing "the system history contains two entries"
           (is (= 2 (d/total-num-of-system-changes db-after)))
-          (given @(d/pull-many node (d/system-history db-after))
+          (given (pull-system-history db-after)
             count := 2
             [0 :gender] := #fhir/code "male"
             [1 :active] := #fhir/boolean true))
 
         (testing "the instance history of db-before still contains only one entry"
-          (given @(pull-instance-history db-before "Patient" "0")
+          (given (pull-instance-history db-before "Patient" "0")
             count := 1
             [0 :active] := #fhir/boolean true))
 
         (testing "the type history of db-before still contains only one entry"
           (is (= 1 (d/total-num-of-type-changes db-before "Patient")))
-          (given @(d/pull-many node (d/type-history db-before "Patient"))
+          (given (pull-type-history db-before "Patient")
             count := 1
             [0 :active] := #fhir/boolean true))
 
         (testing "the system history of db-before still contains only one entry"
           (is (= 1 (d/total-num-of-system-changes db-before)))
-          (given @(d/pull-many node (d/system-history db-before))
+          (given (pull-system-history db-before)
             count := 1
             [0 :active] := #fhir/boolean true))))))
 
@@ -1110,7 +1139,7 @@
                 :active := #fhir/boolean false))
 
             (testing "the instance history contains only that patient"
-              (is (= [patient] @(pull-instance-history db-after "Patient" "0"))))))
+              (is (= [patient] (pull-instance-history db-after "Patient" "0"))))))
 
         (testing "the instance history of db-before still contains 100,000 entries"
           (is (= 100000 (count (d/instance-history db-before "Patient" "0"))))))))
@@ -1242,14 +1271,14 @@
 
           (testing "the type history contains the two remaining patients"
             (is (= 2 (d/total-num-of-type-changes db-after "Patient")))
-            (given @(d/pull-many node (d/type-history db-after "Patient"))
+            (given (pull-type-history db-after "Patient")
               count := 2
               [0 :id] := "2"
               [1 :id] := "0"))
 
           (testing "the system history contains the two remaining patients"
             (is (= 2 (d/total-num-of-system-changes db-after)))
-            (given @(d/pull-many node (d/system-history db-after))
+            (given (pull-system-history db-after)
               count := 2
               [0 :id] := "2"
               [1 :id] := "0"))))))
@@ -1703,11 +1732,6 @@
 (def system-clock-config
   (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
 
-(defn- ensure-db [node-or-db]
-  (cond-> node-or-db
-    (satisfies? np/Node node-or-db)
-    d/db))
-
 (defn- count-type-query [node-or-db type clauses]
   (when-ok [query (d/compile-type-query node-or-db type clauses)]
     @(d/count-query (ensure-db node-or-db) query)))
@@ -1715,10 +1739,10 @@
 (defn- pull-type-query
   ([node-or-db type clauses]
    (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses)]
-     @(d/pull-many node-or-db handles)))
+     @(d/pull-many node-or-db (vec handles))))
   ([node-or-db type clauses start-id]
    (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses start-id)]
-     @(d/pull-many node-or-db handles))))
+     @(d/pull-many node-or-db (vec handles)))))
 
 (defmacro given-type-query
   "Combines `pull-type-query` with `count-type-query`. Assumes that the first
@@ -1730,7 +1754,13 @@
 
 (defn- pull-compartment-query [node code id type clauses]
   (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
-    @(d/pull-many node handles)))
+    @(d/pull-many node (vec handles))))
+
+(defn- pull-system-list
+  ([node-or-db]
+   @(d/pull-many node-or-db (vec (d/system-list (ensure-db node-or-db)))))
+  ([node-or-db start-type start-id]
+   @(d/pull-many node-or-db (vec (d/system-list (ensure-db node-or-db) start-type start-id)))))
 
 (deftest since-test
   (testing "with one patient only"
@@ -1782,9 +1812,9 @@
             (is (apply < (map d/total-num-of-system-changes dbs)))
             (is (apply < (map #(d/total-num-of-type-changes % "Patient") dbs)))
             (is (apply < (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
-            (doseq [val [@(pull-instance-history db-1->2 "Patient" "0")
-                         @(d/pull-many node (d/type-history db-1->2 "Patient"))
-                         @(d/pull-many node (d/system-history db-1->2))]]
+            (doseq [val [(pull-instance-history db-1->2 "Patient" "0")
+                         (pull-type-history db-1->2 "Patient")
+                         (pull-system-history db-1->2)]]
               (given val
                 count := 1
                 [0 :gender] := #fhir/code "female"
@@ -1834,12 +1864,12 @@
             (is (apply = (map d/since-t dbs)))
             (is (apply = (map d/system-total dbs)))
             (is (apply = (map #(d/type-total % "Patient") dbs)))
-            (is (apply = (map #(->> (d/type-list % "Patient") (d/pull-many node) deref) dbs)))
-            (is (apply = (map #(->> (d/type-history % "Patient") (d/pull-many node) deref) dbs)))
-            (is (apply = (map #(->> (pull-instance-history % "Patient" "0") deref) dbs)))
-            (is (apply = (map #(->> (pull-instance-history % "Patient" "1") deref) dbs)))
-            (is (apply = (map #(->> (d/system-list %) (d/pull-many node) deref) dbs)))
-            (is (apply = (map #(->> (d/system-history %) (d/pull-many node) deref) dbs)))
+            (is (apply = (map #(pull-type-list % "Patient") dbs)))
+            (is (apply = (map #(pull-type-history % "Patient") dbs)))
+            (is (apply = (map #(pull-instance-history % "Patient" "0") dbs)))
+            (is (apply = (map #(pull-instance-history % "Patient" "1") dbs)))
+            (is (apply = (map pull-system-list dbs)))
+            (is (apply = (map pull-system-history dbs)))
             (is (apply = (map #(d/resource-handle % "Patient" "0") dbs)))
             (is (apply = (map #(d/resource-handle % "Patient" "1") dbs)))
             (is (apply = (map d/total-num-of-system-changes dbs)))
@@ -1865,7 +1895,7 @@
             (is (apply < (map #(d/total-num-of-type-changes % "Patient") dbs)))
             (is (apply < (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
 
-            (given @(d/pull-many node (d/type-list db2->4 "Patient"))
+            (given (pull-type-list db2->4 "Patient")
               count := 1
               [0 :id] := "1"
               [0 :meta :versionId] := #fhir/id "4")
@@ -1876,7 +1906,7 @@
               :id := "1"
               [:meta :versionId] := #fhir/id "4")
 
-            (given @(d/pull-many node (d/system-history db2->4))
+            (given (pull-system-history db2->4)
               count := 3
               [0 :id] := "1"
               [0 :fhir/type] := :fhir/Patient
@@ -1890,7 +1920,7 @@
               [2 :meta :versionId] := #fhir/id "3"
               [2 :gender] := #fhir/code "male")
 
-            (given @(d/pull-many node (d/system-list db2->4))
+            (given (pull-system-list db2->4)
               count := 2
               [0 :id] := "2"
               [0 :fhir/type] := :fhir/Condition
@@ -1904,7 +1934,7 @@
               count := 1
               [0 :id] := "1")
 
-            (given @(d/pull-many node (d/type-history db2->4 "Patient"))
+            (given (pull-type-history db2->4 "Patient")
               count := 2
               [0 :id] := "1"
               [0 :meta :versionId] := #fhir/id "4"
@@ -1913,7 +1943,7 @@
               [1 :meta :versionId] := #fhir/id "3"
               [1 :gender] := #fhir/code "male")
 
-            (given @(pull-instance-history db2->4 "Patient" "1")
+            (given (pull-instance-history db2->4 "Patient" "1")
               count := 2
               [0 :meta :versionId] := #fhir/id "4"
               [0 :gender] := #fhir/code "female"
@@ -1932,12 +1962,12 @@
                 dbs [db-4->4 db-4]]
             (is (apply = (map d/t dbs)))
             (is (apply = (map d/basis-t dbs)))
-            (is (empty? @(d/pull-many node (d/type-list db-4->4 "Patient"))))
-            (is (empty? @(d/pull-many node (d/type-history db-4->4 "Patient"))))
-            (is (empty? @(pull-instance-history db-4->4 "Patient" "0")))
-            (is (empty? @(pull-instance-history db-4->4 "Patient" "1")))
-            (is (empty? @(d/pull-many node (d/system-list db-4->4))))
-            (is (empty? @(d/pull-many node (d/system-history db-4->4))))
+            (is (empty? (pull-type-list db-4->4 "Patient")))
+            (is (empty? (pull-type-history db-4->4 "Patient")))
+            (is (empty? (pull-instance-history db-4->4 "Patient" "0")))
+            (is (empty? (pull-instance-history db-4->4 "Patient" "1")))
+            (is (empty? (pull-system-list db-4->4)))
+            (is (empty? (pull-system-history db-4->4)))
             (is (nil? (d/resource-handle db-4->4 "Patient" "0")))
             (is (nil? (d/resource-handle db-4->4 "Patient" "1")))
             (is (zero? (d/total-num-of-instance-changes db-4->4 "Patient" "0")))
@@ -2050,7 +2080,7 @@
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains that patient"
-        (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+        (given (pull-type-list node "Patient")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -2086,7 +2116,7 @@
         (is (= 2 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains both patients in id order"
-        (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+        (given (pull-type-list node "Patient")
           count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -2096,7 +2126,7 @@
           [1 :meta :versionId] := #fhir/id "2"))
 
       (testing "it is possible to start with the second patient"
-        (given @(d/pull-many node (d/type-list (d/db node) "Patient" "1"))
+        (given (pull-type-list node "Patient" "1")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
@@ -2114,7 +2144,7 @@
         (is (= 2 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains both patients in id order"
-        (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+        (given (pull-type-list node "Patient")
           count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -2124,7 +2154,7 @@
           [1 :meta :versionId] := #fhir/id "1"))
 
       (testing "it is possible to start with the second patient"
-        (given @(d/pull-many node (d/type-list (d/db node) "Patient" "1"))
+        (given (pull-type-list node "Patient" "1")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
@@ -2142,7 +2172,7 @@
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains the updated patient"
-        (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+        (given (pull-type-list node "Patient")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -2175,7 +2205,7 @@
               (is (= 1 (d/type-total db "Patient"))))
 
             (testing "contains still the original patient"
-              (given @(d/pull-many node (d/type-list db "Patient"))
+              (given (pull-type-list db "Patient")
                 count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
@@ -2194,7 +2224,7 @@
               (is (= 1 (d/type-total db "Patient"))))
 
             (testing "contains still only the first patient"
-              (given @(d/pull-many node (d/type-list db "Patient"))
+              (given (pull-type-list db "Patient")
                 count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
@@ -2205,7 +2235,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "00"}]]]
 
-      (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+      (given (pull-type-list node "Patient")
         count := 2
         [0 :id] := "0"
         [1 :id] := "00")))
@@ -6888,6 +6918,9 @@
 (defn- patient-type-query? [x]
   (instance? PatientTypeQuery x))
 
+(defn- pull-query [db query & args]
+  @(d/pull-many db (vec (apply d/execute-query db query args))))
+
 (deftest compile-type-query-test
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -6896,9 +6929,7 @@
       (testing "the patient can be found"
         (with-open-db [db node]
           (doseq [target [node db]]
-            (given @(->> (d/compile-type-query target "Patient" [["active" "true"]])
-                         (d/execute-query db)
-                         (d/pull-many target))
+            (given (pull-query db (d/compile-type-query target "Patient" [["active" "true"]]))
               count := 1
               [0 :fhir/type] := :fhir/Patient
               [0 :id] := "0"))))
@@ -7035,9 +7066,7 @@
     (testing "the patient can be found"
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given @(->> (d/compile-type-query-lenient target "Patient" [["active" "true"]])
-                       (d/execute-query db)
-                       (d/pull-many target))
+          (given (pull-query db (d/compile-type-query-lenient target "Patient" [["active" "true"]]))
             count := 1
             [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0"))))
@@ -7045,9 +7074,7 @@
     (testing "an unknown search-param is ignored"
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given @(->> (d/compile-type-query-lenient target "Patient" [["foo" "bar"] ["active" "true"]])
-                       (d/execute-query db)
-                       (d/pull-many target))
+          (given (pull-query db (d/compile-type-query-lenient target "Patient" [["foo" "bar"] ["active" "true"]]))
             count := 1
             [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0")))
@@ -7058,13 +7085,13 @@
             (let [clauses [["foo" "bar"]]
                   query (d/compile-type-query-lenient target "Patient" clauses)]
               (testing "all patients are found"
-                (given @(d/pull-many target (d/execute-query db query))
+                (given (pull-query db query)
                   count := 2
                   [0 :id] := "0"
                   [1 :id] := "1"))
 
               (testing "it is possible to start with the second patient"
-                (given @(d/pull-many target (d/execute-query db query "1"))
+                (given (pull-query db query "1")
                   count := 1
                   [0 :id] := "1"))
 
@@ -7314,7 +7341,7 @@
         (is (= 1 (d/system-total (d/db node)))))
 
       (testing "contains that patient"
-        (given @(d/pull-many node (d/system-list (d/db node)))
+        (given (pull-system-list node)
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -7338,7 +7365,7 @@
         (is (= 2 (d/system-total (d/db node)))))
 
       (testing "contains both resources in the order of their type hashes"
-        (given @(d/pull-many node (d/system-list (d/db node)))
+        (given (pull-system-list node)
           count := 2
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
@@ -7348,7 +7375,7 @@
           [1 :meta :versionId] := #fhir/id "1"))
 
       (testing "it is possible to start with the patient"
-        (given @(d/pull-many node (d/system-list (d/db node) "Patient" "0"))
+        (given (pull-system-list node "Patient" "0")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -7357,7 +7384,7 @@
       (testing "starting with Measure also returns the patient,
                 because in type hash order, Measure comes before
                 Patient but after Observation"
-        (given @(d/pull-many node (d/system-list (d/db node) "Measure" "0"))
+        (given (pull-system-list node "Measure" "0")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -7390,11 +7417,9 @@
 
 (defn- pull-compartment-resources
   ([node code id type]
-   (->> (d/list-compartment-resource-handles (d/db node) code id type)
-        (d/pull-many node)))
+   @(d/pull-many node (vec (d/list-compartment-resource-handles (d/db node) code id type))))
   ([node code id type start-id]
-   (->> (d/list-compartment-resource-handles (d/db node) code id type start-id)
-        (d/pull-many node))))
+   @(d/pull-many node (vec (d/list-compartment-resource-handles (d/db node) code id type start-id)))))
 
 (deftest list-compartment-resources-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
@@ -7408,7 +7433,7 @@
        [[:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (given @(pull-compartment-resources node "Patient" "0" "Observation")
+      (given (pull-compartment-resources node "Patient" "0" "Observation")
         count := 1
         [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
@@ -7422,7 +7447,7 @@
        [[:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (given @(pull-compartment-resources node "Patient" "0" "Observation")
+      (given (pull-compartment-resources node "Patient" "0" "Observation")
         count := 2
         [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
@@ -7451,7 +7476,7 @@
        [[:put {:fhir/type :fhir/Observation :id "2"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (given @(pull-compartment-resources node "Patient" "0" "Observation" "1")
+      (given (pull-compartment-resources node "Patient" "0" "Observation" "1")
         count := 2
         [0 :fhir/type] := :fhir/Observation
         [0 :id] := "1"
@@ -7792,10 +7817,10 @@
 
     (with-open-db [db node]
       (doseq [target [node db]]
-        (given @(let [query (d/compile-compartment-query
-                             target "Patient" "Observation"
-                             [["code" "system-191514|code-191518"]])]
-                  (d/pull-many target (d/execute-query db query "0")))
+        (given (let [query (d/compile-compartment-query
+                            target "Patient" "Observation"
+                            [["code" "system-191514|code-191518"]])]
+                 (pull-query db query "0"))
           count := 1
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0")))))
@@ -7819,7 +7844,7 @@
                 query (d/compile-compartment-query-lenient
                        target "Patient" "Observation"
                        clauses)]
-            (given @(d/pull-many target (d/execute-query db query "0"))
+            (given (pull-query db query "0")
               count := 1
               [0 :fhir/type] := :fhir/Observation
               [0 :id] := "0")
@@ -7839,7 +7864,7 @@
           (let [query (d/compile-compartment-query-lenient
                        target "Patient" "Observation"
                        [["foo" "bar"]])]
-            (given @(d/pull-many target (d/execute-query db query "0"))
+            (given (pull-query db query "0")
               count := 1
               [0 :fhir/type] := :fhir/Observation
               [0 :id] := "0")
@@ -8047,7 +8072,7 @@
 
     (with-open-db [db node]
       (doseq [target [node db]]
-        (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation")))
+        (given @(mtu/assoc-thread-name (d/pull-many target (vec (d/type-list db "Observation"))))
           [meta :thread-name] :? mtu/common-pool-thread?
           count := 1
           [0 :fhir/type] := :fhir/Observation
@@ -8077,7 +8102,7 @@
             code-system-handle (d/resource-handle db "CodeSystem" "0")
             value-set-handle (d/resource-handle db "ValueSet" "0")]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name (d/pull-many target [code-system-handle value-set-handle] :summary))
+          (given @(mtu/assoc-thread-name (d/pull-many target [code-system-handle value-set-handle] {:variant :summary}))
             [meta :thread-name] :? mtu/common-pool-thread?
             count := 2
             [0 :fhir/type] := :fhir/CodeSystem
@@ -8113,7 +8138,7 @@
 
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation") [:subject]))
+          (given @(mtu/assoc-thread-name (d/pull-many target (vec (d/type-list db "Observation")) {:elements [:subject]}))
             [meta :thread-name] :? mtu/common-pool-thread?
             count := 1
             [0 :fhir/type] := :fhir/Observation
@@ -8164,7 +8189,7 @@
         (is (= 1 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "contains that patient"
-        (given @(pull-instance-history (d/db node) "Patient" "0")
+        (given (pull-instance-history (d/db node) "Patient" "0")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -8182,7 +8207,7 @@
       (testing "has two history entries"
         (is (= 2 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
-      (let [patients @(pull-instance-history (d/db node) "Patient" "0")]
+      (let [patients (pull-instance-history (d/db node) "Patient" "0")]
         (is (= 2 (count patients)))
 
         (testing "the first history entry is the patient marked as deleted"
@@ -8209,13 +8234,13 @@
         (is (= 2 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "contains both versions in reverse transaction order"
-        (given @(pull-instance-history (d/db node) "Patient" "0")
+        (given (pull-instance-history (d/db node) "Patient" "0")
           count := 2
           [0 :active] := #fhir/boolean false
           [1 :active] := #fhir/boolean true))
 
       (testing "it is possible to start with the older transaction"
-        (given @(pull-instance-history (d/db node) "Patient" "0" 1)
+        (given (pull-instance-history (d/db node) "Patient" "0" 1)
           count := 1
           [0 :active] := #fhir/boolean true))
 
@@ -8237,7 +8262,7 @@
           (is (= 1 (d/total-num-of-instance-changes (d/since db since) "Patient" "0"))))
 
         (testing "contains the patient"
-          (given @(pull-instance-history (d/since db since) "Patient" "0")
+          (given (pull-instance-history (d/since db since) "Patient" "0")
             count := 1
             [0 :id] := "0")))))
 
@@ -8254,7 +8279,7 @@
               (is (= 1 (d/total-num-of-instance-changes db "Patient" "0"))))
 
             (testing "contains still the original patient"
-              (given @(pull-instance-history db "Patient" "0")
+              (given (pull-instance-history db "Patient" "0")
                 count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
@@ -8277,7 +8302,7 @@
         (is (= 1 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains that patient"
-        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
+        (given (pull-type-history (d/db node) "Patient")
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -8295,7 +8320,7 @@
       (testing "has two history entries"
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
-      (let [patients @(d/pull-many node (d/type-history (d/db node) "Patient"))]
+      (let [patients (pull-type-history (d/db node) "Patient")]
         (is (= 2 (count patients)))
 
         (testing "the first history entry is the patient marked as deleted"
@@ -8343,13 +8368,13 @@
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains both patients in the order of their ids"
-        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
+        (given (pull-type-history (d/db node) "Patient")
           count := 2
           [0 :id] := "0"
           [1 :id] := "1"))
 
       (testing "it is possible to start with the second patient"
-        (given @(d/pull-many node (d/type-history (d/db node) "Patient" 1 "1"))
+        (given (pull-type-history (d/db node) "Patient" 1 "1")
           count := 1
           [0 :id] := "1"))))
 
@@ -8367,7 +8392,7 @@
           (is (= 1 (d/total-num-of-type-changes (d/since db since) "Patient"))))
 
         (testing "contains the patient"
-          (given @(d/pull-many db (d/type-history (d/since db since) "Patient"))
+          (given (pull-type-history (d/since db since) "Patient")
             count := 1
             [0 :id] := "1")))))
 
@@ -8384,7 +8409,7 @@
               (is (= 1 (d/total-num-of-type-changes db "Patient"))))
 
             (testing "contains still the original patient"
-              (given @(d/pull-many node (d/type-history db "Patient"))
+              (given (pull-type-history db "Patient")
                 count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
@@ -8403,7 +8428,7 @@
               (is (= 1 (d/total-num-of-type-changes db "Patient"))))
 
             (testing "contains still the first patient"
-              (given @(d/pull-many node (d/type-history db "Patient"))
+              (given (pull-type-history db "Patient")
                 count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
@@ -8425,7 +8450,7 @@
         (is (= 1 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains that patient"
-        (given @(d/pull-many node (d/system-history (d/db node)))
+        (given (pull-system-history (d/db node))
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -8439,7 +8464,7 @@
       (testing "has two history entries"
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
-      (let [patients @(d/pull-many node (d/system-history (d/db node)))]
+      (let [patients (pull-system-history (d/db node))]
         (is (= 2 (count patients)))
 
         (testing "the first history entry is the patient marked as deleted"
@@ -8465,13 +8490,14 @@
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains both resources in reverse transaction order"
-        (given @(d/pull-many node (d/system-history (d/db node)))
+        (given (pull-system-history (d/db node))
           count := 2
           [0 :fhir/type] := :fhir/Observation
           [1 :fhir/type] := :fhir/Patient))
 
       (testing "it is possible to start with the older transaction"
-        (given @(d/pull-many node (d/system-history (d/db node) 1))
+        (given (pull-system-history (d/db node) 1)
+          count := 1
           [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with one patient and one observation in one transaction"
@@ -8483,13 +8509,13 @@
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains both resources in the order of their type hashes"
-        (given @(d/pull-many node (d/system-history (d/db node)))
+        (given (pull-system-history (d/db node))
           count := 2
           [0 :fhir/type] := :fhir/Observation
           [1 :fhir/type] := :fhir/Patient))
 
       (testing "it is possible to start with the patient"
-        (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient"))
+        (given (pull-system-history (d/db node) 1 "Patient")
           count := 1
           [0 :fhir/type] := :fhir/Patient))))
 
@@ -8502,13 +8528,13 @@
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains both patients"
-        (given @(d/pull-many node (d/system-history (d/db node)))
+        (given (pull-system-history (d/db node))
           count := 2
           [0 :id] := "0"
           [1 :id] := "1"))
 
       (testing "it is possible to start with the second patient"
-        (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient" "1"))
+        (given (pull-system-history (d/db node) 1 "Patient" "1")
           count := 1
           [0 :id] := "1"))))
 
@@ -8526,7 +8552,7 @@
           (is (= 1 (d/total-num-of-system-changes (d/since db since)))))
 
         (testing "contains the patient"
-          (given @(d/pull-many node (d/system-history (d/since db since)))
+          (given (pull-system-history (d/since db since))
             count := 1
             [0 :id] := "1")))))
 
@@ -8543,7 +8569,7 @@
               (is (= 1 (d/total-num-of-system-changes db))))
 
             (testing "contains still the original patient"
-              (given @(d/pull-many node (d/system-history db))
+              (given (pull-system-history db)
                 count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
@@ -8562,7 +8588,7 @@
               (is (= 1 (d/total-num-of-system-changes db))))
 
             (testing "contains still the first patient"
-              (given @(d/pull-many node (d/system-history db))
+              (given (pull-system-history db)
                 count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
@@ -8574,7 +8600,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has that patient changed"
-        (given @(d/pull-many node (d/changes (d/db node)))
+        (given @(d/pull-many node (vec (d/changes (d/db node))))
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
@@ -9038,9 +9064,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given @(->> (d/compile-type-query batch-db "Patient" [["active" "true"]])
-                     (d/execute-query batch-db)
-                     (d/pull-many batch-db))
+        (given (pull-query batch-db (d/compile-type-query batch-db "Patient" [["active" "true"]]))
           count := 1
           [0 :id] := "0"))))
 
@@ -9049,9 +9073,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given @(->> (d/compile-type-query-lenient batch-db "Patient" [["active" "true"]])
-                     (d/execute-query batch-db)
-                     (d/pull-many batch-db))
+        (given (pull-query batch-db (d/compile-type-query-lenient batch-db "Patient" [["active" "true"]]))
           count := 1
           [0 :id] := "0"))))
 
@@ -9076,11 +9098,11 @@
                     :code #fhir/code "code-191518"}]}}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given @(let [query (d/compile-compartment-query
-                             batch-db "Patient" "Observation"
-                             [["code" "system-191514|code-191518"]])]
-                  (->> (d/execute-query batch-db query "0")
-                       (d/pull-many batch-db)))
+        (given (let [query (d/compile-compartment-query
+                            batch-db "Patient" "Observation"
+                            [["code" "system-191514|code-191518"]])]
+                 (pull-query batch-db query "0"))
+          count := 1
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"))))
 
@@ -9097,11 +9119,11 @@
                     :code #fhir/code "code-191518"}]}}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given @(let [query (d/compile-compartment-query-lenient
-                             batch-db "Patient" "Observation"
-                             [["code" "system-191514|code-191518"]])]
-                  (->> (d/execute-query batch-db query "0")
-                       (d/pull-many batch-db)))
+        (given (let [query (d/compile-compartment-query-lenient
+                            batch-db "Patient" "Observation"
+                            [["code" "system-191514|code-191518"]])]
+                 (pull-query batch-db query "0"))
+          count := 1
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"))))
 
@@ -9136,13 +9158,13 @@
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (testing "full pull"
-          (given @(d/pull-many batch-db (d/type-list batch-db "Patient"))
+          (given (pull-type-list batch-db "Patient")
             count := 1
             [0 :id] := "0"
             [0 :active] := #fhir/boolean true))
 
         (testing "elements pull"
-          (given @(d/pull-many batch-db (d/type-list batch-db "Patient") [:id])
+          (given @(d/pull-many batch-db (vec (d/type-list batch-db "Patient")) {:elements [:id]})
             count := 1
             [0 :id] := "0"
             [0 :active] := nil)))))

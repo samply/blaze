@@ -28,6 +28,9 @@
 (s/def :blaze.resource/variant
   #{:complete :summary})
 
+(s/def :blaze.resource/elements
+  (s/coll-of simple-keyword?))
+
 (s/def :fhir/Resource
   #(s2/valid? :fhir/Resource %))
 
