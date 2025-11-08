@@ -23,11 +23,11 @@ download-resources() {
   download-resources-raw "$base" "Observation" "code=$codes" "$start_epoch-download-$name.times"
 }
 
-#restart "$compose_file"
+restart "$compose_file"
 name="10-observation-codes"
 codes="$(add_system "http://loinc.org" "$(cat "$script_dir/observation-codes-10.txt")")"
-#count-resources "$name" "$codes"
-#download-resources "$name" "$codes"
+count-resources "$name" "$codes"
+download-resources "$name" "$codes"
 
 restart "$compose_file"
 name="100-observation-codes"

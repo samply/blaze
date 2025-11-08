@@ -8127,27 +8127,33 @@
                                     (:hash resource-handle)))))))
 
 (deftest pull-many-test
-  (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Observation :id "0"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "system-191514"
-                  :code #fhir/code "code-191518"}]}}]]]
+  (doseq [skip-cache-insertion [true false nil]]
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "system-191514"
+                    :code #fhir/code "code-191518"}]}}]]]
 
-    (with-open-db [db node]
-      (doseq [target [node db]]
-        (given @(mtu/assoc-thread-name (d/pull-many target (vec (d/type-list db "Observation"))))
-          [meta :thread-name] :? mtu/common-pool-thread?
-          count := 1
-          [0 :fhir/type] := :fhir/Observation
-          [0 :id] := "0"
-          [0 :meta :tag] :? empty?
-          [0 :code :coding 0 :code] := #fhir/code "code-191518"
-          [0 :subject :reference] := #fhir/string "Patient/0"))))
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (given @(mtu/assoc-thread-name
+                   (d/pull-many
+                    target (vec (d/type-list db "Observation"))
+                    (cond-> {}
+                      (some? skip-cache-insertion)
+                      (assoc :skip-cache-insertion? skip-cache-insertion))))
+            [meta :thread-name] :? mtu/common-pool-thread?
+            count := 1
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [0 :meta :tag] :? empty?
+            [0 :code :coding 0 :code] := #fhir/code "code-191518"
+            [0 :subject :reference] := #fhir/string "Patient/0")))))
 
   (testing "summary"
     (with-system-data [{:blaze.db/keys [node]} config]

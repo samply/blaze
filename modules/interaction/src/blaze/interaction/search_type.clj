@@ -118,11 +118,18 @@
     :else
     (ac/completed-future nil)))
 
-(defn- match-pull-opts [{:keys [summary elements]}]
-  (cond
-    (seq elements) {:elements elements}
-    (= "true" summary) {:variant :summary}
-    :else {}))
+(defn- wrap-cache-handling [opts {:keys [page-id]}]
+  (cond-> opts page-id (assoc :skip-cache-insertion? true)))
+
+(defn- match-pull-opts [{:keys [summary elements] :as params}]
+  (-> (cond
+        (seq elements) {:elements elements}
+        (= "true" summary) {:variant :summary}
+        :else {})
+      (wrap-cache-handling params)))
+
+(defn- include-pull-opts [params]
+  (wrap-cache-handling {} params))
 
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
@@ -143,7 +150,7 @@
           total-future (total-future db type query params matches next-match)
           match-future (d/pull-many db matches (match-pull-opts params))
           include-future (if (seq includes)
-                           (d/pull-many db includes)
+                           (d/pull-many db includes (include-pull-opts params))
                            (ac/completed-future nil))]
       (-> (ac/all-of [total-future match-future include-future])
           (ac/exceptionally

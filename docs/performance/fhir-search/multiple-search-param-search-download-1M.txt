@@ -1,4 +1,6 @@
-| 1M      | LEA58  | laboratory  | top-5 | 90.3 M |  2490.08 | 101.868 |   36.2 k |
-| 1M      | LEA58  | vital-signs | low-5 |  3.5 M |    62.43 |   0.356 |   56.5 k |
-| 1M      | A5N46  | laboratory  | top-5 | 90.3 M |  1494.28 |  11.798 |   60.4 k |
-| 1M      | A5N46  | vital-signs | low-5 |  3.5 M |    52.61 |   0.045 |   67.0 k |
+| 1M      | LEA47  | laboratory  | top-5 | 90.3 M |  2923.45 |   7.951 |  30.9 k |
+| 1M      | LEA47  | vital-signs | low-5 |  3.5 M |   153.07 |  29.422 |  23.0 k |
+| 1M      | LEA58  | laboratory  | top-5 | 90.3 M |  2490.08 | 101.868 |  36.2 k |
+| 1M      | LEA58  | vital-signs | low-5 |  3.5 M |    62.43 |   0.356 |  56.5 k |
+| 1M      | A5N46  | laboratory  | top-5 | 90.3 M |  1093.04 |   7.293 |  82.6 k |
+| 1M      | A5N46  | vital-signs | low-5 |  3.5 M |    63.30 |   1.099 |  55.7 k |
