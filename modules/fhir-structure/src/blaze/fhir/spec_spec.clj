@@ -8,10 +8,13 @@
    [blaze.util-spec]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
-   [cognitect.anomalies :as anom]))
+   [cognitect.anomalies :as anom])
+  (:import
+   [java.io OutputStream]))
 
 (s/fdef fhir-spec/type-exists?
-  :args (s/cat :type string?))
+  :args (s/cat :type string?)
+  :ret boolean?)
 
 (s/def :blaze.fhir.spec/choices-spec
   (s/spec (s/cat :op #(= `s2/or %)
@@ -40,7 +43,8 @@
   :ret (s/or :resource :fhir/Resource :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/write-json
-  :args (s/cat :context :blaze.fhir/writing-context :out some? :value any?))
+  :args (s/cat :context :blaze.fhir/writing-context
+               :out #(instance? OutputStream %) :value any?))
 
 (s/fdef fhir-spec/write-json-as-bytes
   :args (s/cat :context :blaze.fhir/writing-context :value any?)
