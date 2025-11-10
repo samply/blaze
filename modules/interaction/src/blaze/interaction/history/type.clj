@@ -29,13 +29,11 @@
        (link "next")))
 
 (defn- build-response
-  [{:blaze/keys [db] :as context} query-params total version-handles]
+  [{:blaze/keys [db] :as context} query-params total handles]
   (let [page-size (fhir-util/page-size query-params)
-        paged-version-handles (into [] (take (inc page-size)) version-handles)
+        {:keys [handles next-handle]} (history-util/build-page page-size handles)
         next-link (partial next-link context query-params)]
-    ;; we need to take here again because we take page-size + 1 above
-    (-> (d/pull-many db (into [] (take page-size) paged-version-handles)
-                     {:variant (fhir-util/summary query-params)})
+    (-> (d/pull-many db handles (history-util/pull-opts query-params))
         (ac/exceptionally
          #(assoc %
                  ::anom/category ::anom/fault
@@ -49,8 +47,8 @@
               :entry
               (mapv (partial history-util/build-entry context) paged-versions))
 
-              (< page-size (count paged-version-handles))
-              (update :link conj-vec (next-link (peek paged-version-handles))))))))))
+              next-handle
+              (update :link conj-vec (next-link next-handle)))))))))
 
 (defmethod m/pre-init-spec :blaze.interaction.history/type [_]
   (s/keys :req [::search-util/link]
@@ -64,7 +62,7 @@
         {{:fhir.resource/keys [type]} :data} ::reitit/match}]
     (let [page-t (history-util/page-t params)
           page-id (when page-t (fhir-util/page-id params))
-          since (history-util/since params)
+          since (fhir-util/since params)
           db (cond-> db since (d/since since))
           total (d/total-num-of-type-changes db type)
           version-handles (d/type-history db type page-t page-id)
