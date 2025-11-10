@@ -65,12 +65,6 @@
       (:direct include-defs)
       (assoc :includes (include/add-includes db include-defs matches)))))
 
-(defn- match-xf [context]
-  (comp (mapcat ac/join) (map (partial search-util/match-entry context))))
-
-(defn- include-xf [context]
-  (comp (mapcat ac/join) (map (partial search-util/include-entry context))))
-
 (defn- query-plan-outcome [{:blaze/keys [db]} query]
   (let [plan (d/explain-query db query)]
     {:fhir/type :fhir/OperationOutcome
@@ -83,23 +77,18 @@
 (defn- query-plan-entry [context query]
   (search-util/outcome-entry context (query-plan-outcome context query)))
 
+(defn- match-xf [context]
+  (map (partial search-util/match-entry context)))
+
+(defn- include-xf [context]
+  (map (partial search-util/include-entry context)))
+
 (defn- entries
-  [{{:keys [explain?]} :params :as context} query match-futures include-futures]
+  [{{:keys [explain?]} :params :as context} query match-future include-future]
   (log/trace "build entries")
   (-> (cond-> [] (and explain? query) (conj (query-plan-entry context query)))
-      (into (match-xf context) match-futures)
-      (into (include-xf context) include-futures)))
-
-(defn- pull-matches-xf [{:keys [summary elements]} db]
-  (cond
-    (seq elements)
-    (map #(d/pull-many db % {:elements elements}))
-
-    (= "true" summary)
-    (map #(d/pull-many db % {:variant :summary}))
-
-    :else
-    (map (partial d/pull-many db))))
+      (into (match-xf context) (ac/join match-future))
+      (into (include-xf context) (ac/join include-future))))
 
 (defn- total-future
   "Calculates the total number of resources returned.
@@ -129,6 +118,12 @@
     :else
     (ac/completed-future nil)))
 
+(defn- match-pull-opts [{:keys [summary elements]}]
+  (cond
+    (seq elements) {:elements elements}
+    (= "true" summary) {:variant :summary}
+    :else {}))
+
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
 
@@ -146,9 +141,11 @@
     (let [{:keys [matches includes next-match]}
           (build-page db include-defs page-size handles)
           total-future (total-future db type query params matches next-match)
-          match-futures (into [] (comp (partition-all 100) (pull-matches-xf params db)) matches)
-          include-futures (into [] (comp (partition-all 100) (map (partial d/pull-many db))) includes)]
-      (-> (ac/all-of (into (conj match-futures total-future) include-futures))
+          match-future (d/pull-many db matches (match-pull-opts params))
+          include-future (if (seq includes)
+                           (d/pull-many db includes)
+                           (ac/completed-future nil))]
+      (-> (ac/all-of [total-future match-future include-future])
           (ac/exceptionally
            #(assoc %
                    ::anom/category ::anom/fault
@@ -156,7 +153,7 @@
           (ac/then-apply
            (fn [_]
              (cond->
-              {:entries (entries context query match-futures include-futures)
+              {:entries (entries context query match-future include-future)
                :next-handle next-match
                :total (ac/join total-future)}
                query
