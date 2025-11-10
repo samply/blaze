@@ -7,7 +7,6 @@
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
-   [blaze.interaction.history.util :as history-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util.spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
@@ -85,7 +84,7 @@
         :keys [query-params] :as request}]
     (let [page-size (fhir-util/page-size query-params max-size nil)
           page-offset (fhir-util/page-offset query-params)
-          since (history-util/since query-params)]
+          since (fhir-util/since query-params)]
       (when-ok [start (fhir-util/date query-params "start")
                 end (fhir-util/date query-params "end")
                 {:keys [handles next-offset]}

@@ -26,7 +26,7 @@
    [reitit.core :as reitit]
    [ring.util.response :as ring])
   (:import
-   [java.time ZoneId ZonedDateTime]
+   [java.time Instant ZoneId ZonedDateTime]
    [java.time.format DateTimeFormatter]))
 
 (set! *warn-on-reflection* true)
@@ -176,6 +176,22 @@
               query-params {"_elements" values}]
           (= (set (fhir-util/elements query-params))
              (apply set/union (map (comp set :vector) fields))))))))
+
+(deftest since-test
+  (testing "no query param"
+    (is (nil? (fhir-util/since {}))))
+
+  (testing "invalid query param"
+    (are [t] (nil? (fhir-util/since {"_since" t}))
+      "<invalid>"
+      "-1"
+      ""))
+
+  (testing "valid query param"
+    (are [v t] (= t (fhir-util/since {"_since" v}))
+      "2015-02-07T13:28:17+02:00" (Instant/ofEpochSecond 1423308497)
+      ["<invalid>" "2015-02-07T13:28:17+02:00"] (Instant/ofEpochSecond 1423308497)
+      ["2015-02-07T13:28:17+02:00" "2015-02-07T13:28:17Z"] (Instant/ofEpochSecond 1423308497))))
 
 (deftest date-test
   (testing "missing"

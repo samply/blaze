@@ -45,6 +45,10 @@
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable (s/coll-of simple-keyword?)))
 
+(s/fdef fhir-util/since
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :ret (s/nilable inst?))
+
 (s/fdef fhir-util/date
   :args (s/cat :query-params (s/nilable :ring.request/query-params)
                :name string?)

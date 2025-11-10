@@ -21,22 +21,6 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(deftest since-test
-  (testing "no query param"
-    (is (nil? (history-util/since {}))))
-
-  (testing "invalid query param"
-    (are [t] (nil? (history-util/since {"_since" t}))
-      "<invalid>"
-      "-1"
-      ""))
-
-  (testing "valid query param"
-    (are [v t] (= t (history-util/since {"_since" v}))
-      "2015-02-07T13:28:17+02:00" (Instant/ofEpochSecond 1423308497)
-      ["<invalid>" "2015-02-07T13:28:17+02:00"] (Instant/ofEpochSecond 1423308497)
-      ["2015-02-07T13:28:17+02:00" "2015-02-07T13:28:17Z"] (Instant/ofEpochSecond 1423308497))))
-
 (deftest page-t-test
   (testing "no query param"
     (is (nil? (history-util/page-t {}))))

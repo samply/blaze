@@ -8,24 +8,9 @@
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
    [blaze.util :as u :refer [str]]
-   [reitit.core :as reitit])
-  (:import
-   [java.time Instant OffsetDateTime]
-   [java.time.format DateTimeParseException]))
+   [reitit.core :as reitit]))
 
 (set! *warn-on-reflection* true)
-
-(defn since
-  "Tries to parse a valid instant out of the `_since` query param.
-
-  Returns nil on absent or invalid instant."
-  {:arglists '([query-params])}
-  [{v "_since"}]
-  (some
-   #(try
-      (Instant/from (OffsetDateTime/parse %))
-      (catch DateTimeParseException _))
-   (u/to-seq v)))
 
 (defn page-t
   "Returns the t (optional) to constrain the database in paging. Pages will
@@ -44,7 +29,7 @@
   (let [path (reitit/match->path match (select-keys query-params ["_count"]))]
     (str base-url path)))
 
-(defn self-link [{::search-util/keys [link] :as context} query-params]
+(defn- self-link [{::search-util/keys [link] :as context} query-params]
   (link "self" (nav-url context query-params)))
 
 (defn page-nav-url
@@ -122,3 +107,13 @@
    :type #fhir/code "history"
    :total (total-value total)
    :link [(self-link context query-params)]})
+
+(defn build-page [page-size handles]
+  (let [handles (into [] (take (inc page-size)) handles)]
+    (if (< page-size (count handles))
+      {:handles (pop handles)
+       :next-handle (peek handles)}
+      {:handles handles})))
+
+(defn pull-opts [query-params]
+  {:variant (fhir-util/summary query-params)})

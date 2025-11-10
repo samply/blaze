@@ -17,8 +17,8 @@
    [cognitect.anomalies :as anom]
    [reitit.core :as reitit])
   (:import
-   [java.time Instant ZoneId ZonedDateTime]
-   [java.time.format DateTimeFormatter]
+   [java.time Instant OffsetDateTime ZoneId ZonedDateTime]
+   [java.time.format DateTimeFormatter DateTimeParseException]
    [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
@@ -92,6 +92,18 @@
   {:arglists '([query-params])}
   [{v "_elements"}]
   (into [] (comp (mapcat #(str/split % #"\s*,\s*")) (remove str/blank?) (map keyword)) (u/to-seq v)))
+
+(defn since
+  "Tries to parse a valid instant out of the `_since` query param.
+
+  Returns nil on absent or invalid instant."
+  {:arglists '([query-params])}
+  [{v "_since"}]
+  (some
+   #(try
+      (Instant/from (OffsetDateTime/parse %))
+      (catch DateTimeParseException _))
+   (u/to-seq v)))
 
 (defn- incorrect-date-msg [name value]
   (format "The value `%s` of the query param `%s` is no valid date." value name))
