@@ -149,7 +149,7 @@
   (.write w ^String (hex bs))
   (.write w "\""))
 
-(defmethod print-dup (Class/forName "[B") [^bytes bytes ^Writer w]
+(defmethod print-dup byte/1 [^bytes bytes ^Writer w]
   (.write w "#=(byte-array [")
   (.write w ^String (str/join " " (map int (vec bytes))))
   (.write w "])"))

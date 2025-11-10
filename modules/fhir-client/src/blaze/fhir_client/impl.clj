@@ -15,7 +15,7 @@
    [taoensso.timbre :as log])
   (:import
    [java.nio.channels SeekableByteChannel]
-   [java.nio.file Path Files StandardOpenOption]
+   [java.nio.file Files Path StandardOpenOption]
    [java.util.concurrent Flow$Subscriber Flow$Subscription]))
 
 (set! *warn-on-reflection* true)
