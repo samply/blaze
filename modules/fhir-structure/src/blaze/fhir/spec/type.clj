@@ -12,6 +12,7 @@
     :refer [def-complex-type def-primitive-type defextended]]
    [blaze.fhir.spec.type.protocols :as p]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.spec.xml :as spec-xml]
    [blaze.util :refer [str]]
    [clojure.alpha.spec :as s2]
    [clojure.data.xml :as xml]
@@ -289,7 +290,7 @@
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
   (-to-xml [s]
-    (xml-node/element nil {:value (str s)}))
+    (xml-node/element nil {:value (spec-xml/replace-invalid-chars s)}))
   (-hash-into [s sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 3))                                   ; :fhir/string

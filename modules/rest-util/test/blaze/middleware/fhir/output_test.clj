@@ -135,8 +135,10 @@
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
 
 (defn- parse-xml [body]
-  (with-open [reader (io/reader body)]
-    (fhir-spec/conform-xml (xml/parse reader))))
+  (let [out (ByteArrayOutputStream.)]
+    (rp/write-body-to-stream body nil out)
+    (with-open [reader (io/reader (.toByteArray out))]
+      (fhir-spec/conform-xml (xml/parse reader)))))
 
 (deftest xml-test
   (testing "possible accept headers"
@@ -182,10 +184,10 @@
 
   (testing "failing XML emit"
     (given (call (resource-handler-200 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
-      :status := 500
+      :status := 200
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
-      [:body parse-xml :fhir/type] := :fhir/OperationOutcome
-      [:body parse-xml :issue 0 :diagnostics] := #fhir/string "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
+      [:body parse-xml :fhir/type] := :fhir/Patient
+      [:body parse-xml :gender] := #fhir/code "foo?bar")))
 
 (deftest binary-resource-test
   (testing "by default, the binary data gets wrapped inside a JSON FHIR-resource"

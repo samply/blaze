@@ -26,10 +26,17 @@
 (defn remove-character-content [element]
   (update element :content (partial filter element?)))
 
-(defn primitive-xml-form [regex constructor]
-  `(s/and
-    element?
-    (fn [~'e] (value-matches? ~regex ~'e))
-    (s/conformer remove-character-content set-extension-tag)
-    (s/schema {:content (s/coll-of :fhir.xml/Extension)})
-    (s/conformer ~constructor type/to-xml)))
+(defn primitive-xml-form
+  ([constructor]
+   `(s/and
+     element?
+     (s/conformer remove-character-content set-extension-tag)
+     (s/schema {:content (s/coll-of :fhir.xml/Extension)})
+     (s/conformer ~constructor type/to-xml)))
+  ([regex constructor]
+   `(s/and
+     element?
+     (fn [~'e] (value-matches? ~regex ~'e))
+     (s/conformer remove-character-content set-extension-tag)
+     (s/schema {:content (s/coll-of :fhir.xml/Extension)})
+     (s/conformer ~constructor type/to-xml))))
