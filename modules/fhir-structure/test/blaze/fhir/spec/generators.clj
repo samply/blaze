@@ -30,19 +30,19 @@
   gen/large-integer)
 
 (def string-value
-  (gen/such-that (partial re-matches #"[\r\n\t\u0020-\uFFFF]+") gen/string 1000))
+  (gen/such-that (partial re-matches #"(?U)[\r\n\t\p{Print}]*") gen/string 10000))
 
 (def decimal-value
   (gen/fmap #(BigDecimal/valueOf ^double %) (gen/double* {:infinite? false :NaN? false})))
 
 (def uri-value
-  (gen/such-that (partial re-matches #"[\u0021-\uFFFF]*") gen/string 1000))
+  (gen/such-that (partial re-matches #"(?U)[\p{Print}&&[^\p{Blank}]]*") gen/string 10000))
 
 (def url-value
-  (gen/such-that (partial re-matches #"[\u0021-\uFFFF]*") gen/string 1000))
+  (gen/such-that (partial re-matches #"(?U)[\p{Print}&&[^\p{Blank}]]*") gen/string 10000))
 
 (def canonical-value
-  (gen/such-that (partial re-matches #"[\u0021-\uFFFF]*") gen/string 1000))
+  (gen/such-that (partial re-matches #"(?U)[\p{Print}&&[^\p{Blank}]]*") gen/string 10000))
 
 (def base64Binary-value
   (->> (gen/vector gen/char-alphanumeric 4)
@@ -103,7 +103,7 @@
             (gen/tuple hour minute time-second)))
 
 (def code-value
-  (gen/such-that (partial re-matches #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*") gen/string 1000))
+  (gen/such-that (partial re-matches #"(?U)[\p{Print}&&[^\p{Blank}]]+(\p{Blank}[\p{Print}&&[^\p{Blank}]]+)*") gen/string 10000))
 
 (def char-digit
   (gen/fmap char (gen/choose 48 57)))
@@ -119,7 +119,7 @@
                  1000))
 
 (def markdown-value
-  (gen/such-that (partial re-matches #"[\r\n\t\u0020-\uFFFF]+") gen/string 1000))
+  (gen/such-that (partial re-matches #"(?U)[\r\n\t\p{Print}]*") gen/string 10000))
 
 (def unsignedInt-value
   gen/nat)

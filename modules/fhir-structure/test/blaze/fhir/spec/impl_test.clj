@@ -84,7 +84,6 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "[\\r\\n\\t\\u0020-\\uFFFF]+" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->String type/to-xml))}])))
@@ -113,7 +112,7 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
+               (fn [~'e] (xml/value-matches? "(?U)[\\p{Print}&&[^\\p{Blank}]]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Uri type/to-xml))}])))
@@ -127,7 +126,7 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
+               (fn [~'e] (xml/value-matches? "(?U)[\\p{Print}&&[^\\p{Blank}]]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Canonical type/to-xml))}])))
@@ -155,7 +154,6 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Code type/to-xml))}])))
@@ -296,9 +294,9 @@
   (testing "XML representation of Extension"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Extension")))
       [:fhir.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
+      := `(s2/and string? (specs/regex "(?U)[\\p{Print}&&[^\\p{Blank}]]*" impl/intern-string))
       [:fhir.xml.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
+      := `(s2/and string? (specs/regex "(?U)[\\p{Print}&&[^\\p{Blank}]]*" impl/intern-string))
       [:fhir.xml.Extension/url 0 :representation] := :xmlAttr))
 
   (testing "XML representation of Coding"
@@ -337,7 +335,6 @@
       [:fhir.xml.Quantity/unit 0 :spec-form regexes->str]
       := `(s2/and
            xml/element?
-           (fn [~'e] (xml/value-matches? "[\\r\\n\\t\\u0020-\\uFFFF]+" ~'e))
            (s2/conformer xml/remove-character-content xml/set-extension-tag)
            (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
            (s2/conformer type/xml->InternedString type/to-xml)))))

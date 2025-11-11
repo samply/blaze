@@ -17,7 +17,6 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayOutputStream]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -43,23 +42,13 @@
       (with-open [_ (prom/timer generate-duration-seconds "json")]
         (fhir-spec/write-json writing-context output-stream body)))))
 
-(defn- generate-xml** [body]
-  (let [out (ByteArrayOutputStream.)]
-    (with-open [writer (io/writer out)]
-      (xml/emit (fhir-spec/unform-xml body) writer))
-    (.toByteArray out)))
-
-(defn- generate-xml* [response]
-  (try
-    (update response :body generate-xml**)
-    (catch Throwable e
-      (-> (ring/response (generate-error-payload generate-xml** e))
-          (ring/status 500)))))
-
-(defn- generate-xml [response]
-  (log/trace "generate XML")
-  (with-open [_ (prom/timer generate-duration-seconds "xml")]
-    (generate-xml* response)))
+(defn- generate-xml [body]
+  (reify rp/StreamableResponseBody
+    (write-body-to-stream [_body _response output-stream]
+      (log/trace "generate XML")
+      (with-open [_ (prom/timer generate-duration-seconds "xml")]
+        (with-open [writer (io/writer output-stream)]
+          (xml/emit (fhir-spec/unform-xml body) writer))))))
 
 (defn- generate-binary** [{:keys [data]}]
   (when data
@@ -88,7 +77,7 @@
                             (ring/content-type content-type))))
 
 (defn- encode-response-xml [{:keys [body] :as response} content-type]
-  (cond-> response body (-> generate-xml
+  (cond-> response body (-> (update :body generate-xml)
                             (ring/content-type content-type))))
 
 (defn- encode-response-binary [writing-context {:keys [body] :as response}]

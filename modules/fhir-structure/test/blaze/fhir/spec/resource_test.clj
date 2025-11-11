@@ -459,7 +459,7 @@
         {:url "url-204835"
          :valueCanonical "\n"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `canonical, regex [\\u0021-\\uFFFF]*`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `canonical, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "code"
@@ -468,15 +468,7 @@
         {:url "foo"
          :valueCode value}
         type/type := :fhir/Extension
-        :value := (type/code value)))
-
-    (testing "invalid"
-      (given-parse-json "Extension"
-        {:url "url-204835"
-         :valueCode "a  b"}
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `a  b`. Expected type is `code, regex [\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
-        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
+        :value := (type/code value))))
 
   (testing "date"
     (doseq [value ["2025" "2025-03" "2025-03-15"]]
@@ -652,20 +644,12 @@
         :value := (type/integer value))))
 
   (testing "markdown"
-    (doseq [value ["foo" "bar"]]
+    (doseq [value ["foo" "bar" "𝗔𝗗𝗗𝗜𝗧𝗜𝗢𝗡𝗔𝗟 𝗨𝗦𝗖𝗗𝗜" "\t" "\r" "\n" "" "\001e"]]
       (given-parse-json "Extension"
         {:url "foo"
          :valueMarkdown value}
         type/type := :fhir/Extension
-        :value := (type/markdown value)))
-
-    (testing "invalid control character"
-      (given-parse-json "Extension"
-        {:url "url-204835"
-         :valueMarkdown "foo\u001Ebar"}
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo\u001Ebar`. Expected type is `markdown, regex [\\r\\n\\t\\u0020-\\uFFFF]+`."
-        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
+        :value := (type/markdown value))))
 
   (testing "oid"
     (doseq [value ["urn:oid:2.16.840.1.113883.3.1937.777.24.2.1791"
@@ -693,20 +677,13 @@
         :value := (type/positiveInt value))))
 
   (testing "string"
-    (given-parse-json "Extension"
-      {:url "url-204835"
-       :valueString "value-204935"}
-      type/type := :fhir/Extension
-      :url := "url-204835"
-      :value := #fhir/string "value-204935")
-
-    (testing "invalid control character"
+    (doseq [value ["value-204935" "𝗔𝗗𝗗𝗜𝗧𝗜𝗢𝗡𝗔𝗟 𝗨𝗦𝗖𝗗𝗜" "\t" "\r" "\n" "" "\001e"]]
       (given-parse-json "Extension"
         {:url "url-204835"
-         :valueString "foo\u001Ebar"}
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo\u001Ebar`. Expected type is `string, regex [\\r\\n\\t\\u0020-\\uFFFF]+`."
-        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
+         :valueString value}
+        type/type := :fhir/Extension
+        :url := "url-204835"
+        :value := (type/string value))))
 
   (testing "time"
     (doseq [value ["15:22:13" "15:22:13.1" "15:22:13.12" "15:22:13.123"]]
@@ -766,7 +743,7 @@
         {:url "url-204835"
          :valueUri "\n"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `uri, regex [\\u0021-\\uFFFF]*`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `uri, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "url"
@@ -798,7 +775,7 @@
         {:url "url-204835"
          :valueUrl "\n"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `url, regex [\\u0021-\\uFFFF]*`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `url, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "uuid"

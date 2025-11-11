@@ -599,23 +599,22 @@
     (primitive-integer-handler def type/integer)
 
     :primitive/string
-    (primitive-string-handler def type/string identity "string"
-                              #"[\r\n\t\u0020-\uFFFF]+" use-regex)
+    (primitive-string-handler def type/string identity "string")
 
     :primitive/decimal
     (primitive-decimal-handler def)
 
     :primitive/uri
     (primitive-string-handler def type/uri identity "uri"
-                              #"[\u0021-\uFFFF]*" use-regex)
+                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
 
     :primitive/url
     (primitive-string-handler def type/url identity "url"
-                              #"[\u0021-\uFFFF]*" use-regex)
+                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
 
     :primitive/canonical
     (primitive-string-handler def type/canonical identity "canonical"
-                              #"[\u0021-\uFFFF]*" use-regex)
+                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
 
     :primitive/base64Binary
     (primitive-string-handler def type/base64Binary identity "base64Binary"
@@ -635,8 +634,7 @@
     (primitive-string-handler def type/time system/parse-time "time")
 
     :primitive/code
-    (primitive-string-handler def type/code identity "code"
-                              #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" use-regex)
+    (primitive-string-handler def type/code identity "code")
 
     :primitive/oid
     (primitive-string-handler def type/oid identity "oid"
@@ -647,8 +645,7 @@
                               #"[A-Za-z0-9\-\.]{1,64}" use-regex)
 
     :primitive/markdown
-    (primitive-string-handler def type/markdown identity "markdown"
-                              #"[\r\n\t\u0020-\uFFFF]+" use-regex)
+    (primitive-string-handler def type/markdown identity "markdown")
 
     :primitive/unsignedInt
     (primitive-integer-handler def type/unsignedInt)

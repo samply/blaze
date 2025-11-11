@@ -1315,6 +1315,9 @@ jobs:
     - name: Patient Everything Since
       run: .github/scripts/patient-everything-since.sh
 
+    - name: Control Character Handling
+      run: .github/scripts/control-character-handling.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}
