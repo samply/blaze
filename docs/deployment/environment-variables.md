@@ -406,6 +406,8 @@ volumes:
 
 Set to `true` if the optional Admin API should be enabled. Needed by the frontend.
 
+**Default:** `false`
+
 #### `CQL_EXPR_CACHE_SIZE` <Badge type="warning" text="Since 0.28"/>
 
 Size of the CQL expression cache in MiB. This cache is part of the JVM heap. Will be disabled if not given.
@@ -432,9 +434,13 @@ Allow deleting multiple resources using [Conditional Delete](../api/interaction/
 
 Enable the [Delete History](../api/interaction/delete-history.md) interaction.
 
+**Default:** `false`
+
 #### `ENABLE_OPERATION_PATIENT_PURGE` <Badge type="warning" text="Since 0.30.1"/>
 
 Enable the [Operation \$purge on Patient](../api/operation/patient-purge.md).
+
+**Default:** `false`
 
 #### `PAGE_STORE_EXPIRE` <Badge type="warning" text="Since 1.0.2"/>
 
@@ -446,6 +452,8 @@ The duration after page store entries expire. Lower that value if the size of th
 
 Enable the [Terminology Service](../terminology-service.md).
 
+**Default:** `false`
+
 #### `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` <Badge type="warning" text="Since 0.32"/>
 
 Number of concepts the graph cache should hold.
@@ -456,9 +464,13 @@ Number of concepts the graph cache should hold.
 
 Enable LOINC for the Terminology Service by using the value `true`. LOINC doesn't need release files.
 
+**Default:** `false`
+
 #### `ENABLE_TERMINOLOGY_SNOMED_CT` <Badge type="warning" text="Since 0.31"/>
 
 Enable SNOMED CT for the Terminology Service by using the value `true`.
+
+**Default:** `false`
 
 #### `SNOMED_CT_RELEASE_PATH` <Badge type="warning" text="Since 0.31"/>
 
