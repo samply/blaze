@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.2.0
+
+### Enhancements
+
+* Implement _since for Patient $everything ([#1636](https://github.com/samply/blaze/issues/1636))
+* Fetch All Public Keys from the OIDC Provider ([#3090](https://github.com/samply/blaze/issues/3090))
+
+### Performance
+
+* Prevent Cache Thrashing During Large Resource Scans ([#3086](https://github.com/samply/blaze/issues/3086))
+* Improve Performance of FHIR Search Queries with 10k Values ([#3112](https://github.com/samply/blaze/issues/3112))
+* Allow to Cache Larger CQL Expressions ([#3113](https://github.com/samply/blaze/issues/3113))
+* Optimize DateTime Parsing ([#3064](https://github.com/samply/blaze/issues/3064))
+* Remove Duplicate Search Params and Values ([#3036](https://github.com/samply/blaze/issues/3036))
+
+### Bugfixes
+
+* Fix Incorrect Search on Resources with Varying ID Length ([#3103](https://github.com/samply/blaze/issues/3103))
+* Fix Regression In Resource Memory Consumption ([#3008](https://github.com/samply/blaze/issues/3008))
+* Allow Strings with Unicode Chars Outside U+FFF ([#2984](https://github.com/samply/blaze/issues/2984))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/112?closed=1).
+
 ## v1.1.2
 
 ### Bugfixes
