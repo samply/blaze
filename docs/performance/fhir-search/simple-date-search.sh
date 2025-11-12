@@ -1,39 +1,39 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-COMPOSE_FILE="$1"
-BASE="${2:-http://localhost:8080/fhir}"
-START_EPOCH="$(date +"%s")"
+compose_file="$1"
+base="${2:-http://localhost:8080/fhir}"
+start_epoch="$(date +"%s")"
 
 count-resources() {
-  YEAR="$1"
+  local year="$1"
 
-  echo "Counting Observations with date in $YEAR..."
-  count-resources-raw "$BASE" "Observation" "date=$YEAR" "$START_EPOCH-count-$YEAR.times"
+  echo "Counting Observations with date in $year..."
+  count-resources-raw "$base" "Observation" "date=$year" "$start_epoch-count-$year.times"
 }
 
 download-resources() {
-  YEAR="$1"
+  local year="$1"
 
-  echo "Downloading Observations with date in $YEAR..."
-  download-resources-raw "$BASE" "Observation" "date=$YEAR" "$START_EPOCH-download-$YEAR.times"
+  echo "Downloading Observations with date in $year..."
+  download-resources-raw "$base" "Observation" "date=$year" "$start_epoch-download-$year.times"
 }
 
 download-resources-elements-subject() {
-  YEAR="$1"
+  local year="$1"
 
-  echo "Downloading Observations with date in $YEAR and _elements=subject..."
-  download-resources-raw "$BASE" "Observation" "date=$YEAR&_elements=subject" "$START_EPOCH-download-subject-$YEAR.times"
+  echo "Downloading Observations with date in $year and _elements=subject..."
+  download-resources-raw "$base" "Observation" "date=$year&_elements=subject" "$start_epoch-download-subject-$year.times"
 }
 
-restart "$COMPOSE_FILE"
+restart "$compose_file"
 count-resources "2013"
 download-resources "2013"
 download-resources-elements-subject "2013"
 
-restart "$COMPOSE_FILE"
+restart "$compose_file"
 count-resources "2019"
 download-resources "2019"
 download-resources-elements-subject "2019"
