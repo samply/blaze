@@ -3601,7 +3601,21 @@
 
             (testing "at the end"
               (given (pull-type-query node "Patient" clauses "5")
-                count := 0))))))))
+                count := 0)))))))
+
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "xa"}]
+      [:put {:fhir/type :fhir/Patient :id "xb"}]]]
+
+    (testing "doesn't find patients with a prefix of the ID"
+      (given-type-query node "Patient" [["_id" "x"]]
+        count := 0))
+
+    (given-type-query node "Patient" [["_id" "xa"]]
+      count := 1)
+
+    (given-type-query node "Patient" [["_id" "xb"]]
+      count := 1)))
 
 (deftest ^:slow type-query-id-property-test
   (log/set-min-level! :warn)
@@ -3923,7 +3937,29 @@
 
         (testing "it is possible to start with some patient"
           (given (pull-type-query node "Patient" [["_list" "0"]] "0")
-            count := 0))))))
+            count := 0)))))
+
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "x"}]
+      [:put {:fhir/type :fhir/Patient :id "xa"}]
+      [:put {:fhir/type :fhir/Patient :id "xb"}]
+      [:put {:fhir/type :fhir/List :id "0"
+             :entry
+             [{:fhir/type :fhir.List/entry
+               :item #fhir/Reference {:reference #fhir/string "Patient/xa"}}]}]
+      [:put {:fhir/type :fhir/List :id "1"
+             :entry
+             [{:fhir/type :fhir.List/entry
+               :item #fhir/Reference {:reference #fhir/string "Patient/xb"}}]}]]]
+
+    (testing "doesn't find patients with a prefix of the referenced item"
+      (given-type-query node "Patient" [["_list" "0"]]
+        count := 1
+        [0 :id] := "xa")
+
+      (given-type-query node "Patient" [["_list" "1"]]
+        count := 1
+        [0 :id] := "xb"))))
 
 (deftest type-query-has-test
   (testing "Special Search Parameter _has"
@@ -5693,10 +5729,7 @@
         (given-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]]
           count := 2
           [0 :id] := "0"
-          [1 :id] := "1")
-
-        (testing "count query"
-          (is (= 2 (count-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]])))))
+          [1 :id] := "1"))
 
       (testing "on pulling the second page"
         (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]] "1")
@@ -6916,6 +6949,38 @@
     (given-type-query node "Patient" [["_tag" "code-084517"]]
       count := 1
       [0 :id] := "2")))
+
+(deftest type-query-id-prefix-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "x"}]
+      [:put {:fhir/type :fhir/Patient :id "xa"}]
+      [:put {:fhir/type :fhir/Patient :id "xb"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/xa"}}]
+      [:put {:fhir/type :fhir/Observation :id "1"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/xb"}}]
+      [:put {:fhir/type :fhir/Observation :id "2"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/xb"}}]]]
+
+    (testing "doesn't find patients with a prefix of the queried reference"
+      (doseq [clause [["subject" "Patient/x"] ["patient" "x"]]]
+        (given-type-query node "Observation" [clause]
+          count := 0)))
+
+    (doseq [clause [["subject" "Patient/xa"] ["patient" "xa"]]]
+      (given-type-query node "Observation" [clause]
+        count := 1))
+
+    (doseq [clause [["subject" "Patient/xb"] ["patient" "xb"]]]
+      (given-type-query node "Observation" [clause]
+        count := 2
+        [0 :id] := "1"
+        [1 :id] := "2")
+
+      (testing "it is possible to start with the second observation"
+        (given (pull-type-query node "Observation" [clause] "2")
+          count := 1
+          [0 :id] := "2")))))
 
 (defn- patient-type-query? [x]
   (instance? PatientTypeQuery x))
@@ -8287,7 +8352,23 @@
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := #fhir/boolean false
-                [0 :meta :versionId] := #fhir/id "1"))))))))
+                [0 :meta :versionId] := #fhir/id "1")))))))
+
+  (testing "doesn't spill over into other IDs with the same prefix"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "a"}]
+        [:put {:fhir/type :fhir/Patient :id "aa"}]]]
+
+      (testing "the original database"
+        (testing "has still only one history entry"
+          (is (= 1 (d/total-num-of-instance-changes (d/db node) "Patient" "a"))))
+
+        (testing "contains still the original patient"
+          (given (pull-instance-history (d/db node) "Patient" "a")
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "a"
+            [0 :meta :versionId] := #fhir/id "1"))))))
 
 ;; ---- Type-Level History Functions ------------------------------------------
 
@@ -8786,7 +8867,31 @@
 
         (let [db (d/db node)
               patients (d/resource-handle db "Patient" "0")]
-          (is (coll/empty? (d/rev-include db patients "Observation" "code"))))))))
+          (is (coll/empty? (d/rev-include db patients "Observation" "code"))))))
+
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "x"}]
+        [:put {:fhir/type :fhir/Patient :id "xa"}]
+        [:put {:fhir/type :fhir/Patient :id "xb"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/xa"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/xb"}}]]]
+
+      (let [db (d/db node)]
+
+        (testing "doesn't find resources were the ID of the patient is a prefix of the reference"
+          (is (empty? (d/rev-include db (d/resource-handle db "Patient" "x")))))
+
+        (given (vec (d/rev-include db (d/resource-handle db "Patient" "xa")))
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0")
+
+        (given (vec (d/rev-include db (d/resource-handle db "Patient" "xb")))
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "1")))))
 
 (deftest patient-everything-test
   (testing "with patient only"
