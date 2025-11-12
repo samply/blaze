@@ -7,7 +7,6 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
-   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.impl.batch-db.patient-everything :as pe]
@@ -38,7 +37,7 @@
 (defn- rev-include [batch-db snapshot reference source-tid code]
   (coll/eduction
    (u/resource-handle-xf batch-db source-tid)
-   (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
+   (sp-vr/index-handles-full-value snapshot code source-tid reference)))
 
 (defn- sp-total
   [db {:keys [base]}]

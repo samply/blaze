@@ -150,9 +150,9 @@
   "Returns a reducible collection of index handles that have `value` starting at
   `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid value]
-   (sp-vr/index-handles snapshot c-hash tid (bs/size value) value))
+   (sp-vr/index-handles-full-value snapshot c-hash tid value))
   ([{:keys [snapshot]} c-hash tid value start-id]
-   (sp-vr/index-handles snapshot c-hash tid (bs/size value) value start-id)))
+   (sp-vr/index-handles-full-value snapshot c-hash tid value start-id)))
 
 (defn- has-system? [value]
   (let [idx (str/index-of value "|")]

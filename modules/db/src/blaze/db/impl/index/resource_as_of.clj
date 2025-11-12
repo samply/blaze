@@ -310,7 +310,7 @@
     (i/prefix-entries
      snapshot :resource-as-of-index
      (keep (decoder tid (codec/id-string id) tid-id-size t since-t))
-     tid-id-size (start-key tid id start-t))))
+     (inc tid-id-size) (start-key tid id start-t))))
 
 (defn- resource-handle* [iter target-buf key-buf value-buf tid id base-t since-t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))
