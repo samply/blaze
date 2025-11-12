@@ -1,36 +1,36 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-COMPOSE_FILE="$1"
-BASE="${2:-http://localhost:8080/fhir}"
-START_EPOCH="$(date +"%s")"
+compose_file="$1"
+base="${2:-http://localhost:8080/fhir}"
+start_epoch="$(date +"%s")"
 
 count-resources() {
-  NAME="$1"
-  CODES="$2"
+  local name="$1"
+  local codes="$2"
 
-  echo "Counting $NAME Observations..."
-  count-resources-raw "$BASE" "Observation" "code=$CODES" "$START_EPOCH-count-$NAME.times"
+  echo "Counting $name Observations..."
+  count-resources-raw "$base" "Observation" "code=$codes" "$start_epoch-count-$name.times"
 }
 
 download-resources() {
-  NAME="$1"
-  CODES="$2"
+  local name="$1"
+  local codes="$2"
 
-  echo "Downloading $NAME Observations..."
-  download-resources-raw "$BASE" "Observation" "code=$CODES" "$START_EPOCH-download-$NAME.times"
+  echo "Downloading $name Observations..."
+  download-resources-raw "$base" "Observation" "code=$codes" "$start_epoch-download-$name.times"
 }
 
-#restart "$COMPOSE_FILE"
-NAME="10-observation-codes"
-CODES="$(add_system "http://loinc.org" "$(cat "$SCRIPT_DIR/observation-codes-10.txt")")"
-#count-resources "$NAME" "$CODES"
-#download-resources "$NAME" "$CODES"
+#restart "$compose_file"
+name="10-observation-codes"
+codes="$(add_system "http://loinc.org" "$(cat "$script_dir/observation-codes-10.txt")")"
+#count-resources "$name" "$codes"
+#download-resources "$name" "$codes"
 
-restart "$COMPOSE_FILE"
-NAME="100-observation-codes"
-CODES="$(add_system "http://loinc.org" "$(cat "$SCRIPT_DIR/observation-codes-100.txt")")"
-count-resources "$NAME" "$CODES"
-download-resources "$NAME" "$CODES"
+restart "$compose_file"
+name="100-observation-codes"
+codes="$(add_system "http://loinc.org" "$(cat "$script_dir/observation-codes-100.txt")")"
+count-resources "$name" "$codes"
+download-resources "$name" "$codes"
