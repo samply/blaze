@@ -21,7 +21,7 @@ fi
 COUNT="$(echo "$REPORT" | jq -r '.group[0].population[0].count')"
 
 sleep 10
-for i in {0..8}
+for i in {0..3}
 do
   sleep 1
   blazectl --server "$BASE" evaluate-measure --force-sync "$SCRIPT_DIR/$FILE.yml" 2> /dev/null |\
