@@ -1,2 +1,5 @@
 # Reformat Typescript Modules (https://github.com/samply/blaze/issues/2814)
 91b5277fe83897901b393e132aaeb444b9d8e63c
+
+# Rename Shell Vars to Lowercase (https://github.com/samply/blaze/pull/3115)
+d102698bbc4effe8930886deab69d6cd6eae1336
