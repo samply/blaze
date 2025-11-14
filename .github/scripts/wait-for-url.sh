@@ -1,14 +1,14 @@
 #!/bin/bash -e
 
-URL=$1
-START_EPOCH="$(date +"%s")"
+url=$1
+start_epoch="$(date +"%s")"
 
 eclipsed() {
-  EPOCH="$(date +"%s")"
-  echo $((EPOCH - START_EPOCH))
+  local epoch="$(date +"%s")"
+  echo $((epoch - start_epoch))
 }
 
 # wait at maximum 120 seconds
-while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$URL")" != "200") ]]; do
+while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$url")" != "200") ]]; do
   sleep 2
 done

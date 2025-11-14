@@ -6,13 +6,13 @@
 # The script assumes that Blaze contains at least some patients that were
 # imported before this script runs.
 
-BASE="http://localhost:8080/fhir"
-NOW=$(date +%Y-%m-%dT%H:%M:%S)
-PATIENT_COUNT=$(curl -sH 'Prefer: handling=strict' "$BASE/Patient?_lastUpdated=gt$NOW&_summary=count" | jq -r .total)
+base="http://localhost:8080/fhir"
+now=$(date +%Y-%m-%dT%H:%M:%S)
+patient_count=$(curl -sH 'Prefer: handling=strict' "$base/Patient?_lastUpdated=gt$now&_summary=count" | jq -r .total)
 
-if [ "$PATIENT_COUNT" -eq 0 ]; then
-  echo "✅ no patents are updated after $NOW"
+if [ "$patient_count" -eq 0 ]; then
+  echo "✅ no patents are updated after $now"
 else
-  echo "🆘 $PATIENT_COUNT patents are updated after $NOW"
+  echo "🆘 $patient_count patents are updated after $now"
   exit 1
 fi

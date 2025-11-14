@@ -1,64 +1,64 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-CA_CERT_BLAZE="$SCRIPT_DIR/../../modules/ingress/blaze-cert.pem"
-CA_CERT_KEYCLOAK="$SCRIPT_DIR/../../modules/ingress/keycloak-cert.pem"
-ACCESS_TOKEN=$(curl -s -d 'grant_type=client_credentials' --cacert "$CA_CERT_KEYCLOAK" -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f "https://keycloak.localhost/realms/blaze/protocol/openid-connect/token" | jq -r .access_token)
+ca_cert_blaze="$script_dir/../../modules/ingress/blaze-cert.pem"
+ca_cert_keycloak="$script_dir/../../modules/ingress/keycloak-cert.pem"
+access_token=$(curl -s -d 'grant_type=client_credentials' --cacert "$ca_cert_keycloak" -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f "https://keycloak.localhost/realms/blaze/protocol/openid-connect/token" | jq -r .access_token)
 
-if [ -z "$ACCESS_TOKEN" ]; then
+if [ -z "$access_token" ]; then
   echo "Missing access token"
   exit 1;
 fi
 
-BASE="https://blaze.localhost/fhir"
+base="https://blaze.localhost/fhir"
 
 echo "checking index.html using the Accept header..."
-STATUS_CODE=$(curl -sL --cacert "$CA_CERT_BLAZE" -H 'Accept: text/html' -o /dev/null -w '%{response_code}' "$BASE")
-HEADERS=$(curl -sL --cacert "$CA_CERT_BLAZE" -H 'Accept: text/html' -o /dev/null -D - "$BASE")
-CONTENT_TYPE_HEADER=$(echo "$HEADERS" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
+status_code=$(curl -sL --cacert "$ca_cert_blaze" -H 'Accept: text/html' -o /dev/null -w '%{response_code}' "$base")
+headers=$(curl -sL --cacert "$ca_cert_blaze" -H 'Accept: text/html' -o /dev/null -D - "$base")
+content_type_header=$(echo "$headers" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
 
-test "status code" "$STATUS_CODE" "200"
-test "Content-Type header" "$CONTENT_TYPE_HEADER" "text/html"
+test "status code" "$status_code" "200"
+test "Content-Type header" "$content_type_header" "text/html"
 
 echo "checking index.html using the _format query param..."
-STATUS_CODE=$(curl -sL --cacert "$CA_CERT_BLAZE" -o /dev/null -w '%{response_code}' "$BASE?_format=html")
-HEADERS=$(curl -sL --cacert "$CA_CERT_BLAZE" -o /dev/null -D - "$BASE?_format=html")
-CONTENT_TYPE_HEADER=$(echo "$HEADERS" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
+status_code=$(curl -sL --cacert "$ca_cert_blaze" -o /dev/null -w '%{response_code}' "$base?_format=html")
+headers=$(curl -sL --cacert "$ca_cert_blaze" -o /dev/null -D - "$base?_format=html")
+content_type_header=$(echo "$headers" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
 
-test "status code" "$STATUS_CODE" "200"
-test "Content-Type header" "$CONTENT_TYPE_HEADER" "text/html"
+test "status code" "$status_code" "200"
+test "Content-Type header" "$content_type_header" "text/html"
 
 echo "checking version.json..."
-STATUS_CODE=$(curl -sL --cacert "$CA_CERT_BLAZE" -H 'Accept: text/html' -o /dev/null -w '%{response_code}' "$BASE/_app/version.json")
-HEADERS=$(curl -sL --cacert "$CA_CERT_BLAZE" -H 'Accept: text/html' -o /dev/null -D - "$BASE/_app/version.json")
-CONTENT_TYPE_HEADER=$(echo "$HEADERS" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
+status_code=$(curl -sL --cacert "$ca_cert_blaze" -H 'Accept: text/html' -o /dev/null -w '%{response_code}' "$base/_app/version.json")
+headers=$(curl -sL --cacert "$ca_cert_blaze" -H 'Accept: text/html' -o /dev/null -D - "$base/_app/version.json")
+content_type_header=$(echo "$headers" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
 
-test "status code" "$STATUS_CODE" "200"
-test "Content-Type header" "$CONTENT_TYPE_HEADER" "application/json"
+test "status code" "$status_code" "200"
+test "Content-Type header" "$content_type_header" "application/json"
 
 echo "checking system-search using access token..."
-RESOURCE_TYPE=$(curl -sL --cacert "$CA_CERT_BLAZE" --oauth2-bearer "$ACCESS_TOKEN" "$BASE" | jq -r .resourceType)
+resource_type=$(curl -sL --cacert "$ca_cert_blaze" --oauth2-bearer "$access_token" "$base" | jq -r .resourceType)
 
-test "Resource type" "$RESOURCE_TYPE" "Bundle"
+test "Resource type" "$resource_type" "Bundle"
 
 echo "checking system-search JSON using the _format query param..."
-STATUS_CODE=$(curl -sL --cacert "$CA_CERT_BLAZE" --oauth2-bearer "$ACCESS_TOKEN" -o /dev/null -w '%{response_code}' "$BASE?_format=json")
-HEADERS=$(curl -sL --cacert "$CA_CERT_BLAZE" --oauth2-bearer "$ACCESS_TOKEN" -o /dev/null -D - "$BASE?_format=json")
-CONTENT_TYPE_HEADER=$(echo "$HEADERS" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
+status_code=$(curl -sL --cacert "$ca_cert_blaze" --oauth2-bearer "$access_token" -o /dev/null -w '%{response_code}' "$base?_format=json")
+headers=$(curl -sL --cacert "$ca_cert_blaze" --oauth2-bearer "$access_token" -o /dev/null -D - "$base?_format=json")
+content_type_header=$(echo "$headers" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
 
-test "status code" "$STATUS_CODE" "200"
-test "Content-Type header" "$CONTENT_TYPE_HEADER" "application/fhir+json;charset=utf-8"
+test "status code" "$status_code" "200"
+test "Content-Type header" "$content_type_header" "application/fhir+json;charset=utf-8"
 
 echo "checking system-search XML using the _format query param..."
-STATUS_CODE=$(curl -sL --cacert "$CA_CERT_BLAZE" --oauth2-bearer "$ACCESS_TOKEN" -o /dev/null -w '%{response_code}' "$BASE?_format=xml")
-HEADERS=$(curl -sL --cacert "$CA_CERT_BLAZE" --oauth2-bearer "$ACCESS_TOKEN" -o /dev/null -D - "$BASE?_format=xml")
-CONTENT_TYPE_HEADER=$(echo "$HEADERS" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
+status_code=$(curl -sL --cacert "$ca_cert_blaze" --oauth2-bearer "$access_token" -o /dev/null -w '%{response_code}' "$base?_format=xml")
+headers=$(curl -sL --cacert "$ca_cert_blaze" --oauth2-bearer "$access_token" -o /dev/null -D - "$base?_format=xml")
+content_type_header=$(echo "$headers" | grep -iv 'X-Content-Type-Options' | grep -i 'Content-Type' | tr -d '\r' | cut -d' ' -f2)
 
-test "status code" "$STATUS_CODE" "200"
-test "Content-Type header" "$CONTENT_TYPE_HEADER" "application/fhir+xml;charset=utf-8"
+test "status code" "$status_code" "200"
+test "Content-Type header" "$content_type_header" "application/fhir+xml;charset=utf-8"
 
 echo "check Encounter supported profile..."
-CAPABILITY_STATEMENT=$(curl -sL --cacert "$CA_CERT_BLAZE" --oauth2-bearer "$ACCESS_TOKEN" -H 'Accept: application/fhir+json' "$BASE/metadata")
-test "Encounter Supported Profile" "$(echo "$CAPABILITY_STATEMENT" | jq -r '.rest[0].resource[] | select(.type == "Encounter") .supportedProfile[0]')" "https://www.medizininformatik-initiative.de/fhir/core/modul-fall/StructureDefinition/KontaktGesundheitseinrichtung|2025.0.0"
+capability_statement=$(curl -sL --cacert "$ca_cert_blaze" --oauth2-bearer "$access_token" -H 'Accept: application/fhir+json' "$base/metadata")
+test "Encounter Supported Profile" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "Encounter") .supportedProfile[0]')" "https://www.medizininformatik-initiative.de/fhir/core/modul-fall/StructureDefinition/KontaktGesundheitseinrichtung|2025.0.0"

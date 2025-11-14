@@ -1,9 +1,9 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-STATE="$(curl -s "$BASE/__admin/dbs/index/column-families/patient-last-change-index/state" | jq -r .type)"
+base="http://localhost:8080/fhir"
+state="$(curl -s "$base/__admin/dbs/index/column-families/patient-last-change-index/state" | jq -r .type)"
 
-test "state" "$STATE" "$1"
+test "state" "$state" "$1"

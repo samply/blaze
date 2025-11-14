@@ -1,12 +1,12 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_IDENTIFIER="$1"
-PATIENT_ID=$(curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIER" | jq -r '.entry[0].resource.id')
-FIRST_PAGE=$(curl -s "$BASE/Patient/$PATIENT_ID/_history")
-FIRST_PAGE_SIZE=$(echo "$FIRST_PAGE" | jq -r '.entry | length')
+base="http://localhost:8080/fhir"
+patient_identifier="$1"
+patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+first_page=$(curl -s "$base/Patient/$patient_id/_history")
+first_page_size=$(echo "$first_page" | jq -r '.entry | length')
 
-test "first page size" "$FIRST_PAGE_SIZE" "1"
+test "first page size" "$first_page_size" "1"

@@ -1,17 +1,17 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 validate_code() {
-  PARAMS="$1"
-  DISPLAY="$2"
-  RESULT=$(curl -sH 'Accept: application/fhir+json' "$BASE/CodeSystem/\$validate-code?url=http://snomed.info/sct&$PARAMS")
+  local params="$1"
+  local display="$2"
+  result=$(curl -sH 'Accept: application/fhir+json' "$base/CodeSystem/\$validate-code?url=http://snomed.info/sct&$params")
 
-  test "result" "$(echo "$RESULT" | jq -r '.parameter[] | select(.name == "result").valueBoolean')" "true"
-  test "display" "$(echo "$RESULT" | jq -r '.parameter[] | select(.name == "display").valueString')" "$DISPLAY"
+  test "result" "$(echo "$result" | jq -r '.parameter[] | select(.name == "result").valueBoolean')" "true"
+  test "display" "$(echo "$result" | jq -r '.parameter[] | select(.name == "display").valueString')" "$display"
 }
 
 validate_code "code=900000000000012004" "SNOMED CT model component"

@@ -1,14 +1,14 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-OBSERVATION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]') 
+base="http://localhost:8080/fhir"
+patient_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
+observation_id=$(uuidgen | tr '[:upper:]' '[:lower:]') 
 
-curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$PATIENT_ID\"}" -o /dev/null "$BASE/Patient/$PATIENT_ID"
-curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$OBSERVATION_ID\", \"subject\": {\"reference\": \"Patient/$PATIENT_ID\"}}" -o /dev/null "$BASE/Observation/$OBSERVATION_ID"
+curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$patient_id\"}" -o /dev/null "$base/Patient/$patient_id"
+curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$observation_id\", \"subject\": {\"reference\": \"Patient/$patient_id\"}}" -o /dev/null "$base/Observation/$observation_id"
 
 bundle() {
 cat <<END
@@ -19,20 +19,20 @@ cat <<END
     {
       "request": {
         "method": "DELETE",
-        "url": "Patient/$PATIENT_ID"
+        "url": "Patient/$patient_id"
       }
     },
     {
       "request": {
         "method": "DELETE",
-        "url": "Observation/$OBSERVATION_ID"
+        "url": "Observation/$observation_id"
       }
     }
   ]
 }
 END
 }
-RESPONSE=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$BASE")
+response=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
-test "delete response for the first entry" "$(echo "$RESPONSE" | jq -r '.entry[0].response.status')" "204"
-test "delete response for the second entry" "$(echo "$RESPONSE" | jq -r '.entry[1].response.status')" "204"
+test "delete response for the first entry" "$(echo "$response" | jq -r '.entry[0].response.status')" "204"
+test "delete response for the second entry" "$(echo "$response" | jq -r '.entry[1].response.status')" "204"

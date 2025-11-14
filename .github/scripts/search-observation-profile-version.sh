@@ -1,10 +1,10 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PROFILE_URL="http://example.com/fhir/StructureDefinition/$(uuidgen | tr '[:upper:]' '[:lower:]')"
+base="http://localhost:8080/fhir"
+profile_url="http://example.com/fhir/StructureDefinition/$(uuidgen | tr '[:upper:]' '[:lower:]')"
 
 observation() {
 cat <<END
@@ -12,7 +12,7 @@ cat <<END
   "resourceType": "Observation",
   "meta" : {
     "profile" : [
-      "$PROFILE_URL|$1"
+      "$profile_url|$1"
     ]
   }
 }
@@ -20,7 +20,7 @@ END
 }
 
 create() {
-  curl -s -f -H "Content-Type: application/fhir+json" -H 'Accept: application/fhir+json' -d @- -o /dev/null "$BASE/Observation"
+  curl -s -f -H "Content-Type: application/fhir+json" -H 'Accept: application/fhir+json' -d @- -o /dev/null "$base/Observation"
 }
 
 observation "1.2.3" | create
@@ -28,7 +28,7 @@ observation "1.3.4" | create
 observation "2.1.6" | create
 
 search() {
-  curl -s -H "Content-Type: application/fhir+json" "$BASE/Observation?_profile$1=$PROFILE_URL$2&_summary=count" | jq -r .total
+  curl -s -H "Content-Type: application/fhir+json" "$base/Observation?_profile$1=$profile_url$2&_summary=count" | jq -r .total
 }
 
 test "Observation below v1 count" "$(search ":below" "|1")" "2"

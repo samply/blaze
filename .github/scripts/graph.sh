@@ -1,21 +1,21 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
-create "$BASE/GraphDefinition" < "$SCRIPT_DIR/graph/GraphDefinition-patient-observation-encounter.json" > /dev/null
+create "$base/GraphDefinition" < "$script_dir/graph/GraphDefinition-patient-observation-encounter.json" > /dev/null
 
-PATIENT_IDENTIFIER="X79746011X"
-PATIENT_ID=$(curl -sH 'Accept: application/fhir+json' "$BASE/Patient?identifier=$PATIENT_IDENTIFIER" | jq -r '.entry[0].resource.id')
-echo "$PATIENT_ID"
-BUNDLE=$(curl -sH 'Accept: application/fhir+json' "$BASE/Patient/$PATIENT_ID/\$graph?graph=patient-observation-encounter")
-ACTUAL_SIZE=$(echo "$BUNDLE" | jq -r .total)
-IDS="$(echo "$BUNDLE" | jq -r '.entry[].resource.id')"
+patient_identifier="X79746011X"
+patient_id=$(curl -sH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+echo "$patient_id"
+bundle=$(curl -sH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$graph?graph=patient-observation-encounter")
+actual_size=$(echo "$bundle" | jq -r .total)
+ids="$(echo "$bundle" | jq -r '.entry[].resource.id')"
 
-test "size" "$ACTUAL_SIZE" "195"
+test "size" "$actual_size" "195"
 
-test "no duplicates" "$(echo "$IDS" | sort -u | wc -l | xargs)" "$(echo "$IDS" | wc -l | xargs)"
+test "no duplicates" "$(echo "$ids" | sort -u | wc -l | xargs)" "$(echo "$ids" | wc -l | xargs)"
 
-test "type counts" "$(echo "$BUNDLE" | jq -r '.entry | group_by(.resource.resourceType)[] | [.[0].resource.resourceType, length] | @csv')" "$(cat "$SCRIPT_DIR/graph/$PATIENT_IDENTIFIER-patient-observation-encounter-type-counts.csv")"
+test "type counts" "$(echo "$bundle" | jq -r '.entry | group_by(.resource.resourceType)[] | [.[0].resource.resourceType, length] | @csv')" "$(cat "$script_dir/graph/$patient_identifier-patient-observation-encounter-type-counts.csv")"

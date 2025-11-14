@@ -1,15 +1,15 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/../util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/../util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
-ERROR_MESSAGE="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Patient\"}" "$BASE/__admin/Task" | jq -r '.issue[].diagnostics')"
-test "error message" "$ERROR_MESSAGE" "Incorrect resource type \`Patient\`. Expected type is \`Task\`."
+error_message="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Patient\"}" "$base/__admin/Task" | jq -r '.issue[].diagnostics')"
+test "error message" "$error_message" "Incorrect resource type \`Patient\`. Expected type is \`Task\`."
 
-ERROR_MESSAGE="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Task\"}" "$BASE/__admin/Task" | jq -r '.issue[].details.text')"
-test "error message" "$ERROR_MESSAGE" "No allowed profile found."
+error_message="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Task\"}" "$base/__admin/Task" | jq -r '.issue[].details.text')"
+test "error message" "$error_message" "No allowed profile found."
 
 re-index-job() {
 cat <<END
@@ -50,5 +50,5 @@ cat <<END
 END
 }
 
-ERROR_MESSAGE="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(re-index-job)" "$BASE/__admin/Task" | jq -r '.issue[0].diagnostics')"
-test "error message" "$ERROR_MESSAGE" "Constraint failed: status-reason-on-hold: 'Assigns possible reasons to the 'on-hold' status.' (defined in https://samply.github.io/blaze/fhir/StructureDefinition/Job)"
+error_message="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(re-index-job)" "$base/__admin/Task" | jq -r '.issue[0].diagnostics')"
+test "error message" "$error_message" "Constraint failed: status-reason-on-hold: 'Assigns possible reasons to the 'on-hold' status.' (defined in https://samply.github.io/blaze/fhir/StructureDefinition/Job)"

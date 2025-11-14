@@ -1,11 +1,11 @@
 #!/bin/sh -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+script_dir="$(dirname "$(readlink -f "$0")")"
 
-DIR="$1"
+dir="$1"
 
 while true; do
-  echo "Post process $(find "$DIR" -name '*.json' | wc -l) bundles..."
-  "$SCRIPT_DIR/post-process-bundles.sh" "$DIR"
+  echo "Post process $(find "$dir" -name '*.json' | wc -l) bundles..."
+  "$script_dir/post-process-bundles.sh" "$dir"
   sleep 10
 done

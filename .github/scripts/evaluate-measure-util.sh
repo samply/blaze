@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
 library() {
 cat <<END
@@ -94,11 +94,11 @@ create_measure() {
 }
 
 create_bundle_library_measure() {
-  MEASURE_URI="$1"
-  NAME="$2"
-  DATA="$(base64 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$NAME.cql" | tr -d '\n')"
-  LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
-  LIBRARY="$(create_library "$LIBRARY_URI" "$DATA")"
-  MEASURE="$(create_measure "$MEASURE_URI" "$LIBRARY_URI")"
-  bundle_library_measure | jq -cM ".entry[0].resource = $LIBRARY | .entry[1].resource = $MEASURE"
+  local measure_uri="$1"
+  local name="$2"
+  local data="$(base64 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$name.cql" | tr -d '\n')"
+  local library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
+  local library="$(create_library "$library_uri" "$data")"
+  local measure="$(create_measure "$measure_uri" "$library_uri")"
+  bundle_library_measure | jq -cM ".entry[0].resource = $library | .entry[1].resource = $measure"
 }

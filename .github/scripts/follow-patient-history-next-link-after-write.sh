@@ -5,18 +5,18 @@
 # expects the total on the next page being still the same
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
-FIRST_PAGE="$(curl -sH "Accept: application/fhir+json" "$BASE/Patient/_history")"
-TOTAL="$(echo "$FIRST_PAGE" | jq -r .total)"
-NEXT_LINK="$(echo "$FIRST_PAGE" | jq -r '.link[] | select(.relation == "next") | .url')"
+first_page="$(curl -sH "Accept: application/fhir+json" "$base/Patient/_history")"
+total="$(echo "$first_page" | jq -r .total)"
+next_link="$(echo "$first_page" | jq -r '.link[] | select(.relation == "next") | .url')"
 
 # create new patient
-curl -sfH 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Patient\"}" -o /dev/null "$BASE/Patient"
+curl -sfH 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Patient\"}" -o /dev/null "$base/Patient"
 
-SECOND_PAGE="$(curl -sH "Accept: application/fhir+json" "$NEXT_LINK")"
+second_page="$(curl -sH "Accept: application/fhir+json" "$next_link")"
 
-test "second page total" "$(echo "$SECOND_PAGE" | jq -r .total)" "$TOTAL"
+test "second page total" "$(echo "$second_page" | jq -r .total)" "$total"

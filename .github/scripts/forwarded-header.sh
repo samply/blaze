@@ -1,12 +1,12 @@
 #!/bin/bash -e
 
-PROTO=$1
-EXPECTED_SELF_LINK="$PROTO://blaze.de/fhir/Patient"
-ACTUAL_SELF_LINK=$(curl -s -H "Forwarded:host=blaze.de;proto=$PROTO" http://localhost:8080/fhir/Patient | jq -r '.link[] | select(.relation == "self") | .url' | cut -d? -f1)
+proto=$1
+expected_self_link="$proto://blaze.de/fhir/Patient"
+actual_self_link=$(curl -s -H "Forwarded:host=blaze.de;proto=$proto" http://localhost:8080/fhir/Patient | jq -r '.link[] | select(.relation == "self") | .url' | cut -d? -f1)
 
-if [ "$EXPECTED_SELF_LINK" = "$ACTUAL_SELF_LINK" ]; then
+if [ "$expected_self_link" = "$actual_self_link" ]; then
   echo "✅"
 else
-  echo "🆘 expected '$EXPECTED_SELF_LINK' but was '$ACTUAL_SELF_LINK'"
+  echo "🆘 expected '$expected_self_link' but was '$actual_self_link'"
   exit 1
 fi

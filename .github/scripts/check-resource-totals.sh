@@ -1,11 +1,11 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-ACTUAL_TOTALS="$(curl -sH 'Accept: application/fhir+json' "$BASE/\$totals" | jq -r '.parameter[] | [.name, .valueUnsignedInt] | @csv')"
-EXPECTED_TOTALS="$(cat <<END
+base="http://localhost:8080/fhir"
+actual_totals="$(curl -sH 'Accept: application/fhir+json' "$base/\$totals" | jq -r '.parameter[] | [.name, .valueUnsignedInt] | @csv')"
+expected_totals="$(cat <<END
 "AllergyIntolerance",76
 "CarePlan",540
 "CareTeam",540
@@ -34,4 +34,4 @@ EXPECTED_TOTALS="$(cat <<END
 END
 )"
 
-test "resource totals" "$ACTUAL_TOTALS" "$EXPECTED_TOTALS"
+test "resource totals" "$actual_totals" "$expected_totals"

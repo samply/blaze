@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 bundle() {
 cat <<END
@@ -30,22 +30,22 @@ cat <<END
 END
 }
 
-STATUS=$(curl -sH "Content-Type: application/fhir+json" \
-  -d "$(bundle)" "$BASE" | jq -r '.entry[].response.status')
+status=$(curl -sH "Content-Type: application/fhir+json" \
+  -d "$(bundle)" "$base" | jq -r '.entry[].response.status')
 
-if [ "$STATUS" = "201" ]; then
+if [ "$status" = "201" ]; then
   echo "✅ first attempt created the Organization"
 else
-  echo "🆘 status was ${STATUS} but should be 201"
+  echo "🆘 status was ${status} but should be 201"
   exit 1
 fi
 
-STATUS=$(curl -sH "Content-Type: application/fhir+json" \
-  -d "$(bundle)" "$BASE" | jq -r '.entry[].response.status')
+status=$(curl -sH "Content-Type: application/fhir+json" \
+  -d "$(bundle)" "$base" | jq -r '.entry[].response.status')
 
-if [ "$STATUS" = "200" ]; then
+if [ "$status" = "200" ]; then
   echo "✅ second attempt returned the already created Organization"
 else
-  echo "🆘 status was ${STATUS} but should be 200"
+  echo "🆘 status was ${status} but should be 200"
   exit 1
 fi

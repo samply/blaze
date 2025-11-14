@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
 library() {
 cat <<END
@@ -74,30 +74,30 @@ evaluate-measure() {
   curl -s "$1/Measure/$2/\$evaluate-measure?periodStart=2000&periodEnd=2030&subject=$3"
 }
 
-BASE="http://localhost:8080/fhir"
-FILE="modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql"
-DATA=$(base64 "$FILE" | tr -d '\n')
-LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
-MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
+base="http://localhost:8080/fhir"
+file="modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql"
+data=$(base64 "$file" | tr -d '\n')
+library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
+measure_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-create-library "$LIBRARY_URI" "$DATA" | create "$BASE/Library" > /dev/null
+create-library "$library_uri" "$data" | create "$base/Library" > /dev/null
 
-MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | create "$BASE/Measure" | jq -r .id)
+measure_id=$(create-measure "$measure_uri" "$library_uri" | create "$base/Measure" | jq -r .id)
 
-MALE_PATIENT_ID=$(curl -s "$BASE/Patient?gender=male&_count=1" | jq -r '.entry[].resource.id')
-COUNT=$(evaluate-measure "$BASE" "$MEASURE_ID" "$MALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
-if [ "$COUNT" = "1" ]; then
-  echo "✅ count ($COUNT) equals the expected count"
+male_patient_id=$(curl -s "$base/Patient?gender=male&_count=1" | jq -r '.entry[].resource.id')
+count=$(evaluate-measure "$base" "$measure_id" "$male_patient_id" | jq -r ".group[0].population[0].count")
+if [ "$count" = "1" ]; then
+  echo "✅ count ($count) equals the expected count"
 else
-  echo "🆘 count ($COUNT) != 1"
+  echo "🆘 count ($count) != 1"
   exit 1
 fi
 
-FEMALE_PATIENT_ID=$(curl -s "$BASE/Patient?gender=female&_count=1" | jq -r ".entry[].resource.id")
-COUNT=$(evaluate-measure "$BASE" "$MEASURE_ID" "$FEMALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
-if [ "$COUNT" = "0" ]; then
-  echo "✅ count ($COUNT) equals the expected count"
+female_patient_id=$(curl -s "$base/Patient?gender=female&_count=1" | jq -r ".entry[].resource.id")
+count=$(evaluate-measure "$base" "$measure_id" "$female_patient_id" | jq -r ".group[0].population[0].count")
+if [ "$count" = "0" ]; then
+  echo "✅ count ($count) equals the expected count"
 else
-  echo "🆘 count ($COUNT) != 0"
+  echo "🆘 count ($count) != 0"
   exit 1
 fi
