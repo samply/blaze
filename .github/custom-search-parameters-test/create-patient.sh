@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 patient() {
 cat <<END
@@ -18,4 +18,4 @@ cat <<END
 END
 }
 
-curl -fsH 'Content-Type: application/fhir+json' -d "$(patient)" -o /dev/null "$BASE/Patient"
+curl -fsH 'Content-Type: application/fhir+json' -d "$(patient)" -o /dev/null "$base/Patient"

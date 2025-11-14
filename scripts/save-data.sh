@@ -2,10 +2,10 @@
 
 # Usage: save-data.sh <source-base-url> <destination-dir>
 
-SRC_BASE_URI="$1"
-DST_DIR="$2"
-PAGE_SIZE=1000
-NUM_JOBS=2
+src_base_uri="$1"
+dst_dir="$2"
+page_size=1000
+num_jobs=2
 
 save-bundle() {
   jq -sc '{resourceType: "Bundle", type: "transaction", entry: .}' | gzip > "$1/transaction-$2.json.gz"
@@ -14,8 +14,8 @@ save-bundle() {
 
 export -f save-bundle
 
-echo "Save all resources from $SRC_BASE_URI into the directory $DST_DIR..."
+echo "Save all resources from $src_base_uri into the directory $dst_dir..."
 
-blazectl download --server "$SRC_BASE_URI" -q "_count=$PAGE_SIZE" 2>/dev/null |\
+blazectl download --server "$src_base_uri" -q "_count=$page_size" 2>/dev/null |\
   jq -c '{resource: ., request: {method: "PUT", url: (.resourceType + "/" + .id)}}' |\
-  parallel --pipe -n "$TRANSACTION_BUNDLE_SIZE" -j "$NUM_JOBS" save-bundle "$DST_DIR" "{#}"
+  parallel --pipe -n "$transaction_bundle_size" -j "$num_jobs" save-bundle "$dst_dir" "{#}"

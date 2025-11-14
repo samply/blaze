@@ -1,36 +1,36 @@
 #!/bin/bash -e
 
-BASE="http://localhost:8080/fhir"
-EXPECTED_NUM_PATIENTS=$(curl -s "$BASE/Patient?_summary=count" | jq -r .total)
-EXPECTED_NUM_OBSERVATIONS=$(curl -s "$BASE/Observation?_summary=count" | jq -r .total)
-EXPECTED_NUM_CONDITIONS=$(curl -s "$BASE/Condition?_summary=count" | jq -r .total)
-EXPECTED_NUM_ENCOUNTERS=$(curl -s "$BASE/Encounter?_summary=count" | jq -r .total)
-EXPECTED_NUM_PROCEDURES=$(curl -s "$BASE/Procedure?_summary=count" | jq -r .total)
+base="http://localhost:8080/fhir"
+expected_num_patients=$(curl -s "$base/Patient?_summary=count" | jq -r .total)
+expected_num_observations=$(curl -s "$base/Observation?_summary=count" | jq -r .total)
+expected_num_conditions=$(curl -s "$base/Condition?_summary=count" | jq -r .total)
+expected_num_encounters=$(curl -s "$base/Encounter?_summary=count" | jq -r .total)
+expected_num_procedures=$(curl -s "$base/Procedure?_summary=count" | jq -r .total)
 
-blazectl --server $BASE download Patient -q '_count=1&_revinclude=Observation:subject&_revinclude=Condition:subject&_revinclude=Procedure:subject&_revinclude=Encounter:subject' -o output.ndjson
+blazectl --server $base download Patient -q '_count=1&_revinclude=Observation:subject&_revinclude=Condition:subject&_revinclude=Procedure:subject&_revinclude=Encounter:subject' -o output.ndjson
 
-ACTUAL_NUM_PATIENTS=$(jq -r .resourceType output.ndjson | grep -c Patient)
-ACTUAL_NUM_OBSERVATIONS=$(jq -r .resourceType output.ndjson | grep -c Observation)
-ACTUAL_NUM_CONDITIONS=$(jq -r .resourceType output.ndjson | grep -c Condition)
-ACTUAL_NUM_ENCOUNTERS=$(jq -r .resourceType output.ndjson | grep -c Encounter)
-ACTUAL_NUM_PROCEDURES=$(jq -r .resourceType output.ndjson | grep -c Procedure)
+actual_num_patients=$(jq -r .resourceType output.ndjson | grep -c Patient)
+actual_num_observations=$(jq -r .resourceType output.ndjson | grep -c Observation)
+actual_num_conditions=$(jq -r .resourceType output.ndjson | grep -c Condition)
+actual_num_encounters=$(jq -r .resourceType output.ndjson | grep -c Encounter)
+actual_num_procedures=$(jq -r .resourceType output.ndjson | grep -c Procedure)
 
 rm output.ndjson
 
-if [ "$EXPECTED_NUM_PATIENTS" != "$ACTUAL_NUM_PATIENTS" ]; then
-  echo "🆘 Patient download size was ${ACTUAL_NUM_PATIENTS} but should be ${EXPECTED_NUM_PATIENTS}"
+if [ "$expected_num_patients" != "$actual_num_patients" ]; then
+  echo "🆘 Patient download size was ${actual_num_patients} but should be ${expected_num_patients}"
   exit 1
-elif [ "$EXPECTED_NUM_OBSERVATIONS" != "$ACTUAL_NUM_OBSERVATIONS" ]; then
-  echo "🆘 Observation download size was ${ACTUAL_NUM_OBSERVATIONS} but should be ${EXPECTED_NUM_OBSERVATIONS}"
+elif [ "$expected_num_observations" != "$actual_num_observations" ]; then
+  echo "🆘 Observation download size was ${actual_num_observations} but should be ${expected_num_observations}"
   exit 1
-elif [ "$EXPECTED_NUM_CONDITIONS" != "$ACTUAL_NUM_CONDITIONS" ]; then
-  echo "🆘 Condition download size was ${ACTUAL_NUM_CONDITIONS} but should be ${EXPECTED_NUM_CONDITIONS}"
+elif [ "$expected_num_conditions" != "$actual_num_conditions" ]; then
+  echo "🆘 Condition download size was ${actual_num_conditions} but should be ${expected_num_conditions}"
   exit 1
-elif [ "$EXPECTED_NUM_ENCOUNTERS" != "$ACTUAL_NUM_ENCOUNTERS" ]; then
-  echo "🆘 Encounter download size was ${ACTUAL_NUM_ENCOUNTERS} but should be ${EXPECTED_NUM_ENCOUNTERS}"
+elif [ "$expected_num_encounters" != "$actual_num_encounters" ]; then
+  echo "🆘 Encounter download size was ${actual_num_encounters} but should be ${expected_num_encounters}"
   exit 1
-elif [ "$EXPECTED_NUM_PROCEDURES" != "$ACTUAL_NUM_PROCEDURES" ]; then
-  echo "🆘 Procedure download size was ${ACTUAL_NUM_PROCEDURES} but should be ${EXPECTED_NUM_PROCEDURES}"
+elif [ "$expected_num_procedures" != "$actual_num_procedures" ]; then
+  echo "🆘 Procedure download size was ${actual_num_procedures} but should be ${expected_num_procedures}"
   exit 1
 else
   echo "✅ all download sizes match"

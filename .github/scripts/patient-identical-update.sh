@@ -5,8 +5,8 @@
 # doesn't create a new history entry.
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
 bundle() {
 cat <<END
@@ -26,24 +26,24 @@ cat <<END
 END
 }
 
-BASE="http://localhost:8080/fhir"
-PATIENT_IDENTIFIER="X79746011X"
-PATIENT=$(curl -sH "Accept: application/fhir+json" "$BASE/Patient?identifier=$PATIENT_IDENTIFIER" | jq -cM '.entry[0].resource')
-ID="$(echo "$PATIENT" | jq -r .id)"
-VERSION_ID="$(echo "$PATIENT" | jq -r .meta.versionId)"
+base="http://localhost:8080/fhir"
+patient_identifier="X79746011X"
+patient=$(curl -sH "Accept: application/fhir+json" "$base/Patient?identifier=$patient_identifier" | jq -cM '.entry[0].resource')
+id="$(echo "$patient" | jq -r .id)"
+version_id="$(echo "$patient" | jq -r .meta.versionId)"
 
 # Update Interaction
-RESULT=$(curl -sXPUT -H "Content-Type: application/fhir+json" -d "$PATIENT" "$BASE/Patient/$ID")
-RESULT_VERSION_ID="$(echo "$RESULT" | jq -r .meta.versionId)"
+result=$(curl -sXPUT -H "Content-Type: application/fhir+json" -d "$patient" "$base/Patient/$id")
+result_version_id="$(echo "$result" | jq -r .meta.versionId)"
 
-test "update versionId" "$RESULT_VERSION_ID" "$VERSION_ID"
+test "update versionId" "$result_version_id" "$version_id"
 
 # Transaction Interaction
-RESULT=$(curl -sH "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d "$(bundle "$PATIENT" "$ID")" "$BASE")
-RESULT_VERSION_ID="$(echo "$RESULT" | jq -r '.entry[0].resource.meta.versionId')"
+result=$(curl -sH "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d "$(bundle "$patient" "$id")" "$base")
+result_version_id="$(echo "$result" | jq -r '.entry[0].resource.meta.versionId')"
 
-test "transaction versionId" "$RESULT_VERSION_ID" "$VERSION_ID"
+test "transaction versionId" "$result_version_id" "$version_id"
 
-HISTORY_TOTAL=$(curl -sH "Accept: application/fhir+json" "$BASE/Patient/$ID/_history" | jq -r '.total')
+history_total=$(curl -sH "Accept: application/fhir+json" "$base/Patient/$id/_history" | jq -r '.total')
 
-test "history total" "$HISTORY_TOTAL" "1"
+test "history total" "$history_total" "1"

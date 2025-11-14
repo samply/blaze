@@ -1,19 +1,19 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+script_dir="$(dirname "$(readlink -f "$0")")"
 
-BASE="https://blaze.localhost/fhir"
-CA_CERT="$SCRIPT_DIR/../ingress/blaze-cert.pem"
-TOKEN="$("$SCRIPT_DIR/fetch-access-token.sh")"
+base="https://blaze.localhost/fhir"
+ca_cert="$script_dir/../ingress/blaze-cert.pem"
+token="$("$script_dir/fetch-access-token.sh")"
 
 blazectl --no-progress \
-  --server "$BASE" \
-  --certificate-authority "$CA_CERT" \
-  --token "$TOKEN" \
-  upload "$SCRIPT_DIR/../../.github/test-data/synthea"
+  --server "$base" \
+  --certificate-authority "$ca_cert" \
+  --token "$token" \
+  upload "$script_dir/../../.github/test-data/synthea"
 
 echo "Upload KDS Fall Profile..."
-curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$CA_CERT" --oauth2-bearer "$TOKEN" -d @"$SCRIPT_DIR/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.fall/StructureDefinition-mii-pr-fall-kontakt-gesundheitseinrichtung.json" "$BASE/StructureDefinition"
+curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.fall/StructureDefinition-mii-pr-fall-kontakt-gesundheitseinrichtung.json" "$base/StructureDefinition"
 
 echo "Upload one Value Set..."
-curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$CA_CERT" --oauth2-bearer "$TOKEN" -d @"$SCRIPT_DIR/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.laborbefund/ValueSet-mii-vs-labor-laborbereich.json" "$BASE/ValueSet"
+curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.laborbefund/ValueSet-mii-vs-labor-laborbereich.json" "$base/ValueSet"

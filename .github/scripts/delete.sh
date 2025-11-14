@@ -1,54 +1,54 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-HEADERS=$(curl -sfXDELETE -D - "$BASE/Patient/$PATIENT_ID")
+base="http://localhost:8080/fhir"
+patient_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
+headers=$(curl -sfXDELETE -D - "$base/Patient/$patient_id")
 
-test_empty "content type header" "$(echo "$HEADERS" | grep -i content-type | tr -d '\r')"
+test_empty "content type header" "$(echo "$headers" | grep -i content-type | tr -d '\r')"
 
-PATIENT_HISTORY=$(curl -s "$BASE/Patient/$PATIENT_ID/_history")
+patient_history=$(curl -s "$base/Patient/$patient_id/_history")
 
-TOTAL=$(echo "$PATIENT_HISTORY" | jq .total)
-if [ "$TOTAL" = "1" ]; then
+total=$(echo "$patient_history" | jq .total)
+if [ "$total" = "1" ]; then
   echo "✅ patient history has one entry"
 else
-  echo "🆘 patient history has $TOTAL entries"
+  echo "🆘 patient history has $total entries"
   exit 1
 fi
 
-METHOD=$(echo "$PATIENT_HISTORY" | jq -r .entry[].request.method)
-if [ "$METHOD" = "DELETE" ]; then
+method=$(echo "$patient_history" | jq -r .entry[].request.method)
+if [ "$method" = "DELETE" ]; then
   echo "✅ patient history entry has method DELETE"
 else
-  echo "🆘 patient history entry has method $METHOD"
+  echo "🆘 patient history entry has method $method"
   exit 1
 fi
 
-STATUS=$(echo "$PATIENT_HISTORY" | jq -r .entry[].response.status)
-if [ "$STATUS" = "204" ]; then
+status=$(echo "$patient_history" | jq -r .entry[].response.status)
+if [ "$status" = "204" ]; then
   echo "✅ patient history entry has status 204"
 else
-  echo "🆘 patient history entry has status $STATUS"
+  echo "🆘 patient history entry has status $status"
   exit 1
 fi
 
-PATIENT_STATUS=$(curl -is "$BASE/Patient/$PATIENT_ID" -o /dev/null -w '%{response_code}')
-if [ "$PATIENT_STATUS" = "410" ]; then
+patient_status=$(curl -is "$base/Patient/$patient_id" -o /dev/null -w '%{response_code}')
+if [ "$patient_status" = "410" ]; then
   echo "✅ patient status is HTTP/1.1 410 Gone"
 else
-  echo "🆘 patient status is $PATIENT_STATUS"
+  echo "🆘 patient status is $patient_status"
   exit 1
 fi
 
-PATIENT_OUTCOME=$(curl -s "$BASE/Patient/$PATIENT_ID")
+patient_outcome=$(curl -s "$base/Patient/$patient_id")
 
-CODE=$(echo "$PATIENT_OUTCOME" | jq -r .issue[].code)
-if [ "$CODE" = "deleted" ]; then
+code=$(echo "$patient_outcome" | jq -r .issue[].code)
+if [ "$code" = "deleted" ]; then
   echo "✅ patient outcome has code deleted"
 else
-  echo "🆘 patient outcome has code $CODE"
+  echo "🆘 patient outcome has code $code"
   exit 1
 fi

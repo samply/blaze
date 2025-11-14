@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
-ENFORCED=$(curl -s http://localhost:8080/fhir/metadata | jq -r 'isempty(.rest[].resource[].referencePolicy[] | select(. == "enforced")) | not')
+enforced=$(curl -s http://localhost:8080/fhir/metadata | jq -r 'isempty(.rest[].resource[].referencePolicy[] | select(. == "enforced")) | not')
 
-if [ "true" = "$ENFORCED" ]; then
+if [ "true" = "$enforced" ]; then
   echo "✅"
 else
   echo "Fail 😞"

@@ -1,9 +1,9 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 patient() {
 cat <<END
@@ -21,8 +21,8 @@ cat <<END
 END
 }
 
-curl -s -f -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(patient)" -o /dev/null "$BASE/Patient"
+curl -s -f -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(patient)" -o /dev/null "$base/Patient"
 
-BUNDLE="$(curl -sH 'Accept: application/fhir+json' -H 'Prefer: handling=strict' "$BASE/Patient?_tag=http://acme.org/codes|needs-review")"
+bundle="$(curl -sH 'Accept: application/fhir+json' -H 'Prefer: handling=strict' "$base/Patient?_tag=http://acme.org/codes|needs-review")"
 
-test "tag of all resources" "$(echo "$BUNDLE" | jq -r '.entry[].resource.meta.tag[].code' | uniq)" "needs-review"
+test "tag of all resources" "$(echo "$bundle" | jq -r '.entry[].resource.meta.tag[].code' | uniq)" "needs-review"

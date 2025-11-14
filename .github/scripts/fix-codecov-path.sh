@@ -4,8 +4,8 @@
 # Adds module path prefix to the paths in codecov.json files.
 #
 
-MODULE="$1"
-FILE="modules/$MODULE/target/coverage/codecov.json"
+module="$1"
+file="modules/$module/target/coverage/codecov.json"
 
-jq --arg prefix "modules/$MODULE/src/" '.coverage |= with_entries(.key = $prefix + .key)' "$FILE" > "$FILE.fix"
-mv "$FILE.fix" "$FILE"
+jq --arg prefix "modules/$module/src/" '.coverage |= with_entries(.key = $prefix + .key)' "$file" > "$file.fix"
+mv "$file.fix" "$file"

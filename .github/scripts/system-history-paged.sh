@@ -1,14 +1,14 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-FIRST_PAGE=$(curl -s "$BASE/_history")
-FIRST_PAGE_SIZE=$(echo "$FIRST_PAGE" | jq -r '.entry | length')
-NEXT_LINK="$(echo "$FIRST_PAGE" | jq -r '.link[] | select(.relation == "next") | .url')"
-SECOND_PAGE="$(curl -sH "Accept: application/fhir+json" "$NEXT_LINK")"
-SECOND_PAGE_SIZE=$(echo "$SECOND_PAGE" | jq -r '.entry | length')
+base="http://localhost:8080/fhir"
+first_page=$(curl -s "$base/_history")
+first_page_size=$(echo "$first_page" | jq -r '.entry | length')
+next_link="$(echo "$first_page" | jq -r '.link[] | select(.relation == "next") | .url')"
+second_page="$(curl -sH "Accept: application/fhir+json" "$next_link")"
+second_page_size=$(echo "$second_page" | jq -r '.entry | length')
 
-test "first page size" "$FIRST_PAGE_SIZE" "50"
-test "second page size" "$SECOND_PAGE_SIZE" "50"
+test "first page size" "$first_page_size" "50"
+test "second page size" "$second_page_size" "50"

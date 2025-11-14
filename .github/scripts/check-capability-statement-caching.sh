@@ -1,10 +1,10 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-ETAG=$(curl -sH 'Accept: application/fhir+json' -D - -o /dev/null "$BASE/metadata" | grep -i etag | cut -d: -f2)
-STATUS="$(echo "If-None-Match:$ETAG" | curl -sH 'Accept: application/fhir+json' -H @- -o /dev/null -w "%{http_code}" "$BASE/metadata")"
+base="http://localhost:8080/fhir"
+etag=$(curl -sH 'Accept: application/fhir+json' -D - -o /dev/null "$base/metadata" | grep -i etag | cut -d: -f2)
+status="$(echo "If-None-Match:$etag" | curl -sH 'Accept: application/fhir+json' -H @- -o /dev/null -w "%{http_code}" "$base/metadata")"
 
-test "status code" "$STATUS" "304"
+test "status code" "$status" "304"

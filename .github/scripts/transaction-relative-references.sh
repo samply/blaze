@@ -7,10 +7,10 @@
 # See: https://hl7.org/fhir/bundle.html#references
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 bundle() {
 cat <<END
@@ -45,8 +45,8 @@ cat <<END
 }
 END
 }
-RESULT=$(bundle | transact "$BASE")
+result=$(bundle | transact "$base")
 
-test "resource type" "$(echo "$RESULT" | jq -r .resourceType)" "Bundle"
-test "bundle type" "$(echo "$RESULT" | jq -r .type)" "transaction-response"
-test "response status" "$(echo "$RESULT" | jq -r .entry[].response.status | uniq)" "201"
+test "resource type" "$(echo "$result" | jq -r .resourceType)" "Bundle"
+test "bundle type" "$(echo "$result" | jq -r .type)" "transaction-response"
+test "response status" "$(echo "$result" | jq -r .entry[].response.status | uniq)" "201"

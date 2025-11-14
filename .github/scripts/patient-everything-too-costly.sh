@@ -1,11 +1,11 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_IDENTIFIER="X81372825X"
-PATIENT_ID=$(curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIER" | jq -r '.entry[0].resource.id')
-ERROR_CODE=$(curl -s "$BASE/Patient/$PATIENT_ID/\$everything" |  jq -r '.issue[0].code')
+base="http://localhost:8080/fhir"
+patient_identifier="X81372825X"
+patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+error_code=$(curl -s "$base/Patient/$patient_id/\$everything" |  jq -r '.issue[0].code')
 
-test "error code" "$ERROR_CODE" "too-costly"
+test "error code" "$error_code" "too-costly"

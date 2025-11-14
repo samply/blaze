@@ -1,5 +1,5 @@
 #!/bin/bash -e
 
-RESULTS_FILE="$1"
+results_file="$1"
 
-jq -f http-req-duration.jq "$RESULTS_FILE"
+jq -f http-req-duration.jq "$results_file"

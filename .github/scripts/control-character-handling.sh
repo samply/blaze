@@ -7,16 +7,16 @@
 # because escaping of control chars isn't possible in XML 1.0.
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
-JSON_RES=$(echo '{"resourceType": "Observation", "valueString": "\u0000" }' | create "$BASE/Observation")
-ID="$(echo "$JSON_RES" | jq -r .id)"
+json_res=$(echo '{"resourceType": "Observation", "valueString": "\u0000" }' | create "$base/Observation")
+ID="$(echo "$json_res" | jq -r .id)"
 
-test "JSON value" "$(echo "$JSON_RES" | jq .valueString)" "\"\u0000\""
+test "JSON value" "$(echo "$json_res" | jq .valueString)" "\"\u0000\""
 
-XML_RES=$(curl -s -H 'Accept: application/fhir+xml' "$BASE/Observation/$ID")
+xml_res=$(curl -s -H 'Accept: application/fhir+xml' "$base/Observation/$ID")
 
-test "XML value" "$(echo "$XML_RES" | xq -x /Observation/valueString/@value)" "?"
+test "XML value" "$(echo "$xml_res" | xq -x /Observation/valueString/@value)" "?"

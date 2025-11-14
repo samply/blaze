@@ -8,10 +8,10 @@ base="${2:-http://localhost:8080/fhir}"
 start_epoch="$(date +"%s")"
 
 count-resources() {
-  YEAR="$1"
+  local year="$1"
 
-  echo "Counting Laboratory Observations with date in $YEAR..."
-  count-resources-raw "$base" "Observation" "date=$YEAR&category=laboratory" "$start_epoch-count-$YEAR-laboratory.times"
+  echo "Counting Laboratory Observations with date in $year..."
+  count-resources-raw "$base" "Observation" "date=$year&category=laboratory" "$start_epoch-count-$year-laboratory.times"
 }
 
 restart "$compose_file"

@@ -1,12 +1,12 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-TYPE=$1
-QUERY="${2//[[:space:]]/}"
-EXPECTED_PLAN=$3
-ACTUAL_PLAN=$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$BASE/$TYPE?$QUERY&__explain=true" | jq -r '.entry[0].resource.issue[0].diagnostics')
+base="http://localhost:8080/fhir"
+type=$1
+query="${2//[[:space:]]/}"
+expected_plan=$3
+actual_plan=$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&__explain=true" | jq -r '.entry[0].resource.issue[0].diagnostics')
 
-test "plan" "$ACTUAL_PLAN" "$EXPECTED_PLAN"
+test "plan" "$actual_plan" "$expected_plan"

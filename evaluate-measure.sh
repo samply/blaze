@@ -81,68 +81,68 @@ create-measure() {
 }
 
 post() {
-  curl -sH "Content-Type: application/fhir+json" -d @- "$BASE/$1"
+  curl -sH "Content-Type: application/fhir+json" -d @- "$base/$1"
 }
 
 evaluate-measure() {
-    curl -s "$BASE/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
+    curl -s "$base/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
 }
 
 evaluate-measure-list() {
   curl -sd '{"resourceType": "Parameters", "parameter": [{"name": "periodStart", "valueDate": "2000"}, {"name": "periodEnd", "valueDate": "2030"}, {"name": "reportType", "valueCode": "subject-list"}]}' \
-    -H "Content-Type: application/fhir+json" "$BASE/Measure/$1/\$evaluate-measure"
+    -H "Content-Type: application/fhir+json" "$base/Measure/$1/\$evaluate-measure"
 }
 
 usage()
 {
-  echo "Usage: $0 -f QUERY_FILE [ -t subject-type ] [ -r report-type ] BASE"
+  echo "Usage: $0 -f QUERY_FILE [ -t subject-type ] [ -r report-type ] base"
   echo ""
   echo "Example subject-types: Patient, Specimen; default is Patient"
   echo "Possible report-types: subject-list, population; default is population"
   exit 2
 }
 
-unset FILE SUBJECT_TYPE REPORT_TYPE BASE
+unset file subject_type report_type base
 
 while getopts 'f:t:r:' c
 do
   case ${c} in
-    f) FILE=$OPTARG ;;
-    t) SUBJECT_TYPE=$OPTARG ;;
-    r) REPORT_TYPE=$OPTARG ;;
+    f) file=$OPTARG ;;
+    t) subject_type=$OPTARG ;;
+    r) report_type=$OPTARG ;;
   esac
 done
 
 shift $((OPTIND-1))
-BASE=$1
+base=$1
 
-[[ -z "$FILE" ]] && usage
-[[ -z "$SUBJECT_TYPE" ]] && SUBJECT_TYPE="Patient"
-[[ -z "$BASE" ]] && usage
+[[ -z "$file" ]] && usage
+[[ -z "$subject_type" ]] && subject_type="Patient"
+[[ -z "$base" ]] && usage
 
-SUBJECT_TYPE_LOWER=$(echo $SUBJECT_TYPE | tr '[:upper:]' '[:lower:]')
-DATA=$(base64 < "$FILE" | tr -d '\n')
-LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
-MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
+subject_type_lower=$(echo $subject_type | tr '[:upper:]' '[:lower:]')
+data=$(base64 < "$file" | tr -d '\n')
+library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
+measure_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-create-library ${LIBRARY_URI} ${DATA} | post "Library" > /dev/null
+create-library ${library_uri} ${data} | post "Library" > /dev/null
 
-MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} ${SUBJECT_TYPE} | post "Measure" | jq -r .id | tr -d '\r')
+measure_id=$(create-measure ${measure_uri} ${library_uri} ${subject_type} | post "Measure" | jq -r .id | tr -d '\r')
 
-if [ "subject-list" = "$REPORT_TYPE" ]; then
-  echo "Generating a report including the list of matching ${SUBJECT_TYPE_LOWER}s..."
-  MEASURE_REPORT=$(evaluate-measure-list ${MEASURE_ID})
-  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count' | tr -d '\r')
-  LIST_REFERENCE=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].subjectResults.reference' | tr -d '\r')
-  LIST_ID=$(echo $LIST_REFERENCE | cut -d '/' -f2)
+if [ "subject-list" = "$report_type" ]; then
+  echo "Generating a report including the list of matching ${subject_type_lower}s..."
+  measure_report=$(evaluate-measure-list ${measure_id})
+  count=$(echo $measure_report | jq -r '.group[0].population[0].count' | tr -d '\r')
+  list_reference=$(echo $measure_report | jq -r '.group[0].population[0].subjectResults.reference' | tr -d '\r')
+  list_id=$(echo $list_reference | cut -d '/' -f2)
 
-  echo "Found $COUNT ${SUBJECT_TYPE_LOWER}s that can be found on List $BASE/$LIST_REFERENCE."
+  echo "Found $count ${subject_type_lower}s that can be found on List $base/$list_reference."
   echo ""
-  echo "Please use the following blazectl command to download the ${SUBJECT_TYPE_LOWER}s:"
-  echo "  blazectl download --server $BASE $SUBJECT_TYPE -q '_list=$LIST_ID' -o ${SUBJECT_TYPE_LOWER}s.ndjson"
+  echo "Please use the following blazectl command to download the ${subject_type_lower}s:"
+  echo "  blazectl download --server $base $subject_type -q '_list=$list_id' -o ${subject_type_lower}s.ndjson"
 else
   echo "Generating a population count report..."
-  MEASURE_REPORT=$(evaluate-measure ${MEASURE_ID})
-  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count' | tr -d '\r')
-  echo "Found $COUNT ${SUBJECT_TYPE_LOWER}s."
+  measure_report=$(evaluate-measure ${measure_id})
+  count=$(echo $measure_report | jq -r '.group[0].population[0].count' | tr -d '\r')
+  echo "Found $count ${subject_type_lower}s."
 fi
