@@ -9,7 +9,7 @@
                          ["blaze.fhir.spec.impl.specs"
                           "blaze.fhir.spec.spec"
                           "blaze.fhir.parsing-context.spec"
-                          "blaze.fhir.writing-context.spec"],
+                          "blaze.fhir.writing-context.spec"]
                          :codecov? true}
                         :reporter kaocha.report/documentation
                         :color? false}}]
