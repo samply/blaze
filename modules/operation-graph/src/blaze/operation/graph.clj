@@ -37,7 +37,7 @@
 
 (defn- compile
   [compiled-graph-cache {:keys [id] {version :versionId} :meta :as graph-def}]
-  (let [key [id (type/value version)]]
+  (let [key [id (:value version)]]
     (.get ^Cache compiled-graph-cache key (fn [_] (c/compile graph-def)))))
 
 (defn- find-node [{:keys [nodes]} id]
