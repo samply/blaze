@@ -22,6 +22,13 @@
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]))
 
+(defn validate-modifier
+  "Validate that `modifier` is known and implemented for `search-param`.
+
+  Returns an anomaly on errors."
+  [search-param modifier]
+  (p/-validate-modifier search-param modifier))
+
 (defn compile-values
   "Compiles `values` according to `search-param`.
 

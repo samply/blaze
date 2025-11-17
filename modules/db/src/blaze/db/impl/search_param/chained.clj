@@ -78,6 +78,9 @@
 (defrecord ChainedSearchParam [search-param ref-search-param ref-c-hash ref-tid
                                code compile-ref-value]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (p/-validate-modifier search-param modifier))
+
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
 

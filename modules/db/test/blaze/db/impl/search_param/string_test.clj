@@ -198,3 +198,19 @@
 
     (testing "skip warning"
       (is (nil? (sps/index-entries "" nil))))))
+
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (phonetic-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        :modifier/issue := :unknown
+        ::anom/message := "Unknown modifier `unknown` on search parameter `phonetic`."))
+
+    (testing "modifier not implemented"
+      (given (search-param/validate-modifier
+              (phonetic-param search-param-registry) "text")
+        ::anom/category := ::anom/unsupported
+        :modifier/issue := :not-implemented
+        ::anom/message := "Unsupported modifier `text` on search parameter `phonetic`."))))

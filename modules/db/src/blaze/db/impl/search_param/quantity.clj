@@ -234,6 +234,9 @@
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"missing"} code)))
+
   (-compile-value [_ _ value]
     (let [[op value-and-unit] (u/separate-op value)
           [value unit] (str/split value-and-unit #"\s*\|\s*" 2)]

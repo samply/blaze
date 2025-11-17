@@ -107,6 +107,7 @@
   (-pull-many [pull resource-handles opts]))
 
 (defprotocol SearchParam
+  (-validate-modifier [search-param modifier] "Can return an anomaly.")
   (-compile-value [search-param modifier value] "Can return an anomaly.")
   (-estimated-scan-size
     [search-param batch-db tid modifier compiled-value]

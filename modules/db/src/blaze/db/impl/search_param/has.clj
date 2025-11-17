@@ -98,6 +98,8 @@
 
 (defrecord SearchParamHas [index name type code]
   p/SearchParam
+  (-validate-modifier [_ _])
+
   (-compile-value [_ modifier value]
     (when-ok [[type chain-code code] (split-modifier modifier)
               search-param (resolve-search-param index type code)

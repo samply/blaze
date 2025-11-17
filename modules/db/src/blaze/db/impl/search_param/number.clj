@@ -47,6 +47,9 @@
 
 (defrecord SearchParamNumber [name url type base code c-hash expression]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"missing"} code)))
+
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
       (if-ok [decimal-value (system/parse-decimal value)]

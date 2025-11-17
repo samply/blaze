@@ -77,6 +77,9 @@
 
 (defrecord SearchParamString [name type base code c-hash expression normalize]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"contains" "exact" "missing" "text"} code)))
+
   (-compile-value [_ _ value]
     (codec/string (normalize value)))
 
