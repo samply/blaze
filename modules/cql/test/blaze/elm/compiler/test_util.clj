@@ -78,7 +78,8 @@
       {:name "12:54:00"}
       {:name "2020-01-02T03:04:05.006Z"}
       {:name "[1]"}
-      {:name "[1 2]"}]}}})
+      {:name "[1 2]"}
+      {:name "coding"}]}}})
 
 (def dynamic-eval-ctx
   {:parameters
@@ -91,7 +92,8 @@
     "2022" #system/date"2022"
     "12:54:00" #system/time"12:54:00"
     "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
-    "[1]" [1] "[1 2]" [1 2]}
+    "[1]" [1] "[1 2]" [1 2]
+    "coding" #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}}
    :now now})
 
 (defn dynamic-compile [elm]
