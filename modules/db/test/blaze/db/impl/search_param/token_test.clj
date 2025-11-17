@@ -789,3 +789,88 @@
           (let [condition {:fhir/type :fhir/Condition :id "0"
                            :subject #fhir/Reference{:reference #fhir/string "http://server.org/Patient/0"}}]
             (is (empty? (compartment-ids patient-param condition)))))))))
+
+(defn profile-param [search-param-registry]
+  (sr/get search-param-registry "_profile" "Observation"))
+
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "_id"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (id-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `_id`.")))
+
+    (testing "identifier"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (identifier-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `identifier`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (identifier-param search-param-registry) "of-type")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `of-type` on search parameter `identifier`.")))
+
+    (testing "uri"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (profile-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `_profile`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (profile-param search-param-registry) "missing")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `missing` on search parameter `_profile`."))
+
+      (testing "implemented modifier"
+        (is (nil? (search-param/validate-modifier (profile-param search-param-registry) "below")))))
+
+    (testing "token"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (code-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `code`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (code-param search-param-registry) "code-text")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `code-text` on search parameter `code`.")))
+
+    (testing "reference"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (subject-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `subject`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (subject-param search-param-registry) "contains")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `contains` on search parameter `subject`."))
+
+      (testing "implemented modifier Location"
+        (is (nil? (search-param/validate-modifier
+                   (subject-param search-param-registry) "Location"))))
+
+      (testing "unknown modifier Organization"
+        (given (search-param/validate-modifier
+                (subject-param search-param-registry) "Organization")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `Organization` on search parameter `subject`."))
+
+      (testing "implemented modifier identifier"
+        (is (nil? (search-param/validate-modifier (subject-param search-param-registry) "identifier"))))
+
+      (testing "implemented modifier Organization"
+        (let [[search-param] (sr/parse search-param-registry "Observation" "performer")]
+          (is (nil? (search-param/validate-modifier
+                     search-param "Organization"))))))))

@@ -29,6 +29,9 @@
 
 (defrecord SearchParamCompositeTokenQuantity [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/unknown-modifier-anom code)))
+
   (-compile-value [_ _ value]
     (when-ok [[v1 v2] (cc/split-value value)]
       (let [token-value (cc/compile-component-value c1 v1)]

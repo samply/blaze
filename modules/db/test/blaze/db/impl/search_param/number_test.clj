@@ -43,6 +43,20 @@
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (probability-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unknown modifier `unknown` on search parameter `probability`."))
+
+    (testing "modifier not implemented"
+      (given (search-param/validate-modifier
+              (probability-param search-param-registry) "missing")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported modifier `missing` on search parameter `probability`."))))
+
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"

@@ -17,7 +17,8 @@
   (let [values (cond->> values (< 1 (count values)) (into [] (distinct)))]
     (if (empty? values)
       (reduced (ba/incorrect (format "Clause `%s` isn't valid." clause)))
-      (if-ok [[search-param modifier] (sr/parse registry type param)]
+      (if-ok [[search-param modifier] (sr/parse registry type param)
+              _ (search-param/validate-modifier search-param modifier)]
         (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
           (conj ret [search-param modifier values compiled-values])
           reduced)
