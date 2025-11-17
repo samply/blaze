@@ -29,6 +29,11 @@
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
+(s/fdef search-param/validate-modifier
+  :args (s/cat :search-param :blaze.db/search-param
+               :modifier (s/nilable string?))
+  :ret (s/nilable ::anom/anomaly))
+
 (s/fdef search-param/compile-values
   :args (s/cat :search-param :blaze.db/search-param
                :modifier (s/nilable string?)

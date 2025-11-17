@@ -44,6 +44,9 @@
 
 (defrecord SearchParamList [name type code]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/unknown-modifier-anom code)))
+
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 

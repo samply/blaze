@@ -62,6 +62,20 @@
       :code := "value-quantity"
       :c-hash := (codec/c-hash "value-quantity"))))
 
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (value-quantity-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unknown modifier `unknown` on search parameter `value-quantity`."))
+
+    (testing "modifier not implemented"
+      (given (search-param/validate-modifier
+              (value-quantity-param search-param-registry) "missing")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported modifier `missing` on search parameter `value-quantity`."))))
+
 (defn compile-quantity-value [search-param-registry value]
   (-> (value-quantity-param search-param-registry)
       (search-param/compile-values nil [value])

@@ -158,8 +158,28 @@
   (let [idx (str/index-of value "|")]
     (and idx (< 0 idx (count value)))))
 
+(def ^:private known-uri-modifier
+  #{"above" "below" "missing"})
+
+(def ^:private known-token-modifier
+  #{"above" "below" "code-text" "in" "missing" "not" "not-in" "text" "text-advanced"})
+
+(def ^:private known-reference-modifier
+  #{"above" "below" "code-text" "contains" "identifier" "missing" "not-in" "text" "text-advanced"})
+
 (defrecord SearchParamToken [name url type base code target c-hash expression]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (condp = type
+      "uri"
+      (when-not (#{"below"} modifier)
+        (some->> modifier (u/modifier-anom known-uri-modifier code)))
+      "token"
+      (some->> modifier (u/modifier-anom known-token-modifier code))
+      ; else / "reference"
+      (when-not ((into #{"identifier"} target) modifier)
+        (some->> modifier (u/modifier-anom (into known-reference-modifier target) code)))))
+
   (-compile-value [_ _ value]
     (if (= "reference" type)
       (if-let [[type id] (fsr/split-literal-ref value)]
@@ -263,6 +283,9 @@
 
 (defrecord SearchParamTokenIdentifier [name url type base code target c-hash expression]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"of-type"} code)))
+
   (-compile-value [_ _ value]
     (codec/v-hash value))
 
@@ -327,6 +350,9 @@
 
 (defrecord SearchParamId [name type code]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/unknown-modifier-anom code)))
+
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 

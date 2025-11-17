@@ -378,6 +378,9 @@
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"missing"} code)))
+
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
       (if-ok [date-time-value (system/parse-date-time value)]
