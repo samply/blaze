@@ -10,6 +10,7 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.protocols :as p]
+   [blaze.elm.util :as elm-util]
    [blaze.fhir.spec.type :as type]
    [clojure.string :as str])
   (:import
@@ -115,14 +116,65 @@
     (cond-> elements (some (comp not core/static?) (vals elements)) tuple)))
 
 ;; 2.2. Instance
+(defn instance [type constructor elements]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (instance
+       type
+       constructor
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-resolve-refs value expression-defs)))
+        {}
+        elements)))
+    (-resolve-params [_ parameters]
+      (instance
+       type
+       constructor
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-resolve-params value parameters)))
+        {}
+        elements)))
+    (-eval [_ context resource scope]
+      (constructor
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-eval value context resource scope)))
+        {}
+        elements)))
+    (-form [_]
+      (list
+       type
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-form value)))
+        {}
+        elements)))))
+
+(defn- unsupported-instance-type-ns-anom [type-ns]
+  (ba/unsupported (format "Unsupported type namespace `%s` in instance expression." type-ns)))
+
+(defn- resolve-constructor [type]
+  (resolve (symbol "blaze.fhir.spec.type" (elm-util/pascal->kebab type))))
+
+(defn- unsupported-instance-type-anom [type]
+  (ba/unsupported (format "Unsupported type `%s` in instance expression." type)))
+
 (defmethod core/compile* :elm.compiler.type/instance
   [context {type :classType elements :element}]
   (let [elements (compile-elements context elements)]
-    (when (every? core/static? (vals elements))
+    (if (every? core/static? (vals elements))
       (case type
         "{urn:hl7-org:elm-types:r1}Code"
         (let [{:keys [system version code]} elements]
-          (code/code system version code))))))
+          (code/code system version code)))
+      (let [[type-ns type] (elm-util/parse-qualified-name type)]
+        (if (= "http://hl7.org/fhir" type-ns)
+          (if-some [constructor (resolve-constructor type)]
+            (instance type constructor elements)
+            (ba/throw-anom (unsupported-instance-type-anom type)))
+          (ba/throw-anom (unsupported-instance-type-ns-anom type-ns)))))))
 
 ;; 2.3. Property
 (defn- source-property-expr [source key]

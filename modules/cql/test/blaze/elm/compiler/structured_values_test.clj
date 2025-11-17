@@ -4,6 +4,7 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.anomaly :as ba]
    [blaze.coll.core :as coll]
    [blaze.elm.code :refer [code]]
    [blaze.elm.code-spec]
@@ -18,6 +19,7 @@
    [blaze.fhir.spec.type :as type]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
+   [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
   (:import
    [blaze.elm.code Code]
@@ -112,19 +114,51 @@
       {:id 1 :name "john"}))
 
   (testing "Dynamic"
-    (are [elm res] (= res (ctu/dynamic-compile-eval elm))
-      #elm/tuple{"id" #elm/parameter-ref "1"}
-      {:id 1}
+    (testing "one element"
+      (let [elm #elm/tuple{"id" #elm/parameter-ref "1"}
+            expr (ctu/dynamic-compile elm)]
 
-      #elm/tuple{"id" #elm/parameter-ref "1" "name" #elm/parameter-ref "a"}
-      {:id 1 :name "a"})
+        (testing "eval"
+          (is (= {:id 1} (core/-eval expr ctu/dynamic-eval-ctx nil nil))))
 
-    (testing "Static"
-      (is (false? (core/-static (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "1"})))))
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
 
-    (testing "form"
-      (let [expr (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})]
-        (has-form expr '{:id (param-ref "x")})))))
+        (ctu/testing-constant-attach-cache expr)
+
+        (ctu/testing-constant-patient-count expr)
+
+        (ctu/testing-constant-resolve-refs expr)
+
+        (ctu/testing-constant-resolve-params expr)
+
+        (ctu/testing-constant-optimize expr)
+
+        (testing "form"
+          (has-form expr '{:id (param-ref "1")}))))
+
+    (testing "two elements"
+      (let [elm #elm/tuple{"id" #elm/parameter-ref "1" "name" #elm/parameter-ref "a"}
+            expr (ctu/dynamic-compile elm)]
+
+        (testing "eval"
+          (is (= {:id 1 :name "a"} (core/-eval expr ctu/dynamic-eval-ctx nil nil))))
+
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
+
+        (ctu/testing-constant-attach-cache expr)
+
+        (ctu/testing-constant-patient-count expr)
+
+        (ctu/testing-constant-resolve-refs expr)
+
+        (ctu/testing-constant-resolve-params expr)
+
+        (ctu/testing-constant-optimize expr)
+
+        (testing "form"
+          (has-form expr '{:id (param-ref "1") :name (param-ref "a")}))))))
 
 ;; 2.2. Instance
 ;;
@@ -138,7 +172,42 @@
     (given (c/compile {} (ctu/code "system-134534" "code-134551"))
       type := Code
       :system := "system-134534"
-      :code := "code-134551")))
+      :code := "code-134551"))
+
+  (testing "Dynamic"
+    (testing "unsupported type namespace"
+      (given (ba/try-anomaly (ctu/dynamic-compile #elm/instance["{foo}Bar" {"x" #elm/parameter-ref "a"}]))
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported type namespace `foo` in instance expression."))
+
+    (testing "unsupported type"
+      (given (ba/try-anomaly (ctu/dynamic-compile #elm/instance["{http://hl7.org/fhir}Foo" {"x" #elm/parameter-ref "a"}]))
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported type `Foo` in instance expression."))
+
+    (testing "CodeableConcept"
+      (let [elm #elm/instance["{http://hl7.org/fhir}CodeableConcept" {"coding" #elm/list [#elm/parameter-ref "coding"]}]
+            expr (ctu/dynamic-compile elm)]
+
+        (testing "eval"
+          (is (= (core/-eval expr ctu/dynamic-eval-ctx nil nil)
+                 #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]})))
+
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
+
+        (ctu/testing-constant-attach-cache expr)
+
+        (ctu/testing-constant-patient-count expr)
+
+        (ctu/testing-constant-resolve-refs expr)
+
+        (ctu/testing-constant-resolve-params expr)
+
+        (ctu/testing-constant-optimize expr)
+
+        (testing "form"
+          (has-form expr '("CodeableConcept" {:coding (list (param-ref "coding"))})))))))
 
 ;; 2.3. Property
 ;;

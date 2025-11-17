@@ -52,7 +52,11 @@
 (defn instance [[type elements]]
   {:type "Instance"
    :classType type
-   :element (reduce #(conj %1 {:name (key %2) :value (val %2)}) [] elements)})
+   :element
+   (mapv
+    (fn [[name value]]
+      {:type "InstanceElement" :name name :value value})
+    elements)})
 
 ;; 2.3. Property
 (defn source-property [[source path]]
