@@ -21,7 +21,6 @@
   :args (s/cat :search-param :blaze.db/search-param
                :ref-search-param :blaze.db/search-param
                :ref-type :fhir.resource/type
-               :ref-modifier (s/nilable string?)
                :original-code string?
                :modifier (s/nilable ::search-param/modifier))
   :ret (cs/coll-of :blaze.db/resource-handle))

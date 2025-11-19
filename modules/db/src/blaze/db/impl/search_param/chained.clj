@@ -51,19 +51,70 @@
 (defn- reference [rh]
   (str (name (:fhir/type rh)) "/" (:id rh)))
 
+(def ^:private max-number-of-refs
+  "Maximum number of References that can be handled in ordered index handle mode."
+  10000)
+
+(defn- ref-resource-handles
+  "Returns an unordered reducible collection of reference resource handles of
+  all `compiled-values`."
+  [search-param batch-db ref-tid modifier compiled-values]
+  (coll/eduction
+   (comp (mapcat #(p/-index-handles search-param batch-db ref-tid modifier %))
+         (u/resource-handle-xf batch-db ref-tid)
+         (distinct))
+   compiled-values))
+
+(defn- compiled-ref-values
+  [search-param batch-db ref-tid compile-ref-value modifier compiled-values]
+  (->> (ref-resource-handles search-param batch-db ref-tid modifier
+                             compiled-values)
+       (map compile-ref-value)
+       (seq)))
+
+(defn- num-ref-resource-handles-small? [ref-resource-handles]
+  (<= (count (take (inc max-number-of-refs) ref-resource-handles)) max-number-of-refs))
+
 (defrecord ChainedSearchParam [search-param ref-search-param ref-c-hash ref-tid
-                               ref-modifier code]
+                               code compile-ref-value]
   p/SearchParam
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
 
-  (-estimated-scan-size [_ _ _ _ _]
-    (ba/unsupported))
+  (-estimated-scan-size [_ batch-db tid modifier compiled-value]
+    (transduce
+     (comp (map #(p/-estimated-scan-size ref-search-param batch-db tid nil %))
+           (halt-when ba/anomaly?))
+     +
+     (compiled-ref-values search-param batch-db ref-tid compile-ref-value
+                          modifier [compiled-value])))
+
+  (-supports-ordered-index-handles
+    [_ batch-db _ modifier compiled-values]
+    (-> (ref-resource-handles search-param batch-db ref-tid modifier
+                              compiled-values)
+        (num-ref-resource-handles-small?)))
+
+  (-ordered-index-handles
+    [_ batch-db tid modifier compiled-values]
+    (if-some [values (compiled-ref-values search-param batch-db ref-tid
+                                          compile-ref-value modifier
+                                          compiled-values)]
+      (p/-ordered-index-handles ref-search-param batch-db tid nil values)
+      []))
+
+  (-ordered-index-handles
+    [_ batch-db tid modifier compiled-values start-id]
+    (if-some [values (compiled-ref-values search-param batch-db ref-tid
+                                          compile-ref-value modifier
+                                          compiled-values)]
+      (p/-ordered-index-handles ref-search-param batch-db tid nil values start-id)
+      []))
 
   (-index-handles [_ batch-db tid modifier compiled-value]
     (coll/eduction
      (comp (u/resource-handle-xf batch-db ref-tid)
-           (map #(p/-compile-value ref-search-param ref-modifier (reference %)))
+           (map compile-ref-value)
            (mapcat #(p/-index-handles ref-search-param batch-db tid modifier %)))
      (p/-index-handles search-param batch-db ref-tid modifier compiled-value)))
 
@@ -108,19 +159,19 @@
 (defn chained-search-param
   "Creates a new chaining search param from the following arguments:
 
-  * search-param     - the first search param in the chain which has to be a
+  * search-param     - the second search param in the chain which can be any
+                       search param like Condition.code or Patient.gender
+  * ref-search-param - the first search param in the chain which has to be a
                        reference search param like Encounter.diagnosis or
                        Observation.subject
-  * ref-search-param - the second search param in the chain which can be any
-                       search param like Condition.code or Patient.gender
   * ref-type         - the type of the resources referenced by the first search
                        param
-  * ref-modifier     - the modifier of `ref-search-param`
   * original-code    - the original code like diagnosis:Condition.code or
                        subject:Patient.gender
   * modifier         - modifier of `search-param`"
-  [search-param ref-search-param ref-type ref-modifier original-code modifier]
+  [search-param ref-search-param ref-type original-code modifier]
   [(->ChainedSearchParam search-param ref-search-param
                          (codec/c-hash (:code ref-search-param))
-                         (codec/tid ref-type) ref-modifier original-code)
+                         (codec/tid ref-type) original-code
+                         #(p/-compile-value ref-search-param nil (reference %)))
    modifier])
