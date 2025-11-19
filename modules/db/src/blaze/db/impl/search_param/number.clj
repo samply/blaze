@@ -66,6 +66,15 @@
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
 
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    false)
+
+  (-ordered-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
   (-index-handles [_ batch-db tid _ compiled-value]
     (spq/index-handles batch-db c-hash tid 0 compiled-value))
 

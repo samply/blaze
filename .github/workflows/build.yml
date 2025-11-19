@@ -1402,7 +1402,7 @@ jobs:
 
     - name: Count the Number of Patients with Stress Conditions at Inpatient Encounters Plan
       run: |
-        .github/scripts/explain-type-query.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" "SCANS(ordered): code; SEEKS: encounter.class"
+        .github/scripts/explain-type-query.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" "SCANS(ordered): code, encounter.class; SEEKS: NONE"
 
     - name: Download Observation Resources with 6 LOINC Codes
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6&category=laboratory" 9453

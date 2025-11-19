@@ -220,6 +220,30 @@ If only a subset of a resource's information is needed, the `_elements` search p
 
 ¹ resources per second
 
+## Token and Forward Chaining Search
+
+This section evaluates the performance of FHIR search queries with one badly discriminating token search parameter and one well discriminating forward chaining search parameter.
+
+### Script
+
+The script `token-forward-chaining-search.sh` is used.
+
+### Counting
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      |   32 k |     0.15 |  0.006 | 216.4 k |
+
+¹ resources per second
+
+### Downloading Resources
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      |   32 k |     2.01 |  0.008 |  15.7 k |
+
+¹ resources per second
+
 ## Code and Value Search
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific code and value.
