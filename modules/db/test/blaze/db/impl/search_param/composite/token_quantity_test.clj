@@ -26,17 +26,24 @@
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
-(defn code-value-quantity [search-param-registry]
+(defn code-value-quantity-param [search-param-registry]
   (sr/get search-param-registry "code-value-quantity" "Observation"))
 
 (deftest estimated-scan-size-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
-    (let [search-param (code-value-quantity search-param-registry)]
+    (let [search-param (code-value-quantity-param search-param-registry)]
       (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
+
+(deftest ordered-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (code-value-quantity-param search-param-registry)]
+      (is (false? (p/-supports-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil))))))
 
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
-    (let [search-param (code-value-quantity search-param-registry)]
+    (let [search-param (code-value-quantity-param search-param-registry)]
       (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
       (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
       (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))

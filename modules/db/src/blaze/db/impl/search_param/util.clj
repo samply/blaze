@@ -131,5 +131,7 @@
   (let [[url version] (str/split canonical #"\|")]
     [(or url "") (some-> version version-parts)]))
 
-(defn union-index-handles [index-handles]
+(defn union-index-handles
+  "Returns a reducible and iterable collection of the union of `index-handles`."
+  [index-handles]
   (apply coll/union ih/id-comp ih/union index-handles))

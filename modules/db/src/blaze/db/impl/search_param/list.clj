@@ -43,23 +43,29 @@
                         codec/tid-size (codec/tid-id tid start-id)))))
 
 (defrecord SearchParamList [name type code]
-  p/WithOrderedIndexHandles
-  (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
-    (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
-      (u/union-index-handles (map index-handles compiled-values))))
-
-  (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values start-id]
-    (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
-      (u/union-index-handles (map index-handles compiled-values))))
-
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
+
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    true)
+
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
+    (if (= 1 (count compiled-values))
+      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
+      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+        (u/union-index-handles (map index-handles compiled-values)))))
+
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values start-id]
+    (if (= 1 (count compiled-values))
+      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
+      (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+        (u/union-index-handles (map index-handles compiled-values)))))
 
   (-index-handles [_ batch-db tid _ list-id]
     (if-let [hash (list-hash batch-db list-id)]

@@ -93,6 +93,13 @@
     (let [search-param (probability-param search-param-registry)]
       (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
 
+(deftest ordered-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (probability-param search-param-registry)]
+      (is (false? (p/-supports-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil))))))
+
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (probability-param search-param-registry)]

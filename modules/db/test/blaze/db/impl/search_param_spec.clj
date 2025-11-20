@@ -62,7 +62,7 @@
   :ret (cs/coll-of ::index/handle))
 
 (s/fdef search-param/ordered-index-handles
-  :args (s/cat :search-param :blaze.db/search-param-with-ordered-index-handles
+  :args (s/cat :search-param :blaze.db/search-param
                :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)

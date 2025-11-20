@@ -6570,8 +6570,7 @@
 (deftest type-query-forward-chaining-test
   (testing "Encounter"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Encounter
-               :id "0"
+      [[[:put {:fhir/type :fhir/Encounter :id "0"
                :period #fhir/Period{:start #fhir/dateTime "2016"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
@@ -6580,15 +6579,15 @@
                 {:fhir/type :fhir.Encounter/diagnosis
                  :condition
                  #fhir/Reference{:reference #fhir/string "Condition/2"}}]}]
-        [:put {:fhir/type :fhir/Encounter
-               :id "1"
+        [:put {:fhir/type :fhir/Encounter :id "1"
+               :status #fhir/code "finished"
                :period #fhir/Period{:start #fhir/dateTime "2016"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition
                  #fhir/Reference{:reference #fhir/string "Condition/1"}}]}]
-        [:put {:fhir/type :fhir/Encounter
-               :id "2"
+        [:put {:fhir/type :fhir/Encounter :id "2"
+               :status #fhir/code "finished"
                :period #fhir/Period{:start #fhir/dateTime "2016"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
@@ -6613,35 +6612,99 @@
                 {:coding
                  [#fhir/Coding{:code #fhir/code "foo"}]}}]]]
 
+      (testing "finds no Encounters on non-existing Conditions"
+        (let [clauses [["diagnosis:Condition.code" "non-existing"]]]
+          (given-type-query node "Encounter" clauses
+            count := 0)
+
+          (given (explain-type-query node "Encounter" clauses)
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "diagnosis:Condition.code"))
+
+        (testing "with date parameter"
+          (let [clauses [["diagnosis:Condition.code" "non-existing"]
+                         ["date" "ge2015-01-01"]]]
+            (given-type-query node "Encounter" clauses
+              count := 0)
+
+            (given (explain-type-query node "Encounter" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "diagnosis:Condition.code"
+              [:seek-clauses count] := 1
+              [:seek-clauses 0 :code] := "date")))
+
+        (testing "with second token parameter"
+          (let [clauses [["diagnosis:Condition.code" "non-existing"]
+                         ["status" "finished"]]]
+            (given-type-query node "Encounter" clauses
+              count := 0)
+
+            (given (explain-type-query node "Encounter" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 2
+              [:scan-clauses 0 :code] := "diagnosis:Condition.code"
+              [:scan-clauses 1 :code] := "status"
+              [:seek-clauses count] := 0))))
+
       (testing "Encounter with foo Condition"
-        (given-type-query node "Encounter" [["diagnosis:Condition.code" "foo"]]
-          count := 2
-          [0 :fhir/type] := :fhir/Encounter
-          [0 :id] := "0"
-          [1 :fhir/type] := :fhir/Encounter
-          [1 :id] := "2")
-
-        (testing "it is possible to start with the second Encounter"
-          (given (pull-type-query node "Encounter" [["diagnosis:Condition.code" "foo"]] "2")
-            count := 1
-            [0 :fhir/type] := :fhir/Encounter
-            [0 :id] := "2"))
-
-        (testing "as second parameter"
-          (given-type-query node "Encounter" [["date" "ge2015-01-01"]
-                                              ["diagnosis:Condition.code" "foo"]]
+        (let [clauses [["diagnosis:Condition.code" "foo"]]]
+          (given-type-query node "Encounter" clauses
             count := 2
             [0 :fhir/type] := :fhir/Encounter
             [0 :id] := "0"
             [1 :fhir/type] := :fhir/Encounter
             [1 :id] := "2")
 
+          (given (explain-type-query node "Encounter" clauses)
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "diagnosis:Condition.code")
+
           (testing "it is possible to start with the second Encounter"
-            (given (pull-type-query node "Encounter" [["date" "ge2015-01-01"]
-                                                      ["diagnosis:Condition.code" "foo"]] "2")
+            (given (pull-type-query node "Encounter" clauses "2")
               count := 1
               [0 :fhir/type] := :fhir/Encounter
-              [0 :id] := "2"))))
+              [0 :id] := "2")))
+
+        (testing "with date parameter"
+          (let [clauses [["diagnosis:Condition.code" "foo"]
+                         ["date" "ge2015-01-01"]]]
+            (given-type-query node "Encounter" clauses
+              count := 2
+              [0 :fhir/type] := :fhir/Encounter
+              [0 :id] := "0"
+              [1 :fhir/type] := :fhir/Encounter
+              [1 :id] := "2")
+
+            (given (explain-type-query node "Encounter" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "diagnosis:Condition.code"
+              [:seek-clauses count] := 1
+              [:seek-clauses 0 :code] := "date")
+
+            (testing "it is possible to start with the second Encounter"
+              (given (pull-type-query node "Encounter" clauses "2")
+                count := 1
+                [0 :fhir/type] := :fhir/Encounter
+                [0 :id] := "2"))))
+
+        (testing "with second token parameter"
+          (let [clauses [["diagnosis:Condition.code" "foo"]
+                         ["status" "finished"]]]
+            (given-type-query node "Encounter" clauses
+              count := 1
+              [0 :fhir/type] := :fhir/Encounter
+              [0 :id] := "2")
+
+            (given (explain-type-query node "Encounter" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 2
+              [:scan-clauses 0 :code] := "diagnosis:Condition.code"
+              [:scan-clauses 1 :code] := "status"
+              [:seek-clauses count] := 0))))
 
       (testing "Encounter with bar Condition"
         (given-type-query node "Encounter" [["diagnosis:Condition.code" "bar"]]
@@ -6649,9 +6712,16 @@
           [0 :fhir/type] := :fhir/Encounter
           [0 :id] := "1")
 
-        (testing "as second parameter"
-          (given-type-query node "Encounter" [["date" "ge2015-01-01"]
-                                              ["diagnosis:Condition.code" "bar"]]
+        (testing "with date parameter"
+          (given-type-query node "Encounter" [["diagnosis:Condition.code" "bar"]
+                                              ["date" "ge2015-01-01"]]
+            count := 1
+            [0 :fhir/type] := :fhir/Encounter
+            [0 :id] := "1"))
+
+        (testing "with second token parameter"
+          (given-type-query node "Encounter" [["diagnosis:Condition.code" "bar"]
+                                              ["status" "finished"]]
             count := 1
             [0 :fhir/type] := :fhir/Encounter
             [0 :id] := "1")))
@@ -6758,7 +6828,36 @@
           [4 :fhir/type] := :fhir/Observation
           [4 :id] := "4"
           [5 :fhir/type] := :fhir/Observation
-          [5 :id] := "5"))))
+          [5 :id] := "5")))
+
+    (testing "10001 Patients to disable optimizations"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [(vec (for [i (range 10001)]
+                [:put {:fhir/type :fhir/Patient :id (str i) :active #fhir/boolean true}]))
+         [[:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+
+        (let [clauses [["patient.active" "true"]]]
+          (given-type-query node "Observation" clauses
+            count := 2
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [1 :fhir/type] := :fhir/Observation
+            [1 :id] := "1")
+
+          (given (explain-type-query node "Observation" clauses)
+            :scan-type := :unordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "patient.active"
+            [:seek-clauses count] := 0)
+
+          (testing "it is possible to start with the second Observation"
+            (given (pull-type-query node "Observation" clauses "1")
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "1"))))))
 
   (testing "DocumentReference"
     (with-system-data [{:blaze.db/keys [node]} config]

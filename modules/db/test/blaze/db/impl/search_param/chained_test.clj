@@ -26,11 +26,6 @@
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
-(deftest estimated-scan-size-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
-    (let [[search-param] (sr/parse search-param-registry "Observation" "patient.gender")]
-      (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
-
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [[search-param] (sr/parse search-param-registry "Observation" "patient.gender")]

@@ -132,10 +132,15 @@
    comp
    clauses))
 
+(defn- supports-ordered-index-handles
+  [batch-db tid [search-param modifier _ compiled-values]]
+  (p/-supports-ordered-index-handles search-param batch-db tid modifier
+                                     compiled-values))
+
 (defn- group-by-ordered-index-handle-support
   "Returns two groups, true and false."
-  [clauses]
-  (group-by (comp #(satisfies? p/WithOrderedIndexHandles %) first) clauses))
+  [batch-db tid clauses]
+  (group-by (partial supports-ordered-index-handles batch-db tid) clauses))
 
 (defn- estimated-scan-size
   [batch-db tid [search-param modifier _ compiled-values]]
@@ -180,7 +185,7 @@
   sizes are promoted to seek."
   [batch-db tid clauses]
   (let [{ordered-support-clauses true other-clauses false}
-        (group-by-ordered-index-handle-support clauses)]
+        (group-by-ordered-index-handle-support batch-db tid clauses)]
     (cond
       (= 1 (count ordered-support-clauses))
       [ordered-support-clauses other-clauses]
