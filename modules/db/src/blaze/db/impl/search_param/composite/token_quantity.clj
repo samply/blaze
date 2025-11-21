@@ -29,6 +29,9 @@
 
 (defrecord SearchParamCompositeTokenQuantity [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/unknown-modifier-anom code)))
+
   (-compile-value [_ _ value]
     (when-ok [[v1 v2] (cc/split-value value)]
       (let [token-value (cc/compile-component-value c1 v1)]
@@ -46,6 +49,15 @@
              %)))))
 
   (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    false)
+
+  (-ordered-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
   (-index-handles [_ batch-db tid _ compiled-value]

@@ -234,6 +234,9 @@
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"missing"} code)))
+
   (-compile-value [_ _ value]
     (let [[op value-and-unit] (u/separate-op value)
           [value unit] (str/split value-and-unit #"\s*\|\s*" 2)]
@@ -252,6 +255,15 @@
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
   (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    false)
+
+  (-ordered-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
   (-index-handles [_ batch-db tid _ compiled-value]

@@ -57,6 +57,15 @@
       (search-param/compile-values nil [value])
       (first)))
 
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (code-value-quantity-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        :modifier/issue := :unknown
+        ::anom/message := "Unknown modifier `unknown` on search parameter `code-value-quantity`."))))
+
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"

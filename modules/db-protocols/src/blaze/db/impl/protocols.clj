@@ -107,6 +107,7 @@
   (-pull-many [pull resource-handles opts]))
 
 (defprotocol SearchParam
+  (-validate-modifier [search-param modifier] "Can return an anomaly.")
   (-compile-value [search-param modifier value] "Can return an anomaly.")
   (-estimated-scan-size
     [search-param batch-db tid modifier compiled-value]
@@ -120,11 +121,18 @@
   (-index-handles
     [search-param batch-db tid modifier compiled-value]
     [search-param batch-db tid modifier compiled-value start-id]
-    "Returns a reducible collection.")
+    "Returns a reducible collection of unordered index handles.")
+  (-supports-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
+    "Returns true if `search-param` supports ordered index handles.")
+  (-ordered-index-handles
+    [search-param batch-db tid modifier compiled-values]
+    [search-param batch-db tid modifier compiled-values start-id]
+    "Returns a reducible collection of index handles ordered by ID.")
   (-sorted-index-handles
     [search-param batch-db tid direction]
     [search-param batch-db tid direction start-id]
-    "Returns a reducible collection.")
+    "Returns a reducible collection of index handles sorted by the sort clause.")
   (-supports-ordered-compartment-index-handles [search-param values]
     "Returns true if `search-param` supports fetching ordered compartment index handles with `values`.")
   (-ordered-compartment-index-handles
@@ -137,11 +145,6 @@
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))
-
-(defprotocol WithOrderedIndexHandles
-  (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
-    [search-param batch-db tid modifier compiled-values start-id]))
 
 (defprotocol SearchParamRegistry
   (-parse [_ type s])

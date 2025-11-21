@@ -378,6 +378,9 @@
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"missing"} code)))
+
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
       (if-ok [date-time-value (system/parse-date-time value)]
@@ -394,6 +397,15 @@
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
   (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    false)
+
+  (-ordered-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
   (-index-handles [_ batch-db tid _ compiled-value]

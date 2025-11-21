@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.util
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.anomaly :as ba]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
@@ -131,5 +132,22 @@
   (let [[url version] (str/split canonical #"\|")]
     [(or url "") (some-> version version-parts)]))
 
-(defn union-index-handles [index-handles]
+(defn union-index-handles
+  "Returns a reducible and iterable collection of the union of `index-handles`."
+  [index-handles]
   (apply coll/union ih/id-comp ih/union index-handles))
+
+(defn unsupported-modifier-anom [code modifier]
+  (ba/unsupported
+   (format "Unsupported modifier `%s` on search parameter `%s`." modifier code)
+   :modifier/issue :not-implemented))
+
+(defn unknown-modifier-anom [code modifier]
+  (ba/incorrect
+   (format "Unknown modifier `%s` on search parameter `%s`." modifier code)
+   :modifier/issue :unknown))
+
+(defn modifier-anom [known? code modifier]
+  (if (known? modifier)
+    (unsupported-modifier-anom code modifier)
+    (unknown-modifier-anom code modifier)))

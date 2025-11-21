@@ -17,11 +17,12 @@
   (let [values (cond->> values (< 1 (count values)) (into [] (distinct)))]
     (if (empty? values)
       (reduced (ba/incorrect (format "Clause `%s` isn't valid." clause)))
-      (if-ok [[search-param modifier] (sr/parse registry type param)]
+      (if-ok [[search-param modifier] (sr/parse registry type param)
+              _ (search-param/validate-modifier search-param modifier)]
         (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
           (conj ret [search-param modifier values compiled-values])
           reduced)
-        #(if lenient? ret (reduced %))))))
+        #(if lenient? ret (dissoc % :modifier/issue))))))
 
 (defn- resolve-sort-clause
   [registry type ret [_ param direction :as clause]]
@@ -132,10 +133,15 @@
    comp
    clauses))
 
+(defn- supports-ordered-index-handles
+  [batch-db tid [search-param modifier _ compiled-values]]
+  (p/-supports-ordered-index-handles search-param batch-db tid modifier
+                                     compiled-values))
+
 (defn- group-by-ordered-index-handle-support
   "Returns two groups, true and false."
-  [clauses]
-  (group-by (comp #(satisfies? p/WithOrderedIndexHandles %) first) clauses))
+  [batch-db tid clauses]
+  (group-by (partial supports-ordered-index-handles batch-db tid) clauses))
 
 (defn- estimated-scan-size
   [batch-db tid [search-param modifier _ compiled-values]]
@@ -180,7 +186,7 @@
   sizes are promoted to seek."
   [batch-db tid clauses]
   (let [{ordered-support-clauses true other-clauses false}
-        (group-by-ordered-index-handle-support clauses)]
+        (group-by-ordered-index-handle-support batch-db tid clauses)]
     (cond
       (= 1 (count ordered-support-clauses))
       [ordered-support-clauses other-clauses]

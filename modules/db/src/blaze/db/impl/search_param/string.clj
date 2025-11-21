@@ -77,10 +77,22 @@
 
 (defrecord SearchParamString [name type base code c-hash expression normalize]
   p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"contains" "exact" "missing" "text"} code)))
+
   (-compile-value [_ _ value]
     (codec/string (normalize value)))
 
   (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    false)
+
+  (-ordered-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
   (-index-handles [_ batch-db tid _ compiled-value]

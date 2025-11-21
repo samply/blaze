@@ -22,6 +22,13 @@
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]))
 
+(defn validate-modifier
+  "Validate that `modifier` is known and implemented for `search-param`.
+
+  Returns an anomaly on errors."
+  [search-param modifier]
+  (p/-validate-modifier search-param modifier))
+
 (defn compile-values
   "Compiles `values` according to `search-param`.
 
@@ -84,13 +91,9 @@
 
   The index handles are distinct and ordered by id."
   ([search-param batch-db tid modifier compiled-values]
-   (if (= 1 (count compiled-values))
-     (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-     (p/-ordered-index-handles search-param batch-db tid modifier compiled-values)))
+   (p/-ordered-index-handles search-param batch-db tid modifier compiled-values))
   ([search-param batch-db tid modifier compiled-values start-id]
-   (if (= 1 (count compiled-values))
-     (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-     (p/-ordered-index-handles search-param batch-db tid modifier compiled-values start-id))))
+   (p/-ordered-index-handles search-param batch-db tid modifier compiled-values start-id)))
 
 (defn ordered-compartment-index-handles
   "Returns an iterable of index handles from `batch-db` in `compartment` of type

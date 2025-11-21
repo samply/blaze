@@ -233,7 +233,7 @@
 
   Each binding consists of a binding-form and an expression. The expression is
   evaluated with all upper binding forms in scope and tested for anomalies. If
-  an anomaly is detected, it is redurned and subsequent expressions are not
+  an anomaly is detected, it is returned and subsequent expressions are not
   evaluated. If all expressions evaluate to non-anomalies, the body is evaluated
   with all binding forms in scope."
   {:arglists '([[bindings*] & body])}

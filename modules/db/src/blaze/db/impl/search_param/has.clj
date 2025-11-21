@@ -98,6 +98,8 @@
 
 (defrecord SearchParamHas [index name type code]
   p/SearchParam
+  (-validate-modifier [_ _])
+
   (-compile-value [_ modifier value]
     (when-ok [[type chain-code code] (split-modifier modifier)
               search-param (resolve-search-param index type code)
@@ -108,6 +110,15 @@
        (p/-compile-value search-param nil value)]))
 
   (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    false)
+
+  (-ordered-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
   (-index-handles [_ batch-db tid _ compiled-value]

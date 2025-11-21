@@ -29,6 +29,11 @@
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
+(s/fdef search-param/validate-modifier
+  :args (s/cat :search-param :blaze.db/search-param
+               :modifier (s/nilable string?))
+  :ret (s/nilable ::anom/anomaly))
+
 (s/fdef search-param/compile-values
   :args (s/cat :search-param :blaze.db/search-param
                :modifier (s/nilable string?)
@@ -62,7 +67,7 @@
   :ret (cs/coll-of ::index/handle))
 
 (s/fdef search-param/ordered-index-handles
-  :args (s/cat :search-param :blaze.db/search-param-with-ordered-index-handles
+  :args (s/cat :search-param :blaze.db/search-param
                :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
