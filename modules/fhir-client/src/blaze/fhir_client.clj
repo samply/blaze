@@ -54,7 +54,7 @@
   "Returns a CompletableFuture that will complete with `bundle` transacted."
   {:arglists '([base-uri bundle & [opts]])}
   [base-uri bundle & [opts]]
-  (impl/transact base-uri bundle opts))
+  (impl/post base-uri bundle opts))
 
 (defn- execute-type-get-msg [type name {:keys [query-params]}]
   (format "Execute $%s on type %s with params %s" name type query-params))
@@ -71,6 +71,20 @@
   [base-uri type name & [opts]]
   (log/trace (execute-type-get-msg type name opts))
   (impl/fetch (str base-uri "/" type "/$" name) opts))
+
+(defn- execute-type-post-msg [type name params]
+  (format "Execute $%s on type %s with params %s" name type params))
+
+(defn execute-type-post
+  "Executes the operation with `name` on the type-level endpoint with `type`
+  using POST.
+
+  Returns a CompletableFuture that will complete with either a Parameters
+  resource or a resource of the type of the single out parameter named
+  `return`."
+  [base-uri type name params & [opts]]
+  (log/trace (execute-type-post-msg type name params))
+  (impl/post (str base-uri "/" type "/$" name) params opts))
 
 (defn search-type-publisher
   "Returns a Publisher that produces a Bundle per page of resources with `type`.

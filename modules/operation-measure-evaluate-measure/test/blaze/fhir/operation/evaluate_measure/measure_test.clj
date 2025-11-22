@@ -17,6 +17,9 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-future]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -88,8 +91,14 @@
          ::expr/cache
          {:node (ig/ref :blaze.db/node)
           :executor (ig/ref :blaze.test/executor)}
+         ::ts/local
+         {:node (ig/ref :blaze.db/node)
+          :clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+          :graph-cache (ig/ref ::ts-local/graph-cache)}
          :blaze.test/fixed-rng-fn {}
-         :blaze.test/executor {}))
+         :blaze.test/executor {}
+         ::ts-local/graph-cache {}))
 
 (defn- evaluate
   ([name]
@@ -100,13 +109,14 @@
    (with-system-data
      [{:blaze.db/keys [node]
        ::expr/keys [cache]
-       :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+       :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+       ::ts/keys [local]} config]
      [(tx-ops (:entry (read-data name)))]
 
      (let [db (d/db node)
            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                     ::expr/cache cache :blaze/base-url "" ::reitit/router router
-                    :executor executor}
+                    :terminology-service local :executor executor}
            measure @(d/pull node (d/resource-handle db "Measure" "0"))
            period [#system/date "2000" #system/date "2020"]
            params {:period period :report-type report-type}
@@ -241,7 +251,8 @@
 (deftest evaluate-measure-test
   (testing "Encounter population basis"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
@@ -253,7 +264,8 @@
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :executor executor :blaze/base-url "" ::reitit/router router}
+                     :executor executor :terminology-service local
+                     :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical "0"]
                      :group
@@ -295,7 +307,8 @@
 
   (testing "two groups"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
         [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
@@ -311,7 +324,8 @@
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :executor executor :blaze/base-url "" ::reitit/router router}
+                     :executor executor :terminology-service local
+                     :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical "0"]
                      :group
@@ -411,7 +425,8 @@
 
   (testing "library with syntax error"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content "library Test
                                            define Error: (")]}]]]
@@ -419,7 +434,7 @@
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      :blaze/base-url "" ::reitit/router router
-                     :executor executor}
+                     :executor executor :terminology-service local}
             measure-id "measure-id-133021"
             measure {:fhir/type :fhir/Measure :id measure-id
                      :library [#fhir/canonical "0"]
@@ -440,14 +455,15 @@
 
   (testing "missing criteria"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content (library-gender true))]}]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      :blaze/base-url "" ::reitit/router router
-                     :executor executor}
+                     :executor executor :terminology-service local}
             measure-id "measure-id-133021"
             measure {:fhir/type :fhir/Measure :id measure-id
                      :library [#fhir/canonical "0"]
@@ -468,7 +484,8 @@
 
   (testing "evaluation timeout"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content (library-gender true))]}]]]
@@ -476,7 +493,7 @@
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn
                      :db db :timeout (time/seconds 0)
-                     :executor executor
+                     :executor executor :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
             measure-id "measure-id-132321"
             measure {:fhir/type :fhir/Measure :id measure-id
@@ -499,7 +516,8 @@
 
   (testing "cancellation"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content (library-gender true))]}]]]
@@ -508,7 +526,7 @@
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn
                        :db db :blaze/cancelled? (constantly cancelled?)
-                       :executor executor
+                       :executor executor :terminology-service local
                        :blaze/base-url "" ::reitit/router router}
               measure-id "measure-id-132321"
               measure {:fhir/type :fhir/Measure :id measure-id
@@ -535,7 +553,8 @@
 
     (testing "Encounter population basis"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+          ::ts/keys [local]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Patient :id "1"}]
@@ -549,7 +568,7 @@
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/cancelled?
                        (constantly (ba/interrupted "msg-114556"))
-                       :executor executor
+                       :executor executor :terminology-service local
                        :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical "0"]
@@ -577,14 +596,15 @@
     (doseq [subject-ref ["0" ["Patient" "0"]]
             [library count] [[(library true) 1] [(library false) 0]]]
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+          ::ts/keys [local]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content library)]}]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :executor executor
+                       :executor executor :terminology-service local
                        :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
                        :url #fhir/uri "measure-155437"
@@ -614,14 +634,15 @@
     (testing "with stratifiers"
       (doseq [[library count] [[(library-gender true) 1] [(library-gender false) 0]]]
         (with-system-data
-          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+            ::ts/keys [local]} config]
           [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
             [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                    :content [(library-content library)]}]]]
 
           (let [db (d/db node)
                 context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                         :executor executor
+                         :executor executor :terminology-service local
                          :blaze/base-url "" ::reitit/router router}
                 measure {:fhir/type :fhir/Measure :id "0"
                          :url #fhir/uri "measure-155502"
@@ -657,14 +678,15 @@
 
     (testing "invalid subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+          ::ts/keys [local]} config]
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content (library-gender true))]}]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router
-                       :executor executor}
+                       :executor executor :terminology-service local}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical "0"]
                        :group
@@ -683,14 +705,15 @@
 
     (testing "missing subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+          ::ts/keys [local]} config]
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content (library-gender true))]}]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router
-                       :executor executor}
+                       :executor executor :terminology-service local}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical "0"]
                        :group
@@ -709,7 +732,8 @@
 
     (testing "deleted subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+          ::ts/keys [local]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content (library-gender true))]}]]
@@ -718,7 +742,7 @@
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router
-                       :executor executor}
+                       :executor executor :terminology-service local}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical "0"]
                        :group
@@ -760,15 +784,17 @@
     (with-system-data
       [{:blaze.db/keys [node]
         ::expr/keys [cache]
-        :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [(into [] (mapcat patient-condition-tx-ops) (range 2000))
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content library-exists-condition)]}]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     ::expr/cache cache
-                     :executor executor :blaze/base-url "" ::reitit/router router}
+                     ::expr/cache cache :executor executor
+                     :terminology-service local
+                     :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical "0"]
                      :group
@@ -806,7 +832,8 @@
     (with-system-data
       [{:blaze.db/keys [node]
         ::expr/keys [cache]
-        :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Medication :id "0"
                :code #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/atc" :code #fhir/code "L01AX03"}]}}]]
        (into [] (mapcat patient-medication-tx-ops) (range 2000))
@@ -815,8 +842,9 @@
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     ::expr/cache cache
-                     :executor executor :blaze/base-url "" ::reitit/router router}
+                     ::expr/cache cache :executor executor
+                     :terminology-service local
+                     :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical "0"]
                      :group
@@ -948,6 +976,8 @@
   (testing-query "q62-consent" 4)
 
   (testing-query "q63-blood-pressure" 1)
+
+  (testing-query "q64-in-value-set-gender" 1)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -1216,4 +1246,4 @@
 
 (comment
   (log/set-min-level! :debug)
-  (evaluate "q63-blood-pressure"))
+  (evaluate "q61-in-value-set-gender"))

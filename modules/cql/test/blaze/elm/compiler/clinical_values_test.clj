@@ -17,10 +17,15 @@
    [blaze.elm.literal-spec]
    [blaze.elm.quantity :refer [quantity]]
    [blaze.elm.ratio :refer [ratio]]
-   [blaze.test-util :refer [satisfies-prop]]
+   [blaze.elm.value-set-spec]
+   [blaze.fhir.test-util]
+   [blaze.terminology-service]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.protocols :as p]
+   [blaze.test-util :refer [given-thrown satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
@@ -386,3 +391,45 @@
 
     (testing "form"
       (has-form expr '(ratio (quantity 3M "m") (quantity 1M "s"))))))
+
+;; 3.12. ValueSetRef
+;;
+;; The ValueSetRef expression allows a previously defined named value set to be
+;; referenced within an expression. Conceptually, referencing a value set
+;; returns the expansion set for the value set as a list of codes.
+;;
+;; The preserve attribute is trial-use in CQL 1.5.2 and was introduced to allow
+;; engines to determine whether or not to expand a ValueSetRef (the 1.4
+;; behavior), ensuring that 1.5 engines can run 1.4 ELM.
+(deftest compile-value-set-ref-test
+  (testing "without terminology service"
+    (let [context
+          {:library
+           {:valueSets
+            {:def
+             [{:name "value-set-def-135520"
+               :id "value-set-135750"}]}}}]
+
+      (testing "compile"
+        (given-thrown (c/compile context #elm/value-set-ref "value-set-def-135520")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service."))))
+
+  (testing "with terminology service returning a value set with two expansions"
+    (let [context
+          {:library
+           {:valueSets
+            {:def
+             [{:name "value-set-def-135520"
+               :id "value-set-135750"}]}}
+           :terminology-service (reify p/TerminologyService)}
+          expr (c/compile context #elm/value-set-ref "value-set-def-135520")]
+
+      (testing "eval"
+        (is (s/valid? :blaze.elm/value-set (core/-eval expr {} nil nil))))
+
+      (ctu/testing-constant expr)
+
+      (testing "form"
+        (has-form expr
+          '(value-set "value-set-135750"))))))

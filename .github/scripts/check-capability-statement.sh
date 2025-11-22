@@ -3,7 +3,7 @@
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
-base="http://localhost:8080/fhir"
+base="${1:-http://localhost:8080/fhir}"
 capability_statement=$(curl -sH 'Accept: application/fhir+json' "$base/metadata")
 
 test "status" "$(echo "$capability_statement" | jq -r .status)" "active"

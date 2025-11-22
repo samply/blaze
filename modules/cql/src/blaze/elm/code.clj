@@ -39,7 +39,13 @@
   (-eval [this _ _ _]
     this)
   (-form [_]
-    `(~'code ~system ~version ~code)))
+    `(~'code ~system ~version ~code))
+
+  Object
+  (toString [_]
+    (-> (cond-> (str "Code {system: `" system "`, ")
+          version (str "version: `" version "`, "))
+        (str "code: `" code "`}"))))
 
 (defn code? [x]
   (instance? Code x))

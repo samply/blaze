@@ -13,6 +13,7 @@
  elm/concept-ref blaze.elm.literal/concept-ref
  elm/quantity blaze.elm.literal/quantity
  elm/ratio blaze.elm.literal/ratio
+ elm/value-set-ref blaze.elm.literal/value-set-ref
  elm/parameter-ref blaze.elm.literal/parameter-ref
  elm/expression-ref blaze.elm.literal/expression-ref
  elm/function-ref blaze.elm.literal/function-ref
@@ -128,5 +129,6 @@
  elm/to-ratio blaze.elm.literal/to-ratio
  elm/to-string blaze.elm.literal/to-string
  elm/calculate-age-at blaze.elm.literal/calculate-age-at
+ elm/in-value-set blaze.elm.literal/in-value-set
  ctu/optimizeable blaze.elm.compiler.test-util/optimizeable
  ctu/optimize-to blaze.elm.compiler.test-util/optimize-to}

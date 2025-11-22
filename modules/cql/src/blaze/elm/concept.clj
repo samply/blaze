@@ -2,7 +2,8 @@
   "Implementation of the concept type."
   (:require
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.protocols :as p]))
+   [blaze.elm.protocols :as p]
+   [clojure.string :as str]))
 
 (defrecord Concept [codes]
   p/Equivalent
@@ -31,7 +32,14 @@
   (-eval [this _ _ _]
     this)
   (-form [_]
-    `(~'concept ~@(map core/-form codes))))
+    `(~'concept ~@(map core/-form codes)))
+
+  Object
+  (toString [_]
+    (str "Concept {" (str/join ", " (map str codes)) "}")))
+
+(defn concept? [x]
+  (instance? Concept x))
 
 (defn concept
   "Returns a CQL concept"

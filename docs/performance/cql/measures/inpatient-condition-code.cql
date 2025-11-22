@@ -14,5 +14,5 @@ define InInitialPopulation:
     with "Inpatient Encounter" E
     such that C.encounter.reference = 'Encounter/' + E.id
 
-define function ConditionCode(condition FHIR.Condition):
+define function ConditionCode(condition Condition):
   condition.code

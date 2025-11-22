@@ -13,6 +13,7 @@
    [blaze.http.spec]
    [blaze.module-spec]
    [blaze.spec]
+   [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
    [reitit.core :as reitit])
   (:import
@@ -23,7 +24,7 @@
           :opt [:blaze/cancelled? ::expr/cache]
           :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db
                    ::evaluate-measure/executor]
-          :opt-un [::evaluate-measure/timeout]))
+          :opt-un [:blaze/terminology-service ::evaluate-measure/timeout]))
 
 (defn- temporal? [x]
   (instance? Temporal x))

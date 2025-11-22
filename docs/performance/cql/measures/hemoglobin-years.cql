@@ -9,5 +9,5 @@ context Patient
 define Hemoglobin:
   [Observation: Code '718-7' from loinc]
 
-define function ObsYear(obs FHIR.Observation):
+define function ObsYear(obs Observation):
   year from obs.effective

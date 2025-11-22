@@ -46,6 +46,8 @@
                                                            data-type clauses)]
       (reify-expr core/Expression
         (-optimize [expr db]
+         ;; if there is no resource, regardless of the individual patient,
+         ;; available, just return an empty list for further optimizations
           (if (coll/empty? (d/execute-query db type-query))
             []
             expr))
