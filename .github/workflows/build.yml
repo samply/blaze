@@ -21,8 +21,8 @@ concurrency:
 
 env:
   # renovate: datasource=github-release-attachments depName=samply/blazectl
-  BLAZECTL_VERSION: v1.2.0
-  BLAZECTL_CHECKSUM: c0b2bf0b35c60ff0aa1d66f638d5b8d3a77c506211643932e4132784069cc759
+  BLAZECTL_VERSION: v1.3.0
+  BLAZECTL_CHECKSUM: 2e75ddfb9b35d0e78b5dda4d7ae4d08c45037729f5a45affd59ddb7252b75aba
 
   # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
   VALIDATOR_VERSION: 6.5.21
