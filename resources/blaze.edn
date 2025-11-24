@@ -1321,7 +1321,9 @@
        :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/compact"
        :affects-state true
        :system-handler #blaze/ref :blaze.fhir.operation/compact
-       :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]}}
+       :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]
+
+    :blaze/java-tool-options #blaze/cfg ["JAVA_TOOL_OPTIONS" string? ""]}}
 
   ;;
   ;; OpenID Authentication

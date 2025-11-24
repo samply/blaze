@@ -69,6 +69,9 @@
 (s/def :blaze.db.query/clauses
   (s/coll-of :blaze.db.query/clause :kind vector?))
 
+(s/def :blaze/java-tool-options
+  string?)
+
 ;; ---- FHIR ------------------------------------------------------------------
 
 (s/def :fhir/issue
