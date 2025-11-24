@@ -96,6 +96,8 @@ test.describe('Admin', () => {
 
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Features' })).toBeVisible();
+
+    await expect(page.getByText('JAVA_TOOL_OPTIONS')).toBeVisible();
   });
 
   test.describe('Databases', () => {

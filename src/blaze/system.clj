@@ -255,3 +255,7 @@
 (defmethod ig/init-key :blaze/rng-fn
   [_ _]
   #(ThreadLocalRandom/current))
+
+(defmethod ig/init-key :blaze/java-tool-options
+  [_ options]
+  options)
