@@ -15,6 +15,7 @@
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
    [blaze.module :as m]
@@ -46,7 +47,7 @@
 ;; ---- Compilation -----------------------------------------------------------
 
 (def ^:private text-cql-content
-  #(when (-> % :contentType type/value #{"text/cql"}) %))
+  #(when (-> % :contentType :value #{"text/cql"}) %))
 
 (defn- extract-cql-code
   "Extracts the CQL code from the first attachment of `library`.
@@ -54,15 +55,14 @@
   Returns an anomaly on errors."
   {:arglists '([library])}
   [{:keys [id content]}]
-  (if-let [{:keys [data]} (some text-cql-content content)]
-    (let [data (type/value data)]
-      (if data
-        (String. ^bytes (.decode (Base64/getDecoder) ^String data)
-                 StandardCharsets/UTF_8)
-        (ba/incorrect
-         (format "Missing embedded data of first attachment in library with id `%s`." id)
-         :fhir/issue "value"
-         :fhir.issue/expression "Library.content[0].data")))
+  (if-let [{{data :value} :data} (some text-cql-content content)]
+    (if data
+      (String. ^bytes (.decode (Base64/getDecoder) ^String data)
+               StandardCharsets/UTF_8)
+      (ba/incorrect
+       (format "Missing embedded data of first attachment in library with id `%s`." id)
+       :fhir/issue "value"
+       :fhir.issue/expression "Library.content[0].data"))
     (ba/incorrect
      (format "No attachment with `text/cql` content type found in library with id `%s`." id)
      :fhir/issue "value"
@@ -146,7 +146,7 @@
 
   Returns an anomaly on errors."
   [db terminology-service measure opts]
-  (if-let [library-ref (-> measure :library first type/value)]
+  (if-let [library-ref (-> measure :library first :value)]
     (do-sync [library (find-library db library-ref)]
       (let [context (cond-> {:node (d/node db)}
                       terminology-service
@@ -200,7 +200,7 @@
   (some
    (fn [{:keys [url value]}]
      (when (= "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis" url)
-       (let [basis (type/value value)]
+       (let [basis (:value value)]
          (when-not (= "boolean" basis)
            basis))))
    extension))
@@ -315,16 +315,13 @@
                (do (log/debug (evaluate-groups-msg id subject-type duration))
                    [groups duration]))))))))
 
-(defn- canonical [context {:keys [id url version]}]
-  (if-let [url (type/value url)]
+(defn- canonical [context {:keys [id] {url :value} :url {version :value} :version}]
+  (if url
     (cond-> url version (str "|" version))
     (fhir-util/instance-url context "Measure" id)))
 
 (defn- get-first-code [codings system]
-  (some
-   #(when (= system (-> % :system type/value))
-      (-> % :code type/value))
-   codings))
+  (some #(when (= system (-> % :system :value)) (-> % :code :value)) codings))
 
 (defn- subject-type [{{codings :coding} :subject}]
   (or (get-first-code codings "http://hl7.org/fhir/resource-types") "Patient"))
@@ -335,7 +332,7 @@
     :value
     (type/quantity
      {:code #fhir/code "s"
-      :system #fhir/uri "http://unitsofmeasure.org"
+      :system #fhir/uri-interned "http://unitsofmeasure.org"
       :unit #fhir/string "s"
       :value (type/decimal (bigdec duration))})}))
 
@@ -370,11 +367,11 @@
       "subject-list" #fhir/code "subject-list"
       "subject" #fhir/code "individual")
     :measure (type/canonical (canonical context measure))
-    :date now
+    :date (type/dateTime now)
     :period
     (type/period
-     {:start (type/dateTime (str start))
-      :end (type/dateTime (str end))})}
+     {:start (type/dateTime (system/parse-date-time (str start)))
+      :end (type/dateTime (system/parse-date-time (str end)))})}
 
     subject-handle
     (assoc :subject (type/reference {:reference (type/string (local-ref subject-handle))}))

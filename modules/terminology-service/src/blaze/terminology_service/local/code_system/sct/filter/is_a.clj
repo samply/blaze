@@ -4,7 +4,6 @@
   (include descendant codes and self)."
   (:require
    [blaze.anomaly :as ba]
-   [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.sct.context :as context :refer [url]]
    [blaze.terminology-service.local.code-system.sct.filter.core :as core]
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]))
@@ -31,12 +30,12 @@
 
 (defn- unsupported-property-msg [property]
   (format "Unsupported is-a filter property `%s` in code system `%s`."
-          (type/value property) url))
+          property url))
 
 (defmethod core/expand-filter :is-a
-  [code-system {:keys [property value]}]
-  (condp = (type/value property)
-    "concept" (expand-filter code-system (type/value value))
+  [code-system {{property :value} :property {:keys [value]} :value}]
+  (condp = property
+    "concept" (expand-filter code-system value)
     nil (ba/incorrect missing-property-msg)
     (ba/unsupported (unsupported-property-msg property))))
 
@@ -52,8 +51,8 @@
       (ba/incorrect (invalid-value-msg value)))))
 
 (defmethod core/satisfies-filter :is-a
-  [code-system {:keys [property value]} code]
-  (condp = (type/value property)
-    "concept" (satisfies-filter code-system (type/value value) code)
+  [code-system {{property :value} :property {:keys [value]} :value} code]
+  (condp = property
+    "concept" (satisfies-filter code-system value code)
     nil (ba/incorrect missing-property-msg)
     (ba/unsupported (unsupported-property-msg property))))

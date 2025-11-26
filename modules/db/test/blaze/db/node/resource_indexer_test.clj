@@ -24,7 +24,6 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.parsing-context]
-   [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.metrics.spec]
@@ -268,7 +267,7 @@
              [#fhir/Coding
                {:system #fhir/uri "system-204435"
                 :code #fhir/code "code-204441"}]}
-           :onset #fhir/dateTime "2020-01-30"
+           :onset #fhir/dateTime #system/date-time "2020-01-30"
            :subject #fhir/Reference{:reference #fhir/string "Patient/id-145552"}
            :meta
            #fhir/Meta
@@ -363,7 +362,7 @@
                         {:system #fhir/uri "system-193821"
                          :code #fhir/code "code-193824"}]}
                     :subject #fhir/Reference{:reference #fhir/string "Patient/id-180857"}
-                    :effective #fhir/dateTime "2005-06-17"
+                    :effective #fhir/dateTime #system/date-time "2005-06-17"
                     :value
                     #fhir/Quantity
                      {:code #fhir/code "kg/m2"

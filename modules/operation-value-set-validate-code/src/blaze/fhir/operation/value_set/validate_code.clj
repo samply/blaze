@@ -76,7 +76,7 @@
    params))
 
 (defn- contains-param? [name {:keys [parameter]}]
-  (some (comp #{name} type/value :name) parameter))
+  (some (comp #{name} :value :name) parameter))
 
 (defn- body-params [{:keys [body] {:strs [accept-language]} :headers}]
   (cond-> body

@@ -20,14 +20,6 @@
   (s/spec (s/cat :op #(= `s2/or %)
                  :choices (s/* (s/cat :key keyword? :spec some?)))))
 
-(s/fdef fhir-spec/fhir-type
-  :args (s/cat :x any?)
-  :ret (s/nilable :fhir/type))
-
-(s/fdef fhir-spec/primitive?
-  :args (s/cat :spec any?)
-  :ret boolean?)
-
 (s/fdef fhir-spec/primitive-val?
   :args (s/cat :spec any?)
   :ret boolean?)
@@ -44,19 +36,19 @@
 
 (s/fdef fhir-spec/write-json
   :args (s/cat :context :blaze.fhir/writing-context
-               :out #(instance? OutputStream %) :value any?))
+               :out #(instance? OutputStream %) :value :fhir/value))
 
 (s/fdef fhir-spec/write-json-as-bytes
-  :args (s/cat :context :blaze.fhir/writing-context :value any?)
-  :ret bytes?)
+  :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
+  :ret (s/or :result bytes? :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/write-json-as-string
-  :args (s/cat :context :blaze.fhir/writing-context :value any?)
-  :ret string?)
+  :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
+  :ret (s/or :result string? :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/write-cbor
-  :args (s/cat :context :blaze.fhir/writing-context :resource any?)
-  :ret bytes?)
+  :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
+  :ret (s/or :result bytes? :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/conform-xml
   :args (s/cat :x any?)
