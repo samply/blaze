@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.0
+
+### Enhancements
+
+* Implement ValueSet References ([#110](https://github.com/samply/blaze/issues/110))
+* Implement CQL Instance Expression for FHIR Types ([#3126](https://github.com/samply/blaze/issues/3126))
+* Fail on Unsupported FHIR Search Modifier ([#2951](https://github.com/samply/blaze/issues/2951))
+
+### Performance
+
+* Optimize Chained Queries ([#3131](https://github.com/samply/blaze/issues/3131))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/114?closed=1). 
+
 ## v1.2.0
 
 ### Enhancements
