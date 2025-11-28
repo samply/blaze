@@ -61,9 +61,10 @@
 
 (defn- build-page [db include-defs page-size handles]
   (let [{:keys [matches] :as res} (build-page* page-size handles)]
-    (cond-> res
-      (:direct include-defs)
-      (assoc :includes (include/add-includes db include-defs matches)))))
+    (if (:direct include-defs)
+      (when-ok [includes (include/add-includes db include-defs matches)]
+        (assoc res :includes includes))
+      res)))
 
 (defn- query-plan-outcome [{:blaze/keys [db]} query]
   (let [plan (d/explain-query db query)]
@@ -144,10 +145,10 @@
   [{:blaze/keys [db] :keys [type]
     {:keys [include-defs page-size] :as params} :params
     :as context}]
-  (if-ok [{:keys [handles query]} (handles-and-query context)]
-    (let [{:keys [matches includes next-match]}
-          (build-page db include-defs page-size handles)
-          total-future (total-future db type query params matches next-match)
+  (if-ok [{:keys [handles query]} (handles-and-query context)
+          {:keys [matches includes next-match]}
+          (build-page db include-defs page-size handles)]
+    (let [total-future (total-future db type query params matches next-match)
           match-future (d/pull-many db matches (match-pull-opts params))
           include-future (if (seq includes)
                            (d/pull-many db includes (include-pull-opts params))
