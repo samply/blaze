@@ -80,7 +80,9 @@
   (try
     (with-open [rdr (PushbackReader. (io/reader (io/resource "blaze.edn")))]
       (edn/read
-       {:readers {'blaze/ref ig/ref 'blaze/ref-map ->RefMap 'blaze/cfg cfg}}
+       {:readers
+        {'blaze/ref ig/ref 'blaze/var ig/var 'blaze/ref-map ->RefMap
+         'blaze/cfg cfg}}
        rdr))
     (catch Exception e
       (log/warn "Problem while reading blaze.edn. Skipping it." e))))
@@ -94,11 +96,11 @@
     (catch Exception e
       (log/warn "Problem while reading blaze/version.edn. Skipping it." e))))
 
-(defn- get-blank [m k default]
+(defn- get-blank [m k f default]
   (let [v (get m k)]
     (if (or (nil? v) (str/blank? v))
       default
-      v)))
+      (f v))))
 
 (defn- secret? [env-var]
   (str/includes? (str/lower-case env-var) "pass"))
@@ -118,7 +120,7 @@
     (-> (walk/postwalk
          (fn [x]
            (if (instance? Cfg x)
-             (when-some [value (get-blank env (:env-var x) (:default x))]
+             (when-some [value (get-blank env (:env-var x) identity (:default x))]
                (let [value (coerce (:spec x) value)]
                  (vswap! settings assoc (:env-var x) (setting x value))
                  value))
@@ -139,8 +141,7 @@
    :blaze.handler/health {}
 
    :blaze/rest-api
-   {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
-    :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
+   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
     :auth-backends (ig/refset :blaze.auth/backend)
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
     :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)}
@@ -220,6 +221,9 @@
    base-config
    features))
 
+(defn- coerce-base-url [s]
+  (cond-> s (str/ends-with? s "/") (subs 0 (dec (count s)))))
+
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
@@ -231,7 +235,10 @@
         config (-> (merge-with merge root-config config)
                    (resolve-config env))]
     (load-namespaces config)
-    (ig/init config)))
+    (-> (ig/bind
+         config
+         {'base-url (get-blank env "BASE_URL" coerce-base-url "http://localhost:8080")})
+        (ig/init))))
 
 (defn shutdown! [system]
   (ig/halt! system))
