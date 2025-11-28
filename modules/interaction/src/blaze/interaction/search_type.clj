@@ -148,23 +148,25 @@
     (let [{:keys [matches includes next-match]}
           (build-page db include-defs page-size handles)
           total-future (total-future db type query params matches next-match)
-          match-future (d/pull-many db matches (match-pull-opts params))
-          include-future (if (seq includes)
-                           (d/pull-many db includes (include-pull-opts params))
-                           (ac/completed-future nil))]
-      (-> (ac/all-of [total-future match-future include-future])
-          (ac/exceptionally
-           #(assoc %
-                   ::anom/category ::anom/fault
-                   :fhir/issue "incomplete"))
-          (ac/then-apply
-           (fn [_]
-             (cond->
-              {:entries (entries context query match-future include-future)
-               :next-handle next-match
-               :total (ac/join total-future)}
-               query
-               (assoc :clauses (d/query-clauses query)))))))
+          match-future (d/pull-many db matches (match-pull-opts params))]
+      (if-ok [includes includes
+              include-future (if (seq includes)
+                               (d/pull-many db includes (include-pull-opts params))
+                               (ac/completed-future nil))]
+        (-> (ac/all-of [total-future match-future include-future])
+            (ac/exceptionally
+             #(assoc %
+                     ::anom/category ::anom/fault
+                     :fhir/issue "incomplete"))
+            (ac/then-apply
+             (fn [_]
+               (cond->
+                {:entries (entries context query match-future include-future)
+                 :next-handle next-match
+                 :total (ac/join total-future)}
+                 query
+                 (assoc :clauses (d/query-clauses query))))))
+        ac/completed-future))
     ac/completed-future))
 
 (defn- self-link
