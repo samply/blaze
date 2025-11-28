@@ -69,7 +69,9 @@
     ["/Medication" {:name :Medication/type}]
     ["/Organization" {:name :Organization/type}]
     ["/Encounter" {:name :Encounter/type}]
-    ["/Encounter/__page/{page-id}" {:name :Encounter/page}]]
+    ["/Encounter/__page/{page-id}" {:name :Encounter/page}]
+    ["/Practitioner" {:name :Practitioner/type}]
+    ["/PractitionerRole" {:name :PractitionerRole/type}]]
    {:syntax :bracket
     :path context-path}))
 
@@ -219,6 +221,13 @@
 
 (defn- page-path-params [page-id-cipher params]
   {:page-id (decrypt-page-id/encrypt page-id-cipher params)})
+
+(defn- sorted-includes
+  "Extracts and sorts included resource from the entries."
+  {:arglists '([body])}
+  [{:keys [entry]}]
+  (->> (filter (comp #{#fhir/code "include"} :mode :search) entry)
+       (sort-by (comp :fhir/type :resource))))
 
 (deftest handler-test
   (testing "on unknown search parameter"
@@ -2435,7 +2444,8 @@
                 @(handler
                   {::reitit/match (match-of "Observation")
                    :params
-                   {"_include" ["Observation:subject" "Observation:encounter"]}})]
+                   {"_include" ["Observation:subject" "Observation:encounter"]}})
+                includes (sorted-includes body)]
 
             (is (= 200 status))
 
@@ -2457,14 +2467,14 @@
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code "match"))
 
-            (testing "the second entry is the included Encounter"
-              (given (-> body :entry (nth 2))
+            (testing "the first include is the included Encounter"
+              (given (first includes)
                 [:fullUrl :value] := (str base-url context-path "/Encounter/1")
                 [:resource :fhir/type] := :fhir/Encounter
                 [:search :mode] := #fhir/code "include"))
 
-            (testing "the third entry is the included Patient"
-              (given (-> body :entry second)
+            (testing "the second include is the included Patient"
+              (given (second includes)
                 [:fullUrl :value] := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code "include")))))
@@ -2576,7 +2586,8 @@
                 {::reitit/match (match-of "MedicationStatement")
                  :params
                  {"_include" "MedicationStatement:medication"
-                  "_include:iterate" "Medication:manufacturer"}})]
+                  "_include:iterate" "Medication:manufacturer"}})
+              includes (sorted-includes body)]
 
           (is (= 200 status))
 
@@ -2589,7 +2600,7 @@
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
 
-          (testing "the bundle contains two entries"
+          (testing "the bundle contains three entries"
             (is (= 3 (count (:entry body)))))
 
           (testing "the first entry is the matched MedicationStatement"
@@ -2598,17 +2609,92 @@
               [:resource :fhir/type] := :fhir/MedicationStatement
               [:search :mode] := #fhir/code "match"))
 
-          (testing "the second entry is the included Organization"
-            (given (-> body :entry second)
+          (testing "the first include is the included Medication"
+            (given (first includes)
+              [:fullUrl :value] := (str base-url context-path "/Medication/0")
+              [:resource :fhir/type] := :fhir/Medication
+              [:search :mode] := #fhir/code "include"))
+
+          (testing "the second include is the included Organization"
+            (given (second includes)
+              [:fullUrl :value] := (str base-url context-path "/Organization/0")
+              [:resource :fhir/type] := :fhir/Organization
+              [:search :mode] := #fhir/code "include")))))
+
+    (testing "revinclude and iterative include"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Practitioner :id "0"}]
+          [:put {:fhir/type :fhir/PractitionerRole :id "0"
+                 :organization
+                 #fhir/Reference
+                  {:reference #fhir/string "Organization/0"}
+                 :practitioner
+                 #fhir/Reference
+                  {:reference #fhir/string "Practitioner/0"}}]
+          [:put {:fhir/type :fhir/Organization :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match (match-of "Practitioner")
+                 :params
+                 {"_revinclude" "PractitionerRole:practitioner"
+                  "_include:iterate" "PractitionerRole:organization"}})
+              includes (sorted-includes body)]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
+
+          (testing "the total count is 1"
+            (is (= #fhir/unsignedInt 1 (:total body))))
+
+          (testing "the bundle contains three entries"
+            (is (= 3 (count (:entry body)))))
+
+          (testing "the first entry is the matched Practitioner"
+            (given (-> body :entry first)
+              [:fullUrl :value] := (str base-url context-path "/Practitioner/0")
+              [:resource :fhir/type] := :fhir/Practitioner
+              [:search :mode] := #fhir/code "match"))
+
+          (testing "the first include is the included Organization"
+            (given (first includes)
               [:fullUrl :value] := (str base-url context-path "/Organization/0")
               [:resource :fhir/type] := :fhir/Organization
               [:search :mode] := #fhir/code "include"))
 
-          (testing "the third entry is the included Medication"
-            (given (-> body :entry (nth 2))
-              [:fullUrl :value] := (str base-url context-path "/Medication/0")
-              [:resource :fhir/type] := :fhir/Medication
+          (testing "the second include is the included PractitionerRole"
+            (given (second includes)
+              [:fullUrl :value] := (str base-url context-path "/PractitionerRole/0")
+              [:resource :fhir/type] := :fhir/PractitionerRole
               [:search :mode] := #fhir/code "include")))))
+
+    (testing "too many resources"
+      (with-handler [handler]
+        [(into
+          [[:put {:fhir/type :fhir/Patient :id "0"}]]
+          (map (fn [i]
+                 [:put {:fhir/type :fhir/Observation :id (str i)
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
+          (range 10001))]
+
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match (match-of "Patient")
+                 :params
+                 {"_revinclude" "Observation:subject"}})]
+
+          (is (= 409 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "too-costly"
+            [:issue 0 :diagnostics] := #fhir/string "Inclusion(s) would return more than 10,000 resources which is too costly to output. Please either lower the page size or use $graphql or $graph operations."))))
 
     (testing "non-iterative include doesn't work iterative"
       (with-handler [handler]
@@ -2711,7 +2797,8 @@
           (let [{:keys [status body]}
                 @(handler
                   {:params
-                   {"_revinclude" ["Observation:subject" "Condition:subject"]}})]
+                   {"_revinclude" ["Observation:subject" "Condition:subject"]}})
+                includes (sorted-includes body)]
 
             (is (= 200 status))
 
@@ -2742,14 +2829,14 @@
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code "match"))
 
-            (testing "the second entry is the included Condition"
-              (given (-> body :entry second)
+            (testing "the first include is the included Condition"
+              (given (first includes)
                 [:fullUrl :value] := (str base-url context-path "/Condition/2")
                 [:resource :fhir/type] := :fhir/Condition
                 [:search :mode] := #fhir/code "include"))
 
-            (testing "the third entry is the included Observation"
-              (given (-> body :entry (nth 2))
+            (testing "the second include is the included Observation"
+              (given (second includes)
                 [:fullUrl :value] := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code "include"))))))
