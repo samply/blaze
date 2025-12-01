@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: "apache/kafka:4.1.0@sha256:bff074a5d0051dbc0bbbcd25b045bb1fe84833ec0d3c7c965d1797dd289ec88f"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     environment:
       KAFKA_NODE_ID: 1
       CLUSTER_ID: '5L6g3nShT-eMCtK--X86sw'
@@ -35,7 +35,7 @@ services:
       retries: 10
 
   kafka-topic-creator-main:
-    image: "apache/kafka:4.1.0@sha256:bff074a5d0051dbc0bbbcd25b045bb1fe84833ec0d3c7c965d1797dd289ec88f"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
       --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
       --topic blaze-tx-main --partitions 1 --replication-factor 1 
@@ -49,7 +49,7 @@ services:
         condition: service_healthy
 
   kafka-topic-creator-admin:
-    image: "apache/kafka:4.1.0@sha256:bff074a5d0051dbc0bbbcd25b045bb1fe84833ec0d3c7c965d1797dd289ec88f"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
       --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
       --topic blaze-tx-admin --partitions 1 --replication-factor 1 
