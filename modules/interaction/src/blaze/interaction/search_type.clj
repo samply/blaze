@@ -62,8 +62,12 @@
 (defn- build-page [db include-defs page-size handles]
   (let [{:keys [matches] :as res} (build-page* page-size handles)]
     (if (:direct include-defs)
-      (when-ok [includes (include/add-includes db include-defs matches)]
-        (assoc res :includes includes))
+      (if-ok [includes (include/add-includes db include-defs matches)]
+        (assoc res :includes includes)
+        #(if (and (-> % :fhir/issue #{"too-costly"})
+                  (> page-size 1))
+           (build-page db include-defs (quot page-size 2) handles)
+           %))
       res)))
 
 (defn- query-plan-outcome [{:blaze/keys [db]} query]
