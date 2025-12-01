@@ -1559,6 +1559,9 @@ jobs:
     - name: Explain without Query Works
       run: .github/scripts/explain-type-list.sh Observation
 
+    - name: Too Costly Search Include Lowers Page Size Dynamically
+      run: .github/scripts/search-dynamic-page-size.sh "_id=$(.github/scripts/patient-ids.sh "999-95-9757,999-84-6225")" 2 1
+
     - name: Docker Stats
       run: docker stats --no-stream
 

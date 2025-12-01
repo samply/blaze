@@ -3,6 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
@@ -12,6 +13,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.search-type]
+   [blaze.interaction.search.include :as search-include]
    [blaze.interaction.search.nav-spec]
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util :as search-util]
@@ -2695,6 +2697,110 @@
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "too-costly"
             [:issue 0 :diagnostics] := #fhir/string "Inclusion(s) would return more than 10,000 resources which is too costly to output. Please either lower the page size or use $graphql or $graph operations."))))
+
+    (testing "other include error"
+      (with-redefs [search-include/add-includes
+                    (constantly (ba/conflict "msg-133007"))]
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+          (let [{:keys [status body]}
+                @(handler
+                  {::reitit/match (match-of "Patient")
+                   :params
+                   {"_revinclude" "Observation:subject"}})]
+
+            (is (= 409 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :diagnostics] := #fhir/string "msg-133007")))))
+
+    (testing "too many resources with page size lowering"
+      (with-handler [handler _ page-id-cipher]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]]
+         (mapv (fn [i]
+                 [:put {:fhir/type :fhir/Observation :id (str i)
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}])
+               (range 5000))
+         (mapv (fn [i]
+                 [:put {:fhir/type :fhir/Observation :id (str i)
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}])
+               (range 5000 10001))]
+
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match (match-of "Patient")
+                 :params
+                 {"_revinclude" "Observation:subject"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "the bundle contains 5001 entries"
+            (is (= 5001 (count (:entry body)))))
+
+          (testing "the first entry is the first matched Patient"
+            (given (-> body :entry first)
+              [:fullUrl :value] := (str base-url context-path "/Patient/0")
+              [:resource :fhir/type] := :fhir/Patient
+              [:search :mode] := #fhir/code "match"))
+
+          (testing "has a self link with original page-size"
+            (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_count=50")
+                   (link-url body "self"))))
+
+          (testing "has a next link"
+            (is (= (page-url page-id-cipher "Patient"
+                             {"_revinclude" ["Observation:subject"]
+                              "_count" "50" "__t" "3"
+                              "__page-id" "1"})
+                   (link-url body "next"))))
+
+          (testing "second page"
+            (let [{:keys [status body]}
+                  @(handler
+                    {::reitit/match patient-page-match
+                     :path-params
+                     (page-path-params
+                      page-id-cipher
+                      {"_revinclude" "Observation:subject" "_count" "50" "__t" "3" "__page-id" "1"})})]
+
+              (is (= 200 status))
+
+              (testing "the body contains a bundle"
+                (is (= :fhir/Bundle (:fhir/type body))))
+
+              (testing "the bundle type is searchset"
+                (is (= #fhir/code "searchset" (:type body))))
+
+              (testing "the total count is 2"
+                (is (= #fhir/unsignedInt 2 (:total body))))
+
+              (testing "the bundle contains 5002 entries"
+                (is (= 5002 (count (:entry body)))))
+
+              (testing "the first entry is the second matched Patient"
+                (given (-> body :entry first)
+                  [:fullUrl :value] := (str base-url context-path "/Patient/1")
+                  [:resource :fhir/type] := :fhir/Patient
+                  [:search :mode] := #fhir/code "match"))
+
+              (testing "has a first link"
+                (is (= (page-url page-id-cipher "Patient"
+                                 {"_revinclude" ["Observation:subject"]
+                                  "_count" "50" "__t" "3"})
+                       (link-url body "first")))))))))
 
     (testing "non-iterative include doesn't work iterative"
       (with-handler [handler]
