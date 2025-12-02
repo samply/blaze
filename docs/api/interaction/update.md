@@ -15,3 +15,7 @@ Some resources like base FHIR StructureDefinition resources are read-only and ca
 ## Conditional Update
 
 Conditional update interaction will be implemented in the future. Please see issue [#361](https://github.com/samply/blaze/issues/361) for more information.
+
+## Validation Support
+
+See [Validation](../../validation.md).

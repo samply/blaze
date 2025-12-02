@@ -8,11 +8,13 @@
    [blaze.job-scheduler]
    [blaze.middleware.fhir.output-spec]
    [blaze.middleware.fhir.resource-spec]
+   [blaze.middleware.fhir.validate-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.rest-api.middleware.metrics :as metrics]
    [blaze.rest-api.routes :as routes]
    [blaze.rest-api.routes-spec]
    [blaze.test-util :as tu]
+   [blaze.validator]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest testing]]
    [integrant.core :as ig]
@@ -88,6 +90,9 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze/validator
+   {:node (ig/ref :blaze.db/node)
+    :writing-context (ig/ref :blaze.fhir/writing-context)}
    :blaze.test/fixed-rng-fn {}
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
    {:structure-definition-repo structure-definition-repo}
@@ -348,6 +353,18 @@
         "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]))
 
+    (testing "with validator"
+      (let [config (assoc config :validator (:blaze/validator system))
+            router (router config system)]
+        (are [path request-method middleware]
+             (= middleware
+                (->> (get-in
+                      (reitit/match-by-path router path)
+                      [:result request-method :data :middleware])
+                     (mapv (comp :name #(if (sequential? %) (first %) %)))))
+          "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource :validate]
+          "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource :validate])))
+
     (testing "as batch"
       (let [router (router (assoc config :batch? true) system)]
         (are [path request-method middleware]
@@ -384,7 +401,19 @@
           "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
           "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
           "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-          "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db])))))
+          "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]))
+
+      (testing "with validator"
+        (let [config (assoc config :validator (:blaze/validator system))
+              router (router (assoc config :batch? true) system)]
+          (are [path request-method middleware]
+               (= middleware
+                  (->> (get-in
+                        (reitit/match-by-path router path)
+                        [:result request-method :data :middleware])
+                       (mapv (comp :name #(if (sequential? %) (first %) %)))))
+            "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource :validate]
+            "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource :validate]))))))
 
 (deftest middleware-with-auth-backends-test
   (with-system [system system-config]
