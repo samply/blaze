@@ -49,8 +49,7 @@
 
 (def config
   {:blaze.db/resource-cache
-   {:resource-store (ig/ref ::rs/kv)
-    :max-size 100}
+   {:resource-store (ig/ref ::rs/kv)}
    ::rs/kv
    {:kv-store (ig/ref ::kv/mem)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
@@ -86,11 +85,11 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.db/resource-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
-  (testing "invalid max-size"
-    (given-failed-system (assoc-in config [:blaze.db/resource-cache :max-size] ::invalid)
+  (testing "invalid max-size-ratio"
+    (given-failed-system (assoc-in config [:blaze.db/resource-cache :max-size-ratio] ::invalid)
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [::rc/max-size]
+      [:cause-data ::s/problems 0 :via] := [::rc/max-size-ratio]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest get-test
@@ -254,7 +253,7 @@
 
   (testing "with zero max size"
     (with-system [{cache :blaze.db/resource-cache store ::rs/kv}
-                  (assoc-in config [:blaze.db/resource-cache :max-size] 0)]
+                  (assoc-in config [:blaze.db/resource-cache :max-size-ratio] 0)]
 
       (is (zero? (.hitCount ^CacheStats (ccp/-stats cache))))
       (is (zero? (ccp/-estimated-size cache)))

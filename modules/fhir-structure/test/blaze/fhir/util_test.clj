@@ -36,7 +36,12 @@
 (deftest subsetted-test
   (are [coding] (fu/subsetted? coding)
     {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-     :code #fhir/code "SUBSETTED"})
+     :code #fhir/code "SUBSETTED"}
+    {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+     :code #fhir/code {:id "foo" :value "SUBSETTED"}}
+    {:system #fhir/uri {:id "foo" :value "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"}
+     :code #fhir/code "SUBSETTED"}
+    fu/subsetted)
 
   (are [coding] (not (fu/subsetted? coding))
     {:code #fhir/code "SUBSETTED"}

@@ -10,30 +10,29 @@
    [blaze.util :refer [conj-vec str]]))
 
 (defn- quantity-value [value]
-  (let [code (-> value :code type/value)]
-    (cond-> (str (-> value :value type/value)) code (str " " code))))
+  (let [code (-> value :code :value)]
+    (cond-> (str (-> value :value :value)) code (str " " code))))
 
 (defn- value-concept
   "Converts `value` into a CodeableConcept so that it can be used in a
   Stratifier."
-  [value]
-  (let [type (type/type value)]
-    (cond
-      (identical? :fhir/CodeableConcept type)
-      value
+  [{:fhir/keys [type] :as value}]
+  (cond
+    (identical? :fhir/CodeableConcept type)
+    value
 
-      (identical? :fhir/Quantity type)
-      (type/codeable-concept
-       {:text (type/string (quantity-value value))})
+    (identical? :fhir/Quantity type)
+    (type/codeable-concept
+     {:text (type/string (quantity-value value))})
 
-      (fhir-spec/primitive-val? value)
-      (type/codeable-concept {:text (type/string (str (type/value value)))})
+    (fhir-spec/primitive-val? value)
+    (type/codeable-concept {:text (type/string (str (:value value)))})
 
-      (nil? value)
-      (type/codeable-concept {:text #fhir/string "null"})
+    (nil? value)
+    (type/codeable-concept {:text #fhir/string "null"})
 
-      :else
-      (type/codeable-concept {:text (type/string (str value))}))))
+    :else
+    (type/codeable-concept {:text (type/string (str value))})))
 
 (defn- stratum-value-extension [value]
   (type/extension
@@ -51,7 +50,7 @@
                :count (type/integer count)})
             populations)}
 
-    (identical? :fhir/Quantity (type/type value))
+    (identical? :fhir/Quantity (:fhir/type value))
     (assoc :extension [(stratum-value-extension value)])))
 
 (defn- stratum-subject-list-populations [context populations]
@@ -90,7 +89,7 @@
              :value (value-concept value)
              :population %}
 
-      (identical? :fhir/Quantity (type/type value))
+      (identical? :fhir/Quantity (:fhir/type value))
       (assoc :extension [(stratum-value-extension value)]))))
 
 (defn- stratifier-path [group-idx stratifier-idx]
@@ -165,7 +164,7 @@
               :code code
               :value (value-concept value)}
 
-       (identical? :fhir/Quantity (type/type value))
+       (identical? :fhir/Quantity (:fhir/type value))
        (assoc :extension [(stratum-component-value-extension value)])))
    codes
    values))
@@ -199,7 +198,7 @@
              :component (components codes values)
              :population %}
 
-      (identical? :fhir/Quantity (type/type values))
+      (identical? :fhir/Quantity (:fhir/type values))
       (assoc :extension [(stratum-value-extension values)]))))
 
 (defn- multi-component-reduce-op* [{:keys [report-type] :as context} expression-names]
