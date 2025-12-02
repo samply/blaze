@@ -24,16 +24,14 @@
 (defhistogram duration-seconds
   "Durations in Cassandra page store."
   {:namespace "blaze"
-   :subsystem "page_store"
-   :name "cassandra_duration_seconds"}
+   :subsystem "page_store_cassandra"}
   (take 12 (iterate #(* 2 %) 0.0001))
   "op")
 
 (defhistogram clauses-bytes
   "Stored clauses sizes in bytes in Cassandra page store."
   {:namespace "blaze"
-   :subsystem "page_store"
-   :name "cassandra_clauses_bytes"}
+   :subsystem "page_store_cassandra"}
   (take 10 (iterate #(* 2 %) 128)))
 
 (defn- execute [session op statement]

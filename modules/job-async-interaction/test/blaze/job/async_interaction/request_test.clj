@@ -54,11 +54,11 @@
         (given @(d/pull node (d/resource-handle (d/db node) "Bundle" "AAAAAAAAAAAAAAAA"))
           :fhir/type := :fhir/Bundle
           :id := "AAAAAAAAAAAAAAAA"
-          :type := #fhir/code"batch"
+          :type := #fhir/code "batch"
           [:entry count] := 1
           [:entry 0 :fhir/type] := :fhir.Bundle/entry
-          [:entry 0 :request :method] := #fhir/code"GET"
-          [:entry 0 :request :url] := #fhir/uri"Observation?code=http://loinc.org|10230-1"
+          [:entry 0 :request :method] := #fhir/code "GET"
+          [:entry 0 :request :url] := #fhir/uri "Observation?code=http://loinc.org|10230-1"
           [:entry 0 :resource] := nil))))
 
   (testing "POST request"
@@ -83,11 +83,11 @@
         (given @(d/pull node (d/resource-handle (d/db node) "Bundle" "AAAAAAAAAAAAAAAA"))
           :fhir/type := :fhir/Bundle
           :id := "AAAAAAAAAAAAAAAA"
-          :type := #fhir/code"batch"
+          :type := #fhir/code "batch"
           [:entry count] := 1
           [:entry 0 :fhir/type] := :fhir.Bundle/entry
-          [:entry 0 :request :method] := #fhir/code"POST"
-          [:entry 0 :request :url] := #fhir/uri"Measure/$evaluate-measure"
+          [:entry 0 :request :method] := #fhir/code "POST"
+          [:entry 0 :request :url] := #fhir/uri "Measure/$evaluate-measure"
           [:entry 0 :request :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
-          [:entry 0 :request :extension 0 :value] := #fhir/code"representation"
+          [:entry 0 :request :extension 0 :value] := #fhir/code "representation"
           [:entry 0 :resource] := {:fhir/type :fhir/Parameters})))))

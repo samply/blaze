@@ -77,7 +77,7 @@
         (given body
           :fhir/type := :fhir/Parameters
           [:parameter count] := 1
-          [:parameter 0 :name] := "Patient"
+          [:parameter 0 :name] := #fhir/string "Patient"
           [:parameter 0 :value] := #fhir/unsignedInt 1))))
 
   (testing "with two patients"
@@ -92,7 +92,7 @@
         (given body
           :fhir/type := :fhir/Parameters
           [:parameter count] := 1
-          [:parameter 0 :name] := "Patient"
+          [:parameter 0 :name] := #fhir/string "Patient"
           [:parameter 0 :value] := #fhir/unsignedInt 2))))
 
   (testing "with one patient and one observation"
@@ -107,7 +107,7 @@
         (given body
           :fhir/type := :fhir/Parameters
           [:parameter count] := 2
-          [:parameter 0 :name] := "Observation"
+          [:parameter 0 :name] := #fhir/string "Observation"
           [:parameter 0 :value] := #fhir/unsignedInt 1
-          [:parameter 1 :name] := "Patient"
+          [:parameter 1 :name] := #fhir/string "Patient"
           [:parameter 1 :value] := #fhir/unsignedInt 1)))))

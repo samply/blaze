@@ -1,32 +1,32 @@
 #!/bin/bash
 
-BASE="http://localhost:8080/fhir"
-NAME="$1"
-EXPECTED_COUNT="$2"
+base="http://localhost:8080/fhir"
+name="$1"
+expected_count="$2"
 
-REPORT=$(blazectl --server "$BASE" evaluate-measure ".github/scripts/cql/$NAME.yml")
+report=$(blazectl --server "$base" evaluate-measure ".github/scripts/cql/$name.yml")
 
 if [ $? -ne 0 ]; then
-  echo "Measure evaluation failed: $REPORT"
+  echo "Measure evaluation failed: $report"
   exit 1
 fi
 
-COUNT=$(echo "$REPORT" | jq '.group[0].population[0].count')
+count=$(echo "$report" | jq '.group[0].population[0].count')
 
-if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "✅ count ($COUNT) equals the expected count"
+if [ "$count" = "$expected_count" ]; then
+  echo "✅ count ($count) equals the expected count"
 else
-  echo "🆘 count ($COUNT) != $EXPECTED_COUNT"
+  echo "🆘 count ($count) != $expected_count"
   exit 1
 fi
 
-STRATIFIER_DATA=$(echo "$REPORT" | jq -r '.group[0].stratifier[0].stratum[] | [.value.text, .population[0].count] | @csv' | sort)
-EXPECTED_STRATIFIER_DATA=$(cat ".github/scripts/cql/$NAME.csv")
+stratifier_data=$(echo "$report" | jq -r '.group[0].stratifier[0].stratum[] | [.value.text, .population[0].count] | @csv' | sort)
+expected_stratifier_data=$(cat ".github/scripts/cql/$name.csv")
 
-if [ "$STRATIFIER_DATA" = "$EXPECTED_STRATIFIER_DATA" ]; then
+if [ "$stratifier_data" = "$expected_stratifier_data" ]; then
   echo "✅ stratifier data equals the expected stratifier data"
 else
   echo "🆘 stratifier data differs"
-  echo "$STRATIFIER_DATA"
+  echo "$stratifier_data"
   exit 1
 fi

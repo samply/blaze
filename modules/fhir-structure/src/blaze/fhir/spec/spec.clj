@@ -28,6 +28,9 @@
 (s/def :blaze.resource/variant
   #{:complete :summary})
 
+(s/def :blaze.resource/elements
+  (s/coll-of simple-keyword?))
+
 (s/def :fhir/Resource
   #(s2/valid? :fhir/Resource %))
 
@@ -40,14 +43,26 @@
 (s/def :fhir/Expression
   #(s2/valid? :fhir/Expression %))
 
+(s/def :fhir/Quantity
+  #(s2/valid? :fhir/Quantity %))
+
 (s/def :fhir/Task
   #(s2/valid? :fhir/Task %))
+
+(s/def :fhir.Task/input
+  #(s2/valid? :fhir.Task/input %))
+
+(s/def :fhir.Task/output
+  #(s2/valid? :fhir.Task/output %))
 
 (s/def :fhir/Measure
   #(s2/valid? :fhir/Measure %))
 
 (s/def :fhir.Measure/group
   #(s2/valid? :fhir.Measure/group %))
+
+(s/def :fhir/Bundle
+  #(s2/valid? :fhir/Bundle %))
 
 (s/def :fhir.Bundle/entry
   #(s2/valid? :fhir.Bundle/entry %))
@@ -57,6 +72,9 @@
 
 (s/def :fhir.Measure.group/population
   #(s2/valid? :fhir.Measure.group/population %))
+
+(s/def :fhir/instant
+  #(s2/valid? :fhir/instant %))
 
 (s/def :fhir/dateTime
   #(s2/valid? :fhir/dateTime %))

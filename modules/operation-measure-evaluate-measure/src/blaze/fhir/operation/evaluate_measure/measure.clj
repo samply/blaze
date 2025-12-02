@@ -14,7 +14,6 @@
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
@@ -41,7 +40,7 @@
   "$evaluate-measure evaluating latencies in seconds."
   {:namespace "fhir"
    :subsystem "evaluate_measure"}
-  (take 22 (iterate #(* 1.4 %) 0.1))
+  (take 16 (iterate #(* 2 %) 0.1))
   "subject_type")
 
 ;; ---- Compilation -----------------------------------------------------------
@@ -78,25 +77,25 @@
 
 (defn- compile-library*
   "Compiles the CQL code from the first attachment in the `library` resource
-  using `node`.
+  using `context`.
 
   Returns an anomaly on errors."
-  [node library opts]
+  [context library opts]
   (when-ok [cql-code (extract-cql-code library)
             library (translate cql-code)]
-    (library/compile-library node library opts)))
+    (library/compile-library context library opts)))
 
 (defn- compile-library
   "Compiles the CQL code from the first attachment in the `library` resource
-  using `node`.
+  using `context`.
 
   Returns an anomaly on errors."
-  {:arglists '([node library opts])}
-  [node {:keys [id] :as library} opts]
+  {:arglists '([context library opts])}
+  [context {:keys [id] :as library} opts]
   (log/debug (format "Start compiling Library with ID `%s`..." id))
   (let [timer (prom/timer compile-duration-seconds)]
     (try
-      (compile-library* node library opts)
+      (compile-library* context library opts)
       (finally
         (let [duration (prom/observe-duration! timer)]
           (log/debug
@@ -108,7 +107,8 @@
 
 (defn- non-deleted-library-handle [db id]
   (when-let [handle (d/resource-handle db "Library" id)]
-    (when-not (= (:op handle) :delete) handle)))
+    (when-not (d/deleted? handle)
+      handle)))
 
 (defn- find-library-handle [db library-ref]
   (if-let [handle (first-library-by-url db library-ref)]
@@ -145,10 +145,13 @@
   compilation.
 
   Returns an anomaly on errors."
-  [db measure opts]
+  [db terminology-service measure opts]
   (if-let [library-ref (-> measure :library first type/value)]
     (do-sync [library (find-library db library-ref)]
-      (compile-library (d/node db) library opts))
+      (let [context (cond-> {:node (d/node db)}
+                      terminology-service
+                      (assoc :terminology-service terminology-service))]
+        (compile-library context library opts)))
     (ac/completed-future
      (ba/unsupported
       "Missing primary library. Currently only CQL expressions together with one primary library are supported."
@@ -331,10 +334,10 @@
    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
     :value
     (type/quantity
-     {:code #fhir/code"s"
-      :system #fhir/uri"http://unitsofmeasure.org"
-      :unit #fhir/string"s"
-      :value (bigdec duration)})}))
+     {:code #fhir/code "s"
+      :system #fhir/uri "http://unitsofmeasure.org"
+      :unit #fhir/string "s"
+      :value (type/decimal (bigdec duration))})}))
 
 (defn- bloom-filter-ratio
   "Creates an extension with a number of available Bloom filters over the total
@@ -345,12 +348,12 @@
     :value
     (type/ratio
      {:numerator
-      (type/quantity {:value (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters)))})
+      (type/quantity {:value (type/decimal (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters))))})
       :denominator
-      (type/quantity {:value (bigdec (count bloom-filters))})})}))
+      (type/quantity {:value (type/decimal (bigdec (count bloom-filters)))})})}))
 
 (defn- local-ref [handle]
-  (str (name (fhir-spec/fhir-type handle)) "/" (:id handle)))
+  (str (name (:fhir/type handle)) "/" (:id handle)))
 
 (defn- measure-report
   [{:keys [now report-type subject-handle bloom-filters] :as context} measure
@@ -360,12 +363,12 @@
     :extension
     [(eval-duration duration)
      (bloom-filter-ratio bloom-filters)]
-    :status #fhir/code"complete"
+    :status #fhir/code "complete"
     :type
     (case report-type
-      "population" #fhir/code"summary"
-      "subject-list" #fhir/code"subject-list"
-      "subject" #fhir/code"individual")
+      "population" #fhir/code "summary"
+      "subject-list" #fhir/code "subject-list"
+      "subject" #fhir/code "individual")
     :measure (type/canonical (canonical context measure))
     :date now
     :period
@@ -374,7 +377,7 @@
       :end (type/dateTime (str end))})}
 
     subject-handle
-    (assoc :subject (type/reference {:reference (local-ref subject-handle)}))
+    (assoc :subject (type/reference {:reference (type/string (local-ref subject-handle))}))
 
     (seq result)
     (assoc :group result)))
@@ -423,7 +426,7 @@
         :timeout timeout))))
 
 (defn- enhance-context
-  [{:keys [clock db timeout]
+  [{:keys [clock db timeout terminology-service]
     :blaze/keys [cancelled?]
     ::expr/keys [cache]
     :or {timeout (time/hours 1)}
@@ -433,7 +436,7 @@
         now (time/offset-date-time clock)
         timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
-              (compile-primary-library db measure {})]
+              (compile-primary-library db terminology-service measure {})]
       (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
         (let [optimize (partial library/optimize db)
               context

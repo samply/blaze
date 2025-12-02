@@ -6,7 +6,7 @@
 (defmulti find
   {:arglists '([context url] [context url version])}
   (fn [context url & _]
-    (condp = (type/value url)
+    (condp = url
       "http://loinc.org" (when (:loinc/context context) :loinc)
       "http://snomed.info/sct" (when (:sct/context context) :sct)
       "urn:ietf:bcp:13" :bcp-13

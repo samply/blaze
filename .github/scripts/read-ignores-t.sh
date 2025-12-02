@@ -1,13 +1,13 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 # create a patient
-ID="$(uuidgen)"
-curl -sfXPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$ID\"}" -o /dev/null "$BASE/Patient/$ID"
+id="$(uuidgen)"
+curl -sfXPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$id\"}" -o /dev/null "$base/Patient/$id"
 
 # if the query param __t was respected, the patient should not exist
-curl -sfH 'Accept: application/fhir+json' "$BASE/Patient/$ID?__t=0" -o /dev/null
+curl -sfH 'Accept: application/fhir+json' "$base/Patient/$id?__t=0" -o /dev/null

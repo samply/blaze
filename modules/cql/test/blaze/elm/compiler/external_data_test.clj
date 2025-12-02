@@ -12,18 +12,22 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.external-data]
    [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.library-spec]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
    [blaze.elm.literal :as elm]
    [blaze.elm.util-spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
@@ -37,6 +41,20 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
+
+(def ^:private config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
+
+(defn- compile-context [{:blaze.db/keys [node] ::ts/keys [local]}]
+  {:node node :terminology-service local})
 
 (defn- eval-context [db]
   {:db db :now (time/offset-date-time)})
@@ -81,7 +99,7 @@
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr patient)
-              [0 fhir-spec/fhir-type] := :fhir/Patient
+              [0 :fhir/type] := :fhir/Patient
               [0 :id] := "0"))
 
           (testing "expression is dynamic"
@@ -104,7 +122,7 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [context
               {:node node
@@ -116,7 +134,7 @@
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr patient)
-              [0 fhir-spec/fhir-type] := :fhir/Observation
+              [0 :fhir/type] := :fhir/Observation
               [0 :id] := "1"))
 
           (testing "expression is dynamic"
@@ -139,15 +157,15 @@
         (with-system-data [{:blaze.db/keys [node]} mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
                     {:coding
                      [#fhir/Coding
-                       {:system #fhir/uri"system-192253"
-                        :code #fhir/code"code-192300"}]}
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       {:system #fhir/uri "system-192253"
+                        :code #fhir/code "code-192300"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -168,7 +186,7 @@
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
                 count := 1
-                [0 fhir-spec/fhir-type] := :fhir/Observation
+                [0 :fhir/type] := :fhir/Observation
                 [0 :id] := "1"))
 
             (testing "expression is dynamic"
@@ -212,23 +230,23 @@
         (with-system-data [{:blaze.db/keys [node]} mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
                     {:coding
                      [#fhir/Coding
-                       {:system #fhir/uri"system-192253"
-                        :code #fhir/code"code-192300"}]}
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                       {:system #fhir/uri "system-192253"
+                        :code #fhir/code "code-192300"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
                    :code
                    #fhir/CodeableConcept
                     {:coding
                      [#fhir/Coding
-                       {:system #fhir/uri"system-192253"
-                        :code #fhir/code"code-140541"}]}
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       {:system #fhir/uri "system-192253"
+                        :code #fhir/code "code-140541"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -250,9 +268,9 @@
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
                 count := 2
-                [0 fhir-spec/fhir-type] := :fhir/Observation
+                [0 :fhir/type] := :fhir/Observation
                 [0 :id] := "1"
-                [1 fhir-spec/fhir-type] := :fhir/Observation
+                [1 :fhir/type] := :fhir/Observation
                 [1 :id] := "2"))
 
             (testing "expression is dynamic"
@@ -281,23 +299,23 @@
         (with-system-data [{:blaze.db/keys [node]} mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
                     {:coding
                      [#fhir/Coding
-                       {:system #fhir/uri"system-192253"
-                        :code #fhir/code"code-192300"}]}
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
+                       {:system #fhir/uri "system-192253"
+                        :code #fhir/code "code-192300"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
                    :code
                    #fhir/CodeableConcept
                     {:coding
                      [#fhir/Coding
-                       {:system #fhir/uri"system-192253"
-                        :code #fhir/code"code-140541"}]}
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       {:system #fhir/uri "system-192253"
+                        :code #fhir/code "code-140541"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -322,9 +340,9 @@
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
                 count := 2
-                [0 fhir-spec/fhir-type] := :fhir/Observation
+                [0 :fhir/type] := :fhir/Observation
                 [0 :id] := "1"
-                [1 fhir-spec/fhir-type] := :fhir/Observation
+                [1 :fhir/type] := :fhir/Observation
                 [1 :id] := "2"))
 
             (testing "expression is dynamic"
@@ -374,7 +392,7 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Specimen :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [context
               {:node node
@@ -387,7 +405,7 @@
           (testing "eval"
             (given (expr/eval (eval-context db) expr specimen)
               count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Patient
+              [0 :fhir/type] := :fhir/Patient
               [0 :id] := "0"))
 
           (testing "expression is dynamic"
@@ -415,8 +433,8 @@
                  #fhir/CodeableConcept
                   {:coding
                    [#fhir/Coding
-                     {:system #fhir/uri"system-225806"
-                      :code #fhir/code"code-225809"}]}}]]]
+                     {:system #fhir/uri "system-225806"
+                      :code #fhir/code "code-225809"}]}}]]]
 
         (let [context
               {:node node
@@ -436,7 +454,7 @@
           (testing "eval"
             (given (expr/eval (eval-context db) expr nil)
               count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Medication
+              [0 :fhir/type] := :fhir/Medication
               [0 :id] := "0"))
 
           (testing "expression is dynamic"
@@ -483,10 +501,10 @@
 
   (testing "with related context"
     (testing "without code"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node] :as system} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [library (t/translate
                        "library test
@@ -501,7 +519,8 @@
                         define InInitialPopulation:
                           [\"name-133756\" -> Observation]
                         ")
-              {:keys [expression-defs]} (library/compile-library node library {})
+              context (compile-context system)
+              {:keys [expression-defs]} (library/compile-library context library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -510,7 +529,7 @@
           (testing "eval"
             (given (expr/eval eval-context expr patient)
               count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Observation
+              [0 :fhir/type] := :fhir/Observation
               [0 :id] := "0"))
 
           (testing "expression is dynamic"
@@ -531,16 +550,16 @@
               '(retrieve (singleton-from (retrieve-resource)) "Observation"))))))
 
     (testing "with pre-compiled database query"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node] :as system} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :code
                  #fhir/CodeableConcept
                   {:coding
                    [#fhir/Coding
-                     {:system #fhir/uri"system-133620"
-                      :code #fhir/code"code-133657"}]}
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                     {:system #fhir/uri "system-133620"
+                      :code #fhir/code "code-133657"}]}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [library (t/translate
                        "library test
@@ -557,7 +576,8 @@
                         define InInitialPopulation:
                           [\"name-133730\" -> Observation: Code 'code-133657' from sys]
                         ")
-              {:keys [expression-defs]} (library/compile-library node library {})
+              context (compile-context system)
+              {:keys [expression-defs]} (library/compile-library context library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -566,7 +586,7 @@
           (testing "eval"
             (given (expr/eval eval-context expr patient)
               count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Observation
+              [0 :fhir/type] := :fhir/Observation
               [0 :id] := "0"))
 
           (testing "expression is dynamic"

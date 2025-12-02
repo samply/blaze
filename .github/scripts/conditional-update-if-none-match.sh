@@ -5,18 +5,18 @@
 # If-None-Match=* to fail afterwards.
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_ID=$(curl -sH "Content-Type: application/fhir+json" \
-  -d '{"resourceType": "Patient"}' "$BASE/Patient" | jq -r .id)
+base="http://localhost:8080/fhir"
+patient_id=$(curl -sH "Content-Type: application/fhir+json" \
+  -d '{"resourceType": "Patient"}' "$base/Patient" | jq -r .id)
 
-PATIENT="{\"resourceType\": \"Patient\", \"id\": \"$PATIENT_ID\"}"
-RESULT=$(curl -sXPUT -H "Content-Type: application/fhir+json" -H "If-None-Match: *" \
-  -d "$PATIENT" "$BASE/Patient/$PATIENT_ID")
+patient="{\"resourceType\": \"Patient\", \"id\": \"$patient_id\"}"
+result=$(curl -sXPUT -H "Content-Type: application/fhir+json" -H "If-None-Match: *" \
+  -d "$patient" "$base/Patient/$patient_id")
 
-test "resource type" "$(echo "$RESULT" | jq -r .resourceType)" "OperationOutcome"
-test "severity" "$(echo "$RESULT" | jq -r .issue[0].severity)" "error"
-test "code" "$(echo "$RESULT" | jq -r .issue[0].code)" "conflict"
-test "diagnostics" "$(echo "$RESULT" | jq -r .issue[0].diagnostics)" "Resource \`Patient/$PATIENT_ID\` already exists."
+test "resource type" "$(echo "$result" | jq -r .resourceType)" "OperationOutcome"
+test "severity" "$(echo "$result" | jq -r .issue[0].severity)" "error"
+test "code" "$(echo "$result" | jq -r .issue[0].code)" "conflict"
+test "diagnostics" "$(echo "$result" | jq -r .issue[0].diagnostics)" "Resource \`Patient/$patient_id\` already exists."

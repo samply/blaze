@@ -2,7 +2,6 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.fhir.operation.graphql.middleware.query :refer [wrap-query]]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.util :as handler-util]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -67,45 +66,45 @@
              {:headers {"content-type" "application/json"}
               :body (input-stream "x")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "Unrecognized token 'x': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 2]"))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invalid"
+      [:body :issue 0 :diagnostics] := #fhir/string "Unrecognized token 'x': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 2]"))
 
   (testing "body with no JSON object"
     (given @(handler
              {:headers {"content-type" "application/json"}
               :body (input-stream "1")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"structure"
-      [:body :issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-      [:body :issue 0 :details :coding 0 :code] := #fhir/code"MSG_JSON_OBJECT"
-      [:body :issue 0 :diagnostics] := "Expect a JSON object."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "structure"
+      [:body :issue 0 :details :coding 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
+      [:body :issue 0 :details :coding 0 :code] := #fhir/code "MSG_JSON_OBJECT"
+      [:body :issue 0 :diagnostics] := #fhir/string "Expect a JSON object."))
 
   (testing "other content is invalid"
     (testing "without content-type header"
       (given @(handler {})
         :status := 400
-        [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-        [:body :issue 0 :severity] := #fhir/code"error"
-        [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Content-Type header expected, but is missing."))
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code "error"
+        [:body :issue 0 :code] := #fhir/code "invalid"
+        [:body :issue 0 :diagnostics] := #fhir/string "Content-Type header expected, but is missing."))
 
     (testing "with unknown content-type header"
       (given @(handler {:headers {"content-type" "text/plain"} :body (input-stream "")})
         :status := 415
-        [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-        [:body :issue 0 :severity] := #fhir/code"error"
-        [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Unsupported media type `text/plain` expect one of `application/graphql` or `application/json`."))
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code "error"
+        [:body :issue 0 :code] := #fhir/code "invalid"
+        [:body :issue 0 :diagnostics] := #fhir/string "Unsupported media type `text/plain` expect one of `application/graphql` or `application/json`."))
 
     (testing "missing body"
       (doseq [content-type ["application/graphql" "application/json"]]
         (given @(handler
                  {:headers {"content-type" content-type}})
-          [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-          [:body :issue 0 :severity] := #fhir/code"error"
-          [:body :issue 0 :code] := #fhir/code"invalid"
-          [:body :issue 0 :diagnostics] := "Missing HTTP body.")))))
+          [:body :fhir/type] := :fhir/OperationOutcome
+          [:body :issue 0 :severity] := #fhir/code "error"
+          [:body :issue 0 :code] := #fhir/code "invalid"
+          [:body :issue 0 :diagnostics] := #fhir/string "Missing HTTP body.")))))

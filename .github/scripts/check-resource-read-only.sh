@@ -1,14 +1,14 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
 
-BASE="http://localhost:8080/fhir"
-TYPE="$1"
-URL="$2"
+base="http://localhost:8080/fhir"
+type="$1"
+url="$2"
 
-CODE_SYSTEM=$(curl -sH 'Accept: application/fhir+json' "$BASE/$TYPE?url=$URL")
-ID=$(echo "$CODE_SYSTEM" | jq -r '.entry[0].resource.id')
+code_system=$(curl -sH 'Accept: application/fhir+json' "$base/$type?url=$url")
+id=$(echo "$code_system" | jq -r '.entry[0].resource.id')
 
-test "error message" "$(curl -sXDELETE "$BASE/$TYPE/$ID" | jq -r '.issue[0].diagnostics')" "Can't delete the read-only resource \`$TYPE/$ID\`."
+test "error message" "$(curl -sXDELETE "$base/$type/$id" | jq -r '.issue[0].diagnostics')" "Can't delete the read-only resource \`$type/$id\`."

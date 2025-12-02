@@ -11,19 +11,9 @@
    [clojure.spec.alpha :as s]
    [reitit.core :as reitit]))
 
-(s/fdef util/since
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
-  :ret (s/nilable inst?))
-
 (s/fdef util/page-t
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))
-
-(s/fdef util/self-link
-  :args
-  (s/cat
-   :context (s/keys :req [::search-util/link :blaze/base-url ::reitit/match])
-   :query-params (s/nilable :ring.request/query-params)))
 
 (s/fdef util/page-nav-url
   :args

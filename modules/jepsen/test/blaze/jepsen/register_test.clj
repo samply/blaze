@@ -3,6 +3,7 @@
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.fhir-client :as fhir-client]
+   [blaze.fhir.spec.type :as type]
    [blaze.jepsen.register :as register]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -24,7 +25,7 @@
   (assert (= blaze.jepsen.register-test/id id))
   (ac/completed-future
    {:fhir/type :Patient
-    :multipleBirth multiple-birth}))
+    :multipleBirth (type/integer multiple-birth)}))
 
 (deftest read-test
   (with-redefs [fhir-client/read fhir-client-read]

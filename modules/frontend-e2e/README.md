@@ -7,6 +7,8 @@
 In the root project dir, run:
 
 ```sh
+make clean
+make build-job-ig
 make build-all
 ```
 
@@ -14,6 +16,8 @@ In this module dir:
 
 ```sh
 make install
+make -C test-data install
+make install-playwright
 docker compose up -d
 ./upload.sh
 ```

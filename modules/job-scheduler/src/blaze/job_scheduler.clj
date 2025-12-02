@@ -103,15 +103,15 @@
     (run!
      (fn [{:keys [status] :as job}]
        (cond
-         (= #fhir/code"ready" status)
+         (= #fhir/code "ready" status)
          (on-start job-scheduler job)
 
-         (and (= #fhir/code"in-progress" status)
+         (and (= #fhir/code "in-progress" status)
               (= "resumed" (job-util/status-reason job)))
 
          (on-resume job-scheduler job)
 
-         (and (= #fhir/code"cancelled" status)
+         (and (= #fhir/code "cancelled" status)
               (= "requested" (job-util/cancelled-sub-status job)))
          (on-cancel job-scheduler job)))
      @(d/pull-many node task-handles))
@@ -128,7 +128,7 @@
                     [[:create
                       {:fhir/type :fhir/Observation
                        :id (m/luid context)
-                       :identifier [#fhir/Identifier{:value #fhir/string"job-number"}]
+                       :identifier [#fhir/Identifier{:value #fhir/string "job-number"}]
                        :value #fhir/integer 0}
                       [["identifier" "job-number"]]]])
         (ac/then-compose (partial current-job-number-observation context)))))
@@ -138,9 +138,9 @@
 
 (defn- job-number-identifier [job-number]
   (type/identifier
-   {:use #fhir/code"official"
+   {:use #fhir/code "official"
     :system (type/uri job-util/job-number-url)
-    :value (str job-number)}))
+    :value (type/string (str job-number))}))
 
 (defn- prepare-job [job id job-number]
   (-> (assoc job :id id)
@@ -170,7 +170,7 @@
 (defn- cancel-job* [job]
   (-> (assoc
        job
-       :status #fhir/code"cancelled"
+       :status #fhir/code "cancelled"
        :businessStatus job-util/cancellation-requested-sub-status)
       (dissoc :statusReason)))
 
@@ -191,7 +191,7 @@
   (-> (job-util/pull-job node id)
       (ac/then-compose
        (fn [{:keys [status] :as job}]
-         (if-not (#{#fhir/code"completed" #fhir/code"failed" #fhir/code"cancelled"} status)
+         (if-not (#{#fhir/code "completed" #fhir/code "failed" #fhir/code "cancelled"} status)
            (job-util/update-job node job cancel-job*)
            (ac/completed-future
             (ba/conflict (cancel-conflict-msg job) :job/status (type/value status))))))))
@@ -199,7 +199,7 @@
 (defn- hold-job** [job reason]
   (assoc
    job
-   :status #fhir/code"on-hold"
+   :status #fhir/code "on-hold"
    :statusReason reason))
 
 (defn- hold-job* [{:keys [node]} id reason conflict-msg]
@@ -207,9 +207,9 @@
       (ac/then-compose
        (fn [{:keys [status] :as job}]
          (condp = status
-           #fhir/code"in-progress"
+           #fhir/code "in-progress"
            (job-util/update-job node job hold-job** reason)
-           #fhir/code"on-hold"
+           #fhir/code "on-hold"
            (ac/completed-future job)
            (ac/completed-future (ba/conflict (conflict-msg job))))))))
 
@@ -232,7 +232,7 @@
 (defn- resume-job** [job]
   (assoc
    job
-   :status #fhir/code"in-progress"
+   :status #fhir/code "in-progress"
    :statusReason job-util/resumed-status-reason))
 
 (defn- resume-job* [{:keys [node]} id]
@@ -240,7 +240,7 @@
       (ac/then-compose
        (fn [{:keys [status] :as job}]
          (condp = status
-           #fhir/code"on-hold"
+           #fhir/code "on-hold"
            (job-util/update-job node job resume-job**)
            (ac/completed-future (ba/conflict (resume-conflict-msg job))))))))
 

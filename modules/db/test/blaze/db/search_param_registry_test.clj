@@ -5,7 +5,6 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]
@@ -152,7 +151,7 @@
       (given (sr/linked-compartments
               search-param-registry
               {:fhir/type :fhir/Condition :id "0"
-               :subject #fhir/Reference{:reference "Patient/1"}})
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"]))
 
@@ -160,7 +159,7 @@
       (given (sr/linked-compartments
               search-param-registry
               {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/1"}})
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"])
 
@@ -168,13 +167,13 @@
         (is (empty? (sr/linked-compartments
                      search-param-registry
                      {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference "Group/1"}})))))
+                      :subject #fhir/Reference{:reference #fhir/string "Group/1"}})))))
 
     (testing "MedicationAdministration subject"
       (given (sr/linked-compartments
               search-param-registry
               {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference "Patient/1"}})
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"]))
 
@@ -182,10 +181,10 @@
       (given (sr/linked-compartments
               search-param-registry
               {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference "Patient/1"}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
                :performer
                [{:fhir/type :fhir.MedicationAdministration/performer
-                 :actor #fhir/Reference{:reference "Patient/2"}}]})
+                 :actor #fhir/Reference{:reference #fhir/string "Patient/2"}}]})
         count := 2
         [0] := ["Patient" "2"]
         [1] := ["Patient" "1"]))
@@ -194,10 +193,10 @@
       (given (sr/linked-compartments
               search-param-registry
               {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference "Patient/1"}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
                :performer
                [{:fhir/type :fhir.MedicationAdministration/performer
-                 :actor #fhir/Reference{:reference "Patient/1"}}]})
+                 :actor #fhir/Reference{:reference #fhir/string "Patient/1"}}]})
         count := 1
         [0] := ["Patient" "1"]))
 
@@ -220,7 +219,7 @@
         (given (sr/linked-compartments
                 search-param-registry
                 {:fhir/type :fhir/Condition :id "0"
-                 :subject #fhir/Reference{:reference "Patient/1"}})
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
           ::anom/category := ::anom/fault
           ::anom/message := "msg-121005"
           ::x := ::y)))))

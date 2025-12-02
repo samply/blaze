@@ -7,5 +7,5 @@ context Patient
 define InInitialPopulation:
   [Specimen]
 
-define function SampleType(specimen FHIR.Specimen):
+define function SampleType(specimen Specimen):
   specimen.type.coding.where(system = 'https://fhir.bbmri.de/CodeSystem/SampleMaterialType').code.first()

@@ -5,15 +5,15 @@
 # given as first argument. It should be 409 is referential integrity is checked
 # and 204 if not.
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-OBSERVATION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]') 
+base="http://localhost:8080/fhir"
+patient_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
+observation_id=$(uuidgen | tr '[:upper:]' '[:lower:]') 
 
-curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$PATIENT_ID\"}" -o /dev/null "$BASE/Patient/$PATIENT_ID"
-curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$OBSERVATION_ID\", \"subject\": {\"reference\": \"Patient/$PATIENT_ID\"}}" -o /dev/null "$BASE/Observation/$OBSERVATION_ID"
-RESPONSE_CODE=$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$BASE/Patient/$PATIENT_ID")
+curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$patient_id\"}" -o /dev/null "$base/Patient/$patient_id"
+curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$observation_id\", \"subject\": {\"reference\": \"Patient/$patient_id\"}}" -o /dev/null "$base/Observation/$observation_id"
+response_code=$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$base/Patient/$patient_id")
 
-test "delete response" "$RESPONSE_CODE" "$1"
+test "delete response" "$response_code" "$1"

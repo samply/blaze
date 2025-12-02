@@ -30,16 +30,14 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (def ^:private writing-context
-  (:blaze.fhir/writing-context
-   (ig/init
-    {:blaze.fhir/writing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- resource-handler-200 [resource]
   (wrap-output
@@ -137,8 +135,10 @@
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
 
 (defn- parse-xml [body]
-  (with-open [reader (io/reader body)]
-    (fhir-spec/conform-xml (xml/parse reader))))
+  (let [out (ByteArrayOutputStream.)]
+    (rp/write-body-to-stream body nil out)
+    (with-open [reader (io/reader (.toByteArray out))]
+      (fhir-spec/conform-xml (xml/parse reader)))))
 
 (deftest xml-test
   (testing "possible accept headers"
@@ -183,11 +183,11 @@
       :body := nil))
 
   (testing "failing XML emit"
-    (given (call (resource-handler-200 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
-      :status := 500
+    (given (call (resource-handler-200 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
+      :status := 200
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
-      [:body parse-xml :fhir/type] := :fhir/OperationOutcome
-      [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
+      [:body parse-xml :fhir/type] := :fhir/Patient
+      [:body parse-xml :gender] := #fhir/code "foo?bar")))
 
 (deftest binary-resource-test
   (testing "by default, the binary data gets wrapped inside a JSON FHIR-resource"
@@ -195,7 +195,7 @@
       :status := 200
       [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
       [:body parse-json] := {:fhir/type :fhir/Binary
-                             :data #fhir/base64Binary"MTA1NjE0Cg=="}))
+                             :data #fhir/base64Binary "MTA1NjE0Cg=="}))
 
   (testing "explicitly requesting the binary data to be wrapped inside a FHIR-resource (both as JSON and as XML)"
     (doseq [[accept-header content-type body-parser]
@@ -205,8 +205,8 @@
         :status := 200
         [:headers "Content-Type"] := content-type
         [:body body-parser] := {:fhir/type :fhir/Binary
-                                :contentType #fhir/code"text/plain"
-                                :data #fhir/base64Binary"MTA1NjE0Cg=="})))
+                                :contentType #fhir/code "text/plain"
+                                :data #fhir/base64Binary "MTA1NjE0Cg=="})))
 
   (testing "explicitly requesting raw binary data"
     (testing "with valid data"
@@ -260,7 +260,7 @@
         :status := 500
         [:headers "Content-Type"] := "application/fhir+json"
         [:body parse-json :fhir/type] := :fhir/OperationOutcome
-        [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
+        [:body parse-json :issue 0 :diagnostics] := #fhir/string "Input byte array has wrong 4-byte ending unit"))))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200-with-patient {:headers {"accept" "text/plain"}}))))

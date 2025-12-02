@@ -14,14 +14,14 @@
 (defn- build-value-set [id {:keys [title]} value-set-concepts]
   {:fhir/type :fhir/ValueSet
    :name (type/string (str "LOINC_AnswerList_" (str/replace id "-" "_")))
-   :title (format "LOINC AnswerList %s (%s)" id title)
-   :status #fhir/code"active"
+   :title (type/string (format "LOINC AnswerList %s (%s)" id (type/value title)))
+   :status #fhir/code "active"
    :copyright lc/copyright
    :compose
    {:fhir/type :fhir.ValueSet/compose
     :include
     [{:fhir/type :fhir.ValueSet.compose/include
-      :system #fhir/uri"http://loinc.org"
+      :system #fhir/uri "http://loinc.org"
       :concept
       (mapv
        #(-> (assoc % :fhir/type :fhir.ValueSet.compose.include/concept)

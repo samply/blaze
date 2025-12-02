@@ -10,6 +10,7 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.function :as function]
+   [blaze.elm.compiler.function-spec]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.concept :refer [concept]]
    [blaze.elm.expression.cache :as ec]
@@ -109,7 +110,7 @@
   (testing "Custom function with arity 0"
     (let [function-name "name-210650"
           fn-expr (c/compile {} #elm/integer "1")
-          compile-ctx {:function-defs {function-name {:function (partial function/arity-n function-name fn-expr [])}}}
+          compile-ctx {:function-defs {function-name {:function (partial function/arity-0 function-name fn-expr)}}}
           elm (elm/function-ref [function-name])
           expr (c/compile compile-ctx elm)]
 
@@ -120,7 +121,7 @@
         (is (false? (core/-static expr))))
 
       (testing "attach cache"
-        (is (= [expr []] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+        (is (= [expr nil] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
 
       (ctu/testing-constant-patient-count expr)
 
@@ -144,7 +145,7 @@
           fn-expr (c/compile {} #elm/negate #elm/operand-ref"x")
           compile-ctx {:library {:parameters {:def [{:name "a"}]}}
                        :eval-context "Patient"
-                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x"])}}}
+                       :function-defs {function-name {:function (partial function/arity-1 function-name fn-expr "x")}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a"])
           expr (c/compile compile-ctx elm)]
 
@@ -197,7 +198,7 @@
           fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/operand-ref"y"])
           compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"}]}}
                        :eval-context "Patient"
-                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y"])}}}
+                       :function-defs {function-name {:function (partial function/arity-2 function-name fn-expr "x" "y")}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b"])
           expr (c/compile compile-ctx elm)]
 
@@ -241,6 +242,12 @@
         (has-form (core/-resolve-params expr {"a" 1 "b" 2})
           (list 'call function-name 1 2))
 
+        (has-form (core/-resolve-params expr {"a" 1})
+          (list 'call function-name 1 '(param-ref "b")))
+
+        (has-form (core/-resolve-params expr {"b" 1})
+          (list 'call function-name '(param-ref "a") 1))
+
         (has-form (core/-resolve-params expr {})
           (list 'call function-name '(param-ref "a") '(param-ref "b"))))
 
@@ -253,6 +260,73 @@
       (testing "form"
         (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b"))))))
 
+  (testing "Custom function with arity 3"
+    (let [function-name "name-184652"
+          fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/add [#elm/operand-ref"y" #elm/operand-ref"z"]])
+          compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"} {:name "c"}]}}
+                       :eval-context "Patient"
+                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y" "z"])}}}
+          elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b" #elm/parameter-ref "c"])
+          expr (c/compile compile-ctx elm)]
+
+      (testing "eval"
+        (are [a b c res] (= res (core/-eval expr {:parameters {"a" a "b" b "c" c}} nil nil))
+          1 1 1 3
+          1 1 0 2
+          1 0 0 1
+          0 0 0 0))
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing "attach cache"
+        (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+          (let [elm (elm/function-ref [function-name
+                                       #elm/exists #elm/retrieve{:type "Observation"}
+                                       #elm/exists #elm/retrieve{:type "Condition"}
+                                       #elm/exists #elm/retrieve{:type "Encounter"}])
+                expr (c/compile compile-ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 3
+              [1 0] := '(exists (retrieve "Observation"))
+              [1 1] := '(exists (retrieve "Condition"))
+              [1 2] := '(exists (retrieve "Encounter"))))))
+
+      (ctu/testing-constant-patient-count expr)
+
+      (testing "resolve expression references"
+        (let [elm (elm/function-ref [function-name
+                                     #elm/expression-ref "x"
+                                     #elm/expression-ref "y"])
+              expr-defs [{:type "ExpressionDef" :name "x" :expression "a"
+                          :context "Unfiltered"}
+                         {:type "ExpressionDef" :name "y" :expression "b"
+                          :context "Unfiltered"}]
+              ctx (assoc compile-ctx :library {:statements {:def expr-defs}})
+              expr (c/resolve-refs (c/compile ctx elm) (zipmap ["x" "y"] expr-defs))]
+          (has-form expr (list 'call function-name "a" "b"))))
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {"a" 1 "b" 2 "c" 3})
+          (list 'call function-name 1 2 3))
+
+        (has-form (core/-resolve-params expr {"a" 1 "c" 3})
+          (list 'call function-name 1 '(param-ref "b") 3))
+
+        (has-form (core/-resolve-params expr {})
+          (list 'call function-name '(param-ref "a") '(param-ref "b") '(param-ref "c"))))
+
+      (testing "optimize"
+        (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"
+                                     #ctu/optimizeable "y" #ctu/optimizeable "z"])
+              expr (st/with-instrument-disabled (c/optimize (c/compile compile-ctx elm) nil))]
+          (has-form expr (list 'call function-name '(optimized "x") '(optimized "y") '(optimized "z")))))
+
+      (testing "form"
+        (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b") '(param-ref "c"))))))
+
   (testing "ToQuantity"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToQuantity" #elm/parameter-ref "x"]
@@ -260,9 +334,9 @@
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-          {:value 23M :code "kg"} (quantity 23M "kg")
-          {:value 42M} (quantity 42M "1")
-          {} nil))
+          #fhir/Quantity{:value #fhir/decimal 23M :code #fhir/code "kg"} (quantity 23M "kg")
+          #fhir/Quantity{:value #fhir/decimal 42M} (quantity 42M "1")
+          #fhir/Quantity{} nil))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -290,9 +364,9 @@
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/date{:id "foo"} nil
           #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil
-          #fhir/date"2023" #system/date"2023"
-          #fhir/date"2023-05" #system/date"2023-05"
-          #fhir/date"2023-05-07" #system/date"2023-05-07"))
+          #fhir/date "2023" #system/date"2023"
+          #fhir/date "2023-05" #system/date"2023-05"
+          #fhir/date "2023-05-07" #system/date"2023-05-07"))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -320,15 +394,15 @@
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/dateTime{:id "foo"} nil
           #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} nil
-          #fhir/dateTime"2022" #system/date-time"2022"
-          #fhir/dateTime"2022-02" #system/date-time"2022-02"
-          #fhir/dateTime"2022-02-22" #system/date-time"2022-02-22"
-          #fhir/dateTime"2023-05-07T17:39" #system/date-time"2023-05-07T17:39"
+          #fhir/dateTime "2022" #system/date-time"2022"
+          #fhir/dateTime "2022-02" #system/date-time"2022-02"
+          #fhir/dateTime "2022-02-22" #system/date-time"2022-02-22"
+          #fhir/dateTime "2023-05-07T17:39" #system/date-time"2023-05-07T17:39"
 
           #fhir/instant{:id "foo"} nil
           #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} nil
-          #fhir/instant"2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
-          #fhir/instant"2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
+          #fhir/instant "2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
+          #fhir/instant "2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -338,8 +412,8 @@
       (testing-function-ref-resolve-refs "ToDateTime")
 
       (testing "resolve parameters"
-        (has-form (core/-resolve-params expr {"x" #fhir/dateTime"2022-02"})
-          '(call "ToDateTime" #fhir/dateTime"2022-02"))
+        (has-form (core/-resolve-params expr {"x" #fhir/dateTime "2022-02"})
+          '(call "ToDateTime" #fhir/dateTime "2022-02"))
 
         (has-form (core/-resolve-params expr {})
           '(call "ToDateTime" (param-ref "x"))))
@@ -356,8 +430,8 @@
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-          "string-195733" "string-195733"
-          #fhir/uri"uri-195924" "uri-195924"
+          #fhir/string "string-195733" "string-195733"
+          #fhir/uri "uri-195924" "uri-195924"
           #fhir/code{:id "foo" :value "code-211914"} "code-211914"
           #fhir/code{:id "foo"} nil))
 
@@ -386,9 +460,9 @@
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
           nil
           nil
-          #fhir/Coding{:system #fhir/uri"system-140820"
-                       :version #fhir/string"version-140924"
-                       :code #fhir/code"code-140828"}
+          #fhir/Coding{:system #fhir/uri "system-140820"
+                       :version #fhir/string "version-140924"
+                       :code #fhir/code "code-140828"}
           (code/code "system-140820" "version-140924" "code-140828")))
 
       (testing "expression is dynamic"
@@ -416,19 +490,19 @@
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/Period
-           {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-            :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+           {:start #fhir/dateTime "2021-02-23T15:12:45+01:00"
+            :end #fhir/dateTime "2021-02-23T16:00:00+01:00"}
           (interval/interval
            (system/date-time 2021 2 23 14 12 45)
            (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
            {:start nil
-            :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+            :end #fhir/dateTime "2021-02-23T16:00:00+01:00"}
           (interval/interval
            nil
            (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
-           {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+           {:start #fhir/dateTime "2021-02-23T15:12:45+01:00"
             :end nil}
           (interval/interval
            (system/date-time 2021 2 23 14 12 45)
@@ -445,11 +519,11 @@
 
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {"x" #fhir/Period
-                                                   {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                                                    :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}})
+                                                   {:start #fhir/dateTime "2021-02-23T15:12:45+01:00"
+                                                    :end #fhir/dateTime "2021-02-23T16:00:00+01:00"}})
           '(call "ToInterval" #fhir/Period
-                               {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                                :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}))
+                               {:start #fhir/dateTime "2021-02-23T15:12:45+01:00"
+                                :end #fhir/dateTime "2021-02-23T16:00:00+01:00"}))
 
         (testing-function-ref-optimize "ToInterval")
 
@@ -471,9 +545,9 @@
           nil
           #fhir/CodeableConcept
            {:coding
-            [#fhir/Coding{:system #fhir/uri"system-172740"
-                          :version #fhir/string"version-172819"
-                          :code #fhir/code"code-172745"}]}
+            [#fhir/Coding{:system #fhir/uri "system-172740"
+                          :version #fhir/string "version-172819"
+                          :code #fhir/code "code-172745"}]}
           (concept
            [(code/code "system-172740" "version-172819" "code-172745")])))
 
@@ -487,14 +561,14 @@
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {"x" #fhir/CodeableConcept
                                                    {:coding
-                                                    [#fhir/Coding{:system #fhir/uri"system-172740"
-                                                                  :version #fhir/string"version-172819"
-                                                                  :code #fhir/code"code-172745"}]}})
+                                                    [#fhir/Coding{:system #fhir/uri "system-172740"
+                                                                  :version #fhir/string "version-172819"
+                                                                  :code #fhir/code "code-172745"}]}})
           '(call "ToConcept" #fhir/CodeableConcept
                               {:coding
-                               [#fhir/Coding{:system #fhir/uri"system-172740"
-                                             :version "version-172819"
-                                             :code #fhir/code"code-172745"}]}))
+                               [#fhir/Coding{:system #fhir/uri "system-172740"
+                                             :version #fhir/string "version-172819"
+                                             :code #fhir/code "code-172745"}]}))
 
         (testing-function-ref-optimize "ToConcept")
 

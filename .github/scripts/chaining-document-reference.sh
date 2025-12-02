@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 bundle() {
 cat <<END
@@ -149,29 +149,29 @@ cat <<END
 END
 }
 
-curl -sfH "Content-Type: application/fhir+json" -d "$(bundle)" -o /dev/null "$BASE"
+curl -sfH "Content-Type: application/fhir+json" -d "$(bundle)" -o /dev/null "$base"
 
-RESULT="$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$BASE/DocumentReference?author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
+result="$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/DocumentReference?author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
 
-if [ "$RESULT" = "1" ]; then
+if [ "$result" = "1" ]; then
   echo "✅ chaining works"
 else
   echo "🆘 chaining doesn't work"
   exit 1
 fi
 
-RESULT="$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$BASE/DocumentReference?identifier=system-111302|value-111304&author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
+result="$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/DocumentReference?identifier=system-111302|value-111304&author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
 
-if [ "$RESULT" = "1" ]; then
+if [ "$result" = "1" ]; then
   echo "✅ chaining works"
 else
   echo "🆘 chaining doesn't work"
   exit 1
 fi
 
-RESULT="$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$BASE/DocumentReference?author:Organization.identifier=system-105539|value-105542&identifier=system-111302|value-111304&_summary=count" | jq -r '.total')"
+result="$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/DocumentReference?author:Organization.identifier=system-105539|value-105542&identifier=system-111302|value-111304&_summary=count" | jq -r '.total')"
 
-if [ "$RESULT" = "1" ]; then
+if [ "$result" = "1" ]; then
   echo "✅ chaining works"
 else
   echo "🆘 chaining doesn't work"

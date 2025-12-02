@@ -6,16 +6,16 @@
 # Finally the script tries to delete the Patient again and expects that request
 # to succeed.
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-OBSERVATION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]') 
+base="http://localhost:8080/fhir"
+patient_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
+observation_id=$(uuidgen | tr '[:upper:]' '[:lower:]') 
 
-curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$PATIENT_ID\"}" -o /dev/null "$BASE/Patient/$PATIENT_ID"
-curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$OBSERVATION_ID\", \"subject\": {\"reference\": \"Patient/$PATIENT_ID\"}}" -o /dev/null "$BASE/Observation/$OBSERVATION_ID"
+curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$patient_id\"}" -o /dev/null "$base/Patient/$patient_id"
+curl -s -f -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$observation_id\", \"subject\": {\"reference\": \"Patient/$patient_id\"}}" -o /dev/null "$base/Observation/$observation_id"
 
-test "first delete Patient response" "$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$BASE/Patient/$PATIENT_ID")" "409"
-test "delete Observation response" "$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$BASE/Observation/$OBSERVATION_ID")" "204"
-test "second delete Patient response" "$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$BASE/Patient/$PATIENT_ID")" "204"
+test "first delete Patient response" "$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$base/Patient/$patient_id")" "409"
+test "delete Observation response" "$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$base/Observation/$observation_id")" "204"
+test "second delete Patient response" "$(curl -sXDELETE -w '%{response_code}' -o /dev/null "$base/Patient/$patient_id")" "204"

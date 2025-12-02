@@ -9,5 +9,5 @@ context Patient
 define InInitialPopulation:
   [Observation: category ~ Code 'laboratory' from category]
 
-define function Code(observation FHIR.Observation):
+define function Code(observation Observation):
   observation.code

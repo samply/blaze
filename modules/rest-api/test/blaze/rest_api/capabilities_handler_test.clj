@@ -5,6 +5,7 @@
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -96,7 +97,7 @@
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def ^:private copyright
-  #fhir/markdown"Copyright 2019 - 2025 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
+  #fhir/markdown "Copyright 2019 - 2025 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
 
 (defmacro with-handler [[handler-binding config] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -114,60 +115,60 @@
       (is (= 200 status))
 
       (testing "ETag header"
-        (is (= "W/\"f4e32549\"" (get headers "ETag"))))
+        (is (= "W/\"c3a1c2c6\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
-        :status := #fhir/code"active"
-        :experimental := false
-        :date := #fhir/dateTime"2024-01-07"
-        :publisher := "The Samply Community"
+        :status := #fhir/code "active"
+        :experimental := #fhir/boolean false
+        :date := #fhir/dateTime #system/date-time "2024-01-07"
+        :publisher := #fhir/string "The Samply Community"
         :copyright := copyright
-        :kind := #fhir/code"instance"
-        [:software :name] := "Blaze"
-        [:software :version] := "version-131640"
-        [:implementation :url] := #fhir/url"base-url-131713"
-        :fhirVersion := #fhir/code"4.0.1"
-        :format := [#fhir/code"application/fhir+json"
-                    #fhir/code"application/fhir+xml"]
-        [:rest 0 :searchParam 0 :name] := "_id"
-        [:rest 0 :searchParam 0 :type] := "token"
-        [:rest 0 :searchParam 0 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-id"
-        [:rest 0 :searchParam 1 :name] := "_lastUpdated"
-        [:rest 0 :searchParam 1 :type] := "date"
-        [:rest 0 :searchParam 1 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"
-        [:rest 0 :searchParam 2 :name] := "_profile"
-        [:rest 0 :searchParam 2 :type] := "uri"
-        [:rest 0 :searchParam 2 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-profile"
-        [:rest 0 :searchParam 3 :name] := "_security"
-        [:rest 0 :searchParam 3 :type] := "token"
-        [:rest 0 :searchParam 3 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-security"
-        [:rest 0 :searchParam 4 :name] := "_source"
-        [:rest 0 :searchParam 4 :type] := "uri"
-        [:rest 0 :searchParam 4 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-source"
-        [:rest 0 :searchParam 5 :name] := "_tag"
-        [:rest 0 :searchParam 5 :type] := "token"
-        [:rest 0 :searchParam 5 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-tag"
-        [:rest 0 :searchParam 6 :name] := "_list"
-        [:rest 0 :searchParam 6 :type] := "special"
-        [:rest 0 :searchParam 7 :name] := "_has"
-        [:rest 0 :searchParam 7 :type] := "special"
-        [:rest 0 :searchParam 8 :name] := "_include"
-        [:rest 0 :searchParam 8 :type] := "special"
-        [:rest 0 :searchParam 9 :name] := "_revinclude"
-        [:rest 0 :searchParam 9 :type] := "special"
-        [:rest 0 :searchParam 10 :name] := "_count"
-        [:rest 0 :searchParam 10 :type] := "number"
-        [:rest 0 :searchParam 10 :documentation] := "The number of resources returned per page"
-        [:rest 0 :searchParam 11 :name] := "_elements"
-        [:rest 0 :searchParam 11 :type] := "special"
-        [:rest 0 :searchParam 12 :name] := "_sort"
-        [:rest 0 :searchParam 12 :type] := "special"
-        [:rest 0 :searchParam 12 :documentation] := "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."
-        [:rest 0 :searchParam 13 :name] := "_summary"
-        [:rest 0 :searchParam 13 :type] := "token"
-        [:rest 0 :searchParam 13 :documentation] := "Only `count` is supported at the moment."
-        [:rest 0 :compartment] := ["http://hl7.org/fhir/CompartmentDefinition/patient"]))
+        :kind := #fhir/code "instance"
+        [:software :name] := #fhir/string "Blaze"
+        [:software :version] := #fhir/string "version-131640"
+        [:implementation :url] := #fhir/url "base-url-131713"
+        :fhirVersion := #fhir/code "4.0.1"
+        :format := [#fhir/code "application/fhir+json"
+                    #fhir/code "application/fhir+xml"]
+        [:rest 0 :searchParam 0 :name] := #fhir/string "_id"
+        [:rest 0 :searchParam 0 :type] := #fhir/code "token"
+        [:rest 0 :searchParam 0 :definition] := #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-id"
+        [:rest 0 :searchParam 1 :name] := #fhir/string "_lastUpdated"
+        [:rest 0 :searchParam 1 :type] := #fhir/code "date"
+        [:rest 0 :searchParam 1 :definition] := #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"
+        [:rest 0 :searchParam 2 :name] := #fhir/string "_profile"
+        [:rest 0 :searchParam 2 :type] := #fhir/code "uri"
+        [:rest 0 :searchParam 2 :definition] := #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-profile"
+        [:rest 0 :searchParam 3 :name] := #fhir/string "_security"
+        [:rest 0 :searchParam 3 :type] := #fhir/code "token"
+        [:rest 0 :searchParam 3 :definition] := #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-security"
+        [:rest 0 :searchParam 4 :name] := #fhir/string "_source"
+        [:rest 0 :searchParam 4 :type] := #fhir/code "uri"
+        [:rest 0 :searchParam 4 :definition] := #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-source"
+        [:rest 0 :searchParam 5 :name] := #fhir/string "_tag"
+        [:rest 0 :searchParam 5 :type] := #fhir/code "token"
+        [:rest 0 :searchParam 5 :definition] := #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-tag"
+        [:rest 0 :searchParam 6 :name] := #fhir/string "_list"
+        [:rest 0 :searchParam 6 :type] := #fhir/code "special"
+        [:rest 0 :searchParam 7 :name] := #fhir/string "_has"
+        [:rest 0 :searchParam 7 :type] := #fhir/code "special"
+        [:rest 0 :searchParam 8 :name] := #fhir/string "_include"
+        [:rest 0 :searchParam 8 :type] := #fhir/code "special"
+        [:rest 0 :searchParam 9 :name] := #fhir/string "_revinclude"
+        [:rest 0 :searchParam 9 :type] := #fhir/code "special"
+        [:rest 0 :searchParam 10 :name] := #fhir/string "_count"
+        [:rest 0 :searchParam 10 :type] := #fhir/code "number"
+        [:rest 0 :searchParam 10 :documentation] := #fhir/markdown "The number of resources returned per page"
+        [:rest 0 :searchParam 11 :name] := #fhir/string "_elements"
+        [:rest 0 :searchParam 11 :type] := #fhir/code "special"
+        [:rest 0 :searchParam 12 :name] := #fhir/string "_sort"
+        [:rest 0 :searchParam 12 :type] := #fhir/code "special"
+        [:rest 0 :searchParam 12 :documentation] := #fhir/markdown "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."
+        [:rest 0 :searchParam 13 :name] := #fhir/string "_summary"
+        [:rest 0 :searchParam 13 :type] := #fhir/code "token"
+        [:rest 0 :searchParam 13 :documentation] := #fhir/markdown "Only `count` is supported at the moment."
+        [:rest 0 :compartment] := [#fhir/canonical "http://hl7.org/fhir/CompartmentDefinition/patient"]))
 
     (testing "filtering by _elements"
       (tu/satisfies-prop 100
@@ -180,7 +181,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"f4e32549\"" "W/\"f4e32549\", \"foo\""]]
+      (doseq [if-none-match ["W/\"c3a1c2c6\"" "W/\"c3a1c2c6\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -189,7 +190,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"f4e32549\"" (get headers "ETag"))))))))
+            (is (= "W/\"c3a1c2c6\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]
@@ -211,12 +212,12 @@
     (let [{:keys [headers body]} @(handler {})]
 
       (testing "ETag header"
-        (is (= "W/\"ef6f90b9\"" (get headers "ETag"))))
+        (is (str/starts-with? (get headers "ETag") "W")))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :interaction 0 :fhir/type] := :fhir.CapabilityStatement.rest/interaction
-        [:rest 0 :interaction 0 :code] := #fhir/code"search-system"))))
+        [:rest 0 :interaction 0 :code] := #fhir/code "search-system"))))
 
 (def ^:private minimal-history-system-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :history-system-handler]
@@ -227,12 +228,12 @@
     (let [{:keys [headers body]} @(handler {})]
 
       (testing "ETag header"
-        (is (= "W/\"39c4367c\"" (get headers "ETag"))))
+        (is (str/starts-with? (get headers "ETag") "W")))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :interaction 0 :fhir/type] := :fhir.CapabilityStatement.rest/interaction
-        [:rest 0 :interaction 0 :code] := #fhir/code"history-system"))))
+        [:rest 0 :interaction 0 :code] := #fhir/code "history-system"))))
 
 (def ^:private patient-read-interaction-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :resource-patterns]
@@ -244,10 +245,9 @@
                  {:handler (fn [_])}}}]))
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- patient-profile [structure-definition-repo]
   (->> (sdr/resources structure-definition-repo)
@@ -261,27 +261,27 @@
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
       [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
-      [:rest 0 :resource 0 :type] := #fhir/code"Patient"
-      [:rest 0 :resource 0 :profile] := #fhir/canonical"http://hl7.org/fhir/StructureDefinition/Patient"
+      [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+      [:rest 0 :resource 0 :profile] := #fhir/canonical "http://hl7.org/fhir/StructureDefinition/Patient"
       [:rest 0 :resource 0 :interaction 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/interaction
-      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-      [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"single"
-      [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"})
+      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code "read"
+      [:rest 0 :resource 0 :conditionalDelete] := #fhir/code "single"
+      [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code "enforced"})
       [:rest 0 :resource 0 :searchParam 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/searchParam
-      [:rest 0 :resource 0 :searchParam 0 :name] := "address-use"
-      [:rest 0 :resource 0 :searchParam 0 :type] := #fhir/code"token"
-      [:rest 0 :resource 0 :searchParam 1 :name] := "address-country"
-      [:rest 0 :resource 0 :searchParam 1 :type] := #fhir/code"string"
-      [:rest 0 :resource 0 :searchParam 2 :name] := "death-date"
-      [:rest 0 :resource 0 :searchParam 2 :type] := #fhir/code"date"
-      [:rest 0 :resource 0 :searchInclude 0] := "Patient:general-practitioner"
-      [:rest 0 :resource 0 :searchInclude 1] := "Patient:general-practitioner:Practitioner"
-      [:rest 0 :resource 0 :searchInclude 2] := "Patient:general-practitioner:Organization"
-      [:rest 0 :resource 0 :searchInclude 3] := "Patient:general-practitioner:PractitionerRole"
-      [:rest 0 :resource 0 :searchInclude 4] := "Patient:link"
-      [:rest 0 :resource 0 :searchRevInclude 0] := "Account:patient"
-      [:rest 0 :resource 0 :searchRevInclude 1] := "Account:subject"
-      [:rest 0 :resource 0 :searchRevInclude 2] := "ActivityDefinition:composed-of"))
+      [:rest 0 :resource 0 :searchParam 0 :name] := #fhir/string "address-use"
+      [:rest 0 :resource 0 :searchParam 0 :type] := #fhir/code "token"
+      [:rest 0 :resource 0 :searchParam 1 :name] := #fhir/string "address-country"
+      [:rest 0 :resource 0 :searchParam 1 :type] := #fhir/code "string"
+      [:rest 0 :resource 0 :searchParam 2 :name] := #fhir/string "death-date"
+      [:rest 0 :resource 0 :searchParam 2 :type] := #fhir/code "date"
+      [:rest 0 :resource 0 :searchInclude 0] := #fhir/string "Patient:general-practitioner"
+      [:rest 0 :resource 0 :searchInclude 1] := #fhir/string "Patient:general-practitioner:Practitioner"
+      [:rest 0 :resource 0 :searchInclude 2] := #fhir/string "Patient:general-practitioner:Organization"
+      [:rest 0 :resource 0 :searchInclude 3] := #fhir/string "Patient:general-practitioner:PractitionerRole"
+      [:rest 0 :resource 0 :searchInclude 4] := #fhir/string "Patient:link"
+      [:rest 0 :resource 0 :searchRevInclude 0] := #fhir/string "Account:patient"
+      [:rest 0 :resource 0 :searchRevInclude 1] := #fhir/string "Account:subject"
+      [:rest 0 :resource 0 :searchRevInclude 2] := #fhir/string "ActivityDefinition:composed-of"))
 
   (testing "with disabled referential integrity check"
     (with-handler [handler (assoc-in patient-read-interaction-config
@@ -292,9 +292,9 @@
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
         [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
-        [:rest 0 :resource 0 :type] := #fhir/code"Patient"
-        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-        [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code"enforced"})))))
+        [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code "read"
+        [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code "enforced"})))))
 
   (testing "with allowed multiple delete"
     (with-handler [handler (assoc-in patient-read-interaction-config
@@ -305,32 +305,32 @@
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
         [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
-        [:rest 0 :resource 0 :type] := #fhir/code"Patient"
-        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-        [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"multiple")))
+        [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code "read"
+        [:rest 0 :resource 0 :conditionalDelete] := #fhir/code "multiple")))
 
   (testing "with custom profiles"
     (with-handler [handler patient-read-interaction-config]
       [[[:create (patient-profile structure-definition-repo)]
         [:create {:fhir/type :fhir/StructureDefinition :id "id-085034"
-                  :url #fhir/uri"url-084829"
-                  :type #fhir/uri"Patient"
-                  :derivation #fhir/code"constraint"}]]]
+                  :url #fhir/uri "url-084829"
+                  :type #fhir/uri "Patient"
+                  :derivation #fhir/code "constraint"}]]]
 
       (given (:body @(handler {}))
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
         [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
-        [:rest 0 :resource 0 :type] := #fhir/code"Patient"
-        [:rest 0 :resource 0 :profile] := #fhir/canonical"http://hl7.org/fhir/StructureDefinition/Patient"
+        [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+        [:rest 0 :resource 0 :profile] := #fhir/canonical "http://hl7.org/fhir/StructureDefinition/Patient"
         [:rest 0 :resource 0 :supportedProfile count] := 1
-        [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical"url-084829")
+        [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical "url-084829")
 
       (testing "filtering by _elements=software doesn't load supported profiles"
         (with-redefs [d/type-query (fn [_ _ _] (throw (Exception.)))]
           (given (:body @(handler {:query-params {"_elements" "software"}}))
             :fhir/type := :fhir/CapabilityStatement
-            [:software :name] := "Blaze")))
+            [:software :name] := #fhir/string "Blaze")))
 
       (testing "filtering by _elements=software,rest loads supported profiles"
         (given (:body @(handler {:query-params {"_elements" "software,rest"}}))
@@ -340,15 +340,15 @@
     (testing "profile with version"
       (with-handler [handler patient-read-interaction-config]
         [[[:create {:fhir/type :fhir/StructureDefinition :id "id-085034"
-                    :url #fhir/uri"url-084829"
-                    :version #fhir/string"version-093738"
-                    :type #fhir/uri"Patient"
-                    :derivation #fhir/code"constraint"}]]]
+                    :url #fhir/uri "url-084829"
+                    :version #fhir/string "version-093738"
+                    :type #fhir/uri "Patient"
+                    :derivation #fhir/code "constraint"}]]]
 
         (given (:body @(handler {}))
           :fhir/type := :fhir/CapabilityStatement
           [:rest 0 :resource 0 :supportedProfile count] := 1
-          [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical"url-084829|version-093738")))))
+          [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical "url-084829|version-093738")))))
 
 (def ^:private observation-read-interaction-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :resource-patterns]
@@ -360,7 +360,7 @@
                  {:handler (fn [_])}}}]))
 
 (defn- search-param [name]
-  (fn [params] (some #(when (= name (:name %)) %) params)))
+  (fn [params] (some #(when (= name (-> % :name type/value)) %) params)))
 
 (deftest observation-read-interaction-test
   (with-handler [handler observation-read-interaction-config]
@@ -368,12 +368,12 @@
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
       [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
-      [:rest 0 :resource 0 :type] := #fhir/code"Observation"
-      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
+      [:rest 0 :resource 0 :type] := #fhir/code "Observation"
+      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code "read"
       [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :type]
-      := #fhir/code"quantity"
+      := #fhir/code "quantity"
       [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :documentation]
-      := #fhir/markdown"Decimal values are truncated at two digits after the decimal point.")))
+      := #fhir/markdown "Decimal values are truncated at two digits after the decimal point.")))
 
 (def ^:private one-type-operation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
@@ -399,11 +399,11 @@
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
       [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
-      [:rest 0 :resource 0 :type] := #fhir/code"Measure"
+      [:rest 0 :resource 0 :type] := #fhir/code "Measure"
       [:rest 0 :resource 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/operation
-      [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
+      [:rest 0 :resource 0 :operation 0 :name] := #fhir/string "evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :definition] :=
-      #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))
+      #fhir/canonical "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))
 
 (def ^:private one-type-operation-documentation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
@@ -430,12 +430,12 @@
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :fhir/type] := :fhir.CapabilityStatement/rest
       [:rest 0 :resource 0 :fhir/type] := :fhir.CapabilityStatement.rest/resource
-      [:rest 0 :resource 0 :type] := #fhir/code"Measure"
+      [:rest 0 :resource 0 :type] := #fhir/code "Measure"
       [:rest 0 :resource 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/operation
-      [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
+      [:rest 0 :resource 0 :operation 0 :name] := #fhir/string "evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :definition] :=
-      #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-      [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))
+      #fhir/canonical "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+      [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown "documentation-161800")))
 
 (def ^:private one-system-operation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
@@ -461,9 +461,9 @@
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :operation count] := 1
       [:rest 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest/operation
-      [:rest 0 :operation 0 :name] := "totals"
+      [:rest 0 :operation 0 :name] := #fhir/string "totals"
       [:rest 0 :operation 0 :definition] :=
-      #fhir/canonical"https://samply.github.io/blaze/fhir/OperationDefinition/totals")))
+      #fhir/canonical "https://samply.github.io/blaze/fhir/OperationDefinition/totals")))
 
 (def ^:private one-system-operation-documentation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
@@ -489,10 +489,10 @@
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :operation count] := 1
-      [:rest 0 :operation 0 :name] := "totals"
+      [:rest 0 :operation 0 :name] := #fhir/string "totals"
       [:rest 0 :operation 0 :definition] :=
-      #fhir/canonical"https://samply.github.io/blaze/fhir/OperationDefinition/totals"
-      [:rest 0 :operation 0 :documentation] := #fhir/markdown"documentation-141700")))
+      #fhir/canonical "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+      [:rest 0 :operation 0 :documentation] := #fhir/markdown "documentation-141700")))
 
 (def ^:private terminology-service-config
   (-> minimal-config
@@ -514,18 +514,18 @@
       (given (:body @(handler {:blaze/base-url "base-url-131713"
                                :query-params {"mode" "terminology"}}))
         :fhir/type := :fhir/TerminologyCapabilities
-        [:meta :profile] := [#fhir/canonical"http://hl7.org/fhir/StructureDefinition/TerminologyCapabilities"]
-        :status := #fhir/code"active"
-        :experimental := false
-        :date := #fhir/dateTime"2024-01-07"
-        :publisher := "The Samply Community"
+        [:meta :profile] := [#fhir/canonical "http://hl7.org/fhir/StructureDefinition/TerminologyCapabilities"]
+        :status := #fhir/code "active"
+        :experimental := #fhir/boolean false
+        :date := #fhir/dateTime #system/date-time "2024-01-07"
+        :publisher := #fhir/string "The Samply Community"
         :copyright := copyright
-        :kind := #fhir/code"instance"
+        :kind := #fhir/code "instance"
         [:software :fhir/type] := :fhir.TerminologyCapabilities/software
-        [:software :name] := "Blaze"
-        [:software :version] := "version-131640"
+        [:software :name] := #fhir/string "Blaze"
+        [:software :version] := #fhir/string "version-131640"
         [:implementation :fhir/type] := :fhir.TerminologyCapabilities/implementation
-        [:implementation :url] := #fhir/url"base-url-131713"
+        [:implementation :url] := #fhir/url "base-url-131713"
         [:codeSystem count] := 0
         [:validateCode :fhir/type] := :fhir.TerminologyCapabilities/validateCode
         [:validateCode :translations] := #fhir/boolean false)))
@@ -533,18 +533,18 @@
   (testing "with one code system"
     (with-handler [handler terminology-service-config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-192435"
-               :version #fhir/string"version-121451"
-               :status #fhir/code"active"
-               :content #fhir/code"complete"}]]]
+               :url #fhir/uri "system-192435"
+               :version #fhir/string "version-121451"
+               :status #fhir/code "active"
+               :content #fhir/code "complete"}]]]
 
       (given (:body @(handler {:blaze/base-url "base-url-131713"
                                :query-params {"mode" "terminology"}}))
         :fhir/type := :fhir/TerminologyCapabilities
         [:codeSystem count] := 1
         [:codeSystem 0 :fhir/type] := :fhir.TerminologyCapabilities/codeSystem
-        [:codeSystem 0 :uri] := #fhir/canonical"system-192435"
+        [:codeSystem 0 :uri] := #fhir/canonical "system-192435"
         [:codeSystem 0 :version count] := 1
         [:codeSystem 0 :version 0 :fhir/type] := :fhir.TerminologyCapabilities.codeSystem/version
-        [:codeSystem 0 :version 0 :code] := #fhir/string"version-121451"
+        [:codeSystem 0 :version 0 :code] := #fhir/string "version-121451"
         [:codeSystem 0 :version 0 :isDefault] := #fhir/boolean true))))

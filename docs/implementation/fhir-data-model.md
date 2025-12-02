@@ -79,9 +79,9 @@ The internal representation of the example above looks like this:
 ```clojure
 {:fhir/type :fhir/Patient
  :id "0"
- :name [#fhir/HumanName{:text "John Doe"}]
- :birthDate #fhir/date"2020"
- :deceased false}
+ :name [#fhir/HumanName{:text #fhir/string "John Doe"}]
+ :birthDate #fhir/date #system/date "2020"
+ :deceased #fhir/boolean false}
 ```
 
 Although, this internal representation is nearly identical to the JSON representation, there are two main differences:

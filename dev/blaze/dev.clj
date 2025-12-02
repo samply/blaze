@@ -4,13 +4,15 @@
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
-   [blaze.db.resource-cache :as resource-cache]
+   [blaze.db.resource-cache :as rc]
    [blaze.db.resource-store :as rs]
    [blaze.db.tx-log :as tx-log]
    [blaze.elm.expression :as-alias expr]
+   [blaze.fhir.util :as fu]
    [blaze.spec]
    [blaze.system :as system]
    [blaze.system-spec]
+   [blaze.terminology-service :as ts]
    [blaze.test-util :as tu]
    [clojure.repl :refer [pst]]
    [clojure.spec.test.alpha :as st]
@@ -50,13 +52,13 @@
 ;; Transaction Cache
 (comment
   (str (ccp/-stats (:blaze.db/tx-cache system)))
-  (resource-cache/invalidate-all! (:blaze.db/tx-cache system)))
+  (rc/invalidate-all! (:blaze.db/tx-cache system)))
 
 ;; Resource Cache
 (comment
   (str (ccp/-stats (:blaze.db/resource-cache system)))
   (ccp/-estimated-size (:blaze.db/resource-cache system))
-  (resource-cache/invalidate-all! (:blaze.db/resource-cache system)))
+  (rc/invalidate-all! (:blaze.db/resource-cache system)))
 
 ;; CQL Expression Cache
 (comment
@@ -83,3 +85,8 @@
   (def resource-store (::rs/cassandra system))
 
   (rs/get resource-store ["Resource" (bs/from-iso-8859-1-string "072e074677eae7a5cfa4408e870bf32d839d58bb2c59470c0a7f1eced74eb6d8") :complete]))
+
+(comment
+  (def terminology-service (:blaze.terminology-service/extern system))
+
+  @(ts/value-set-validate-code terminology-service (fu/parameters "url" "foo")))

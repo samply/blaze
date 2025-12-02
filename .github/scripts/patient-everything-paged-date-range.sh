@@ -1,16 +1,16 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_IDENTIFIER="X79746011X"
-PATIENT_ID=$(curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIER" | jq -r '.entry[0].resource.id')
-FIRST_PAGE=$(curl -s "$BASE/Patient/$PATIENT_ID/\$everything?_count=1000&start=2013&end=2014")
-FIRST_PAGE_SIZE=$(echo "$FIRST_PAGE" | jq -r '.entry | length')
-NEXT_LINK="$(echo "$FIRST_PAGE" | jq -r '.link[] | select(.relation == "next") | .url')"
-SECOND_PAGE="$(curl -sH "Accept: application/fhir+json" "$NEXT_LINK")"
-SECOND_PAGE_SIZE=$(echo "$SECOND_PAGE" | jq -r '.entry | length')
+base="http://localhost:8080/fhir"
+patient_identifier="X79746011X"
+patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+first_page=$(curl -s "$base/Patient/$patient_id/\$everything?_count=1000&start=2013&end=2014")
+first_page_size=$(echo "$first_page" | jq -r '.entry | length')
+next_link="$(echo "$first_page" | jq -r '.link[] | select(.relation == "next") | .url')"
+second_page="$(curl -sH "Accept: application/fhir+json" "$next_link")"
+second_page_size=$(echo "$second_page" | jq -r '.entry | length')
 
-test "first page size" "$FIRST_PAGE_SIZE" "1000"
-test "second page size" "$SECOND_PAGE_SIZE" "996"
+test "first page size" "$first_page_size" "1000"
+test "second page size" "$second_page_size" "996"

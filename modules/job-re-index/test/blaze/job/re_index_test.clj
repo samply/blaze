@@ -16,6 +16,7 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
@@ -36,8 +37,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-;; trace is just to violent for this test
-(log/set-min-level! :debug)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -60,6 +60,7 @@
    {:tx-log (ig/ref :blaze.db.main/tx-log)
     :tx-cache (ig/ref :blaze.db.main/tx-cache)
     :indexer-executor (ig/ref :blaze.db.node.main/indexer-executor)
+    :resource-cache (ig/ref :blaze.db/resource-cache)
     :resource-store (ig/ref :blaze.db/resource-store)
     :kv-store (ig/ref :blaze.db.main/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node.main/resource-indexer)
@@ -71,12 +72,16 @@
    {:tx-log (ig/ref :blaze.db.admin/tx-log)
     :tx-cache (ig/ref :blaze.db.admin/tx-cache)
     :indexer-executor (ig/ref :blaze.db.node.admin/indexer-executor)
+    :resource-cache (ig/ref :blaze.db/resource-cache)
     :resource-store (ig/ref :blaze.db/resource-store)
     :kv-store (ig/ref :blaze.db.admin/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
+
+   :blaze.db/resource-cache
+   {:resource-store (ig/ref :blaze.db/resource-store)}
 
    [::tx-log/local :blaze.db.main/tx-log]
    {:kv-store (ig/ref :blaze.db.main/transaction-kv-store)
@@ -234,15 +239,15 @@
 
 (def job
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"]}
-   :status #fhir/code"ready"
-   :intent #fhir/code"order"
+   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"]}
+   :status #fhir/code "ready"
+   :intent #fhir/code "order"
    :code #fhir/CodeableConcept
           {:coding
            [#fhir/Coding
-             {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-              :code #fhir/code"re-index"
-              :display #fhir/string"(Re)Index a Search Parameter"}]}})
+             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+              :code #fhir/code "re-index"
+              :display #fhir/string "(Re)Index a Search Parameter"}]}})
 
 (def job-clinical-code
   (assoc
@@ -252,9 +257,9 @@
      :type #fhir/CodeableConcept
             {:coding
              [#fhir/Coding
-               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
-                :code #fhir/code"search-param-url"}]}
-     :value #fhir/canonical"http://hl7.org/fhir/SearchParameter/clinical-code"}]))
+               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
+                :code #fhir/code "search-param-url"}]}
+     :value #fhir/canonical "http://hl7.org/fhir/SearchParameter/clinical-code"}]))
 
 (def job-missing-search-param
   job)
@@ -267,9 +272,9 @@
      :type #fhir/CodeableConcept
             {:coding
              [#fhir/Coding
-               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
-                :code #fhir/code"search-param-url"}]}
-     :value #fhir/canonical"unknown"}]))
+               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
+                :code #fhir/code "search-param-url"}]}
+     :value #fhir/canonical "unknown"}]))
 
 (defn- output-value [job code]
   (job-util/output-value job "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput" code))
@@ -284,7 +289,7 @@
   (output-value job "processing-duration"))
 
 (defn- next-resource [job]
-  (output-value job "next-resource"))
+  (type/value (output-value job "next-resource")))
 
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))
@@ -295,7 +300,7 @@
      [:put {:fhir/type :fhir/Observation :id (format "%05d" id)
             :code #fhir/CodeableConcept
                    {:coding
-                    [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}}])
+                    [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}}])
    (range n)))
 
 (deftest simple-job-execution-test
@@ -313,10 +318,11 @@
             jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
-            [processing-duration :value] :? pos?
-            [processing-duration :unit] := #fhir/string"s"
-            [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
-            [processing-duration :code] := #fhir/code"s"
+            [processing-duration :value type/type] := :fhir/decimal
+            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :unit] := #fhir/string "s"
+            [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
+            [processing-duration :code] := #fhir/code "s"
             next-resource := nil))
 
         (testing "job history"
@@ -360,10 +366,11 @@
             jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
-            [processing-duration :value] :? pos?
-            [processing-duration :unit] := #fhir/string"s"
-            [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
-            [processing-duration :code] := #fhir/code"s"))
+            [processing-duration :value type/type] := :fhir/decimal
+            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :unit] := #fhir/string "s"
+            [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
+            [processing-duration :code] := #fhir/code "s"))
 
         (testing "job history"
           (given @(jtu/pull-job-history system)
@@ -507,10 +514,11 @@
           jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value] :? pos?
-          [processing-duration :unit] := #fhir/string"s"
-          [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
-          [processing-duration :code] := #fhir/code"s"))
+          [processing-duration :value type/type] := :fhir/decimal
+          [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+          [processing-duration :unit] := #fhir/string "s"
+          [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
+          [processing-duration :code] := #fhir/code "s"))
 
       (testing "job history"
         (given @(jtu/pull-job-history system)
@@ -559,10 +567,11 @@
           jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value] :? pos?
-          [processing-duration :unit] := #fhir/string"s"
-          [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
-          [processing-duration :code] := #fhir/code"s"))
+          [processing-duration :value type/type] := :fhir/decimal
+          [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+          [processing-duration :unit] := #fhir/string "s"
+          [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
+          [processing-duration :code] := #fhir/code "s"))
 
       (testing "job history"
         (given @(jtu/pull-job-history system)

@@ -27,15 +27,13 @@
 (defhistogram resource-bytes
   "Stored resource sizes in key-value resource store."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_store_kv_resource_bytes"}
+   :subsystem "db_resource_store_kv"}
   (take 16 (iterate #(* 2 %) 32)))
 
 (defhistogram duration-seconds
   "Durations in key-value resource store."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_store_kv_duration_seconds"}
+   :subsystem "db_resource_store_kv"}
   (take 16 (iterate #(* 2 %) 1e-6))
   "op")
 
@@ -49,7 +47,7 @@
 
 (defn- parse-cbor [parsing-context bytes [type hash variant]]
   (with-open [_ (prom/timer duration-seconds "parse-resource")]
-    (-> (fhir-spec/parse-cbor parsing-context type bytes variant)
+    (-> (fhir-spec/parse-cbor parsing-context (name type) bytes variant)
         (ba/exceptionally #(parse-anom % hash)))))
 
 (defn- get-content [kv-store hash]

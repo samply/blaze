@@ -20,9 +20,6 @@
 (s/def :blaze.db/tx-cache
   #(instance? LoadingCache %))
 
-(s/def :blaze.db/resource-cache
-  :blaze.db/resource-store)
-
 (s/def :blaze.db/op
   #{:create :put :delete})
 

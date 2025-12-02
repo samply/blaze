@@ -5,16 +5,22 @@
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.function-spec]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
    [blaze.elm.expression.cache :as ec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
@@ -24,14 +30,28 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
+
+(defn- compile-context [{:blaze.db/keys [node] ::ts/keys [local]}]
+  {:node node :terminology-service local})
+
 (def ^:private default-opts {})
 
 (def ^:private expr-form (comp c/form :expression))
 
 (defn- codeable-concept [system code]
-  (type/map->CodeableConcept
+  (type/codeable-concept
    {:coding
-    [(type/map->Coding
+    [(type/coding
       {:system (type/uri system)
        :code (type/code code)})]}))
 
@@ -74,14 +94,14 @@
 (deftest compile-library-test
   (testing "empty library"
     (let [library (t/translate "library Test")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
+      (with-system [system config]
+        (given (library/compile-library (compile-context system) library default-opts)
           :expression-defs := {}))))
 
   (testing "one static expression"
     (let [library (t/translate "library Test define Foo: true")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["Foo" :context] := "Patient"
             ["Foo" :expression] := true)
@@ -94,8 +114,8 @@
         using FHIR version '4.0.0'
         context Patient
         define Gender: Patient.gender")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["Gender" :context] := "Patient"
             ["Gender" expr-form] := '(:gender (singleton-from (retrieve-resource))))
@@ -112,8 +132,9 @@
         context Patient
         define function Gender(P Patient): P.gender
         define InInitialPopulation: Gender(Patient)")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs function-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs function-defs]}
+              (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
@@ -122,7 +143,7 @@
           (given function-defs
             ["Gender" :context] := "Patient"
             ["Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-            ["Gender" :function] :? fn?)
+            ["Gender" :function #(% "x") c/form] := '(call "Gender" "x"))
 
           (testing "there are no references to resolve"
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
@@ -137,17 +158,57 @@
         define function Inc(i System.Integer): i + 1
         define function Inc2(i System.Integer): Inc(i) + 1
         define InInitialPopulation: Inc2(1)")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs function-defs]}
+              (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] := '(call "Inc2" 1))
+
+          (given function-defs
+            ["Inc" :context] := "Patient"
+            ["Inc" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            ["Inc" :function #(% 1) c/form] := '(call "Inc" 1)
+            ["Inc2" :context] := "Patient"
+            ["Inc2" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            ["Inc2" :function #(% 1) c/form] := '(call "Inc2" 1))
 
           (testing "there are no references to resolve"
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
             (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
+
+  (testing "functions of different arities"
+    (let [library (t/translate "library Test
+        using FHIR version '4.0.0'
+        context Patient
+        define function Const(): 1
+        define function Inc(i System.Integer): i + 1
+        define function Add(i System.Integer, j System.Integer): i + j
+        define function Add3(i System.Integer, j System.Integer, k System.Integer): { i, j, k }")]
+      (with-system [system config]
+        (let [{:keys [function-defs]}
+              (library/compile-library (compile-context system) library default-opts)]
+          (given function-defs
+            ["Const" :context] := "Patient"
+            ["Const" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            ["Const" :function #(%) c/form] := '(call "Const")
+            ["Const" :function #(%) #(core/-eval % {} nil {})] := 1
+            ["Inc" :context] := "Patient"
+            ["Inc" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            ["Inc" :function #(% 1) c/form] := '(call "Inc" 1)
+            ["Inc" :function #(% 1) #(core/-eval % {} nil {})] := 2
+            ["Add" :context] := "Patient"
+            ["Add" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            ["Add" :function #(% 1 2) c/form] := '(call "Add" 1 2)
+            ["Add" :function #(% 1 2) #(core/-eval % {} nil {})] := 3
+            ["Add3" :context] := "Patient"
+            ["Add3" :resultTypeSpecifier :type] := "ListTypeSpecifier"
+            ["Add3" :resultTypeSpecifier :elementType :name] := "{urn:hl7-org:elm-types:r1}Integer"
+            ["Add3" :function #(% 1 2 3) c/form] := '(call "Add3" 1 2 3)
+            ["Add3" :function #(% 1 2 3) #(core/-eval % {} nil {})] := [1 2 3]
+            ["Add3" :function #(% 3 1 2) #(core/-eval % {} nil {})] := [3 1 2])))))
 
   (testing "expressions from Patient context are resolved"
     (let [library (t/translate "library Test
@@ -175,8 +236,8 @@
         define InInitialPopulation:
           Inclusion and
           not Exclusion")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -216,8 +277,8 @@
           Patient.gender = 'female' and
           exists from [MedicationStatement] M
             where M.medication.reference in TemozolomidRefs")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["TemozolomidRefs" :context] := "Unfiltered"
             ["TemozolomidRefs" expr-form] :=
@@ -313,8 +374,8 @@
 
         define Gender:
           Patient.gender")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["Patient" :context] := "Patient"
             ["Patient" expr-form] := '(singleton-from (retrieve-resource))
@@ -342,8 +403,8 @@
         define InInitialPopulation:
           exists from [MedicationAdministration] M
             where M.medication.reference in {'Medication/0', 'Medication/1'}")]
-        (with-system [{:blaze.db/keys [node]} mem-node-config]
-          (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+        (with-system [{:blaze.db/keys [node] :as system} config]
+          (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
             (given expression-defs
               ["InInitialPopulation" :context] := "Patient"
               ["InInitialPopulation" expr-form] :=
@@ -386,8 +447,8 @@
         define InInitialPopulation:
           exists from [MedicationAdministration] M
             where M.medication.reference in MedicationRefs")]
-        (with-system [{:blaze.db/keys [node]} mem-node-config]
-          (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+        (with-system [{:blaze.db/keys [node] :as system} config]
+          (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
             (given expression-defs
               ["InInitialPopulation" :context] := "Patient"
               ["InInitialPopulation" expr-form] :=
@@ -434,8 +495,8 @@
             where M.medication.reference in MedicationRefsA) or
           exists (from [MedicationAdministration] M
             where M.medication.reference in MedicationRefsB)")]
-          (with-system [{:blaze.db/keys [node]} mem-node-config]
-            (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (with-system [{:blaze.db/keys [node] :as system} config]
+            (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
               (given expression-defs
                 ["InInitialPopulation" :context] := "Patient"
                 ["InInitialPopulation" expr-form] :=
@@ -487,8 +548,8 @@
             where M.medication.reference in MedicationRefsA) or
           exists (from [MedicationAdministration] M
             where M.medication.reference in {'Medication/0'})")]
-          (with-system [{:blaze.db/keys [node]} mem-node-config]
-            (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (with-system [{:blaze.db/keys [node] :as system} config]
+            (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
               (given expression-defs
                 ["InInitialPopulation" :context] := "Patient"
                 ["InInitialPopulation" expr-form] :=
@@ -528,16 +589,16 @@
     (testing "function"
       (let [library (t/translate "library Test
           define function Error(): singleton from {1, 2}")]
-        (with-system [{:blaze.db/keys [node]} mem-node-config]
-          (given (library/compile-library node library default-opts)
+        (with-system [system config]
+          (given (library/compile-library (compile-context system) library default-opts)
             ::anom/category := ::anom/conflict
             ::anom/message := "More than one element in `SingletonFrom` expression."))))
 
     (testing "expression"
       (let [library (t/translate "library Test
           define Error: singleton from {1, 2}")]
-        (with-system [{:blaze.db/keys [node]} mem-node-config]
-          (given (library/compile-library node library default-opts)
+        (with-system [system config]
+          (given (library/compile-library (compile-context system) library default-opts)
             ::anom/category := ::anom/conflict
             ::anom/message := "More than one element in `SingletonFrom` expression.")))))
 
@@ -552,8 +613,8 @@
 
         define InInitialPopulation:
           Patient.gender = Gender")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -578,16 +639,16 @@
   (testing "with parameter default"
     (let [library (t/translate "library Test
         parameter \"Measurement Period\" Interval<Date> default Interval[@2020-01-01, @2020-12-31]")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
+      (with-system [system config]
+        (given (library/compile-library (compile-context system) library default-opts)
           [:parameter-default-values "Measurement Period" :low] := #system/date"2020-01-01"
           [:parameter-default-values "Measurement Period" :high] := #system/date"2020-12-31"))))
 
   (testing "with invalid parameter default"
     (let [library (t/translate "library Test
         parameter \"Measurement Start\" Integer default singleton from {1, 2}")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
+      (with-system [system config]
+        (given (library/compile-library (compile-context system) library default-opts)
           ::anom/category := ::anom/conflict
           ::anom/message "More than one element in `SingletonFrom` expression."))))
 
@@ -602,9 +663,9 @@
             exists [Observation] O
               with [Encounter] E
               such that O.encounter.reference = 'Encounter/' + E.id")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
+      (with-system [{:blaze.db/keys [node] :as system} config]
         (let [{:keys [expression-defs function-defs]}
-              (library/compile-library node library {})]
+              (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -647,8 +708,8 @@
 
         define InInitialPopulation:
           [\"name-133756\" -> Observation]")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -678,8 +739,8 @@
 
         define InInitialPopulation:
           exists [Condition: prostata]")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+      (with-system [system config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -705,8 +766,8 @@
           exists [Condition] and
           exists [Encounter] and
           exists [Specimen]")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -742,8 +803,8 @@
         define InInitialPopulation:
           Criterion_1 and
           Criterion_2")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)
               in-initial-population (get expression-defs "InInitialPopulation")]
 
           (testing "after compilation the named expressions are resolved
@@ -789,8 +850,8 @@
           exists [Condition] or
           exists [Encounter] or
           exists [Specimen]")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -826,8 +887,8 @@
         define InInitialPopulation:
           Criterion_1 or
           Criterion_2")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)
               in-initial-population (get expression-defs "InInitialPopulation")]
 
           (testing "after compilation the named expressions are resolved
@@ -879,8 +940,8 @@
         define InInitialPopulation:
           Criterion_1 and
           Criterion_2")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)
               in-initial-population (get expression-defs "InInitialPopulation")]
 
           (testing "after compilation the named expressions are resolved
@@ -927,8 +988,8 @@
 
         define InInitialPopulation:
           Patient.identifier.where(type ~ Code 'GKV' from IdentifierType).exists()")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+      (with-system [{:blaze.db/keys [node] :as system} config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -967,11 +1028,11 @@
 
         define InInitialPopulation:
           exists [Observation: Code '788-0' from loinc]")]
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node] :as system} config]
         [[[:put {:fhir/type :fhir/Observation :id "0"
                  :code (codeable-concept "http://loinc.org" "788-0")}]]]
 
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -995,8 +1056,8 @@
 
         define InInitialPopulation:
           exists [Observation: Code '788-0' from loinc]")]
-        (with-system [{:blaze.db/keys [node]} mem-node-config]
-          (let [{:keys [expression-defs]} (library/compile-library node library {})]
+        (with-system [{:blaze.db/keys [node] :as system} config]
+          (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
             (given expression-defs
               ["InInitialPopulation" :context] := "Patient"
               ["InInitialPopulation" expr-form] :=
@@ -1023,11 +1084,11 @@
 
         define InInitialPopulation:
           exists [Observation: body_weight] O where O.value < 3.3 'kg'")]
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node] :as system} config]
         [[[:put {:fhir/type :fhir/Observation :id "0"
                  :code (codeable-concept "http://loinc.org" "29463-7")}]]]
 
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -1057,8 +1118,8 @@
 
         define InInitialPopulation:
           exists [Observation: body_weight] O where O.value < 3.3 'kg'")]
-        (with-system [{:blaze.db/keys [node]} mem-node-config]
-          (let [{:keys [expression-defs]} (library/compile-library node library {})]
+        (with-system [{:blaze.db/keys [node] :as system} config]
+          (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
             (given expression-defs
               ["InInitialPopulation" :context] := "Patient"
               ["InInitialPopulation" expr-form] :=
@@ -1091,8 +1152,8 @@
           exists
             from [Procedure: Code '431182000' from snomed] P
             where P.performed overlaps Interval[@2020-02-01, @2020-06-01]")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+      (with-system [system config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -1114,4 +1175,44 @@
                (retrieve
                 "Procedure"
                 [["code"
-                  "http://snomed.info/sct|431182000"]])))))))))
+                  "http://snomed.info/sct|431182000"]]))))))))
+
+  (testing "valueset"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        valueset FemaleAdministrativeSex:
+          'urn:oid:2.16.840.1.113883.3.560.100.2'
+
+        context Patient
+
+        define InInitialPopulation:
+          Patient.gender in FemaleAdministrativeSex")]
+      (with-system-data [system config]
+        [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri "urn:oid:2.16.840.1.113883.3.560.100.2"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri "http://hl7.org/fhir/administrative-gender"
+                    :concept
+                    [{:fhir/type :fhir.ValueSet.compose.include/concept
+                      :code #fhir/code "female"}]}]}
+                 :expansion
+                 {:fhir/type :fhir.ValueSet/expansion
+                  :identifier #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
+                  :timestamp #fhir/dateTime"1970-01-01T00:00:00Z"
+                  :contains
+                  [{:fhir/type :fhir.ValueSet.expansion/contains
+                    :system #fhir/uri "http://hl7.org/fhir/administrative-gender"
+                    :code #fhir/code "female"}]}}]]]
+
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(in-value-set
+              (call "ToString" (:gender (singleton-from (retrieve-resource))))
+              (value-set "urn:oid:2.16.840.1.113883.3.560.100.2"))))))))

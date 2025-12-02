@@ -1,16 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
-    "helpers:pinGitHubActionDigests",
-    "docker:pinDigests",
+    "config:best-practices",
     "customManagers:githubActionsVersions"
   ],
   "labels": ["dependencies"],
   "packageRules": [
     {
       "matchDatasources": [
-        "npm"
+        "npm", "docker"
       ],
       "schedule": [
         "before 4am on monday"

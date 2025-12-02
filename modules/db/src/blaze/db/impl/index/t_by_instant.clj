@@ -18,8 +18,7 @@
 
 (defn t-by-instant
   "Returns the logical timestamp `t` of the database that was created at or
-  before `instant` orÔ
-  nil if there is none."
+  before `instant` or nil if there is none."
   [snapshot instant]
   (i/seek-value snapshot :t-by-instant-index bb/get-long! 0
                 (bs/from-byte-array (encode-key instant))))

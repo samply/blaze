@@ -17,8 +17,8 @@
    [cognitect.anomalies :as anom]
    [reitit.core :as reitit])
   (:import
-   [java.time Instant ZoneId ZonedDateTime]
-   [java.time.format DateTimeFormatter]
+   [java.time Instant OffsetDateTime ZoneId ZonedDateTime]
+   [java.time.format DateTimeFormatter DateTimeParseException]
    [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
@@ -92,6 +92,18 @@
   {:arglists '([query-params])}
   [{v "_elements"}]
   (into [] (comp (mapcat #(str/split % #"\s*,\s*")) (remove str/blank?) (map keyword)) (u/to-seq v)))
+
+(defn since
+  "Tries to parse a valid instant out of the `_since` query param.
+
+  Returns nil on absent or invalid instant."
+  {:arglists '([query-params])}
+  [{v "_since"}]
+  (some
+   #(try
+      (Instant/from (OffsetDateTime/parse %))
+      (catch DateTimeParseException _))
+   (u/to-seq v)))
 
 (defn- incorrect-date-msg [name value]
   (format "The value `%s` of the query param `%s` is no valid date." value name))
@@ -312,13 +324,13 @@
     :response
     (cond->
      {:fhir/type :fhir.Bundle.entry/response
-      :status (str status)}
+      :status (type/string (str status))}
 
       location
       (assoc :location (type/uri location))
 
       etag
-      (assoc :etag etag)
+      (assoc :etag (type/string etag))
 
       last-modified
       (assoc :lastModified (convert-http-date last-modified)))}
@@ -330,7 +342,7 @@
   {:fhir/type :fhir.Bundle/entry :response response})
 
 (defn- with-entry-location* [issues idx]
-  (mapv #(assoc % :expression [(format "Bundle.entry[%d]" idx)]) issues))
+  (mapv #(assoc % :expression [(type/string (format "Bundle.entry[%d]" idx))]) issues))
 
 (defn- with-entry-location [outcome idx]
   (update outcome :issue with-entry-location* idx))

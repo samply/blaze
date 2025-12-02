@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: "apache/kafka:4.1.0@sha256:bff074a5d0051dbc0bbbcd25b045bb1fe84833ec0d3c7c965d1797dd289ec88f"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     environment:
       KAFKA_NODE_ID: 1
       CLUSTER_ID: '5L6g3nShT-eMCtK--X86sw'
@@ -35,7 +35,7 @@ services:
       retries: 10
 
   kafka-topic-creator-main:
-    image: "apache/kafka:4.1.0@sha256:bff074a5d0051dbc0bbbcd25b045bb1fe84833ec0d3c7c965d1797dd289ec88f"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
       --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
       --topic blaze-tx-main --partitions 1 --replication-factor 1 
@@ -49,7 +49,7 @@ services:
         condition: service_healthy
 
   kafka-topic-creator-admin:
-    image: "apache/kafka:4.1.0@sha256:bff074a5d0051dbc0bbbcd25b045bb1fe84833ec0d3c7c965d1797dd289ec88f"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
       --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
       --topic blaze-tx-admin --partitions 1 --replication-factor 1 
@@ -63,7 +63,7 @@ services:
         condition: service_healthy
 
   cassandra-1:
-    image: "cassandra:5.0.5@sha256:bb81efedfdca7bb80f804a7496f289ec134d61b7c59ac8293ec897aa71d80107"
+    image: "cassandra:5.0.6@sha256:5e2c85d2d5db759c28c3efb50905f8d237f958321d6dfd8c176cb148700d9ade"
     volumes:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
@@ -78,7 +78,7 @@ services:
       retries: 10
 
   cassandra-2:
-    image: "cassandra:5.0.5@sha256:bb81efedfdca7bb80f804a7496f289ec134d61b7c59ac8293ec897aa71d80107"
+    image: "cassandra:5.0.6@sha256:5e2c85d2d5db759c28c3efb50905f8d237f958321d6dfd8c176cb148700d9ade"
     volumes:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
@@ -93,7 +93,7 @@ services:
       retries: 10
 
   cassandra-init-data:
-    image: "cassandra:5.0.5@sha256:bb81efedfdca7bb80f804a7496f289ec134d61b7c59ac8293ec897aa71d80107"
+    image: "cassandra:5.0.6@sha256:5e2c85d2d5db759c28c3efb50905f8d237f958321d6dfd8c176cb148700d9ade"
     command: "cqlsh -f /scripts/cassandra-init.cql"
     environment:
       CQLSH_HOST: "cassandra-1"
@@ -174,7 +174,7 @@ services:
     - cassandra-init-data
 
   ingress:
-    image: "haproxy:3.2@sha256:460591a5f018cffddbb8122a5acde386aeb480e29b49613a340fc89258cadc39"
+    image: "haproxy:3.2@sha256:f8ab058f418b96f6125009d2946f6692ebf372fb861bb65353a667b5fc21f39d"
     ports:
     - "8080:8080"
     volumes:

@@ -33,7 +33,7 @@
     "1ne" [:eq "1ne"]))
 
 (deftest format-skip-indexing-msg-test
-  (is (= (u/format-skip-indexing-msg "value-132537" "url-132522" "type-132528")
+  (is (= (u/format-skip-indexing-msg #fhir/string "value-132537" "url-132522" "type-132528")
          "Skip indexing value `value-132537` of type `:fhir/string` for search parameter `url-132522` with type `type-132528` because the rule is missing.")))
 
 (deftest soundex-test

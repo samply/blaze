@@ -1,7 +1,7 @@
 #!/bin/bash
 
-N=100000
-C=8
+n=100000
+c=8
 
 import-once() {
   docker run --name blaze --rm -v blaze-data:/app/data \
@@ -21,8 +21,8 @@ import-once() {
   blazectl --server http://localhost:8080/fhir count-resources
   sleep 10
 
-  blazectl --server http://localhost:8080/fhir upload --no-progress -c$C "output-$N" > "$N-c$C-$1.out"
-  blazectl --server http://localhost:8080/fhir count-resources > "$N-count-resources-$1.out"
+  blazectl --server http://localhost:8080/fhir upload --no-progress -c$c "output-$n" > "$n-c$c-$1.out"
+  blazectl --server http://localhost:8080/fhir count-resources > "$n-count-resources-$1.out"
 
   docker stop blaze
   docker volume rm blaze-data

@@ -45,7 +45,7 @@
      ;; TODO: give the matcher the cr/handle function
       (comp (map cr/handle)
             (d/matcher-transducer db matcher)
-            (map (partial cr/mk-resource db))))
+            (map #(cr/mk-resource db %))))
     (-form [_]
       `(~'matcher ~(d/matcher-clauses matcher)))))
 

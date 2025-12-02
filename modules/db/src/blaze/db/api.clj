@@ -78,6 +78,16 @@
   [db t]
   (p/-as-of db t))
 
+(defn since
+  "Returns the value of `db` since some point `t`, inclusive."
+  [db instant]
+  (p/-since db instant))
+
+(defn since-t
+  "Returns the value of `db` since some point `t`, inclusive."
+  [db]
+  (p/-since-t db))
+
 (defn t
   "Returns the effective `t` of `db`."
   [db]
@@ -111,7 +121,9 @@
   (log/trace "fetch resource handle of" (str type "/" id))
   (p/-resource-handle db (codec/tid type) (codec/id-byte-string id)))
 
-(defn resource-handle? [x]
+(defn resource-handle?
+  "Returns `true` if `x` is a resource handle."
+  [x]
   (rh/resource-handle? x))
 
 (defn deleted?
@@ -350,16 +362,6 @@
   [matcher]
   (p/-matcher-clauses matcher))
 
-;; ---- History Functions -----------------------------------------------------
-
-(defn stop-history-at
-  "Returns a transducer that stops reducing a collection of history entries at
-  `instant`.
-
-  Can be used with `instance-history`, `type-history` and `system-history`."
-  [db instant]
-  (p/-stop-history-at db instant))
-
 ;; ---- Instance-Level History Functions --------------------------------------
 
 (defn instance-history
@@ -377,16 +379,9 @@
 
 (defn total-num-of-instance-changes
   "Returns the total number of changes (versions) of the resource with the given
-  `type` and `id` starting as-of `db`.
-
-  Optionally a `since` instant can be given to define a point in the past where
-  the calculation should start."
-  ([db type id]
-   (p/-total-num-of-instance-changes db (codec/tid type)
-                                     (codec/id-byte-string id) nil))
-  ([db type id since]
-   (p/-total-num-of-instance-changes db (codec/tid type)
-                                     (codec/id-byte-string id) since)))
+  `type` and `id` starting as-of `db`."
+  [db type id]
+  (p/-total-num-of-instance-changes db (codec/tid type) (codec/id-byte-string id)))
 
 ;; ---- Type-Level History Functions ------------------------------------------
 
@@ -408,14 +403,9 @@
 
 (defn total-num-of-type-changes
   "Returns the total number of changes (versions) of resources with the given
-  `type` starting as-of `db`.
-
-  Optionally a `since` instant can be given to define a point in the past where
-  the calculation should start."
-  ([db type]
-   (p/-total-num-of-type-changes db type nil))
-  ([db type since]
-   (p/-total-num-of-type-changes db type since)))
+  `type` starting as-of `db`."
+  [db type]
+  (p/-total-num-of-type-changes db (codec/tid type)))
 
 ;; ---- System-Level History Functions ----------------------------------------
 
@@ -439,14 +429,9 @@
 
 (defn total-num-of-system-changes
   "Returns the total number of changes (versions) of resources starting as-of
-  `db`.
-
-  Optionally a `since` instant can be given to define a point in the past where
-  the calculation should start."
-  ([db]
-   (p/-total-num-of-system-changes db nil))
-  ([db since]
-   (p/-total-num-of-system-changes db since)))
+  `db`."
+  [db]
+  (p/-total-num-of-system-changes db))
 
 (defn changes
   "Returns a reducible collection of all resource handles changed at the `t` of
@@ -543,17 +528,20 @@
   "Returns a CompletableFuture that will complete with a vector of all resources
   of all `resource-handles` in the same order.
 
-  Optional, `variant` can be given which is either a content variant like
-  :complete or :summary or a list of top-level keys to return instead of all
-  keys (elements). Certain mandatory and modifier elements are returned
-  regardless of if they are specified in `variant`. In addition the resources
-  are marked with the tag SUBSETTED in this case.
+  The following options are available:
+  * :variant - which is either :complete or :summary
+  * :elements - a list of top-level keys to return instead of all
+
+  Certain mandatory and modifier elements are returned regardless of not being
+  specified in :elements. In addition the resources are marked with the tag
+  SUBSETTED if one of :variant :summary or :elements are given.
 
   Returns a failed CompletableFuture if one pull fails."
+  {:arglists '([node-or-db resource-handles opts?])}
   ([node-or-db resource-handles]
-   (p/-pull-many node-or-db resource-handles :complete))
-  ([node-or-db resource-handles variant]
-   (p/-pull-many node-or-db resource-handles variant)))
+   (p/-pull-many node-or-db resource-handles {}))
+  ([node-or-db resource-handles opts]
+   (p/-pull-many node-or-db resource-handles opts)))
 
 ;; ---- (Re) Index ------------------------------------------------------------
 

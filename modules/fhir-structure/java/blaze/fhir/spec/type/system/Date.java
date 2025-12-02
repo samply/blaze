@@ -20,15 +20,12 @@ public interface Date extends JavaSystemType, Temporal {
     DateTime toDateTime();
 
     static Date parse(String s) {
-        switch (s.length()) {
-            case 10:
-                return DateDate.parse(s);
-            case 7:
-                return DateYearMonth.parse(s);
-            case 4:
-                return DateYear.parse(s);
-            default:
-                throw new DateTimeException(String.format("Can't parse `%s` as System.Date because it doesn't has the right length.", s));
-        }
+        return switch (s.length()) {
+            case 10 -> DateDate.parse(s);
+            case 7 -> DateYearMonth.parse(s);
+            case 4 -> DateYear.parse(s);
+            default ->
+                    throw new DateTimeException(String.format("Can't parse `%s` as System.Date because it doesn't has the right length.", s));
+        };
     }
 }

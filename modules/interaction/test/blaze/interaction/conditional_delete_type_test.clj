@@ -78,9 +78,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Conditional delete of Patients with query `foo=bar` failed. Cause: The search-param with code `foo` and type `Patient` was not found."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Conditional delete of Patients with query `foo=bar` failed. Cause: The search-param with code `foo` and type `Patient` was not found."))))
 
   (testing "returns error on multiple delete"
     (with-handler [handler]
@@ -95,9 +95,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"conflict"
-          [:issue 0 :diagnostics] := "Conditional delete of one single Patient without a query failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "conflict"
+          [:issue 0 :diagnostics] := #fhir/string "Conditional delete of one single Patient without a query failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))
 
   (testing "deleting more than 10,000 Patients fails"
     (with-handler-allow-multiple [handler]
@@ -112,9 +112,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"too-costly"
-          [:issue 0 :diagnostics] := "Conditional delete of all Patients failed because more than 10,000 matches were found."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "too-costly"
+          [:issue 0 :diagnostics] := #fhir/string "Conditional delete of all Patients failed because more than 10,000 matches were found."))))
 
   (testing "returns No Content on non-existing resource"
     (with-handler [handler]
@@ -142,7 +142,7 @@
     (testing "with search params"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
+                 :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         (let [{:keys [status body]}
@@ -179,9 +179,9 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"success"
-            [:issue 0 :code] := #fhir/code"success"
-            [:issue 0 :diagnostics] := "Success. No Patients exist. Nothing to delete.")))
+            [:issue 0 :severity] := #fhir/code "success"
+            [:issue 0 :code] := #fhir/code "success"
+            [:issue 0 :diagnostics] := #fhir/string "Success. No Patients exist. Nothing to delete.")))
 
       (testing "with query"
         (with-handler [handler]
@@ -195,14 +195,14 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"success"
-              [:issue 0 :code] := #fhir/code"success"
-              [:issue 0 :diagnostics] := "Success. No Patients were matched by query `identifier=181205`. Nothing to delete.")))))
+              [:issue 0 :severity] := #fhir/code "success"
+              [:issue 0 :code] := #fhir/code "success"
+              [:issue 0 :diagnostics] := #fhir/string "Success. No Patients were matched by query `identifier=181205`. Nothing to delete.")))))
 
     (testing "deleting one Patient"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
+                 :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         (let [{:keys [status body]}
@@ -215,16 +215,16 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"success"
-            [:issue 0 :code] := #fhir/code"success"
-            [:issue 0 :diagnostics] := "Successfully deleted 1 Patient."))))
+            [:issue 0 :severity] := #fhir/code "success"
+            [:issue 0 :code] := #fhir/code "success"
+            [:issue 0 :diagnostics] := #fhir/string "Successfully deleted 1 Patient."))))
 
     (testing "deleting two Patients"
       (with-handler-allow-multiple [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]
+                 :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]
           [:put {:fhir/type :fhir/Patient :id "1"
-                 :identifier [#fhir/Identifier{:value #fhir/string"181205"}]}]]]
+                 :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -236,6 +236,6 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"success"
-            [:issue 0 :code] := #fhir/code"success"
-            [:issue 0 :diagnostics] := "Successfully deleted 2 Patients."))))))
+            [:issue 0 :severity] := #fhir/code "success"
+            [:issue 0 :code] := #fhir/code "success"
+            [:issue 0 :diagnostics] := #fhir/string "Successfully deleted 2 Patients."))))))

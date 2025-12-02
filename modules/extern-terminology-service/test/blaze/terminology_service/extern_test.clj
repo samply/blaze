@@ -2,11 +2,12 @@
   (:require
    [blaze.fhir-client-spec]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.fhir.writing-context]
    [blaze.http-client.spec]
-   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.extern]
@@ -15,12 +16,14 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [jsonista.core :as j]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [com.pgssoft.httpclient HttpClientMock]))
+   [com.pgssoft.httpclient HttpClientMock]
+   [org.hamcrest Matchers]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -87,17 +90,56 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
+(defn- params-matcher [{:blaze.fhir/keys [writing-context]} params]
+  (Matchers/is (fhir-spec/write-json-as-string writing-context params)))
+
 (defn- expand-value-set [ts & nvs]
   (ts/expand-value-set ts (apply fu/parameters nvs)))
 
-(deftest terminology-service-test
-  (with-system [{ts ::ts/extern ::keys [http-client]} config]
+(deftest expand-value-set-test
+  (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
 
-    (-> (.onGet ^HttpClientMock http-client "http://localhost:8080/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/administrative-gender")
-        (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
-        (.withHeader "content-type" "application/fhir+json"))
+    (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+      (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
+          (.withBody (params-matcher system params))
+          (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
+          (.withHeader "content-type" "application/fhir+json"))
 
-    (given @(expand-value-set ts
-              "url" #fhir/uri"http://hl7.org/fhir/ValueSet/administrative-gender")
-      :fhir/type := :fhir/ValueSet
-      :id := "0")))
+      (given @(ts/expand-value-set ts params)
+        :fhir/type := :fhir/ValueSet
+        :id := "0"))))
+
+(deftest value-set-validate-code-test
+  (testing "success"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$validate-code")
+            (.withBody (params-matcher system params))
+            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
+            (.withHeader "content-type" "application/fhir+json"))
+
+        (given @(ts/value-set-validate-code ts params)
+          :fhir/type := :fhir/Parameters))))
+
+  (testing "value-set not-found"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$validate-code")
+            (.withBody (params-matcher system params))
+            (.doReturn 400 (j/write-value-as-string
+                            {:resourceType "OperationOutcome"
+                             :issue
+                             [{:severity "error"
+                               :code "not-found"
+                               :diagnostics "The value set `http://hl7.org/fhir/ValueSet/administrative-gender` was not found."}]}))
+            (.withHeader "content-type" "application/fhir+json"))
+
+        (given-failed-future (ts/value-set-validate-code ts params)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unexpected response status 400."
+          [:fhir/issues count] := 1
+          [:fhir/issues 0 :severity] := #fhir/code "error"
+          [:fhir/issues 0 :code] := #fhir/code "not-found"
+          [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/ValueSet/administrative-gender` was not found.")))))

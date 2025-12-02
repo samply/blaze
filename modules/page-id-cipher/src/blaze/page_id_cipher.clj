@@ -38,7 +38,7 @@
       (b64-encode)))
 
 (defn- key-set-attachment [key-set-handle]
-  (type/map->Attachment {:data (type/base64Binary (encode-key-set-handle key-set-handle))}))
+  (type/attachment {:data (type/base64Binary (encode-key-set-handle key-set-handle))}))
 
 (defn- key-set-content [key-set-handle]
   {:fhir/type :fhir.DocumentReference/content
@@ -47,8 +47,8 @@
 (defn- key-set-resource [context]
   {:fhir/type :fhir/DocumentReference
    :id (m/luid context)
-   :identifier [(type/map->Identifier {:value identifier})]
-   :status #fhir/code"current"
+   :identifier [(type/identifier {:value (type/string identifier)})]
+   :status #fhir/code "current"
    :content
    [(key-set-content (impl/gen-new-key-set-handle))]})
 

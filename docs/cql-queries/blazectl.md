@@ -31,7 +31,9 @@ If you just started Blaze without any data, you can import some using the [blaze
 blazectl upload --server http://localhost:8080/fhir .github/test-data/synthea
 ```
 
-## Evaluate a Simple Measure Counting all Male Patients
+## Count all Male Patients
+
+The goal is to write a measure that counts all male patients.
 
 ```sh
 blazectl evaluate-measure docs/cql-queries/gender-male.yml --server http://localhost:8080/fhir
@@ -89,7 +91,7 @@ group:
 ```
 
 * you reference the CQL library file under the `library` key
-* you can specify several groups were you can define populations based on a type. Currently only `Patient` is possible
+* you can specify several groups were you can define populations based on resource type.
 * under `population` you specify the name of a CQL expression which has to be present in the CQL library file. Here the expression is called `InInitialPopulation`.
 
 ### The CQL Library File
@@ -116,7 +118,7 @@ define InInitialPopulation:
 
 In it, the expression `Patient.gender = 'male'` is given the name `InInitialPopulation` that can be used in the Measure YAML.
 
-## Evaluate a Measure Outputting the Distribution of all Patients Birth Years
+## Calculate the Distribution of all Patients Birth Years
 
 The goal is to write a Measure that will output the distribution of all patients birth years including a conversation into the CSV format for easy consumption of analysis tools.
 
@@ -193,7 +195,7 @@ The `jq` file doing the CSV conversation looks like this:
 
 Here `["year", "count"]` represents the CSV header and `(.group[0].stratifier[0].stratum[] | [.value.text, .population[0].count])` extracts the value and the count out of the strata of the MeasureReport. The syntax of `jq` is documented in its [manual](https://stedolan.github.io/jq/manual).
 
-## Evaluate a Measure Outputting the Distribution of all Condition Codes
+## Calculate the Distribution of all Condition Codes
 
 The goal is to write a Measure that will output the distribution of all condition codes including a conversation into the CSV format for easy consumption of analysis tools.
 
@@ -235,7 +237,7 @@ group:
     expression: Code
 ```
 
-The key difference to the former Measure YAML files is the group type of `Condition`. That type defines all populations of this group to consist of Condition resources instead of Patient resources. This also means that the population expressions defined in this group have to return Condition resources instead of a boolean value. We will see that in a moment. The stratifier looks the same as in former files, but its expression `Code` will not operate on Condition resources and not Patients.
+The key difference to the former Measure YAML files is the group type of `Condition`. That type defines all populations of this group to consist of Condition resources instead of Patient resources. This also means that the population expressions defined in this group have to return Condition resources instead of a boolean value. We will see that in a moment. The stratifier looks the same as in former files, but its expression `Code` will now operate on Condition resources instead of patients.
 
 ### The CQL Library File
 
@@ -251,7 +253,7 @@ context Patient
 define InInitialPopulation:
   [Condition]
 
-define function Code(condition FHIR.Condition):
+define function Code(condition Condition):
   condition.code
 ```
 
@@ -272,7 +274,11 @@ The `jq` file doing the CSV conversation looks like this:
 
 Because we return a `CodeableConcept` from our stratifier expression `Code`, the stratum values will contain that `CodeableConcept`s directly. In the `jq` script, we extract the `system`, `code` and `display` parts of the first Coding using the expression `.value.coding[0].system` and others. If the Condition resources use more than one Coding, its easy to add columns with the later Codings. In the Synthea dataset that's not the case.
 
-## Evaluate a Measure Outputting the Distribution of all Body Weights
+## Calculate the Distribution of all Body Weights
+
+The goal is to write a Measure that will output the distribution of all body weights including a conversation into the CSV format for easy consumption of analysis tools.
+
+First try the command:
 
 ```sh
 blazectl evaluate-measure docs/cql-queries/stratifier-body-weight.yml --server http://localhost:8080/fhir | jq -rf docs/cql-queries/stratifier-body-weight.jq
@@ -293,4 +299,47 @@ Evaluate measure with canonical URL urn:uuid:dbb406a8-e72e-47a2-8ce7-c970bb964a9
 100.2,"kg",2
 100.5,"kg",1
 100.7,"kg",9
+```
+
+Now lets look at the three parts, the Measure YAML, the CQL library file and the jq file:
+
+### The Measure YAML
+
+```yaml
+library: docs/cql-queries/stratifier-body-weight.cql
+group:
+- type: Observation
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: value
+    expression: QuantityValue
+```
+
+### The CQL Library File
+
+```text
+library "stratifier-body-weight"
+using FHIR version '4.0.0'
+include FHIRHelpers version '4.0.0'
+
+codesystem loinc: 'http://loinc.org'
+code "Body Weight": '29463-7' from loinc
+
+context Patient
+
+define InInitialPopulation:
+  [Observation: "Body Weight"]
+
+define function QuantityValue(observation Observation):
+  observation.value as Quantity
+```
+
+### The jq File
+
+```text
+["body-weight-value", "body-weight-unit", "count"],
+(.group[0].stratifier[0].stratum[]
+  | [.extension[0].valueQuantity.value, .extension[0].valueQuantity.code, .population[0].count])
+| @csv
 ```

@@ -1,30 +1,42 @@
 (ns blaze.elm.resource
   (:require
    [blaze.db.api :as d]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.spec]
-   [blaze.fhir.spec.type.protocols :as p])
+   [blaze.elm.spec])
   (:import
-   [clojure.lang ILookup]))
+   [clojure.lang IKeywordLookup ILookup ILookupThunk]))
 
 (set! *warn-on-reflection* true)
 
 ;; A resource that is a wrapper of a resource-handle that will lazily pull the
 ;; resource content if some property other than :id is accessed.
-(deftype Resource [db id handle ^long lastChangeT content]
-  p/FhirType
-  (-type [_]
-    (p/-type handle))
-
+(deftype Resource [db handle ^long lastChangeT content]
   ILookup
   (valAt [r key]
     (.valAt r key nil))
   (valAt [_ key not-found]
     (case key
-      :id id
+      :fhir/type (:fhir/type handle)
+      :id (:id handle)
       (-> (or @content (vreset! content @(d/pull-content db handle)))
           (get key not-found))))
+
+  IKeywordLookup
+  (getLookupThunk [_ key]
+    (case key
+      :fhir/type
+      (reify ILookupThunk
+        (get [thunk target]
+          (if (instance? Resource target)
+            (:fhir/type (.handle ^Resource target))
+            thunk)))
+      :id
+      (reify ILookupThunk
+        (get [thunk target]
+          (if (instance? Resource target)
+            (:id (.handle ^Resource target))
+            thunk)))
+      nil))
 
   core/Expression
   (-static [_]
@@ -42,11 +54,11 @@
   (-eval [expr _ _ _]
     expr)
   (-form [_]
-    (list 'resource (name (p/-type handle)) id (rh/t handle)))
+    (list 'resource (name (:fhir/type handle)) (:id handle) (:t handle)))
 
   Object
   (toString [_]
-    (str (name (p/-type handle)) "[id = " id ", t = " (rh/t handle) ", last-change-t = " lastChangeT "]")))
+    (str (name (:fhir/type handle)) "[id = " (:id handle) ", t = " (:t handle) ", last-change-t = " lastChangeT "]")))
 
 (defn resource? [x]
   (instance? Resource x))
@@ -55,15 +67,15 @@
   (.-handle ^Resource resource))
 
 (defn- patient-last-change-t [db handle]
-  (or (d/patient-compartment-last-change-t db (rh/id handle)) (rh/t handle)))
+  (or (d/patient-compartment-last-change-t db (:id handle)) (:t handle)))
 
 (defn- last-change-t [db handle]
-  (if (identical? :fhir/Patient (p/-type handle))
+  (if (identical? :fhir/Patient (:fhir/type handle))
     (patient-last-change-t db handle)
     (d/t db)))
 
 (defn mk-resource [db handle]
-  (Resource. db (rh/id handle) handle (last-change-t db handle) (volatile! nil)))
+  (->Resource db handle (last-change-t db handle) (volatile! nil)))
 
 (defn resource-mapper [db]
   (map (partial mk-resource db)))

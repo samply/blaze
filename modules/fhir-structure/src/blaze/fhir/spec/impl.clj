@@ -52,7 +52,7 @@
   (intern/intern-value identity))
 
 (def uri-matcher-form
-  `(specs/regex #"[\u0021-\uFFFF]*" intern-string))
+  `(specs/regex #"(?U)[\p{Print}&&[^\p{Blank}]]*" intern-string))
 
 (def conform-xml-value
   "Takes the value out of an XML element."
@@ -159,7 +159,7 @@
     :spec-form
     (case path
       ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-      (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->InternedString)
+      (xml/primitive-xml-form `type/xml->InternedString)
       (keyword "fhir.xml" (:code type)))}])
 
 (defn elem-def->spec-def
@@ -508,12 +508,12 @@
   (let [pattern (type-regex (value-type element))
         constructor (str "xml->" (su/capital name))]
     (case name
-      "string" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->String)
-      "uri" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Uri)
-      "url" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Url)
-      "canonical" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Canonical)
-      "code" (xml/primitive-xml-form #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" `type/xml->Code)
-      "markdown" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->Markdown)
+      "string" (xml/primitive-xml-form `type/xml->String)
+      "uri" (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/xml->Uri)
+      "url" (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/xml->Url)
+      "canonical" (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/xml->Canonical)
+      "code" (xml/primitive-xml-form `type/xml->Code)
+      "markdown" (xml/primitive-xml-form `type/xml->Markdown)
       "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
       (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" constructor)))))
 

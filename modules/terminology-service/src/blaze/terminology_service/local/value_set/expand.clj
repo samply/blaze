@@ -40,12 +40,12 @@
 
 (defn- used-codesystem-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string"used-codesystem"
+   :name #fhir/string "used-codesystem"
    :value (type/uri (cond-> url version (str "|" version)))})
 
 (defn- version-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string"version"
+   :name #fhir/string "version"
    :value (type/uri (str url "|" version))})
 
 (defn- code-system-parameters [{:keys [url version]}]
@@ -94,22 +94,22 @@
 
 (defn- count-parameter [count]
   {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string"count"
+   :name #fhir/string "count"
    :value (type/integer count)})
 
 (defn- include-designations-parameter [include-designations]
   {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string"includeDesignations"
+   :name #fhir/string "includeDesignations"
    :value (type/boolean include-designations)})
 
 (defn- active-only-parameter [active-only]
   {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string"activeOnly"
+   :name #fhir/string "activeOnly"
    :value (type/boolean active-only)})
 
 (defn- exclude-nested-parameter [exclude-nested]
   {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string"excludeNested"
+   :name #fhir/string "excludeNested"
    :value (type/boolean exclude-nested)})
 
 (defn- append-params
@@ -146,7 +146,7 @@
   [{{:keys [include-definition] :or {include-definition false}} :params
     :as context}
    {{:keys [inactive] includes :include excludes :exclude} :compose :as value-set}]
-  (let [new-context (update-in context [:params :active-only] #(or % (false? inactive)))
+  (let [new-context (update-in context [:params :active-only] #(or % (false? (type/value inactive))))
         includes (expand-includes new-context includes)
         excludes (expand-includes new-context excludes)]
     (do-sync [_ (ac/all-of [includes excludes])]
@@ -161,7 +161,7 @@
           (not include-definition) (dissoc :compose))))))
 
 (defn- expand-value-set-msg [{:keys [url]}]
-  (if url
+  (if-let [url (type/value url)]
     (format "Error while expanding the value set `%s`. " url)
     "Error while expanding the provided value set. "))
 

@@ -4,10 +4,10 @@
 # This script posts an invalid transaction bundle with a null resource.
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 bundle() {
 cat <<END
@@ -22,10 +22,10 @@ cat <<END
 }
 END
 }
-RESULT=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$BASE")
+result=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
-test "resource type" "$(echo "$RESULT" | jq -r .resourceType)" "OperationOutcome"
-test "severity" "$(echo "$RESULT" | jq -r '.issue[0].severity')" "error"
-test "code" "$(echo "$RESULT" | jq -r '.issue[0].code')" "invariant"
-test "diagnostics" "$(echo "$RESULT" | jq -r '.issue[0].diagnostics')" "Error on value null. Expected type is \`Resource\`."
-test "expression" "$(echo "$RESULT" | jq -r '.issue[0].expression[0]')" "Bundle.entry[0].resource"
+test "resource type" "$(echo "$result" | jq -r .resourceType)" "OperationOutcome"
+test "severity" "$(echo "$result" | jq -r '.issue[0].severity')" "error"
+test "code" "$(echo "$result" | jq -r '.issue[0].code')" "invariant"
+test "diagnostics" "$(echo "$result" | jq -r '.issue[0].diagnostics')" "Error on value null. Expected type is \`Resource\`."
+test "expression" "$(echo "$result" | jq -r '.issue[0].expression[0]')" "Bundle.entry[0].resource"

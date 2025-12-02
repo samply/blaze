@@ -199,7 +199,7 @@
     (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
       (given (call rest-api {:request-method :get :uri "/metadata"})
         :status := 200
-        [:body json-parser :implementation :url] := #fhir/url"http://localhost:8080"))
+        [:body json-parser :implementation :url] := #fhir/url "http://localhost:8080"))
 
     (testing "with X-Forwarded-Host header"
       (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -208,7 +208,7 @@
                       :uri "/metadata"
                       :headers {"x-forwarded-host" "blaze.de"}})
           :status := 200
-          [:body json-parser :implementation :url] := #fhir/url"http://blaze.de")))))
+          [:body json-parser :implementation :url] := #fhir/url "http://blaze.de")))))
 
 (deftest not-found-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -218,8 +218,8 @@
 
       (given (json-parser body)
         :fhir/type := :fhir/OperationOutcome
-        [:issue 0 :severity] := #fhir/code"error"
-        [:issue 0 :code] := #fhir/code"not-found")))
+        [:issue 0 :severity] := #fhir/code "error"
+        [:issue 0 :code] := #fhir/code "not-found")))
 
   (testing "with text/html accept header"
     (with-system [{:blaze/keys [rest-api]} config]
@@ -249,9 +249,9 @@
 
         (given (json-parser body)
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"processing"
-          [:issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "processing"
+          [:issue 0 :diagnostics] := #fhir/string "Method POST not allowed on `/Patient/0` endpoint."))))
 
   (testing "Patient instance PUT is not allowed"
     (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -261,9 +261,9 @@
 
         (given (json-parser body)
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"processing"
-          [:issue 0 :diagnostics] := "Method PUT not allowed on `/Patient/0` endpoint.")))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "processing"
+          [:issue 0 :diagnostics] := #fhir/string "Method PUT not allowed on `/Patient/0` endpoint.")))))
 
 (deftest not-acceptable-test
   (with-system [{:blaze/keys [rest-api]} config]
@@ -297,9 +297,9 @@
 
           (given (json-parser body)
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := #fhir/string"Missing Content-Type header. Please use `application/x-www-form-urlencoded`."))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "Missing Content-Type header. Please use `application/x-www-form-urlencoded`."))))
 
     (testing "with unsupported media-type"
       (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -312,9 +312,9 @@
 
           (given (json-parser body)
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := #fhir/string"Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))))
 
 (deftest conditional-delete-type-test
   (with-system [{:blaze/keys [rest-api]} config]

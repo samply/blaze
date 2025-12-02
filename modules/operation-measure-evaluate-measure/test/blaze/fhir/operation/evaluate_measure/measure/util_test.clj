@@ -3,6 +3,7 @@
    [blaze.anomaly-spec]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest testing]]
@@ -26,7 +27,7 @@
   (testing "unsupported language"
     (given (u/expression-name (constantly "path-184706")
                               {:fhir/type :fhir/Expression
-                               :language #fhir/code"lang-184851"})
+                               :language #fhir/code "lang-184851"})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported language `lang-184851`."
       :fhir/issue := "not-supported"
@@ -35,7 +36,7 @@
   (testing "missing expression"
     (given (u/expression-name (constantly "path-184642")
                               {:fhir/type :fhir/Expression
-                               :language #fhir/code"text/cql-identifier"})
+                               :language #fhir/code "text/cql-identifier"})
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing expression."
       :fhir/issue := "required"
@@ -46,27 +47,27 @@
       (prop/for-all [expression gen/string]
         (= expression (u/expression-name (constantly "foo")
                                          {:fhir/type :fhir/Expression
-                                          :language #fhir/code"text/cql-identifier"
-                                          :expression expression})))))
+                                          :language #fhir/code "text/cql-identifier"
+                                          :expression (type/string expression)})))))
 
   (testing "works with `text/cql`"
     (satisfies-prop 10
       (prop/for-all [expression gen/string]
         (= expression (u/expression-name (constantly "foo")
                                          {:fhir/type :fhir/Expression
-                                          :language #fhir/code"text/cql"
-                                          :expression expression}))))))
+                                          :language #fhir/code "text/cql"
+                                          :expression (type/string expression)}))))))
 
 (defn- cql-expression [expr]
   {:fhir/type :fhir/Expression
-   :language #fhir/code"text/cql-identifier"
-   :expression expr})
+   :language #fhir/code "text/cql-identifier"
+   :expression (type/string expr)})
 
 (deftest cql-definition-names-test
   (are [measure names] (= names (u/expression-names measure))
     {:fhir/type :fhir/Measure :id "0"
-     :url #fhir/uri"measure-155502"
-     :library [#fhir/canonical"0"]
+     :url #fhir/uri "measure-155502"
+     :library [#fhir/canonical "0"]
      :group
      [{:fhir/type :fhir.Measure/group
        :population
@@ -79,8 +80,8 @@
       "Gender"}
 
     {:fhir/type :fhir/Measure :id "0"
-     :url #fhir/uri"measure-155502"
-     :library [#fhir/canonical"0"]
+     :url #fhir/uri "measure-155502"
+     :library [#fhir/canonical "0"]
      :group
      [{:fhir/type :fhir.Measure/group
        :population

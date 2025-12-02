@@ -15,11 +15,11 @@
 
 (def ^:private read-only-tag
   #fhir/Coding
-   {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-    :code #fhir/code"read-only"})
+   {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+    :code #fhir/code "read-only"})
 
 (defn- structure-definitions [db]
-  (d/pull-many db (d/type-list db "StructureDefinition")))
+  (d/pull-many db (vec (d/type-list db "StructureDefinition"))))
 
 (def ^:private url-filter
   (filter #(str/starts-with? % "http://hl7.org/fhir/StructureDefinition")))

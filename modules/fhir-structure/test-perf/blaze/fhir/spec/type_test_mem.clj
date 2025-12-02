@@ -15,8 +15,8 @@
 
     #fhir/long 1 24
 
-    #fhir/string"" 40
-    #fhir/string"a" 48
+    #fhir/string "" 40
+    #fhir/string "a" 48
     #fhir/string{:value "a"} 48
     (type/string (str/join (repeat 8 "a"))) 48
     (type/string (str/join (repeat 9 "a"))) 56
@@ -24,43 +24,43 @@
 
     #fhir/decimal 1.1M 40
 
-    #fhir/uri"" 96
-    #fhir/uri"a" 120
+    #fhir/uri "" 96
+    #fhir/uri "a" 120
 
-    #fhir/url"" 56
-    #fhir/url"a" 64
+    #fhir/url "" 56
+    #fhir/url "a" 64
 
-    #fhir/canonical"" 96
-    #fhir/canonical"a" 120
+    #fhir/canonical "" 96
+    #fhir/canonical "a" 120
 
-    #fhir/base64Binary"" 56
-    #fhir/base64Binary"YQo=" 64
-    #fhir/base64Binary"MTA1NjE0Cg==" 72
+    #fhir/base64Binary "" 56
+    #fhir/base64Binary "YQo=" 64
+    #fhir/base64Binary "MTA1NjE0Cg==" 72
 
-    #fhir/date"2020" 16
-    #fhir/date"2020-01" 24
-    #fhir/date"2020-01-01" 24
+    #fhir/date "2020" 16
+    #fhir/date "2020-01" 24
+    #fhir/date "2020-01-01" 24
 
-    #fhir/dateTime"2020" 16
-    #fhir/dateTime"2020-01" 24
-    #fhir/dateTime"2020-01-01" 24
+    #fhir/dateTime "2020" 16
+    #fhir/dateTime "2020-01" 24
+    #fhir/dateTime "2020-01-01" 24
 
-    #fhir/dateTime"2020-01-01T00:00:00" 72
-    #fhir/dateTime"2020-01-01T00:00:00.000" 72
+    #fhir/dateTime "2020-01-01T00:00:00" 72
+    #fhir/dateTime "2020-01-01T00:00:00.000" 72
 
-    #fhir/time"13:53:21" 24
+    #fhir/time "13:53:21" 24
 
-    #fhir/code"" 96
-    #fhir/code"175718" 120
+    #fhir/code "" 96
+    #fhir/code "175718" 120
 
-    #fhir/oid"" 56
-    #fhir/oid"175718" 64
+    #fhir/oid "" 56
+    #fhir/oid "175718" 64
 
-    #fhir/id"" 56
-    #fhir/id"175718" 64
+    #fhir/id "" 56
+    #fhir/id "175718" 64
 
-    #fhir/markdown"" 56
-    #fhir/markdown"175718" 64
+    #fhir/markdown "" 56
+    #fhir/markdown "175718" 64
 
     #fhir/unsignedInt 0 16
     #fhir/unsignedInt 175718 16
@@ -68,10 +68,10 @@
     #fhir/positiveInt 0 16
     #fhir/positiveInt 175718 16
 
-    #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" 32
+    #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" 32
 
-    #fhir/xhtml"" 56
-    #fhir/xhtml"175718" 64
+    #fhir/xhtml "" 56
+    #fhir/xhtml "175718" 64
 
     #fhir/Attachment{} 72
 
@@ -92,44 +92,44 @@
     #fhir/HumanName{} 64
 
     #fhir/Address{} 80
-    #fhir/Address{:extension [#fhir/Extension{:url "url-120620" :value #fhir/code"code-120656"}]} 392
+    #fhir/Address{:extension [#fhir/Extension{:url "url-120620" :value #fhir/code "code-120656"}]} 392
     #fhir/Address{:text "text-212402"} 136
     #fhir/Address{:line ["line-212441"]} 200
 
     #fhir/Reference{} 56
 
     #fhir/Meta{} 64
-    #fhir/Meta{:profile [#fhir/canonical"foo"]} 248
+    #fhir/Meta{:profile [#fhir/canonical "foo"]} 248
 
     #fhir/BundleEntrySearch{} 48)
 
   (testing "interning"
     (are [x y] (= (mem/total-size x) (mem/total-size x y))
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
-      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
 
-      #fhir/Meta{:profile [#fhir/canonical"foo"]}
-      #fhir/Meta{:profile [#fhir/canonical"foo"]}
+      #fhir/Meta{:profile [#fhir/canonical "foo"]}
+      #fhir/Meta{:profile [#fhir/canonical "foo"]}
 
-      #fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}
-      #fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}))
+      #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}
+      #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}))
 
   (testing "instant"
     (testing "backed by OffsetDateTime, taking into account shared offsets"
-      (is (= 112 (- (mem/total-size #fhir/instant"2020-01-01T00:00:00+02:00")
+      (is (= 112 (- (mem/total-size #fhir/instant "2020-01-01T00:00:00+02:00")
                     (mem/total-size ZoneOffset/UTC)))))
     (testing "backed by java.time.Instant"
       (is (= 24 (mem/total-size Instant/EPOCH)))))
 
   (testing "dateTime"
     (testing "instance size taking into account shared offsets"
-      (is (= 96 (- (mem/total-size #fhir/dateTime"2020-01-01T00:00:00Z")
+      (is (= 96 (- (mem/total-size #fhir/dateTime "2020-01-01T00:00:00Z")
                    (mem/total-size ZoneOffset/UTC))))))
 
   (testing "Meta"
     (testing "two interned instances take the same memory as one"
-      (is (= 248 (mem/total-size #fhir/Meta{:profile [#fhir/canonical"foo"]}
-                                 #fhir/Meta{:profile [#fhir/canonical"foo"]}))))))
+      (is (= 248 (mem/total-size #fhir/Meta{:profile [#fhir/canonical "foo"]}
+                                 #fhir/Meta{:profile [#fhir/canonical "foo"]}))))))
 
 (deftest extension-url-test
   (testing "conformed instance size"

@@ -6,14 +6,20 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.library-spec]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
+   [blaze.fhir.spec.type :as type]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
@@ -22,9 +28,9 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(defn- compile-library [node cql]
+(defn- compile-library [{:blaze.db/keys [node] ::ts/keys [local]} cql]
   (when-ok [library (cql-translator/translate cql)]
-    (library/compile-library node library {})))
+    (library/compile-library {:node node :terminology-service local} library {})))
 
 (def empty-library
   "library Retrieve
@@ -84,76 +90,77 @@
 
 (defn- cql-expression [expr]
   {:fhir/type :fhir/Expression
-   :language #fhir/code"text/cql-identifier"
-   :expression expr})
+   :language #fhir/code "text/cql-identifier"
+   :expression (type/string expr)})
 
 (def stratifier-with-missing-expression
   {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string"gender"}
+   :code #fhir/CodeableConcept{:text #fhir/string "gender"}
    :criteria
    {:fhir/type :fhir/Expression
-    :language #fhir/code"text/cql-identifier"}})
+    :language #fhir/code "text/cql-identifier"}})
 
 (def gender-stratifier
   {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string"gender"}
+   :code #fhir/CodeableConcept{:text #fhir/string "gender"}
    :criteria (cql-expression "Gender")})
 
 (def observation-code-stratifier
   {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string"code"}
+   :code #fhir/CodeableConcept{:text #fhir/string "code"}
    :criteria (cql-expression "Code")})
 
 (def observation-value-stratifier
   {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string"value"}
+   :code #fhir/CodeableConcept{:text #fhir/string "value"}
    :criteria (cql-expression "QuantityValue")})
 
 (def multi-component-stratifier-with-missing-expression
   {:fhir/type :fhir.Measure.group/stratifier
    :component
    [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"age"}
+     :code #fhir/CodeableConcept{:text #fhir/string "age"}
      :criteria
      {:fhir/type :fhir/Expression
-      :language #fhir/code"text/cql-identifier"}}
+      :language #fhir/code "text/cql-identifier"}}
     {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"gender"}
+     :code #fhir/CodeableConcept{:text #fhir/string "gender"}
      :criteria (cql-expression "Gender")}]})
 
 (def age-gender-stratifier
   {:fhir/type :fhir.Measure.group/stratifier
    :component
    [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"age"}
+     :code #fhir/CodeableConcept{:text #fhir/string "age"}
      :criteria (cql-expression "Age")}
     {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"gender"}
+     :code #fhir/CodeableConcept{:text #fhir/string "gender"}
      :criteria (cql-expression "Gender")}]})
 
 (def status-age-stratifier
   {:fhir/type :fhir.Measure.group/stratifier
    :component
    [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"status"}
+     :code #fhir/CodeableConcept{:text #fhir/string "status"}
      :criteria (cql-expression "Status")}
     {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"age"}
+     :code #fhir/CodeableConcept{:text #fhir/string "age"}
      :criteria (cql-expression "Age")}]})
 
 (def observation-value-age-stratifier
   {:fhir/type :fhir.Measure.group/stratifier
    :component
    [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"value"}
+     :code #fhir/CodeableConcept{:text #fhir/string "value"}
      :criteria (cql-expression "QuantityValue")}
     {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string"age"}
+     :code #fhir/CodeableConcept{:text #fhir/string "age"}
      :criteria (cql-expression "Age")}]})
 
 (defn- context
-  [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor]} library]
-  (let [{:keys [expression-defs function-defs]} (compile-library node library)]
+  [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor] :as system}
+   library]
+  (let [{:keys [expression-defs function-defs]} (compile-library system library)]
     (cond->
      {:db (d/db node)
       :now (time/offset-date-time fixed-clock)
@@ -164,17 +171,25 @@
       (assoc :function-defs function-defs))))
 
 (def ^:private config
-  (assoc mem-node-config
-         :blaze.test/executor {}))
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
+   :blaze.test/executor {}
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
 
 (deftest reduce-op-test
   (testing "one component"
     (testing "gender"
       (with-system-data [system config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
-          [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]
-          [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code"male"}]]]
+          [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+          [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
+          [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code "male"}]]]
 
         (let [{:keys [db] :as context} (context system library-age-gender)
               handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
@@ -185,8 +200,8 @@
                        gender-stratifier) db)]
               (is (= (reduce op (op) handles)
                      {nil 1
-                      #fhir/code"male" 2
-                      #fhir/code"female" 1}))))
+                      #fhir/code "male" 2
+                      #fhir/code "female" 1}))))
 
           (testing "report-type subject-list"
             (let [op ((strat/reduce-op
@@ -194,8 +209,8 @@
                        gender-stratifier) db)]
               (is (= (reduce op (op) handles)
                      {nil [(nth handles 0)]
-                      #fhir/code"male" [(nth handles 1) (nth handles 3)]
-                      #fhir/code"female" [(nth handles 2)]})))))))
+                      #fhir/code "male" [(nth handles 1) (nth handles 3)]
+                      #fhir/code "female" [(nth handles 2)]})))))))
 
     (testing "CodeableConcept"
       (with-system-data [system config]
@@ -203,9 +218,9 @@
           [:put {:fhir/type :fhir/Observation :id "0"
                  :code #fhir/CodeableConcept
                         {:coding
-                         [#fhir/Coding{:system #fhir/uri"http://loinc.org"
-                                       :code #fhir/code"17861-6"}]}
-                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                         [#fhir/Coding{:system #fhir/uri "http://loinc.org"
+                                       :code #fhir/code "17861-6"}]}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [db] :as context} (context system library-observation-code)
               handles [{:population-handle (em-tu/resource db "Observation" "0")
@@ -220,24 +235,24 @@
               (is (= (reduce op (op) handles)
                      {#fhir/CodeableConcept
                        {:coding
-                        [#fhir/Coding{:system #fhir/uri"http://loinc.org"
-                                      :code #fhir/code"17861-6"}]}
+                        [#fhir/Coding{:system #fhir/uri "http://loinc.org"
+                                      :code #fhir/code "17861-6"}]}
                       1})))))))
 
     (testing "Quantity"
       (with-system-data [system config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
                  :value #fhir/Quantity
                          {:value #fhir/decimal 1M
-                          :code #fhir/code"kg"}}]
+                          :code #fhir/code "kg"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]
           [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
 
@@ -256,7 +271,7 @@
                               :population-basis "Observation")
                        observation-value-stratifier) db)]
               (is (= (reduce op (op) handles)
-                     {#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code"kg"} 1
+                     {#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code "kg"} 1
                       #fhir/Quantity{:value #fhir/decimal 2M} 2})))))))
 
     (testing "errors"
@@ -288,14 +303,14 @@
       (with-system-data [system config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"
-                 :gender #fhir/code"male"
-                 :birthDate #fhir/date"1960"}]
+                 :gender #fhir/code "male"
+                 :birthDate #fhir/date "1960"}]
           [:put {:fhir/type :fhir/Patient :id "2"
-                 :gender #fhir/code"female"
-                 :birthDate #fhir/date"1960"}]
+                 :gender #fhir/code "female"
+                 :birthDate #fhir/date "1960"}]
           [:put {:fhir/type :fhir/Patient :id "3"
-                 :gender #fhir/code"male"
-                 :birthDate #fhir/date"1950"}]]]
+                 :gender #fhir/code "male"
+                 :birthDate #fhir/date "1950"}]]]
 
         (let [{:keys [db] :as context} (context system library-age-gender)
               handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
@@ -305,33 +320,33 @@
                                        age-gender-stratifier) db)]
               (is (= (reduce op (op) handles)
                      {[nil nil] 1
-                      [10 #fhir/code"female"] 1
-                      [10 #fhir/code"male"] 1
-                      [20 #fhir/code"male"] 1})))))))
+                      [10 #fhir/code "female"] 1
+                      [10 #fhir/code "male"] 1
+                      [20 #fhir/code "male"] 1})))))))
 
     (testing "Encounter measure"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date"2000"}]
-          [:put {:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date"2001"}]
-          [:put {:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date"2003"}]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date "2000"}]
+          [:put {:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date "2001"}]
+          [:put {:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date "2003"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
-                 :status #fhir/code"finished"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2020"}}]
+                 :status #fhir/code "finished"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime "2020"}}]
           [:put {:fhir/type :fhir/Encounter :id "2"
-                 :status #fhir/code"planned"
-                 :subject #fhir/Reference{:reference "Patient/1"}
-                 :period #fhir/Period{:start #fhir/dateTime"2021"}}]
+                 :status #fhir/code "planned"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                 :period #fhir/Period{:start #fhir/dateTime "2021"}}]
           [:put {:fhir/type :fhir/Encounter :id "3"
-                 :status #fhir/code"finished"
-                 :subject #fhir/Reference{:reference "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime"2022"}}]
+                 :status #fhir/code "finished"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
+                 :period #fhir/Period{:start #fhir/dateTime "2022"}}]
           [:put {:fhir/type :fhir/Encounter :id "4"
-                 :status #fhir/code"finished"
-                 :subject #fhir/Reference{:reference "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime"2022"}}]]]
+                 :status #fhir/code "finished"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
+                 :period #fhir/Period{:start #fhir/dateTime "2022"}}]]]
 
         (let [{:keys [db] :as context} (context system library-encounter-status-age)
               handles [{:population-handle (em-tu/resource db "Encounter" "0")
@@ -353,22 +368,22 @@
                        status-age-stratifier) db)]
               (is (= (reduce op (op) handles)
                      {[nil nil] 1
-                      [#fhir/code"finished" 19] 2
-                      [#fhir/code"finished" 20] 1
-                      [#fhir/code"planned" 20] 1})))))))
+                      [#fhir/code "finished" 19] 2
+                      [#fhir/code "finished" 20] 1
+                      [#fhir/code "planned" 20] 1})))))))
 
     (testing "Quantity"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date"2000"}]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date "2000"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :effective #fhir/dateTime"2020"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :effective #fhir/dateTime "2020"
                  :value #fhir/Quantity
                          {:value #fhir/decimal 1M
-                          :code #fhir/code"kg"}}]
+                          :code #fhir/code "kg"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :effective #fhir/dateTime"2021"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :effective #fhir/dateTime "2021"
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
 
@@ -385,7 +400,7 @@
                               :population-basis "Observation")
                        observation-value-age-stratifier) db)]
               (is (= (reduce op (op) handles)
-                     {[#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code"kg"} 20] 1
+                     {[#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code "kg"} 20] 1
                       [#fhir/Quantity{:value #fhir/decimal 2M} 21] 1})))))))
 
     (testing "errors"

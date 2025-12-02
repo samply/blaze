@@ -47,7 +47,7 @@
   ([{:blaze/keys [job-scheduler] :as system}]
    (pull-job-history system (job-id job-scheduler)))
   ([{:blaze.db.admin/keys [node]} job-id]
-   (-> (d/pull-many node (d/instance-history (d/db node) "Task" job-id))
+   (-> (d/pull-many node (vec (d/instance-history (d/db node) "Task" job-id)))
        (ac/then-apply reverse))))
 
 (defn pull-other-resource [{:blaze.db.admin/keys [node]} type id]

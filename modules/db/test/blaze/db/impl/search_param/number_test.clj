@@ -43,6 +43,20 @@
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (probability-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unknown modifier `unknown` on search parameter `probability`."))
+
+    (testing "modifier not implemented"
+      (given (search-param/validate-modifier
+              (probability-param search-param-registry) "missing")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported modifier `missing` on search parameter `probability`."))))
+
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"
@@ -93,6 +107,13 @@
     (let [search-param (probability-param search-param-registry)]
       (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
 
+(deftest ordered-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (probability-param search-param-registry)]
+      (is (false? (p/-supports-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil))))))
+
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (probability-param search-param-registry)]
@@ -111,7 +132,7 @@
              :id "id-163630"
              :prediction
              [{:fhir/type :fhir.RiskAssessment/prediction
-               :probability 0.9M}]}
+               :probability #fhir/decimal 0.9M}]}
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
             (index-entries

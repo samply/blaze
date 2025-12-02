@@ -65,6 +65,14 @@
        bb/flip!
        bs/from-byte-buffer!)))
 
+(defn- encode-seek-key-full-value [c-hash tid value]
+  (-> (bb/allocate (inc (key-size value)))
+      (bb/put-int! c-hash)
+      (bb/put-int! tid)
+      (bb/put-null-terminated-byte-string! value)
+      bb/flip!
+      bs/from-byte-buffer!))
+
 (def ^:private max-hash-prefix
   #blaze/byte-string"FFFFFFFF")
 
@@ -168,6 +176,16 @@
   ([snapshot c-hash tid prefix-length start-value start-id]
    (let [seek-key (encode-seek-key c-hash tid start-value start-id)]
      (index-handles* snapshot prefix-length seek-key))))
+
+(defn index-handles-full-value
+  "Returns a reducible collection of index handles from keys with `value` and
+  optional `start-id` and ending when `value` is no longer present."
+  ([snapshot c-hash tid value]
+   (let [seek-key (encode-seek-key-full-value c-hash tid value)]
+     (index-handles* snapshot (inc (bs/size value)) seek-key)))
+  ([snapshot c-hash tid value start-id]
+   (let [seek-key (encode-seek-key c-hash tid value start-id)]
+     (index-handles* snapshot (inc (bs/size value)) seek-key))))
 
 (defn index-handles'
   "Returns a reducible collection of index handles from keys starting at

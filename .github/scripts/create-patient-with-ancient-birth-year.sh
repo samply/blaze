@@ -5,12 +5,12 @@
 # and tries to read it back.
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
-patient() {
+gen_patient() {
 cat <<END
 {
   "resourceType": "Patient",
@@ -19,8 +19,8 @@ cat <<END
 END
 }
 
-HEADERS=$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(patient)" -o /dev/null -D - "$BASE/Patient")
-LOCATION_HEADER=$(echo "$HEADERS" | grep -i location | tr -d '\r')
-PATIENT=$(curl -s -H 'Accept: application/fhir+json' "${LOCATION_HEADER:10}")
+headers=$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(gen_patient)" -o /dev/null -D - "$base/Patient")
+location_header=$(echo "$headers" | grep -i location | tr -d '\r')
+patient=$(curl -s -H 'Accept: application/fhir+json' "${location_header:10}")
 
-test "birth date" "$(echo "$PATIENT" | jq -r .birthDate)" "0962"
+test "birth date" "$(echo "$patient" | jq -r .birthDate)" "0962"

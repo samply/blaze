@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
-. "$SCRIPT_DIR/evaluate-measure-util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
+. "$script_dir/evaluate-measure-util.sh"
 
 parameters() {
 cat <<END
@@ -30,11 +30,11 @@ cat <<END
 END
 }
 
-START_EPOCH="$(date +"%s")"
+start_epoch="$(date +"%s")"
 
 eclipsed() {
-  EPOCH="$(date +"%s")"
-  echo $((EPOCH - START_EPOCH))
+  local epoch="$(date +"%s")"
+  echo $((epoch - start_epoch))
 }
 
 evaluate_measure() {
@@ -45,48 +45,48 @@ fetch_patients() {
   curl -s "$1/Patient?_list=$2&_count=200"
 }
 
-BASE="http://localhost:8080/fhir"
-NAME=$1
-EXPECTED_COUNT=$2
+base="http://localhost:8080/fhir"
+name=$1
+expected_count=$2
 
-MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
+measure_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-create_bundle_library_measure "$MEASURE_URI" "$NAME" | transact "$BASE" > /dev/null
+create_bundle_library_measure "$measure_uri" "$name" | transact "$base" > /dev/null
 
-HEADERS=$(evaluate_measure "$BASE" "$MEASURE_URI")
-STATUS_URL=$(echo "$HEADERS" | grep -i content-location | tr -d '\r' | cut -d: -f2- | xargs)
+headers=$(evaluate_measure "$base" "$measure_uri")
+status_url=$(echo "$headers" | grep -i content-location | tr -d '\r' | cut -d: -f2- | xargs)
 
 # wait for response available
-while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$STATUS_URL")" != "200") ]]; do
+while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$status_url")" != "200") ]]; do
   sleep 0.1
 done
 
-BUNDLE="$(curl -s -H 'Accept: application/fhir+json' "$STATUS_URL")"
-REPORT=$(echo "$BUNDLE" | jq -r ".entry[0].resource")
-COUNT=$(echo "$REPORT" | jq -r ".group[0].population[0].count")
+bundle="$(curl -s -H 'Accept: application/fhir+json' "$status_url")"
+report=$(echo "$bundle" | jq -r ".entry[0].resource")
+count=$(echo "$report" | jq -r ".group[0].population[0].count")
 
-if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "✅ count ($COUNT) equals the expected count"
+if [ "$count" = "$expected_count" ]; then
+  echo "✅ count ($count) equals the expected count"
 else
-  echo "🆘 count ($COUNT) != $EXPECTED_COUNT"
+  echo "🆘 count ($count) != $expected_count"
   echo "Report:"
-  echo "$REPORT" | jq .
+  echo "$report" | jq .
   exit 1
 fi
 
-if [ "0" = "$EXPECTED_COUNT" ]; then
+if [ "0" = "$expected_count" ]; then
   exit 0
 fi
 
-LIST_ID=$(echo "$REPORT" | jq -r '.group[0].population[0].subjectResults.reference | split("/")[1]')
-PATIENT_BUNDLE=$(fetch_patients "$BASE" "$LIST_ID")
-ID_COUNT=$(echo "$PATIENT_BUNDLE" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs)
+list_id=$(echo "$report" | jq -r '.group[0].population[0].subjectResults.reference | split("/")[1]')
+patient_bundle=$(fetch_patients "$base" "$list_id")
+id_count=$(echo "$patient_bundle" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs)
 
-if [ "$ID_COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "✅ downloaded patient count ($ID_COUNT) equals the expected count"
+if [ "$id_count" = "$expected_count" ]; then
+  echo "✅ downloaded patient count ($id_count) equals the expected count"
 else
-  echo "🆘 downloaded patient count ($ID_COUNT) != $EXPECTED_COUNT"
+  echo "🆘 downloaded patient count ($id_count) != $expected_count"
   echo "Patient bundle:"
-  echo "$PATIENT_BUNDLE" | jq .
+  echo "$patient_bundle" | jq .
   exit 1
 fi

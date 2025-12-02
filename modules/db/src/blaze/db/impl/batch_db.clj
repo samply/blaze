@@ -7,7 +7,6 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
-   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.impl.batch-db.patient-everything :as pe]
@@ -20,7 +19,6 @@
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.index.system-as-of :as sao]
    [blaze.db.impl.index.system-stats :as system-stats]
-   [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
@@ -29,7 +27,6 @@
    [blaze.db.kv :as kv]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.search-param-registry :as sr]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]])
   (:import
    [java.io Writer]
@@ -37,10 +34,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- rev-include [db snapshot reference source-tid code]
+(defn- rev-include [batch-db snapshot reference source-tid code]
   (coll/eduction
-   (u/resource-handle-xf db source-tid)
-   (sp-vr/index-handles snapshot code source-tid (bs/size reference) reference)))
+   (u/resource-handle-xf batch-db source-tid)
+   (sp-vr/index-handles-full-value snapshot code source-tid reference)))
 
 (defn- sp-total
   [db {:keys [base]}]
@@ -69,7 +66,7 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
-(defrecord BatchDb [node kv-store snapshot basis-t t]
+(defrecord BatchDb [node kv-store snapshot basis-t t since-t]
   p/Db
   (-node [_]
     node)
@@ -77,13 +74,22 @@
   (-basis-t [_]
     basis-t)
 
+  (-as-of [_ _]
+    (ba/unsupported "As of is not supported on batch-db."))
+
   (-as-of-t [_]
     (when (not= basis-t t) t))
+
+  (-since [_ _]
+    (ba/unsupported "Since is not supported on batch-db."))
+
+  (-since-t [_]
+    since-t)
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (rao/resource-handle snapshot tid id t))
+    (rao/resource-handle snapshot t since-t tid id))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -94,7 +100,9 @@
     (rao/type-list db tid start-id))
 
   (-type-total [_ tid]
-    (:total (type-stats/seek-value snapshot tid t) 0))
+    (if (zero? since-t)
+      (:total (type-stats/seek-value snapshot tid t) 0)
+      (ba/unsupported "Total is not supported on since-dbs.")))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
@@ -105,7 +113,9 @@
     (rao/system-list db start-tid start-id))
 
   (-system-total [_]
-    (:total (system-stats/seek-value snapshot t) 0))
+    (if (zero? since-t)
+      (:total (system-stats/seek-value snapshot t) 0)
+      (ba/unsupported "Total is not supported on since-dbs.")))
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
@@ -138,48 +148,36 @@
   (-matcher-transducer [db matcher]
     (p/-transducer matcher db))
 
-  ;; ---- History Functions ---------------------------------------------------
-
-  (-stop-history-at [_ instant]
-    (let [t (t-by-instant/t-by-instant snapshot instant)]
-      (take-while
-       (fn [resource-handle]
-         (< t (rh/t resource-handle))))))
-
   ;; ---- Instance-Level History Functions ------------------------------------
 
   (-instance-history [_ tid id start-t]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (rao/instance-history snapshot tid id t start-t)))
+      (rao/instance-history snapshot t since-t tid id start-t)))
 
-  (-total-num-of-instance-changes [db tid id since]
-    (count
-     (cond->> (rao/instance-history snapshot tid id t t)
-       since
-       (coll/eduction (p/-stop-history-at db since)))))
+  (-total-num-of-instance-changes [_ tid id]
+    (count (rao/instance-history snapshot t since-t tid id t)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
   (-type-history [_ tid start-t start-id]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (tao/type-history snapshot tid t start-t start-id)))
+      (tao/type-history snapshot t since-t tid start-t start-id)))
 
-  (-total-num-of-type-changes [_ type since]
-    (let [tid (codec/tid type)
-          end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (- (:num-changes (type-stats/seek-value snapshot tid t) 0)
-         (:num-changes (some->> end-t (type-stats/seek-value snapshot tid)) 0))))
+  (-total-num-of-type-changes [_ tid]
+    (cond-> (:num-changes (type-stats/seek-value snapshot tid t) 0)
+      (pos? since-t)
+      (- (:num-changes (type-stats/seek-value snapshot tid since-t) 0))))
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id]
+  (-system-history [db start-t start-tid start-id]
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
-      (sao/system-history snapshot t start-t start-tid start-id)))
+      (sao/system-history db start-t start-tid start-id)))
 
-  (-total-num-of-system-changes [_ since]
-    (let [end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (- (:num-changes (system-stats/seek-value snapshot t) 0)
-         (:num-changes (some->> end-t (system-stats/seek-value snapshot)) 0))))
+  (-total-num-of-system-changes [_]
+    (cond-> (:num-changes (system-stats/seek-value snapshot t) 0)
+      (pos? since-t)
+      (- (:num-changes (system-stats/seek-value snapshot since-t) 0))))
 
   (-changes [_]
     (sao/changes snapshot t))
@@ -195,7 +193,7 @@
 
   (-rev-include [db resource-handle]
     (let [search-param-registry (:search-param-registry node)
-          type (name (type/type resource-handle))
+          type (name (:fhir/type resource-handle))
           reference (rh/tid-id resource-handle)]
       (coll/eduction
        (comp
@@ -268,8 +266,8 @@
   (-pull-content [_ resource-handle variant]
     (p/-pull-content node resource-handle variant))
 
-  (-pull-many [_ resource-handles variant]
-    (p/-pull-many node resource-handles variant))
+  (-pull-many [_ resource-handles opts]
+    (p/-pull-many node resource-handles opts))
 
   AutoCloseable
   (close [_]
@@ -307,33 +305,42 @@
 (defn- start-patient-id [batch-db tid start-id]
   (let [start-handle (p/-resource-handle batch-db tid start-id)
         start-patient-handle (coll/first (spc/targets batch-db start-handle patient-code-hash))]
-    (codec/id-byte-string (rh/id start-patient-handle))))
+    (codec/id-byte-string (:id start-patient-handle))))
 
-(defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses]
+;; A type query over resources with `tid` and patients with `patient-ids`.
+(defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses
+                             compartment-query]
   p/Query
   (-count [query batch-db]
     (ac/completed-future (count (p/-execute query batch-db))))
   (-execute [_ batch-db]
-    (coll/eduction
-     (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses))
-     patient-ids))
+    (coll/eduction (mapcat #(compartment-query batch-db %)) patient-ids))
   (-execute [_ batch-db start-id]
     (let [start-id (codec/id-byte-string start-id)
           start-patient-id (start-patient-id batch-db tid start-id)]
       (coll/eduction
        cat
-       [(index/compartment-query
-         batch-db [patient-compartment-hash start-patient-id] tid clauses
-         start-id)
+       [(compartment-query batch-db start-patient-id start-id)
         (coll/eduction
          (comp (drop-while #(not= start-patient-id %))
                (drop 1)
-               (mapcat #(index/compartment-query batch-db [patient-compartment-hash %] tid clauses)))
+               (mapcat #(compartment-query batch-db %)))
          patient-ids)])))
   (-query-clauses [_]
     (decode-clauses (into [compartment-clause] clauses)))
   (-query-plan [_ _]
     (index/compartment-query-plan clauses)))
+
+(defn patient-type-query [tid patient-ids compartment-clause clauses]
+  (->PatientTypeQuery
+   tid patient-ids compartment-clause clauses
+   (fn
+     ([batch-db patient-id]
+      (index/compartment-query
+       batch-db [patient-compartment-hash patient-id] tid clauses))
+     ([batch-db patient-id start-id]
+      (index/compartment-query
+       batch-db [patient-compartment-hash patient-id] tid clauses start-id)))))
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
@@ -385,6 +392,6 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^AutoCloseable
-  [{:keys [kv-store] :as node} basis-t t]
+  [{:keys [kv-store] :as node} basis-t t since-t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node kv-store snapshot basis-t t)))
+    (->BatchDb node kv-store snapshot basis-t t since-t)))

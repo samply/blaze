@@ -1,14 +1,14 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-URL="http://localhost:8081/metrics"
+url="http://localhost:8081/metrics"
 
 num-metrics() {
-  NAME="$1"
-  FILTER="$2"
-  curl -s "$URL" | grep "$NAME" | grep -c "$FILTER"
+  local name="$1"
+  local filter="$2"
+  curl -s "$url" | grep "$name" | grep -c "$filter"
 }
 
 test "blaze_rocksdb_block_cache_data_miss index" "$(num-metrics "blaze_rocksdb_block_cache_data_miss" "name=\"index\"")" "1"

@@ -1,0 +1,66 @@
+library: .github/integration-test-kds/quality-report-condition.cql
+group:
+- type: Condition
+  code: Condition
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: "Feststellungsdatum missing"
+    expression: "Feststellungsdatum missing"
+
+  - code: "ReferenzPrimaerdiagnose missing"
+    expression: "ReferenzPrimaerdiagnose missing"
+
+  - code: "Klinischer Status observed"
+    expression: "Klinischer Status observed"
+  - code: "Klinischer Status non-matching"
+    expression: "Klinischer Status non-matching"
+
+  - code: "Verifizierungsstatus observed"
+    expression: "Verifizierungsstatus observed"
+  - code: "Verifizierungsstatus non-matching"
+    expression: "Verifizierungsstatus non-matching"
+
+  - code: "Diagnose observed"
+    expression: "Diagnose observed"
+
+  - code: "Diagnosesicherheit observed"
+    expression: "Diagnosesicherheit observed"
+  - code: "Diagnosesicherheit non-matching"
+    expression: "Diagnosesicherheit non-matching"
+
+  - code: "Seitenlokalisation observed"
+    expression: "Seitenlokalisation observed"
+  - code: "Seitenlokalisation non-matching"
+    expression: "Seitenlokalisation non-matching"
+
+  - code: "Mehrfachkodierungs-Kennzeichen observed"
+    expression: "Mehrfachkodierungs-Kennzeichen observed"
+  - code: "Mehrfachkodierungs-Kennzeichen non-matching"
+    expression: "Mehrfachkodierungs-Kennzeichen non-matching"
+
+  - code: "Körperstelle observed"
+    expression: "Körperstelle observed"
+  - code: "Körperstelle non-matching"
+    expression: "Körperstelle non-matching"
+
+  - code: "Patient missing"
+    expression: "Patient missing"
+
+  - code: "Encounter missing"
+    expression: "Encounter missing"
+
+  - code: "Klinischer Zeitraum missing"
+    expression: "Klinischer Zeitraum missing"
+
+  - code: "Klinischer Zeitraum type"
+    expression: "Klinischer Zeitraum type"
+
+  - code: "Klinischer Zeitraum Ende ist vor klinischer Zeitraum Start"
+    expression: "Klinischer Zeitraum Ende ist vor klinischer Zeitraum Start"
+
+  - code: "Dokumentationsdatum missing"
+    expression: "Dokumentationsdatum missing"
+
+  - code: "Anzahl Hinweise"
+    expression: "Anzahl Hinweise"

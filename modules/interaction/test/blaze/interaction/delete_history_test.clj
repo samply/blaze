@@ -66,8 +66,8 @@
 
   (testing "Returns No Content on successful history deletion"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
       (let [{:keys [status body]}
             @(handler

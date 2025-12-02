@@ -149,7 +149,7 @@
   (-> (assoc config :blaze.test/system-clock {})
       (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/system-clock))))
 
-(defn wrap-defaults [handler]
+(defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
     (handler
      (cond-> (assoc request
@@ -158,7 +158,7 @@
        (nil? match)
        (assoc ::reitit/match default-match)))))
 
-(defn wrap-db [handler node page-id-cipher]
+(defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
       ((decrypt-page-id/wrap-decrypt-page-id
@@ -167,15 +167,19 @@
        request)
       ((db/wrap-db handler node 100) request))))
 
+(defn- wrap-middleware [handler node page-id-cipher]
+  (-> handler
+      wrap-defaults
+      (wrap-db node page-id-cipher)
+      wrap-error))
+
 (defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          page-id-cipher# :blaze.test/page-id-cipher
                          handler# :blaze.interaction.history/type} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults
-                                  (wrap-db node# page-id-cipher#)
-                                  wrap-error)
+       (let [~handler-binding (wrap-middleware handler# node# page-id-cipher#)
              ~(or node-binding '_) node#
              ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
@@ -201,7 +205,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is history"
-          (is (= #fhir/code"history" (:type body))))
+          (is (= #fhir/code "history" (:type body))))
 
         (testing "the total count is zero"
           (is (= #fhir/unsignedInt 0 (:total body))))
@@ -224,7 +228,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is history"
-          (is (= #fhir/code"history" (:type body))))
+          (is (= #fhir/code "history" (:type body))))
 
         (testing "the total count is 1"
           (is (= #fhir/unsignedInt 1 (:total body))))
@@ -241,35 +245,35 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH))
 
         (testing "the second entry has the right request"
           (given (:request first-entry)
-            :method := #fhir/code"PUT"
-            :url := "Patient/0"))
+            :method := #fhir/code "PUT"
+            :url := #fhir/uri "Patient/0"))
 
         (testing "the entry has the right response"
           (given (:response first-entry)
-            :status := "201"
-            :etag := "W/\"1\""
+            :status := #fhir/string "201"
+            :etag := #fhir/string "W/\"1\""
             :lastModified := Instant/EPOCH)))))
 
   (testing "with one code system"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-115910"
-               :version #fhir/string"version-170327"
-               :content #fhir/code"complete"
+               :url #fhir/uri "system-115910"
+               :version #fhir/string "version-170327"
+               :content #fhir/code "complete"
                :concept
                [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]]]
+                 :code #fhir/code "code-115927"}]}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {::reitit/match code-system-match})]
@@ -283,7 +287,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is history"
-          (is (= #fhir/code"history" (:type body))))
+          (is (= #fhir/code "history" (:type body))))
 
         (testing "the total count is 1"
           (is (= #fhir/unsignedInt 1 (:total body))))
@@ -300,25 +304,25 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/CodeSystem/0")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the entry has the right resource"
           (given (:resource first-entry)
             :fhir/type := :fhir/CodeSystem
             :id := "0"
-            [:meta :versionId] := #fhir/id"1"
+            [:meta :versionId] := #fhir/id "1"
             [:meta :lastUpdated] := Instant/EPOCH
-            [:concept 0 :code] := #fhir/code"code-115927"))
+            [:concept 0 :code] := #fhir/code "code-115927"))
 
         (testing "the second entry has the right request"
           (given (:request first-entry)
-            :method := #fhir/code"PUT"
-            :url := "CodeSystem/0"))
+            :method := #fhir/code "PUT"
+            :url := #fhir/uri "CodeSystem/0"))
 
         (testing "the entry has the right response"
           (given (:response first-entry)
-            :status := "201"
-            :etag := "W/\"1\""
+            :status := #fhir/string "201"
+            :etag := #fhir/string "W/\"1\""
             :lastModified := Instant/EPOCH)))
 
       (testing "in summary mode"
@@ -335,7 +339,7 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is history"
-            (is (= #fhir/code"history" (:type body))))
+            (is (= #fhir/code "history" (:type body))))
 
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
@@ -352,26 +356,26 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/CodeSystem/0")
-                   (:fullUrl first-entry))))
+                   (-> first-entry :fullUrl :value))))
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/CodeSystem
               :id := "0"
-              [:meta :versionId] := #fhir/id"1"
+              [:meta :versionId] := #fhir/id "1"
               [:meta :lastUpdated] := Instant/EPOCH
-              [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code"SUBSETTED"
+              [:meta :tag (coding v3-ObservationValue) 0 :code] := #fhir/code "SUBSETTED"
               :concept := nil))
 
           (testing "the second entry has the right request"
             (given (:request first-entry)
-              :method := #fhir/code"PUT"
-              :url := "CodeSystem/0"))
+              :method := #fhir/code "PUT"
+              :url := #fhir/uri "CodeSystem/0"))
 
           (testing "the entry has the right response"
             (given (:response first-entry)
-              :status := "201"
-              :etag := "W/\"1\""
+              :status := #fhir/string "201"
+              :etag := #fhir/string "W/\"1\""
               :lastModified := Instant/EPOCH))))))
 
   (testing "with two patients in one transaction"
@@ -397,11 +401,11 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (:fullUrl first-entry)))))
+                 (-> first-entry :fullUrl :value)))))
 
       (testing "calling the second page"
         (testing "updating the patient will not affect the second page"
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]))
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]))
 
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
@@ -426,32 +430,36 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/1")
-                   (:fullUrl first-entry))))))))
+                   (-> first-entry :fullUrl :value))))))))
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node]
                         :blaze.test/keys [system-clock page-id-cipher]
                         handler :blaze.interaction.history/type}
                        system-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
       (Thread/sleep 2000)
-      (let [since (time/instant system-clock)
-            _ (Thread/sleep 2000)
-            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                        :gender #fhir/code"female"}]])
-            handler (-> handler wrap-defaults (wrap-db node page-id-cipher)
-                        wrap-error)
-            {:keys [body]}
-            @(handler
-              {:params {"_since" (str since)}})]
+      (let [after-init (time/instant system-clock)
+            handler (wrap-middleware handler node page-id-cipher)]
 
-        (testing "the total count is 1"
-          (is (= #fhir/unsignedInt 1 (:total body))))
+        (Thread/sleep 2000)
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :gender #fhir/code "female"}]])
 
-        (testing "it shows the second version"
-          (given (-> body :entry first)
-            [:resource :gender] := #fhir/code"female")))))
+        (testing "since after initialization"
+          (let [{:keys [status] {[first-entry] :entry :as body} :body}
+                @(handler
+                  {:params {"_since" (str after-init)}})]
+
+            (is (= 200 status))
+
+            (testing "the total count is 1"
+              (is (= #fhir/unsignedInt 1 (:total body))))
+
+            (testing "it shows the second version"
+              (given (:resource first-entry)
+                :gender := #fhir/code "female")))))))
 
   (testing "missing resource contents"
     (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
@@ -465,6 +473,6 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"incomplete"
-            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "incomplete"
+            [:issue 0 :diagnostics] := #fhir/string "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))

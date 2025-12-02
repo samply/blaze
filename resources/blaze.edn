@@ -23,7 +23,8 @@
   ;; depends on FHIR interactions and operations.
   ;;
   :blaze/rest-api
-  {:node #blaze/ref :blaze.db.main/node
+  {:base-url #blaze/var base-url
+   :node #blaze/ref :blaze.db.main/node
    :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
    :writing-context #blaze/ref :blaze.fhir/writing-context
    :admin-node #blaze/ref :blaze.db.admin/node
@@ -252,6 +253,7 @@
   ;;
   :blaze.fhir.operation.graphql/handler
   {:node #blaze/ref :blaze.db.main/node
+   :writing-context #blaze/ref :blaze.fhir/writing-context
    :executor #blaze/ref :blaze.fhir.operation.graphql/executor}
 
   :blaze.fhir.operation.graphql/executor
@@ -314,7 +316,8 @@
    :tx-log #blaze/ref :blaze.db.main/tx-log
    :tx-cache #blaze/ref :blaze.db.main/tx-cache
    :indexer-executor #blaze/ref :blaze.db.node.main/indexer-executor
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-cache #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :kv-store #blaze/ref :blaze.db.main/index-kv-store
    :resource-indexer #blaze/ref :blaze.db.node.main/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
@@ -332,7 +335,8 @@
    :tx-log #blaze/ref :blaze.db.admin/tx-log
    :tx-cache #blaze/ref :blaze.db.admin/tx-cache
    :indexer-executor #blaze/ref :blaze.db.node.admin/indexer-executor
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-cache #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :kv-store #blaze/ref :blaze.db.admin/index-kv-store
    :resource-indexer #blaze/ref :blaze.db.node.admin/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
@@ -348,7 +352,7 @@
   ;;
   [:blaze.db.node/resource-indexer :blaze.db.node.main/resource-indexer]
   {:kv-store #blaze/ref :blaze.db.main/index-kv-store
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :executor #blaze/ref :blaze.db.node.resource-indexer.main/executor}
 
@@ -360,7 +364,7 @@
   ;;
   [:blaze.db.node/resource-indexer :blaze.db.node.admin/resource-indexer]
   {:kv-store #blaze/ref :blaze.db.admin/index-kv-store
-   :resource-store #blaze/ref :blaze.db/resource-cache
+   :resource-store #blaze/ref :blaze.db/resource-store
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :executor #blaze/ref :blaze.db.node.resource-indexer.admin/executor}
 
@@ -440,7 +444,7 @@
    :admin-node #blaze/ref :blaze.db.admin/node
    :batch-handler #blaze/ref :blaze.rest-api/batch-handler
    :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
-   :blaze/base-url #blaze/cfg ["BASE_URL" string? "http://localhost:8080"]
+   :blaze/base-url #blaze/var base-url
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
@@ -1326,7 +1330,9 @@
        :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/compact"
        :affects-state true
        :system-handler #blaze/ref :blaze.fhir.operation/compact
-       :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]}}
+       :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]
+
+    :blaze/java-tool-options #blaze/cfg ["JAVA_TOOL_OPTIONS" string? ""]}}
 
   ;;
   ;; OpenID Authentication
@@ -1444,6 +1450,9 @@
     :blaze.fhir.operation.value-set/validate-code
     {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
+    :blaze.fhir.operation.evaluate-measure/handler
+    {:terminology-service #blaze/ref :blaze/terminology-service}
+
     :blaze.terminology-service/local
     {:node #blaze/ref :blaze.db.main/node
      :clock #blaze/ref :blaze/clock
@@ -1481,6 +1490,23 @@
 
     :blaze.terminology-service.local.code-system/sct
     {:release-path #blaze/cfg ["SNOMED_CT_RELEASE_PATH" blaze.path/dir?]}}}
+
+  {:key :extern-terminology-service
+   :name "Extern Terminology Service"
+   :toggle "EXTERN_TERMINOLOGY_SERVICE_URL"
+   :config
+   {:blaze.terminology-service/extern
+    {:base-uri #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_URL" string?]
+     :http-client #blaze/ref :blaze.terminology-service.extern/http-client
+     :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
+     :writing-context #blaze/ref :blaze.fhir/writing-context}
+
+    [:blaze/http-client :blaze.terminology-service.extern/http-client]
+    {:trust-store #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE" string?]
+     :trust-store-pass #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE_PASS" string?]}
+
+    :blaze.fhir.operation.evaluate-measure/handler
+    {:terminology-service #blaze/ref :blaze/terminology-service}}}
 
   {:key :graph
    :name "Operation $graph on Resource"

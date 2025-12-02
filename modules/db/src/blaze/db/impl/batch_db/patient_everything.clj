@@ -6,7 +6,6 @@
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.date :as spd]
    [blaze.db.search-param-registry :as sr]
-   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]))
 
 (defn- non-compartment-types [search-param-registry]
@@ -91,8 +90,7 @@
   {:arglists '([batch-db patient-handle start end])}
   [{{:keys [search-param-registry]} :node :as batch-db} patient-handle start end]
   (let [non-compartment-types (non-compartment-types search-param-registry)
-        supporting-codes (partial supporting-codes search-param-registry
-                                  non-compartment-types)
+        supporting-codes #(supporting-codes search-param-registry non-compartment-types %)
         rev-include (rev-include batch-db patient-handle start end)]
     (coll/eduction
      cat
@@ -104,14 +102,14 @@
            (let [supporting-codes (supporting-codes type)]
              (coll/eduction
               (comp
-               (mapcat (partial rev-include type))
+               (mapcat #(rev-include type %))
                (mapcat
                 (fn [resource-handle]
                   (into
                    [resource-handle]
                    (comp
-                    (mapcat (partial p/-include batch-db resource-handle))
-                    (filter (comp non-compartment-types name type/type)))
+                    (mapcat #(p/-include batch-db resource-handle %))
+                    (filter (comp non-compartment-types name :fhir/type)))
                    supporting-codes))))
               codes))))
         (distinct))

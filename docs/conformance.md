@@ -8,6 +8,10 @@ A current CapabilityStatement can be fetched from [https://blaze.life.uni-leipzi
 
 The state of the implementation of CQL can be found [here](conformance/cql.md).
 
+## Control Character Handling
+
+Blaze supports storage and retrieval of control characters in the JSON format using escaping. In XML however, the characters `[\x00-\x08\x0B\x0C\x0E-\x1F]` are replaced by a question mark `?` before output.
+
 ## Conformance Tests
 
 ### Touchstone

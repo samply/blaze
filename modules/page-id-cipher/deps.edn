@@ -9,7 +9,7 @@
   {:local/root "../scheduler"}
 
   com.google.crypto.tink/tink
-  {:mvn/version "1.18.0"
+  {:mvn/version "1.19.0"
    :exclusions
    [com.google.code.findbugs/jsr305
     com.google.errorprone/error_prone_annotations]}}

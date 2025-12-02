@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.util
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.anomaly :as ba]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
@@ -9,6 +10,7 @@
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.single-version-id :as svi]
+   [blaze.db.impl.protocols :as p]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.util :refer [str]]
    [clojure.string :as str])
@@ -65,18 +67,18 @@
                (vreset! acc (if (reduced? ret) nil (ih/from-single-version-id svi)))
                ret))))))))
 
-(defn non-deleted-resource-handle [{:keys [snapshot t]} tid id]
-  (when-let [handle (rao/resource-handle snapshot tid id t)]
+(defn non-deleted-resource-handle [batch-db tid id]
+  (when-let [handle (p/-resource-handle batch-db tid id)]
     (when-not (rh/deleted? handle)
       handle)))
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives index handles and emits resource
   handles when found."
-  [{:keys [snapshot t]} tid]
+  [batch-db tid]
   (rao/resource-handle-type-xf
-   snapshot t tid ih/id
-   (fn [mvi handle] (ih/matches-hash? mvi (rh/hash handle)))))
+   batch-db tid ih/id
+   (fn [mvi handle] (ih/matches-hash? mvi (:hash handle)))))
 
 (defn missing-expression-msg [url]
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."
@@ -86,13 +88,13 @@
   "Returns a transducer that filters all upstream byte-string values for
   reference tid-id values, returning the non-deleted resource handles of the
   referenced resources."
-  [{:keys [snapshot t]}]
+  [batch-db]
   (comp
    ;; there has to be at least some bytes for the id
    (filter #(< codec/tid-size (bs/size %)))
    (map bs/as-read-only-byte-buffer)
    (map (fn [buf] [(bb/get-int! buf) (bs/from-byte-buffer! buf)]))
-   (rao/resource-handle-xf snapshot t)
+   (rao/resource-handle-xf batch-db)
    (remove rh/deleted?)))
 
 (defn invalid-decimal-value-msg [code value]
@@ -130,5 +132,20 @@
   (let [[url version] (str/split canonical #"\|")]
     [(or url "") (some-> version version-parts)]))
 
-(defn union-index-handles [index-handles]
+(defn union-index-handles
+  "Returns a reducible and iterable collection of the union of `index-handles`."
+  [index-handles]
   (apply coll/union ih/id-comp ih/union index-handles))
+
+(defn- unsupported-modifier-anom [code modifier]
+  (ba/unsupported
+   (format "Unsupported modifier `%s` on search parameter `%s`." modifier code)))
+
+(defn unknown-modifier-anom [code modifier]
+  (ba/incorrect
+   (format "Unknown modifier `%s` on search parameter `%s`." modifier code)))
+
+(defn modifier-anom [known? code modifier]
+  (if (known? modifier)
+    (unsupported-modifier-anom code modifier)
+    (unknown-modifier-anom code modifier)))

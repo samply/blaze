@@ -353,11 +353,11 @@
            (bb/set-limit! kb full-limit)
            res))))))
 
-(defn- entries-prefix-xf [start-key prefix-length xform]
+(defn- entries-prefix-xf [prefix-length start-key xform]
   (comp
    (entries-reader)
    (comp
-    (entries-take-while-prefix-matches start-key prefix-length)
+    (entries-take-while-prefix-matches prefix-length start-key)
     xform)))
 
 (defn prefix-entries

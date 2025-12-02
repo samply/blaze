@@ -6,6 +6,7 @@
    [blaze.fhir.spec.type.protocols :as p]
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.spec.xml :as spec-xml]
    [blaze.util :refer [str]]
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
@@ -52,7 +53,7 @@
 (defn- xml-value [value]
   (if (= 'UUID (:tag (meta value)))
     `(str "urn:uuid:" ~value)
-    `(system/-to-string ~value)))
+    `(spec-xml/replace-invalid-chars (system/-to-string ~value))))
 
 (defn- lower-case-first [name]
   (str (str/lower-case (subs (str name) 0 1)) (subs (str name) 1)))
@@ -147,7 +148,7 @@
        (~'-has-secondary-content [~'_] false)
        (~'-serialize-json-secondary [~'_ ~'generator]
          ~(write-null 'generator))
-       (~'-to-xml [~'_] (xml-node/element nil {:value (system/-to-string ~value)}))
+       (~'-to-xml [~'_] (xml-node/element nil {:value (spec-xml/replace-invalid-chars (system/-to-string ~value))}))
        (~'-hash-into [~'_ ~'sink]
          (.putByte ~tagged-sink (byte ~hash-num))
          (.putByte ~tagged-sink (byte ~value-tag))

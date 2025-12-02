@@ -4,9 +4,14 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]
    [blaze.util :refer [conj-vec str]]))
+
+(defn- quantity-value [value]
+  (let [code (-> value :code type/value)]
+    (cond-> (str (-> value :value type/value)) code (str " " code))))
 
 (defn- value-concept
   "Converts `value` into a CodeableConcept so that it can be used in a
@@ -19,11 +24,16 @@
 
       (identical? :fhir/Quantity type)
       (type/codeable-concept
-       {:text (cond-> (str (:value value)) (:code value) (str " " (:code value)))})
+       {:text (type/string (quantity-value value))})
+
+      (fhir-spec/primitive-val? value)
+      (type/codeable-concept {:text (type/string (str (type/value value)))})
+
+      (nil? value)
+      (type/codeable-concept {:text #fhir/string "null"})
 
       :else
-      (type/codeable-concept
-       {:text (type/string (if (nil? value) "null" (str value)))}))))
+      (type/codeable-concept {:text (type/string (str value))}))))
 
 (defn- stratum-value-extension [value]
   (type/extension

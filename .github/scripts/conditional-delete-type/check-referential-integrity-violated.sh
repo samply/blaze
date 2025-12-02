@@ -1,12 +1,12 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/../util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/../util.sh"
 
-BASE="http://localhost:8080/fhir"
-RESULT=$(curl -sXDELETE "$BASE/Patient?identifier=S99996194")
+base="http://localhost:8080/fhir"
+result=$(curl -sXDELETE "$base/Patient?identifier=S99996194")
 
-test "resource type" "$(echo "$RESULT" | jq -r .resourceType)" "OperationOutcome"
-test "severity" "$(echo "$RESULT" | jq -r .issue[0].severity)" "error"
-test "code" "$(echo "$RESULT" | jq -r .issue[0].code)" "conflict"
-test_regex "diagnostics" "$(echo "$RESULT" | jq -r .issue[0].diagnostics)" "^Referential integrity violated.*"
+test "resource type" "$(echo "$result" | jq -r .resourceType)" "OperationOutcome"
+test "severity" "$(echo "$result" | jq -r .issue[0].severity)" "error"
+test "code" "$(echo "$result" | jq -r .issue[0].code)" "conflict"
+test_regex "diagnostics" "$(echo "$result" | jq -r .issue[0].diagnostics)" "^Referential integrity violated.*"

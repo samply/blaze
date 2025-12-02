@@ -57,6 +57,14 @@
       (search-param/compile-values nil [value])
       (first)))
 
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (code-value-quantity-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unknown modifier `unknown` on search parameter `code-value-quantity`."))))
+
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"
@@ -111,18 +119,18 @@
     (testing "Observation code-value-quantity"
       (let [observation
             {:fhir/type :fhir/Observation :id "id-155558"
-             :status #fhir/code"final"
+             :status #fhir/code "final"
              :code
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
-                 {:system #fhir/uri"http://loinc.org"
-                  :code #fhir/code"8480-6"}]}
+                 {:system #fhir/uri "http://loinc.org"
+                  :code #fhir/code "8480-6"}]}
              :value
              #fhir/Quantity
-              {:value 100M
-               :code #fhir/code"mm[Hg]"
-               :system #fhir/uri"http://unitsofmeasure.org"}}
+              {:value #fhir/decimal 100M
+               :code #fhir/code "mm[Hg]"
+               :system #fhir/uri "http://unitsofmeasure.org"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]
              [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]
@@ -277,8 +285,8 @@
                               [#fhir/CodeableConcept
                                 {:coding
                                  [#fhir/Coding
-                                   {:system #fhir/uri"system-204435"
-                                    :code #fhir/code"code-204441"}]}]
+                                   {:system #fhir/uri "system-204435"
+                                    :code #fhir/code "code-204441"}]}]
                               :else
                               {::anom/category ::anom/fault
                                ::x ::y}))]

@@ -27,10 +27,11 @@
 (defn- handles-xf [page-offset page-size]
   (comp (drop page-offset) (take (inc (or page-size max-size)))))
 
-(defn- handles [db patient-id start end page-offset page-size]
+(defn- handles [db patient-id start end page-offset page-size since]
   (when-ok [patient (fhir-util/resource-handle db "Patient" patient-id)]
-    (let [handles (into [] (handles-xf page-offset page-size)
-                        (d/patient-everything db patient start end))]
+    (let [since-db (cond-> db since (d/since since))
+          handles (into [] (handles-xf page-offset page-size)
+                        (d/patient-everything since-db patient start end))]
       (if page-size
         (if (< page-size (count handles))
           {:handles (pop handles)
@@ -46,7 +47,7 @@
 
 (defn- next-link
   [{::search-util/keys [link] :keys [page-id-cipher]}
-   {:blaze/keys [base-url db] :as request} start end page-size offset]
+   {:blaze/keys [base-url db] :as request} start end page-size offset since]
   (->> (cond->
         {"_count" (str page-size)
          "__t" (str (d/t db))
@@ -54,40 +55,43 @@
          start
          (assoc "start" (str start))
          end
-         (assoc "end" (str end)))
+         (assoc "end" (str end))
+         since
+         (assoc "_since" (str since)))
        (decrypt-page-id/encrypt page-id-cipher)
        (page-match request)
        (reitit/match->path)
        (str base-url)
        (link "next")))
 
-(defn- bundle [context request resources start end page-size next-offset]
+(defn- bundle [context request resources start end page-size next-offset since]
   (let [entries (mapv (partial search-util/match-entry request) resources)]
     (cond->
      {:fhir/type :fhir/Bundle
       :id (m/luid context)
-      :type #fhir/code"searchset"
+      :type #fhir/code "searchset"
       :entry entries}
 
       (some? next-offset)
-      (assoc :link [(next-link context request start end page-size next-offset)])
+      (assoc :link [(next-link context request start end page-size next-offset since)])
 
       (nil? page-size)
-      (assoc :total (type/->UnsignedInt (count entries))))))
+      (assoc :total (type/unsignedInt (count entries))))))
 
 (defn- handler [context]
   (fn [{:blaze/keys [db]
         {:keys [id]} :path-params
         :keys [query-params] :as request}]
     (let [page-size (fhir-util/page-size query-params max-size nil)
-          page-offset (fhir-util/page-offset query-params)]
+          page-offset (fhir-util/page-offset query-params)
+          since (fhir-util/since query-params)]
       (when-ok [start (fhir-util/date query-params "start")
                 end (fhir-util/date query-params "end")
-                {:keys [handles next-offset]} (handles db id start end
-                                                       page-offset page-size)]
+                {:keys [handles next-offset]}
+                (handles db id start end page-offset page-size since)]
         (do-sync [resources (d/pull-many db handles)]
           (ring/response (bundle context request resources start end page-size
-                                 next-offset)))))))
+                                 next-offset since)))))))
 
 (defmethod m/pre-init-spec :blaze.operation.patient/everything [_]
   (s/keys :req [::search-util/link]

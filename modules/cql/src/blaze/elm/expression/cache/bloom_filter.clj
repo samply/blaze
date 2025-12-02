@@ -24,10 +24,10 @@
   (take 12 (iterate #(* 4 %) 1)))
 
 (defhistogram bloom-filter-creation-duration-seconds
-  "Durations in Cassandra resource store."
+  "Durations in Bloom filter creation."
   {:namespace "blaze"
    :subsystem "cql_expr_cache"}
-  (take 14 (iterate #(* 2 %) 0.1)))
+  (take 16 (iterate #(* 2 %) 0.1)))
 
 (defn might-contain?
   "Returns true if `resource` might have been put in `bloom-filter` or false if
@@ -35,7 +35,7 @@
   {:arglists '([bloom-filter resource])}
   [^BloomFilterContainer bloom-filter ^Resource resource]
   (or (< (.-t bloom-filter) (.-lastChangeT resource))
-      (.mightContain ^BloomFilter (.-filter bloom-filter) (.-id resource))))
+      (.mightContain ^BloomFilter (.-filter bloom-filter) (:id resource))))
 
 (defn merge [bloom-filter-a bloom-filter-b]
   (.merge ^BloomFilterContainer bloom-filter-a bloom-filter-b))

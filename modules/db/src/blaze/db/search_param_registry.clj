@@ -8,7 +8,6 @@
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry.spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.module :as m]
    [blaze.util :refer [conj-vec str]]
    [clojure.java.io :as io]
@@ -122,7 +121,7 @@
       cat)
      conj
      #{}
-     (compartment-index (name (fhir-spec/fhir-type resource)))))
+     (compartment-index (name (:fhir/type resource)))))
 
   (-compartment-resources [_ compartment-type]
     (compartment-resource-index compartment-type []))
@@ -323,12 +322,12 @@
             (= 1 (count target))
             (when-ok [search-param (resolve-search-param index (first target) code)]
               (spc/chained-search-param search-param ref-search-param (first target)
-                                        ref-modifier s modifier))
+                                        s modifier))
 
             ref-modifier
             (when-ok [search-param (resolve-search-param index ref-modifier code)]
               (spc/chained-search-param search-param ref-search-param ref-modifier
-                                        ref-modifier s modifier))
+                                        s modifier))
 
             :else
             (ba/incorrect (ambiguous-target-type-msg (str/join ", " target) s)))))

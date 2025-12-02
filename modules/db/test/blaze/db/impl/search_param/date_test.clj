@@ -48,6 +48,20 @@
       :code := "birthdate"
       :c-hash := (codec/c-hash "birthdate"))))
 
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (birth-date-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unknown modifier `unknown` on search parameter `birthdate`."))
+
+    (testing "modifier not implemented"
+      (given (search-param/validate-modifier
+              (birth-date-param search-param-registry) "missing")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported modifier `missing` on search parameter `birthdate`."))))
+
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "invalid date value"
@@ -66,6 +80,13 @@
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (birth-date-param search-param-registry)]
       (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
+
+(deftest ordered-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (birth-date-param search-param-registry)]
+      (is (false? (p/-supports-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil))))))
 
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -95,7 +116,7 @@
       (testing "birthDate"
         (let [patient {:fhir/type :fhir/Patient
                        :id "id-142629"
-                       :birthDate #fhir/date"2020-02-04"}
+                       :birthDate #fhir/date "2020-02-04"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries
@@ -114,7 +135,7 @@
         (let [patient
               {:fhir/type :fhir/Patient
                :id "id-142629"
-               :deceased #fhir/dateTime"2019-11-17T00:14:29+01:00"}
+               :deceased #fhir/dateTime "2019-11-17T00:14:29+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries
@@ -136,8 +157,8 @@
               {:fhir/type :fhir/Encounter :id "id-160224"
                :period
                #fhir/Period
-                {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"
-                 :end #fhir/dateTime"2019-11-17T00:44:29+01:00"}}
+                {:start #fhir/dateTime "2019-11-17T00:14:29+01:00"
+                 :end #fhir/dateTime "2019-11-17T00:44:29+01:00"}}
               hash (hash/generate encounter)
               [[_ k0]]
               (index-entries
@@ -159,15 +180,14 @@
                 {:fhir/type :fhir/Encounter :id "id-160224"
                  :period
                  #fhir/Period
-                  {:end #fhir/dateTime"2019-11-17"}}
+                  {:end #fhir/dateTime "2019-11-17"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
                 (index-entries
                  (sr/get search-param-registry "date" "Encounter")
                  [] hash encounter)]
 
-            (testing "the entry is about the min bound as lower bound and the
-                    upper bound of the end of the period"
+            (testing "the entry is about the min bound as lower bound and the upper bound of the end of the period"
               (given (sp-vr-tu/decode-key-human (bb/wrap k0))
                 :code := "date"
                 :type := "Encounter"
@@ -176,24 +196,42 @@
                 :id := "id-160224"
                 :hash-prefix := (hash/prefix hash)))))
 
-        (testing "Encounter date without end"
+        (testing "without end"
           (let [encounter
                 {:fhir/type :fhir/Encounter :id "id-160224"
                  :period
                  #fhir/Period
-                  {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"}}
+                  {:start #fhir/dateTime "2019-11-17T00:14:29+01:00"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
                 (index-entries
                  (sr/get search-param-registry "date" "Encounter")
                  [] hash encounter)]
 
-            (testing "the entry is about the lower bound of the start and the max
-                    upper bound"
+            (testing "the entry is about the lower bound of the start and the max upper bound"
               (given (sp-vr-tu/decode-key-human (bb/wrap k0))
                 :code := "date"
                 :type := "Encounter"
                 [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
+                [:v-hash upper-bound-instant] := (Instant/parse "9999-12-31T23:59:59Z")
+                :id := "id-160224"
+                :hash-prefix := (hash/prefix hash)))))
+
+        (testing "without start and end"
+          (let [encounter
+                {:fhir/type :fhir/Encounter :id "id-160224"
+                 :period #fhir/Period{}}
+                hash (hash/generate encounter)
+                [[_ k0]]
+                (index-entries
+                 (sr/get search-param-registry "date" "Encounter")
+                 [] hash encounter)]
+
+            (testing "the entry is about the min bound of the start and the max upper bound"
+              (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+                :code := "date"
+                :type := "Encounter"
+                [:v-hash lower-bound-instant] := (Instant/parse "0001-01-01T00:00:00Z")
                 [:v-hash upper-bound-instant] := (Instant/parse "9999-12-31T23:59:59Z")
                 :id := "id-160224"
                 :hash-prefix := (hash/prefix hash)))))))
@@ -202,7 +240,7 @@
       (testing "issued"
         (let [patient {:fhir/type :fhir/DiagnosticReport
                        :id "id-155607"
-                       :issued #fhir/instant"2019-11-17T00:14:29.917+01:00"}
+                       :issued #fhir/instant "2019-11-17T00:14:29.917+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries

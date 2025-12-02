@@ -1,9 +1,9 @@
 #!/bin/bash -e
 
-FILENAME=$1
-BASE="http://localhost:8080/fhir"
+filename=$1
+base="http://localhost:8080/fhir"
 
-RESOURCE_TYPE="$(jq -r .resourceType "$FILENAME")"
+resource_type="$(jq -r .resourceType "$filename")"
 
-echo "Upload $FILENAME"
-curl -sf -H "Content-Type: application/fhir+json" -H "Prefer: return=minimal" -d @"$FILENAME" "$BASE/$RESOURCE_TYPE"
+echo "Upload $filename"
+curl -sf -H "Content-Type: application/fhir+json" -H "Prefer: return=minimal" -d @"$filename" "$base/$resource_type"

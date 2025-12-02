@@ -133,7 +133,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
-          (given-failed-future (rs/get store ["Patient" hash :complete])
+          (given-failed-future (rs/get store [:fhir/Patient hash :complete])
             ::anom/message :# "Error while parsing resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`:(.|\\s)*"
             :blaze.resource/hash := hash)))))
 
@@ -156,7 +156,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
-          (is (nil? @(rs/get store ["Patient" hash :complete])))))))
+          (is (nil? @(rs/get store [:fhir/Patient hash :complete])))))))
 
   (testing "execute error"
     (let [hash (hash "0")
@@ -176,7 +176,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
-          (given-failed-future (rs/get store ["Patient" hash :complete])
+          (given-failed-future (rs/get store [:fhir/Patient hash :complete])
             ::anom/category := ::anom/fault
             ::anom/message := "msg-141754"
             :blaze.resource/hash := hash)))))
@@ -199,7 +199,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
-          (given-failed-future (rs/get store ["Patient" hash :complete])
+          (given-failed-future (rs/get store [:fhir/Patient hash :complete])
             ::anom/category := ::anom/busy
             ::anom/message := "Cassandra msg-115452"
             :blaze.resource/hash := hash)))))
@@ -225,7 +225,7 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
-          (given @(mtu/assoc-thread-name (rs/get store ["Patient" hash :complete]))
+          (given @(mtu/assoc-thread-name (rs/get store [:fhir/Patient hash :complete]))
             [meta :thread-name] :? mtu/common-pool-thread?
             :fhir/type := :fhir/Patient
             :id := "0")))))
@@ -255,7 +255,7 @@
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
           (testing "content matches"
-            (given @(mtu/assoc-thread-name (rs/get store ["Patient" hash :complete]))
+            (given @(mtu/assoc-thread-name (rs/get store [:fhir/Patient hash :complete]))
               [meta :thread-name] :? mtu/common-pool-thread?
               identity := content)))))))
 
@@ -280,7 +280,7 @@
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
           (testing "result is empty"
-            (given @(mtu/assoc-thread-name (rs/multi-get store [["Patient" hash :complete]]))
+            (given @(mtu/assoc-thread-name (rs/multi-get store [[:fhir/Patient hash :complete]]))
               [meta :thread-name] :? mtu/common-pool-thread?
               identity :? empty?))))))
 
@@ -305,9 +305,9 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
-          (given @(mtu/assoc-thread-name (rs/multi-get store [["Patient" hash :complete]]))
+          (given @(mtu/assoc-thread-name (rs/multi-get store [[:fhir/Patient hash :complete]]))
             [meta :thread-name] :? mtu/common-pool-thread?
-            identity := {["Patient" hash :complete] content}))))))
+            identity := {[:fhir/Patient hash :complete] content}))))))
 
 (def bound-put-statement (reify BoundStatement))
 

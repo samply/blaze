@@ -167,7 +167,7 @@
     (with-system [{store ::rs/kv kv-store ::kv/mem :blaze.fhir/keys [writing-context]} config]
       (put! kv-store writing-context (hash) {:fhir/type :fhir/Patient :id "0"})
 
-      (given @(mtu/assoc-thread-name (rs/get store ["Patient" (hash) :complete]))
+      (given @(mtu/assoc-thread-name (rs/get store [:fhir/Patient (hash) :complete]))
         [meta :thread-name] :? mtu/common-pool-thread?
         :fhir/type := :fhir/Patient
         :id := "0")))
@@ -176,17 +176,17 @@
     (with-system [{store ::rs/kv kv-store ::kv/mem} config]
       (kv/put! kv-store [[:default (hash/to-byte-array (hash)) (invalid-content)]])
 
-      (given-failed-future (rs/get store ["Patient" (hash) :complete])
+      (given-failed-future (rs/get store [:fhir/Patient (hash) :complete])
         ::anom/category := ::anom/incorrect
         ::anom/message :# "Error while parsing resource content(.|\\s)*")))
 
   (testing "not-found"
     (with-system [{store ::rs/kv} config]
-      (is (nil? @(rs/get store ["Patient" (hash) :complete])))))
+      (is (nil? @(rs/get store [:fhir/Patient (hash) :complete])))))
 
   (testing "error"
     (with-system [{store ::rs/kv} (failing-kv-store-config error-msg)]
-      (given-failed-future (rs/get store ["Patient" (hash) :complete])
+      (given-failed-future (rs/get store [:fhir/Patient (hash) :complete])
         ::anom/category := ::anom/fault
         ::anom/message := error-msg))))
 
@@ -197,8 +197,8 @@
         (with-system [{store ::rs/kv kv-store ::kv/mem :blaze.fhir/keys [writing-context]} config]
           (put! kv-store writing-context (hash) content)
 
-          (given @(mtu/assoc-thread-name (rs/multi-get store [["Patient" (hash) :complete]]))
-            identity := {["Patient" (hash) :complete] content}))))
+          (given @(mtu/assoc-thread-name (rs/multi-get store [[:fhir/Patient (hash) :complete]]))
+            identity := {[:fhir/Patient (hash) :complete] content}))))
 
     (testing "with two hashes"
       (let [content-0 {:fhir/type :fhir/Patient :id "0"}
@@ -208,18 +208,18 @@
           (put! kv-store writing-context (hash "1") content-1)
 
           (testing "content matches"
-            (given @(mtu/assoc-thread-name (rs/multi-get store [["Patient" (hash "0") :complete]
-                                                                ["Patient" (hash "1") :complete]]))
+            (given @(mtu/assoc-thread-name (rs/multi-get store [[:fhir/Patient (hash "0") :complete]
+                                                                [:fhir/Patient (hash "1") :complete]]))
               [meta :thread-name] :? mtu/common-pool-thread?
-              identity := {["Patient" (hash "0") :complete] content-0
-                           ["Patient" (hash "1") :complete] content-1}))))))
+              identity := {[:fhir/Patient (hash "0") :complete] content-0
+                           [:fhir/Patient (hash "1") :complete] content-1}))))))
 
   (testing "parsing error"
     (let [hash (hash)]
       (with-system [{store ::rs/kv kv-store ::kv/mem} config]
         (kv/put! kv-store [[:default (hash/to-byte-array hash) (invalid-content)]])
 
-        (given-failed-future (rs/multi-get store [["Patient" hash :complete]])
+        (given-failed-future (rs/multi-get store [[:fhir/Patient hash :complete]])
           ::anom/category := ::anom/incorrect
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))
 
@@ -227,36 +227,36 @@
     (with-system [{store ::rs/kv} config]
 
       (testing "result is empty"
-        (given @(mtu/assoc-thread-name (rs/multi-get store [["Patient" (hash) :complete]]))
+        (given @(mtu/assoc-thread-name (rs/multi-get store [[:fhir/Patient (hash) :complete]]))
           [meta :thread-name] :? mtu/common-pool-thread?
           identity :? empty?))))
 
   (testing "error"
     (testing "with one hash"
       (with-system [{store ::rs/kv} (failing-kv-store-config error-msg)]
-        (given-failed-future (rs/multi-get store [["Patient" (hash) :complete]])
+        (given-failed-future (rs/multi-get store [[:fhir/Patient (hash) :complete]])
           ::anom/category := ::anom/fault
           ::anom/message := error-msg)))
 
     (testing "with two hashes"
       (testing "failing on both"
         (with-system [{store ::rs/kv} (failing-kv-store-config error-msg)]
-          (given-failed-future (rs/multi-get store [["Patient" (hash "0") :complete]
-                                                    ["Patient" (hash "1") :complete]])
+          (given-failed-future (rs/multi-get store [[:fhir/Patient (hash "0") :complete]
+                                                    [:fhir/Patient (hash "1") :complete]])
             ::anom/category := ::anom/fault
             ::anom/message := error-msg)))
 
       (testing "failing on first"
         (with-system [{store ::rs/kv} (failing-kv-store-config error-msg (hash "0"))]
-          (given-failed-future (rs/multi-get store [["Patient" (hash "0") :complete]
-                                                    ["Patient" (hash "1") :complete]])
+          (given-failed-future (rs/multi-get store [[:fhir/Patient (hash "0") :complete]
+                                                    [:fhir/Patient (hash "1") :complete]])
             ::anom/category := ::anom/fault
             ::anom/message := error-msg)))
 
       (testing "failing on second"
         (with-system [{store ::rs/kv} (failing-kv-store-config error-msg (hash "1"))]
-          (given-failed-future (rs/multi-get store [["Patient" (hash "0") :complete]
-                                                    ["Patient" (hash "1") :complete]])
+          (given-failed-future (rs/multi-get store [[:fhir/Patient (hash "0") :complete]
+                                                    [:fhir/Patient (hash "1") :complete]])
             ::anom/category := ::anom/fault
             ::anom/message := error-msg))))))
 
@@ -265,7 +265,7 @@
     (with-system [{store ::rs/kv} config]
       @(rs/put! store {(hash) content})
 
-      (is (= content @(rs/get store ["Patient" (hash) :complete]))))))
+      (is (= content @(rs/get store [:fhir/Patient (hash) :complete]))))))
 
 (deftest executor-shutdown-timeout-test
   (let [{::rs-kv/keys [executor] :as system} (ig/init {::rs-kv/executor {}})]

@@ -8,7 +8,7 @@
   import { onNavigate } from '$app/navigation';
   import { signOut } from '@auth/sveltekit/client';
   import NavItem from '$lib/nav-item.svelte';
-  import { asset } from '$app/paths';
+  import { asset, resolve } from '$app/paths';
   import { UserCircle } from 'svelte-heros-v2';
 
   interface Props {
@@ -57,19 +57,23 @@
           </div>
           <!-- Navigation Menu -->
           <div class="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
-            <NavItem active={isHomeRoute(page.route.id)} id="/" label="Home" />
+            <NavItem active={isHomeRoute(page.route.id)} id={resolve('/')} label="Home" />
             <NavItem
               active={page.route.id?.startsWith('/_history') ||
                 page.route.id?.startsWith('/__history-page')}
-              id="/_history"
+              id={resolve('/_history')}
               label="History"
             />
             <NavItem
               active={page.route.id?.startsWith('/metadata')}
-              id="/metadata"
+              id={resolve('/metadata')}
               label="Metadata"
             />
-            <NavItem active={page.route.id?.startsWith('/__admin')} id="/__admin" label="Admin" />
+            <NavItem
+              active={page.route.id?.startsWith('/__admin')}
+              id={resolve('/__admin')}
+              label="Admin"
+            />
           </div>
         </div>
 

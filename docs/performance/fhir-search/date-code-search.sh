@@ -1,24 +1,24 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-COMPOSE_FILE="$1"
-BASE="${2:-http://localhost:8080/fhir}"
-START_EPOCH="$(date +"%s")"
+compose_file="$1"
+base="${2:-http://localhost:8080/fhir}"
+start_epoch="$(date +"%s")"
 
 count-resources() {
-  YEAR="$1"
+  local year="$1"
 
-  echo "Counting Laboratory Observations with date in $YEAR..."
-  count-resources-raw "$BASE" "Observation" "date=$YEAR&category=laboratory" "$START_EPOCH-count-$YEAR-laboratory.times"
+  echo "Counting Laboratory Observations with date in $year..."
+  count-resources-raw "$base" "Observation" "date=$year&category=laboratory" "$start_epoch-count-$year-laboratory.times"
 }
 
-restart "$COMPOSE_FILE"
+restart "$compose_file"
 count-resources "2013"
 
-restart "$COMPOSE_FILE"
+restart "$compose_file"
 count-resources "2019"
 
-restart "$COMPOSE_FILE"
+restart "$compose_file"
 count-resources "2020"

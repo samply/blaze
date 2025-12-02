@@ -280,15 +280,6 @@
                       (int second) (unchecked-multiply-int (int millis) 1000000)
                       zone-offset)))
 
-(defn parse-date-time* [s]
-  (condp < (count s)
-    13 (try
-         (OffsetDateTime/parse s)
-         (catch Exception _
-           (LocalDateTime/parse s)))
-    10 (LocalDateTime/parse (str s ":00"))
-    (DateTime/parse s)))
-
 (defn parse-date-time
   "Parses `s` into a System.DateTime.
 
@@ -296,7 +287,7 @@
   [s]
   (if (nil? s)
     (ba/incorrect "nil date-time value")
-    (ba/try-one DateTimeException ::anom/incorrect (parse-date-time* s))))
+    (ba/try-one DateTimeException ::anom/incorrect (DateTime/parse s))))
 
 (defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
   (.write w "#system/date-time\"")

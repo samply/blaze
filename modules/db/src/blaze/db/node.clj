@@ -28,11 +28,12 @@
    [blaze.db.node.util :as node-util]
    [blaze.db.node.validation :as validation]
    [blaze.db.node.version :as version]
+   [blaze.db.resource-cache :as rc]
+   [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
@@ -67,8 +68,7 @@
 (defhistogram duration-seconds
   "Node durations."
   {:namespace "blaze"
-   :subsystem "db_node"
-   :name "duration_seconds"}
+   :subsystem "db_node"}
   (take 16 (iterate #(* 2 %) 0.0001))
   "op")
 
@@ -172,17 +172,17 @@
 
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta #fhir/Meta{})
-      (assoc :versionId (type/->Id (str t)))
+      (assoc :versionId (type/id (str t)))
       (assoc :lastUpdated instant)))
 
 (defn- mk-meta [handle tx]
-  {:blaze.resource/hash (rh/hash handle)
-   :blaze.db/num-changes (rh/num-changes handle)
-   :blaze.db/op (rh/op handle)
+  {:blaze.resource/hash (:hash handle)
+   :blaze.db/num-changes (:num-changes handle)
+   :blaze.db/op (:op handle)
    :blaze.db/tx tx})
 
 (defn- enhance-resource [tx-cache handle resource]
-  (let [t (rh/t handle)
+  (let [t (:t handle)
         tx (tx-success/tx tx-cache t)]
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
@@ -190,29 +190,29 @@
 (defn- rs-keys-of-non-deleted [resource-handles variant]
   (into [] (comp (remove rh/deleted?) (map #(node-util/rs-key % variant))) resource-handles))
 
-(defn- deleted-resource [{:keys [id] :as resource-handle}]
-  {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
+(defn- deleted-resource [{:fhir/keys [type] :keys [id]}]
+  {:fhir/type type :id id})
 
 (defn- resource-content-not-found-msg [resource-handle]
   (format "The resource content of `%s/%s` with hash `%s` was not found."
-          (name (type/type resource-handle)) (:id resource-handle)
+          (name (:fhir/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
 (defn- resource-content-not-found-anom [resource-handle]
   (ba/not-found (resource-content-not-found-msg resource-handle)
                 :blaze.db/resource-handle resource-handle))
 
-(defn- to-resource [tx-cache resources variant resource-handle]
+(defn- to-resource [tx-cache resources resource-handle variant]
   (if-let [resource (if (rh/deleted? resource-handle)
                       (deleted-resource resource-handle)
                       (get resources (node-util/rs-key resource-handle variant)))]
     (enhance-resource tx-cache resource-handle resource)
     (resource-content-not-found-anom resource-handle)))
 
-(defn- get-resource [resource-store resource-handle variant]
+(defn- get-resource [resource-cache resource-handle variant]
   (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
-    (rs/get resource-store (node-util/rs-key resource-handle variant))))
+    (rc/get resource-cache (node-util/rs-key resource-handle variant))))
 
 (defn- clause-with-code-fn? [codes]
   (fn [[search-param]]
@@ -249,7 +249,7 @@
       (when (and (= 1 (count compartment-clauses)) (seq other-clauses))
         (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
           (when (seq patient-ids)
-            (batch-db/->PatientTypeQuery
+            (batch-db/patient-type-query
              (codec/tid type)
              patient-ids
              compartment-clause
@@ -281,16 +281,16 @@
           add-subsetted-xf)))
 
 (defn- changed-handles [node type t]
-  (with-open [db (batch-db/new-batch-db node t t)]
-    (into [] (take-while #(= t (rh/t %))) (d/type-history db type))))
+  (with-open [db (batch-db/new-batch-db node t t 0)]
+    (into [] (take-while #(= t (:t %))) (d/type-history db type))))
 
 (defn- compile-system-matcher [search-param-registry clauses]
   (when-ok [clauses (index/resolve-search-params search-param-registry
                                                  "Resource" clauses false)]
     (batch-db/->Matcher clauses)))
 
-(defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
-                 search-param-registry resource-indexer read-only-matcher
+(defrecord Node [context tx-log tx-cache kv-store resource-cache resource-store
+                 sync-fn search-param-registry resource-indexer read-only-matcher
                  state run? poll-timeout finished]
   np/Node
   (-db [node]
@@ -376,23 +376,26 @@
 
   p/Pull
   (-pull [_ resource-handle variant]
-    (do-sync [resource (get-resource resource-store resource-handle variant)]
+    (do-sync [resource (get-resource resource-cache resource-handle variant)]
       (or (some->> resource (enhance-resource tx-cache resource-handle))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-content [_ resource-handle variant]
-    (do-sync [resource (get-resource resource-store resource-handle variant)]
+    (do-sync [resource (get-resource resource-cache resource-handle variant)]
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
-  (-pull-many [_ resource-handles variant]
-    (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
-          [variant elements] (if (keyword? variant) [variant] [:complete variant])
-          keys (rs-keys-of-non-deleted resource-handles variant)]
-      (do-sync [resources (rs/multi-get resource-store keys)]
+  (-pull-many [_ resource-handles opts]
+    (let [{:keys [variant elements skip-cache-insertion?]
+           :or {variant :complete}} opts
+          keys (rs-keys-of-non-deleted resource-handles variant)
+          multi-get (if skip-cache-insertion?
+                      rc/multi-get-skip-cache-insertion
+                      rc/multi-get)]
+      (do-sync [resources (multi-get resource-cache keys)]
         (into
          []
-         (cond-> (comp (map (partial to-resource tx-cache resources variant))
+         (cond-> (comp (map #(to-resource tx-cache resources % variant))
                        (halt-when ba/anomaly?))
            elements (comp (subset-xf elements)))
          resource-handles))))
@@ -508,6 +511,7 @@
     ::indexer-executor
     :blaze.db/kv-store
     ::resource-indexer
+    :blaze.db/resource-cache
     :blaze.db/resource-store
     :blaze.db/search-param-registry
     :blaze/scheduler]
@@ -517,13 +521,15 @@
 
 (defmethod ig/init-key :blaze.db/node
   [key {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
-               resource-store search-param-registry scheduler poll-timeout]
+               resource-cache resource-store search-param-registry scheduler
+               poll-timeout]
         :or {poll-timeout (time/seconds 1)}
         :as config}]
   (init-msg key config)
   (check-version! kv-store)
-  (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
-                     (sync-fn storage) search-param-registry resource-indexer
+  (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-cache
+                     resource-store (sync-fn storage) search-param-registry
+                     resource-indexer
                      (compile-read-only-matcher search-param-registry)
                      (atom (initial-state kv-store))
                      (volatile! true)

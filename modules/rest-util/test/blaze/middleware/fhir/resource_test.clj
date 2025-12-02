@@ -30,10 +30,9 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private parsing-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo structure-definition-repo}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- wrap-error [handler]
   (fn [request]
@@ -84,63 +83,63 @@
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on token null. Expected type is `Resource`."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on token null. Expected type is `Resource`."))
 
   (testing "body with invalid JSON"
     (given @((resource-body-handler "Resource")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "x")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "JSON parsing error."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "JSON parsing error."))
 
   (testing "body with no JSON object"
     (given @((resource-body-handler "Resource")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "1")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on integer value 1. Expected type is `Resource`."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on integer value 1. Expected type is `Resource`."))
 
   (testing "body with invalid resource"
     (given @((resource-body-handler "Patient")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "{\"resourceType\": \"Patient\", \"gender\": {}}")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on object start. Expected type is `code`."
-      [:body :issue 0 :expression] := ["Patient.gender"]))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on object start. Expected type is `code`."
+      [:body :issue 0 :expression] := [#fhir/string "Patient.gender"]))
 
   (testing "body with bundle with null resource"
     (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": null}]}")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value null. Expected type is `Resource`."
-      [:body :issue 0 :expression] := ["Bundle.entry[0].resource"]))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on value null. Expected type is `Resource`."
+      [:body :issue 0 :expression] := [#fhir/string "Bundle.entry[0].resource"]))
 
   (testing "body with bundle with invalid resource"
     (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": {\"resourceType\": \"Patient\", \"gender\": {}}}]}")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on object start. Expected type is `code`."
-      [:body :issue 0 :expression] := ["Bundle.entry[0].resource.gender"]))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on object start. Expected type is `code`."
+      [:body :issue 0 :expression] := [#fhir/string "Bundle.entry[0].resource.gender"]))
 
   (testing "long attribute values are allowed (JSON-wrapped Binary data)"
     (given @((resource-body-handler "Binary")
@@ -163,53 +162,54 @@
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "Unexpected EOF in prolog\n at [row,col {unknown-source}]: [1,0]"))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invalid"
+      [:body :issue 0 :diagnostics] := #fhir/string "Unexpected EOF in prolog\n at [row,col {unknown-source}]: [1,0]"))
 
   (testing "body with invalid XML"
-    (doseq [[input-string diagnostics] [["1" "Unexpected character '1' (code 49) in prolog; expected '<'\n at [row,col {unknown-source}]: [1,1]"]
-                                        ["<Patient xmlns=\"http://hl7.org/fhir\"><id value \"a_b\"/></Patient>" "Unexpected character '\"' (code 34) expected '='\n at [row,col {unknown-source}]: [1,48]"]]]
+    (doseq [[input-string diagnostics]
+            [["1" "Unexpected character '1' (code 49) in prolog; expected '<'\n at [row,col {unknown-source}]: [1,1]"]
+             ["<Patient xmlns=\"http://hl7.org/fhir\"><id value \"a_b\"/></Patient>" "Unexpected character '\"' (code 34) expected '='\n at [row,col {unknown-source}]: [1,48]"]]]
       (given @((resource-body-handler "Patient")
                {:request-method :post
                 :headers {"content-type" "application/fhir+xml"}
                 :body (string-input-stream input-string)})
         :status := 400
-        [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-        [:body :issue 0 :severity] := #fhir/code"error"
-        [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := diagnostics)))
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code "error"
+        [:body :issue 0 :code] := #fhir/code "invalid"
+        [:body :issue 0 :diagnostics] := (type/string diagnostics))))
 
   (testing "body with invalid resource"
     (given @((resource-body-handler "Patient")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "<Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient>")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
 
   (testing "body with bundle with empty resource"
     (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource></resource></entry></Bundle>")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `<:resource/>`. Expected type is `Resource`."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on value `<:resource/>`. Expected type is `Resource`."))
 
   (testing "body with bundle with invalid resource"
     (given @((resource-body-handler "Bundle")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient></resource></entry></Bundle>")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invariant"
+      [:body :issue 0 :diagnostics] := #fhir/string "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
 
   (testing "long attribute values are allowed (XML-wrapped Binary data)"
     (given @((resource-body-handler "Binary")
@@ -231,28 +231,28 @@
       (given @((resource-body-handler "Resource")
                {:body (string-input-stream "foo")})
         :status := 400
-        [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-        [:body :issue 0 :severity] := #fhir/code"error"
-        [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Missing Content-Type header for FHIR resources."))
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code "error"
+        [:body :issue 0 :code] := #fhir/code "invalid"
+        [:body :issue 0 :diagnostics] := #fhir/string "Missing Content-Type header for FHIR resources."))
 
     (testing "with unknown content-type header"
       (given @((resource-body-handler "Resource")
                {:headers {"content-type" "text/plain"} :body (string-input-stream "foo")})
         :status := 415
-        [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-        [:body :issue 0 :severity] := #fhir/code"error"
-        [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Unsupported media type `text/plain` expect one of `application/fhir+json` or `application/fhir+xml`."))
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code "error"
+        [:body :issue 0 :code] := #fhir/code "invalid"
+        [:body :issue 0 :diagnostics] := #fhir/string "Unsupported media type `text/plain` expect one of `application/fhir+json` or `application/fhir+xml`."))
 
     (testing "missing body"
       (doseq [content-type ["application/fhir+json" "application/fhir+xml"]]
         (given @((resource-body-handler "Resource")
                  {:headers {"content-type" content-type}})
-          [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-          [:body :issue 0 :severity] := #fhir/code"error"
-          [:body :issue 0 :code] := #fhir/code"invalid"
-          [:body :issue 0 :diagnostics] := "Missing HTTP body.")))))
+          [:body :fhir/type] := :fhir/OperationOutcome
+          [:body :issue 0 :severity] := #fhir/code "error"
+          [:body :issue 0 :code] := #fhir/code "invalid"
+          [:body :issue 0 :diagnostics] := #fhir/string "Missing HTTP body.")))))
 
 (defn- binary-resource-as-json [content-type data]
   (j/write-value-as-string
@@ -295,15 +295,15 @@
   (testing "with missing content-type header"
     (given @(binary-resource-body-handler {:body (string-input-stream "foo")})
       :status := 400
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "Missing Content-Type header for binary data."))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invalid"
+      [:body :issue 0 :diagnostics] := #fhir/string "Missing Content-Type header for binary data."))
 
   (testing "missing body"
     (given @(binary-resource-body-handler
              {:headers {"content-type" "application/octet-stream"}})
-      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "Missing HTTP body.")))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "invalid"
+      [:body :issue 0 :diagnostics] := #fhir/string "Missing HTTP body.")))

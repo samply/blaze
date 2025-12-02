@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
 library() {
 cat <<END
@@ -117,38 +117,38 @@ fetch_patients() {
   curl -s "$1/Patient?_list=$2&_count=200"
 }
 
-BASE="http://localhost:8080/fhir"
-NAME=$1
-EXPECTED_COUNT=$2
+base="http://localhost:8080/fhir"
+name=$1
+expected_count=$2
 
-DATA=$(base64 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$NAME.cql" | tr -d '\n')
-LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
-MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
+data=$(base64 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$name.cql" | tr -d '\n')
+library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
+measure_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-create_library "$LIBRARY_URI" "$DATA" | create "$BASE/Library" > /dev/null
+create_library "$library_uri" "$data" | create "$base/Library" > /dev/null
 
-MEASURE_ID=$(create_measure "$MEASURE_URI" "$LIBRARY_URI" | create "$BASE/Measure" | jq -r .id)
-BUNDLE=$(evaluate_measure "$BASE" "$MEASURE_ID")
-COUNT=$(echo "$BUNDLE" | jq -r ".entry[0].resource.group[0].population[0].count")
+measure_id=$(create_measure "$measure_uri" "$library_uri" | create "$base/Measure" | jq -r .id)
+bundle=$(evaluate_measure "$base" "$measure_id")
+count=$(echo "$bundle" | jq -r ".entry[0].resource.group[0].population[0].count")
 
-if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "✅ count ($COUNT) equals the expected count"
+if [ "$count" = "$expected_count" ]; then
+  echo "✅ count ($count) equals the expected count"
 else
-  echo "🆘 count ($COUNT) != $EXPECTED_COUNT"
+  echo "🆘 count ($count) != $expected_count"
   echo "Report:"
-  echo "$BUNDLE" | jq .
+  echo "$bundle" | jq .
   exit 1
 fi
 
-LIST_ID=$(echo "$BUNDLE" | jq -r '.entry[0].resource.group[0].population[0].subjectResults.reference | split("/")[1]')
-PATIENT_BUNDLE=$(fetch_patients "$BASE" "$LIST_ID")
-ID_COUNT=$(echo "$PATIENT_BUNDLE" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs)
+list_id=$(echo "$bundle" | jq -r '.entry[0].resource.group[0].population[0].subjectResults.reference | split("/")[1]')
+patient_bundle=$(fetch_patients "$base" "$list_id")
+id_count=$(echo "$patient_bundle" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs)
 
-if [ "$ID_COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "✅ downloaded patient count ($ID_COUNT) equals the expected count"
+if [ "$id_count" = "$expected_count" ]; then
+  echo "✅ downloaded patient count ($id_count) equals the expected count"
 else
-  echo "🆘 downloaded patient count ($ID_COUNT) != $EXPECTED_COUNT"
+  echo "🆘 downloaded patient count ($id_count) != $expected_count"
   echo "Patient bundle:"
-  echo "$PATIENT_BUNDLE" | jq .
+  echo "$patient_bundle" | jq .
   exit 1
 fi

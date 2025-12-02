@@ -23,9 +23,12 @@
 (defn- clauses [url version]
   (cond-> [["url" url]] version (conj ["version" version])))
 
+(defn- code-system-query [db url version]
+  (d/type-query db "CodeSystem" (clauses url version)))
+
 (defn- code-system-not-required-content-msg [{:keys [url content]} required-content]
   (format "Can't use the code system `%s` because it's content is not one of %s. It's content is `%s`."
-          url (str/join ", " required-content) (type/value content)))
+          (type/value url) (str/join ", " required-content) (type/value content)))
 
 (defn- code-system-not-required-content-anom [code-system required-content]
   (ba/conflict (code-system-not-required-content-msg code-system required-content)))
@@ -44,7 +47,7 @@
   [{:keys [db] ::cs/keys [required-content graph-cache]
     :or {required-content #{"complete" "fragment"}}}
    url & [version]]
-  (do-sync [code-systems (d/pull-many db (d/type-query db "CodeSystem" (clauses url version)))]
+  (do-sync [code-systems (d/pull-many db (vec (code-system-query db url version)))]
     (if-let [{:keys [content] :as code-system} (first (fu/sort-by-priority code-systems))]
       (if (required-content (type/value content))
         (assoc code-system :default/graph (get-graph graph-cache code-system))
@@ -60,7 +63,7 @@
    (fn [{:keys [code value]}]
      (condp = (type/value code)
        "status" (when (= "retired" (type/value value)) true)
-       "inactive" (when-some [value (type/value value)] value)
+       "inactive" (type/value value)
        nil))
    properties))
 
@@ -73,7 +76,7 @@
 
 (defn- definition-property [definition]
   {:fhir/type :fhir.ValueSet.expansion.contains/property
-   :code #fhir/code"definition"
+   :code #fhir/code "definition"
    :value definition})
 
 (defn- create-contains

@@ -155,9 +155,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `Patient/145633` was not found."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-found"
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/145633` was not found."))))
 
   (testing "Patient deleted"
     (with-handler [handler]
@@ -172,9 +172,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"deleted"
-          [:issue 0 :diagnostics] := "Resource `Patient/145711` was deleted."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "deleted"
+          [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/145711` was deleted."))))
 
   (testing "GraphDefinition not-found"
     (with-handler [handler]
@@ -188,23 +188,23 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "The graph definition `151647` was not found."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-found"
+          [:issue 0 :diagnostics] := #fhir/string "The graph definition `151647` was not found."))))
 
   (testing "only returning the patient itself"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
+               [(g-tu/extension-start :value #fhir/id "patient")
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])]
-               :url #fhir/uri"151647"
-               :name #fhir/string"patient-only"
-               :status #fhir/code"active"
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])]
+               :url #fhir/uri "151647"
+               :name #fhir/string "patient-only"
+               :status #fhir/code "active"
                :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -220,7 +220,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 1"
           (is (= #fhir/unsignedInt 1 (:total body))))
@@ -230,7 +230,7 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the entry has the right resource"
           (given (:resource first-entry)
@@ -240,34 +240,34 @@
         (testing "the entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (testing "returning the patient and one observation"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "144115"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
+               [(g-tu/extension-start :value #fhir/id "patient")
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Observation"}])]
-               :url #fhir/uri"144200"
-               :name #fhir/string"patient-observation"
-               :status #fhir/code"active"
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "observation"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Observation"}])]
+               :url #fhir/uri "144200"
+               :name #fhir/string "patient-observation"
+               :status #fhir/code "active"
                :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
                :link
                [{:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"observation")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}]}]]]
+                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
+                  (g-tu/extension-link-target-id :value #fhir/id "observation")
+                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}]}]]]
 
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
             @(handler {:path-params {:id "145711"}
@@ -282,7 +282,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))
@@ -292,11 +292,11 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/144115")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
@@ -311,53 +311,53 @@
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (testing "returning the patient with one observation and one encounter"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "134129"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string "Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
+               [(g-tu/extension-start :value #fhir/id "patient")
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Observation"}])
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "observation"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Observation"}])
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Encounter"}])]
-               :url #fhir/uri"144200"
-               :name #fhir/string"patient-observation-encounter"
-               :status #fhir/code"active"
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "encounter"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Encounter"}])]
+               :url #fhir/uri "144200"
+               :name #fhir/string "patient-observation-encounter"
+               :status #fhir/code "active"
                :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
                :link
                [{:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"observation")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}
+                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
+                  (g-tu/extension-link-target-id :value #fhir/id "observation")
+                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}
                 {:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"observation")
-                  (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}]}]]]
+                 [(g-tu/extension-link-source-id :value #fhir/id "observation")
+                  (g-tu/extension-link-target-id :value #fhir/id "encounter")]
+                 :path #fhir/string "encounter"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -373,7 +373,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 3"
           (is (= #fhir/unsignedInt 3 (:total body))))
@@ -383,15 +383,15 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/134129")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Encounter/134144")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
@@ -411,61 +411,61 @@
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (testing "returning the patient with two observations and only one encounter"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "134129"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string "Encounter/134144"}}]
         [:put {:fhir/type :fhir/Observation :id "184545"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string "Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
-               :subject #fhir/Reference{:reference "Patient/145711"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
+               [(g-tu/extension-start :value #fhir/id "patient")
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Observation"}])
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "observation"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Observation"}])
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Encounter"}])]
-               :url #fhir/uri"144200"
-               :name #fhir/string"patient-observation-encounter"
-               :status #fhir/code"active"
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "encounter"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Encounter"}])]
+               :url #fhir/uri "144200"
+               :name #fhir/string "patient-observation-encounter"
+               :status #fhir/code "active"
                :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
                :link
                [{:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"observation")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}
+                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
+                  (g-tu/extension-link-target-id :value #fhir/id "observation")
+                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}
                 {:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"observation")
-                  (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}]}]]]
+                 [(g-tu/extension-link-source-id :value #fhir/id "observation")
+                  (g-tu/extension-link-target-id :value #fhir/id "encounter")]
+                 :path #fhir/string "encounter"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry fourth-entry] :entry
@@ -482,7 +482,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 4"
           (is (= #fhir/unsignedInt 4 (:total body))))
@@ -492,19 +492,19 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/134129")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Encounter/134144")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the fourth entry has the right fullUrl"
           (is (= (str base-url context-path "/Observation/184545")
-                 (:fullUrl fourth-entry))))
+                 (-> fourth-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
@@ -529,69 +529,69 @@
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the fourth entry has the right search mode"
           (given (:search fourth-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match")))))
+            :mode := #fhir/code "match")))))
 
   (testing "circle between condition and encounter is not a problem"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Condition :id "191241"
-               :subject #fhir/Reference{:reference "Patient/145711"}
-               :encounter #fhir/Reference{:reference "Encounter/134144"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}
+               :encounter #fhir/Reference{:reference #fhir/string "Encounter/134144"}}]
         [:put {:fhir/type :fhir/Encounter :id "134144"
-               :subject #fhir/Reference{:reference "Patient/145711"}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
-                 :condition #fhir/Reference{:reference "Condition/191241"}}]}]
+                 :condition #fhir/Reference{:reference #fhir/string "Condition/191241"}}]}]
         [:put {:fhir/type :fhir/GraphDefinition :id "0"
                :extension
-               [(g-tu/extension-start :value #fhir/id"patient")
+               [(g-tu/extension-start :value #fhir/id "patient")
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Patient"}])
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"condition"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Condition"}])
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "condition"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Condition"}])
                 (g-tu/extension-node
                  :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id"encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code"Encounter"}])]
-               :url #fhir/uri"144200"
-               :name #fhir/string"patient-condition-encounter"
-               :status #fhir/code"active"
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "encounter"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Encounter"}])]
+               :url #fhir/uri "144200"
+               :name #fhir/string "patient-condition-encounter"
+               :status #fhir/code "active"
                :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
                :link
                [{:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"patient")
-                  (g-tu/extension-link-target-id :value #fhir/id"condition")
-                  (g-tu/extension-link-params :value #fhir/string"patient={ref}")]}
+                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
+                  (g-tu/extension-link-target-id :value #fhir/id "condition")
+                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}
                 {:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"condition")
-                  (g-tu/extension-link-target-id :value #fhir/id"encounter")]
-                 :path "encounter"}
+                 [(g-tu/extension-link-source-id :value #fhir/id "condition")
+                  (g-tu/extension-link-target-id :value #fhir/id "encounter")]
+                 :path #fhir/string "encounter"}
                 {:fhir/type :fhir.GraphDefinition/link
                  :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id"encounter")
-                  (g-tu/extension-link-target-id :value #fhir/id"condition")]
-                 :path "diagnosis.condition"}]}]]]
+                 [(g-tu/extension-link-source-id :value #fhir/id "encounter")
+                  (g-tu/extension-link-target-id :value #fhir/id "condition")]
+                 :path #fhir/string "diagnosis.condition"}]}]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -607,7 +607,7 @@
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
+          (is (= #fhir/code "searchset" (:type body))))
 
         (testing "the total count is 3"
           (is (= #fhir/unsignedInt 3 (:total body))))
@@ -617,15 +617,15 @@
 
         (testing "the first entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/145711")
-                 (:fullUrl first-entry))))
+                 (-> first-entry :fullUrl :value))))
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Condition/191241")
-                 (:fullUrl second-entry))))
+                 (-> second-entry :fullUrl :value))))
 
         (testing "the third entry has the right fullUrl"
           (is (= (str base-url context-path "/Encounter/134144")
-                 (:fullUrl third-entry))))
+                 (-> third-entry :fullUrl :value))))
 
         (testing "the first entry has the right resource"
           (given (:resource first-entry)
@@ -645,14 +645,14 @@
         (testing "the first entry has the right search mode"
           (given (:search first-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the second entry has the right search mode"
           (given (:search second-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))
+            :mode := #fhir/code "match"))
 
         (testing "the third entry has the right search mode"
           (given (:search third-entry)
             fhir-spec/fhir-type := :fhir.Bundle.entry/search
-            :mode := #fhir/code"match"))))))
+            :mode := #fhir/code "match"))))))

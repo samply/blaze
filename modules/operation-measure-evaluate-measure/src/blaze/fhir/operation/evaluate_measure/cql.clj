@@ -8,7 +8,6 @@
    [blaze.elm.expression :as expr]
    [blaze.elm.resource :as cr]
    [blaze.elm.util :as elm-util]
-   [blaze.fhir.spec :as fhir-spec]
    [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
@@ -249,9 +248,9 @@
         (function-def context name)
         (missing-expression-anom name))))
 
-(defn- incorrect-stratum-msg [{:keys [id] :as resource} expression-name]
+(defn- incorrect-stratum-msg [{:fhir/keys [type] :keys [id]} expression-name]
   (format "CQL expression `%s` returned more than one value for resource `%s/%s`."
-          expression-name (-> resource fhir-spec/fhir-type name) id))
+          expression-name (name type) id))
 
 (defn- evaluate-stratum-expression [context subject name expression]
   (let [result (evaluate-expression-1* context subject name expression)]
@@ -262,7 +261,7 @@
 (defn stratum-expression-evaluator* [{:keys [name expression function]}]
   (if function
     (fn [context {:keys [subject-handle population-handle]}]
-      (evaluate-stratum-expression context subject-handle name (function [population-handle])))
+      (evaluate-stratum-expression context subject-handle name (function population-handle)))
     (fn [context {:keys [subject-handle]}]
       (evaluate-stratum-expression context subject-handle name expression))))
 

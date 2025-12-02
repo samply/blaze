@@ -31,8 +31,11 @@
 (defn- handles [{{:keys [page-size]} :params :as context}]
   (into [] (take (inc page-size)) (handles* context)))
 
-(defn- entries [{:blaze/keys [db] :keys [pull-variant] :as context}]
-  (-> (d/pull-many db (handles context) pull-variant)
+(defn- pull-opts [{:keys [pull-variant] {:keys [page-type]} :params}]
+  (cond-> {:variant pull-variant} page-type (assoc :skip-cache-insertion? true)))
+
+(defn- entries [{:blaze/keys [db] :as context}]
+  (-> (d/pull-many db (handles context) (pull-opts context))
       (ac/exceptionally
        #(assoc %
                ::anom/category ::anom/fault
@@ -63,8 +66,8 @@
   (cond->
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
-    :total (type/->UnsignedInt (d/system-total db))
+    :type #fhir/code "searchset"
+    :total (type/unsignedInt (d/system-total db))
     :entry (if (< page-size (count entries))
              (pop entries)
              entries)}
@@ -86,8 +89,8 @@
   (ac/completed-future
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
-    :total (type/->UnsignedInt (d/system-total db))
+    :type #fhir/code "searchset"
+    :total (type/unsignedInt (d/system-total db))
     :link [(self-link context)]}))
 
 (defn- search [{:keys [params] :as context}]

@@ -16,7 +16,6 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.util-spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.fhir.spec.type.system.spec]
    [blaze.test-util :refer [satisfies-prop]]
@@ -151,9 +150,9 @@
   (testing "Retrieve queries"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code"female"}]
+               :gender #fhir/code "female"}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :gender #fhir/code"male"}]]]
+               :gender #fhir/code "male"}]]]
 
       (let [db (d/db node)
             retrieve #elm/retrieve{:type "Patient"}
@@ -173,9 +172,9 @@
             (testing "eval"
               (given (core/-eval expr {:db db} nil nil)
                 count := 2
-                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
-                [1 fhir-spec/fhir-type] := :fhir/Patient
+                [1 :fhir/type] := :fhir/Patient
                 [1 :id] := "1"))
 
             (testing "form"
@@ -192,7 +191,7 @@
             (testing "eval"
               (given (core/-eval expr {:db db} nil nil)
                 count := 1
-                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"))
 
             (testing "form"
@@ -218,7 +217,7 @@
               (testing "eval"
                 (given (core/-eval expr {:db db} nil nil)
                   count := 1
-                  [0 fhir-spec/fhir-type] := :fhir/Patient
+                  [0 :fhir/type] := :fhir/Patient
                   [0 :id] := "0"))
 
               (testing "form"
@@ -261,8 +260,8 @@
             (testing "eval"
               (given (core/-eval expr {:db db} nil nil)
                 count := 2
-                [0] := #fhir/code"female"
-                [1] := #fhir/code"male"))
+                [0] := #fhir/code "female"
+                [1] := #fhir/code "male"))
 
             (testing "form"
               (has-form expr
@@ -285,8 +284,8 @@
               (testing "eval"
                 (given (core/-eval expr {:db db} nil nil)
                   count := 2
-                  [0] := #fhir/code"female"
-                  [1] := #fhir/code"male"))
+                  [0] := #fhir/code "female"
+                  [1] := #fhir/code "male"))
 
               (testing "form"
                 (has-form expr
@@ -306,7 +305,7 @@
             (testing "eval"
               (given (core/-eval expr {:db db} nil nil)
                 count := 1
-                [0] := #fhir/code"female"))
+                [0] := #fhir/code "female"))
 
             (testing "form"
               (has-form expr
@@ -335,7 +334,7 @@
               (testing "eval"
                 (given (core/-eval expr {:db db} nil nil)
                   count := 1
-                  [0] := #fhir/code"female"))
+                  [0] := #fhir/code "female"))
 
               (testing "form"
                 (has-form expr
@@ -352,15 +351,15 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Specimen :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/0"}
-               :specimen #fhir/Reference{:reference "Specimen/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}
+               :specimen #fhir/Reference{:reference #fhir/string "Specimen/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [db (d/db node)
             patient (ctu/resource db "Patient" "0")]
@@ -378,7 +377,7 @@
             (testing "eval"
               (given (core/-eval expr {:db db} patient nil)
                 count := 1
-                [0 fhir-spec/fhir-type] := :fhir/Observation
+                [0 :fhir/type] := :fhir/Observation
                 [0 :id] := "0"))
 
             (testing "form"
@@ -403,7 +402,7 @@
               (testing "eval"
                 (given (core/-eval expr {:db db} patient nil)
                   count := 1
-                  [0 fhir-spec/fhir-type] := :fhir/Observation
+                  [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "0"))
 
               (testing "form"
@@ -586,7 +585,7 @@
               (testing "eval"
                 (given (core/-eval expr {:db db} patient nil)
                   count := 1
-                  [0 fhir-spec/fhir-type] := :fhir/Observation
+                  [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "0"))
 
               (testing "form"
@@ -619,7 +618,7 @@
                 (testing "eval"
                   (given (core/-eval expr {:db db} patient nil)
                     count := 1
-                    [0 fhir-spec/fhir-type] := :fhir/Observation
+                    [0 :fhir/type] := :fhir/Observation
                     [0 :id] := "0"))
 
                 (testing "form"
@@ -648,12 +647,12 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/0"}}]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [elm {:type "Query"
                  :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
@@ -670,7 +669,7 @@
         (testing "eval"
           (given (core/-eval expr {:db db} patient nil)
             count := 1
-            [0 fhir-spec/fhir-type] := :fhir/Observation
+            [0 :fhir/type] := :fhir/Observation
             [0 :id] := "1"))
 
         (testing "form"
@@ -693,11 +692,11 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2025-05-15"}}]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime "2025-05-15"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime"2025-05-16"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime "2025-05-16"}}]]]
 
         (let [elm {:type "Query"
                    :source
@@ -715,29 +714,29 @@
                         :resultTypeName "{http://hl7.org/fhir}Period"}
                        :resultTypeName "{http://hl7.org/fhir}dateTime"}
                       :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"
-                      :direction "asc"}]}}]
+                      :direction "asc"}]}}
+              expr (c/compile {:node node :eval-context "Patient"} elm)
+              db (d/db node)
+              patient (ctu/resource db "Patient" "0")]
 
-          (let [expr (c/compile {:node node :eval-context "Patient"} elm)
-                db (d/db node)
-                patient (ctu/resource db "Patient" "0")]
-            (testing "eval"
-              (is (= ["0" "1"] (map :id (core/-eval expr {:db db} patient nil)))))))))))
+          (testing "eval"
+            (is (= ["0" "1"] (map :id (core/-eval expr {:db db} patient nil))))))))))
 
 (deftest compile-query-medication-reference-test
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string "Medication/1"}
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "0"
-             :medication #fhir/Reference{:reference "Medication/0"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
       [:put {:fhir/type :fhir/MedicationStatement :id "1"
-             :medication #fhir/Reference{:reference "Medication/1"}
-             :subject #fhir/Reference{:reference "Patient/0"}}]
+             :medication #fhir/Reference{:reference #fhir/string "Medication/1"}
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
       [:put {:fhir/type :fhir/Medication :id "0"}]
       [:put {:fhir/type :fhir/Medication :id "1"}]]]
 

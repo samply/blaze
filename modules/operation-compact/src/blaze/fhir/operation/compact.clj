@@ -22,7 +22,7 @@
     (ba/incorrect (format "Expected Parameters resource but was `%s` resource." (name type)))))
 
 (defn- get-param [{:keys [parameter]} name]
-  (or (some #(when (= name (:name %)) (-> % :value type/value)) parameter)
+  (or (some #(when (= name (-> % :name type/value)) (-> % :value type/value)) parameter)
       (ba/incorrect (format "Missing `%s` parameter." name))))
 
 (defn- async-status-url

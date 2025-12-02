@@ -52,7 +52,11 @@
 (defn instance [[type elements]]
   {:type "Instance"
    :classType type
-   :element (reduce #(conj %1 {:name (key %2) :value (val %2)}) [] elements)})
+   :element
+   (mapv
+    (fn [[name value]]
+      {:type "InstanceElement" :name name :value value})
+    elements)})
 
 ;; 2.3. Property
 (defn source-property [[source path]]
@@ -114,6 +118,10 @@
                   :value denominator-value}
                   denominator-unit
                   (assoc :unit denominator-unit))})
+
+;; 3.12. ValueSetRef
+(defn value-set-ref [name]
+  {:type "ValueSetRef" :name name})
 
 ;; 7. Parameters
 
@@ -905,3 +913,14 @@
     :operand [x y]}
     precision
     (assoc :precision precision)))
+
+;; 23.8. InValueSet
+(defn in-value-set [[code value-set]]
+  {:type "InValueSet"
+   :code code
+   :valueset value-set})
+
+(defn in-value-set-expression [[code value-set]]
+  {:type "InValueSet"
+   :code code
+   :valuesetExpression value-set})

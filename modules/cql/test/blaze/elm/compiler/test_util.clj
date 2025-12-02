@@ -78,7 +78,8 @@
       {:name "12:54:00"}
       {:name "2020-01-02T03:04:05.006Z"}
       {:name "[1]"}
-      {:name "[1 2]"}]}}})
+      {:name "[1 2]"}
+      {:name "coding"}]}}})
 
 (def dynamic-eval-ctx
   {:parameters
@@ -91,7 +92,8 @@
     "2022" #system/date"2022"
     "12:54:00" #system/time"12:54:00"
     "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
-    "[1]" [1] "[1 2]" [1 2]}
+    "[1]" [1] "[1 2]" [1 2]
+    "coding" #fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}}
    :now now})
 
 (defn dynamic-compile [elm]
@@ -608,8 +610,8 @@
                                                        #elm/parameter-ref "z"])))))))
 
 (defmacro testing-binary-resolve-refs
-  [elm-constructor]
-  (let [form-name (symbol (name elm-constructor))]
+  [elm-constructor & [form-name]]
+  (let [form-name (or (some-> form-name symbol) (symbol (name elm-constructor)))]
     `(testing "resolve expression references"
        (let [elm# (~elm-constructor
                    [#elm/expression-ref "x"
@@ -647,8 +649,8 @@
              expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b"})]
          (has-form expr# '(~form-name "a" "b"))))))
 
-(defmacro testing-binary-optimize [elm-constructor]
-  (let [form-name (symbol (name elm-constructor))]
+(defmacro testing-binary-optimize [elm-constructor & [form-name]]
+  (let [form-name (or (some-> form-name symbol) (symbol (name elm-constructor)))]
     `(testing "optimize"
        (let [elm# (~elm-constructor [#ctu/optimizeable "a"
                                      #ctu/optimizeable "b"])

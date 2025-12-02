@@ -50,6 +50,13 @@
     (let [search-param (phonetic-param search-param-registry)]
       (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
 
+(deftest ordered-index-handles-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (let [search-param (phonetic-param search-param-registry)]
+      (is (false? (p/-supports-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil))))))
+
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (phonetic-param search-param-registry)]
@@ -76,7 +83,7 @@
       (testing "unmappable char in family is not a problem"
         (let [patient {:fhir/type :fhir/Patient
                        :id "id-164114"
-                       :name [#fhir/HumanName{:family "Õ"}]}
+                       :name [#fhir/HumanName{:family #fhir/string "Õ"}]}
               hash (hash/generate patient)]
 
           (is (empty? (index-entries
@@ -85,7 +92,7 @@
 
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
-                     :name [#fhir/HumanName{:family "family-102508"}]}
+                     :name [#fhir/HumanName{:family #fhir/string "family-102508"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
@@ -111,8 +118,8 @@
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
                      :address
-                     [#fhir/Address{:line ["line-120252"]
-                                    :city "city-105431"}]}
+                     [#fhir/Address{:line [#fhir/string "line-120252"]
+                                    :city #fhir/string "city-105431"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
@@ -156,7 +163,7 @@
     (testing "ActivityDefinition description"
       (let [resource {:fhir/type :fhir/ActivityDefinition
                       :id "id-121344"
-                      :description #fhir/markdown"desc-121328"}
+                      :description #fhir/markdown "desc-121328"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
@@ -191,3 +198,17 @@
 
     (testing "skip warning"
       (is (nil? (sps/index-entries "" nil))))))
+
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "unknown modifier"
+      (given (search-param/validate-modifier
+              (phonetic-param search-param-registry) "unknown")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unknown modifier `unknown` on search parameter `phonetic`."))
+
+    (testing "modifier not implemented"
+      (given (search-param/validate-modifier
+              (phonetic-param search-param-registry) "text")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported modifier `text` on search parameter `phonetic`."))))

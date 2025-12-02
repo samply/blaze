@@ -210,7 +210,7 @@
 ;; 3. Clinical Values
 
 (s/def :elm/code-system-ref
-  (s/keys :opt-un [:elm/name :elm/libraryName]))
+  (s/keys :req-un [:elm/name] :opt-un [:elm/libraryName]))
 
 ;; 3.1. Code
 (s/def :elm.code/system
@@ -239,7 +239,7 @@
 
 ;; 3.3. CodeRef
 (s/def :elm/code-ref
-  (s/keys :opt-un [:elm/name :elm/libraryName]))
+  (s/keys :req-un [:elm/name] :opt-un [:elm/libraryName]))
 
 (defmethod expression :elm.spec.type/code-ref [_]
   :elm/code-ref)
@@ -273,7 +273,7 @@
 
 ;; 3.8. ConceptRef
 (s/def :elm/concept-ref
-  (s/keys :opt-un [:elm/name :elm/libraryName]))
+  (s/keys :req-un [:elm/name] :opt-un [:elm/libraryName]))
 
 (defmethod expression :elm.spec.type/concept-ref [_]
   :elm/concept-ref)
@@ -364,6 +364,25 @@
 (defmethod expression :elm.spec.type/ratio [_]
   :elm/ratio)
 
+;; 3.11. ValueSetDef
+(s/def :elm.value-set-def/codeSystem
+  (s/coll-of :elm/code-system-ref))
+
+(s/def :elm/value-set-def
+  (s/keys :req-un [:elm/name :elm/id]
+          :opt-un [:elm/version :elm.value-set-def/codeSystem]))
+
+;; 3.12. ValueSetRef
+(s/def :elm.value-set-ref/preserve
+  boolean?)
+
+(s/def :elm/value-set-ref
+  (s/keys :req-un [:elm/name]
+          :opt-un [:elm/libraryName :elm.value-set-ref/preserve]))
+
+(defmethod expression :elm.spec.type/value-set-ref [_]
+  :elm/value-set-ref)
+
 ;; 4. Type Specifiers
 
 ;; 4.1. TypeSpecifier
@@ -394,7 +413,8 @@
   :elm/type-specifier)
 
 (s/def :elm/tuple-element-definition
-  (s/keys :req-un [:elm/name] :opt-un [:elm.tuple-element-definition/type :elm/elementType]))
+  (s/keys :req-un [:elm/name]
+          :opt-un [:elm.tuple-element-definition/type :elm/elementType]))
 
 (s/def :elm.tuple-type-specifier/element
   (s/coll-of :elm/tuple-element-definition))
@@ -476,7 +496,7 @@
 
 ;; 7.2. ParameterRef
 (defmethod expression :elm.spec.type/parameter-ref [_]
-  (s/keys :opt-un [:elm/name :elm/libraryName]))
+  (s/keys :req-un [:elm/name] :opt-un [:elm/libraryName]))
 
 ;; 8. Expressions
 
@@ -1478,3 +1498,18 @@
 (defmethod expression :elm.spec.type/calculate-age-at [_]
   (s/keys :req-un [:elm.binary-expression/operand]
           :opt-un [:elm.date/precision]))
+
+;; 23.8. InValueSet
+(s/def :elm.in-value-set/code
+  :elm/expression)
+
+(s/def :elm.in-value-set/valueset
+  :elm/value-set-ref)
+
+(s/def :elm.in-value-set/valuesetExpression
+  :elm/expression)
+
+(defmethod expression :elm.spec.type/in-value-set [_]
+  (s/keys :req-un [:elm.in-value-set/code]
+          :opt-un [:elm.in-value-set/valueset
+                   :elm.in-value-set/valuesetExpression]))

@@ -42,7 +42,7 @@ The name of a file with additional CA certificates needed to access especially t
 
 ## Backend
 
-Blaze backend is configured solely through environment variables. There is a default for every variable. So all variables are optional. 
+Blaze backend is configured solely through environment variables. There is a default for every variable. So all variables are optional.
 
 Some of the environment variables depend on the storage variant chosen. The storage variant can be set through the `STORAGE` env var. The default is `standalone,` with `in-memory` and `distributed` as the other options. The following sections list the relevant environment variables by storage variant.
 
@@ -52,7 +52,7 @@ The three database directories must not exist on the first start of Blaze and wi
 
 #### `INDEX_DB_DIR` <Badge type="warning" text="Since 0.8"/>
 
-The directory were the index database files are stored.                                                                                          |
+The directory were the index database files are stored. |
 
 **Default:** `/app/data/index`
 
@@ -138,7 +138,7 @@ The number of resources which are indexed in a batch. (Deprecated)
 
 ### Distributed
 
-The distributed storage variant only uses the index database locally. 
+The distributed storage variant only uses the index database locally.
 
 #### `INDEX_DB_DIR` <Badge type="warning" text="Since 0.8"/>
 
@@ -268,7 +268,7 @@ Timeout in milliseconds for all requests to the Cassandra cluster.
 
 **Default:** 2000
 
-More information about distributed deployment are available [here](distributed-backend.md). 
+More information about distributed deployment are available [here](distributed-backend.md).
 
 ### Common Environment Variables
 
@@ -335,7 +335,7 @@ one of trace, debug, info, warn or error
 #### `JAVA_TOOL_OPTIONS`
 
 | Name                      | Default | Since | Description                                                  |
-|:--------------------------|:--------|:------|:-------------------------------------------------------------|
+| :------------------------ | :------ | :---- | :----------------------------------------------------------- |
 | -&NoBreak;Xmx4g           | -       |       | The maximum amount of heap memory.                           |
 | -&NoBreak;Dhttp.proxyHost | -       | v0.11 | The hostname of the proxy server for outbound HTTP requests. |
 | -&NoBreak;Dhttp.proxyPort | 80      | v0.11 | The port of the proxy server.                                |
@@ -348,7 +348,7 @@ The number threads used for [$evaluate-measure](../api/operation/measure-evaluat
 
 #### `FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT` <Badge type="warning" text="Since 0.19"/>
 
-Timeout in milliseconds for synchronous [$evaluate-measure](../api/operation/measure-evaluate-measure.md) executions. It's recommended to set this as short as possible in order to prevent bad designed CQL queries to impede other CQL queries and the overall performance of the server. 
+Timeout in milliseconds for synchronous [$evaluate-measure](../api/operation/measure-evaluate-measure.md) executions. It's recommended to set this as short as possible in order to prevent bad designed CQL queries to impede other CQL queries and the overall performance of the server.
 
 **Default:** 3600000 (1h)
 
@@ -394,10 +394,10 @@ services:
     environment:
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
     ports:
-    - "8080:8080"
+      - "8080:8080"
     volumes:
-    - "custom-search-parameters.json:/app/custom-search-parameters.json:ro"
-    - "blaze-data:/app/data"
+      - "custom-search-parameters.json:/app/custom-search-parameters.json:ro"
+      - "blaze-data:/app/data"
 volumes:
   blaze-data:
 ```
@@ -405,6 +405,8 @@ volumes:
 #### `ENABLE_ADMIN_API` <Badge type="warning" text="Since 0.26"/>
 
 Set to `true` if the optional Admin API should be enabled. Needed by the frontend.
+
+**Default:** `false`
 
 #### `CQL_EXPR_CACHE_SIZE` <Badge type="warning" text="Since 0.28"/>
 
@@ -432,9 +434,13 @@ Allow deleting multiple resources using [Conditional Delete](../api/interaction/
 
 Enable the [Delete History](../api/interaction/delete-history.md) interaction.
 
+**Default:** `false`
+
 #### `ENABLE_OPERATION_PATIENT_PURGE` <Badge type="warning" text="Since 0.30.1"/>
 
 Enable the [Operation \$purge on Patient](../api/operation/patient-purge.md).
+
+**Default:** `false`
 
 #### `PAGE_STORE_EXPIRE` <Badge type="warning" text="Since 1.0.2"/>
 
@@ -444,7 +450,9 @@ The duration after page store entries expire. Lower that value if the size of th
 
 #### `ENABLE_TERMINOLOGY_SERVICE` <Badge type="warning" text="Since 0.31"/>
 
-Enable the [Terminology Service](../terminology-service.md).
+Enable the [Terminology Service](../terminology-service.md). This enables terminology operations in [CQL Queries](../cql-queries.md), but it's recommended to separate the terminology server from a data server were CQL queries are run. Please use the env var `EXTERN_TERMINOLOGY_SERVICE_URL` to connect to an external terminology service for data servers.
+
+**Default:** `false`
 
 #### `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` <Badge type="warning" text="Since 0.32"/>
 
@@ -456,13 +464,34 @@ Number of concepts the graph cache should hold.
 
 Enable LOINC for the Terminology Service by using the value `true`. LOINC doesn't need release files.
 
+**Default:** `false`
+
 #### `ENABLE_TERMINOLOGY_SNOMED_CT` <Badge type="warning" text="Since 0.31"/>
 
 Enable SNOMED CT for the Terminology Service by using the value `true`.
 
+**Default:** `false`
+
 #### `SNOMED_CT_RELEASE_PATH` <Badge type="warning" text="Since 0.31"/>
 
 Path of an official SNOMED CT release.
+
+#### `EXTERN_TERMINOLOGY_SERVICE_URL` <Badge type="warning" text="1.3.0"/>
+
+Terminology service URL to make terminology operations available in [CQL Queries](../cql-queries.md).
+
+#### `EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE` <Badge type="warning" text="1.3.0"/>
+
+A PKCS #12 trust store containing CA certificates needed for the external terminology service. The PKCS #12 trust store has to be generated by the Java keytool. OpenSSL will not work.
+
+```sh
+keytool -importcert -storetype PKCS12 -keystore "trust-store.p12" \
+  -storepass "..." -alias ca -file "cert.pem" -noprompt
+```
+
+#### `EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE_PASS` <Badge type="warning" text="1.3.0"/>
+
+The password for the PKCS #12 trust store.
 
 #### `ENABLE_VALIDATION_ON_INGEST` <Badge type="warning" text="Since unreleased"/>
 

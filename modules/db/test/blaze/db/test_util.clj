@@ -36,12 +36,16 @@
    {:tx-log (ig/ref ::tx-log/local)
     :tx-cache (ig/ref :blaze.db/tx-cache)
     :indexer-executor (ig/ref ::node/indexer-executor)
+    :resource-cache (ig/ref :blaze.db/resource-cache)
     :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-indexer (ig/ref ::node/resource-indexer)
     :search-param-registry (:blaze.db/search-param-registry root-system)
     :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
+
+   :blaze.db/resource-cache
+   {:resource-store (ig/ref ::rs/kv)}
 
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)

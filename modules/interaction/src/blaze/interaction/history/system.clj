@@ -6,7 +6,6 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.interaction.search.util :as search-util]
@@ -30,19 +29,16 @@
   (->> (history-util/page-nav-url
         context query-params
         (:t resource-handle)
-        (-> resource-handle fhir-spec/fhir-type name)
+        (-> resource-handle :fhir/type name)
         (:id resource-handle))
        (link "next")))
 
 (defn- build-response
-  [{:blaze/keys [db] :as context} query-params total version-handles since]
+  [{:blaze/keys [db] :as context} query-params page-t total handles]
   (let [page-size (fhir-util/page-size query-params)
-        page-xform (history-util/page-xform db page-size since)
-        paged-version-handles (into [] page-xform version-handles)
+        {:keys [handles next-handle]} (history-util/build-page page-size handles)
         next-link (partial next-link context query-params)]
-    ;; we need take here again because we take page-size + 1 above
-    (-> (d/pull-many db (into [] (take page-size) paged-version-handles)
-                     (fhir-util/summary query-params))
+    (-> (d/pull-many db handles (history-util/pull-opts query-params page-t))
         (ac/exceptionally
          #(assoc %
                  ::anom/category ::anom/fault
@@ -56,8 +52,8 @@
               :entry
               (mapv (partial history-util/build-entry context) paged-versions))
 
-              (< page-size (count paged-version-handles))
-              (update :link conj-vec (next-link (peek paged-version-handles))))))))))
+              next-handle
+              (update :link conj-vec (next-link next-handle)))))))))
 
 (defmethod m/pre-init-spec :blaze.interaction.history/system [_]
   (s/keys :req [::search-util/link]
@@ -71,8 +67,9 @@
     (let [page-t (history-util/page-t params)
           page-type (when page-t (fhir-util/page-type params))
           page-id (when page-type (fhir-util/page-id params))
-          since (history-util/since params)
-          total (d/total-num-of-system-changes db since)
+          since (fhir-util/since params)
+          db (cond-> db since (d/since since))
+          total (d/total-num-of-system-changes db)
           version-handles (d/system-history db page-t page-type page-id)
           context (assoc context
                          :blaze/base-url base-url
@@ -80,4 +77,4 @@
                          ::reitit/router router
                          ::reitit/match (match router :history)
                          :page-match #(reitit/match-by-name router :history-page {:page-id %}))]
-      (build-response context params total version-handles since))))
+      (build-response context params page-t total version-handles))))

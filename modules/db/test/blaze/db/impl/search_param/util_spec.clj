@@ -8,7 +8,8 @@
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv.spec]
    [blaze.db.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef u/separate-op
   :args (s/cat :value string?)
@@ -28,3 +29,11 @@
 (s/fdef u/canonical-parts
   :args (s/cat :canonical string?)
   :ret (s/tuple string? (s/coll-of string?)))
+
+(s/fdef u/unknown-modifier-anom
+  :args (s/cat :code string? :modifier string?)
+  :ret ::anom/anomaly)
+
+(s/fdef u/modifier-anom
+  :args (s/cat :known? ifn? :code string? :modifier string?)
+  :ret ::anom/anomaly)

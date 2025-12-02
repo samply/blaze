@@ -4,6 +4,7 @@
    [blaze.fhir.spec.resource :as res]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -20,11 +21,9 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private json-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}))
 
 (defn- parse-json
   ([source]
@@ -40,14 +39,12 @@
     `(given (parse-json (j/write-value-as-string ~type-or-data)) ~@more)))
 
 (def ^:private cbor-context
-  (:blaze.fhir/parsing-context
-   (ig/init
-    {:blaze.fhir/parsing-context
-     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
-      :fail-on-unknown-property false
-      :include-summary-only true
-      :use-regex false}
-     :blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo
+    :fail-on-unknown-property false
+    :include-summary-only true
+    :use-regex false}))
 
 (defn- parse-cbor
   ([type source]
@@ -105,19 +102,19 @@
     (testing "one name without array"
       (given-parse-json "Patient"
         {:name {:family "family-170804"}}
-        :name := [#fhir/HumanName{:family #fhir/string"family-170804"}]))
+        :name := [#fhir/HumanName{:family #fhir/string "family-170804"}]))
 
     (testing "one name"
       (given-parse-json "Patient"
         {:name [{:family "family-170804"}]}
-        :name := [#fhir/HumanName{:family #fhir/string"family-170804"}]))
+        :name := [#fhir/HumanName{:family #fhir/string "family-170804"}]))
 
     (testing "two names"
       (given-parse-json "Patient"
         {:name [{:family "family-170813"}
                 {:family "family-170825"}]}
-        :name := [#fhir/HumanName{:family #fhir/string"family-170813"}
-                  #fhir/HumanName{:family #fhir/string"family-170825"}]))
+        :name := [#fhir/HumanName{:family #fhir/string "family-170813"}
+                  #fhir/HumanName{:family #fhir/string "family-170825"}]))
 
     (testing "invalid primitive string"
       (given-parse-json "Patient"
@@ -168,7 +165,7 @@
                         {:extension
                          [#fhir/Extension
                            {:url "url-102118"
-                            :value #fhir/string"value-102132"}]
+                            :value #fhir/string "value-102132"}]
                          :value "female"}))
 
         (testing "one extension"
@@ -179,7 +176,7 @@
                         {:extension
                          [#fhir/Extension
                            {:url "url-102118"
-                            :value #fhir/string"value-102132"}]
+                            :value #fhir/string "value-102132"}]
                          :value "female"}))
 
         (testing "two extensions"
@@ -192,10 +189,10 @@
                         {:extension
                          [#fhir/Extension
                            {:url "url-102118"
-                            :value #fhir/string"value-102132"}
+                            :value #fhir/string "value-102132"}
                           #fhir/Extension
                            {:url "url-110205"
-                            :value #fhir/string"value-110211"}]
+                            :value #fhir/string "value-110211"}]
                          :value "female"}))
 
         (testing "unknown property"
@@ -261,7 +258,14 @@
   (testing "birthDate"
     (given-parse-json "Patient"
       {:birthDate "2025"}
-      :birthDate := #fhir/date"2025"))
+      :birthDate := #fhir/date "2025")
+
+    (testing "invalid date"
+      (given-parse-json "Patient"
+        {:birthDate "2025-13"}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `2025-13`. Expected type is `date`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate")))
 
   (testing "deceasedBoolean"
     (doseq [value [true false]]
@@ -272,12 +276,12 @@
   (testing "deceasedDateTime"
     (given-parse-json "Patient"
       {:deceasedDateTime "2025"}
-      :deceased := #fhir/dateTime"2025"))
+      :deceased := #fhir/dateTime "2025"))
 
   (testing "multipleBirthBoolean"
     (given-parse-json "Patient"
       {:multipleBirthBoolean false}
-      :multipleBirth := false)
+      :multipleBirth := #fhir/boolean false)
 
     (testing "extended properties after value"
       (given-parse-json "Patient"
@@ -288,14 +292,14 @@
   (testing "multipleBirthInteger"
     (given-parse-json "Patient"
       {:multipleBirthInteger 2}
-      :multipleBirth := 2))
+      :multipleBirth := #fhir/integer 2))
 
   (testing "contact"
     (given-parse-json "Patient"
       {:contact
        [{:gender "female"}]}
       [:contact count] := 1
-      [:contact 0 :gender] := #fhir/code"female")))
+      [:contact 0 :gender] := #fhir/code "female")))
 
 (deftest parse-json-observation-test
   (testing "unknown property"
@@ -314,18 +318,18 @@
         :gender "female"}}]}
     ::anom/message := nil
     :fhir/type := :fhir/Bundle
-    :type := #fhir/code"collection"
+    :type := #fhir/code "collection"
     [:entry count] := 1
     [:entry 0 :fhir/type] := :fhir.Bundle/entry
     [:entry 0 :resource :fhir/type] := :fhir/Patient
-    [:entry 0 :resource :gender] := #fhir/code"female"))
+    [:entry 0 :resource :gender] := #fhir/code "female"))
 
 (deftest parse-json-questionnaire-test
   (given-parse-json "Questionnaire"
     {:item {:linkId "id-130845"}}
     :fhir/type := :fhir/Questionnaire
     [:item count] := 1
-    [:item 0 :linkId] := #fhir/string"id-130845")
+    [:item 0 :linkId] := #fhir/string "id-130845")
 
   (testing "recursive item"
     (given-parse-json "Questionnaire"
@@ -333,7 +337,7 @@
       :fhir/type := :fhir/Questionnaire
       [:item count] := 1
       [:item 0 :item count] := 1
-      [:item 0 :item 0 :linkId] := #fhir/string"id-130845")))
+      [:item 0 :item 0 :linkId] := #fhir/string "id-130845")))
 
 (deftest parse-json-molecular-sequence-test
   (testing "multiple decimal values"
@@ -455,7 +459,7 @@
         {:url "url-204835"
          :valueCanonical "\n"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `canonical, regex [\\u0021-\\uFFFF]*`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `canonical, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "code"
@@ -464,15 +468,7 @@
         {:url "foo"
          :valueCode value}
         type/type := :fhir/Extension
-        :value := (type/code value)))
-
-    (testing "invalid"
-      (given-parse-json "Extension"
-        {:url "url-204835"
-         :valueCode "a  b"}
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `a  b`. Expected type is `code, regex [\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
-        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
+        :value := (type/code value))))
 
   (testing "date"
     (doseq [value ["2025" "2025-03" "2025-03-15"]]
@@ -648,20 +644,12 @@
         :value := (type/integer value))))
 
   (testing "markdown"
-    (doseq [value ["foo" "bar"]]
+    (doseq [value ["foo" "bar" "𝗔𝗗𝗗𝗜𝗧𝗜𝗢𝗡𝗔𝗟 𝗨𝗦𝗖𝗗𝗜" "\t" "\r" "\n" "" "\001e"]]
       (given-parse-json "Extension"
         {:url "foo"
          :valueMarkdown value}
         type/type := :fhir/Extension
-        :value := (type/markdown value)))
-
-    (testing "invalid control character"
-      (given-parse-json "Extension"
-        {:url "url-204835"
-         :valueMarkdown "foo\u001Ebar"}
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo\u001Ebar`. Expected type is `markdown, regex [\\r\\n\\t\\u0020-\\uFFFF]+`."
-        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
+        :value := (type/markdown value))))
 
   (testing "oid"
     (doseq [value ["urn:oid:2.16.840.1.113883.3.1937.777.24.2.1791"
@@ -689,20 +677,13 @@
         :value := (type/positiveInt value))))
 
   (testing "string"
-    (given-parse-json "Extension"
-      {:url "url-204835"
-       :valueString "value-204935"}
-      type/type := :fhir/Extension
-      :url := "url-204835"
-      :value := #fhir/string"value-204935")
-
-    (testing "invalid control character"
+    (doseq [value ["value-204935" "𝗔𝗗𝗗𝗜𝗧𝗜𝗢𝗡𝗔𝗟 𝗨𝗦𝗖𝗗𝗜" "\t" "\r" "\n" "" "\001e"]]
       (given-parse-json "Extension"
         {:url "url-204835"
-         :valueString "foo\u001Ebar"}
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `foo\u001Ebar`. Expected type is `string, regex [\\r\\n\\t\\u0020-\\uFFFF]+`."
-        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
+         :valueString value}
+        type/type := :fhir/Extension
+        :url := "url-204835"
+        :value := (type/string value))))
 
   (testing "time"
     (doseq [value ["15:22:13" "15:22:13.1" "15:22:13.12" "15:22:13.123"]]
@@ -762,7 +743,7 @@
         {:url "url-204835"
          :valueUri "\n"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `uri, regex [\\u0021-\\uFFFF]*`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `uri, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "url"
@@ -794,7 +775,7 @@
         {:url "url-204835"
          :valueUrl "\n"}
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `url, regex [\\u0021-\\uFFFF]*`."
+        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `url, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "uuid"
@@ -834,7 +815,7 @@
       {:url "foo"
        :valueAddress {:city "Leipzig"}}
       type/type := :fhir/Extension
-      :value := #fhir/Address{:city #fhir/string"Leipzig"}))
+      :value := #fhir/Address{:city #fhir/string "Leipzig"}))
 
   ;; TODO: Age
   ;; TODO: Annotation
@@ -844,28 +825,28 @@
       {:url "foo"
        :valueAttachment {:contentType "text/plain"}}
       type/type := :fhir/Extension
-      :value := #fhir/Attachment{:contentType #fhir/code"text/plain"}))
+      :value := #fhir/Attachment{:contentType #fhir/code "text/plain"}))
 
   (testing "CodeableConcept"
     (given-parse-json "Extension"
       {:url "foo"
        :valueCodeableConcept {:text "text-161119"}}
       type/type := :fhir/Extension
-      :value := #fhir/CodeableConcept{:text #fhir/string"text-161119"}))
+      :value := #fhir/CodeableConcept{:text #fhir/string "text-161119"}))
 
   (testing "Coding"
     (given-parse-json "Extension"
       {:url "foo"
        :valueCoding {:code "code-161220"}}
       type/type := :fhir/Extension
-      :value := #fhir/Coding{:code #fhir/code"code-161220"}))
+      :value := #fhir/Coding{:code #fhir/code "code-161220"}))
 
   (testing "Coding"
     (given-parse-json "Extension"
       {:url "foo"
        :valueCoding {:code "code-161220"}}
       type/type := :fhir/Extension
-      :value := #fhir/Coding{:code #fhir/code"code-161220"}))
+      :value := #fhir/Coding{:code #fhir/code "code-161220"}))
 
   ;; TODO: ContactPoint
   ;; TODO: Count
@@ -877,14 +858,14 @@
       {:url "foo"
        :valueHumanName {:family "family-161430"}}
       type/type := :fhir/Extension
-      :value := #fhir/HumanName{:family #fhir/string"family-161430"}))
+      :value := #fhir/HumanName{:family #fhir/string "family-161430"}))
 
   (testing "Identifier"
     (given-parse-json "Extension"
       {:url "foo"
        :valueIdentifier {:value "value-162019"}}
       type/type := :fhir/Extension
-      :value := #fhir/Identifier{:value #fhir/string"value-162019"}))
+      :value := #fhir/Identifier{:value #fhir/string "value-162019"}))
 
   ;; TODO: Money
 
@@ -893,7 +874,7 @@
       {:url "foo"
        :valuePeriod {:start "2025-03-21"}}
       type/type := :fhir/Extension
-      :value := #fhir/Period{:start #fhir/dateTime"2025-03-21"}))
+      :value := #fhir/Period{:start #fhir/dateTime "2025-03-21"}))
 
   (testing "Quantity"
     (given-parse-json "Extension"
@@ -908,7 +889,7 @@
        :valueRange {:low {:value 3.141}}}
       type/type := :fhir/Extension
       [:value :fhir/type] := :fhir/Range
-      [:value :low] := #fhir/Quantity{:value 3.141M}))
+      [:value :low] := #fhir/Quantity{:value #fhir/decimal 3.141M}))
 
   (testing "Ratio"
     (given-parse-json "Extension"
@@ -922,7 +903,7 @@
       {:url "foo"
        :valueReference {:reference "reference-165129"}}
       type/type := :fhir/Extension
-      :value := #fhir/Reference{:reference #fhir/string"reference-165129"}))
+      :value := #fhir/Reference{:reference #fhir/string "reference-165129"}))
 
   ;; TODO: SampledData
   ;; TODO: Signature
@@ -937,7 +918,7 @@
        :valueExpression {:name "name-165516"}}
       type/type := :fhir/Extension
       [:value :fhir/type] := :fhir/Expression
-      [:value :name] := #fhir/id"name-165516"))
+      [:value :name] := #fhir/id "name-165516"))
 
   ;; TODO: ParameterDefinition
   ;; TODO: RelatedArtifact
@@ -950,7 +931,7 @@
       {:url "foo"
        :valueMeta {:source "uri-171103"}}
       type/type := :fhir/Extension
-      :value := #fhir/Meta{:source #fhir/uri"uri-171103"})))
+      :value := #fhir/Meta{:source #fhir/uri "uri-171103"})))
 
 (deftest parse-json-human-name-test
   (testing "duplicate property"
@@ -984,13 +965,13 @@
       type/type := :fhir/HumanName
       :extension := [#fhir/Extension
                       {:url "url-102118"
-                       :value #fhir/string"value-102132"}]))
+                       :value #fhir/string "value-102132"}]))
 
   (testing "family"
     (given-parse-json "HumanName"
       {:family "family-173154"}
       type/type := :fhir/HumanName
-      :family := #fhir/string"family-173154"))
+      :family := #fhir/string "family-173154"))
 
   (testing "given"
     (testing "invalid extended properties"
@@ -1075,13 +1056,13 @@
       (given-parse-json "HumanName"
         {:given ["given-210928"]}
         type/type := :fhir/HumanName
-        :given := [#fhir/string"given-210928"])
+        :given := [#fhir/string "given-210928"])
 
       (testing "without array"
         (given-parse-json "HumanName"
           {:given "given-205309"}
           type/type := :fhir/HumanName
-          :given := [#fhir/string"given-205309"]))
+          :given := [#fhir/string "given-205309"]))
 
       (testing "extended properties after value"
         (testing "id"
@@ -1113,8 +1094,8 @@
       (given-parse-json "HumanName"
         {:given ["given-210928" "given-211224"]}
         type/type := :fhir/HumanName
-        :given := [#fhir/string"given-210928"
-                   #fhir/string"given-211224"])
+        :given := [#fhir/string "given-210928"
+                   #fhir/string "given-211224"])
 
       (testing "extended properties before value"
         (given-parse-json "HumanName"
@@ -1129,7 +1110,7 @@
             {:_given [nil {:id "id-151315"}]
              :given ["given-151318" "given-151323"]}
             type/type := :fhir/HumanName
-            :given := [#fhir/string"given-151318"
+            :given := [#fhir/string "given-151318"
                        #fhir/string{:id "id-151315" :value "given-151323"}]))
 
         (testing "second given without extended properties"
@@ -1139,7 +1120,7 @@
                :given ["given-151318" "given-151323"]}
               type/type := :fhir/HumanName
               :given := [#fhir/string{:id "id-151315" :value "given-151318"}
-                         #fhir/string"given-151323"])))
+                         #fhir/string "given-151323"])))
 
         (testing "both givens without extended properties"
           (doseq [extended-properties [nil [] [nil] [nil nil] [nil nil nil]]]
@@ -1147,8 +1128,8 @@
               {:_given extended-properties
                :given ["given-151318" "given-151323"]}
               type/type := :fhir/HumanName
-              :given := [#fhir/string"given-151318"
-                         #fhir/string"given-151323"]))))
+              :given := [#fhir/string "given-151318"
+                         #fhir/string "given-151323"]))))
 
       (testing "extended properties after value"
         (given-parse-json "HumanName"
@@ -1163,7 +1144,7 @@
             {:given ["given-151318" "given-151323"]
              :_given [nil {:id "id-151315"}]}
             type/type := :fhir/HumanName
-            :given := [#fhir/string"given-151318"
+            :given := [#fhir/string "given-151318"
                        #fhir/string{:id "id-151315" :value "given-151323"}]))
 
         (testing "second given without extended properties"
@@ -1173,7 +1154,7 @@
                :_given extended-properties}
               type/type := :fhir/HumanName
               :given := [#fhir/string{:id "id-151315" :value "given-151318"}
-                         #fhir/string"given-151323"])))
+                         #fhir/string "given-151323"])))
 
         (testing "both givens without extended properties"
           (doseq [extended-properties [nil [] [nil] [nil nil] [nil nil nil]]]
@@ -1181,8 +1162,8 @@
               {:given ["given-151318" "given-151323"]
                :_given extended-properties}
               type/type := :fhir/HumanName
-              :given := [#fhir/string"given-151318"
-                         #fhir/string"given-151323"])))
+              :given := [#fhir/string "given-151318"
+                         #fhir/string "given-151323"])))
 
         (testing "mixed value and extended properties"
           (given-parse-json "HumanName"
@@ -1191,13 +1172,13 @@
             ::anom/message := nil
             type/type := :fhir/HumanName
             :given := [#fhir/string{:id "id-105603"}
-                       #fhir/string"given-105549"])))))
+                       #fhir/string "given-105549"])))))
 
   (testing "period"
     (given-parse-json "HumanName"
       {:period {:start "2025"}}
       type/type := :fhir/HumanName
-      :period := #fhir/Period{:start #fhir/dateTime"2025"})))
+      :period := #fhir/Period{:start #fhir/dateTime "2025"})))
 
 (deftest parse-json-reference-test
   (testing "id"
@@ -1216,38 +1197,38 @@
     (given-parse-json "Reference"
       {:reference "reference-101044"}
       type/type := :fhir/Reference
-      :reference := #fhir/string"reference-101044"))
+      :reference := #fhir/string "reference-101044"))
 
   (testing "type"
     (given-parse-json "Reference"
       {:type "type-101127"}
       type/type := :fhir/Reference
-      :type := #fhir/uri"type-101127"))
+      :type := #fhir/uri "type-101127"))
 
   (testing "identifier"
     (given-parse-json "Reference"
       {:identifier {:value "value-101215"}}
       type/type := :fhir/Reference
-      :identifier := #fhir/Identifier{:value #fhir/string"value-101215"}))
+      :identifier := #fhir/Identifier{:value #fhir/string "value-101215"}))
 
   (testing "display"
     (given-parse-json "Reference"
       {:display "display-101307"}
       type/type := :fhir/Reference
-      :display := #fhir/string"display-101307")))
+      :display := #fhir/string "display-101307")))
 
 (deftest parse-json-meta-test
   (testing "versionId"
     (given-parse-json "Meta"
       {:versionId "versionId-104855"}
       type/type := :fhir/Meta
-      :versionId := #fhir/id"versionId-104855"))
+      :versionId := #fhir/id "versionId-104855"))
 
   (testing "lastUpdated"
     (given-parse-json "Meta"
       {:lastUpdated "0001-01-01T00:00:00Z"}
       type/type := :fhir/Meta
-      :lastUpdated := #fhir/instant"0001-01-01T00:00:00Z")
+      :lastUpdated := #fhir/instant "0001-01-01T00:00:00Z")
 
     (testing "extended properties after value"
       (given-parse-json "Meta"
@@ -1260,7 +1241,7 @@
     (given-parse-json "Meta"
       {:source "source-105040"}
       type/type := :fhir/Meta
-      :source := #fhir/uri"source-105040")))
+      :source := #fhir/uri "source-105040")))
 
 (deftest parse-json-quantity-test
   (testing "invalid"
@@ -1304,4 +1285,4 @@
     {:type [{:code "string"}]}
     ::anom/message := nil
     [:type count] := 1
-    [:type 0 :code] := #fhir/uri"string"))
+    [:type 0 :code] := #fhir/uri "string"))

@@ -61,45 +61,35 @@
 
 (defn- build-page [db include-defs page-size handles]
   (let [{:keys [matches] :as res} (build-page* page-size handles)]
-    (cond-> res
-      (:direct include-defs)
-      (assoc :includes (include/add-includes db include-defs matches)))))
-
-(defn- match-xf [context]
-  (comp (mapcat ac/join) (map (partial search-util/match-entry context))))
-
-(defn- include-xf [context]
-  (comp (mapcat ac/join) (map (partial search-util/include-entry context))))
+    (if (:direct include-defs)
+      (when-ok [includes (include/add-includes db include-defs matches)]
+        (assoc res :includes includes))
+      res)))
 
 (defn- query-plan-outcome [{:blaze/keys [db]} query]
   (let [plan (d/explain-query db query)]
     {:fhir/type :fhir/OperationOutcome
      :issue
      [{:fhir/type :fhir.OperationOutcome/issue
-       :severity #fhir/code"information"
-       :code #fhir/code"informational"
+       :severity #fhir/code "information"
+       :code #fhir/code "informational"
        :diagnostics (type/string (query-plan/render plan))}]}))
 
 (defn- query-plan-entry [context query]
   (search-util/outcome-entry context (query-plan-outcome context query)))
 
+(defn- match-xf [context]
+  (map (partial search-util/match-entry context)))
+
+(defn- include-xf [context]
+  (map (partial search-util/include-entry context)))
+
 (defn- entries
-  [{{:keys [explain?]} :params :as context} query match-futures include-futures]
+  [{{:keys [explain?]} :params :as context} query match-future include-future]
   (log/trace "build entries")
   (-> (cond-> [] (and explain? query) (conj (query-plan-entry context query)))
-      (into (match-xf context) match-futures)
-      (into (include-xf context) include-futures)))
-
-(defn- pull-matches-xf [{:keys [summary elements]} db]
-  (cond
-    (seq elements)
-    (map #(d/pull-many db % elements))
-
-    (= "true" summary)
-    (map #(d/pull-many db % :summary))
-
-    :else
-    (map (partial d/pull-many db))))
+      (into (match-xf context) (ac/join match-future))
+      (into (include-xf context) (ac/join include-future))))
 
 (defn- total-future
   "Calculates the total number of resources returned.
@@ -129,6 +119,19 @@
     :else
     (ac/completed-future nil)))
 
+(defn- wrap-cache-handling [opts {:keys [page-id]}]
+  (cond-> opts page-id (assoc :skip-cache-insertion? true)))
+
+(defn- match-pull-opts [{:keys [summary elements] :as params}]
+  (-> (cond
+        (seq elements) {:elements elements}
+        (= "true" summary) {:variant :summary}
+        :else {})
+      (wrap-cache-handling params)))
+
+(defn- include-pull-opts [params]
+  (wrap-cache-handling {} params))
+
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
 
@@ -142,13 +145,15 @@
   [{:blaze/keys [db] :keys [type]
     {:keys [include-defs page-size] :as params} :params
     :as context}]
-  (if-ok [{:keys [handles query]} (handles-and-query context)]
-    (let [{:keys [matches includes next-match]}
-          (build-page db include-defs page-size handles)
-          total-future (total-future db type query params matches next-match)
-          match-futures (into [] (comp (partition-all 100) (pull-matches-xf params db)) matches)
-          include-futures (into [] (comp (partition-all 100) (map (partial d/pull-many db))) includes)]
-      (-> (ac/all-of (into (conj match-futures total-future) include-futures))
+  (if-ok [{:keys [handles query]} (handles-and-query context)
+          {:keys [matches includes next-match]}
+          (build-page db include-defs page-size handles)]
+    (let [total-future (total-future db type query params matches next-match)
+          match-future (d/pull-many db matches (match-pull-opts params))
+          include-future (if (seq includes)
+                           (d/pull-many db includes (include-pull-opts params))
+                           (ac/completed-future nil))]
+      (-> (ac/all-of [total-future match-future include-future])
           (ac/exceptionally
            #(assoc %
                    ::anom/category ::anom/fault
@@ -156,7 +161,7 @@
           (ac/then-apply
            (fn [_]
              (cond->
-              {:entries (entries context query match-futures include-futures)
+              {:entries (entries context query match-future include-future)
                :next-handle next-match
                :total (ac/join total-future)}
                query
@@ -185,7 +190,7 @@
   [context clauses]
   {:fhir/type :fhir/Bundle
    :id (m/luid context)
-   :type #fhir/code"searchset"
+   :type #fhir/code "searchset"
    :total #fhir/unsignedInt 0
    :link [(self-link context clauses)]})
 
@@ -195,13 +200,13 @@
   (cond->
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
+    :type #fhir/code "searchset"
     :entry entries
     :link [(first-link context token clauses)]}
     (not= "page" (name route-name))
     (update :link conj (self-link context clauses))
     total
-    (assoc :total (type/->UnsignedInt total))))
+    (assoc :total (type/unsignedInt total))))
 
 (defn- gen-token! [{{:keys [token]} :params :keys [gen-token-fn]} clauses]
   (if token
@@ -225,8 +230,8 @@
   (ring/response
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
-    :type #fhir/code"searchset"
-    :total (type/->UnsignedInt total)
+    :type #fhir/code "searchset"
+    :total (type/unsignedInt total)
     :link [(self-link context clauses)]}))
 
 (defn no-query-summary-response [{:keys [type] :blaze/keys [db] :as context}]

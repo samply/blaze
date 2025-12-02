@@ -4,22 +4,22 @@
 # This script verifies that the patient and all resources that are part of the
 # patient compartment are purged.
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-PATIENT_IDENTIFIER="X26238298X"
-PATIENT_ID=$(curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIER" | jq -r '.entry[0].resource.id')
+base="http://localhost:8080/fhir"
+patient_identifier="X26238298X"
+patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
 
 echo "calling \$purge via GET should not be allowed"
-test "GET response code" "$(curl -s -o /dev/null -w '%{response_code}' "$BASE/Patient/$PATIENT_ID/\$purge")" "405"
+test "GET response code" "$(curl -s -o /dev/null -w '%{response_code}' "$base/Patient/$patient_id/\$purge")" "405"
 
-OUTCOME="$(curl -s -XPOST "$BASE/Patient/$PATIENT_ID/\$purge")"
+outcome="$(curl -s -XPOST "$base/Patient/$patient_id/\$purge")"
 
-test "outcome code" "$(echo "$OUTCOME" | jq -r '.issue[0].code')" "success"
-test "read patient response code" "$(curl -s -o /dev/null -w '%{response_code}' "$BASE/Patient/$PATIENT_ID")" "404"
+test "outcome code" "$(echo "$outcome" | jq -r '.issue[0].code')" "success"
+test "read patient response code" "$(curl -s -o /dev/null -w '%{response_code}' "$base/Patient/$patient_id")" "404"
 
-for TYPE in "CarePlan" \
+for type in "CarePlan" \
   "CareTeam" \
   "Claim" \
   "Condition" \
@@ -34,5 +34,5 @@ for TYPE in "CarePlan" \
   "Observation" \
   "Procedure" \
   "Provenance"; do
-  test "number of references from ${TYPE}s to the purged patient" "$(blazectl --server "$BASE" download "$TYPE" -q '_elements=subject&_count=500' 2>/dev/null | jq -rc '.subject.reference' | sort -u | grep -c "Patient/$PATIENT_ID")" "0"
+  test "number of references from ${type}s to the purged patient" "$(blazectl --server "$base" download "$type" -q '_elements=subject&_count=500' 2>/dev/null | jq -rc '.subject.reference' | sort -u | grep -c "Patient/$patient_id")" "0"
 done

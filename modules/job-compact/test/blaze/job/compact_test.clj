@@ -13,6 +13,7 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
@@ -50,12 +51,16 @@
    {:tx-log (ig/ref :blaze.db.admin/tx-log)
     :tx-cache (ig/ref :blaze.db.admin/tx-cache)
     :indexer-executor (ig/ref :blaze.db.node.admin/indexer-executor)
+    :resource-cache (ig/ref :blaze.db/resource-cache)
     :resource-store (ig/ref :blaze.db/resource-store)
     :kv-store (ig/ref :blaze.db.admin/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
+
+   :blaze.db/resource-cache
+   {:resource-store (ig/ref :blaze.db/resource-store)}
 
    [::tx-log/local :blaze.db.admin/tx-log]
    {:kv-store (ig/ref :blaze.db.admin/transaction-kv-store)
@@ -170,16 +175,16 @@
 
 (def job-missing-database
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
-   :status #fhir/code"ready"
-   :intent #fhir/code"order"
+   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
+   :status #fhir/code "ready"
+   :intent #fhir/code "order"
    :code
    #fhir/CodeableConcept
     {:coding
      [#fhir/Coding
-       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-        :code #fhir/code"compact"
-        :display #fhir/string"Compact a Database Column Family"}]}})
+       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+        :code #fhir/code "compact"
+        :display #fhir/string "Compact a Database Column Family"}]}})
 
 (def job-missing-column-family
   (assoc
@@ -189,8 +194,8 @@
      :type #fhir/CodeableConcept
             {:coding
              [#fhir/Coding
-               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
-                :code #fhir/code"database"}]}
+               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
+                :code #fhir/code "database"}]}
      :value #fhir/code "index"}]))
 
 (defn- output-value [job code]
@@ -211,10 +216,11 @@
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
             jtu/combined-status := :completed
-            [processing-duration :value] :? pos?
-            [processing-duration :unit] := #fhir/string"s"
-            [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
-            [processing-duration :code] := #fhir/code"s"))
+            [processing-duration :value type/type] := :fhir/decimal
+            [processing-duration :value type/value] :? #(and (decimal? %) (pos? %))
+            [processing-duration :unit] := #fhir/string "s"
+            [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
+            [processing-duration :code] := #fhir/code "s"))
 
         (testing "job history"
           (given @(jtu/pull-job-history system)

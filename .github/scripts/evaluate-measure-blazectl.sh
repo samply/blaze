@@ -1,21 +1,21 @@
 #!/bin/bash
 
-BASE="http://localhost:8080/fhir"
-NAME="$1"
-EXPECTED_COUNT="$2"
+base="http://localhost:8080/fhir"
+name="$1"
+expected_count="$2"
 
-REPORT=$(blazectl --server "$BASE" evaluate-measure ".github/scripts/cql/$NAME.yml")
+report=$(blazectl --server "$base" evaluate-measure ".github/scripts/cql/$name.yml")
 
 if [ $? -ne 0 ]; then
-  echo "Measure evaluation failed: $REPORT"
+  echo "Measure evaluation failed: $report"
   exit 1
 fi
 
-COUNT=$(echo "$REPORT" | jq '.group[0].population[0].count')
+count=$(echo "$report" | jq '.group[0].population[0].count')
 
-if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "✅ count ($COUNT) equals the expected count"
+if [ "$count" = "$expected_count" ]; then
+  echo "✅ count ($count) equals the expected count"
 else
-  echo "🆘 count ($COUNT) != $EXPECTED_COUNT"
+  echo "🆘 count ($count) != $expected_count"
   exit 1
 fi

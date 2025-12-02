@@ -5,9 +5,10 @@ import blaze.fhir.Hash;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static java.util.Objects.requireNonNull;
 
 public final class IndexHandle {
 
@@ -15,8 +16,8 @@ public final class IndexHandle {
     private final int[] hashPrefixes;
 
     private IndexHandle(ByteString id, int[] hashPrefixes) {
-        this.id = id;
-        this.hashPrefixes = hashPrefixes;
+        this.id = requireNonNull(id);
+        this.hashPrefixes = requireNonNull(hashPrefixes);
     }
 
     public static IndexHandle fromIdAndHash(ByteString id, Hash hash) {
@@ -114,14 +115,13 @@ public final class IndexHandle {
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        IndexHandle that = (IndexHandle) o;
-        return id.equals(that.id) && Arrays.equals(hashPrefixes, that.hashPrefixes);
+        if (this == o) return true;
+        return o instanceof IndexHandle that && id.equals(that.id) && Arrays.equals(hashPrefixes, that.hashPrefixes);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, Arrays.hashCode(hashPrefixes));
+        return 31 * id.hashCode() + Arrays.hashCode(hashPrefixes);
     }
 
     @Override

@@ -4,10 +4,10 @@
 # This script fetches the CapabilityStatement through a batch request.
 #
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
+base="http://localhost:8080/fhir"
 
 bundle() {
 cat <<END
@@ -25,9 +25,9 @@ cat <<END
 }
 END
 }
-RESULT=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$BASE")
+result=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
-test "resource type" "$(echo "$RESULT" | jq -r .resourceType)" "Bundle"
-test "bundle type" "$(echo "$RESULT" | jq -r .type)" "batch-response"
-test "response status" "$(echo "$RESULT" | jq -r .entry[].response.status)" "200"
-test "response resource type" "$(echo "$RESULT" | jq -r .entry[].resource.resourceType)" "CapabilityStatement"
+test "resource type" "$(echo "$result" | jq -r .resourceType)" "Bundle"
+test "bundle type" "$(echo "$result" | jq -r .type)" "batch-response"
+test "response status" "$(echo "$result" | jq -r .entry[].response.status)" "200"
+test "response resource type" "$(echo "$result" | jq -r .entry[].resource.resourceType)" "CapabilityStatement"

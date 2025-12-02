@@ -6,13 +6,16 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.library-spec]
    [blaze.elm.expression :as expr]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.cql-spec]
    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -78,9 +81,9 @@
   define InInitialPopulation:
     true")
 
-(defn- compile-library [node cql]
+(defn- compile-library [{:blaze.db/keys [node] ::ts/keys [local]} cql]
   (when-ok [library (cql-translator/translate cql)]
-    (library/compile-library node library {})))
+    (library/compile-library {:node node :terminology-service local} library {})))
 
 (defn- failing-eval [msg]
   (fn [_ _ _] (throw (Exception. ^String msg))))
@@ -88,9 +91,10 @@
 (defn- context
   [{:blaze.db/keys [node]
     ::expr/keys [cache]
-    :blaze.test/keys [fixed-clock executor]}
+    :blaze.test/keys [fixed-clock executor]
+    :as system}
    library]
-  (let [{:keys [expression-defs function-defs]} (compile-library node library)]
+  (let [{:keys [expression-defs function-defs]} (compile-library system library)]
     {:db (d/db node)
      :now (time/offset-date-time fixed-clock)
      ::expr/cache cache
@@ -100,11 +104,19 @@
      :executor executor}))
 
 (def ^:private config
-  (assoc mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
+   :blaze.test/executor {}
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
 
 (def ^:private conj-reduce-op
   (fn [_db] conj))
@@ -119,17 +131,17 @@
   (testing "finds the male patient"
     (with-system-data [system config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
-        [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]]]
+        [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+        [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]]]
 
       (let [context (context system library-gender)]
         (testing "returning handles"
           (let [context (with-ops context conj-reduce-op into)]
             (given @(cql/evaluate-expression context "InInitialPopulation" "Patient")
               count := 1
-              [0 :population-handle fhir-spec/fhir-type] := :fhir/Patient
+              [0 :population-handle :fhir/type] := :fhir/Patient
               [0 :population-handle :id] := "1"
-              [0 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [0 :subject-handle :fhir/type] := :fhir/Patient
               [0 :subject-handle :id] := "1")))
 
         (testing "not returning handles"
@@ -139,10 +151,10 @@
   (testing "returns all encounters"
     (with-system-data [system config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
-        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference "Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
         [:put {:fhir/type :fhir/Patient :id "2"}]]]
 
       (let [context (context system library-encounter)]
@@ -151,17 +163,17 @@
                             (assoc :population-basis "Encounter"))]
             (given @(cql/evaluate-expression context "InInitialPopulation" "Patient")
               count := 3
-              [0 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
+              [0 :population-handle :fhir/type] := :fhir/Encounter
               [0 :population-handle :id] := "0-0"
-              [0 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [0 :subject-handle :fhir/type] := :fhir/Patient
               [0 :subject-handle :id] := "0"
-              [1 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
+              [1 :population-handle :fhir/type] := :fhir/Encounter
               [1 :population-handle :id] := "1-0"
-              [1 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [1 :subject-handle :fhir/type] := :fhir/Patient
               [1 :subject-handle :id] := "1"
-              [2 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
+              [2 :population-handle :fhir/type] := :fhir/Encounter
               [2 :population-handle :id] := "1-1"
-              [2 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [2 :subject-handle :fhir/type] := :fhir/Patient
               [2 :subject-handle :id] := "1")))
 
         (testing "not returning handles"
@@ -219,7 +231,7 @@
           (let [context (with-ops context conj-reduce-op into)]
             (given @(cql/evaluate-expression context "InInitialPopulation" "Specimen")
               count := 1
-              [0 :population-handle fhir-spec/fhir-type] := :fhir/Specimen
+              [0 :population-handle :fhir/type] := :fhir/Specimen
               [0 :population-handle :id] := "0")))
 
         (testing "not returning handles"
@@ -262,7 +274,7 @@
   (testing "counting"
     (testing "match"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
         (let [{:keys [db] :as context} (-> (context system library-gender)
                                            (with-ops count-reduce-op +))
               patient (em-tu/resource db "Patient" "0")]
@@ -279,16 +291,16 @@
   (testing "returning handles"
     (testing "match"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
         (let [{:keys [db] :as context} (-> (context system library-gender)
                                            (with-ops conj-reduce-op into))
               patient (em-tu/resource db "Patient" "0")]
 
           (given @(cql/evaluate-individual-expression context patient "InInitialPopulation")
             count := 1
-            [0 :population-handle fhir-spec/fhir-type] := :fhir/Patient
+            [0 :population-handle :fhir/type] := :fhir/Patient
             [0 :population-handle :id] := "0"
-            [0 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+            [0 :subject-handle :fhir/type] := :fhir/Patient
             [0 :subject-handle :id] := "0"))))
 
     (testing "no match"

@@ -86,7 +86,7 @@
     (testing "Observation _profile"
       (let [observation
             {:fhir/type :fhir/Observation :id "id-165627"
-             :meta #fhir/Meta{:profile [#fhir/canonical"uri-091902|2.3.9"]}}
+             :meta #fhir/Meta{:profile [#fhir/canonical "uri-091902|2.3.9"]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5] [_ k6] [_ k7]]
             (index-entries (sr/get search-param-registry "_profile" "Observation")
@@ -164,8 +164,8 @@
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
-                 {:system #fhir/uri"system-171339"
-                  :code #fhir/code"code-171327"}]}}
+                 {:system #fhir/uri "system-171339"
+                  :code #fhir/code "code-171327"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -227,7 +227,7 @@
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
-                 {:code #fhir/code"code-134035"}]}}
+                 {:code #fhir/code "code-134035"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
@@ -273,7 +273,7 @@
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
-                 {:system #fhir/uri"system-171339"}]}}
+                 {:system #fhir/uri "system-171339"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1]]
             (index-entries
@@ -296,10 +296,10 @@
             :v-hash := (codec/v-hash "system-171339|")))))
 
     (testing "Patient active"
-      (doseq [active [#fhir/boolean true #fhir/boolean false]]
+      (doseq [active [true false]]
         (let [patient
               {:fhir/type :fhir/Patient :id "id-122929"
-               :active active}
+               :active (type/boolean active)}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
               (index-entries
@@ -310,7 +310,7 @@
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "active"
               :type := "Patient"
-              :v-hash := (codec/v-hash (str (type/value active)))
+              :v-hash := (codec/v-hash (str active))
               :id := "id-122929"
               :hash-prefix := (hash/prefix hash)))
 
@@ -320,7 +320,7 @@
               :id := "id-122929"
               :hash-prefix := (hash/prefix hash)
               :code := "active"
-              :v-hash := (codec/v-hash (str (type/value active)))))))
+              :v-hash := (codec/v-hash (str active))))))
 
       (testing "boolean without values doesn't produce index entries"
         (let [patient
@@ -336,8 +336,8 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-               {:system #fhir/uri"system-123000"
-                :value #fhir/string"value-123005"}]}
+               {:system #fhir/uri "system-123000"
+                :value #fhir/string "value-123005"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -397,7 +397,7 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-               {:value #fhir/string"value-140132"}]}
+               {:value #fhir/string "value-140132"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
@@ -441,7 +441,7 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-               {:system #fhir/uri"system-140316"}]}
+               {:system #fhir/uri "system-140316"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
@@ -492,7 +492,7 @@
       (testing "true value"
         (let [patient {:fhir/type :fhir/Patient
                        :id "id-142629"
-                       :deceased true}
+                       :deceased #fhir/boolean true}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
               (index-entries
@@ -519,7 +519,7 @@
         (let [patient
               {:fhir/type :fhir/Patient
                :id "id-142629"
-               :deceased #fhir/dateTime"2019-11-17T00:14:29+01:00"}
+               :deceased #fhir/dateTime "2019-11-17T00:14:29+01:00"}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
               (index-entries
@@ -551,8 +551,8 @@
                        #fhir/CodeableConcept
                         {:coding
                          [#fhir/Coding
-                           {:system #fhir/uri"system-103824"
-                            :code #fhir/code"code-103812"}]}}}
+                           {:system #fhir/uri "system-103824"
+                            :code #fhir/code "code-103812"}]}}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -612,8 +612,8 @@
             {:fhir/type :fhir/Encounter :id "id-105153"
              :class
              #fhir/Coding
-              {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
-               :code #fhir/code"AMB"}}
+              {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+               :code #fhir/code "AMB"}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -673,7 +673,7 @@
                       :id "id-105153"
                       :series
                       [{:fhir/type :fhir.ImagingStudy/series
-                        :uid #fhir/id"1.2.840.99999999.1.59354388.1582528879516"}]}
+                        :uid #fhir/id "1.2.840.99999999.1.59354388.1582528879516"}]}
             hash (hash/generate specimen)
             [[_ k0] [_ k1]]
             (index-entries
@@ -699,7 +699,7 @@
     (testing "CodeSystem version"
       (let [resource {:fhir/type :fhir/CodeSystem
                       :id "id-111846"
-                      :version "version-122621"}
+                      :version #fhir/string "version-122621"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
@@ -751,7 +751,7 @@
 
         (testing "with literal reference"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
             (is (= ["0"] (compartment-ids subject-param observation)))))
 
         (testing "without reference"
@@ -760,12 +760,12 @@
 
         (testing "with reference without reference value"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:display "foo"}}]
+                             :subject #fhir/Reference{:display #fhir/string "foo"}}]
             (is (empty? (compartment-ids subject-param observation)))))
 
         (testing "with absolute reference"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
+                             :subject #fhir/Reference{:reference #fhir/string "http://server.org/Patient/0"}}]
             (is (empty? (compartment-ids subject-param observation)))))))
 
     (testing "Condition"
@@ -773,7 +773,7 @@
 
         (testing "with literal reference"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:reference "Patient/0"}}]
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
             (is (= ["0"] (compartment-ids patient-param condition)))))
 
         (testing "without reference"
@@ -782,10 +782,95 @@
 
         (testing "with reference without reference value"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:display "foo"}}]
+                           :subject #fhir/Reference{:display #fhir/string "foo"}}]
             (is (empty? (compartment-ids patient-param condition)))))
 
         (testing "with absolute reference"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
+                           :subject #fhir/Reference{:reference #fhir/string "http://server.org/Patient/0"}}]
             (is (empty? (compartment-ids patient-param condition)))))))))
+
+(defn profile-param [search-param-registry]
+  (sr/get search-param-registry "_profile" "Observation"))
+
+(deftest validate-modifier-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "_id"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (id-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `_id`.")))
+
+    (testing "identifier"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (identifier-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `identifier`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (identifier-param search-param-registry) "of-type")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `of-type` on search parameter `identifier`.")))
+
+    (testing "uri"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (profile-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `_profile`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (profile-param search-param-registry) "missing")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `missing` on search parameter `_profile`."))
+
+      (testing "implemented modifier"
+        (is (nil? (search-param/validate-modifier (profile-param search-param-registry) "below")))))
+
+    (testing "token"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (code-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `code`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (code-param search-param-registry) "code-text")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `code-text` on search parameter `code`.")))
+
+    (testing "reference"
+      (testing "unknown modifier"
+        (given (search-param/validate-modifier
+                (subject-param search-param-registry) "unknown")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `unknown` on search parameter `subject`."))
+
+      (testing "modifier not implemented"
+        (given (search-param/validate-modifier
+                (subject-param search-param-registry) "contains")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `contains` on search parameter `subject`."))
+
+      (testing "implemented modifier Location"
+        (is (nil? (search-param/validate-modifier
+                   (subject-param search-param-registry) "Location"))))
+
+      (testing "unknown modifier Organization"
+        (given (search-param/validate-modifier
+                (subject-param search-param-registry) "Organization")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown modifier `Organization` on search parameter `subject`."))
+
+      (testing "implemented modifier identifier"
+        (is (nil? (search-param/validate-modifier (subject-param search-param-registry) "identifier"))))
+
+      (testing "implemented modifier Organization"
+        (let [[search-param] (sr/parse search-param-registry "Observation" "performer")]
+          (is (nil? (search-param/validate-modifier
+                     search-param "Organization"))))))))

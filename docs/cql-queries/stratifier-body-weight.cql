@@ -10,5 +10,5 @@ context Patient
 define InInitialPopulation:
   [Observation: "Body Weight"]
 
-define function QuantityValue(observation FHIR.Observation):
+define function QuantityValue(observation Observation):
   observation.value as Quantity

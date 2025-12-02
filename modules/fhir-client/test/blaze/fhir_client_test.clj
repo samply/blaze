@@ -4,8 +4,10 @@
    [blaze.fhir-client :as fhir-client]
    [blaze.fhir-client-spec]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.util :as fu]
    [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
@@ -19,7 +21,8 @@
   (:import
    [com.pgssoft.httpclient Condition HttpClientMock]
    [java.nio.file Files Path]
-   [java.nio.file.attribute FileAttribute]))
+   [java.nio.file.attribute FileAttribute]
+   [org.hamcrest Matchers]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -91,8 +94,8 @@
                                              "Patient" "0"
                                              opts)
         ::anom/category := ::anom/not-found
-        [:fhir/issues 0 :severity] := #fhir/code"error"
-        [:fhir/issues 0 :code] := #fhir/code"not-found")))
+        [:fhir/issues 0 :severity] := #fhir/code "error"
+        [:fhir/issues 0 :code] := #fhir/code "not-found")))
 
   (testing "Invalid JSON response"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)]
@@ -188,7 +191,7 @@
   (testing "with meta versionId"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
+                    :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -203,7 +206,7 @@
   (testing "stale update"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
+                    :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -219,7 +222,7 @@
                                                resource
                                                opts)
         ::anom/category := ::anom/conflict
-        [:fhir/issues 0 :severity] := #fhir/code"error"))))
+        [:fhir/issues 0 :severity] := #fhir/code "error"))))
 
 (deftest delete-test
   (testing "204 No Content"
@@ -252,25 +255,28 @@
                                            "Patient" "0"
                                            opts)))))
 
+(defn- resource-matcher [bundle {:keys [writing-context]}]
+  (Matchers/is (fhir-spec/write-json-as-string writing-context bundle)))
+
 (deftest transact-test
   (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
         bundle {:fhir/type :fhir/Bundle
-                :type #fhir/code"transaction"
+                :type #fhir/code "transaction"
                 :entry
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "0"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code"PUT"
-                   :url #fhir/uri"Patient/0"}}]}]
+                   :method #fhir/code "PUT"
+                   :url #fhir/uri "Patient/0"}}]}]
 
     (-> (.onPost http-client "http://localhost:8080/fhir")
+        (.withBody (resource-matcher bundle opts))
         (.doReturn (j/write-value-as-string {:resourceType "Bundle"}))
         (.withHeader "content-type" "application/fhir+json"))
 
-    (given @(fhir-client/transact "http://localhost:8080/fhir" bundle
-                                  opts)
+    (given @(fhir-client/transact "http://localhost:8080/fhir" bundle opts)
       :fhir/type := :fhir/Bundle)))
 
 (deftest execute-type-get-test
@@ -284,6 +290,41 @@
       (given @(fhir-client/execute-type-get
                "http://localhost:8080/fhir" "ValueSet" "expand"
                (assoc opts :query-params {:url "http://hl7.org/fhir/ValueSet/administrative-gender"}))
+        :fhir/type := :fhir/ValueSet
+        :id := "0"))))
+
+(deftest execute-type-post-test
+  (testing "not-found"
+    (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
+          params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
+          (.doReturn
+           404
+           (j/write-value-as-string
+            {:resourceType "OperationOutcome"
+             :issue
+             [{:severity "error"
+               :code "not-found"}]}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given-failed-future (fhir-client/execute-type-post "http://localhost:8080/fhir"
+                                                          "ValueSet" "expand" params opts)
+        ::anom/category := ::anom/not-found
+        [:fhir/issues 0 :severity] := #fhir/code "error"
+        [:fhir/issues 0 :code] := #fhir/code "not-found")))
+
+  (testing "success"
+    (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
+          params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
+          (.withBody (resource-matcher params opts))
+          (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/execute-type-post "http://localhost:8080/fhir"
+                                             "ValueSet" "expand" params opts)
         :fhir/type := :fhir/ValueSet
         :id := "0"))))
 

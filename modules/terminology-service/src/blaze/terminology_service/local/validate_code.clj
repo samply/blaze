@@ -80,13 +80,13 @@
    "code" code
    "system" system
    "version" version
-   "display" (display concept)
+   "display" (some-> (display concept) type/string)
    "inactive" (some-> inactive type/boolean)
    "codeableConcept"
    (when (= "CodeableConcept.coding[0]" origin)
-     (type/map->CodeableConcept
+     (type/codeable-concept
       {:coding
-       [(type/map->Coding
+       [(type/coding
          (cond->
           {:system (type/uri (:system clause))
            :code (type/code (:code clause))}
@@ -108,9 +108,9 @@
    "issues" {:fhir/type :fhir/OperationOutcome :issue issues}
    "codeableConcept"
    (when (= "CodeableConcept.coding[0]" origin)
-     (type/map->CodeableConcept
+     (type/codeable-concept
       {:coding
-       [(type/map->Coding
+       [(type/coding
          (cond->
           {:system (type/uri (:system clause))
            :code (type/code (:code clause))}

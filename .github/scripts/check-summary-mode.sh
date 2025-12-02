@@ -2,14 +2,14 @@
 
 # Checks that resources of type $1 have no property $2, if retrieved with _summary=true.
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-. "$SCRIPT_DIR/util.sh"
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
 
-BASE="http://localhost:8080/fhir"
-TYPE="$1"
-PROPERTY="$2"
-NORMAL_RESULT=$(blazectl --server "$BASE" download "$TYPE" 2>/dev/null | jq -c ".$PROPERTY | values")
-SUMMARY_RESULT=$(blazectl --server "$BASE" download "$TYPE" -q '_summary=true' 2>/dev/null | jq ".$PROPERTY | values")
+base="http://localhost:8080/fhir"
+type="$1"
+property="$2"
+normal_result=$(blazectl --server "$base" download "$type" 2>/dev/null | jq -c ".$property | values")
+summary_result=$(blazectl --server "$base" download "$type" -q '_summary=true' 2>/dev/null | jq ".$property | values")
 
-test_non_empty "normal result" "$NORMAL_RESULT"
-test_empty "summary result" "$SUMMARY_RESULT"
+test_non_empty "normal result" "$normal_result"
+test_empty "summary result" "$summary_result"

@@ -29,16 +29,14 @@
 (defhistogram duration-seconds
   "Durations in resource indexer."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_indexer_duration_seconds"}
+   :subsystem "db_resource_indexer"}
   (take 14 (iterate #(* 2 %) 0.00001))
   "op")
 
 (defhistogram index-entries
   "Number of index entries of a resource."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_indexer_index_entries"}
+   :subsystem "db_resource_indexer"}
   (take 14 (iterate #(* 2 %) 1))
   "type")
 
@@ -115,7 +113,7 @@
   (ac/all-of (mapv (partial async-index-resource context) entries)))
 
 (defn- cmd-rs-keys [tx-cmds variant]
-  (into [] (keep (fn [{:keys [type hash]}] (when hash [type hash variant]))) tx-cmds))
+  (into [] (keep (fn [{:keys [type hash]}] (when hash [(keyword "fhir" type) hash variant]))) tx-cmds))
 
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of

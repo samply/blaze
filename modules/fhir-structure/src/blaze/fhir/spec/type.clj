@@ -12,6 +12,7 @@
     :refer [def-complex-type def-primitive-type defextended]]
    [blaze.fhir.spec.type.protocols :as p]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.spec.xml :as spec-xml]
    [blaze.util :refer [str]]
    [clojure.alpha.spec :as s2]
    [clojure.data.xml :as xml]
@@ -19,7 +20,7 @@
    [clojure.data.xml.node :as xml-node]
    [clojure.string :as str])
   (:import
-   [blaze.fhir.spec.type.system Date]
+   [blaze.fhir.spec.type.system Date DateTime]
    [clojure.lang ILookup IPersistentMap Keyword]
    [com.fasterxml.jackson.core JsonGenerator]
    [com.google.common.hash PrimitiveSink]
@@ -289,7 +290,7 @@
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
   (-to-xml [s]
-    (xml-node/element nil {:value (str s)}))
+    (xml-node/element nil {:value (spec-xml/replace-invalid-chars s)}))
   (-hash-into [s sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 3))                                   ; :fhir/string
@@ -974,7 +975,7 @@
 
 (defn- parse-date-time [value]
   (try
-    (create-date-time (system/parse-date-time* value))
+    (create-date-time (DateTime/parse value))
     (catch DateTimeException _
       ::s2/invalid)))
 

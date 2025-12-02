@@ -19,13 +19,13 @@
 
   ;; newer version for cheshire dependency
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.20.0"}
+  {:mvn/version "2.20.1"}
 
   org.apache.httpcomponents.core5/httpcore5
   {:mvn/version "5.3.6"}
 
   metosin/reitit-ring
-  {:mvn/version "0.9.1"
+  {:mvn/version "0.9.2"
    :exclusions [ring/ring-core]}
 
   metosin/muuntaja
@@ -33,7 +33,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ring/ring-core
-  {:mvn/version "1.14.2"
+  {:mvn/version "1.15.3"
    :exclusions
    [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality

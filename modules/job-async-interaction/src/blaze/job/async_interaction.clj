@@ -27,15 +27,15 @@
   "Creates a async interaction job resource."
   [authored-on bundle-id t]
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"]}
-   :status #fhir/code"ready"
-   :intent #fhir/code"order"
+   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"]}
+   :status #fhir/code "ready"
+   :intent #fhir/code "order"
    :code #fhir/CodeableConcept
           {:coding
            [#fhir/Coding
-             {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-              :code #fhir/code"async-interaction"
-              :display #fhir/string"Asynchronous Interaction Request"}]}
+             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+              :code #fhir/code "async-interaction"
+              :display #fhir/string "Asynchronous Interaction Request"}]}
    :authoredOn authored-on
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))
@@ -44,11 +44,11 @@
             {:coding
              [(type/coding
                {:system (type/uri u/parameter-uri)
-                :code #fhir/code"t"})]})
+                :code #fhir/code "t"})]})
      :value (type/unsignedInt t)}]})
 
 (defn- return-preference-extension [return-preference]
-  (type/map->Extension
+  (type/extension
    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
     :value (type/code (name return-preference))}))
 
@@ -58,7 +58,7 @@
   ([id method url resource {return-preference :blaze.preference/return}]
    {:fhir/type :fhir/Bundle
     :id id
-    :type #fhir/code"batch"
+    :type #fhir/code "batch"
     :entry
     [(cond->
       {:fhir/type :fhir.Bundle/entry
@@ -75,21 +75,21 @@
 (defn- start-job [job]
   (assoc
    job
-   :status #fhir/code"in-progress"
+   :status #fhir/code "in-progress"
    :statusReason job-util/started-status-reason))
 
 (defn t [job]
   (type/value (job-util/input-value job u/parameter-uri "t")))
 
 (defn response-bundle-ref
-  "Returns the reference to the response bundle og `job` or nil if there is none."
+  "Returns the reference to the response bundle of `job` or nil if there is none."
   [job]
-  (:reference (job-util/output-value job output-uri "bundle")))
+  (-> (job-util/output-value job output-uri "bundle") :reference type/value))
 
 (defn- response-bundle [context entries]
   {:fhir/type :fhir/Bundle
    :id (m/luid context)
-   :type #fhir/code"batch-response"
+   :type #fhir/code "batch-response"
    :entry entries})
 
 (defn- process-batch-entries
@@ -107,7 +107,7 @@
              (response-bundle context entries)))))))
 
 (defn add-response-bundle-reference [job response-bundle-id]
-  (->> (type/reference {:reference (str "Bundle/" response-bundle-id)})
+  (->> (type/reference {:reference (type/string (str "Bundle/" response-bundle-id))})
        (job-util/add-output job output-uri "bundle")))
 
 (defn- add-processing-duration [job start]
@@ -115,7 +115,7 @@
                        (u/processing-duration start)))
 
 (defn- complete-job [job response-bundle-id start]
-  (-> (assoc job :status #fhir/code"completed")
+  (-> (assoc job :status #fhir/code "completed")
       (dissoc :statusReason :businessStatus)
       (add-response-bundle-reference response-bundle-id)
       (add-processing-duration start)))

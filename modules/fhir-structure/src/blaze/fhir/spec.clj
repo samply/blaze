@@ -14,7 +14,8 @@
    [clojure.walk :as walk]
    [cognitect.anomalies :as anom])
   (:import
-   [java.io ByteArrayOutputStream StringWriter]
+   [java.io ByteArrayOutputStream]
+   [java.nio.charset StandardCharsets]
    [java.util.regex Pattern]))
 
 (set! *warn-on-reflection* true)
@@ -76,9 +77,7 @@
 
 (defn write-json-as-string
   [context value]
-  (let [writer (StringWriter.)]
-    (write-json context writer value)
-    (.toString writer)))
+  (String. ^bytes (write-json-as-bytes context value) StandardCharsets/UTF_8))
 
 (defn write-cbor
   [context x]

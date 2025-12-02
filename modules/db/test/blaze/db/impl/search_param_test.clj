@@ -65,7 +65,7 @@
     (testing "Patient _profile"
       (let [patient
             {:fhir/type :fhir/Patient :id "id-140855"
-             :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-141443"]}}
+             :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-141443"]}}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
@@ -90,7 +90,7 @@
 
     (testing "Specimen patient will not indexed because we don't support resolving in FHIRPath"
       (let [specimen {:fhir/type :fhir/Specimen :id "id-150810"
-                      :subject #fhir/Reference{:reference "reference-150829"}}
+                      :subject #fhir/Reference{:reference #fhir/string "reference-150829"}}
             hash (hash/generate specimen)]
         (is
          (empty?
@@ -101,7 +101,7 @@
     (testing "ActivityDefinition url"
       (let [resource {:fhir/type :fhir/ActivityDefinition
                       :id "id-111846"
-                      :url #fhir/uri"url-111854"}
+                      :url #fhir/uri "url-111854"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
@@ -129,7 +129,7 @@
         (let [resource {:fhir/type :fhir/List :id "id-121825"
                         :entry
                         [{:fhir/type :fhir.List/entry
-                          :item #fhir/Reference{:reference "Patient/0"}}]}
+                          :item #fhir/Reference{:reference #fhir/string "Patient/0"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -194,8 +194,8 @@
                           #fhir/Reference
                            {:identifier
                             #fhir/Identifier
-                             {:system #fhir/uri"system-122917"
-                              :value #fhir/string"value-122931"}}}]}
+                             {:system #fhir/uri "system-122917"
+                              :value #fhir/string "value-122931"}}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -256,7 +256,7 @@
                         [{:fhir/type :fhir.List/entry
                           :item
                           #fhir/Reference
-                           {:reference "http://foo.com/bar-141221"}}]}
+                           {:reference #fhir/string "http://foo.com/bar-141221"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1]]
               (index-entries

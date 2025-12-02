@@ -24,16 +24,14 @@
 (defhistogram duration-seconds
   "Durations in Cassandra resource store."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_store_cassandra_duration_seconds"}
+   :subsystem "db_resource_store_cassandra"}
   (take 12 (iterate #(* 2 %) 0.0001))
   "op")
 
 (defhistogram resource-bytes
   "Stored resource sizes in bytes in Cassandra resource store."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "resource_store_cassandra_resource_bytes"}
+   :subsystem "db_resource_store_cassandra"}
   (take 14 (iterate #(* 2 %) 128)))
 
 (defn- execute [session op statement]
@@ -46,7 +44,7 @@
           hash cause-msg))
 
 (defn- parse-cbor [parsing-context row [type hash variant]]
-  (-> (fhir-spec/parse-cbor parsing-context type row variant)
+  (-> (fhir-spec/parse-cbor parsing-context (name type) row variant)
       (ba/exceptionally
        #(assoc %
                ::anom/message (parse-msg hash (::anom/message %))

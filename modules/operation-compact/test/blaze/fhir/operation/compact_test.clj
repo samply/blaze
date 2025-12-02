@@ -90,9 +90,9 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Expected Parameters resource but was `Patient` resource."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Expected Parameters resource but was `Patient` resource."))))
 
   (testing "Missing database parameter"
     (with-handler [handler]
@@ -102,29 +102,29 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Missing `database` parameter."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Missing `database` parameter."))))
 
   (testing "Missing column-family parameter"
     (with-handler [handler]
       (let [{:keys [status body]}
-            @(handler {:body (fu/parameters "database" #fhir/code"index")})]
+            @(handler {:body (fu/parameters "database" #fhir/code "index")})]
 
         (is (= 400 status))
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Missing `column-family` parameter."))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Missing `column-family` parameter."))))
 
   (testing "success"
     (with-handler [handler]
       (let [{:keys [status headers]}
             @(handler {:body (fu/parameters
-                              "database" #fhir/code"index"
-                              "column-family" #fhir/code"resource-as-of-index")})]
+                              "database" #fhir/code "index"
+                              "column-family" #fhir/code "resource-as-of-index")})]
 
         (is (= 202 status))
 

@@ -5,6 +5,18 @@ GET [base]/[type]?param1=value&...
 POST [base]/[type]/_search
 ```
 
+## Implemented Modifiers
+
+The following search param modifiers are supported:
+
+| Modifier     | Types                   | Description                                                                                                                            |
+|--------------|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| `below`      | uri                     | Tests whether the value in a resource is or is subsumed by the supplied parameter value (is-a, or hierarchical relationships).         |
+| `identifier` | reference               | Tests whether the `Reference.identifier` in a resource matches the supplied parameter value.                                           |
+| `:[type]`    | reference               | Tests whether the value in a resource points to a resource of the supplied parameter type (e.g., `:Patient`).                          |
+
+See [search modifiers][4] for a complete list of modifiers
+
 ## Search Result Parameters
 
 | Name             | Since | Description                                                     |
@@ -99,3 +111,4 @@ Both the `status` and `code` search parameters are of type `token`. However, the
 [1]: <https://semver.org>
 [2]: <https://en.wikipedia.org/wiki/Coordinated_Universal_Time>
 [3]: <https://hl7.org/fhir/R4/searchparameter-registry.html#clinical-patient>
+[4]: https://hl7.org/fhir/R4/search.html#modifiers

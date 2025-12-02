@@ -38,13 +38,11 @@ The creation of these datasets is described in the [Synthea section](./synthea/R
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific code.
 
+### Script
+
+The script `simple-code-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_summary=count"
-```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
@@ -57,9 +55,9 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_sum
 | LEA58  | 100k    | 8310-5  |  115 k |     0.07 |  0.002 |  1.64 M |
 | LEA58  | 100k    | 55758-7 |  1.0 M |     0.54 |  0.020 |  1.85 M |
 | LEA58  | 100k    | 72514-3 |  2.7 M |     1.43 |  0.045 |  1.89 M |
-| LEA47  | 1M      | 8310-5  |  1.1 M |     0.34 |  0.003 |   3.4 M |
-| LEA47  | 1M      | 55758-7 | 10.1 M |     3.15 |  0.038 |   3.2 M |
-| LEA47  | 1M      | 72514-3 | 27.3 M |     8.32 |  0.075 |   3.3 M |
+| LEA47  | 1M      | 8310-5  |  1.1 M |     0.37 |  0.005 |   3.1 M |
+| LEA47  | 1M      | 55758-7 | 10.1 M |     3.34 |  0.065 |   3.0 M |
+| LEA47  | 1M      | 72514-3 | 27.3 M |     8.72 |  0.051 |   3.1 M |
 | LEA58  | 1M      | 8310-5  |  1.1 M |     0.39 |  0.009 |   3.0 M |
 | LEA58  | 1M      | 55758-7 | 10.1 M |     2.84 |  0.026 |   3.6 M |
 | LEA58  | 1M      | 72514-3 | 27.3 M |     7.52 |  0.138 |   3.6 M |
@@ -73,95 +71,79 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_sum
 
 ![](fhir-search/simple-code-search-download-1M.png)
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
+| System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|---------|-------:|---------:|-------:|--------:|
+| LEA36  | 100k    | 8310-5  |  115 k |     1.90 |  0.016 | 60.53 k |  
+| LEA36  | 100k    | 55758-7 |  1.0 M |    15.45 |  0.121 | 64.72 k |
+| LEA36  | 100k    | 72514-3 |  2.7 M |    41.09 |  0.530 | 65.71 k |
+| LEA47  | 100k    | 8310-5  |  115 k |     2.00 |  0.021 | 57.50 k |  
+| LEA47  | 100k    | 55758-7 |  1.0 M |    15.99 |  0.147 | 62.54 k |
+| LEA47  | 100k    | 72514-3 |  2.7 M |    43.48 |  0.128 | 62.10 k |
+| LEA58  | 100k    | 8310-5  |  115 k |     1.96 |  0.039 | 58.67 k |  
+| LEA58  | 100k    | 55758-7 |  1.0 M |    16.61 |  0.161 | 60.20 k |
+| LEA58  | 100k    | 72514-3 |  2.7 M |    43.84 |  0.124 | 61.59 k |         
+| LEA47  | 1M      | 8310-5  |  1.1 M |    21.44 |  0.260 |  54.0 k |         
+| LEA47  | 1M      | 55758-7 | 10.1 M |   322.95 | 37.205 |  31.4 k |         
+| LEA47  | 1M      | 72514-3 | 27.3 M |   828.67 |  0.968 |  33.0 k |
+| LEA58  | 1M      | 8310-5  |  1.1 M |    20.70 |  0.320 |  56.0 k |         
+| LEA58  | 1M      | 55758-7 | 10.1 M |   171.60 |  4.241 |  59.1 k |         
+| LEA58  | 1M      | 72514-3 | 27.3 M |   497.29 | 26.969 |  55.0 k |
+| A5N46  | 1M      | 8310-5  |  1.1 M |    10.55 |  0.034 | 109.8 k |         
+| A5N46  | 1M      | 55758-7 | 10.1 M |   121.64 |  0.312 |  83.3 k |        
+| A5N46  | 1M      | 72514-3 | 27.3 M |   294.11 |  0.523 |  93.0 k |
 
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_count=1000" > /dev/null
-```
-
-| System | Dataset | Code    | # Hits | Time (s) | StdDev |  Res/s ¹ |
-|--------|---------|---------|-------:|---------:|-------:|---------:|
-| LEA36  | 100k    | 8310-5  |  115 k |     1.90 |  0.016 |  60.53 k |  
-| LEA36  | 100k    | 55758-7 |  1.0 M |    15.45 |  0.121 |  64.72 k |
-| LEA36  | 100k    | 72514-3 |  2.7 M |    41.09 |  0.530 |  65.71 k |
-| LEA47  | 100k    | 8310-5  |  115 k |     2.00 |  0.021 |  57.50 k |  
-| LEA47  | 100k    | 55758-7 |  1.0 M |    15.99 |  0.147 |  62.54 k |
-| LEA47  | 100k    | 72514-3 |  2.7 M |    43.48 |  0.128 |  62.10 k |
-| LEA58  | 100k    | 8310-5  |  115 k |     1.96 |  0.039 |  58.67 k |  
-| LEA58  | 100k    | 55758-7 |  1.0 M |    16.61 |  0.161 |  60.20 k |
-| LEA58  | 100k    | 72514-3 |  2.7 M |    43.84 |  0.124 |  61.59 k |         
-| LEA47  | 1M      | 8310-5  |  1.1 M |    15.43 |  0.034 |   75.1 k |         
-| LEA47  | 1M      | 55758-7 | 10.1 M |   155.78 |  0.976 | 65.1 k ² |         
-| LEA47  | 1M      | 72514-3 | 10.1 M |   114.41 |  0.438 | 88.6 k ² |
-| LEA58  | 1M      | 8310-5  |  1.1 M |    15.35 |  0.135 |   75.5 k |         
-| LEA58  | 1M      | 55758-7 | 10.1 M |   136.48 |  0.236 |   74.3 k |         
-| LEA58  | 1M      | 72514-3 | 27.3 M |   416.05 | 22.655 | 65.7 k ² |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     7.78 |  0.040 |  148.9 k |         
-| A5N46  | 1M      | 55758-7 | 10.1 M |   148.39 |  1.776 | 68.3 k ² |        
-| A5N46  | 1M      | 72514-3 | 27.3 M |   413.87 |  0.165 | 66.1 k ² |
-
-¹ resources per second, ² resource cache size is smaller than the number of resources returned
+¹ resources per second
 
 ### Downloading Resources with Subsetting
 
 If only a subset of a resource's information is needed, the `_elements` search parameter can be used to retrieve only specific properties. In this case, `_elements=subject` was used.
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
+| System | Dataset | Code    | # Hits | Time (s) | StdDev |  Res/s ¹ |
+|--------|---------|---------|-------:|---------:|-------:|---------:|
+| LEA36  | 100k    | 8310-5  |  115 k |     1.26 |  0.009 |  91.27 k |
+| LEA36  | 100k    | 55758-7 |  1.0 M |     9.70 |  0.070 | 103.09 k |
+| LEA36  | 100k    | 72514-3 |  2.7 M |    25.82 |  0.440 | 104.57 k |
+| LEA47  | 100k    | 8310-5  |  115 k |     1.34 |  0.009 |  85.82 k |
+| LEA47  | 100k    | 55758-7 |  1.0 M |     9.95 |  0.065 | 100.50 k |
+| LEA47  | 100k    | 72514-3 |  2.7 M |    26.76 |  0.284 | 100.90 k |
+| LEA58  | 100k    | 8310-5  |  115 k |     1.28 |  0.017 |  89.84 k |
+| LEA58  | 100k    | 55758-7 |  1.0 M |    10.55 |  0.209 |  94.79 k |
+| LEA58  | 100k    | 72514-3 |  2.7 M |    27.15 |  0.749 |  99.45 k |
+| LEA47  | 1M      | 8310-5  |  1.1 M |    16.43 |  0.570 |   70.5 k |          
+| LEA47  | 1M      | 55758-7 | 10.1 M |   377.69 |  1.794 |   26.8 k |          
+| LEA47  | 1M      | 72514-3 | 27.3 M |   704.78 |  2.102 |   38.8 k |
+| LEA58  | 1M      | 8310-5  |  1.1 M |    15.42 |  0.208 |   75.1 k |          
+| LEA58  | 1M      | 55758-7 | 10.1 M |   124.03 |  1.024 |   81.8 k |          
+| LEA58  | 1M      | 72514-3 | 27.3 M |   343.16 |  1.412 |   79.7 k |
+| A5N46  | 1M      | 8310-5  |  1.1 M |     7.49 |  0.054 |  154.7 k |          
+| A5N46  | 1M      | 55758-7 | 10.1 M |    97.79 |  0.061 |  103.7 k |          
+| A5N46  | 1M      | 72514-3 | 27.3 M |   231.97 |  0.111 |  117.9 k |          
 
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_elements=subject&_count=1000" > /dev/null
-```
-
-| System | Dataset | Code    | # Hits | Time (s) | StdDev |   Res/s ¹ |
-|--------|---------|---------|-------:|---------:|-------:|----------:|
-| LEA36  | 100k    | 8310-5  |  115 k |     1.26 |  0.009 |   91.27 k |
-| LEA36  | 100k    | 55758-7 |  1.0 M |     9.70 |  0.070 |  103.09 k |
-| LEA36  | 100k    | 72514-3 |  2.7 M |    25.82 |  0.440 |  104.57 k |
-| LEA47  | 100k    | 8310-5  |  115 k |     1.34 |  0.009 |   85.82 k |
-| LEA47  | 100k    | 55758-7 |  1.0 M |     9.95 |  0.065 |  100.50 k |
-| LEA47  | 100k    | 72514-3 |  2.7 M |    26.76 |  0.284 |  100.90 k |
-| LEA58  | 100k    | 8310-5  |  115 k |     1.28 |  0.017 |   89.84 k |
-| LEA58  | 100k    | 55758-7 |  1.0 M |    10.55 |  0.209 |   94.79 k |
-| LEA58  | 100k    | 72514-3 |  2.7 M |    27.15 |  0.749 |   99.45 k |
-| LEA47  | 1M      | 8310-5  |  1.1 M |    10.48 |  0.185 |   110.6 k |          
-| LEA47  | 1M      | 55758-7 | 10.1 M |   114.41 |  0.438 |  88.6 k ² |          
-| LEA47  | 1M      | 72514-3 | 27.3 M |   375.96 |  1.683 |  72.7 k ² |
-| LEA58  | 1M      | 8310-5  |  1.1 M |    10.61 |  0.120 |   109.2 k |          
-| LEA58  | 1M      | 55758-7 | 10.1 M |    88.05 |  1.587 |   115.2 k |          
-| LEA58  | 1M      | 72514-3 | 27.3 M |   259.91 |  2.506 | 105.2 k ² |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     5.08 |  0.054 |   228.3 k |          
-| A5N46  | 1M      | 55758-7 | 10.1 M |   105.87 |  0.544 |  95.8 k ² |          
-| A5N46  | 1M      | 72514-3 | 27.3 M |   318.80 |  7.558 |  85.8 k ² |          
-
-¹ resources per second, ² resource cache size is smaller than the number of resources returned
+¹ resources per second
 
 ## Multiple Code Search
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with multiple codes.
 
-The following top 20 LOINC codes were used:
+The following codes were used:
 
-```
-72514-3,49765-1,20565-8,2069-3,38483-4,2339-0,6298-4,2947-0,6299-2,85354-9,29463-7,8867-4,9279-1,8302-2,72166-2,39156-5,93025-5,74006-8,55758-7,33914-3
-```
+* 10 LOINC codes from `observation-codes-10.txt`
+* 100 LOINC codes from `observation-codes-100.txt`
+
+### Script
+
+The script `multiple-code-searchs.sh` is used.
 
 ### Counting
 
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&_summary=count"
-```
-
-| System | Dataset |  # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|--------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 328.6 M |   155.15 |  0.315 |   2.1 M |
-| LEA58  | 1M      | 328.6 M |   143.78 |  0.472 |   2.3 M |
-| A5N46  | 1M      | 328.6 M |    72.00 |  0.117 |   4.6 M |
+| System | Dataset | Codes |  # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|--------:|---------:|-------:|--------:|
+| LEA47  | 1M      | 10    |  27.9 M |    11.08 |  0.109 |   2.5 M |
+| LEA47  | 1M      | 100   | 322.6 M |   165.30 |  0.985 |   2.0 M |
+| LEA58  | 1M      | 10    |  27.9 M |    11.24 |  0.180 |   2.5 M |
+| LEA58  | 1M      | 100   | 322.6 M |   171.82 |  1.402 |   1.9 M |
+| A5N46  | 1M      | 10    |  27.9 M |     5.28 |  0.032 |   5.3 M |
+| A5N46  | 1M      | 100   | 322.6 M |    82.95 |  0.082 |   3.9 M |
 
 ¹ resources per second
 
@@ -169,19 +151,14 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE_1,ht
 
 ![](fhir-search/multiple-code-search-download-1M.png)
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&_count=1000" > /dev/null
-```
-
-| System | Dataset |  # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|--------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 328.6 M | 10359.24 | 43.717 |  31.7 k |
-| LEA58  | 1M      | 328.6 M |  9160.37 | 33.960 |  35.9 k |
-| A5N46  | 1M      | 328.6 M |  5584.68 | 27.818 |  58.8 k |
+| System | Dataset | Codes |  # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|--------:|---------:|-------:|--------:|
+| LEA47  | 1M      | 10    |  27.9 M |   677.48 |  4.174 |  41.2 k |
+| LEA47  | 1M      | 100   | 322.6 M | 11148.16 | 62.879 |  28.9 k |
+| LEA58  | 1M      | 10    |  27.9 M |   456.25 |  0.690 |  61.1 k |
+| LEA58  | 1M      | 100   | 322.6 M |  9776.25 | 83.038 |  33.0 k |
+| A5N46  | 1M      | 10    |  27.9 M |   278.13 |  3.040 | 100.3 k |
+| A5N46  | 1M      | 100   | 322.6 M |  4699.36 |  9.647 |  68.6 k |
 
 ¹ resources per second
 
@@ -196,22 +173,20 @@ Two sets of codes were used:
 | laboratory  | top-5 | 49765-1, 20565-8, 2069-3, 38483-4, 2339-0 |
 | vital-signs | low-5 | 2713-6, 8478-0, 8310-5, 77606-2, 9843-4   |
 
+### Script
+
+The script `observation-final-category-multiple-codes-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?status=final&category=$CATEGORY&code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&_summary=count"
-```
 
 | System | Dataset | Category    | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------------|------:|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | laboratory  | top-5 | 90.3 M |   401.86 |  1.521 | 224.6 k |
-| LEA47  | 1M      | vital-signs | low-5 |  3.5 M |     5.01 |  0.036 | 703.3 k |
+| LEA47  | 1M      | laboratory  | top-5 | 90.3 M |   398.47 |  1.039 | 226.5 k |
+| LEA47  | 1M      | vital-signs | low-5 |  3.5 M |     5.45 |  0.436 | 646.7 k |
 | LEA58  | 1M      | laboratory  | top-5 | 90.3 M |   352.50 |  8.995 | 256.1 k |
 | LEA58  | 1M      | vital-signs | low-5 |  3.5 M |     1.43 |  0.018 |   2.5 M |
-| A5N46  | 1M      | laboratory  | top-5 | 90.3 M |   157.81 |  1.402 | 572.0 k |
-| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |     2.61 |  0.008 |   1.4 M |
+| A5N46  | 1M      | laboratory  | top-5 | 90.3 M |   172.31 |  0.336 | 523.9 k |
+| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |     2.65 |  0.019 |   1.3 M |
 
 ¹ resources per second
 
@@ -219,57 +194,65 @@ curl -s "http://localhost:8080/fhir/Observation?status=final&category=$CATEGORY&
 
 ![](fhir-search/multiple-search-param-search-download-1M.png)
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
+| System | Dataset | Category    | Codes | # Hits | Time (s) |  StdDev | Res/s ¹ |
+|--------|---------|-------------|------:|-------:|---------:|--------:|--------:|
+| LEA47  | 1M      | laboratory  | top-5 | 90.3 M |  2923.45 |   7.951 |  30.9 k |
+| LEA47  | 1M      | vital-signs | low-5 |  3.5 M |   153.07 |  29.422 |  23.0 k |
+| LEA58  | 1M      | laboratory  | top-5 | 90.3 M |  2490.08 | 101.868 |  36.2 k |
+| LEA58  | 1M      | vital-signs | low-5 |  3.5 M |    62.43 |   0.356 |  56.5 k |
+| A5N46  | 1M      | laboratory  | top-5 | 90.3 M |  1093.04 |   7.293 |  82.6 k |
+| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    63.30 |   1.099 |  55.7 k |
 
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "status=final&category=$CATEGORY&code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&_count=1000" > /dev/null
-```
-
-| System | Dataset | Category    | Codes | # Hits | Time (s) |  StdDev |  Res/s ¹ |
-|--------|---------|-------------|------:|-------:|---------:|--------:|---------:|
-| LEA47  | 1M      | vital-signs | low-5 |  3.5 M |   113.88 |   1.961 |   30.9 k |
-| LEA58  | 1M      | laboratory  | top-5 | 90.3 M |  2490.08 | 101.868 | 36.2 k ² |
-| LEA58  | 1M      | vital-signs | low-5 |  3.5 M |    62.43 |   0.356 |   56.5 k |
-| A5N46  | 1M      | laboratory  | top-5 | 90.3 M |  1494.28 |  11.798 | 60.4 k ² |
-| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    52.61 |   0.045 |   67.0 k |
-
-¹ resources per second, ² resource cache size is smaller than the number of resources returned
+¹ resources per second
 
 ### Downloading Resources with Subsetting
 
 If only a subset of a resource's information is needed, the `_elements` search parameter can be used to retrieve only specific properties. In this case, `_elements=subject` was used.
 
-All measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
+| System | Dataset | Category    | Codes | # Hits | Time (s) |  StdDev | Res/s ¹ |
+|--------|---------|-------------|------:|-------:|---------:|--------:|--------:|
+| LEA47  | 1M      | laboratory  | top-5 | 90.3 M |  2625.21 |  24.973 |  34.4 k |
+| LEA47  | 1M      | vital-signs | low-5 |  3.5 M |   118.72 |   0.099 |  29.7 k |
+| LEA58  | 1M      | laboratory  | top-5 | 90.3 M |  2200.60 | 232.968 |  41.0 k |
+| LEA58  | 1M      | vital-signs | low-5 |  3.5 M |    54.94 |   5.827 |  64.2 k |
+| A5N46  | 1M      | laboratory  | top-5 | 90.3 M |   979.66 |  98.309 |  92.1 k |
+| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    58.23 |   4.449 |  60.5 k |
 
-Downloads were performed using the following `blazectl` command:
+¹ resources per second
 
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "status=final&category=$CATEGORY&code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&_elements=subject&_count=1000" > /dev/null
-```
+## Token and Forward Chaining Search
 
-| System | Dataset | Category    | Codes | # Hits | Time (s) |  StdDev |  Res/s ¹ |
-|--------|---------|-------------|------:|-------:|---------:|--------:|---------:|
-| LEA47  | 1M      | vital-signs | low-5 |  3.5 M |   106.20 |   6.090 |   33.2 k |
-| LEA58  | 1M      | laboratory  | top-5 | 90.3 M |  2200.60 | 232.968 | 41.0 k ² |
-| LEA58  | 1M      | vital-signs | low-5 |  3.5 M |    54.94 |   5.827 |   64.2 k |
-| A5N46  | 1M      | laboratory  | top-5 | 90.3 M |  1248.41 | 190.598 | 72.3 k ² |
-| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    48.67 |   3.052 |   72.4 k |
+This section evaluates the performance of FHIR search queries with one badly discriminating token search parameter and one well discriminating forward chaining search parameter.
 
-¹ resources per second, ² resource cache size is smaller than the number of resources returned
+### Script
+
+The script `token-forward-chaining-search.sh` is used.
+
+### Counting
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      |   32 k |     0.15 |  0.006 | 216.4 k |
+
+¹ resources per second
+
+### Downloading Resources
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      |   32 k |     2.01 |  0.008 |  15.7 k |
+
+¹ resources per second
 
 ## Code and Value Search
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific code and value.
 
+### Script
+
+The script `code-value-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_summary=count"
-```
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev |  T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|--------:|
@@ -291,14 +274,6 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&valu
 
 ### Downloading Resources
 
-All measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
- 
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_count=1000" > /dev/null
-```
-
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev |   T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|---------:|
 | LEA36  | 100k    | 29463-7 |  26.8 |  158 k |    43.24 |  0.048 | 273.51 ² |
@@ -318,14 +293,6 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 If only a subset of a resource's information is needed, the `_elements` search parameter can be used to retrieve only specific properties. In this case, `_elements=subject` was used.
 
-All measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_elements=subject&_count=1000" > /dev/null
-```
-
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev |   T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|---------:|
 | LEA36  | 100k    | 29463-7 |  26.8 |  158 k |    42.38 |  0.104 | 268.09 ² |
@@ -344,55 +311,75 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific code and date.
 
+### Script
+
+The script `code-date-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&date=$DATE&_summary=count"
-```
 
 | System | Dataset | Code    | Date | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-----:|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 8310-5  | 2013 |   50 k |     0.58 |  0.003 |  86.6 k |
-| LEA47  | 1M      | 8310-5  | 2019 |   85 k |     0.59 |  0.003 | 145.3 k |
-| LEA47  | 1M      | 8310-5  | 2020 |  273 k |     0.59 |  0.003 | 465.8 k |
-| A5N46  | 1M      | 8310-5  | 2013 |   50 k |     0.27 |  0.011 | 185.0 k | 
-| A5N46  | 1M      | 8310-5  | 2019 |   85 k |     0.28 |  0.012 | 305.4 k | 
-| A5N46  | 1M      | 8310-5  | 2020 |  273 k |     0.29 |  0.008 | 937.6 k |
-| A5N46  | 1M      | 55758-7 | 2013 |  549 k |    44.97 |  0.196 |  12.2 k | 
-| A5N46  | 1M      | 55758-7 | 2019 |  1.0 M |    46.29 |  0.067 |  22.5 k | 
-| A5N46  | 1M      | 55758-7 | 2020 |  1.1 M |    46.29 |  0.028 |  23.1 k |
-| A5N46  | 1M      | 72514-3 | 2013 |  1.4 M |    58.62 |  1.129 |  24.6 k | 
-| A5N46  | 1M      | 72514-3 | 2019 |  2.8 M |    56.76 |  0.269 |  50.1 k | 
-| A5N46  | 1M      | 72514-3 | 2020 |  2.9 M |    56.13 |  0.088 |  52.4 k |
+| LEA47  | 1M      | 8310-5  | 2013 |   50 k |     0.42 |  0.006 | 119.1 k | 
+| LEA47  | 1M      | 8310-5  | 2019 |   85 k |     0.42 |  0.008 | 200.9 k | 
+| LEA47  | 1M      | 8310-5  | 2020 |  273 k |     0.45 |  0.001 | 601.3 k |
+| LEA47  | 1M      | 55758-7 | 2013 |  549 k |    18.38 |  2.954 |  29.9 k | 
+| LEA47  | 1M      | 55758-7 | 2019 |  1.0 M |    16.52 |  0.112 |  63.2 k | 
+| LEA47  | 1M      | 55758-7 | 2020 |  1.1 M |    16.74 |  0.238 |  63.9 k |
+| LEA47  | 1M      | 72514-3 | 2013 |  1.4 M |   220.21 | 38.049 |   6.6 k | 
+| LEA47  | 1M      | 72514-3 | 2019 |  2.8 M |   278.23 | 10.056 |  10.2 k | 
+| LEA47  | 1M      | 72514-3 | 2020 |  2.9 M |   274.85 | 20.144 |  10.7 k |
+| LEA58  | 1M      | 8310-5  | 2013 |   50 k |     0.41 |  0.009 | 121.7 k | 
+| LEA58  | 1M      | 8310-5  | 2019 |   85 k |     0.41 |  0.008 | 208.2 k | 
+| LEA58  | 1M      | 8310-5  | 2020 |  273 k |     0.41 |  0.003 | 662.0 k |
+| LEA58  | 1M      | 55758-7 | 2013 |  549 k |     9.45 |  0.038 |  58.0 k | 
+| LEA58  | 1M      | 55758-7 | 2019 |  1.0 M |     9.68 |  0.025 | 107.8 k | 
+| LEA58  | 1M      | 55758-7 | 2020 |  1.1 M |     9.57 |  0.020 | 111.8 k |
+| LEA58  | 1M      | 72514-3 | 2013 |  1.4 M |    16.96 |  0.180 |  85.1 k | 
+| LEA58  | 1M      | 72514-3 | 2019 |  2.8 M |    17.01 |  0.076 | 167.1 k | 
+| LEA58  | 1M      | 72514-3 | 2020 |  2.9 M |    17.29 |  0.085 | 170.2 k |
+| A5N46  | 1M      | 8310-5  | 2013 |   50 k |     0.26 |  0.002 | 197.8 k | 
+| A5N46  | 1M      | 8310-5  | 2019 |   85 k |     0.26 |  0.012 | 327.7 k | 
+| A5N46  | 1M      | 8310-5  | 2020 |  273 k |     0.27 |  0.017 | 995.4 k |
+| A5N46  | 1M      | 55758-7 | 2013 |  549 k |    38.47 |  0.031 |  14.3 k | 
+| A5N46  | 1M      | 55758-7 | 2019 |  1.0 M |    39.94 |  0.008 |  26.1 k | 
+| A5N46  | 1M      | 55758-7 | 2020 |  1.1 M |    39.96 |  0.024 |  26.8 k |
+| A5N46  | 1M      | 72514-3 | 2013 |  1.4 M |    52.83 |  0.559 |  27.3 k | 
+| A5N46  | 1M      | 72514-3 | 2019 |  2.8 M |    51.90 |  0.215 |  54.8 k | 
+| A5N46  | 1M      | 72514-3 | 2020 |  2.9 M |    51.16 |  0.062 |  57.5 k |
 
 ¹ resources per second
 
 ### Downloading Resources
 
-All measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=$DATE&_count=1000" > /dev/null
-```
-
-| System | Dataset | Code    | Date | # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|---------|-----:|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 8310-5  | 2013 |   50 k |     8.45 |  0.014 |   6.0 k |
-| LEA47  | 1M      | 8310-5  | 2019 |   85 k |     9.10 |  0.031 |   9.4 k |
-| LEA47  | 1M      | 8310-5  | 2020 |  273 k |    12.20 |  0.111 |  22.4 k |
-| A5N46  | 1M      | 8310-5  | 2013 |   50 k |     3.29 |  0.009 |  15.3 k |
-| A5N46  | 1M      | 8310-5  | 2019 |   85 k |     3.68 |  0.009 |  23.1 k |
-| A5N46  | 1M      | 8310-5  | 2020 |  273 k |     5.61 |  0.012 |  48.7 k |
-| A5N46  | 1M      | 55758-7 | 2013 |  549 k |   346.06 |  1.040 |   1.6 k |
-| A5N46  | 1M      | 55758-7 | 2019 |  1.0 M |   379.45 |  4.408 |   2.7 k |
-| A5N46  | 1M      | 55758-7 | 2020 |  1.1 M |   378.09 |  0.520 |   2.8 k |
-| A5N46  | 1M      | 72514-3 | 2013 |  1.4 M |   543.21 |  0.268 |   2.7 k |
-| A5N46  | 1M      | 72514-3 | 2019 |  2.8 M |   625.51 |  0.536 |   4.5 k |
-| A5N46  | 1M      | 72514-3 | 2020 |  2.9 M |   669.83 |  7.711 |   4.4 k |
+| System | Dataset | Code    | Date | # Hits | Time (s) |  StdDev | Res/s ¹ |
+|--------|---------|---------|-----:|-------:|---------:|--------:|--------:|
+| LEA47  | 1M      | 8310-5  | 2013 |   50 k |     5.93 |   0.016 |   8.5 k |
+| LEA47  | 1M      | 8310-5  | 2019 |   85 k |     6.60 |   0.025 |  12.9 k |
+| LEA47  | 1M      | 8310-5  | 2020 |  273 k |     9.89 |   0.062 |  27.6 k |
+| LEA47  | 1M      | 55758-7 | 2013 |  549 k |   253.20 |   1.566 |   2.2 k |
+| LEA47  | 1M      | 55758-7 | 2019 |  1.0 M |   470.48 | 266.452 |   2.2 k |
+| LEA47  | 1M      | 55758-7 | 2020 |  1.1 M |   274.58 |  10.132 |   3.9 k |
+| LEA47  | 1M      | 72514-3 | 2013 |  1.4 M |  3107.67 | 498.287 |     464 |
+| LEA47  | 1M      | 72514-3 | 2019 |  2.8 M |  4180.95 | 150.134 |     680 |
+| LEA47  | 1M      | 72514-3 | 2020 |  2.9 M |  4316.09 |   9.551 |     682 |
+| LEA58  | 1M      | 8310-5  | 2013 |   50 k |     6.06 |   0.025 |   8.3 k |
+| LEA58  | 1M      | 8310-5  | 2019 |   85 k |     6.75 |   0.057 |  12.6 k |
+| LEA58  | 1M      | 8310-5  | 2020 |  273 k |    10.03 |   0.065 |  27.2 k |
+| LEA58  | 1M      | 55758-7 | 2013 |  549 k |   251.57 |   0.633 |   2.2 k |
+| LEA58  | 1M      | 55758-7 | 2019 |  1.0 M |   264.94 |   1.160 |   3.9 k |
+| LEA58  | 1M      | 55758-7 | 2020 |  1.1 M |   265.40 |   2.129 |   4.0 k |
+| LEA58  | 1M      | 72514-3 | 2013 |  1.4 M |   468.79 |   3.568 |   3.1 k |
+| LEA58  | 1M      | 72514-3 | 2019 |  2.8 M |   505.10 |   8.743 |   5.6 k |
+| LEA58  | 1M      | 72514-3 | 2020 |  2.9 M |   504.28 |   4.828 |   5.8 k |
+| A5N46  | 1M      | 8310-5  | 2013 |   50 k |     3.16 |   0.005 |  15.9 k |
+| A5N46  | 1M      | 8310-5  | 2019 |   85 k |     3.52 |   0.008 |  24.2 k |
+| A5N46  | 1M      | 8310-5  | 2020 |  273 k |     5.30 |   0.021 |  51.6 k |
+| A5N46  | 1M      | 55758-7 | 2013 |  549 k |   458.76 |   0.421 |   1.2 k |
+| A5N46  | 1M      | 55758-7 | 2019 |  1.0 M |   497.68 |   0.049 |   2.1 k |
+| A5N46  | 1M      | 55758-7 | 2020 |  1.1 M |   502.84 |   3.870 |   2.1 k |
+| A5N46  | 1M      | 72514-3 | 2013 |  1.4 M |   619.29 |   3.956 |   2.3 k |
+| A5N46  | 1M      | 72514-3 | 2019 |  2.8 M |   711.36 |   7.314 |   4.0 k |
+| A5N46  | 1M      | 72514-3 | 2020 |  2.9 M |   708.03 |   0.125 |   4.2 k |
 
 ¹ resources per second
 
@@ -400,70 +387,70 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific category and date.
 
+### Script
+
+The script `category-date-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?category=$CATEGORY&date=$DATE&_summary=count"
-```
 
 | System | Dataset | Code        | Date | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------------|-----:|-------:|---------:|-------:|--------:|
-| A5N46  | 1M      | laboratory  | 2013 | 19.6 M |   101.11 |  0.148 | 194.1 k | 
-| A5N46  | 1M      | laboratory  | 2019 | 38.4 M |   103.22 |  0.188 | 372.0 k | 
-| A5N46  | 1M      | laboratory  | 2020 | 44.9 M |   103.57 |  0.344 | 433.5 k |
-| A5N46  | 1M      | vital-signs | 2013 |  7.6 M |    70.43 |  1.011 | 107.9 k | 
-| A5N46  | 1M      | vital-signs | 2019 | 14.3 M |    71.14 |  0.904 | 201.4 k | 
-| A5N46  | 1M      | vital-signs | 2020 | 15.8 M |    72.11 |  0.678 | 219.0 k |
+| LEA47  | 1M      | laboratory  | 2013 | 19.6 M |   194.72 |  1.585 | 100.8 k | 
+| LEA47  | 1M      | laboratory  | 2019 | 38.4 M |   204.33 |  0.532 | 187.9 k | 
+| LEA47  | 1M      | laboratory  | 2020 | 44.9 M |   205.06 |  0.565 | 219.0 k |
+| LEA47  | 1M      | vital-signs | 2013 |  7.6 M |   326.83 |  6.978 |  23.2 k | 
+| LEA47  | 1M      | vital-signs | 2019 | 14.3 M |   338.42 |  0.157 |  42.3 k | 
+| LEA47  | 1M      | vital-signs | 2020 | 15.8 M |   334.29 |  4.415 |  47.2 k |
+| LEA58  | 1M      | laboratory  | 2013 | 19.6 M |   118.38 |  0.677 | 165.8 k | 
+| LEA58  | 1M      | laboratory  | 2019 | 38.4 M |   117.87 |  0.465 | 325.8 k | 
+| LEA58  | 1M      | laboratory  | 2020 | 44.9 M |   140.11 | 19.633 | 320.5 k |
+| LEA58  | 1M      | vital-signs | 2013 |  7.6 M |    43.99 |  0.135 | 172.8 k | 
+| LEA58  | 1M      | vital-signs | 2019 | 14.3 M |    45.09 |  0.629 | 317.8 k | 
+| LEA58  | 1M      | vital-signs | 2020 | 15.8 M |    44.77 |  0.547 | 352.8 k |
+| A5N46  | 1M      | laboratory  | 2013 | 19.6 M |    91.70 |  0.219 | 214.1 k | 
+| A5N46  | 1M      | laboratory  | 2019 | 38.4 M |    92.90 |  0.116 | 413.3 k | 
+| A5N46  | 1M      | laboratory  | 2020 | 44.9 M |    93.40 |  0.051 | 480.8 k |
+| A5N46  | 1M      | vital-signs | 2013 |  7.6 M |    65.65 |  0.696 | 115.8 k | 
+| A5N46  | 1M      | vital-signs | 2019 | 14.3 M |    66.52 |  0.791 | 215.4 k | 
+| A5N46  | 1M      | vital-signs | 2020 | 15.8 M |    66.34 |  0.130 | 238.1 k |
 
 ## Code and Patient Search
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific code for 1000 patients.
 
+### Script
+
+The script `code-patient-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&patient=$PATIENT_IDS&_summary=count"
-```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 8310-5  |    943 |     0.02 |  0.003 |  39.7 k |
-| LEA47  | 1M      | 55758-7 |   28 k |     0.09 |  0.008 | 301.7 k |
-| LEA47  | 1M      | 72514-3 |  113 k |     0.23 |  0.007 | 484.8 k |
-| LEA58  | 1M      | 8310-5  |    943 |     0.02 |  0.002 |  39.8 k |
-| LEA58  | 1M      | 55758-7 |   28 k |     0.10 |  0.004 | 288.3 k |
-| LEA58  | 1M      | 72514-3 |  113 k |     0.25 |  0.014 | 456.2 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.001 |  82.0 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.05 |  0.001 | 590.1 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.12 |  0.003 | 938.8 k |
+| LEA47  | 1M      | 8310-5  |    943 |     0.03 |  0.002 |  35.7 k |
+| LEA47  | 1M      | 55758-7 |   28 k |     0.10 |  0.003 | 288.1 k |
+| LEA47  | 1M      | 72514-3 |  113 k |     0.24 |  0.002 | 478.7 k |
+| LEA58  | 1M      | 8310-5  |    943 |     0.03 |  0.002 |  34.4 k |
+| LEA58  | 1M      | 55758-7 |   28 k |     0.10 |  0.001 | 275.4 k |
+| LEA58  | 1M      | 72514-3 |  113 k |     0.29 |  0.010 | 392.0 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.001 |  74.5 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.05 |  0.001 | 574.8 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.12 |  0.001 | 930.9 k |
 
 ¹ resources per second
 
 ### Downloading Resources
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&patient=$PATIENT_IDS&_count=1000" > /dev/null
-```
-
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 8310-5  |    943 |     0.06 |  0.000 |  15.7 k |
-| LEA47  | 1M      | 55758-7 |   28 k |     0.45 |  0.012 |  62.0 k |
-| LEA47  | 1M      | 72514-3 |  113 k |     1.58 |  0.005 |  71.4 k |
-| LEA58  | 1M      | 8310-5  |    943 |     0.06 |  0.005 |  16.6 k |
-| LEA58  | 1M      | 55758-7 |   28 k |     0.48 |  0.009 |  59.0 k |
-| LEA58  | 1M      | 72514-3 |  113 k |     1.57 |  0.009 |  71.9 k |
+| LEA47  | 1M      | 8310-5  |    943 |     0.07 |  0.000 |  13.5 k |
+| LEA47  | 1M      | 55758-7 |   28 k |     0.63 |  0.014 |  44.6 k |
+| LEA47  | 1M      | 72514-3 |  113 k |     2.33 |  0.024 |  48.5 k |
+| LEA58  | 1M      | 8310-5  |    943 |     0.06 |  0.005 |  14.9 k |
+| LEA58  | 1M      | 55758-7 |   28 k |     0.68 |  0.005 |  41.6 k |
+| LEA58  | 1M      | 72514-3 |  113 k |     2.16 |  0.065 |  52.4 k |
 | A5N46  | 1M      | 8310-5  |    944 |     0.03 |  0.000 |  31.5 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.35 |  0.005 |  79.7 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     1.25 |  0.017 |  90.3 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.33 |  0.009 |  86.2 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     1.15 |  0.014 |  98.4 k |
 
 ¹ resources per second
 
@@ -471,69 +458,70 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 If only a subset of a resource's information is needed, the `_elements` search parameter can be used to retrieve only specific properties. In this case, `_elements=subject` was used.
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&patient=$PATIENT_IDS&_elements=subject&_count=1000" > /dev/null
-```
-
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 8310-5  |    943 |     0.03 |  0.000 |  31.4 k |
-| LEA47  | 1M      | 55758-7 |   28 k |     0.32 |  0.008 |  87.9 k |
-| LEA47  | 1M      | 72514-3 |  113 k |     1.09 |  0.021 | 104.1 k |
-| LEA58  | 1M      | 8310-5  |    943 |     0.03 |  0.005 |  28.3 k |
-| LEA58  | 1M      | 55758-7 |   28 k |     0.32 |  0.005 |  88.8 k |
-| LEA58  | 1M      | 72514-3 |  113 k |     1.07 |  0.008 | 105.7 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.005 |  70.8 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.22 |  0.009 | 126.1 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.75 |  0.008 | 150.9 k |
+| LEA47  | 1M      | 8310-5  |    943 |     0.04 |  0.000 |  23.6 k |
+| LEA47  | 1M      | 55758-7 |   28 k |     0.48 |  0.012 |  59.0 k |
+| LEA47  | 1M      | 72514-3 |  113 k |     1.63 |  0.000 |  69.4 k |
+| LEA58  | 1M      | 8310-5  |    943 |     0.04 |  0.000 |  23.6 k |
+| LEA58  | 1M      | 55758-7 |   28 k |     0.48 |  0.016 |  58.6 k |
+| LEA58  | 1M      | 72514-3 |  113 k |     1.53 |  0.043 |  73.9 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.02 |  0.000 |  47.2 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.24 |  0.005 | 115.7 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.82 |  0.008 | 138.0 k |
 
 ¹ resources per second
 
 ## Multiple Codes and Patient Search
 
-This section evaluates the performance of FHIR Search for selecting Observation resources with multiple codes for 1000 patients.
+This section evaluates the performance of FHIR Search for selecting Observation and Condition resources with multiple codes for 1000 patients.
 
-The following top 20 LOINC codes were used:
+The following codes were used:
 
-```
-72514-3,49765-1,20565-8,2069-3,38483-4,2339-0,6298-4,2947-0,6299-2,85354-9,29463-7,8867-4,9279-1,8302-2,72166-2,39156-5,93025-5,74006-8,55758-7,33914-3
-```
+* 10 LOINC codes from `observation-codes-10.txt`
+* 100 LOINC codes from `observation-codes-100.txt`
+* 1k SNOMED CT codes from `condition-codes-disease-1k.txt`
+* 10k SNOMED CT codes from `condition-codes-disease-10k.txt`
+
+### Script
+
+The script `multiple-codes-patient-search.sh` is used.
 
 ### Counting
 
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&patient=$PATIENT_IDS&_summary=count"
-```
-
-| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  1.1 M |     1.96 |  0.011 | 558.2 k |
-| LEA58  | 1M      |  1.1 M |     1.95 |  0.017 | 562.3 k |
-| A5N46  | 1M      |  1.1 M |     1.03 |  0.006 |   1.1 M |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|------:|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |    10 |  121 k |     0.30 |  0.004 | 408.8 k |
+| LEA47  | 1M      |   100 |  1.1 M |     2.33 |  0.005 | 470.1 k |
+| LEA47  | 1M      |    1k |    247 |     2.80 |  0.006 |      88 |
+| LEA47  | 1M      |   10k |    1 k |    39.80 |  0.146 |      32 |
+| LEA58  | 1M      |    10 |  121 k |     0.31 |  0.011 | 396.5 k |
+| LEA58  | 1M      |   100 |  1.1 M |     2.47 |  0.022 | 443.8 k |
+| LEA58  | 1M      |    1k |    247 |     2.89 |  0.011 |      85 |
+| LEA58  | 1M      |   10k |    1 k |    41.13 |  0.439 |      31 |
+| A5N46  | 1M      |    10 |  121 k |     0.15 |  0.001 | 799.0 k |
+| A5N46  | 1M      |   100 |  1.1 M |     1.20 |  0.004 | 915.4 k |
+| A5N46  | 1M      |    1k |    247 |     1.35 |  0.007 |     183 |
+| A5N46  | 1M      |   10k |    1 k |    20.29 |  0.189 |      62 |
 
 ¹ resources per second
 
 ### Downloading Resources
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE_1,http://loinc.org|$CODE_2&patient=$PATIENT_IDS&_count=1000" > /dev/null
-```
-
-| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  1.1 M |    17.26 |  0.022 |  63.5 k |
-| LEA58  | 1M      |  1.1 M |    17.42 |  0.057 |  62.9 k |
-| A5N46  | 1M      |  1.1 M |    13.33 |  0.052 |  82.4 k |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|------:|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |    10 |  121 k |     2.44 |  0.054 |  49.7 k |
+| LEA47  | 1M      |   100 |  1.1 M |    21.70 |  0.310 |  50.5 k |
+| LEA47  | 1M      |    1k |    247 |     2.81 |  0.016 |      88 |
+| LEA47  | 1M      |   10k |    1 k |    40.48 |  0.237 |      31 |
+| LEA58  | 1M      |    10 |  121 k |     2.30 |  0.106 |  52.7 k |
+| LEA58  | 1M      |   100 |  1.1 M |    20.19 |  0.281 |  54.3 k |
+| LEA58  | 1M      |    1k |    247 |     2.88 |  0.042 |      86 |
+| LEA58  | 1M      |   10k |    1 k |    40.97 |  0.233 |      31 |
+| A5N46  | 1M      |    10 |  121 k |     1.21 |  0.012 | 100.0 k |
+| A5N46  | 1M      |   100 |  1.1 M |    10.32 |  0.057 | 106.4 k |
+| A5N46  | 1M      |    1k |    247 |     1.34 |  0.005 |     185 |
+| A5N46  | 1M      |   10k |    1 k |    20.32 |  0.139 |      62 |
 
 ¹ resources per second
 
@@ -541,43 +529,33 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific code, a specific date, and for 1000 patients.
 
+### Script
+
+The script `code-date-patient-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&date=2020&patient=$PATIENT_IDS&_summary=count"
-```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 8310-5  |    246 |     0.03 |  0.002 |   8.4 k |
-| LEA47  | 1M      | 55758-7 |    3 k |     0.15 |  0.003 |  18.9 k |
-| LEA47  | 1M      | 72514-3 |   12 k |     0.43 |  0.005 |  27.9 k |
-| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.001 |  18.0 k |
-| A5N46  | 1M      | 55758-7 |    3 k |     0.08 |  0.002 |  36.0 k |
-| A5N46  | 1M      | 72514-3 |   12 k |     0.22 |  0.003 |  54.3 k |
+| LEA47  | 1M      | 8310-5  |    246 |     0.04 |  0.006 |   6.9 k |
+| LEA47  | 1M      | 55758-7 |    3 k |     0.15 |  0.001 |  18.2 k |
+| LEA47  | 1M      | 72514-3 |   12 k |     0.43 |  0.009 |  27.9 k |
+| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.000 |  18.8 k |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.08 |  0.001 |  36.8 k |
+| A5N46  | 1M      | 72514-3 |   12 k |     0.22 |  0.004 |  53.5 k |
 
 ¹ resources per second
 
 ### Downloading Resources
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&patient=$PATIENT_IDS&_count=1000" > /dev/null
-```
-
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 8310-5  |    246 |     0.04 |  0.005 |   6.7 k |
-| LEA47  | 1M      | 55758-7 |    3 k |     0.21 |  0.005 |  13.6 k |
-| LEA47  | 1M      | 72514-3 |   12 k |     0.62 |  0.000 |  19.3 k |
-| A5N46  | 1M      | 8310-5  |    246 |     0.02 |  0.005 |  14.8 k |
-| A5N46  | 1M      | 55758-7 |    3 k |     0.13 |  0.000 |  21.7 k |
-| A5N46  | 1M      | 72514-3 |   12 k |     0.37 |  0.005 |  32.0 k |
+| LEA47  | 1M      | 8310-5  |    246 |     0.04 |  0.000 |   6.2 k |
+| LEA47  | 1M      | 55758-7 |    3 k |     0.24 |  0.005 |  11.6 k |
+| LEA47  | 1M      | 72514-3 |   12 k |     0.65 |  0.017 |  18.3 k |
+| A5N46  | 1M      | 8310-5  |    246 |     0.02 |  0.000 |  12.3 k |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.14 |  0.008 |  20.2 k |
+| A5N46  | 1M      | 72514-3 |   12 k |     0.36 |  0.005 |  32.9 k |
 
 ¹ resources per second
 
@@ -585,22 +563,14 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 If only a subset of a resource's information is needed, the `_elements` search parameter can be used to retrieve only specific properties. In this case, `_elements=subject` was used.
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
-
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&patient=$PATIENT_IDS&_elements=subject&_count=1000" > /dev/null
-```
-
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      | 8310-5  |    246 |     0.03 |  0.000 |   8.2 k |
-| LEA47  | 1M      | 55758-7 |    3 k |     0.18 |  0.005 |  15.4 k |
-| LEA47  | 1M      | 72514-3 |   12 k |     0.54 |  0.009 |  22.3 k |
+| LEA47  | 1M      | 55758-7 |    3 k |     0.19 |  0.005 |  14.6 k |
+| LEA47  | 1M      | 72514-3 |   12 k |     0.61 |  0.016 |  19.6 k |
 | A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.000 |  24.6 k |
-| A5N46  | 1M      | 55758-7 |    3 k |     0.11 |  0.000 |  25.7 k |
-| A5N46  | 1M      | 72514-3 |   12 k |     0.31 |  0.005 |  38.2 k |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.12 |  0.005 |  24.2 k |
+| A5N46  | 1M      | 72514-3 |   12 k |     0.32 |  0.000 |  37.4 k |
 
 ¹ resources per second
 
@@ -608,13 +578,11 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with a specific effective year.
 
+### Script
+
+The script `simple-date-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Observation?date=$YEAR&_summary=count"
-```
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|------|-------:|---------:|-------:|--------:|
@@ -624,108 +592,90 @@ curl -s "http://localhost:8080/fhir/Observation?date=$YEAR&_summary=count"
 | LEA47  | 100k    | 2019 |  6.0 M |     4.17 |  0.175 |    0.69 |
 | LEA58  | 100k    | 2013 |  3.1 M |     2.22 |  0.071 |    0.71 |
 | LEA58  | 100k    | 2019 |  6.0 M |     4.19 |  0.056 |    0.70 |
-| LEA47  | 1M      | 2013 | 31.1 M |    21.28 |  0.439 |    0.68 |
-| LEA47  | 1M      | 2019 | 60.0 M |    42.58 |  1.502 |    0.70 |
-| A5N46  | 1M      | 2013 | 31.1 M |    57.78 |  0.257 | 537.8 k |
-| A5N46  | 1M      | 2019 | 60.0 M |   111.38 |  0.426 | 539.2 k |
+| LEA47  | 1M      | 2013 | 31.1 M |   108.65 |  0.558 | 286.0 k |
+| LEA47  | 1M      | 2019 | 60.0 M |   209.27 |  1.670 | 287.0 k |
+| LEA58  | 1M      | 2013 | 31.1 M |   107.81 |  1.260 | 288.2 k |
+| LEA58  | 1M      | 2019 | 60.0 M |   210.81 |  0.364 | 284.9 k |
+| A5N46  | 1M      | 2013 | 31.1 M |    56.17 |  0.079 | 553.2 k |
+| A5N46  | 1M      | 2019 | 60.0 M |   108.41 |  0.964 | 554.0 k |
 
 ¹ resources per second
 
 ### Downloading Resources
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
+| System | Dataset | Year | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|------|-------:|---------:|-------:|--------:|
+| LEA36  | 100k    | 2013 |  3.1 M |    52.42 |  0.545 |   16.77 |
+| LEA36  | 100k    | 2019 |  6.0 M |   129.84 |  5.393 |   21.71 |
+| LEA47  | 100k    | 2013 |  3.1 M |    53.41 |  0.377 |   17.08 |
+| LEA47  | 100k    | 2019 |  6.0 M |   107.15 |  0.116 |   17.92 |
+| LEA58  | 100k    | 2013 |  3.1 M |    53.07 |  0.090 |   16.98 |
+| LEA58  | 100k    | 2019 |  6.0 M |   100.73 |  0.473 |   16.84 |
+| LEA47  | 1M      | 2013 | 31.1 M |   819.06 |  1.965 |  37.9 k |
+| LEA47  | 1M      | 2019 | 60.0 M |  1634.48 | 16.647 |  36.7 k |
+| LEA58  | 1M      | 2013 | 31.1 M |   596.05 | 18.812 |  52.1 k |
+| LEA58  | 1M      | 2019 | 60.0 M |  1451.13 | 77.328 |  41.4 k |
+| A5N46  | 1M      | 2013 | 31.1 M |   346.26 |  8.535 |  89.7 k |
+| A5N46  | 1M      | 2019 | 60.0 M |   648.31 |  4.687 |  92.6 k |
 
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR&_count=1000" > /dev/null
-```
-
-| System | Dataset | Year | # Hits | Time (s) | StdDev |  Res/s ¹ |
-|--------|---------|------|-------:|---------:|-------:|---------:|
-| LEA36  | 100k    | 2013 |  3.1 M |    52.42 |  0.545 |    16.77 |
-| LEA36  | 100k    | 2019 |  6.0 M |   129.84 |  5.393 |  21.71 ² |
-| LEA47  | 100k    | 2013 |  3.1 M |    53.41 |  0.377 |    17.08 |
-| LEA47  | 100k    | 2019 |  6.0 M |   107.15 |  0.116 |    17.92 |
-| LEA58  | 100k    | 2013 |  3.1 M |    53.07 |  0.090 |    16.98 |
-| LEA58  | 100k    | 2019 |  6.0 M |   100.73 |  0.473 |    16.84 |
-| LEA47  | 1M      | 2013 | 31.1 M |   991.28 | 12.329 |  31.90 ² |
-| LEA47  | 1M      | 2019 | 60.0 M |  2083.44 | 31.983 |  34.69 ² |
-| A5N46  | 1M      | 2013 | 31.1 M |   496.84 | 10.766 | 62.5 k ² |
-| A5N46  | 1M      | 2019 | 60.0 M |   966.78 |  8.692 | 62.1 k ² |
-
-¹ resources per second, ² resource cache size is smaller than the number of resources returned
+¹ resources per second
 
 ### Downloading Resources with Subsetting
 
 If only a subset of a resource's information is needed, the `_elements` search parameter can be used to retrieve only specific properties. In this case, `_elements=subject` was used.
 
-Most measurements were taken after Blaze reached a steady state, with all resources to be downloaded held in its resource cache. This was done to eliminate the influence of resource load times from disk or the file system cache.
+| System | Dataset | Year | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|------|-------:|---------:|-------:|--------:|
+| LEA36  | 100k    | 2013 |  3.1 M |    32.07 |  0.278 |   10.26 |
+| LEA36  | 100k    | 2019 |  6.0 M |    79.92 |  4.179 |   13.36 |
+| LEA47  | 100k    | 2013 |  3.1 M |    31.99 |  0.061 |   10.23 |
+| LEA47  | 100k    | 2019 |  6.0 M |    66.33 |  0.045 |   11.09 |
+| LEA58  | 100k    | 2013 |  3.1 M |    32.43 |  0.340 |   10.37 |
+| LEA58  | 100k    | 2019 |  6.0 M |    62.14 |  0.488 |   10.39 |
+| LEA47  | 1M      | 2013 | 31.1 M |   627.50 |  9.911 |  49.5 k |
+| LEA47  | 1M      | 2019 | 60.0 M |  1282.05 |  4.997 |  46.8 k |
+| LEA58  | 1M      | 2013 | 31.1 M |   439.48 |  1.237 |  70.7 k |
+| LEA58  | 1M      | 2019 | 60.0 M |  1238.84 |  3.080 |  48.5 k |
+| A5N46  | 1M      | 2013 | 31.1 M |   259.64 |  0.297 | 119.7 k |
+| A5N46  | 1M      | 2019 | 60.0 M |   492.57 |  2.019 | 121.9 k |
 
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR&_elements=subject&_count=1000" > /dev/null
-```
-
-| System | Dataset | Year | # Hits | Time (s) | StdDev |   Res/s ¹ |
-|--------|---------|------|-------:|---------:|-------:|----------:|
-| LEA36  | 100k    | 2013 |  3.1 M |    32.07 |  0.278 |     10.26 |
-| LEA36  | 100k    | 2019 |  6.0 M |    79.92 |  4.179 |     13.36 |
-| LEA47  | 100k    | 2013 |  3.1 M |    31.99 |  0.061 |     10.23 |
-| LEA47  | 100k    | 2019 |  6.0 M |    66.33 |  0.045 |     11.09 |
-| LEA58  | 100k    | 2013 |  3.1 M |    32.43 |  0.340 |     10.37 |
-| LEA58  | 100k    | 2019 |  6.0 M |    62.14 |  0.488 |     10.39 |
-| LEA47  | 1M      | 2013 | 31.1 M |   673.36 | 10.199 |   21.67 ² |
-| LEA47  | 1M      | 2019 | 60.0 M |  1516.90 |  0.482 |   25.25 ² |
-| A5N46  | 1M      | 2013 | 31.1 M |   309.83 |  2.383 | 100.3 k ² |
-| A5N46  | 1M      | 2019 | 60.0 M |   619.77 |  6.438 |  96.9 k ² |
-
-¹ resources per second, ² resource cache size is smaller than the number of resources returned
+¹ resources per second
 
 ## Patient Date Search
 
 This section evaluates the performance of FHIR Search for selecting Patient resources with a specific birth date.
 
+### Script
+
+The script `patient-date-search.sh` is used.
+
 ### Counting
-
-Counting was performed using the following `curl` command:
-
-```sh
-curl -s "http://localhost:8080/fhir/Patient?birthdate=$DATE&_summary=count"
-```
 
 | System | Dataset | Date         | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|--------------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | gt1998-04-10 |  227 k |     0.38 |  0.005 |    1.68 |
-| LEA47  | 1M      | ge1998-04-10 |  227 k |     0.40 |  0.007 |    1.74 |
-| LEA47  | 1M      | lt1998-04-10 |  773 k |     0.58 |  0.017 |    0.75 |
-| LEA47  | 1M      | le1998-04-10 |  773 k |     0.60 |  0.005 |    0.78 |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     0.51 |  0.004 | 443.8 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     0.53 |  0.007 | 432.2 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     1.59 |  0.022 | 485.9 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     1.59 |  0.018 | 485.0 k |
+| LEA58  | 1M      | gt1998-04-10 |  227 k |     1.08 |  0.015 | 210.8 k |
+| LEA58  | 1M      | ge1998-04-10 |  227 k |     1.16 |  0.023 | 196.1 k |
+| LEA58  | 1M      | lt1998-04-10 |  773 k |     3.22 |  0.064 | 240.1 k |
+| LEA58  | 1M      | le1998-04-10 |  773 k |     3.24 |  0.071 | 238.5 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     0.50 |  0.002 | 457.9 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     0.51 |  0.003 | 448.1 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     1.54 |  0.014 | 501.5 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     1.53 |  0.013 | 505.2 k |
 
 ¹ resources per second
 
 ### Downloading Resources
 
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Patient -q "birthdate=$DATE&_count=1000" > /dev/null
-```
-
 | System | Dataset | Date         | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|--------------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | gt1998-04-10 |  227 k |     7.77 |  0.033 |   34.17 |
-| LEA47  | 1M      | ge1998-04-10 |  227 k |     7.91 |  0.056 |   34.77 |
-| LEA47  | 1M      | lt1998-04-10 |  773 k |    26.85 |  0.065 |   34.74 |
-| LEA47  | 1M      | le1998-04-10 |  773 k |    27.73 |  0.012 |   35.88 |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     5.97 |  0.045 |  38.1 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     5.99 |  0.033 |  38.0 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |    21.41 |  0.074 |  36.1 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |    21.54 |  0.117 |  35.9 k |
+| LEA58  | 1M      | gt1998-04-10 |  227 k |     9.87 |  0.009 |  23.0 k |
+| LEA58  | 1M      | ge1998-04-10 |  227 k |     9.86 |  0.052 |  23.0 k |
+| LEA58  | 1M      | lt1998-04-10 |  773 k |    36.55 |  0.178 |  21.1 k |
+| LEA58  | 1M      | le1998-04-10 |  773 k |    35.91 |  0.274 |  21.5 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     4.78 |  0.019 |  47.6 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     4.81 |  0.017 |  47.3 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |    17.73 |  0.009 |  43.6 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |    17.71 |  0.014 |  43.6 k |
 
 ¹ resources per second
 
@@ -733,22 +683,16 @@ blazectl download --server http://localhost:8080/fhir Patient -q "birthdate=$DAT
 
 If only a subset of a resource's information is needed, the `_elements` search parameter can be used to retrieve only specific properties. In this case, `_elements=id` was used.
 
-Downloads were performed using the following `blazectl` command:
-
-```sh
-blazectl download --server http://localhost:8080/fhir Patient -q "birthdate=$DATE&_elements=id&_count=1000" > /dev/null
-```
-
 | System | Dataset | Date         | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|--------------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      | gt1998-04-10 |  227 k |     3.15 |  0.016 |   13.85 |
-| LEA47  | 1M      | ge1998-04-10 |  227 k |     3.09 |  0.108 |   13.58 |
-| LEA47  | 1M      | lt1998-04-10 |  773 k |     9.90 |  0.249 |   12.81 |
-| LEA47  | 1M      | le1998-04-10 |  773 k |     9.73 |  0.073 |   12.59 |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     1.68 |  0.042 | 135.1 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     1.70 |  0.016 | 133.8 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     5.53 |  0.255 | 139.8 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     5.51 |  0.159 | 140.3 k |
+| LEA58  | 1M      | gt1998-04-10 |  227 k |     4.29 |  0.057 |  53.0 k |
+| LEA58  | 1M      | ge1998-04-10 |  227 k |     4.18 |  0.082 |  54.4 k |
+| LEA58  | 1M      | lt1998-04-10 |  773 k |    13.73 |  0.102 |  56.2 k |
+| LEA58  | 1M      | le1998-04-10 |  773 k |    13.83 |  0.067 |  55.8 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     2.04 |  0.005 | 111.3 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     2.08 |  0.008 | 109.3 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     6.70 |  0.051 | 115.3 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     6.78 |  0.046 | 114.0 k |
 
 ¹ resources per second
 
