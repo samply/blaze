@@ -7156,6 +7156,112 @@
           count := 1
           [0 :id] := "2")))))
 
+(deftest type-query-location-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Location :id "0"
+             :name #fhir/string "London"
+             :status #fhir/code "suspended"
+             :position
+             {:fhir/type :fhir.Location/position
+              :latitude #fhir/decimal 51.50722M
+              :longitude #fhir/decimal -0.12750M}}]
+      [:put {:fhir/type :fhir/Location :id "1"
+             :name #fhir/string "Leipzig"
+             :status #fhir/code "active"
+             :position
+             {:fhir/type :fhir.Location/position
+              :latitude #fhir/decimal 51.3397M
+              :longitude #fhir/decimal 12.3731M}}]
+      [:put {:fhir/type :fhir/Location :id "2"
+             :name #fhir/string "Jakarta"
+             :status #fhir/code "active"
+             :position
+             {:fhir/type :fhir.Location/position
+              :latitude #fhir/decimal -6.2M
+              :longitude #fhir/decimal 106.8167M}}]]]
+
+    (let [london-900km ["near" "51.50722|-0.12750|900"]
+          london-florence-900km ["near" "51.50722|-0.12750|900" "43.77925|11.24626|900"]
+          langsa-1550km ["near" "4.48|97.9633|1550"]
+          in-leipzig ["near" "51.3396|12.3730|15|m"]]
+
+      (given (explain-type-query node "Location" [in-leipzig])
+        :scan-type := :ordered
+        [:scan-clauses count] := 1
+        [:scan-clauses 0 :code] := "near"
+        [:seek-clauses count] := 0)
+
+      (testing "near"
+        (testing "with unit"
+          (given-type-query node "Location" [in-leipzig]
+            count := 1
+            [0 :name] := "Leipzig"))
+
+        (testing "without unit"
+          (given-type-query node "Location" [london-900km]
+            count := 2
+            [0 :name] := "London"
+            [1 :name] := "Leipzig"))
+
+        (testing "with more than one value"
+          (given-type-query node "Location" [london-florence-900km]
+            count := 2
+            [0 :name] := "London"
+            [1 :name] := "Leipzig"))
+
+        (testing "it is possible to start with the second location"
+          (given (pull-type-query node "Location" [london-900km] "1")
+            count := 1
+            [0 :name] := "Leipzig")
+
+          (testing "with more than one value"
+            (given (pull-type-query node "Location" [london-florence-900km] "1")
+              count := 1
+              [0 :name] := "Leipzig"))))
+
+      (testing "status and near"
+        (let [clauses [["status" "active"] langsa-1550km]]
+          (given (pull-type-query node "Location" clauses)
+            count := 1
+            [0 :name] := "Jakarta"))
+
+        (testing "with more than one value"
+          (let [clauses [["status" "active"] london-florence-900km]]
+            (given (pull-type-query node "Location" clauses)
+              count := 1
+              [0 :name] := "Leipzig")))
+
+        (testing "with many values enforcing a seek for `near`"
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [(into [[:put {:fhir/type :fhir/Location :id "0"
+                           :name #fhir/string "London"
+                           :status #fhir/code "suspended"
+                           :position
+                           {:fhir/type :fhir.Location/position
+                            :latitude #fhir/decimal 51.50722M
+                            :longitude #fhir/decimal -0.12750M}}]]
+                   (map (fn [idx]
+                          [:put {:fhir/type :fhir/Location :id (str (inc idx))
+                                 :name #fhir/string "Leipzig"
+                                 :status #fhir/code "active"
+                                 :position
+                                 {:fhir/type :fhir.Location/position
+                                  :latitude #fhir/decimal 51.3397M
+                                  :longitude #fhir/decimal 12.3731M}}]))
+                   (range 100))]
+
+            (let [clauses [["status" "suspended"] london-900km]]
+              (given (pull-type-query node "Location" clauses)
+                count := 1
+                [0 :name] := "London")
+
+              (given (explain-type-query node "Location" clauses)
+                :scan-type := :ordered
+                [:scan-clauses count] := 1
+                [:scan-clauses 0 :code] := "status"
+                [:seek-clauses count] := 1
+                [:seek-clauses 0 :code] := "near"))))))))
+
 (defn- patient-type-query? [x]
   (instance? PatientTypeQuery x))
 
@@ -7371,6 +7477,11 @@
 
           (= n (count-type-query node "Patient" [["active" "true"]])))))))
 
+(def data-absent-reason-unknown
+  #fhir/Extension
+   {:url "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+    :value #fhir/code "unknown"})
+
 (deftest compile-type-matcher-test
   (testing "token search params"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -7536,7 +7647,53 @@
             (given (into [] xform (d/type-list db "Observation"))
               count := 1
               [0 :fhir/type] := :fhir/Observation
-              [0 :id] := "0")))))))
+              [0 :id] := "0"))))))
+
+  (testing "near search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Location :id "0"
+               :position
+               {:fhir/type :fhir.Location/position          ; Berlin
+                :latitude #fhir/decimal 52.5200M :longitude #fhir/decimal 13.4050M}}]
+        [:put {:fhir/type :fhir/Location :id "1"
+               :position
+               {:fhir/type :fhir.Location/position          ; Cologne
+                :latitude #fhir/decimal 50.9334M :longitude #fhir/decimal 6.9619M}}]
+        [:put {:fhir/type :fhir/Location :id "2"
+               :position
+               {:fhir/type :fhir.Location/position          ; Jakarta
+                :latitude #fhir/decimal -6.2M :longitude #fhir/decimal 106.8167M}}]]]
+
+      (with-open-db [db node]
+        (doseq [target [node db]
+                [_ query id] [[:Berlin "52.5201|13.4051|15|m" "0"]
+                              [:Leipzig "51.3397|12.3731|150|km" "0"]
+                              [:Paris "48.8566|2.3522|403|km" "1"]
+                              [:Perth "-31.953512|115.857048|3014|km" "2"]]]
+          (let [matcher (d/compile-type-matcher target "Location" [["near" query]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Location"))
+              count := 1
+              [0 :fhir/type] := :fhir/Location
+              [0 :id] := id)))))
+
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Location :id "0"
+               :position
+               {:fhir/type :fhir.Location/position
+                :latitude (type/decimal {:extension [data-absent-reason-unknown]})
+                :longitude #fhir/decimal 13.4050M}}]
+        [:put {:fhir/type :fhir/Location :id "1"
+               :position
+               {:fhir/type :fhir.Location/position
+                :latitude #fhir/decimal 50.9334M
+                :longitude (type/decimal {:extension [data-absent-reason-unknown]})}}]]]
+
+      (with-open-db [db node]
+        (let [matcher (d/compile-type-matcher db "Location" [["near" "52.5201|13.4051|15|m"]])
+              xform (d/matcher-transducer db matcher)]
+          (given (into [] xform (d/type-list db "Location"))
+            count := 0))))))
 
 (deftest compile-system-matcher-test
   (with-system-data [{:blaze.db/keys [node]} config]

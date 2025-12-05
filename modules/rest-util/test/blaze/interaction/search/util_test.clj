@@ -1,5 +1,6 @@
 (ns blaze.interaction.search.util-test
   (:require
+   [blaze.db.search-param :as-alias sp]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
    [blaze.interaction.search.util :as search-util]
@@ -44,7 +45,18 @@
     :fullUrl := #fhir/uri "/Patient/0"
     [:resource :fhir/type] := :fhir/Patient
     [:resource :id] := "0"
-    [:search :mode] #fhir/code "match"))
+    [:search :mode] := #fhir/code "match"
+    [:search :extension] :? nil?)
+
+  (let [resource (with-meta {:fhir/type :fhir/Patient :id "0"}
+                            {::sp/match-extension [:extension-100623]})]
+    (given (search-util/match-entry context resource)
+      :fhir/type := :fhir.Bundle/entry
+      :fullUrl := #fhir/uri "/Patient/0"
+      [:resource :fhir/type] := :fhir/Patient
+      [:resource :id] := "0"
+      [:search :mode] := #fhir/code "match"
+      [:search :extension] := [:extension-100623])))
 
 (deftest include-entry-test
   (given-thrown (search-util/include-entry {} {:fhir/type :fhir/Patient :id "0"})

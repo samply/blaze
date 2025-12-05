@@ -9,7 +9,8 @@
    [blaze.db.impl.iterators-spec]
    [blaze.db.kv.spec]
    [blaze.fhir.hash.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef sp-vr/keys
   :args (s/cat :snapshot :blaze.db.kv/snapshot :start-key byte-string?))
@@ -38,3 +39,10 @@
                :id :blaze.db/id-byte-string
                :hash :blaze.resource/hash)
   :ret :blaze.db.kv/put-entry)
+
+(s/fdef sp-vr/estimated-scan-size
+  :args (s/cat :kv-store :blaze.db/kv-store
+               :c-hash :blaze.db/c-hash
+               :tid :blaze.db/tid
+               :value byte-string?)
+  :ret (s/or :estimate-storage-size nat-int? :anomaly ::anom/anomaly))
