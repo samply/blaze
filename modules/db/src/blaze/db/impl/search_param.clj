@@ -13,6 +13,7 @@
    [blaze.db.impl.search-param.date]
    [blaze.db.impl.search-param.has]
    [blaze.db.impl.search-param.list]
+   [blaze.db.impl.search-param.near]
    [blaze.db.impl.search-param.number]
    [blaze.db.impl.search-param.quantity]
    [blaze.db.impl.search-param.string]

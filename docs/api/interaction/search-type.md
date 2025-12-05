@@ -40,6 +40,10 @@ Search for `Resource.meta.profile` is supported using the `_profile` search para
 
 When searching for date/time with a search parameter value without timezone like `2024` or `2024-02-16`, Blaze calculates the range of the search parameter values based on [UTC][2]. That means that a resource with a date/time value staring at `2024-01-01T00:00:00+01:00` will be not found by a search with `2024`. Please comment on [issue #1498](https://github.com/samply/blaze/issues/1498) if you like to have this situation improved.
 
+## Geopositional Search
+
+Blaze implements the [positional](https://hl7.org/fhir/R4/location.html#positional) search parameter `near` for resources with a geospatial position (i.e., Location). The search parameter takes a latitude, longitude, distance and unit as search parameter values in the form `longitude|latitude[|distance[|unit]]`. Defaults for `distance` and `unit` are `1` and `km`. The [Haversine formula](https://en.wikipedia.org/wiki/Haversine_formula) is used to calculate the distance between the search parameter value and the resource's location, which simplifies calculation by assuming a spherical earth and has an error of less than approximately 0.5%.
+
 ## Sorting
 
 The special search parameter `_sort` supports the values `_id`, `_lastUpdated` and `-_lastUpdated`.

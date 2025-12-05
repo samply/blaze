@@ -1318,6 +1318,9 @@ jobs:
     - name: Control Character Handling
       run: .github/scripts/control-character-handling.sh
 
+    - name: Search for Location using near Search Param
+      run: .github/scripts/search-location-near.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}

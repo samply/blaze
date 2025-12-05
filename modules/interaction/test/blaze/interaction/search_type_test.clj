@@ -62,6 +62,7 @@
     ["/Library/__page/{page-id}" {:name :Library/page}]
     ["/List" {:name :List/type}]
     ["/List/__page/{page-id}" {:name :List/page}]
+    ["/Location" {:name :Location/type}]
     ["/Condition" {:name :Condition/type}]
     ["/Condition/__page/{page-id}" {:name :Condition/page}]
     ["/Observation" {:name :Observation/type}]
@@ -626,6 +627,101 @@
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "not-found"
             [:issue 0 :diagnostics] := (type/string (format "Clauses of token `%s` not found." (str/join (repeat 64 "A")))))))))
+
+  (testing "with two locations"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Location :id "0"
+               :name #fhir/string "London"
+               :position
+               {:fhir/type :fhir.Location/position
+                :latitude #fhir/decimal 51.50722M
+                :longitude #fhir/decimal -0.12750M}}]
+        [:put {:fhir/type :fhir/Location :id "1"
+               :name #fhir/string "Leipzig"
+               :position
+               {:fhir/type :fhir.Location/position
+                :latitude #fhir/decimal 51.3397M
+                :longitude #fhir/decimal 12.3731M}}]]]
+
+      (testing "Returns all existing resources of type"
+        (doseq [params [{} {"_summary" "false"}]]
+          (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+                @(handler {::reitit/match (match-of "Location")
+                           :params params})]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code "searchset" (:type body))))
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Location?_count=50")
+                     (link-url body "self"))))
+
+            (testing "the bundle contains two entries"
+              (is (= 2 (count (:entry body)))))
+
+            (doseq [[id entry] [["0" first-entry] ["1" second-entry]]]
+              (testing "the entry has the right fullUrl"
+                (is (= (str base-url context-path "/Location/" id)
+                       (-> entry :fullUrl :value))))
+
+              (testing "the entry has the right resource"
+                (given (:resource entry)
+                  :fhir/type := :fhir/Location
+                  :id := id
+                  [:meta :versionId] := #fhir/id "1"
+                  [:meta :lastUpdated] := Instant/EPOCH))
+
+              (testing "the entry has the right search mode"
+                (given (:search entry)
+                  fhir-spec/fhir-type := :fhir.Bundle.entry/search
+                  :mode := #fhir/code "match"))))))
+
+      (testing "near search"
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler {::reitit/match (match-of "Location")
+                         :params {"near" "51.4746|0.2666|50"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
+
+          (testing "the total count is 1"
+            (is (= #fhir/unsignedInt 1 (:total body))))
+
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Location?near=51.4746%7C0.2666%7C50&_count=50")
+                   (link-url body "self"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the entry has the right fullUrl"
+            (is (= (str base-url context-path "/Location/" "0")
+                   (-> first-entry :fullUrl :value))))
+
+          (testing "the entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Location
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"
+              [:meta :lastUpdated] := Instant/EPOCH))
+
+          (testing "the entry has the right search mode"
+            (given (:search first-entry)
+              fhir-spec/fhir-type := :fhir.Bundle.entry/search
+              :mode := #fhir/code "match"))))))
 
   (testing "with one patient"
     (with-handler [handler]
