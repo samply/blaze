@@ -111,3 +111,6 @@
 
 (s/def :fhir/GraphDefinition
   #(s2/valid? :fhir/GraphDefinition %))
+
+(s/def :fhir/Position
+  #(s2/valid? :fhir/Position %))

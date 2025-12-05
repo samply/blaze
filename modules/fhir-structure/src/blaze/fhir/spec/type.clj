@@ -1441,3 +1441,9 @@
   :fhir-type :fhir.Bundle.entry/search
   :hash-num 45
   :interned (and (nil? id) (p/-interned extension) (nil? score)))
+
+(declare position)
+
+(def-complex-type Position
+  [^:primitive latitude ^:primitive longitude ^:primitive altitude]
+  :hash-num 49)
