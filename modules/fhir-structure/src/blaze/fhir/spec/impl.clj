@@ -269,7 +269,8 @@
         :fhir/HumanName
         :fhir/Address
         :fhir/Reference
-        :fhir/Meta)
+        :fhir/Meta
+        :fhir/Position)
        (record-spec-form path-part child-spec-defs)
        :fhir.Bundle.entry/search
        (record-spec-form "BundleEntrySearch" child-spec-defs)
