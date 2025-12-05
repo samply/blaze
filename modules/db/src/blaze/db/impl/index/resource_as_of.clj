@@ -410,3 +410,22 @@
               (rf result handle)
               result)
             result)))))))
+
+(defn- encode-seek-key [tid]
+  (-> (bb/allocate codec/tid-size)
+      (bb/put-int! tid)
+      bb/flip!
+      (bs/from-byte-buffer!)))
+
+(defn estimated-scan-size
+  "Returns a relative estimation for the amount of work to do while scanning the
+  ResourceAsOf index with the prefix consisting of `tid`.
+
+  The metric is relative and unitless. It can be only used to compare the amount
+  of scan work between different prefixes.
+
+  Returns an anomaly if estimating the scan size isn't supported by `kv-store`."
+  [kv-store tid]
+  (let [seek-key (encode-seek-key tid)
+        key-range [seek-key (bs/concat seek-key (bs/from-hex "FF"))]]
+    (kv/estimate-scan-size kv-store :resource-as-of-index key-range)))

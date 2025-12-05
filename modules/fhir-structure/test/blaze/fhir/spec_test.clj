@@ -630,7 +630,20 @@
              [{:type "group"
                :item
                [{:type "string"
-                 :text "foo"}]}]})))))
+                 :text "foo"}]}]}))))
+
+  (testing "location resource with position"
+    (is (= {:fhir/type :fhir/Location
+            :position
+            {:fhir/type :fhir.Location/position
+             :latitude #fhir/decimal 0M
+             :longitude #fhir/decimal 0M
+             :altitude #fhir/decimal 0M}}
+           (write-parse-json
+            {:resourceType "Location"
+             :position {:latitude 0
+                        :longitude 0
+                        :altitude 0}})))))
 
 (deftest write-json-test
   (testing "without fhir type"

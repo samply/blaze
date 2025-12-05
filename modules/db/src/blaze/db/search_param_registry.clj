@@ -221,13 +221,18 @@
   {:type "special"
    :name "_has"})
 
+(def ^:private near-search-param
+  {:type "special"
+   :name "near"})
+
 (defn- add-special
   "Add special search params to `index`.
 
   See: https://www.hl7.org/fhir/search.html#special"
   [index]
   (-> (assoc-in index ["Resource" "_list"] (sc/search-param nil list-search-param))
-      (assoc-in ["Resource" "_has"] (sc/search-param index has-search-param))))
+      (assoc-in ["Resource" "_has"] (sc/search-param index has-search-param))
+      (assoc-in ["Location" "near"] (sc/search-param index near-search-param))))
 
 (defn- build-url-index* [index filter entries]
   (transduce
