@@ -32,7 +32,7 @@
   {:mvn/version "2.11.0"}
 
   org.apache.commons/commons-text
-  {:mvn/version "1.14.0"}
+  {:mvn/version "1.15.0"}
 
   ;; this dependency is only here because otherwise it gets loaded concurrently
   ;; which breaks caching
