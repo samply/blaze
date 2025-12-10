@@ -161,6 +161,12 @@ export default defineConfig({
 				]
 			},
 			{
+				text: 'Validation',
+				items: [
+					{ text: 'Overview', link: '/validation' }
+				]
+			},
+			{
 				text: 'Usage',
 				items: [
 					{ text: 'Web Frontend', link: '/frontend' },
