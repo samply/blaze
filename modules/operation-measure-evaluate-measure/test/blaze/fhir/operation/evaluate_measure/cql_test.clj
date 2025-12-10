@@ -348,8 +348,7 @@
   (testing "missing function"
     (given (cql/stratum-expression-evaluator {:population-basis "Encounter"} "foo")
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Missing function with name `foo`."
-      :function-name := "foo")))
+      ::anom/message := "Function definition with name `foo` and arity 1 not found.")))
 
 (deftest stratum-evaluators-test
   (testing "missing expression"
@@ -361,5 +360,4 @@
   (testing "missing function"
     (given (cql/stratum-expression-evaluators {:population-basis "Encounter"} ["foo"])
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Missing function with name `foo`."
-      :function-name := "foo")))
+      ::anom/message := "Function definition with name `foo` and arity 1 not found.")))

@@ -30,7 +30,7 @@
   (s/keys :req-un [::function-def/name ::function-def/context ::c/function]))
 
 (s/def ::c/function-defs
-  (s/map-of :elm/name ::c/function-def))
+  (s/coll-of ::c/function-def))
 
 (s/def ::c/parameter-default-values
   (s/map-of :elm/name ::c/expression))

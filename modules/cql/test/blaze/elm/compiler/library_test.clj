@@ -55,6 +55,10 @@
       {:system (type/uri system)
        :code (type/code code)})]}))
 
+(defn- function-def [name arity]
+  (fn [context]
+    (core/resolve-function-def context name arity)))
+
 ;; 5.1. Library
 ;;
 ;; 1. The identifier element defines a unique identifier for this library, and
@@ -133,17 +137,21 @@
         define function Gender(P Patient): P.gender
         define InInitialPopulation: Gender(Patient)")]
       (with-system [{:blaze.db/keys [node] :as system} config]
-        (let [{:keys [expression-defs function-defs]}
+        (let [{:keys [expression-defs] :as context}
               (library/compile-library (compile-context system) library default-opts)]
+
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
             ["InInitialPopulation" expr-form] := '(call "Gender" (singleton-from (retrieve-resource))))
 
-          (given function-defs
-            ["Gender" :context] := "Patient"
-            ["Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-            ["Gender" :function #(% "x") c/form] := '(call "Gender" "x"))
+          (given context
+            [(function-def "Gender" 1) :context] := "Patient"
+            [(function-def "Gender" 1) :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
+            [(function-def "Gender" 1) :function #(% "x") c/form] := '(call "Gender" "x")
+            [(function-def "Gender" 1) :operand count] := 1
+            [(function-def "Gender" 1) :operand 0 :name] := "P"
+            [(function-def "Gender" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{http://hl7.org/fhir}Patient")
 
           (testing "there are no references to resolve"
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
@@ -159,19 +167,25 @@
         define function Inc2(i System.Integer): Inc(i) + 1
         define InInitialPopulation: Inc2(1)")]
       (with-system [{:blaze.db/keys [node] :as system} config]
-        (let [{:keys [expression-defs function-defs]}
+        (let [{:keys [expression-defs] :as context}
               (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] := '(call "Inc2" 1))
 
-          (given function-defs
-            ["Inc" :context] := "Patient"
-            ["Inc" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            ["Inc" :function #(% 1) c/form] := '(call "Inc" 1)
-            ["Inc2" :context] := "Patient"
-            ["Inc2" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            ["Inc2" :function #(% 1) c/form] := '(call "Inc2" 1))
+          (given context
+            [(function-def "Inc" 1) :context] := "Patient"
+            [(function-def "Inc" 1) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Inc" 1) :function #(% 1) c/form] := '(call "Inc" 1)
+            [(function-def "Inc" 1) :operand count] := 1
+            [(function-def "Inc" 1) :operand 0 :name] := "i"
+            [(function-def "Inc" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Inc2" 1) :context] := "Patient"
+            [(function-def "Inc2" 1) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Inc2" 1) :function #(% 1) c/form] := '(call "Inc2" 1)
+            [(function-def "Inc2" 1) :operand count] := 1
+            [(function-def "Inc2" 1) :operand 0 :name] := "i"
+            [(function-def "Inc2" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer")
 
           (testing "there are no references to resolve"
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
@@ -186,29 +200,44 @@
         define function Const(): 1
         define function Inc(i System.Integer): i + 1
         define function Add(i System.Integer, j System.Integer): i + j
-        define function Add3(i System.Integer, j System.Integer, k System.Integer): { i, j, k }")]
+        define function Add(i System.Integer, j System.Integer, k System.Integer): { i, j, k }")]
       (with-system [system config]
-        (let [{:keys [function-defs]}
-              (library/compile-library (compile-context system) library default-opts)]
-          (given function-defs
-            ["Const" :context] := "Patient"
-            ["Const" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            ["Const" :function #(%) c/form] := '(call "Const")
-            ["Const" :function #(%) #(core/-eval % {} nil {})] := 1
-            ["Inc" :context] := "Patient"
-            ["Inc" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            ["Inc" :function #(% 1) c/form] := '(call "Inc" 1)
-            ["Inc" :function #(% 1) #(core/-eval % {} nil {})] := 2
-            ["Add" :context] := "Patient"
-            ["Add" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            ["Add" :function #(% 1 2) c/form] := '(call "Add" 1 2)
-            ["Add" :function #(% 1 2) #(core/-eval % {} nil {})] := 3
-            ["Add3" :context] := "Patient"
-            ["Add3" :resultTypeSpecifier :type] := "ListTypeSpecifier"
-            ["Add3" :resultTypeSpecifier :elementType :name] := "{urn:hl7-org:elm-types:r1}Integer"
-            ["Add3" :function #(% 1 2 3) c/form] := '(call "Add3" 1 2 3)
-            ["Add3" :function #(% 1 2 3) #(core/-eval % {} nil {})] := [1 2 3]
-            ["Add3" :function #(% 3 1 2) #(core/-eval % {} nil {})] := [3 1 2])))))
+        (let [context (library/compile-library (compile-context system) library default-opts)]
+          (given context
+            [(function-def "Const" 0) :context] := "Patient"
+            [(function-def "Const" 0) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Const" 0) :function #(%) c/form] := '(call "Const")
+            [(function-def "Const" 0) :function #(%) #(core/-eval % {} nil {})] := 1
+            [(function-def "Const" 0) :operand count] := 0
+            [(function-def "Inc" 1) :context] := "Patient"
+            [(function-def "Inc" 1) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Inc" 1) :function #(% 1) c/form] := '(call "Inc" 1)
+            [(function-def "Inc" 1) :function #(% 1) #(core/-eval % {} nil {})] := 2
+            [(function-def "Inc" 1) :operand count] := 1
+            [(function-def "Inc" 1) :operand 0 :name] := "i"
+            [(function-def "Inc" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Add" 2) :context] := "Patient"
+            [(function-def "Add" 2) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Add" 2) :function #(% 1 2) c/form] := '(call "Add" 1 2)
+            [(function-def "Add" 2) :function #(% 1 2) #(core/-eval % {} nil {})] := 3
+            [(function-def "Add" 2) :operand count] := 2
+            [(function-def "Add" 2) :operand 0 :name] := "i"
+            [(function-def "Add" 2) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Add" 2) :operand 1 :name] := "j"
+            [(function-def "Add" 2) :operand 1 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Add" 3) :context] := "Patient"
+            [(function-def "Add" 3) :resultTypeSpecifier :type] := "ListTypeSpecifier"
+            [(function-def "Add" 3) :resultTypeSpecifier :elementType :name] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Add" 3) :function #(% 1 2 3) c/form] := '(call "Add" 1 2 3)
+            [(function-def "Add" 3) :function #(% 1 2 3) #(core/-eval % {} nil {})] := [1 2 3]
+            [(function-def "Add" 3) :function #(% 3 1 2) #(core/-eval % {} nil {})] := [3 1 2]
+            [(function-def "Add" 3) :operand count] := 3
+            [(function-def "Add" 3) :operand 0 :name] := "i"
+            [(function-def "Add" 3) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Add" 3) :operand 1 :name] := "j"
+            [(function-def "Add" 3) :operand 1 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
+            [(function-def "Add" 3) :operand 2 :name] := "k"
+            [(function-def "Add" 3) :operand 2 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer")))))
 
   (testing "expressions from Patient context are resolved"
     (let [library (t/translate "library Test
@@ -664,7 +693,7 @@
               with [Encounter] E
               such that O.encounter.reference = 'Encounter/' + E.id")]
       (with-system [{:blaze.db/keys [node] :as system} config]
-        (let [{:keys [expression-defs function-defs]}
+        (let [{:keys [expression-defs] :as context}
               (library/compile-library (compile-context system) library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
@@ -687,8 +716,8 @@
                    (retrieve "Encounter"))))
                (retrieve "Observation"))))
 
-          (given function-defs
-            ["hasDiagnosis" :function] := nil)
+          (given context
+            [(function-def "hasDiagnosis" 1) :function] := nil)
 
           (testing "there are no references to resolve"
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
