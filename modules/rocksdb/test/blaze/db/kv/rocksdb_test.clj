@@ -641,7 +641,7 @@
 (defn int-ba [i]
   (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i)))))
 
-(deftest estimate-storage-scan-test
+(deftest estimate-scan-size-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
     (is (zero? (kv/estimate-scan-size db :default full-key-range)))
 

@@ -7,6 +7,7 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.async.comp :as ac]
    [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as p]
    [blaze.db.kv.spec]
@@ -185,8 +186,11 @@
       (count m)
       (column-family-not-found-anom column-family)))
 
-  (-estimate-scan-size [_ _ _]
-    (ba/unsupported "In-Memory KV Store doesn't support estimating the scan size."))
+  (-estimate-scan-size [_ column-family key-range]
+    (if-let [m (get @db column-family)]
+      (let [[start-key end-key] key-range]
+        (count (subseq m >= (bs/to-byte-array start-key) < (bs/to-byte-array end-key))))
+      (column-family-not-found-anom column-family)))
 
   (-compact [_ column-family]
     (ac/completed-future

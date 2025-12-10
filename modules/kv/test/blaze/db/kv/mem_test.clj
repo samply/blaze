@@ -596,11 +596,28 @@
 
     (is (= 1 (kv/estimate-num-keys kv-store :default)))))
 
-(deftest estimate-storage-scan-test
+(deftest estimate-scan-size-test
   (with-system [{kv-store ::kv/mem} config]
     (given (kv/estimate-scan-size kv-store :foo [#blaze/byte-string"00" #blaze/byte-string"FF"])
-      ::anom/category := ::anom/unsupported
-      ::anom/message := "In-Memory KV Store doesn't support estimating the scan size.")))
+      ::anom/category := ::anom/not-found
+      ::anom/message := "Column family `foo` not found."))
+
+  (with-system-data [{kv-store ::kv/mem} config]
+    [[:default (ba 0x00) (ba 0x10)]]
+
+    (is (= 1 (kv/estimate-scan-size kv-store :default [#blaze/byte-string"00" #blaze/byte-string"FF"]))))
+
+  (with-system-data [{kv-store ::kv/mem} config]
+    [[:default (ba 0x00) (ba 0x10)]
+     [:default (ba 0x01) (ba 0x10)]]
+
+    (is (= 2 (kv/estimate-scan-size kv-store :default [#blaze/byte-string"00" #blaze/byte-string"FF"]))))
+
+  (with-system-data [{kv-store ::kv/mem} config]
+    [[:default (ba 0x00) (ba 0x10)]
+     [:default (ba 0x01) (ba 0x10)]]
+
+    (is (= 1 (kv/estimate-scan-size kv-store :default [#blaze/byte-string"00" #blaze/byte-string"01"])))))
 
 (deftest compact-test
   (with-system [{kv-store ::kv/mem} config]

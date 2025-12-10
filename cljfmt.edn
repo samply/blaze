@@ -23,4 +23,5 @@
   expand-value-set [[:block 1]]
   value-set-validate-code [[:block 1]]
   given-parse-json [[:block 1]]
-  cond-next-token [[:block 2]]}}
+  cond-next-token [[:block 2]]
+  forv [[:block 1]]}}

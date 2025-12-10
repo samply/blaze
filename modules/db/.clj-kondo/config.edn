@@ -9,7 +9,8 @@
  :lint-as
  {blaze.db.api-test/with-open-db clojure.core/with-open
   blaze.db.api-test-perf/with-system-data clojure.core/with-open
-  blaze.db.test-util/with-system-data clojure.core/with-open}
+  blaze.db.test-util/with-system-data clojure.core/with-open
+  blaze.db.api-test/forv clojure.core/for}
 
  :linters
  {:unresolved-var
