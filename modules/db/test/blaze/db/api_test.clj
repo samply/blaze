@@ -658,6 +658,11 @@
         ::anom/category := ::anom/conflict
         ::anom/message := "Can't delete the read-only resource `Patient/0`."))))
 
+(defmacro forv
+  "Like for but returns a vector instead of a sequence."
+  [& args]
+  `(vec (for ~@args)))
+
 (deftest transact-conditional-delete-test
   (testing "one matching patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -693,9 +698,9 @@
   (testing "two matching patients"
     (testing "is forbidden by default"
       (with-system-data [{:blaze.db/keys [node]} config]
-        [(vec (for [id ["0" "1"]]
-                [:create {:fhir/type :fhir/Patient :id id
-                          :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]))]
+        [(forv [id ["0" "1"]]
+           [:create {:fhir/type :fhir/Patient :id id
+                     :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}])]
 
         (testing "with query"
           (given-failed-future (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
@@ -712,9 +717,9 @@
     (testing "works if allowed"
       (testing "with query"
         (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
-          [(vec (for [id ["0" "1"]]
-                  [:create {:fhir/type :fhir/Patient :id id
-                            :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]))
+          [(forv [id ["0" "1"]]
+             [:create {:fhir/type :fhir/Patient :id id
+                       :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}])
            [[:create {:fhir/type :fhir/Patient :id "2"
                       :identifier [#fhir/Identifier{:value #fhir/string "164453"}]}]]]
 
@@ -733,8 +738,8 @@
 
   (testing "three patients"
     (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
-      [(vec (for [id ["0" "1" "2"]]
-              [:create {:fhir/type :fhir/Patient :id id}]))]
+      [(forv [id ["0" "1" "2"]]
+         [:create {:fhir/type :fhir/Patient :id id}])]
 
       (let [db @(d/transact node [[:conditional-delete "Patient"]])]
         (testing "all patients are deleted"
@@ -769,11 +774,11 @@
 
   (testing "two patients with observations referencing them"
     (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
-      (vec (for [id ["0" "1"]]
-             [[:create {:fhir/type :fhir/Patient :id id
-                        :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]
-              [:create {:fhir/type :fhir/Observation :id id
-                        :subject (type/reference {:reference (type/string (str "Patient/" id))})}]]))
+      (forv [id ["0" "1"]]
+        [[:create {:fhir/type :fhir/Patient :id id
+                   :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]
+         [:create {:fhir/type :fhir/Observation :id id
+                   :subject (type/reference {:reference (type/string (str "Patient/" id))})}]])
 
       (testing "deleting only the patients fails"
         (given-failed-future
@@ -840,9 +845,9 @@
   (testing "works up to 10,000 matches"
     (testing "with query"
       (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
-        [(vec (for [id (range 10000)]
-                [:create {:fhir/type :fhir/Patient :id (str id)
-                          :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]))]
+        [(forv [id (range 10000)]
+           [:create {:fhir/type :fhir/Patient :id (str id)
+                     :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}])]
 
         (let [db @(d/transact node [[:conditional-delete "Patient"
                                      [["identifier" "181205"]]]])]
@@ -851,8 +856,8 @@
 
     (testing "without query (matching all patients)"
       (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
-        [(vec (for [id (range 10000)]
-                [:create {:fhir/type :fhir/Patient :id (str id)}]))]
+        [(forv [id (range 10000)]
+           [:create {:fhir/type :fhir/Patient :id (str id)}])]
 
         (let [db @(d/transact node [[:conditional-delete "Patient"]])]
           (testing "all patients are deleted"
@@ -861,9 +866,9 @@
   (testing "fails on more then 10,000 matches"
     (testing "with query"
       (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
-        [(vec (for [id (range 10001)]
-                [:create {:fhir/type :fhir/Patient :id (str id)
-                          :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]))]
+        [(forv [id (range 10001)]
+           [:create {:fhir/type :fhir/Patient :id (str id)
+                     :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}])]
 
         (given-failed-future (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
           ::anom/category := ::anom/conflict
@@ -872,9 +877,9 @@
 
     (testing "without query (matching all patients)"
       (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
-        [(vec (for [id (range 10001)]
-                [:create {:fhir/type :fhir/Patient :id (str id)
-                          :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}]))]
+        [(forv [id (range 10001)]
+           [:create {:fhir/type :fhir/Patient :id (str id)
+                     :identifier [#fhir/Identifier{:value #fhir/string "181205"}]}])]
 
         (given-failed-future (d/transact node [[:conditional-delete "Patient"]])
           ::anom/category := ::anom/conflict
@@ -1126,9 +1131,9 @@
   (st/unstrument)
   (testing "works with up to 100,000 history entries"
     (with-system-data [{:blaze.db/keys [node]} config]
-      (vec (for [_ (range 50000)
-                 active [#fhir/boolean true #fhir/boolean false]]
-             [[:put {:fhir/type :fhir/Patient :id "0" :active active}]]))
+      (forv [_ (range 50000)
+             active [#fhir/boolean true #fhir/boolean false]]
+        [[:put {:fhir/type :fhir/Patient :id "0" :active active}]])
 
       (let [db-before (d/db node)
             db-after @(d/transact node [[:delete-history "Patient" "0"]])]
@@ -1451,9 +1456,9 @@
   (st/unstrument)
   (testing "works with up to 100,000 history entries"
     (with-system-data [{:blaze.db/keys [node]} config]
-      (vec (for [_ (range 50000)
-                 active [#fhir/boolean true #fhir/boolean false]]
-             [[:put {:fhir/type :fhir/Patient :id "0" :active active}]]))
+      (forv [_ (range 50000)
+             active [#fhir/boolean true #fhir/boolean false]]
+        [[:put {:fhir/type :fhir/Patient :id "0" :active active}]])
 
       (let [db-before (d/db node)
             db-after @(d/transact node [[:patient-purge "0"]])]
@@ -3533,14 +3538,16 @@
           (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" id]] "2")))))
 
       (testing "doesn't find the deleted resource"
-        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]])))
-        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]] "2")))
-        (is (zero? (count-type-query node "Patient" [["_id" "2"]]))))
+        (given-type-query node "Patient" [["_id" "2"]]
+          count := 0)
+
+        (is (empty? (pull-type-query node "Patient" [["_id" "2"]] "2"))))
 
       (testing "finds nothing with id not in database"
-        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "3"]])))
-        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "3"]] "3")))
-        (is (zero? (count-type-query node "Patient" [["_id" "3"]]))))
+        (given-type-query node "Patient" [["_id" "3"]]
+          count := 0)
+
+        (is (empty? (pull-type-query node "Patient" [["_id" "3"]] "3"))))
 
       (testing "finds more than one patient"
         (given-type-query node "Patient" [["_id" "0" "1"]]
@@ -3559,12 +3566,19 @@
 
           (given (explain-type-query node "Patient" clauses)
             :scan-type := :ordered
-            [:scan-clauses count] := 1
-            [:scan-clauses 0 :code] := "_id"
-            [:seek-clauses count] := 1
-            [:seek-clauses 0 :code] := "active"))
+            [:scan-clauses count] := 2
+            [:scan-clauses 0 :code] := "active"
+            [:scan-clauses 1 :code] := "_id"))
 
-        (is (zero? (count-type-query node "Patient" [["active" "true"] ["_id" "1"]]))))))
+        (let [clauses [["active" "true"] ["_id" "1"]]]
+          (given-type-query node "Patient" clauses
+            count := 0)
+
+          (given (explain-type-query node "Patient" clauses)
+            :scan-type := :ordered
+            [:scan-clauses count] := 2
+            [:scan-clauses 0 :code] := "active"
+            [:scan-clauses 1 :code] := "_id")))))
 
   (testing "multiple ID search"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -3603,19 +3617,40 @@
               (given (pull-type-query node "Patient" clauses "5")
                 count := 0)))))))
 
-  (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "xa"}]
-      [:put {:fhir/type :fhir/Patient :id "xb"}]]]
+  (testing "IDs with common prefix"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "xa"}]
+        [:put {:fhir/type :fhir/Patient :id "xb"}]]]
 
-    (testing "doesn't find patients with a prefix of the ID"
-      (given-type-query node "Patient" [["_id" "x"]]
-        count := 0))
+      (testing "doesn't find patients with a prefix of the ID"
+        (given-type-query node "Patient" [["_id" "x"]]
+          count := 0))
 
-    (given-type-query node "Patient" [["_id" "xa"]]
-      count := 1)
+      (given-type-query node "Patient" [["_id" "xa"]]
+        count := 1)
 
-    (given-type-query node "Patient" [["_id" "xb"]]
-      count := 1)))
+      (given-type-query node "Patient" [["_id" "xb"]]
+        count := 1)))
+
+  (testing "as seek clause"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [(forv [id (range 100)]
+         [:put {:fhir/type :fhir/Patient :id (str id)
+                :active #fhir/boolean true}])]
+
+      (doseq [id (repeatedly 10 #(rand-nth (range 100)))]
+        (let [clauses [["active" "true"] ["_id" (str id)]]]
+          (given-type-query node "Patient" clauses
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := (str id))
+
+          (given (explain-type-query node "Patient" clauses)
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "_id"
+            [:seek-clauses count] := 1
+            [:seek-clauses 0 :code] := "active"))))))
 
 (deftest ^:slow type-query-id-property-test
   (log/set-min-level! :warn)
@@ -6832,20 +6867,36 @@
 
     (testing "10001 Patients to disable optimizations"
       (with-system-data [{:blaze.db/keys [node]} config]
-        [(vec (for [i (range 10001)]
-                [:put {:fhir/type :fhir/Patient :id (str i) :active #fhir/boolean true}]))
+        [(forv [i (range 20002)]
+           [:put {:fhir/type :fhir/Patient :id (str i)
+                  :active (type/boolean (odd? i))}])
          [[:put {:fhir/type :fhir/Observation :id "0"
+                 :status #fhir/code "final"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+          [:put {:fhir/type :fhir/Observation :id "2"
+                 :status #fhir/code "final"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]
+          [:put {:fhir/type :fhir/Observation :id "3"
+                 :status #fhir/code "final"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]
+          [:put {:fhir/type :fhir/Observation :id "4"
+                 :status #fhir/code "final"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/4"}}]
+          [:put {:fhir/type :fhir/Observation :id "5"
+                 :status #fhir/code "final"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/5"}}]]]
 
         (let [clauses [["patient.active" "true"]]]
           (given-type-query node "Observation" clauses
-            count := 2
+            count := 3
             [0 :fhir/type] := :fhir/Observation
-            [0 :id] := "0"
+            [0 :id] := "1"
             [1 :fhir/type] := :fhir/Observation
-            [1 :id] := "1")
+            [1 :id] := "3"
+            [2 :fhir/type] := :fhir/Observation
+            [2 :id] := "5")
 
           (given (explain-type-query node "Observation" clauses)
             :scan-type := :unordered
@@ -6854,10 +6905,34 @@
             [:seek-clauses count] := 0)
 
           (testing "it is possible to start with the second Observation"
-            (given (pull-type-query node "Observation" clauses "1")
-              count := 1
+            (given (pull-type-query node "Observation" clauses "3")
+              count := 2
               [0 :fhir/type] := :fhir/Observation
-              [0 :id] := "1"))))))
+              [0 :id] := "3"
+              [1 :fhir/type] := :fhir/Observation
+              [1 :id] := "5")))
+
+        (testing "with other search params"
+          (let [clauses [["status" "final"] ["patient.active" "true"]]]
+            (given-type-query node "Observation" clauses
+              count := 2
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "3"
+              [1 :fhir/type] := :fhir/Observation
+              [1 :id] := "5")
+
+            (given (explain-type-query node "Observation" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "status"
+              [:seek-clauses count] := 1
+              [:seek-clauses 0 :code] := "patient.active")
+
+            (testing "it is possible to start with the second Observation"
+              (given (pull-type-query node "Observation" clauses "5")
+                count := 1
+                [0 :fhir/type] := :fhir/Observation
+                [0 :id] := "5")))))))
 
   (testing "DocumentReference"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -7290,9 +7365,9 @@
     (satisfies-prop 25
       (prop/for-all [n (gen/large-integer* {:min 1 :max 10000})]
         (with-system-data [{:blaze.db/keys [node]} config]
-          [(mapv
-            (fn [id] [:put {:fhir/type :fhir/Patient :id (str id) :active #fhir/boolean true}])
-            (range n))]
+          [(forv [id (range n)]
+             [:put {:fhir/type :fhir/Patient :id (str id)
+                    :active #fhir/boolean true}])]
 
           (= n (count-type-query node "Patient" [["active" "true"]])))))))
 

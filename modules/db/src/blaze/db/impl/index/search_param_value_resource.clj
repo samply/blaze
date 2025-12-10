@@ -256,7 +256,7 @@
   [:search-param-value-index (encode-key c-hash tid value id hash) bytes/empty])
 
 (defn estimated-scan-size
-  "Returns a relative estimation of the amount of work to do while scanning the
+  "Returns a relative estimation for the amount of work to do while scanning the
   SearchParamValueResource index with the prefix consisting of `c-hash`, `tid`
   and `value`.
 

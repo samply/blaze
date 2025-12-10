@@ -151,10 +151,10 @@
   (with-meta clause {:estimated-scan-size (estimated-scan-size batch-db tid clause)}))
 
 (def ^:private ^:const ^long scan-factor
-  "The factor to calculate maximum difference between the search-param/values
+  "The factor to calculate the maximum difference between the search-param/values
   combination with the smallest scan size and the largest scan size to allow.
 
-  Clauses with scan sizes larger than the calculated threshold will be excludes
+  Clauses with scan sizes larger than the calculated threshold will be excluded
   from scanning."
   10)
 
