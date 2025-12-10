@@ -218,16 +218,6 @@
     (-form [_]
       `(~'call "ToConcept" ~(core/-form operand)))))
 
-(defn- function-def-not-found-anom [context name]
-  (ba/incorrect
-   (format "Function definition `%s` not found." name)
-   :context context))
-
-(defn- compile-function [{:keys [function-defs] :as context} name operands]
-  (if-let [{:keys [function]} (get function-defs name)]
-    (apply function operands)
-    (throw-anom (function-def-not-found-anom context name))))
-
 ;; 9.4. FunctionRef
 (defmethod core/compile* :elm.compiler.type/function-ref
   [context {:keys [name] operands :operand}]
@@ -258,7 +248,7 @@
       "ToConcept"
       (to-concept-function-expr (first operands))
 
-      (compile-function context name operands))))
+      (ba/throw-when (core/compile-function context name operands)))))
 
 ;; 9.5 OperandRef
 (defmethod core/compile* :elm.compiler.type/operand-ref

@@ -18,4 +18,4 @@
 
 (s/def :elm/compile-context
   (s/keys :req-un [:elm/library ::c/eval-context :blaze.db/node]
-          :opt-un [:blaze/terminology-service]))
+          :opt-un [::c/function-defs :blaze/terminology-service]))

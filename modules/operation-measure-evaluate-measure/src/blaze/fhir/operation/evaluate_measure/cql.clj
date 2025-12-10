@@ -5,6 +5,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
    [blaze.elm.expression :as expr]
    [blaze.elm.resource :as cr]
    [blaze.elm.util :as elm-util]
@@ -233,19 +234,11 @@
          (halt-when ba/anomaly?))
    evaluators))
 
-(defn- missing-function-anom [name]
-  (ba/incorrect
-   (format "Missing function with name `%s`." name)
-   :function-name name))
-
-(defn- function-def [{:keys [function-defs]} name]
-  (or (get function-defs name) (missing-function-anom name)))
-
 (defn- expression-or-function-def
   [{:keys [expression-defs population-basis] :as context} name]
   (or (get expression-defs name)
       (if (string? population-basis)
-        (function-def context name)
+        (core/resolve-function-def context name 1)
         (missing-expression-anom name))))
 
 (defn- incorrect-stratum-msg [{:fhir/keys [type] :keys [id]} expression-name]

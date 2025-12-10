@@ -28,7 +28,9 @@
     (-> (ba/try-anomaly (update def :expression (partial c/compile context)))
         (ba/exceptionally #(assoc % :context context :elm/expression (:expression def))))))
 
-(defn create-function
+(defn- create-partial-function
+  "Creates a function that if called with the operands from a function-ref will
+  return a compiled function expression."
   ([name expression]
    (partial function/arity-0 name expression))
   ([name expression op-name]
@@ -46,20 +48,20 @@
   [context {:keys [name operand] :as def}]
   (when-ok [{:keys [expression]} (compile-expression-def context def)]
     (-> (dissoc def :expression)
-        (assoc :function (apply create-function name expression (mapv :name operand))))))
+        (assoc :function (apply create-partial-function name expression (mapv :name operand))))))
 
 (defn- compile-function-defs [context library]
   (transduce
    (filter (comp #{"FunctionDef"} :type))
    (completing
-    (fn [context {:keys [name] :as def}]
+    (fn [context def]
       (if-ok [def (compile-function-def context def)]
-        (assoc-in context [:function-defs name] def)
+        (update context :function-defs conj def)
         reduced)))
-   context
+   (assoc context :function-defs [])
    (-> library :statements :def)))
 
-(defn- expression-defs [context library]
+(defn- compile-expression-defs [context library]
   (transduce
    (comp (filter (comp #{"ExpressionDef"} :type))
          (map (partial compile-expression-def context))
@@ -113,7 +115,7 @@
   (let [library (normalizer/normalize-library library)
         context (merge opts context {:library library})]
     (when-ok [{:keys [function-defs] :as context} (compile-function-defs context library)
-              expression-defs (expression-defs context library)
+              expression-defs (compile-expression-defs context library)
               expression-defs (resolve-refs (unfiltered-expr-names expression-defs) expression-defs)
               parameter-default-values (parameter-default-values context library)]
       {:expression-defs expression-defs

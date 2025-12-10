@@ -104,13 +104,16 @@
   (testing "Throws error on missing function"
     (given (ba/try-anomaly (c/compile {} #elm/function-ref ["name-175844"]))
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Function definition `name-175844` not found."
+      ::anom/message := "Function definition with name `name-175844` and arity 0 not found."
       :context := {}))
 
   (testing "Custom function with arity 0"
     (let [function-name "name-210650"
           fn-expr (c/compile {} #elm/integer "1")
-          compile-ctx {:function-defs {function-name {:function (partial function/arity-0 function-name fn-expr)}}}
+          compile-ctx {:function-defs
+                       [{:name function-name
+                         :context "Patient"
+                         :function (partial function/arity-0 function-name fn-expr)}]}
           elm (elm/function-ref [function-name])
           expr (c/compile compile-ctx elm)]
 
@@ -145,7 +148,11 @@
           fn-expr (c/compile {} #elm/negate #elm/operand-ref"x")
           compile-ctx {:library {:parameters {:def [{:name "a"}]}}
                        :eval-context "Patient"
-                       :function-defs {function-name {:function (partial function/arity-1 function-name fn-expr "x")}}}
+                       :function-defs
+                       [{:name function-name
+                         :context "Patient"
+                         :operand [{:name "x"}]
+                         :function (partial function/arity-1 function-name fn-expr "x")}]}
           elm (elm/function-ref [function-name #elm/parameter-ref "a"])
           expr (c/compile compile-ctx elm)]
 
@@ -198,7 +205,11 @@
           fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/operand-ref"y"])
           compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"}]}}
                        :eval-context "Patient"
-                       :function-defs {function-name {:function (partial function/arity-2 function-name fn-expr "x" "y")}}}
+                       :function-defs
+                       [{:name function-name
+                         :context "Patient"
+                         :operand [{:name "x"} {:name "y"}]
+                         :function (partial function/arity-2 function-name fn-expr "x" "y")}]}
           elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b"])
           expr (c/compile compile-ctx elm)]
 
@@ -265,7 +276,11 @@
           fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/add [#elm/operand-ref"y" #elm/operand-ref"z"]])
           compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"} {:name "c"}]}}
                        :eval-context "Patient"
-                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y" "z"])}}}
+                       :function-defs
+                       [{:name function-name
+                         :context "Patient"
+                         :operand [{:name "x"} {:name "y"} {:name "z"}]
+                         :function (partial function/arity-n function-name fn-expr ["x" "y" "z"])}]}
           elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b" #elm/parameter-ref "c"])
           expr (c/compile compile-ctx elm)]
 
@@ -299,14 +314,17 @@
       (testing "resolve expression references"
         (let [elm (elm/function-ref [function-name
                                      #elm/expression-ref "x"
-                                     #elm/expression-ref "y"])
+                                     #elm/expression-ref "y"
+                                     #elm/expression-ref "z"])
               expr-defs [{:type "ExpressionDef" :name "x" :expression "a"
                           :context "Unfiltered"}
                          {:type "ExpressionDef" :name "y" :expression "b"
+                          :context "Unfiltered"}
+                         {:type "ExpressionDef" :name "z" :expression "c"
                           :context "Unfiltered"}]
               ctx (assoc compile-ctx :library {:statements {:def expr-defs}})
-              expr (c/resolve-refs (c/compile ctx elm) (zipmap ["x" "y"] expr-defs))]
-          (has-form expr (list 'call function-name "a" "b"))))
+              expr (c/resolve-refs (c/compile ctx elm) (zipmap ["x" "y" "z"] expr-defs))]
+          (has-form expr (list 'call function-name "a" "b" "c"))))
 
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {"a" 1 "b" 2 "c" 3})

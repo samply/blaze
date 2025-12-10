@@ -1,6 +1,7 @@
 (ns blaze.elm.compiler.core
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.elm.protocols :as p]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec.type.system :as system]
@@ -158,6 +159,27 @@
 (defn optimize-helper-2
   [constructor db op-1 op-2 arg-1 arg-2]
   (constructor (-optimize op-1 db) (-optimize op-2 db) arg-1 arg-2))
+
+(defn- function-def-not-found-anom [context name arity]
+  (ba/incorrect
+   (format "Function definition with name `%s` and arity %d not found." name arity)
+   :context context))
+
+(defn- function-def-pred [name arity]
+  #(when (and (= name (:name %)) (= arity (count (:operand %)))) %))
+
+(defn resolve-function-def
+  "Resolves function definition with `name` and `arity` from `context`."
+  {:arglists '([context name arity])}
+  [{:keys [function-defs] :as context} name arity]
+  (or (some (function-def-pred name arity) function-defs)
+      (function-def-not-found-anom context name arity)))
+
+(defn compile-function
+  "Compiles function with `name` and `operands` from `context`."
+  [context name operands]
+  (when-ok [function-def (resolve-function-def context name (count operands))]
+    (apply (:function function-def) operands)))
 
 (extend-protocol Expression
   nil
