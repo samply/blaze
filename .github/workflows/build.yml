@@ -1397,12 +1397,24 @@ jobs:
     - name: Check Total-Number of Resources are 1099779
       run: .github/scripts/check-total-number-of-resources.sh 1099779
 
+    - name: Download Stress Condition Resources
+      run: .github/scripts/download-resources-query.sh Condition "code=http://snomed.info/sct|73595000" 7477
+
+    - name: Download Condition Resources at Inpatient Encounters
+      run: .github/scripts/download-resources-query.sh Condition "encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 583
+
+    - name: Download Condition Resources at Ambulatory Encounters
+      run: .github/scripts/download-resources-query.sh Condition "encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB" 49613
+
     - name: Count the Number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
       run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 13
 
-    - name: Count the Number of Patients with Stress Conditions at Inpatient Encounters Plan
+    - name: Count the Number of Patients with Stress Conditions at Ambulatory Encounters using FHIR Search
+      run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB" 821
+
+    - name: Count the Number of Patients with Stress Conditions at Ambulatory Encounters Plan
       run: |
-        .github/scripts/explain-type-query.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" "SCANS(ordered): code, encounter.class; SEEKS: NONE"
+        .github/scripts/explain-type-query.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB" "SCANS(ordered): code; SEEKS: encounter.class"
 
     - name: Download Observation Resources with 6 LOINC Codes
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6&category=laboratory" 9453
