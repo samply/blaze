@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.1
+
+### Bugfixes
+
+* Problem with :iterate and _revinclude in search parameters ([#3143](https://github.com/samply/blaze/issues/3143))
+* Fix Startup Failure on BASE_URL with Trailing Slash ([#3150](https://github.com/samply/blaze/issues/3150))
+* Fix Resolution of Overloaded CQL Functions ([#3170](https://github.com/samply/blaze/issues/3170))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/115?closed=1).
+
 ## v1.3.0
 
 ### Enhancements

@@ -1403,9 +1403,6 @@ jobs:
     - name: Download Condition Resources at Inpatient Encounters
       run: .github/scripts/download-resources-query.sh Condition "encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 583
 
-    - name: Download Condition Resources at Ambulatory Encounters
-      run: .github/scripts/download-resources-query.sh Condition "encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB" 49613
-
     - name: Count the Number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
       run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 13
 
