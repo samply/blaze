@@ -1,8 +1,5 @@
 # Terminology Service <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="Since 0.32"/>
 
-> [!CAUTION]
-> The terminology service is currently **beta**. Only the basic functionality, described here, is implemented.
-
 > [!NOTE]
 > The terminology service is an optional feature that has to be enabled by setting `ENABLE_TERMINOLOGY_SERVICE` to `true`.
 
