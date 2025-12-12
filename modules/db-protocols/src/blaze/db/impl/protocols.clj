@@ -139,9 +139,13 @@
     [search-param batch-db compartment tid compiled-value]
     [search-param batch-db compartment tid compiled-value start-id]
     "Returns a reducible collection.")
-  (-matcher [_ batch-db modifier values])
+  (-matcher [_ batch-db modifier compiled-values])
   (-single-version-id-matcher [_ batch-db tid modifier compiled-values])
-  (-second-pass-filter [search-param batch-db values])
+  (-postprocess-matches
+    [search-param batch-db values compiled-values]
+    "Returns a transducer that will be applied on every matching resource-handle
+     at the end of the query execution. Can also be used to finally remove
+     unwanted matches.")
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))

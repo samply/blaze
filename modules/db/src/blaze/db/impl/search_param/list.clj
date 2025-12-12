@@ -89,7 +89,7 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ _ _ _])
 
   (-index-values [_ _ _]
     []))

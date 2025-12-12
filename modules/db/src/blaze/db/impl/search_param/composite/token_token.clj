@@ -61,7 +61,7 @@
   (-matcher [_ batch-db _ compiled-values]
     (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash compiled-values))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ _ _ _])
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

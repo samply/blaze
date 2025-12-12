@@ -125,11 +125,11 @@
      (let [ordered-index-handles #(ordered-index-handles* batch-db tid % start-id)]
        (intersection-index-handles (map ordered-index-handles clauses))))))
 
-(defn- second-pass-filter [batch-db clauses]
+(defn- postprocess-matches [batch-db clauses]
   (transduce
    (keep
-    (fn [[search-param _ values]]
-      (p/-second-pass-filter search-param batch-db values)))
+    (fn [[search-param _ values compiled-values]]
+      (p/-postprocess-matches search-param batch-db values compiled-values)))
    comp
    clauses))
 
@@ -203,7 +203,7 @@
 (defn- resource-handle-mapper*
   ([batch-db tid clauses]
    (comp (u/resource-handle-xf batch-db tid)
-         (second-pass-filter batch-db clauses)))
+         (postprocess-matches batch-db clauses)))
   ([batch-db tid clauses other-clauses]
    (comp (other-clauses-index-handle-filter batch-db tid other-clauses)
          (resource-handle-mapper* batch-db tid clauses))))

@@ -176,10 +176,11 @@
       (assoc :lastUpdated instant)))
 
 (defn- mk-meta [handle tx]
-  {:blaze.resource/hash (:hash handle)
-   :blaze.db/num-changes (:num-changes handle)
-   :blaze.db/op (:op handle)
-   :blaze.db/tx tx})
+  (assoc (meta handle)
+         :blaze.resource/hash (:hash handle)
+         :blaze.db/num-changes (:num-changes handle)
+         :blaze.db/op (:op handle)
+         :blaze.db/tx tx))
 
 (defn- enhance-resource [tx-cache handle resource]
   (let [t (:t handle)

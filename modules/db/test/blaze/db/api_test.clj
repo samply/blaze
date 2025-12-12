@@ -7477,7 +7477,7 @@
 
           (= n (count-type-query node "Patient" [["active" "true"]])))))))
 
-(def data-absent-reason-unknown
+(def ^:private data-absent-reason-unknown
   #fhir/Extension
    {:url "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
     :value #fhir/code "unknown"})

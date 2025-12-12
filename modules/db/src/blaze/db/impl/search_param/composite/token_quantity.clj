@@ -82,7 +82,7 @@
     (spq/single-version-id-matcher batch-db tid c-hash prefix-length
                                    compiled-values))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ _ _ _])
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
