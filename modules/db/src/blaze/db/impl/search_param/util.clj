@@ -11,7 +11,6 @@
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
@@ -33,7 +32,7 @@
 
 (defn format-skip-indexing-msg [value url type]
   (format "Skip indexing value `%s` of type `%s` for search parameter `%s` with type `%s` because the rule is missing."
-          (str value) (fhir-spec/fhir-type value) url type))
+          (str value) (:fhir/type value) url type))
 
 (def by-id-grouper
   "Returns a stateful transducer which partitions multiple consecutive

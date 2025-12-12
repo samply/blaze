@@ -50,7 +50,7 @@
   @(-> (fhir-client/history-instance base-uri "Patient" id context)
        (ac/then-apply
         (fn [versions]
-          {:type :ok :value (map (comp :value first :identifier) versions)}))
+          {:type :ok :value (map (comp :value :value first :identifier) versions)}))
        (ac/exceptionally
         (fn [e]
           {:type (if (ba/not-found? e) :ok :fail) :value nil}))))

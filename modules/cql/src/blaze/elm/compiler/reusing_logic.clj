@@ -13,10 +13,9 @@
    [blaze.elm.interval :as interval]
    [blaze.elm.protocols :as p]
    [blaze.elm.quantity :as quantity]
-   [blaze.fhir.spec.type :as type])
+   [blaze.fhir.spec :as fhir-spec])
   (:import
-   [blaze.fhir.spec.type Period]
-   [java.util Map]))
+   [blaze.fhir.spec.type Period Quantity]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,10 +83,10 @@
   (-to-quantity [x]))
 
 (extend-protocol ToQuantity
-  Map
-  (-to-quantity [m]
-    (when-let [value (:value m)]
-      (quantity/quantity value (or (-> m :code type/value) "1"))))
+  Quantity
+  (-to-quantity [fhir-quantity]
+    (when-let [decimal (-> fhir-quantity :value :value)]
+      (quantity/quantity decimal (or (-> fhir-quantity :code :value) "1"))))
 
   Object
   (-to-quantity [x]
@@ -112,7 +111,7 @@
       `(~'call "ToQuantity" ~(core/-form operand)))))
 
 (defn- to-code [{:keys [system version code]}]
-  (code/code (type/value system) (type/value version) (type/value code)))
+  (code/code (:value system) (:value version) (:value code)))
 
 (defn- to-code-function-expr [operand]
   (reify-expr core/Expression
@@ -129,6 +128,21 @@
     (-form [_]
       `(~'call "ToCode" ~(core/-form operand)))))
 
+(defn- to-decimal-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-decimal-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-decimal-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper to-decimal-function-expr parameters operand))
+    (-optimize [_ db]
+      (core/optimize-helper to-decimal-function-expr db operand))
+    (-eval [_ context resource scope]
+      (:value (core/-eval operand context resource scope)))
+    (-form [_]
+      `(~'call "ToDecimal" ~(core/-form operand)))))
+
 (defn- to-date-function-expr [operand]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
@@ -140,7 +154,7 @@
     (-optimize [_ db]
       (core/optimize-helper to-date-function-expr db operand))
     (-eval [_ context resource scope]
-      (type/value (core/-eval operand context resource scope)))
+      (:value (core/-eval operand context resource scope)))
     (-form [_]
       `(~'call "ToDate" ~(core/-form operand)))))
 
@@ -155,7 +169,7 @@
     (-optimize [_ parameters]
       (to-date-time-function-expr (core/-optimize operand parameters)))
     (-eval [_ {:keys [now] :as context} resource scope]
-      (p/to-date-time (type/value (core/-eval operand context resource scope)) now))
+      (p/to-date-time (:value (core/-eval operand context resource scope)) now))
     (-form [_]
       `(~'call "ToDateTime" ~(core/-form operand)))))
 
@@ -170,7 +184,8 @@
     (-optimize [_ db]
       (core/optimize-helper to-string-function-expr db operand))
     (-eval [_ context resource scope]
-      (some-> (type/value (core/-eval operand context resource scope)) str))
+      (let [value (core/-eval operand context resource scope)]
+        (some-> (cond-> value (fhir-spec/primitive-val? value) :value) str)))
     (-form [_]
       `(~'call "ToString" ~(core/-form operand)))))
 
@@ -181,8 +196,8 @@
   Period
   (-to-interval [{:keys [start end]} {:keys [now]}]
     (interval/interval
-     (p/to-date-time (type/value start) now)
-     (p/to-date-time (type/value end) now)))
+     (p/to-date-time (:value start) now)
+     (p/to-date-time (:value end) now)))
 
   nil
   (-to-interval [_ _]))
@@ -240,7 +255,7 @@
       (to-code-function-expr (first operands))
 
       "ToDecimal"
-      (first operands)
+      (to-decimal-function-expr (first operands))
 
       "ToInterval"
       (to-interval-function-expr (first operands))

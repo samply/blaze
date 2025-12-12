@@ -16,8 +16,9 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
+   [blaze.fhir.spec.type Base]
    [com.github.benmanes.caffeine.cache
-    AsyncCacheLoader AsyncLoadingCache Caffeine]
+    AsyncCacheLoader AsyncLoadingCache Caffeine Weigher]
    [com.github.benmanes.caffeine.cache.stats CacheStats]
    [java.lang.reflect Array]
    [java.util ArrayList Collection Collections HashMap Map]
@@ -92,7 +93,9 @@
        keys)
       (cond-> (wait-for-all futures)
         (pos? (.size keys-to-load))
-        (merge-futures (rs/multi-get resource-store (Collections/unmodifiableList keys-to-load))))))
+        ;; use the protocol method directly because keys will not
+        ;; satisfy the spec of the rs/multi-get function
+        (merge-futures (rs/-multi-get resource-store (Collections/unmodifiableList keys-to-load))))))
 
   ccp/StatsCache
   (-stats [_]
@@ -104,42 +107,54 @@
   (-> (.synchronous ^AsyncLoadingCache (.cache ^DefaultResourceCache resource-cache))
       (.invalidateAll)))
 
+(def ^:private weigher
+  (reify Weigher
+    (weigh [_ _ resource]
+      (Base/memSize resource))))
+
 (defmethod m/pre-init-spec :blaze.db/resource-cache [_]
-  (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size]))
+  (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size-ratio]))
 
 (defmethod ig/init-key :blaze.db/resource-cache
-  [_ {:keys [resource-store max-size] :or {max-size 0}}]
-  (log/info "Create resource cache with a size of" max-size "resources")
-  (if (zero? max-size)
-    (reify
-      p/ResourceCache
-      (-get [_ key]
-        (rs/get resource-store key))
+  [_ {:keys [resource-store max-size-ratio] :or {max-size-ratio 0.25}}]
+  (let [max-memory (.maxMemory (Runtime/getRuntime))
+        max-size-ratio (if (< 0.8 max-size-ratio) 0.8 max-size-ratio)
+        max-size-in-bytes (long (* max-memory max-size-ratio))]
+    (log/info (format "Create resource cache with a memory size of %d MiB (%d%% of max memory size)"
+                      (bit-shift-right max-size-in-bytes 20) (long (* 100 max-size-ratio))))
+    (if (zero? max-size-in-bytes)
+      (reify
+        p/ResourceCache
+        (-get [_ key]
+          (rs/get resource-store key))
 
-      (-contains? [_ _]
-        false)
+        (-contains? [_ _]
+          false)
 
-      (-multi-get [_ keys]
-        (rs/multi-get resource-store keys))
+        (-multi-get [_ keys]
+          (rs/multi-get resource-store keys))
 
-      (-multi-get-skip-cache-insertion [_ keys]
-        (rs/multi-get resource-store keys))
+        (-multi-get-skip-cache-insertion [_ keys]
+          (rs/multi-get resource-store keys))
 
-      ccp/StatsCache
-      (-stats [_]
-        (CacheStats/empty))
-      (-estimated-size [_]
-        0))
+        ccp/StatsCache
+        (-stats [_]
+          (CacheStats/empty))
+        (-estimated-size [_]
+          0))
 
-    (->DefaultResourceCache
-     (-> (Caffeine/newBuilder)
-         (.maximumSize max-size)
-         (.recordStats)
-         (.buildAsync
-          (reify AsyncCacheLoader
-            (asyncLoad [_ key _]
-              (rs/get resource-store key))
+      (->DefaultResourceCache
+       (-> (Caffeine/newBuilder)
+           (.weigher weigher)
+           (.maximumWeight max-size-in-bytes)
+           (.recordStats)
+           (.buildAsync
+            (reify AsyncCacheLoader
+              (asyncLoad [_ key _]
+                (rs/get resource-store key))
 
-            (asyncLoadAll [_ keys _]
-              (rs/multi-get resource-store keys)))))
-     resource-store)))
+              (asyncLoadAll [_ keys _]
+                ;; use the protocol method directly because keys will not
+                ;; satisfy the spec of the rs/multi-get function
+                (rs/-multi-get resource-store keys)))))
+       resource-store))))
