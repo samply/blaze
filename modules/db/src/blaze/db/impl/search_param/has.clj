@@ -150,7 +150,7 @@
           (p/-matcher search-param batch-db modifier compiled-values)
           (map svi/from-resource-handle)))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ _ _ _])
 
   (-index-values [_ _ _]
     []))

@@ -10,8 +10,10 @@
    [blaze.db.impl.search-param.near.geo :as spng]
    [blaze.db.impl.search-param.special :as special]
    [blaze.db.impl.search-param.util :as u]
+   [blaze.db.search-param :as-alias sp]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.util :refer [conj-vec]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]))
 
@@ -97,7 +99,31 @@
       longitude
       (ba/incorrect (invalid-longitude-msg val code)))))
 
-(defrecord SearchParamNear [index name type code]
+(defn- min-distance [{:keys [position]} compiled-values]
+  (when-let [coords (position->coords position)]
+    (->> compiled-values
+         (map #(spng/haversine-distance coords %))
+         (apply min))))
+
+(defn- distance-extension [distance]
+  (type/extension
+   {:url "http://hl7.org/fhir/StructureDefinition/location-distance"
+    :value {:fhir/type :fhir/Distance
+            :value (type/decimal distance)
+            :unit #fhir/string "m"
+            :system #fhir/uri "http://unitsofmeasure.org"
+            :code #fhir/code "m"}}))
+
+(defn- add-match-extension [meta distance]
+  (update meta ::sp/match-extension conj-vec (distance-extension distance)))
+
+(defn- postprocess-matches-xf [batch-db compiled-values]
+  (map
+   (fn [resource-handle]
+     (let [distance (min-distance @(d/pull batch-db resource-handle) compiled-values)]
+       (vary-meta resource-handle add-match-extension distance)))))
+
+(defrecord SearchParamNear [name type code]
   p/SearchParam
   (-validate-modifier [_ modifier]
     (some->> modifier (u/unknown-modifier-anom code)))
@@ -159,11 +185,12 @@
           (p/-matcher search-param batch-db modifier compiled-values)
           (map svi/from-resource-handle)))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ batch-db _ compiled-values]
+    (postprocess-matches-xf batch-db compiled-values))
 
   (-index-values [_ _ _]
     []))
 
 (defmethod special/special-search-param "near"
-  [index _]
-  (->SearchParamNear index "near" "special" "near"))
+  [_ _]
+  (->SearchParamNear "near" "special" "near"))

@@ -49,7 +49,7 @@
     [:search :extension] :? nil?)
 
   (let [resource (with-meta {:fhir/type :fhir/Patient :id "0"}
-                            {::sp/match-extension [:extension-100623]})]
+                   {::sp/match-extension [:extension-100623]})]
     (given (search-util/match-entry context resource)
       :fhir/type := :fhir.Bundle/entry
       :fullUrl := #fhir/uri "/Patient/0"

@@ -232,6 +232,12 @@
   (->> (filter (comp #{#fhir/code "include"} :mode :search) entry)
        (sort-by (comp :fhir/type :resource))))
 
+(def ^:private ^:const location-distance-url
+  "http://hl7.org/fhir/StructureDefinition/location-distance")
+
+(defn- location-distance [extensions]
+  (some #(when (= location-distance-url (:url %)) %) extensions))
+
 (deftest handler-test
   (testing "on unknown search parameter"
     (testing "with strict handling"
@@ -721,7 +727,16 @@
           (testing "the entry has the right search mode"
             (given (:search first-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
-              :mode := #fhir/code "match"))))))
+              :mode := #fhir/code "match"))
+
+          (testing "the entry has distance search extension"
+            (given (-> first-entry :search :extension location-distance)
+              fhir-spec/fhir-type := :fhir/Extension
+              [:value fhir-spec/fhir-type] := :fhir/Distance
+              [:value :unit] := #fhir/string "m"
+              [:value :code] := #fhir/code "m"
+              [:value :system] := #fhir/uri "http://unitsofmeasure.org"
+              [:value :value type/value] :? #(< 27520M % 27530M)))))))
 
   (testing "with one patient"
     (with-handler [handler]

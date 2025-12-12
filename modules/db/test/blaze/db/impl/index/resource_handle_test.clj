@@ -21,7 +21,7 @@
 (defn- resource-handle [type id t]
   (let [fhir-type (keyword "fhir" type)]
     (ResourceHandle. fhir-type (codec/tid type) id t
-                     (hash/generate {:fhir/type fhir-type :id id}) 0)))
+                     (hash/generate {:fhir/type fhir-type :id id}) 0 nil)))
 
 (deftest state->num-changes-test
   (are [state num-changes] (= num-changes (ResourceHandle/numChanges state))

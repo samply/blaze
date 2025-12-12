@@ -289,7 +289,7 @@
     (single-version-id-matcher batch-db tid c-hash codec/v-hash-size
                                compiled-values))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ _ _ _])
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

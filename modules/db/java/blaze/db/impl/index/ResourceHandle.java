@@ -7,7 +7,7 @@ import java.util.Comparator;
 
 import static java.util.Objects.requireNonNull;
 
-public final class ResourceHandle implements ILookup, IKeywordLookup {
+public final class ResourceHandle implements ILookup, IKeywordLookup, IObj {
 
     public static final Comparator<ResourceHandle> ID_CMP = Comparator.comparing(rh -> rh.id);
 
@@ -85,14 +85,16 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
     private final long t;
     private final Hash hash;
     private final long state;
+    private final IPersistentMap meta;
 
-    public ResourceHandle(Keyword fhirType, int tid, String id, long t, Hash hash, long state) {
+    public ResourceHandle(Keyword fhirType, int tid, String id, long t, Hash hash, long state, IPersistentMap meta) {
         this.fhirType = requireNonNull(fhirType);
         this.tid = tid;
         this.id = requireNonNull(id);
         this.t = t;
         this.hash = requireNonNull(hash);
         this.state = state;
+        this.meta = meta;
     }
 
     @Override
@@ -122,6 +124,16 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
         if (key == NUM_CHANGES) return NUM_CHANGES_LOOKUP_THUNK;
         if (key == OP) return OP_LOOKUP_THUNK;
         return null;
+    }
+
+    @Override
+    public IObj withMeta(IPersistentMap meta) {
+        return new ResourceHandle(fhirType, tid, id, t, hash, state, meta);
+    }
+
+    @Override
+    public IPersistentMap meta() {
+        return meta;
     }
 
     @Override

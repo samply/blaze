@@ -47,7 +47,8 @@
        id
        t
        hash
-       state))))
+       state
+       nil))))
 
 (defn resource-handle?
   "Returns `true` if `x` is a resource handle."

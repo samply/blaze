@@ -157,7 +157,7 @@
         nil
         (single-version-id-targets batch-db tid single-version-id ref-c-hash ref-tid)))))
 
-  (-second-pass-filter [_ _ _]))
+  (-postprocess-matches [_ _ _ _]))
 
 (defn chained-search-param
   "Creates a new chaining search param from the following arguments:

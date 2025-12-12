@@ -1,5 +1,6 @@
 (ns blaze.interaction.search.util
   (:require
+   [blaze.db.search-param :as-alias sp]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.module :as m]
@@ -20,10 +21,13 @@
   (type/uri (fhir-util/instance-url context (name type) id)))
 
 (defn match-entry [context resource]
-  {:fhir/type :fhir.Bundle/entry
-   :fullUrl (full-url context resource)
-   :resource resource
-   :search match})
+  (let [match-extension (-> resource meta ::sp/match-extension)]
+    {:fhir/type :fhir.Bundle/entry
+     :fullUrl (full-url context resource)
+     :resource resource
+     :search (cond-> match
+               match-extension
+               (assoc :extension match-extension))}))
 
 (defn include-entry [context resource]
   {:fhir/type :fhir.Bundle/entry

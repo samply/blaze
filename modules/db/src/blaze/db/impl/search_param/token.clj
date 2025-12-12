@@ -238,7 +238,7 @@
      (:snapshot batch-db) tid (c-hash-w-modifier c-hash code modifier)
      compiled-values))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ _ _ _])
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -336,7 +336,7 @@
      (:snapshot batch-db) tid (c-hash-w-modifier c-hash code modifier)
      compiled-values))
 
-  (-second-pass-filter [_ batch-db values]
+  (-postprocess-matches [_ batch-db values _]
     (filter (partial matches-identifier-values? batch-db expression (set values))))
 
   (-compartment-ids [_ _ _])
@@ -409,7 +409,7 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-second-pass-filter [_ _ _])
+  (-postprocess-matches [_ _ _ _])
 
   (-index-values [_ _ _]))
 
