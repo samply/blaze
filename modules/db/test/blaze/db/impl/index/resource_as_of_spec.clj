@@ -11,7 +11,8 @@
    [blaze.db.kv.spec]
    [blaze.db.spec]
    [blaze.fhir.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef rao/encode-key
   :args (s/cat :tid :blaze.db/tid :id :blaze.db/id-byte-string :t :blaze.db/t)
@@ -56,3 +57,8 @@
                :id-extractor (s/? fn?)
                :matcher (s/? fn?))
   :ret fn?)
+
+(s/fdef rao/estimated-scan-size
+  :args (s/cat :kv-store :blaze.db/kv-store
+               :tid :blaze.db/tid)
+  :ret (s/or :estimate-storage-size nat-int? :anomaly ::anom/anomaly))
