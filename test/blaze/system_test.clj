@@ -49,7 +49,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (deftest resolve-config-test
-  (are [config env res] (= res (system/resolve-config config env))
+  (are [config env res] (= res (system/resolve-config config env {}))
     {:a (system/->Cfg "SERVER_PORT" (s/spec nat-int?) 8080)}
     {"SERVER_PORT" "80"}
     {:a 80
@@ -78,7 +78,7 @@
         :default-value 8080}]}})
 
   (testing "Blank env vars are handled same as missing ones"
-    (are [config env res] (= res (system/resolve-config config env))
+    (are [config env res] (= res (system/resolve-config config env {}))
       {:a (system/->Cfg "PROXY_HOST" (s/spec string?) nil)}
       {"PROXY_HOST" ""}
       {:a nil :blaze/admin-api {:settings []}}
@@ -109,7 +109,7 @@
     (are [name]
          (let [config {:a (system/->Cfg name (s/spec string?) nil)}]
            (= {:a "secret" :blaze/admin-api {:settings [{:name name :masked true}]}}
-              (system/resolve-config config {name "secret"})))
+              (system/resolve-config config {name "secret"} {})))
       "PASSWORD"
       "FOO_PASSWORD"
       "PASSWORD_FOO"

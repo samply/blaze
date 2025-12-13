@@ -1,5 +1,7 @@
 {:lint-as
- {blaze.db.api-stub/with-system-data clojure.core/with-open
+ {blaze.anomaly/if-ok clojure.core/let
+  blaze.anomaly/when-ok clojure.core/let
+  blaze.db.api-stub/with-system-data clojure.core/with-open
   blaze.module.test-util/with-system clojure.core/with-open}
 
  :linters
