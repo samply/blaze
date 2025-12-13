@@ -6,6 +6,8 @@
   be given to `init!``. The server port has a default of `8080`."
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.anomaly :refer [if-ok]]
+   [blaze.coerce-env :as ce]
    [blaze.log]
    [blaze.path :refer [dir? path]]
    [blaze.spec]
@@ -15,6 +17,7 @@
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [clojure.walk :as walk]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
    [spec-coerce.alpha :as sc :refer [coerce]]
@@ -96,33 +99,17 @@
     (catch Exception e
       (log/warn "Problem while reading blaze/version.edn. Skipping it." e))))
 
-(defn- get-blank [m k f default]
-  (let [v (get m k)]
-    (if (or (nil? v) (str/blank? v))
-      default
-      (f v))))
-
-(defn- secret? [env-var]
-  (str/includes? (str/lower-case env-var) "pass"))
-
-(defn- setting [{:keys [env-var default]} value]
-  (cond->
-   (if (secret? env-var)
-     {:masked true}
-     {:value value :default-value default})
-    (some? default) (assoc :default-value default)))
-
 (defn resolve-config
   "Resolves config entries to their actual values with the help of an
   environment."
-  [config env]
-  (let [settings (volatile! {})]
+  [config env settings]
+  (let [settings (volatile! settings)]
     (-> (walk/postwalk
          (fn [x]
            (if (instance? Cfg x)
-             (when-some [value (get-blank env (:env-var x) identity (:default x))]
+             (when-some [value (ce/get-blank env (:env-var x) (:default x))]
                (let [value (coerce (:spec x) value)]
-                 (vswap! settings assoc (:env-var x) (setting x value))
+                 (vswap! settings assoc (:env-var x) (ce/setting x value))
                  value))
              x))
          config)
@@ -221,24 +208,29 @@
    base-config
    features))
 
-(defn- coerce-base-url [s]
-  (cond-> s (str/ends-with? s "/") (subs 0 (dec (count s)))))
-
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
   (log/set-min-level! (keyword (str/lower-case level)))
-  (let [config (-> (read-blaze-edn)
-                   (merge-storage env)
-                   (merge-features env))
-        root-config (merge root-config (read-blaze-version-edn))
-        config (-> (merge-with merge root-config config)
-                   (resolve-config env))]
-    (load-namespaces config)
-    (-> (ig/bind
-         config
-         {'base-url (get-blank env "BASE_URL" coerce-base-url "http://localhost:8080")})
-        (ig/init))))
+  (if-ok [{:keys [bind-map settings]}
+          (ce/bindings-and-settings
+           env
+           'base-url ["BASE_URL" ce/coerce-base-url "http://localhost:8080"]
+           'db-scale-factor ["DB_SCALE_FACTOR" ce/coerce-db-scale-factor "1"]
+           'db-block-size ["DB_BLOCK_SIZE" ce/coerce-db-block-size "16384"])]
+
+    (let [config (-> (read-blaze-edn)
+                     (merge-storage env)
+                     (merge-features env))
+          root-config (merge root-config (read-blaze-version-edn))
+          config (-> (merge-with merge root-config config)
+                     (resolve-config env settings))]
+      (load-namespaces config)
+      (-> (ig/bind config bind-map)
+          (ig/expand)
+          (ig/init)))
+
+    #(log/error (str "Error while reading the environment: " (::anom/message %)))))
 
 (defn shutdown! [system]
   (ig/halt! system))
@@ -266,3 +258,29 @@
 (defmethod ig/init-key :blaze/java-tool-options
   [_ options]
   options)
+
+(defn- update-existing [m k f x]
+  (if-some [v (get m k)]
+    (assoc m k (f v x))
+    m))
+
+(defn- scale-column-family [factor column-family]
+  (-> column-family
+      (update-existing :write-buffer-size-in-mb * factor)
+      ;; the default max-write-buffer-number is 2
+      ;; any scaling will result in 4 buffers
+      (assoc :max-write-buffer-number 4)
+      (update-existing :max-bytes-for-level-base-in-mb * factor)
+      (update-existing :target-file-size-base-in-mb * factor)))
+
+(defn- map-val [f]
+  (map (fn [[k v]] [k (f v)])))
+
+(defn- scale-column-families [column-families factor]
+  (into {} (map-val (partial scale-column-family factor)) column-families))
+
+(defmethod ig/expand-key :blaze.db.kv/rocksdb
+  [key {:keys [scale-factor] :or {scale-factor 1} :as config}]
+  {key (cond-> config
+         (< 1 scale-factor)
+         (update :column-families scale-column-families scale-factor))})

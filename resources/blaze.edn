@@ -638,95 +638,96 @@
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
+    :scale-factor #blaze/var db-scale-factor
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-resource-type-index
      {:write-buffer-size-in-mb 4
       :max-bytes-for-level-base-in-mb 16
       :target-file-size-base-in-mb 4
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :active-search-params
-     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+     {:block-size #blaze/var db-block-size}
 
      :tx-success-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :tx-error-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :t-by-instant-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :resource-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :patient-last-change-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :cql-bloom-filter
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :enable-blob-files? true
       :min-blob-size 512}
 
@@ -734,7 +735,7 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
@@ -749,90 +750,90 @@
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-resource-type-index
      {:write-buffer-size-in-mb 4
       :max-bytes-for-level-base-in-mb 16
       :target-file-size-base-in-mb 4
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :active-search-params
-     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+     {:block-size #blaze/var db-block-size}
 
      :tx-success-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :tx-error-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :t-by-instant-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :resource-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :patient-last-change-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :cql-bloom-filter
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :enable-blob-files? true
       :min-blob-size 512}
 
@@ -840,7 +841,7 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}}}
 
    ;;
@@ -874,12 +875,13 @@
     {:wal-dir #blaze/cfg ["TRANSACTION_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
+    :scale-factor #blaze/var db-scale-factor
     :column-families
     {:default
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+      :block-size #blaze/var db-block-size}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.transaction-kv-store.main/stats] {}
 
@@ -893,7 +895,7 @@
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+      :block-size #blaze/var db-block-size}}}
 
    ;;
    ;; Key-Value Resource Store
@@ -922,6 +924,7 @@
     {:wal-dir #blaze/cfg ["RESOURCE_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
+    :scale-factor #blaze/var db-scale-factor
     :column-families
     {:default
      {:write-buffer-size-in-mb 64
@@ -930,7 +933,7 @@
       ;; According to Synthea test data, a resource has an average size of
       ;; 1300 bytes. So a block with a size of 16 kb will hold about 10
       ;; resources in average.
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :bloom-filter? true
       :memtable-whole-key-filtering? true
       ;; every get() in the resource store should be a hit
@@ -996,95 +999,96 @@
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
+    :scale-factor #blaze/var db-scale-factor
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-resource-type-index
      {:write-buffer-size-in-mb 4
       :max-bytes-for-level-base-in-mb 16
       :target-file-size-base-in-mb 4
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :active-search-params
-     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+     {:block-size #blaze/var db-block-size}
 
      :tx-success-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :tx-error-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :t-by-instant-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :resource-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :patient-last-change-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :cql-bloom-filter
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :enable-blob-files? true
       :min-blob-size 512}
 
@@ -1092,7 +1096,7 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
@@ -1107,90 +1111,90 @@
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :compartment-resource-type-index
      {:write-buffer-size-in-mb 4
       :max-bytes-for-level-base-in-mb 16
       :target-file-size-base-in-mb 4
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :active-search-params
-     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+     {:block-size #blaze/var db-block-size}
 
      :tx-success-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :tx-error-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :t-by-instant-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}
 
      :resource-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-as-of-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :patient-last-change-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :system-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+      :block-size #blaze/var db-block-size}
 
      :cql-bloom-filter
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :enable-blob-files? true
       :min-blob-size 512}
 
@@ -1198,7 +1202,7 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :block-size #blaze/var db-block-size
       :reverse-comparator? true}}}
 
    :blaze.db.kv.rocksdb/block-cache

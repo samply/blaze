@@ -8,14 +8,14 @@ aside: false
 
 The following table lists the recommended system sizes depending on the number of patients assuming each patient has about 1000 resources. The total memory size (RAM) should be reserved for a single Blaze instance. If a virtual machine is used, no other processes that need non-trivial amounts of memory should run besides Blaze.  
 
-| # Patients | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache | CQL Cache |
-|-----------:|------:|--------:|-------:|---------:|------------:|---------------:|----------:|
-|       10 k |     2 |   8 GiB | 100 GB |    2 GiB |       2 GiB |         0.25 M |   128 MiB | 
-|     < 50 k |     4 |  16 GiB | 250 GB |    4 GiB |       4 GiB |          0.5 M |   128 MiB | 
-|    < 100 k |     4 |  32 GiB | 500 GB |    8 GiB |       8 GiB |         1.25 M |   512 MiB | 
-|      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |          2.5 M |   512 MiB | 
-|        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |            5 M |     1 GiB | 
-|      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |           10 M |     1 GiB | 
+| # Patients | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache | DB Scale Factor | CQL Cache |
+|-----------:|------:|--------:|-------:|---------:|------------:|---------------:|----------------:|----------:|
+|       10 k |     2 |   8 GiB | 100 GB |    2 GiB |       2 GiB |         0.25 M |               1 |   128 MiB | 
+|     < 50 k |     4 |  16 GiB | 250 GB |    4 GiB |       4 GiB |          0.5 M |               1 |   128 MiB | 
+|    < 100 k |     4 |  32 GiB | 500 GB |    8 GiB |       8 GiB |         1.25 M |               2 |   512 MiB | 
+|      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |          2.5 M |               2 |   512 MiB | 
+|        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |            5 M |               4 |     1 GiB | 
+|      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |           10 M |               4 |     1 GiB | 
 
 As a general rule of thumb, 1/4 of the available memory should be assigned to the heap memory, 1/4 to the block cache, and 1/2 to the Linux page cache, which is used to cache RocksDB database file access. The resource cache is configured by the number of resources instead of the amount of memory. The resource numbers given assume a certain resource size taken from [Synthea][1] resources. For fine-tuning that number, the Metric `JVM Memory Used by Pool` should be used. 
 
@@ -23,12 +23,13 @@ As a general rule of thumb, 1/4 of the available memory should be assigned to th
 
 The list of all environment variables can be found in the [Environment Variables Section](deployment/environment-variables.md) under [Deployment](deployment.md). The variables important here are:
 
-| Name                   | Use for              | Default | Description                                               |
-|:-----------------------|----------------------|:--------|:----------------------------------------------------------|
-| JAVA_TOOL_OPTIONS      | Heap Mem             | —       | eg. -Xmx2g, -Xmx4g, -Xmx8g, -Xmx16g, -Xmx32g or -Xmx64g   |
-| DB_BLOCK_CACHE_SIZE    | Block Cache          | 128     | eg. 2048, 4096, 8192, 16384, 32768 or 65536 (in megabyte) |
-| DB_RESOURCE_CACHE_SIZE | Resource Cache       | 100000  | eg. 50000, 100000, 2500000, 5000000, 10000000 or 20000000 |
-| CQL_EXPR_CACHE_SIZE    | CQL Expression Cache | —       | eg. 128, 512, 1024 (in megabyte)                          |
+| Name                   | Use for               | Default | Description                                               |
+|:-----------------------|-----------------------|:--------|:----------------------------------------------------------|
+| JAVA_TOOL_OPTIONS      | Heap Mem              | —       | eg. -Xmx2g, -Xmx4g, -Xmx8g, -Xmx16g, -Xmx32g or -Xmx64g   |
+| DB_BLOCK_CACHE_SIZE    | Block Cache           | 128     | eg. 2048, 4096, 8192, 16384, 32768 or 65536 (in megabyte) |
+| DB_RESOURCE_CACHE_SIZE | Resource Cache        | 100000  | eg. 50000, 100000, 2500000, 5000000, 10000000 or 20000000 |
+| DB_SCALE_FACTOR        | DB Buffers/File Sizes | 1       | eg. 1, 2, 4, 8 or 16                                      |
+| CQL_EXPR_CACHE_SIZE    | CQL Expression Cache  | —       | eg. 128, 512, 1024 (in megabyte)                          |
 
 ### Other Tuning Options
 
