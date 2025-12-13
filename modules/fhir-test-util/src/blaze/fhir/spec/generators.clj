@@ -140,7 +140,7 @@
    m))
 
 (defn- to-map [keys vals]
-  (gen/such-that seq (gen/fmap #(keep-vals (zipmap keys %)) vals) 100))
+  (gen/such-that seq (gen/fmap #(keep-vals (zipmap keys %)) vals) 1000))
 
 (declare extension)
 
@@ -152,7 +152,7 @@
     [& {:keys [id extension value]
         :or {id (often-nil id-value)
              extension (often-nil (extensions))
-             value (nilable value-gen)}}]
+             value (rare-nil value-gen)}}]
     (->> (gen/tuple id extension value)
          (to-map [:id :extension :value])
          (gen/fmap constructor))))
@@ -302,7 +302,7 @@
     (gen/such-that #(<= (system/date-time-lower-bound (type/value (:start %)))
                         (system/date-time-upper-bound (type/value (:end %))))
                    x
-                   100)
+                   1000)
     (gen/fmap type/period x)))
 
 ;; TODO: SampledData
