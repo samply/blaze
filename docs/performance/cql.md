@@ -10,15 +10,16 @@ The following systems, with increasing resources, were used for the performance 
 
 | System | Provider | CPU         | Cores |     RAM |  SSD |
 |--------|----------|-------------|------:|--------:|-----:|
-| LEA25  | on-prem  | EPYC 7543P  |     4 |  32 GiB | 2 TB | 
-| LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB | 2 TB | 
-| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 2 TB | 
-| LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB | 2 TB | 
-| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 2 TB | 
+| LEA25  | on-prem  | EPYC 7543P  |     4 |  32 GiB | 2 TB |
+| LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB | 2 TB |
+| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 2 TB |
+| LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB | 2 TB |
+| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 2 TB |
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 2 TB |
 
-All systems were configured according the [Tuning Guide](../tuning-guide.md).
+All systems were configured according to the [Tuning Guide](../tuning-guide.md).
 
-All systems have in common that the heap mem and the block cache both use 1/4 of the total available memory each. So the Blaze process itself will only use about half the system memory available. The rest of the system memory will be used as file system cache. 
+On all systems, the heap memory and the block cache were each configured to use 1/4 of the total available RAM. Consequently, the Blaze process itself uses about half of the available system memory, leaving the remainder for the file system cache.
 
 ## Datasets
 
@@ -32,7 +33,7 @@ The following datasets were used:
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
 
-The creation of the datasets is described in the [Synthea section](./synthea/README.md). The disc size is measured after full manual compaction of the database. The actual disc size will be up to 50% higher, depending on the state of compaction which happens regularly in the background.
+The creation of these datasets is described in the [Synthea section](./synthea/README.md). The disk size was measured after a full manual compaction of the database. The actual disk size can be up to 50% higher, depending on the state of the background compaction process.
 
 ## Methods
 
@@ -108,6 +109,9 @@ The third bar chart shows the results for the 1M dataset. For the two bigger sys
 | 1M      | LEA58  | 17861-6 |   25 k |     0.44 |  0.009 | 2.252 M |
 | 1M      | LEA58  | 8310-5  |  603 k |     0.48 |  0.012 | 2.092 M | 
 | 1M      | LEA58  | 72514-3 |  998 k |     0.57 |  0.014 | 1.741 M |
+| 1M      | LEA79  | 17861-6 |   25 k |     0.29 |  0.006 | 3.473 M |
+| 1M      | LEA79  | 8310-5  |  603 k |     0.40 |  0.005 | 2.499 M | 
+| 1M      | LEA79  | 72514-3 |  998 k |     0.43 |  0.011 | 2.304 M |
 | 1M      | A5N46  | 17861-6 |   25 k |     0.21 |  0.009 | 4.692 M |
 | 1M      | A5N46  | 8310-5  |  603 k |     0.33 |  0.005 | 3.045 M | 
 | 1M      | A5N46  | 72514-3 |  998 k |     1.68 |  0.009 | 596.2 k |
@@ -177,6 +181,9 @@ The second chart shows the results for the 1M dataset. Here the performance of t
 | 1M      | LEA58  | 29463-7 | 13.6 kg |   99 k |     0.42 |  0.008 | 2.371 M |  
 | 1M      | LEA58  | 29463-7 | 75.3 kg |  500 k |     0.50 |  0.020 | 2.005 M | 
 | 1M      | LEA58  | 29463-7 |  185 kg |  998 k |     0.65 |  0.036 | 1.545 M |
+| 1M      | LEA79  | 29463-7 | 13.6 kg |   99 k |     0.35 |  0.011 | 2.831 M |  
+| 1M      | LEA79  | 29463-7 | 75.3 kg |  500 k |     0.41 |  0.010 | 2.422 M | 
+| 1M      | LEA79  | 29463-7 |  185 kg |  998 k |     0.47 |  0.014 | 2.144 M |
 | 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.22 |  0.013 | 4.464 M | 
 | 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.37 |  0.020 | 2.678 M |
 | 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.73 |  0.051 | 577.3 k |
@@ -249,6 +256,8 @@ The third chart shows the results for the 1M dataset. As with the Code Value Sea
 | 1M      | LEA47  |  954 k |     0.83 |  0.009 | 1.204 M |
 | 1M      | LEA58  |    4 k |     0.41 |  0.006 | 2.420 M |
 | 1M      | LEA58  |  954 k |     0.53 |  0.015 | 1.897 M |
+| 1M      | LEA79  |    4 k |     0.28 |  0.004 | 3.521 M |
+| 1M      | LEA79  |  954 k |     0.41 |  0.016 | 2.419 M |
 | 1M      | A5N46  |    4 k |     0.20 |  0.010 | 5.003 M |
 | 1M      | A5N46  |  954 k |     0.41 |  0.002 | 2.442 M |
 
@@ -328,6 +337,7 @@ cql/search.sh condition-ten-rare
 | 1M      | LEA36  |  995 k |     5.96 |  0.015 | 167.7 k |
 | 1M      | LEA47  |  995 k |     1.02 |  0.015 | 981.3 k |
 | 1M      | LEA58  |  995 k |     0.60 |  0.018 | 1.674 M |
+| 1M      | LEA79  |  995 k |     0.38 |  0.003 | 2.667 M |
 | 1M      | A5N46  |  995 k |     0.44 |  0.002 | 2.260 M |
 
 ### CQL Query
@@ -356,6 +366,7 @@ cql/search.sh condition-all
 | 1M      | LEA36  |   16 k |     3.90 |  0.041 | 256.7 k |
 | 1M      | LEA47  |   16 k |     1.24 |  0.008 | 805.0 k |
 | 1M      | LEA58  |   16 k |     0.68 |  0.018 | 1.478 M |
+| 1M      | LEA79  |   16 k |     0.45 |  0.002 | 2.206 M |
 | 1M      | A5N46  |   16 k |     0.57 |  0.003 | 1.741 M |
 
 ### CQL Query
@@ -422,6 +433,7 @@ cql/search.sh medication-7
 |---------|--------|-------:|---------:|-------:|-------:|
 | 100k    | LEA58  |  5.2 M |    12.79 |  0.325 |  7.8 k |
 | 1M      | LEA58  | 52.3 M |   399.64 | 11.966 |  2.5 k |
+| 1M      | LEA79  | 52.3 M |    80.92 |  4.550 | 12.4 k |
 | 1M      | A5N46  | 52.3 M |   267.65 |  4.829 |  3.7 k |
 
 ### CQL Queries
@@ -437,6 +449,7 @@ cql/search.sh stratifier-condition-code
 | Dataset | System |  # Hits | Time (s) | StdDev | Pat./s |
 |---------|--------|--------:|---------:|-------:|-------:|
 | 100k    | LEA58  |  37.8 M |   280.40 |  3.026 |      0 |
+| 1M      | LEA79  | 380.5 M |  1138.85 |  7.699 |      0 |
 | 1M      | A5N46  | 380.5 M |  2768.19 |  9.310 |      0 |
 
 ### CQL Queries

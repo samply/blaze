@@ -8,14 +8,14 @@ Under ideal conditions, Blaze can execute a FHIR Search query for a single code 
 
 The following systems, with increasing resources, were used for the performance evaluation:
 
-| System | Provider | CPU         | Cores |     RAM |    SSD |
-|--------|----------|-------------|------:|--------:|-------:|
-| LEA25  | on-prem  | EPYC 7543P  |     4 |  32 GiB |   2 TB | 
-| LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB |   2 TB | 
-| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB |   2 TB | 
-| LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB |   2 TB | 
-| CCX42  | Hetzner  | EPYC 7763   |    16 |  64 GiB | 360 GB |  
-| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB |   2 TB |
+| System | Provider | CPU         | Cores |     RAM |  SSD |
+|--------|----------|-------------|------:|--------:|-----:|
+| LEA25  | on-prem  | EPYC 7543P  |     4 |  32 GiB | 2 TB |
+| LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB | 2 TB |
+| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 2 TB |
+| LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB | 2 TB |
+| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 2 TB |
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 2 TB |
 
 All systems were configured according to the [Tuning Guide](../tuning-guide.md).
 
