@@ -17,7 +17,7 @@ The following systems, with increasing resources, were used for the performance 
 | LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 2 TB |
 | A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 2 TB |
 
-All systems were configured according to the [Tuning Guide](../tuning-guide.md).
+All systems were configured according to the [Production Configuration](../production-configuration.md) guide.
 
 On all systems, the heap memory and the block cache were each configured to use 1/4 of the total available RAM. Consequently, the Blaze process itself uses about half of the available system memory, leaving the remainder for the file system cache.
 

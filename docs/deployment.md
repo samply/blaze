@@ -42,11 +42,14 @@ This output ensures that the image was build on the GitHub workflow on the repos
 
 ## Production
 
-For production ready deployments, there are three options:
+For production-ready deployments, there are three options:
 
 * [Frontend and Backend Standalone](deployment/full-standalone.md)
 * [Standalone Backend Only](deployment/standalone-backend.md)
 * [Distributed Backend Only](deployment/distributed-backend.md)
+
+> [!important]
+> Also see the [Production Configuration](./production-configuration.md) guide.
 
 ## Configuration
 
