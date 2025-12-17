@@ -100,7 +100,7 @@ The size of the resource cache of the DB in number of resources.
 
 #### `DB_SCALE_FACTOR` <Badge type="warning" text="unreleased"/>
 
-Sizes of DB in-memory buffers and SST files are scaled by this factor. The default should be only used for small databases with less than 50 k patients or 50 M resources in total. Higher factors result in more memory usage outside of the JVM heap and larger SST files on disk. Larger SST files also mean that there are less files in large databases. Especially in case of `ulimit` problems, its recommended to increase the scale factor. See also: [Tuning Guide](../tuning-guide.md).
+Scales sizes of DB in-memory buffers and SST files. See also: [Production Configuration](../production-configuration.md#db-scale-factor).
 
 **Default:** 1
 

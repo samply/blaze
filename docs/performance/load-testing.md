@@ -8,7 +8,7 @@ The following system was used for the performance evaluation:
 |--------|----------|-------------|------:|--------:|-----:|
 | A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB |
 
-All systems were configured according the [Tuning Guide](../tuning-guide.md).
+All systems were configured according to the [Production Configuration](../production-configuration.md) guide.
 
 ## Datasets
 
