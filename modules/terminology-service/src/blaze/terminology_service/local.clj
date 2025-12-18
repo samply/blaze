@@ -363,5 +363,3 @@
       (.weigher (fn [_ {:keys [concepts]}] (count concepts)))
       (.recordStats)
       (.build)))
-
-(derive ::ts/local :blaze/terminology-service)

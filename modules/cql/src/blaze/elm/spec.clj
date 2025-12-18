@@ -1499,6 +1499,21 @@
   (s/keys :req-un [:elm.binary-expression/operand]
           :opt-un [:elm.date/precision]))
 
+;; 23.7. InCodeSystem
+(s/def :elm.in-code-system/code
+  :elm/expression)
+
+(s/def :elm.in-code-system/codesystem
+  :elm/code-system-ref)
+
+(s/def :elm.in-code-system/codesystemExpression
+  :elm/expression)
+
+(defmethod expression :elm.spec.type/in-code-system [_]
+  (s/keys :req-un [:elm.in-code-system/code]
+          :opt-un [:elm.in-code-system/codesystem
+                   :elm.in-code-system/codesystemExpression]))
+
 ;; 23.8. InValueSet
 (s/def :elm.in-value-set/code
   :elm/expression)

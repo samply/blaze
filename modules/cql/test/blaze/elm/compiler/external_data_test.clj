@@ -23,6 +23,7 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.local :as ts-local]
+   [blaze.terminology-service.protocols :as p]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -154,7 +155,7 @@
             (has-form expr '(retrieve "Observation")))))
 
       (testing "with one code"
-        (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -174,7 +175,8 @@
                  {:codeSystems
                   {:def
                    [{:name "sys-def-131750"
-                     :id "system-192253"}]}}}
+                     :id "system-192253"}]}}
+                 :terminology-service terminology-service}
                 elm #elm/retrieve
                      {:type "Observation"
                       :codes #elm/list [#elm/code ["sys-def-131750"
@@ -208,7 +210,7 @@
                 '(retrieve "Observation" [["code" "system-192253|code-192300"]])))))
 
         (testing "optimizing into an empty list because Observation isn't available"
-          (with-system [{:blaze.db/keys [node]} mem-node-config]
+          (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
             (let [context
                   {:node node
                    :eval-context "Patient"
@@ -216,7 +218,8 @@
                    {:codeSystems
                     {:def
                      [{:name "sys-def-131750"
-                       :id "system-192253"}]}}}
+                       :id "system-192253"}]}}
+                   :terminology-service terminology-service}
                   elm #elm/retrieve
                        {:type "Observation"
                         :codes #elm/list [#elm/code ["sys-def-131750"
@@ -227,7 +230,7 @@
               (has-form (c/optimize expr db) [])))))
 
       (testing "with two codes"
-        (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -255,7 +258,8 @@
                  {:codeSystems
                   {:def
                    [{:name "sys-def-131750"
-                     :id "system-192253"}]}}}
+                     :id "system-192253"}]}}
+                 :terminology-service terminology-service}
                 elm #elm/retrieve
                      {:type "Observation"
                       :codes
@@ -368,7 +372,7 @@
                     "system-192253|code-140541"]]))))))
 
       (testing "unknown code property"
-        (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -376,7 +380,8 @@
                  {:codeSystems
                   {:def
                    [{:name "sys-def-225944"
-                     :id "system-225806"}]}}}
+                     :id "system-225806"}]}}
+                 :terminology-service terminology-service}
                 elm #elm/retrieve
                      {:type "Observation"
                       :codes #elm/list [#elm/code ["sys-def-225944"
@@ -427,7 +432,7 @@
 
   (testing "Unfiltered context"
     (testing "Medication"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
         [[[:put {:fhir/type :fhir/Medication :id "0"
                  :code
                  #fhir/CodeableConcept
@@ -443,7 +448,8 @@
                {:codeSystems
                 {:def
                  [{:name "sys-def-225944"
-                   :id "system-225806"}]}}}
+                   :id "system-225806"}]}}
+               :terminology-service terminology-service}
               elm #elm/retrieve
                    {:type "Medication"
                     :codes #elm/list [#elm/code ["sys-def-225944"
@@ -475,7 +481,7 @@
               '(retrieve "Medication" [["code" "system-225806|code-225809"]]))))))
 
     (testing "unknown code property"
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
         (let [context
               {:node node
                :eval-context "Unfiltered"
@@ -483,7 +489,8 @@
                {:codeSystems
                 {:def
                  [{:name "sys-def-225944"
-                   :id "system-225806"}]}}}
+                   :id "system-225806"}]}}
+               :terminology-service terminology-service}
               elm #elm/retrieve
                    {:type "Medication"
                     :codes #elm/list [#elm/code ["sys-def-225944"
@@ -608,7 +615,7 @@
                          [["code" "system-133620|code-133657"]]))))))
 
     (testing "unknown code property"
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
         (let [library {:codeSystems
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
@@ -623,7 +630,7 @@
                                                  "code-174911"]]
                     :code-property "foo"}]
 
-          (given (ba/try-anomaly (c/compile {:node node :library library} elm))
+          (given (ba/try-anomaly (c/compile {:node node :library library :terminology-service terminology-service} elm))
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
 

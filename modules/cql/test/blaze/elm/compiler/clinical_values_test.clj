@@ -6,6 +6,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.elm.code-spec]
+   [blaze.elm.code-system-spec]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.clinical-values]
    [blaze.elm.compiler.core :as core]
@@ -22,7 +23,7 @@
    [blaze.terminology-service]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.protocols :as p]
-   [blaze.test-util :refer [given-thrown satisfies-prop]]
+   [blaze.test-util :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -53,7 +54,8 @@
     (let [context
           {:library
            {:codeSystems
-            {:def [{:name "sys-def-115852" :id "system-115910"}]}}}
+            {:def [{:name "sys-def-115852" :id "system-115910"}]}}
+           :terminology-service (reify p/TerminologyService)}
           expr (c/compile context #elm/code ["sys-def-115852" "code-115927"])]
 
       (testing "record"
@@ -74,7 +76,8 @@
             {:def
              [{:name "sys-def-120434"
                :id "system-120411"
-               :version "version-120408"}]}}}
+               :version "version-120408"}]}}
+           :terminology-service (reify p/TerminologyService)}
           expr (c/compile context #elm/code ["sys-def-120434" "code-120416"])]
 
       (testing "record"
@@ -115,7 +118,8 @@
             {:def
              [{:name "code-def-125054"
                :id "code-125340"
-               :codeSystem {:name "sys-def-125149"}}]}}}]
+               :codeSystem {:name "sys-def-125149"}}]}}
+           :terminology-service (reify p/TerminologyService)}]
       (given (c/compile context #elm/code-ref "code-def-125054")
         type := Code
         :system := "system-name-125213"
@@ -133,7 +137,8 @@
             {:def
              [{:name "code-def-125054"
                :id "code-125354"
-               :codeSystem {:name "sys-def-125149"}}]}}}]
+               :codeSystem {:name "sys-def-125149"}}]}}
+           :terminology-service (reify p/TerminologyService)}]
       (given (c/compile context #elm/code-ref "code-def-125054")
         type := Code
         :system := "system-name-125213"
@@ -146,7 +151,34 @@
 
 ;; 3.5. CodeSystemRef
 ;;
-;; Only used indirectly through Code and CodeDef.
+;; The CodeSystemRef expression allows a previously defined named code system to
+;; be referenced within an expression. Conceptually, referencing a code system
+;; returns the set of codes in the code system. Note that this operation should
+;; almost never be performed in practice. Code system references are allowed in
+;; order to allow for testing of code membership in a particular code system.
+(deftest compile-code-system-ref-test
+  (let [context
+        {:library
+         {:codeSystems
+          {:def
+           [{:name "code-system-def-182612"
+             :id "code-system-085452"}]}}
+         :terminology-service (reify p/TerminologyService)}
+        expr (c/compile context #elm/code-system-ref "code-system-def-182612")]
+
+    (testing "eval"
+      (is (s/valid? :blaze.elm/code-system (core/-eval expr {} nil nil))))
+
+    (ctu/testing-constant expr)
+
+    (testing "form"
+      (has-form expr
+        '(code-system "code-system-085452")))
+
+    (testing "missing code system"
+      (given (ba/try-anomaly (c/compile context #elm/code-system-ref "code-system-def-153757"))
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Can't find the code system `code-system-def-153757`."))))
 
 ;; 3.6. Concept
 ;;
@@ -286,7 +318,8 @@
             {:def
              [{:name "concept-def-125054"
                :code
-               [{:name "code-def-125054"}]}]}}}]
+               [{:name "code-def-125054"}]}]}}
+           :terminology-service (reify p/TerminologyService)}]
       (given (c/compile context #elm/concept-ref "concept-def-125054")
         type := Concept
         [:codes 0 type] := Code
@@ -315,7 +348,8 @@
              [{:name "concept-def-125055"
                :code
                [{:name "code-def-125054"}
-                {:name "code-def-125055"}]}]}}}]
+                {:name "code-def-125055"}]}]}}
+           :terminology-service (reify p/TerminologyService)}]
       (given (c/compile context #elm/concept-ref "concept-def-125055")
         type := Concept
         [:codes 0 type] := Code
@@ -402,34 +436,25 @@
 ;; engines to determine whether or not to expand a ValueSetRef (the 1.4
 ;; behavior), ensuring that 1.5 engines can run 1.4 ELM.
 (deftest compile-value-set-ref-test
-  (testing "without terminology service"
-    (let [context
-          {:library
-           {:valueSets
-            {:def
-             [{:name "value-set-def-135520"
-               :id "value-set-135750"}]}}}]
+  (let [context
+        {:library
+         {:valueSets
+          {:def
+           [{:name "value-set-def-135520"
+             :id "value-set-135750"}]}}
+         :terminology-service (reify p/TerminologyService)}
+        expr (c/compile context #elm/value-set-ref "value-set-def-135520")]
 
-      (testing "compile"
-        (given-thrown (c/compile context #elm/value-set-ref "value-set-def-135520")
-          ::anom/category := ::anom/unsupported
-          ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service."))))
+    (testing "eval"
+      (is (s/valid? :blaze.elm/value-set (core/-eval expr {} nil nil))))
 
-  (testing "with terminology service returning a value set with two expansions"
-    (let [context
-          {:library
-           {:valueSets
-            {:def
-             [{:name "value-set-def-135520"
-               :id "value-set-135750"}]}}
-           :terminology-service (reify p/TerminologyService)}
-          expr (c/compile context #elm/value-set-ref "value-set-def-135520")]
+    (ctu/testing-constant expr)
 
-      (testing "eval"
-        (is (s/valid? :blaze.elm/value-set (core/-eval expr {} nil nil))))
+    (testing "form"
+      (has-form expr
+        '(value-set "value-set-135750")))
 
-      (ctu/testing-constant expr)
-
-      (testing "form"
-        (has-form expr
-          '(value-set "value-set-135750"))))))
+    (testing "missing value set"
+      (given (ba/try-anomaly (c/compile context #elm/value-set-ref "value-set-def-153903"))
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Can't find the value set `value-set-def-153903`."))))

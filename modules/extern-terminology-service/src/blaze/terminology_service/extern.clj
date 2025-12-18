@@ -68,7 +68,5 @@
       (-value-set-validate-code [_ params]
         (.get ^AsyncLoadingCache value-set-validate-code-cache params)))))
 
-(derive ::ts/extern :blaze/terminology-service)
-
 (reg-collector ::request-duration-seconds
   request-duration-seconds)

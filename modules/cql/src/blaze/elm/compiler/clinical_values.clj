@@ -6,6 +6,7 @@
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.elm.code :as code]
+   [blaze.elm.code-system :as code-system]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.concept :refer [concept]]
    [blaze.elm.date-time :as date-time]
@@ -13,26 +14,11 @@
    [blaze.elm.ratio :refer [ratio]]
    [blaze.elm.value-set :as value-set]))
 
-(defn- find-code-system-def
-  "Returns the code-system-def with `name` from `library` or nil if not found."
-  {:arglists '([library name])}
-  [{{code-system-defs :def} :codeSystems} name]
-  (some #(when (= name (:name %)) %) code-system-defs))
-
 ;; 3.1. Code
-(defn- code-system-not-found-anom [name context expression]
-  (ba/not-found
-   (format "Can't find the code system `%s`." name)
-   :context context
-   :expression expression))
-
 (defmethod core/compile* :elm.compiler.type/code
-  [{:keys [library] :as context}
-   {{system-name :name} :system :keys [code] :as expression}]
-  ;; TODO: look into other libraries (:libraryName)
-  (if-let [{system :id :keys [version]} (find-code-system-def library system-name)]
-    (code/code system version code)
-    (throw-anom (code-system-not-found-anom system-name context expression))))
+  [context {:keys [system code]}]
+  (let [{:keys [system version]} (core/compile* context system)]
+    (code/code system version code)))
 
 ;; 3.2. CodeDef
 ;;
@@ -51,7 +37,7 @@
   (when-let [{code-system-ref :codeSystem code :id}
              (find-code-def library name)]
     (when code-system-ref
-      (when-let [{system :id :keys [version]} (core/compile* context (assoc code-system-ref :type "CodeSystemRef"))]
+      (when-let [{:keys [system version]} (core/compile* context (assoc code-system-ref :type "CodeSystemRef"))]
         (code/code system version code)))))
 
 ;; 3.4. CodeSystemDef
@@ -59,10 +45,23 @@
 ;; Not needed because it's not an expression.
 
 ;; 3.5. CodeSystemRef
+(defn- find-code-system-def
+  "Returns the code-system-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{code-system-defs :def} :codeSystems} name]
+  (some #(when (= name (:name %)) %) code-system-defs))
+
+(defn- code-system-not-found-anom [name context]
+  (ba/not-found
+   (format "Can't find the code system `%s`." name)
+   :context context))
+
 (defmethod core/compile* :elm.compiler.type/code-system-ref
-  [{:keys [library]} {:keys [name]}]
+  [{:keys [library terminology-service] :as context} {:keys [name]}]
   ;; TODO: look into other libraries (:libraryName)
-  (find-code-system-def library name))
+  (if-let [def (find-code-system-def library name)]
+    (code-system/code-system terminology-service def)
+    (throw-anom (code-system-not-found-anom name context))))
 
 ;; 3.6. Concept
 (defn- compile-codes [context codes]
@@ -120,12 +119,14 @@
   [{{value-set-defs :def} :valueSets} name]
   (some #(when (= name (:name %)) %) value-set-defs))
 
-(def ^:private unsupported-anom
-  (ba/unsupported "Terminology operations are not supported. Please enable either the external or the internal terminology service."))
+(defn- value-set-not-found-anom [name context]
+  (ba/not-found
+   (format "Can't find the value set `%s`." name)
+   :context context))
 
 (defmethod core/compile* :elm.compiler.type/value-set-ref
-  [{:keys [library terminology-service]} {:keys [name]}]
-  (when-let [{:keys [id]} (find-value-set-def library name)]
-    (if terminology-service
-      (value-set/value-set terminology-service id)
-      (throw-anom unsupported-anom))))
+  [{:keys [library terminology-service] :as context} {:keys [name]}]
+  ;; TODO: look into other libraries (:libraryName)
+  (if-let [{:keys [id]} (find-value-set-def library name)]
+    (value-set/value-set terminology-service id)
+    (value-set-not-found-anom name context)))

@@ -17,5 +17,6 @@
   (s/or :unfiltered #{"Unfiltered"} :resource-type :fhir.resource/type))
 
 (s/def :elm/compile-context
-  (s/keys :req-un [:elm/library ::c/eval-context :blaze.db/node]
-          :opt-un [::c/function-defs :blaze/terminology-service]))
+  (s/keys :req-un [:elm/library ::c/eval-context :blaze.db/node
+                   :blaze/terminology-service]
+          :opt-un [::c/function-defs]))

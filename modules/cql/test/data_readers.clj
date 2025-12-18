@@ -9,6 +9,7 @@
  elm/scope-property blaze.elm.literal/scope-property
  elm/code blaze.elm.literal/code
  elm/code-ref blaze.elm.literal/code-ref
+ elm/code-system-ref blaze.elm.literal/code-system-ref
  elm/concept blaze.elm.literal/concept
  elm/concept-ref blaze.elm.literal/concept-ref
  elm/quantity blaze.elm.literal/quantity
