@@ -4,3 +4,6 @@
 
 (s/def :blaze/validator
   map?)
+
+(s/def :blaze.validator/terminology-service-base-url
+  string?)
