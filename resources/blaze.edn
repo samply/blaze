@@ -1506,7 +1506,10 @@
      :trust-store-pass #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE_PASS" string?]}
 
     :blaze.fhir.operation.evaluate-measure/handler
-    {:terminology-service #blaze/ref :blaze/terminology-service}}}
+    {:terminology-service #blaze/ref :blaze/terminology-service}
+
+    :blaze/validator
+    {:terminology-service-base-url #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_URL" string?]}}}
 
   {:key :graph
    :name "Operation $graph on Resource"

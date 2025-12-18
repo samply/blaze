@@ -1,5 +1,5 @@
 {
   "dependencies": {
-    "@mii-termserv/de.medizininformatikinitiative.kerndatensatz.terminology.bill-of-materials": "^2025.8.29"
+    "@mii-termserv/de.medizininformatikinitiative.kerndatensatz.terminology.bill-of-materials": "^2025.12.2"
   }
 }

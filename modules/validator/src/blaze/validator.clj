@@ -10,6 +10,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.writing-context.spec]
    [blaze.module :as m]
+   [blaze.validator.spec]
    [clojure.core.protocols :as p]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
@@ -25,8 +26,8 @@
    [org.hl7.fhir.common.hapi.validation.support
     BaseValidationSupport
     CommonCodeSystemsTerminologyService
-    InMemoryTerminologyServerValidationSupport
-    PrePopulatedValidationSupport
+    InMemoryTerminologyServerValidationSupport PrePopulatedValidationSupport
+    RemoteTerminologyServiceValidationSupport
     ValidationSupportChain]
    [org.hl7.fhir.common.hapi.validation.validator FhirInstanceValidator]
    [org.hl7.fhir.instance.model.api IBaseResource]
@@ -95,7 +96,7 @@
   (proxy [BaseValidationSupport] [context]
     (fetchAllStructureDefinitions []
       (map #(transform-resource context writing-context %)
-           @(d/pull-many node (d/type-list (d/db node) "StructureDefinition"))))
+        @(d/pull-many node (vec (d/type-list (d/db node) "StructureDefinition")))))
     (fetchStructureDefinition [url]
       (when-let [handle (coll/first (d/type-query (d/db node) "StructureDefinition" [["url" url]]))]
         (transform-resource context writing-context @(d/pull node handle))))))
@@ -110,25 +111,25 @@
 (defn- admin-profile-validation-support [context]
   (let [s (PrePopulatedValidationSupport. context)]
     (run!
-     #(.addResource s (load-profile context %))
-     ["blaze/db/CodeSystem-ColumnFamily.json"
-      "blaze/db/CodeSystem-Database.json"
-      "blaze/db/ValueSet-ColumnFamily.json"
-      "blaze/db/ValueSet-Database.json"
-      "blaze/job_scheduler/StructureDefinition-Job.json"
-      "blaze/job_scheduler/CodeSystem-JobType.json"
-      "blaze/job_scheduler/CodeSystem-JobOutput.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionJob.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionRequestBundle.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionResponseBundle.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobOutput.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
-      "blaze/job/compact/CodeSystem-CompactJobOutput.json"
-      "blaze/job/compact/CodeSystem-CompactJobParameter.json"
-      "blaze/job/compact/StructureDefinition-CompactJob.json"
-      "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"])
+      #(.addResource s (load-profile context %))
+      ["blaze/db/CodeSystem-ColumnFamily.json"
+       "blaze/db/CodeSystem-Database.json"
+       "blaze/db/ValueSet-ColumnFamily.json"
+       "blaze/db/ValueSet-Database.json"
+       "blaze/job_scheduler/StructureDefinition-Job.json"
+       "blaze/job_scheduler/CodeSystem-JobType.json"
+       "blaze/job_scheduler/CodeSystem-JobOutput.json"
+       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionJob.json"
+       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionRequestBundle.json"
+       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionResponseBundle.json"
+       "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobOutput.json"
+       "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
+       "blaze/job/compact/CodeSystem-CompactJobOutput.json"
+       "blaze/job/compact/CodeSystem-CompactJobParameter.json"
+       "blaze/job/compact/StructureDefinition-CompactJob.json"
+       "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
+       "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
+       "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"])
     s))
 
 (deftype StructureDefinitionSubscriber [validation-support-chain ^:volatile-mutable subscription]
@@ -145,13 +146,18 @@
     (flow/cancel! subscription))
   (onComplete [_]))
 
-(defn- create-validator [node writing-context]
+(defn add-validation-support! [^ValidationSupportChain chain test validation-support]
+  (when test
+    (.addValidationSupport chain validation-support)))
+
+(defn- create-validator [node writing-context terminology-service-base-url]
   (let [^FhirContext fhir-context (FhirContext/forR4)
         _ (.newJsonParser fhir-context)
         validator (.newValidator fhir-context)
         chain (doto (ValidationSupportChain.)
                 (.addValidationSupport (DefaultProfileValidationSupport. fhir-context))
                 (.addValidationSupport (InMemoryTerminologyServerValidationSupport. fhir-context))
+                (add-validation-support! terminology-service-base-url (RemoteTerminologyServiceValidationSupport. fhir-context terminology-service-base-url))
                 (.addValidationSupport (CommonCodeSystemsTerminologyService. fhir-context))
                 (.addValidationSupport (db-profile-validation-support fhir-context writing-context node))
                 (.addValidationSupport (admin-profile-validation-support fhir-context)))
@@ -164,12 +170,13 @@
      :validation-support-chain chain}))
 
 (defmethod m/pre-init-spec :blaze/validator [_]
-  (s/keys :req-un [:blaze.db/node :blaze.fhir/writing-context]))
+  (s/keys :req-un [:blaze.db/node :blaze.fhir/writing-context]
+    :opt-un [::terminology-service-base-url]))
 
 (defmethod ig/init-key :blaze/validator
-  [_ {:keys [node writing-context]}]
+  [_ {:keys [node writing-context terminology-service-base-url]}]
   (log/info "Init Validator")
-  (let [{:keys [validation-support-chain] :as validator} (create-validator node writing-context)
+  (let [{:keys [validation-support-chain] :as validator} (create-validator node writing-context terminology-service-base-url)
         publisher (d/changed-resources-publisher node "StructureDefinition")
         subscriber (->StructureDefinitionSubscriber validation-support-chain nil)]
     (flow/subscribe! publisher subscriber)
