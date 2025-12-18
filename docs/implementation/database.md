@@ -441,6 +441,15 @@ The query execution will then:
 
 This is much more efficient than scanning all observations with `status=final` and then checking the code for each of them.
 
+## RocksDB Details
+
+RocksDB is used for all three databases (index, transaction, and resource) in the standalone storage variant, and for the index database in the distributed variant.
+
+## WAL Sync Strategy
+
+RocksDB uses a Write-Ahead Log (WAL) to enable recovery of unflushed memtables after a crash. WAL writes can be configured as either synced or unsynced. In unsynced mode, writes go only to the OS page cache, and the OS determines when to persist them to disk. This mode risks data loss in the event of a server crash.
+
+Blaze enables WAL sync for the transaction and resource databases in standalone mode to ensure durability. WAL sync is disabled for the index database to optimize write performance. If writes to the index database are lost due to a crash, Blaze automatically re-indexes the missing transactions on the next startup. This design is safe because Blaze treats the transaction database as an application-level WAL. The transaction and resource databases together contain all data needed to reconstruct the index database.   
 
 [1]: <https://www.datomic.com>
 [2]: <https://xtdb.com>
