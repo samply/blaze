@@ -78,7 +78,7 @@
    ::evaluate-measure/handler
    {:node (ig/ref :blaze.db/node)
     ::expr/cache (ig/ref ::expr/cache)
-    :terminology-service (ig/ref :blaze/terminology-service)
+    :terminology-service (ig/ref ::ts/local)
     :executor (ig/ref :blaze.test/executor)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -110,9 +110,10 @@
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid node"
     (given-failed-system (assoc-in config [::evaluate-measure/handler :node] ::invalid)

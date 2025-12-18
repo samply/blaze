@@ -372,7 +372,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 23.4.  | CalculateAgeAt  | ✓          |
 | 23.5.  | Equal           | ✓          |
 | 23.6.  | Equivalent      | ✓          |
-| 23.7.  | InCodeSystem    | ✗          |
+| 23.7.  | InCodeSystem    | ✓          |
 | 23.8.  | InValueSet      | ✓          |
 | 23.9.  | ExpandValueSet  | ✗          |
 | 23.10. | Not Equal       | ✓          |

@@ -1,0 +1,122 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0",
+        "gender": "male"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1",
+        "gender": "female"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "3",
+        "gender": "invalid"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "0",
+        "url": "http://hl7.org/fhir/administrative-gender",
+        "content": "complete",
+        "concept": [
+          {
+            "code" : "female",
+            "display" : "Female"
+          },
+          {
+            "code" : "male",
+            "display" : "Male"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "CodeSystem/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql-identifier",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}

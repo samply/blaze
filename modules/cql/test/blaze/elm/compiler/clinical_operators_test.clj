@@ -109,7 +109,285 @@
 
 ;; 23.6. Equivalent
 
-;; TODO 23.7. InCodeSystem
+;; 23.7. InCodeSystem
+;;
+;; The InCodeSystem operator returns true if the given code is in the given code
+;; system.
+;;
+;; The first argument is expected to be a String, Code, or Concept.
+;;
+;; Note that this operator explicitly requires a CodeSystemRef as its codesystem
+;; argument. This allows for both static analysis of the code system references
+;; within an artifact, as well as the implementation of code system membership
+;; by the target environment as a service call to a terminology server, if
+;; desired. 
+;; 
+;; The third argument is expected to be a CodeSystem, allowing references to 
+;; code systems to be preserved as references.
+(def ^:private ts-config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
+
+(defn- eval-context [db]
+  {:db db :now (time/offset-date-time)
+   :parameters {"nil" nil "code-115927" "code-115927"}})
+
+(deftest compile-in-code-system-test
+  (ctu/testing-binary-attach-cache elm/in-code-system-expression)
+
+  (ctu/testing-binary-patient-count elm/in-code-system-expression)
+
+  (ctu/testing-binary-resolve-refs elm/in-code-system-expression "in-code-system")
+
+  (ctu/testing-binary-optimize elm/in-code-system-expression "in-code-system")
+
+  (ctu/testing-binary-equals-hash-code elm/in-code-system-expression)
+
+  (doseq [elm-constructor [elm/in-code-system #_elm/in-code-system-expression]]
+    (testing "Null"
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+        (let [context
+              {:library
+               {:parameters
+                {:def
+                 [{:name "nil"}]}
+                :codeSystems
+                {:def
+                 [{:name "code-system-def-135520"
+                   :id "code-system-135750"}]}}
+               :terminology-service terminology-service}
+              db (d/db node)]
+
+          (testing "Static"
+            (let [elm (elm-constructor [{:type "Null"}
+                                        #elm/code-system-ref "code-system-def-135520"])
+                  expr (c/compile context elm)]
+
+              (testing "eval"
+                (is (false? (expr/eval (eval-context db) expr nil))))
+
+              (ctu/testing-constant expr)))
+
+          (testing "Dynamic"
+            (let [elm (elm-constructor [#elm/parameter-ref "nil"
+                                        #elm/code-system-ref "code-system-def-135520"])
+                  expr (c/compile context elm)]
+
+              (testing "eval"
+                (is (false? (expr/eval (eval-context db) expr nil)))))))))
+
+    (testing "String"
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "system-115910"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}
+                  {:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-105600"}]}]]]
+
+        (let [context
+              {:library
+               {:parameters
+                {:def
+                 [{:name "code-115927"}]}
+                :codeSystems
+                {:def
+                 [{:name "code-system-def-135520"
+                   :id "system-115910"}]}}
+               :terminology-service terminology-service}
+              db (d/db node)]
+
+          (testing "Static"
+            (let [elm (elm-constructor [#elm/string "code-115927"
+                                        #elm/code-system-ref "code-system-def-135520"])
+                  expr (c/compile context elm)]
+
+              (testing "eval"
+                (is (true? (expr/eval (eval-context db) expr nil))))
+
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
+
+              (testing "attach cache"
+                (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+                  count := 2
+                  [0] := expr
+                  [1] :? empty?))
+
+              (ctu/testing-constant-patient-count expr)
+
+              (ctu/testing-constant-resolve-refs expr)
+
+              (ctu/testing-constant-resolve-params expr)
+
+              (ctu/testing-constant-optimize expr)
+
+              (testing "form"
+                (has-form expr
+                  '(in-code-system
+                    "code-115927"
+                    (code-system "system-115910"))))))
+
+          (testing "Dynamic"
+            (let [elm (elm-constructor [#elm/parameter-ref "code-115927"
+                                        #elm/code-system-ref "code-system-def-135520"])
+                  expr (c/compile context elm)]
+
+              (testing "eval"
+                (is (true? (expr/eval (eval-context db) expr nil))))))))
+
+      (testing "with failing terminology service"
+        (with-system [{:blaze.db/keys [node]} ts-config]
+          (let [context
+                {:library
+                 {:parameters
+                  {:def
+                   [{:name "code-115927"}]}
+                  :codeSystems
+                  {:def
+                   [{:name "code-system-def-135520"
+                     :id "code-system-135750"}]}}
+                 :terminology-service
+                 (reify p/TerminologyService
+                   (-code-system-validate-code [_ _]
+                     (ac/completed-future (ba/fault "msg-094502"))))}
+                db (d/db node)]
+
+            (testing "Static"
+              (let [elm (elm-constructor [#elm/string "code-115927"
+                                          #elm/code-system-ref "code-system-def-135520"])
+                    expr (c/compile context elm)]
+
+                (testing "eval"
+                  (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+                    ::anom/category := ::anom/fault
+                    ::anom/message := "Error while testing that the code `code-115927` is in CodeSystem `code-system-135750`. Cause: msg-094502"))
+
+                (testing "expression is dynamic"
+                  (is (false? (core/-static expr))))
+
+                (testing "attach cache"
+                  (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+                    count := 2
+                    [0] := expr
+                    [1] :? empty?))
+
+                (ctu/testing-constant-patient-count expr)
+
+                (ctu/testing-constant-resolve-refs expr)
+
+                (ctu/testing-constant-resolve-params expr)
+
+                (ctu/testing-constant-optimize expr)
+
+                (testing "form"
+                  (has-form expr
+                    '(in-code-system
+                      "code-115927"
+                      (code-system "code-system-135750"))))))
+
+            (testing "Dynamic"
+              (let [elm (elm-constructor [#elm/parameter-ref "code-115927"
+                                          #elm/code-system-ref "code-system-def-135520"])
+                    expr (c/compile context elm)]
+
+                (testing "eval"
+                  (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+                    ::anom/category := ::anom/fault
+                    ::anom/message := "Error while testing that the code `code-115927` is in CodeSystem `code-system-135750`. Cause: msg-094502"))))))))
+
+    (testing "Code"
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "system-115910"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}
+                  {:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-105600"}]}]]]
+
+        (let [context
+              {:library
+               {:codeSystems
+                {:def [{:name "code-system-def-134106"
+                        :id "system-115910"}]}}
+               :terminology-service terminology-service}
+              elm (elm-constructor [#elm/code ["code-system-def-134106" "code-115927"]
+                                    #elm/code-system-ref "code-system-def-134106"])
+              expr (c/compile context elm)
+              db (d/db node)]
+
+          (testing "eval"
+            (is (true? (expr/eval (eval-context db) expr nil))))
+
+          (testing "form"
+            (has-form expr
+              '(in-code-system
+                (code "system-115910" nil "code-115927")
+                (code-system "system-115910")))))))
+
+    (testing "Concept"
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "system-115910"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}
+                  {:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-105600"}]}]]]
+
+        (let [context
+              {:library
+               {:parameters
+                {:def
+                 [{:name "concept"}]}
+                :codeSystems
+                {:def [{:name "code-system-def-135520"
+                        :id "system-115910"
+                        :version "version-132113"}]}}
+               :terminology-service terminology-service}
+              db (d/db node)]
+
+          (testing "Static"
+            (let [elm (elm-constructor [#elm/concept [[#elm/code ["code-system-def-135520" "code-115927"]]]
+                                        #elm/code-system-ref "code-system-def-135520"])
+                  expr (c/compile context elm)]
+
+              (testing "eval"
+                (is (true? (expr/eval (eval-context db) expr nil))))
+
+              (testing "form"
+                (has-form expr
+                  '(in-code-system
+                    (concept (code "system-115910" "version-132113" "code-115927"))
+                    (code-system "system-115910" "version-132113"))))))
+
+          (testing "Dynamic"
+            (let [elm (elm-constructor [#elm/parameter-ref "concept"
+                                        #elm/code-system-ref "code-system-def-135520"])
+                  expr (c/compile context elm)]
+
+              (testing "eval"
+                (testing "true"
+                  (let [eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
+                                           (concept/concept [(code/code "system-115910" "version-132113" "code-115927")]))]
+                    (is (true? (expr/eval eval-ctx expr nil)))))
+
+                (testing "false"
+                  (let [eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
+                                           (concept/concept [(code/code "system-115910" "version-132113" "code-135028")]))]
+                    (is (false? (expr/eval eval-ctx expr nil)))))))))))))
 
 ;; 23.8. InValueSet
 ;;
@@ -125,21 +403,6 @@
 ;;
 ;; The third argument is expected to be a ValueSet, allowing references to value
 ;; sets to be preserved as references.
-(def ^:private config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::ts-local/graph-cache)}
-   :blaze.test/fixed-rng-fn {}
-   ::ts-local/graph-cache {}))
-
-(defn- eval-context [db]
-  {:db db :now (time/offset-date-time)
-   :parameters {"nil" nil "code-115927" "code-115927"}})
-
 (deftest compile-in-value-set-test
   (ctu/testing-binary-attach-cache elm/in-value-set-expression)
 
@@ -153,7 +416,7 @@
 
   (doseq [elm-constructor [elm/in-value-set elm/in-value-set-expression]]
     (testing "Null"
-      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
         (let [context
               {:library
                {:parameters
@@ -185,7 +448,7 @@
                 (is (false? (expr/eval (eval-context db) expr nil)))))))))
 
     (testing "String"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"
@@ -269,7 +532,7 @@
                 (is (true? (expr/eval (eval-context db) expr nil))))))))
 
       (testing "with failing terminology service"
-        (with-system [{:blaze.db/keys [node]} config]
+        (with-system [{:blaze.db/keys [node]} ts-config]
           (let [context
                 {:library
                  {:parameters
@@ -329,7 +592,7 @@
                     ::anom/message := "Error while testing that the code `code-115927` is in ValueSet `value-set-135750`. Cause: msg-094502"))))))))
 
     (testing "Code"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"
@@ -370,7 +633,7 @@
                 (value-set "value-set-135750")))))))
 
     (testing "Concept"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"

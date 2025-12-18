@@ -84,6 +84,10 @@
 (defn code-ref [name]
   {:type "CodeRef" :name name})
 
+;; 3.5. CodeSystemRef
+(defn code-system-ref [name]
+  {:type "CodeSystemRef" :name name})
+
 ;; 3.6. Concept
 (defn concept [[codes display]]
   (cond->
@@ -913,6 +917,17 @@
     :operand [x y]}
     precision
     (assoc :precision precision)))
+
+;; 23.7. InCodeSystem
+(defn in-code-system [[code code-system]]
+  {:type "InCodeSystem"
+   :code code
+   :codesystem code-system})
+
+(defn in-code-system-expression [[code code-system]]
+  {:type "InCodeSystem"
+   :code code
+   :codesystemExpression code-system})
 
 ;; 23.8. InValueSet
 (defn in-value-set [[code value-set]]

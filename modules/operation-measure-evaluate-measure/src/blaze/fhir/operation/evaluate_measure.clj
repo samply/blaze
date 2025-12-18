@@ -123,9 +123,10 @@
         (ac/then-compose-async (partial handle (assoc context :db db) request)))))
 
 (defmethod m/pre-init-spec ::handler [_]
-  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]
+  (s/keys :req-un [:blaze.db/node :blaze/terminology-service ::executor
+                   :blaze/clock :blaze/rng-fn]
           :opt [::expr/cache]
-          :opt-un [:blaze/terminology-service ::timeout :blaze/context-path]))
+          :opt-un [::timeout :blaze/context-path]))
 
 (defmethod ig/init-key ::handler [_ {:keys [timeout] :as context}]
   (log/info

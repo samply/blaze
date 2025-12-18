@@ -1,7 +1,7 @@
 (ns blaze.elm.value-set
   (:require
-   [blaze.anomaly :as ba]
    [blaze.elm.compiler.core :as core]
+   [blaze.elm.ts-util :as tu]
    [blaze.elm.value-set.protocol :as p]
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service :as ts]))
@@ -15,38 +15,10 @@
 (defn contains-concept? [value-set concept]
   (p/-contains-concept value-set concept))
 
-(def ^:private result-pred
-  #(when (= "result" (type/value (:name %))) %))
-
-(defn- extract-result [response msg-fn]
-  (try
-    (type/value (:value (some result-pred (:parameter @response))))
-    (catch Exception e
-      (ba/throw-anom (ba/fault (msg-fn (ex-message (ex-cause e))))))))
-
-(defn- code-param [code]
-  {:fhir/type :fhir.Parameters/parameter
-   :name #fhir/string "code"
-   :value (type/code code)})
-
 (defn- system-param [system]
   {:fhir/type :fhir.Parameters/parameter
    :name #fhir/string "system"
    :value (type/uri system)})
-
-(defn- to-coding [{:keys [system code]}]
-  (type/coding
-   (cond-> {}
-     system (assoc :system (type/uri system))
-     code (assoc :code (type/code code)))))
-
-(defn- to-codeable-concept [{:keys [codes]}]
-  (type/codeable-concept {:coding (mapv to-coding codes)}))
-
-(defn- codeable-concept-param [concept]
-  {:fhir/type :fhir.Parameters/parameter
-   :name #fhir/string "codeableConcept"
-   :value (to-codeable-concept concept)})
 
 (defn value-set [terminology-service url]
   (let [url-param {:fhir/type :fhir.Parameters/parameter
@@ -76,32 +48,32 @@
 
       p/ValueSet
       (-contains-string [_ code]
-        (extract-result
+        (tu/extract-result
          (ts/value-set-validate-code
           terminology-service
            {:fhir/type :fhir/Parameters
-            :parameter [url-param (code-param code) infer-system-param]})
+            :parameter [url-param (tu/code-param code) infer-system-param]})
          (fn [cause-msg]
            (format
             "Error while testing that the code `%s` is in ValueSet `%s`. Cause: %s"
             code url cause-msg))))
       (-contains-code [_ code]
-        (extract-result
+        (tu/extract-result
          (ts/value-set-validate-code
           terminology-service
            {:fhir/type :fhir/Parameters
             :parameter
-            [url-param (code-param (:code code)) (system-param (:system code))]})
+            [url-param (tu/code-param (:code code)) (system-param (:system code))]})
          (fn [cause-msg]
            (format
             "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
             code url cause-msg))))
       (-contains-concept [_ concept]
-        (extract-result
+        (tu/extract-result
          (ts/value-set-validate-code
           terminology-service
            {:fhir/type :fhir/Parameters
-            :parameter [url-param (codeable-concept-param concept)]})
+            :parameter [url-param (tu/codeable-concept-param concept)]})
          (fn [cause-msg]
            (format
             "Error while testing that the %s is in ValueSet `%s`. Cause: %s"

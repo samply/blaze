@@ -42,7 +42,7 @@
   (s/keys :req-un [::c/expression-defs ::c/function-defs ::c/parameter-default-values]))
 
 (s/def ::c/context
-  (s/keys :req-un [:blaze.db/node] :opt-un [:blaze/terminology-service]))
+  (s/keys :req-un [:blaze.db/node :blaze/terminology-service]))
 
 (s/def ::c/options
   map?)

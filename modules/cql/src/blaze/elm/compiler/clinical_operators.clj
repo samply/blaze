@@ -5,6 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.elm.code :as code]
+   [blaze.elm.code-system :as code-system]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.concept :as concept]
@@ -45,6 +46,37 @@
     (when-let [date (core/compile* context date)]
       (let [chrono-precision (some-> precision core/to-chrono-unit)]
         (calculate-age-at-op birth-date date chrono-precision precision)))))
+
+;; 23.7. InCodeSystem
+(defn- in-code-system [code code-system]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper in-code-system cache code code-system))
+    (-resolve-refs [_ expression-defs]
+      (core/resolve-refs-helper in-code-system expression-defs code code-system))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper in-code-system parameters code code-system))
+    (-optimize [_ db]
+      (core/optimize-helper in-code-system db code code-system))
+    (-eval [_ context resource scope]
+      (if-some [code (core/-eval code context resource scope)]
+        (let [code-system (core/-eval code-system context resource scope)]
+          (cond
+            (string? code) (code-system/contains-string? code-system code)
+            (code/code? code) (code-system/contains-code? code-system code)
+            (concept/concept? code) (code-system/contains-concept? code-system code)))
+        false))
+    (-form [_]
+      (list 'in-code-system (core/-form code) (core/-form code-system)))))
+
+(defmethod core/compile* :elm.compiler.type/in-code-system
+  [context
+   {:keys [code] code-system :codesystem code-system-expression :codesystemExpression}]
+  (let [code (core/compile* context code)]
+    (if (nil? code)
+      false
+      (when-let [code-system (core/compile* context (or code-system code-system-expression))]
+        (in-code-system code code-system)))))
 
 ;; 23.8. InValueSet
 (defn- in-value-set [code value-set]

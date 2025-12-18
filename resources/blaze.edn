@@ -233,6 +233,7 @@
   ;;
   :blaze.fhir.operation.evaluate-measure/handler
   {:node #blaze/ref :blaze.db.main/node
+   :terminology-service #blaze/ref :blaze.terminology-service/not-available
    :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
@@ -247,6 +248,8 @@
 
   :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
   :blaze.fhir.operation.evaluate-measure/evaluate-duration-seconds {}
+
+  :blaze.terminology-service/not-available {}
 
   ;;
   ;; FHIR Operation GraphQL
@@ -1451,7 +1454,7 @@
     {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
     :blaze.fhir.operation.evaluate-measure/handler
-    {:terminology-service #blaze/ref :blaze/terminology-service}
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
     :blaze.terminology-service/local
     {:node #blaze/ref :blaze.db.main/node
@@ -1506,7 +1509,7 @@
      :trust-store-pass #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE_PASS" string?]}
 
     :blaze.fhir.operation.evaluate-measure/handler
-    {:terminology-service #blaze/ref :blaze/terminology-service}}}
+    {:terminology-service #blaze/ref :blaze.terminology-service/extern}}}
 
   {:key :graph
    :name "Operation $graph on Resource"
