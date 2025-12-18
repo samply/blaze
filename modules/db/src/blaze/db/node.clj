@@ -138,7 +138,8 @@
 
 (defn- commit-success! [{:keys [kv-store state]} t instant]
   (log/trace "commit transaction success with t =" t)
-  (kv/put! kv-store (tx-success-entries t instant))
+  (with-open [_ (prom/timer duration-seconds "store-tx-success-entries")]
+    (kv/put! kv-store (tx-success-entries t instant)))
   (advance-t! state t))
 
 (defn- index-tx-data!

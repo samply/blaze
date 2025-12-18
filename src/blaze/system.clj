@@ -277,6 +277,7 @@
   (map (fn [[k v]] [k (f v)])))
 
 (defn- scale-column-families [column-families factor]
+  (log/info "Scale RocksDB buffer and file sizes by a factor of" factor)
   (into {} (map-val (partial scale-column-family factor)) column-families))
 
 (defmethod ig/expand-key :blaze.db.kv/rocksdb

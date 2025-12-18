@@ -872,7 +872,8 @@
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
     :stats #blaze/ref :blaze.db.transaction-kv-store.main/stats
     :opts
-    {:wal-dir #blaze/cfg ["TRANSACTION_DB_WAL_DIR" string? ""]
+    {:sync? true
+     :wal-dir #blaze/cfg ["TRANSACTION_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
     :scale-factor #blaze/var db-scale-factor
@@ -890,6 +891,8 @@
    ;;
    [:blaze.db.kv/rocksdb :blaze.db.admin/transaction-kv-store]
    {:dir #blaze/cfg ["ADMIN_TRANSACTION_DB_DIR" string? "admin-transaction"]
+    :opts
+    {:sync? true}
     :column-families
     {:default
      {:write-buffer-size-in-mb 8
@@ -921,7 +924,8 @@
    {:dir #blaze/cfg ["RESOURCE_DB_DIR" string? "resource"]
     :stats #blaze/ref :blaze.db.resource-kv-store/stats
     :opts
-    {:wal-dir #blaze/cfg ["RESOURCE_DB_WAL_DIR" string? ""]
+    {:sync? true
+     :wal-dir #blaze/cfg ["RESOURCE_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
     :scale-factor #blaze/var db-scale-factor
