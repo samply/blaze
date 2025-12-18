@@ -1,0 +1,11 @@
+#kaocha/v1
+ #merge
+  [{}
+   #profile {:ci {:reporter kaocha.report/documentation
+                  :color? false}
+             :coverage {:plugins [:kaocha.plugin/cloverage]
+                        :cloverage/opts
+                        {:ns-exclude-regex [".+\\.spec"],
+                         :codecov? true}
+                        :reporter kaocha.report/documentation
+                        :color? false}}]

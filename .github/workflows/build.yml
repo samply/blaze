@@ -144,6 +144,7 @@ jobs:
         - server
         - terminology-service
         - thread-pool-executor-collector
+        - validator
 
         java-version:
         - '21'
@@ -1789,7 +1790,7 @@ jobs:
     - name: Expand Most KDS Terminology Resources
       run: .github/value-set-expand/expand-most.sh
 
-  integration-test-validation:
+  integration-test-terminology-service-validation:
     needs: build
     runs-on: ubuntu-24.04
 
@@ -1863,6 +1864,55 @@ jobs:
 
     - name: SNOMED CT Validate Code
       run: .github/scripts/snomed-ct-validate-code.sh
+
+
+  integration-test-validation:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Check out Git repository
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+
+    - name: Setup Node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version-file: .nvmrc
+
+    - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_VALIDATION_ON_INGEST=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Run Validation tests
+      run: .github/scripts/validation-patient.sh
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
 
   terminology-tests:
     needs: build
@@ -2746,6 +2796,7 @@ jobs:
     - integration-test-kds
     - integration-test-patient-purge
     - integration-test-value-set-expand
+    - integration-test-terminology-service-validation
     - integration-test-validation
     - terminology-tests
     - not-enforcing-referential-integrity-test

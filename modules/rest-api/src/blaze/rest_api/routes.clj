@@ -7,6 +7,7 @@
    [blaze.middleware.fhir.error :as error]
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
+   [blaze.middleware.fhir.validate :as validate]
    [blaze.middleware.link-headers :as link-headers]
    [blaze.middleware.output :as output]
    [blaze.rest-api.middleware.auth-guard :as auth-guard]
@@ -40,6 +41,10 @@
 (def ^:private wrap-resource
   {:name :resource
    :wrap resource/wrap-resource})
+
+(def ^:private wrap-validate
+  {:name :validate
+   :wrap validate/wrap-validate})
 
 (def ^:private wrap-binary-data
   {:name :binary-data
@@ -100,7 +105,7 @@
 
   Route data contains the resource type under :fhir.resource/type."
   {:arglists '([config resource-patterns structure-definition])}
-  [{:keys [node db-sync-timeout batch? page-id-cipher parsing-context]}
+  [{:keys [node db-sync-timeout batch? validator page-id-cipher parsing-context]}
    resource-patterns {:keys [name] :as structure-definition}]
   (when-let
    [{:blaze.rest-api.resource-pattern/keys [interactions]}
@@ -118,9 +123,11 @@
                                    :blaze.rest-api.interaction/handler)})
          (contains? interactions :create)
          (assoc :post {:interaction "create"
-                       :middleware (if (= name "Binary")
-                                     [[wrap-binary-data parsing-context]]
-                                     [[wrap-resource parsing-context name]])
+                       :middleware (cond->
+                                    [(if (= name "Binary")
+                                       [wrap-binary-data parsing-context]
+                                       [wrap-resource parsing-context name])]
+                                     (some? validator) (conj [wrap-validate validator]))
                        :handler (-> interactions :create
                                     :blaze.rest-api.interaction/handler)})
          (contains? interactions :conditional-delete-type)
@@ -188,9 +195,11 @@
                                       :blaze.rest-api.interaction/handler)})
             (contains? interactions :update)
             (assoc :put {:interaction "update"
-                         :middleware (if (= name "Binary")
-                                       [[wrap-binary-data parsing-context]]
-                                       [[wrap-resource parsing-context name]])
+                         :middleware (cond->
+                                      [(if (= name "Binary")
+                                         [wrap-binary-data parsing-context]
+                                         [wrap-resource parsing-context name])]
+                                       (some? validator) (conj [wrap-validate validator]))
                          :handler (-> interactions :update
                                       :blaze.rest-api.interaction/handler)})
             (contains? interactions :delete)
@@ -349,6 +358,7 @@
      async-status-cancel-handler
      capabilities-handler
      admin-handler
+     validator
      page-id-cipher
      parsing-context
      writing-context]
@@ -372,7 +382,9 @@
                     :handler search-system-handler})
        (some? transaction-handler)
        (assoc :post {:interaction "transaction"
-                     :middleware [[wrap-resource parsing-context "Bundle"]]
+                     :middleware (cond->
+                                  [[wrap-resource parsing-context "Bundle"]]
+                                   (some? validator) (conj [wrap-validate validator]))
                      :handler transaction-handler}))]
     ["/metadata"
      {:interaction "capabilities"

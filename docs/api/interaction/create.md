@@ -9,3 +9,7 @@ POST [base]/[type]
 ## Conditional Create
 
 It's possible to use conditional create in transaction or batch requests. However references to already existing resources, currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
+
+## Validation Support
+
+See [Validation](../../validation.md).

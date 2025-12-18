@@ -42,7 +42,7 @@ The name of a file with additional CA certificates needed to access especially t
 
 ## Backend
 
-Blaze backend is configured solely through environment variables. There is a default for every variable. So all variables are optional. 
+Blaze backend is configured solely through environment variables. There is a default for every variable. So all variables are optional.
 
 Some of the environment variables depend on the storage variant chosen. The storage variant can be set through the `STORAGE` env var. The default is `standalone,` with `in-memory` and `distributed` as the other options. The following sections list the relevant environment variables by storage variant.
 
@@ -52,7 +52,7 @@ The three database directories must not exist on the first start of Blaze and wi
 
 #### `INDEX_DB_DIR` <Badge type="warning" text="Since 0.8"/>
 
-The directory were the index database files are stored.                                                                                          |
+The directory were the index database files are stored. |
 
 **Default:** `/app/data/index`
 
@@ -146,7 +146,7 @@ The number of resources which are indexed in a batch. (Deprecated)
 
 ### Distributed
 
-The distributed storage variant only uses the index database locally. 
+The distributed storage variant only uses the index database locally.
 
 #### `INDEX_DB_DIR` <Badge type="warning" text="Since 0.8"/>
 
@@ -276,7 +276,7 @@ Timeout in milliseconds for all requests to the Cassandra cluster.
 
 **Default:** 2000
 
-More information about distributed deployment are available [here](distributed-backend.md). 
+More information about distributed deployment are available [here](distributed-backend.md).
 
 ### Common Environment Variables
 
@@ -343,7 +343,7 @@ one of trace, debug, info, warn or error
 #### `JAVA_TOOL_OPTIONS`
 
 | Name                      | Default | Since | Description                                                  |
-|:--------------------------|:--------|:------|:-------------------------------------------------------------|
+| :------------------------ | :------ | :---- | :----------------------------------------------------------- |
 | -&NoBreak;Xmx4g           | -       |       | The maximum amount of heap memory.                           |
 | -&NoBreak;Dhttp.proxyHost | -       | v0.11 | The hostname of the proxy server for outbound HTTP requests. |
 | -&NoBreak;Dhttp.proxyPort | 80      | v0.11 | The port of the proxy server.                                |
@@ -356,7 +356,7 @@ The number threads used for [$evaluate-measure](../api/operation/measure-evaluat
 
 #### `FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT` <Badge type="warning" text="Since 0.19"/>
 
-Timeout in milliseconds for synchronous [$evaluate-measure](../api/operation/measure-evaluate-measure.md) executions. It's recommended to set this as short as possible in order to prevent bad designed CQL queries to impede other CQL queries and the overall performance of the server. 
+Timeout in milliseconds for synchronous [$evaluate-measure](../api/operation/measure-evaluate-measure.md) executions. It's recommended to set this as short as possible in order to prevent bad designed CQL queries to impede other CQL queries and the overall performance of the server.
 
 **Default:** 3600000 (1h)
 
@@ -402,10 +402,10 @@ services:
     environment:
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
     ports:
-    - "8080:8080"
+      - "8080:8080"
     volumes:
-    - "custom-search-parameters.json:/app/custom-search-parameters.json:ro"
-    - "blaze-data:/app/data"
+      - "custom-search-parameters.json:/app/custom-search-parameters.json:ro"
+      - "blaze-data:/app/data"
 volumes:
   blaze-data:
 ```
@@ -458,7 +458,7 @@ The duration after page store entries expire. Lower that value if the size of th
 
 #### `ENABLE_TERMINOLOGY_SERVICE` <Badge type="warning" text="Since 0.31"/>
 
-Enable the [Terminology Service](../terminology-service.md). This enables terminology operations in [CQL Queries](../cql-queries.md), but it's recommended to separate the terminology server from a data server were CQL queries are run. Please use the env var `EXTERN_TERMINOLOGY_SERVICE_URL` to connect to an external terminology service for data servers. 
+Enable the [Terminology Service](../terminology-service.md). This enables terminology operations in [CQL Queries](../cql-queries.md), but it's recommended to separate the terminology server from a data server were CQL queries are run. Please use the env var `EXTERN_TERMINOLOGY_SERVICE_URL` to connect to an external terminology service for data servers.
 
 Enabling the terminology service is exclusive to using an external terminology service via `EXTERN_TERMINOLOGY_SERVICE_URL`. Please use either the internal or the external terminology service.
 
@@ -505,9 +505,13 @@ keytool -importcert -storetype PKCS12 -keystore "trust-store.p12" \
 
 The password for the PKCS #12 trust store.
 
-[1]: <https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies>
-[2]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
-[3]: <https://github.com/facebook/rocksdb/wiki/Thread-Pool>
-[4]: <https://openid.net/connect/>
-[5]: <../authentication.md>
-[6]: <http://tx.fhir.org/r4>
+#### `ENABLE_VALIDATION_ON_INGEST` <Badge type="warning" text="Since unreleased"/>
+
+Enable [Validation](../validation.md).
+
+[1]: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies
+[2]: https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size
+[3]: https://github.com/facebook/rocksdb/wiki/Thread-Pool
+[4]: https://openid.net/connect/
+[5]: ../authentication.md
+[6]: http://tx.fhir.org/r4

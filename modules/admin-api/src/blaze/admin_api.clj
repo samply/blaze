@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.admin-api.spec]
-   [blaze.admin-api.validation]
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.impl.index.patient-last-change :as plc]
@@ -14,7 +13,6 @@
    [blaze.elm.expression.spec]
    [blaze.fhir.parsing-context.spec]
    [blaze.fhir.response.create :as create-response]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.writing-context.spec]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.util :as handler-util]
@@ -30,7 +28,8 @@
    [blaze.module :as m]
    [blaze.spec]
    [blaze.util :refer [str]]
-   [clojure.datafy :as datafy]
+   [blaze.validator :as validator]
+   [blaze.validator.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [jsonista.core :as j]
@@ -40,17 +39,9 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [ca.uhn.fhir.context FhirContext]
-   [ca.uhn.fhir.context.support DefaultProfileValidationSupport]
-   [ca.uhn.fhir.validation FhirValidator]
    [com.google.common.base CaseFormat]
    [java.io File]
-   [java.nio.file Files]
-   [org.hl7.fhir.common.hapi.validation.support
-    CommonCodeSystemsTerminologyService
-    InMemoryTerminologyServerValidationSupport PrePopulatedValidationSupport
-    ValidationSupportChain]
-   [org.hl7.fhir.common.hapi.validation.validator FhirInstanceValidator]))
+   [java.nio.file Files]))
 
 (set! *warn-on-reflection* true)
 
@@ -188,9 +179,9 @@
    :wrap link-headers/wrap-link-headers})
 
 (def ^:private allowed-profiles
-  #{#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
-    #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
-    #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
+  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
 
 (defn- check-profile [resource]
   (if (some allowed-profiles (-> resource :meta :profile))
@@ -201,29 +192,19 @@
      {:fhir/type :fhir/OperationOutcome
       :issue
       [{:fhir/type :fhir.OperationOutcome/issue
-        :severity #fhir/code "error"
-        :code #fhir/code "value"
+        :severity #fhir/code"error"
+        :code #fhir/code"value"
         :details #fhir/CodeableConcept
-                  {:text #fhir/string "No allowed profile found."}}]})))
-
-(defn- validate [^FhirValidator validator writing-context resource]
-  (->> ^String (fhir-spec/write-json-as-string writing-context resource)
-       (.validateWithResult validator)
-       (.toOperationOutcome)
-       (datafy/datafy)))
-
-(defn- error-issues [outcome]
-  (update outcome :issue (partial filterv (comp #{#fhir/code "error"} :severity))))
+                  {:text "No allowed profile found."}}]})))
 
 (def ^:private wrap-validate-job
   {:name :wrap-validate-job
-   :wrap (fn [handler validator writing-context]
+   :wrap (fn [handler validator]
            (fn [{:keys [body] :as request}]
              (if-ok [body (check-profile body)]
-               (let [outcome (error-issues (validate validator writing-context body))]
-                 (if (seq (:issue outcome))
-                   (ac/completed-future (ring/bad-request outcome))
-                   (handler request)))
+               (if-let [outcome (validator/validate validator body)]
+                 (ac/completed-future (ring/bad-request outcome))
+                 (handler request))
                #(ac/completed-future (ring/bad-request (:outcome %))))))})
 
 (defn wrap-error* [handler]
@@ -402,7 +383,7 @@
         :handler search-type-job-handler}
        :post
        {:middleware [[wrap-resource parsing-context "Task"]
-                     [wrap-validate-job validator writing-context]]
+                     [wrap-validate-job validator]]
         :handler create-job-handler}}]
      ["/{id}"
       [""
@@ -455,57 +436,6 @@
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
-(defn- load-profile [context name]
-  (log/debug "Load profile" name)
-  (let [parser (.newJsonParser ^FhirContext context)
-        classloader (.getContextClassLoader (Thread/currentThread))]
-    (with-open [source (.getResourceAsStream classloader name)]
-      (.parseResource parser source))))
-
-(defn- profile-validation-support [context]
-  (let [s (PrePopulatedValidationSupport. context)]
-    (run!
-     #(.addResource s (load-profile context %))
-     ["blaze/db/CodeSystem-ColumnFamily.json"
-      "blaze/db/CodeSystem-Database.json"
-      "blaze/db/ValueSet-ColumnFamily.json"
-      "blaze/db/ValueSet-Database.json"
-      "blaze/job_scheduler/StructureDefinition-Job.json"
-      "blaze/job_scheduler/CodeSystem-JobType.json"
-      "blaze/job_scheduler/CodeSystem-JobOutput.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionJob.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionRequestBundle.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionResponseBundle.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobOutput.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
-      "blaze/job/compact/CodeSystem-CompactJobOutput.json"
-      "blaze/job/compact/CodeSystem-CompactJobParameter.json"
-      "blaze/job/compact/StructureDefinition-CompactJob.json"
-      "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"])
-    s))
-
-(defn- create-validator* []
-  (let [context (FhirContext/forR4)
-        _ (.newJsonParser context)
-        validator (.newValidator context)
-        chain (doto (ValidationSupportChain.)
-                (.addValidationSupport (DefaultProfileValidationSupport. context))
-                (.addValidationSupport (InMemoryTerminologyServerValidationSupport. context))
-                (.addValidationSupport (CommonCodeSystemsTerminologyService. context))
-                (.addValidationSupport (profile-validation-support context)))
-        instanceValidator (FhirInstanceValidator. chain)]
-    (.registerValidatorModule validator instanceValidator)
-    validator))
-
-(defn- create-validator []
-  (try
-    (create-validator*)
-    (catch Exception e
-      (log/error e)
-      (throw e))))
-
 (defn- create-job-handler [job-scheduler]
   (fn [{:keys [body] :as request}]
     (do-sync [job (js/create-job job-scheduler (iu/strip-meta body))]
@@ -553,7 +483,7 @@
 
 (defmethod m/pre-init-spec :blaze/admin-api [_]
   (s/keys :req-un [:blaze/context-path ::admin-node :blaze.fhir/parsing-context
-                   :blaze.fhir/writing-context :blaze/job-scheduler
+                   :blaze.fhir/writing-context :blaze/job-scheduler :blaze/validator
                    ::read-job-handler ::history-job-handler
                    ::search-type-job-handler ::settings ::features]
           :opt [::dbs ::expr/cache ::db-sync-timeout]))
@@ -562,7 +492,7 @@
   [_ {:keys [job-scheduler] :as config}]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
-   (router (assoc config :validator (create-validator)
+   (router (assoc config
                   :create-job-handler (create-job-handler job-scheduler)
                   :pause-job-handler (job-action-handler job-scheduler js/pause-job)
                   :resume-job-handler (job-action-handler job-scheduler js/resume-job)

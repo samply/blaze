@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "de.basisprofil.r4": "^1.5.4",
+    "de.einwilligungsmanagement": "^2.0.1",
+    "de.gematik.isik-basismodul": "^4.0.3",
+    "de.medizininformatikinitiative.kerndatensatz.bildgebung": "^2026.0.0-ballot",
+    "de.medizininformatikinitiative.kerndatensatz.biobank": "^2026.0.0-ballot1",
+    "de.medizininformatikinitiative.kerndatensatz.consent": "^2025.0.4",
+    "de.medizininformatikinitiative.kerndatensatz.diagnose": "^2025.0.1",
+    "de.medizininformatikinitiative.kerndatensatz.fall": "^2025.0.1",
+    "de.medizininformatikinitiative.kerndatensatz.icu": "^2025.0.4",
+    "de.medizininformatikinitiative.kerndatensatz.laborbefund": "^2025.0.2",
+    "de.medizininformatikinitiative.kerndatensatz.medikation": "^2025.0.0",
+    "de.medizininformatikinitiative.kerndatensatz.meta": "^2025.0.3",
+    "de.medizininformatikinitiative.kerndatensatz.mikrobiologie": "^2025.0.1",
+    "de.medizininformatikinitiative.kerndatensatz.molgen": "^2026.0.0-ballot.2",
+    "de.medizininformatikinitiative.kerndatensatz.patho": "^2026.0.0-ballot",
+    "de.medizininformatikinitiative.kerndatensatz.person": "^2025.0.1",
+    "de.medizininformatikinitiative.kerndatensatz.prozedur": "^2025.0.1",
+    "de.medizininformatikinitiative.kerndatensatz.studie": "^2026.0.0-ballot",
+    "eu.miabis.r4": "^0.2.0",
+    "hl7.fhir.r4b.core": "^4.3.0",
+    "hl7.fhir.uv.extensions": "^5.3.0-ballot-tc1",
+    "hl7.fhir.uv.genomics-reporting": "^3.0.0",
+    "hl7.terminology.r5": "^6.5.0"
+  }
+}

@@ -11,6 +11,9 @@
   blaze/page-id-cipher
   {:local/root "../page-id-cipher"}
 
+  blaze/validator
+  {:local/root "../validator"}
+
   buddy/buddy-core
   {:mvn/version "1.12.0-430"}
 
