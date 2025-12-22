@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.4.1
+
+### Security
+
+* Fix CVE-2025-64756: glob Command Injection ([#3212](https://github.com/samply/blaze/pull/3212))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/118?closed=1).
+
 ## v1.4.0
 
 ### Notes
