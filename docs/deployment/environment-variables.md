@@ -98,7 +98,7 @@ The size of the resource cache of the DB in number of resources.
 
 **Default:** 100000
 
-#### `DB_SCALE_FACTOR` <Badge type="warning" text="unreleased"/>
+#### `DB_SCALE_FACTOR` <Badge type="warning" text="Since 1.4"/>
 
 Scales sizes of DB in-memory buffers and SST files. See also: [Production Configuration](../production-configuration.md#db-scale-factor).
 

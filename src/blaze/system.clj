@@ -6,7 +6,7 @@
   be given to `init!``. The server port has a default of `8080`."
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.coerce-env :as ce]
    [blaze.log]
    [blaze.path :refer [dir? path]]
@@ -17,7 +17,6 @@
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [clojure.walk :as walk]
-   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
    [spec-coerce.alpha :as sc :refer [coerce]]
@@ -230,7 +229,7 @@
           (ig/expand)
           (ig/init)))
 
-    #(log/error (str "Error while reading the environment: " (::anom/message %)))))
+    ba/throw-anom))
 
 (defn shutdown! [system]
   (ig/halt! system))

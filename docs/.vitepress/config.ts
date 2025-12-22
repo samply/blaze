@@ -40,7 +40,7 @@ export default defineConfig({
     nav: [
       { text: "Home", link: "/" },
       {
-        text: "v1.3.1",
+        text: "v1.4.0",
         items: [
           {
             text: "Changelog",
@@ -203,12 +203,12 @@ export default defineConfig({
             link: "/deployment/distributed-backend",
           },
           { text: "Configuration", link: "/deployment/environment-variables" },
-          { text: "Authentication", link: "/authentication" },
-          { text: "Monitoring", link: "/monitoring" },
           {
             text: "Production Configuration",
             link: "/production-configuration",
           },
+          { text: "Authentication", link: "/authentication" },
+          { text: "Monitoring", link: "/monitoring" },
         ],
       },
       {
