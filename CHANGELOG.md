@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.4.0
+
+### Notes
+
+Review the new `DB_SCALE_FACTOR` configuration option. If your Blaze server stores more than 50,000 patients or 50 million resources, increase this factor following the [Production Configuration Guide](https://samply.github.io/blaze/production-configuration.html). Increasing the scale factor from 1 to 4 yielded approximately 1.5× faster transactions in our measurements. Additionally, this reduces the number of database files, which helps avoid `ulimit` issues.  
+
+### Enhancements
+
+* Introduce Scale Factor Config for Large Databases ([#2434](https://github.com/samply/blaze/issues/2434))
+* Enable RocksDB WAL Sync ([#3204](https://github.com/samply/blaze/issues/3204))
+
+### Documentation
+
+* Rename Tuning Guide ([#3199](https://github.com/samply/blaze/issues/3199))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/116?closed=1).
+
 ## v1.3.1
 
 ### Bugfixes
