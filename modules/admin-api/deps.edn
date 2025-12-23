@@ -39,7 +39,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation
-  {:mvn/version "8.6.0"
+  {:mvn/version "8.6.1"
    :exclusions
    [com.nimbusds/nimbus-jose-jwt
     commons-beanutils/commons-beanutils
@@ -65,7 +65,7 @@
     org.commonmark/commonmark-ext-gfm-tables]}
 
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
-  {:mvn/version "8.6.0"
+  {:mvn/version "8.6.1"
    :exclusions
    [com.google.code.findbugs/jsr305
     commons-net/commons-net
@@ -75,7 +75,7 @@
     net.sf.saxon/Saxon-HE]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
-  {:mvn/version "8.6.0"
+  {:mvn/version "8.6.1"
    :exclusions
    [com.google.code.findbugs/jsr305
     io.opentelemetry/opentelemetry-api
@@ -83,7 +83,7 @@
     org.slf4j/jcl-over-slf4j]}
 
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
-  {:mvn/version "8.6.0"
+  {:mvn/version "8.6.1"
    :exclusions
    [io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
