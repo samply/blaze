@@ -1,7 +1,6 @@
 (ns blaze.terminology-service.local.code-system.sct.filter.equals
   (:require
    [blaze.anomaly :as ba]
-   [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.sct.context :as context :refer [url]]
    [blaze.terminology-service.local.code-system.sct.filter.core :as core]
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]))
@@ -23,12 +22,12 @@
       (ba/incorrect (format "Invalid child = filter value `%s` in code system `%s`." value url)))))
 
 (defmethod core/expand-filter :=
-  [code-system {:keys [property value]}]
-  (condp = (type/value property)
-    "parent" (expand-filter-parent code-system (type/value value))
-    "child" (expand-filter-child code-system (type/value value))
+  [code-system {{property :value} :property {:keys [value]} :value}]
+  (condp = property
+    "parent" (expand-filter-parent code-system value)
+    "child" (expand-filter-child code-system value)
     nil (ba/incorrect (format "Missing = filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." (type/value property) url))))
+    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." property url))))
 
 (defn- satisfies-filter-parent
   [{{:keys [module-dependency-index child-index]} :sct/context :sct/keys [module-id version]} value code]
@@ -47,9 +46,9 @@
       (ba/incorrect (format "Invalid child = filter value `%s` in code system `%s`." value url)))))
 
 (defmethod core/satisfies-filter :=
-  [code-system {:keys [property value]} code]
-  (condp = (type/value property)
-    "parent" (satisfies-filter-parent code-system (type/value value) code)
-    "child" (satisfies-filter-child code-system (type/value value) code)
+  [code-system {{property :value} :property {:keys [value]} :value} code]
+  (condp = property
+    "parent" (satisfies-filter-parent code-system value code)
+    "child" (satisfies-filter-child code-system value code)
     nil (ba/incorrect (format "Missing = filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." (type/value property) url))))
+    (ba/unsupported (format "Unsupported = filter property `%s` in code system `%s`." property url))))

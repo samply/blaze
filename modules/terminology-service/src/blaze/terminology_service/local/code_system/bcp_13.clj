@@ -20,9 +20,9 @@
    #fhir/Meta
     {:tag
      [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
         :code #fhir/code "read-only"}]}
-   :url #fhir/uri "urn:ietf:bcp:13"
+   :url #fhir/uri-interned "urn:ietf:bcp:13"
    :version #fhir/string "1.0.0"
    :name #fhir/string "BCP-13"
    :title #fhir/string "BCP-13 Multipurpose Internet Mail Extensions (MIME) types"
@@ -64,8 +64,8 @@
    []
    (keep
     (fn [{:keys [code]}]
-      (when (valid? (type/value code))
-        {:system #fhir/uri "urn:ietf:bcp:13"
+      (when (valid? (:value code))
+        {:system #fhir/uri-interned "urn:ietf:bcp:13"
          :code code})))
    concepts))
 

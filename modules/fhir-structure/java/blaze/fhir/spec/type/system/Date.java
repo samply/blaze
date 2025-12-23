@@ -1,15 +1,15 @@
 package blaze.fhir.spec.type.system;
 
 import clojure.lang.Keyword;
+import clojure.lang.RT;
 
 import java.time.DateTimeException;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.Temporal;
 import java.time.temporal.ValueRange;
 
 public interface Date extends JavaSystemType, Temporal {
 
-    Keyword TYPE = Keyword.intern("system", "date");
+    Keyword TYPE = RT.keyword("system", "date");
 
     ValueRange YEAR_RANGE = ValueRange.of(1, 9999);
 

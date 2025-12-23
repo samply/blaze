@@ -2,7 +2,6 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.fhir.parsing-context]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.handler.util :as handler-util]
@@ -145,7 +144,7 @@
     (given @((resource-body-handler "Binary")
              {:headers {"content-type" "application/fhir+json"}
               :body (string-input-stream (str "{\"data\" : \"" (apply str (repeat (* 8 1024 1024) \a)) "\", \"resourceType\" : \"Binary\"}"))})
-      fhir-spec/fhir-type := :fhir/Binary)))
+      :fhir/type := :fhir/Binary)))
 
 (deftest xml-test
   (testing "possible content types"
@@ -215,7 +214,7 @@
     (given @((resource-body-handler "Binary")
              {:headers {"content-type" "application/fhir+xml"}
               :body (string-input-stream (str "<Binary xmlns=\"http://hl7.org/fhir\"><data value=\"" (apply str (repeat (* 8 1024 1024) \a)) "\"/></Binary>"))})
-      fhir-spec/fhir-type := :fhir/Binary)))
+      :fhir/type := :fhir/Binary)))
 
 (def ^:private whitespace
   (gen/fmap str/join (gen/vector (gen/elements [" " "\n" "\r" "\t"]))))
@@ -276,8 +275,8 @@
                  {:headers {"content-type" content-type}
                   :body (string-input-stream resource closed?)})
           :fhir/type := :fhir/Binary
-          [:contentType type/value] := "text/plain"
-          [:data type/value] := "MTA1NjE0Cg==")
+          [:contentType :value] := "text/plain"
+          [:data :value] := "MTA1NjE0Cg==")
         (is (true? @closed?)))))
 
   (testing "raw binary data"
@@ -288,8 +287,8 @@
                {:headers {"content-type" content-type}
                 :body (binary-input-stream raw-data closed?)})
         :fhir/type := :fhir/Binary
-        [:contentType type/value] := content-type
-        [:data type/value] := (encode-binary-data raw-data))
+        [:contentType :value] := content-type
+        [:data :value] := (encode-binary-data raw-data))
       (is (true? @closed?))))
 
   (testing "with missing content-type header"

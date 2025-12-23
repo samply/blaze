@@ -10,8 +10,6 @@
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as type]
    [clojure.string :as str]
    [taoensso.timbre :as log]))
 
@@ -20,7 +18,7 @@
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([normalize value])}
-  (fn [_ value] (fhir-spec/fhir-type value)))
+  (fn [_ value] (:fhir/type value)))
 
 (defn- normalize-string [s]
   (-> (str/trim s)
@@ -29,7 +27,7 @@
       str/lower-case))
 
 (defn- index-entry [normalize value]
-  (when-let [s (some-> value type/value normalize)]
+  (when-let [s (some-> value :value normalize)]
     [nil (codec/string s)]))
 
 (defmethod index-entries :fhir/string

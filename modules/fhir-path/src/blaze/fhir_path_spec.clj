@@ -2,7 +2,6 @@
   (:require
    [blaze.anomaly-spec]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
    [blaze.fhir.spec.type.system-spec]
    [blaze.util-spec]
@@ -18,7 +17,7 @@
 (s/fdef fhir-path/eval
   :args (s/cat :resolver :blaze.fhir-path/resolver
                :expr :blaze.fhir-path/expression
-               :value #(some? (fhir-spec/fhir-type %)))
+               :value #(keyword? (:fhir/type %)))
   :ret (s/or :coll (s/coll-of some?) :anomaly ::anom/anomaly))
 
 (s/fdef fhir-path/compile

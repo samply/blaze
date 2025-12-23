@@ -41,7 +41,7 @@
   (transduce validate-entry-xf conj [] entries))
 
 (defn- prepare-entry [res {{:keys [method]} :request :as entry}]
-  (case (type/value method)
+  (case (:value method)
     "POST"
     (let [entry (update entry :resource assoc :id (luid/head (::luid/generator res)))]
       (-> (update res ::luid/generator luid/next)
@@ -54,7 +54,7 @@
 
   Returns an anomaly in case of errors."
   [context {resource-type :fhir/type :keys [type] entries :entry :as bundle}]
-  (let [type (type/value type)]
+  (let [type (:value type)]
     (cond
       (nil? bundle)
       (ba/incorrect
@@ -86,7 +86,7 @@
   "Builds the response entry of `request-entry` using the `db` after the
   transaction."
   {:arglists '([context idx entry])}
-  (fn [_ _ {{:keys [method]} :request}] (type/value method)))
+  (fn [_ _ {{:keys [method]} :request}] (:value method)))
 
 (defn- location [context type id vid]
   (fhir-util/versioned-instance-url context type id vid))
@@ -101,7 +101,7 @@
       :status #fhir/string "201"
       :location (type/uri (location context type id vid))
       :etag (type/string (str "W/\"" vid "\""))
-      :lastModified (:blaze.db.tx/instant tx)}}))
+      :lastModified (handler-util/instant tx)}}))
 
 (defn- noop-entry [db handle]
   (let [tx (d/tx db (:t handle))
@@ -111,7 +111,7 @@
      {:fhir/type :fhir.Bundle.entry/response
       :status #fhir/string "200"
       :etag (type/string (str "W/\"" vid "\""))
-      :lastModified (:blaze.db.tx/instant tx)}}))
+      :lastModified (handler-util/instant tx)}}))
 
 (defn- conditional-clauses [if-none-exist]
   (when-not (str/blank? if-none-exist)
@@ -144,7 +144,7 @@
         (do-sync [resource (pull db handle)]
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
-      (let [if-none-exist (-> entry :request :ifNoneExist)
+      (let [if-none-exist (-> entry :request :ifNoneExist :value)
             clauses (conditional-clauses if-none-exist)
             handle (coll/first (d/type-query db type clauses))]
         (if (identical? :blaze.preference.return/representation return-preference)
@@ -164,7 +164,7 @@
       {:fhir/type :fhir.Bundle.entry/response
        :status (type/string (if created "201" "200"))
        :etag (type/string (str "W/\"" vid "\""))
-       :lastModified (:blaze.db.tx/instant tx)}
+       :lastModified (handler-util/instant tx)}
        created
        (assoc :location (type/uri (location context type id vid))))}))
 
@@ -188,7 +188,7 @@
       {:fhir/type :fhir.Bundle.entry/response
        :status #fhir/string "204"
        :etag (type/string (str "W/\"" t "\""))
-       :lastModified (:blaze.db.tx/instant (d/tx db t))}})))
+       :lastModified (handler-util/instant (d/tx db t))}})))
 
 (defmethod build-response-entry "GET" [context idx entry]
   (fhir-util/process-batch-entry context idx entry))
@@ -221,7 +221,7 @@
   complete with the response entries or will complete exceptionally with an
   anomaly in case of errors."
   {:arglists '([context type entries])}
-  (fn [_ type _] (type/value type)))
+  (fn [_ type _] (:value type)))
 
 (defmethod process-entries "batch"
   [context _ entries]
@@ -255,7 +255,7 @@
       (assoc :blaze.preference/return return-preference))))
 
 (defn- process-context [context type request]
-  (if (= "batch" (type/value type))
+  (if (= "batch" (:value type))
     (-> (fhir-util/sync (:node context) (:db-sync-timeout context))
         (ac/then-apply #(assoc (process-context* context request) :blaze/db %)))
     (ac/completed-future (process-context* context request))))
@@ -263,7 +263,7 @@
 (defn- response-bundle [context type entries]
   {:fhir/type :fhir/Bundle
    :id (m/luid context)
-   :type (type/code (str (type/value type) "-response"))
+   :type (type/code (str (:value type) "-response"))
    :entry entries})
 
 (defmethod m/pre-init-spec :blaze.interaction/transaction [_]
