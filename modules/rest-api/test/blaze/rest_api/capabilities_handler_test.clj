@@ -18,7 +18,7 @@
    [blaze.spec]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service.local :as ts-local]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -171,7 +171,7 @@
         [:rest 0 :compartment] := [#fhir/canonical "http://hl7.org/fhir/CompartmentDefinition/patient"]))
 
     (testing "filtering by _elements"
-      (tu/satisfies-prop 100
+      (satisfies-prop 100
         (prop/for-all [ks (gen/vector (gen/elements [:status :software]) 0 50)]
           (let [{:keys [body]}
                 @(handler

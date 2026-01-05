@@ -1,9 +1,14 @@
 (ns blaze.fhir.util
+  (:refer-clojure :exclude [str])
   (:require
+   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.fhir.spec.type :as type]
-   [clojure.string :as str])
+   [blaze.util :refer [str]]
+   [clojure.string :as str]
+   [cognitect.anomalies :as anom])
   (:import
    [blaze.fhir.spec.type Base]
+   [com.google.common.base CaseFormat]
    [java.util Comparator]))
 
 (set! *warn-on-reflection* true)
@@ -83,3 +88,68 @@
    * id"
   [resources]
   (sort priority-cmp resources))
+
+(defn- camel->kebab [s]
+  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
+
+(defn- plural [s]
+  (if (str/ends-with? s "y")
+    (str (subs s 0 (dec (count s))) "ies")
+    (str s "s")))
+
+(defn- assoc-via [params {:keys [cardinality]} name value]
+  (if (identical? :many cardinality)
+    (update params (keyword (plural (camel->kebab name))) (fnil into []) (if (sequential? value) value [value]))
+    (assoc params (keyword (camel->kebab name)) value)))
+
+(defn- unsupported-parameter-anom [name]
+  (ba/unsupported (format "Unsupported parameter `%s`." name) :http/status 400))
+
+(defn coerce-params
+  "Coerces parameters from a FHIR `parameters` resource according to `specs`.
+
+  The `specs` argument is a map from parameter name to a specification map with
+  the following keys:
+   * :action      - one of :copy, :copy-complex-type or :copy-resource
+   * :cardinality - :many if the parameter can appear multiple times
+   * :coerce      - a function to coerce the value (only for :action :copy)
+
+  The :action determines how the value is extracted:
+   * :copy              - uses the value of the parameter (e.g. valueString)
+   * :copy-complex-type - uses the value of the parameter (e.g. valueCoding)
+   * :copy-resource     - uses the resource of the parameter
+
+  If :coerce is given, the value is passed to that function. If the function
+  returns an anomaly, the processing stops and the anomaly is returned.
+
+  The keys of the resulting map are the kebab-cased parameter names. If
+  :cardinality is :many, the key is pluralized and the values are collected in
+  a vector. If the coerced value is sequential, it is flattened into the vector.
+
+  Parameters in `parameters` that are not in `specs` are ignored. Parameters in
+  `specs` that are not in `parameters` don't appear in the result.
+
+  Returns the coerced map or an anomaly in case of coercion errors or unsupported
+  parameters (if a parameter is in `specs` but the :action is missing or invalid)."
+  {:arglists '([specs parameters])}
+  [specs {params :parameter}]
+  (reduce
+   (fn [new-params {{name :value} :name :as param}]
+     (if-let [{:keys [action] :as spec} (specs name)]
+       (case action
+         :copy
+         (if-ok [value ((:coerce spec :value) (:value param))]
+           (assoc-via new-params spec name value)
+           (fn [e]
+             (update e ::anom/message (partial str (format "Invalid value for parameter `%s`. " name)))))
+
+         :copy-complex-type
+         (assoc-via new-params spec name (:value param))
+
+         :copy-resource
+         (assoc-via new-params spec name (:resource param))
+
+         (reduced (unsupported-parameter-anom name)))
+       new-params))
+   {}
+   params))

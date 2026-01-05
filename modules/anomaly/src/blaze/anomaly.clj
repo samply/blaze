@@ -1,5 +1,5 @@
 (ns blaze.anomaly
-  (:refer-clojure :exclude [map])
+  (:refer-clojure :exclude [map update])
   (:require
    [clj-commons.format.exceptions :as e]
    [cognitect.anomalies :as anom])
@@ -279,3 +279,7 @@
   "Ignores a possible anomaly, returning nil instead."
   [x]
   (when-not (anomaly? x) x))
+
+(defn update [m k f]
+  (when-ok [v (f (get m k))]
+    (assoc m k v)))

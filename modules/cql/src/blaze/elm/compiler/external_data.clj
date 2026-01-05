@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok throw-anom]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.elm.code :refer [code?]]
@@ -56,7 +56,7 @@
           (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
         (-form [_]
           `(~'retrieve ~data-type ~(d/query-clauses compartment-query))))
-      ba/throw-anom)))
+      throw-anom)))
 
 ;; TODO: find a better solution than hard coding this case
 (def ^:private specimen-patient-expr
@@ -143,9 +143,9 @@
           (let [clauses [(into [code-property] (map code->clause-value) codes)]]
             (if-ok [query (d/compile-compartment-query node context-type data-type clauses)]
               (related-context-expr-with-codes context-expr data-type query)
-              ba/throw-anom))
-          (ba/throw-anom (unsupported-type-ns-anom value-type-ns))))
-      (ba/throw-anom unsupported-related-context-expr-without-type-anom))
+              throw-anom))
+          (throw-anom (unsupported-type-ns-anom value-type-ns))))
+      (throw-anom unsupported-related-context-expr-without-type-anom))
     (related-context-expr-without-codes context-expr data-type)))
 
 (defn- unfiltered-context-expr [node data-type code-property codes]
@@ -164,7 +164,7 @@
             (coll/eduction (cr/resource-mapper db) (d/execute-query db query)))
           (-form [_]
             `(~'retrieve ~data-type ~(d/query-clauses query))))
-        ba/throw-anom))))
+        throw-anom))))
 
 (defn- expr* [node eval-context data-type code-property codes]
   (if (empty? codes)
@@ -200,7 +200,7 @@
   (let [codes-expr (core/compile* context codes-expr)]
     (if (and (sequential? codes-expr) (every? code? codes-expr))
       codes-expr
-      (ba/throw-anom (unsupported-dynamic-codes-expr-anom codes-expr)))))
+      (throw-anom (unsupported-dynamic-codes-expr-anom codes-expr)))))
 
 (defmethod core/compile* :elm.compiler.type/retrieve
   [context
@@ -217,4 +217,4 @@
        data-type
        code-property
        (some->> codes-expr (compile-codes-expr context)))
-      (ba/throw-anom (unsupported-type-namespace-anom type-ns)))))
+      (throw-anom (unsupported-type-namespace-anom type-ns)))))

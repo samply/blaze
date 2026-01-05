@@ -1254,6 +1254,26 @@
    subject (rare-nil (reference :reference (gen/return nil)))
    encounter (rare-nil (reference :reference (gen/return nil)))])
 
+(defn- parameter-value []
+  (gen/one-of [(boolean) (integer) (string) (decimal) (uri) (url) (canonical)
+               (base64Binary) (instant) (date) (dateTime) (time) (code) (oid)
+               (id) (markdown) (unsignedInt) (positiveInt) (uuid)
+               (coding) (codeable-concept) (quantity) (period) (ratio)
+               (human-name) (address) (attachment) (reference) (meta)]))
+
+(defn parameters-parameter
+  [& {:keys [name value resource part]
+      :or {name (string)
+           value (rare-nil (parameter-value))
+           resource (gen/return nil)
+           part (gen/return nil)}}]
+  (->> (gen/tuple name value resource part)
+       (to-map [:name :value :resource :part])
+       (fhir-type :fhir.Parameters/parameter)))
+
+(def-resource-gen parameters
+  [parameter (gen/vector (parameters-parameter))])
+
 (defn- task-value []
   (gen/one-of [(quantity) (codeable-concept) (string) (boolean) (integer)
                (range) (ratio) (sampled-data) (time) (dateTime) (period)]))

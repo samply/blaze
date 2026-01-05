@@ -65,6 +65,7 @@
                     blaze.openid-auth
                     blaze.fhir.operation.code-system.validate-code
                     blaze.fhir.operation.compact
+                    blaze.fhir.operation.cql
                     blaze.operation.graph
                     blaze.fhir.operation.graphql
                     blaze.fhir.operation.graphql.middleware

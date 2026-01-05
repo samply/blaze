@@ -131,11 +131,16 @@
         (let [{:keys [system version code]} elements]
           (code/code system version code)))
       (let [[type-ns type] (elm-util/parse-qualified-name type)]
-        (if (= "http://hl7.org/fhir" type-ns)
+        (case type-ns
+          "urn:hl7-org:elm-types:r1"
+          (case type
+            "Code"
+            (instance type code/map->Code elements))
+          "http://hl7.org/fhir"
           (if-some [constructor (resolve-constructor type)]
             (instance type constructor elements)
-            (ba/throw-anom (unsupported-instance-type-anom type)))
-          (ba/throw-anom (unsupported-instance-type-ns-anom type-ns)))))))
+            (throw-anom (unsupported-instance-type-anom type)))
+          (throw-anom (unsupported-instance-type-ns-anom type-ns)))))))
 
 ;; 2.3. Property
 (defn- source-property-expr [source key]

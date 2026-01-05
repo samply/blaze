@@ -87,3 +87,11 @@
   [_ {:keys [writing-context]}]
   (fn [value]
     (fhir-spec/write-json-as-bytes writing-context value)))
+
+(defn parameter [name]
+  (fn [{:keys [parameter]}]
+    (filterv #(= name (:value (:name %))) parameter)))
+
+(defn parameter-part [name]
+  (fn [{:keys [part]}]
+    (filterv #(= name (:value (:name %))) part)))

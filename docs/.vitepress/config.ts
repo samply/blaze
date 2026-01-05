@@ -112,7 +112,10 @@ export default defineConfig({
               {
                 text: "System",
                 collapsed: true,
-                items: [{ text: "$compact", link: "/api/operation/compact" }],
+                items: [
+                  { text: "$compact", link: "/api/operation/compact" },
+                  { text: "$cql", link: "/api/operation/cql" }
+                ],
               },
               {
                 text: "CodeSystem",
@@ -177,6 +180,7 @@ export default defineConfig({
           { text: "SNOMED CT", link: "/terminology-service/snomed-ct" },
           { text: "UCUM", link: "/terminology-service/ucum" },
           { text: "Validation", link: "/terminology-service/validation" },
+          { text: "Conformance", link: "/terminology-service/conformance" },
         ],
       },
       {

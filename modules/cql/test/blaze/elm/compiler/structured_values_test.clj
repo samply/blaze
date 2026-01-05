@@ -171,7 +171,13 @@
     (given (c/compile {} (ctu/code "system-134534" "code-134551"))
       type := Code
       :system := "system-134534"
-      :code := "code-134551"))
+      :code := "code-134551")
+
+    (testing "Dynamic"
+      (given (ctu/dynamic-compile-eval #elm/instance["{urn:hl7-org:elm-types:r1}Code" {"system" #elm/parameter-ref "a" "code" #elm/parameter-ref "b"}])
+        type := Code
+        :system := "a"
+        :code := "b")))
 
   (testing "Dynamic"
     (testing "unsupported type namespace"

@@ -4,6 +4,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.validate-code]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util :refer [parameter]]
    [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -69,10 +70,6 @@
        ~txs
        (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
          ~@body))))
-
-(defn- parameter [name]
-  (fn [{:keys [parameter]}]
-    (filterv #(= name (:value (:name %))) parameter)))
 
 (deftest handler-test
   (testing "value set not found"

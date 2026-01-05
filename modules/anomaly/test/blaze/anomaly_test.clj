@@ -459,3 +459,9 @@
 
   (testing "with anomaly"
     (is (nil? (ba/ignore (ba/fault))))))
+
+(deftest update-test
+  (is (= {:a 2} (ba/update {:a 1} :a inc)))
+
+  (given (ba/update {:a 1} :a (constantly (ba/fault)))
+    ::anom/category := ::anom/fault))

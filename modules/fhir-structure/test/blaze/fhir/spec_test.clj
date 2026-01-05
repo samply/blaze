@@ -7198,3 +7198,45 @@
 (deftest ^:mem-size value-set-mem-size-test
   (satisfies-prop 20
     (memsize-prop "value-set")))
+
+(deftest parameters-test
+  (testing "valid"
+    (satisfies-prop 100
+      (prop/for-all [resource (fg/parameters)]
+        (s2/valid? :fhir/Parameters resource))))
+
+  (testing "round-trip"
+    (testing "JSON"
+      (satisfies-prop 20
+        (prop/for-all [parameters (fg/parameters)]
+          (= (->> (write-json parameters)
+                  (parse-json "Parameters"))
+             parameters))))
+
+    (testing "XML"
+      (satisfies-prop 20
+        (prop/for-all [parameters (fg/parameters)]
+          (= (-> parameters
+                 fhir-spec/unform-xml
+                 fhir-spec/conform-xml)
+             parameters))))
+
+    (testing "CBOR"
+      (satisfies-prop 20
+        (prop/for-all [parameters (fg/parameters)]
+          (= (->> (write-cbor parameters)
+                  (parse-cbor "Parameters"))
+             parameters)))))
+
+  (testing "writing"
+    (testing "JSON"
+      (is (= (write-read-json
+              {:fhir/type :fhir/Parameters
+               :parameter
+               [{:fhir/type :fhir.Parameters/parameter
+                 :name #fhir/string "return"
+                 :value #fhir/integer 2}]})
+             {:resourceType "Parameters"
+              :parameter
+              [{:name "return"
+                :valueInteger 2}]})))))
