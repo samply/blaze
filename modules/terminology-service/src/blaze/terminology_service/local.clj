@@ -5,6 +5,8 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as fu]
    [blaze.module :as m]
    [blaze.spec]
    [blaze.terminology-service :as ts]
@@ -20,63 +22,16 @@
    [blaze.terminology-service.local.value-set.expand :as vs-expand]
    [blaze.terminology-service.local.value-set.validate-code :as vs-validate-code]
    [blaze.terminology-service.protocols :as p]
-   [blaze.util :as u :refer [str]]
+   [blaze.util :as u]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [integrant.core :as ig]
    [muuntaja.parse :as parse]
    [taoensso.timbre :as log])
   (:import
    [com.github.benmanes.caffeine.cache Caffeine]
-   [com.google.common.base CaseFormat]
    [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
-
-(defn- camel->kebab [s]
-  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
-
-(defn- plural [s]
-  (if (str/ends-with? s "y")
-    (str (subs s 0 (dec (count s))) "ies")
-    (str s "s")))
-
-(defn- assoc-via [params {:keys [cardinality]} name value]
-  (if (identical? :many cardinality)
-    (update params (keyword (plural (camel->kebab name))) (fnil into []) (if (sequential? value) value [value]))
-    (assoc params (keyword (camel->kebab name)) value)))
-
-(defn- validate-params [specs {params :parameter}]
-  (reduce
-   (fn [new-params {{name :value} :name :as param}]
-     (if-let [{:keys [action] :as spec} (specs name)]
-       (case action
-         :copy
-         (assoc-via new-params spec name (:value (:value param)))
-
-         :parse-nat-long
-         (let [value (:value (:value param))]
-           (if-not (neg? value)
-             (assoc-via new-params spec name value)
-             (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name)))))
-
-         :parse
-         (assoc-via new-params spec name ((:parse spec) (:value (:value param))))
-
-         :parse-canonical
-         (assoc-via new-params spec name (:value param))
-
-         :copy-complex-type
-         (assoc-via new-params spec name (:value param))
-
-         :copy-resource
-         (assoc-via new-params spec name (:resource param))
-
-         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
-                                  :http/status 400)))
-       new-params))
-   {}
-   params))
 
 (defn- check-url-system [url system url-param-name system-param-name]
   (when-not (= url (or system url))
@@ -294,7 +249,7 @@
       (c/code-systems (d/db node)))
 
     (-code-system-validate-code [_ params]
-      (if-ok [params (validate-params cs-validate-code-param-specs params)
+      (if-ok [params (fu/coerce-params cs-validate-code-param-specs params)
               params (cs-validate-code-more params)]
         (let [db (d/new-batch-db (d/db node))]
           (-> (find-code-system (context-with-db context db params) params)
@@ -303,7 +258,7 @@
         ac/completed-future))
 
     (-expand-value-set [_ params]
-      (if-ok [params (validate-params vs-expand-param-specs params)
+      (if-ok [params (fu/coerce-params vs-expand-param-specs params)
               params (expand-vs-more params)]
         (let [db (d/new-batch-db (d/db node))
               context (context-with-db context db params)
@@ -315,7 +270,7 @@
         ac/completed-future))
 
     (-value-set-validate-code [_ params]
-      (let [validate-params (partial validate-params vs-validate-code-param-specs)]
+      (let [validate-params (partial fu/coerce-params vs-validate-code-param-specs)]
         (if-ok [params (validate-params params)
                 params (vs-validate-code-more params)]
           (let [db (d/new-batch-db (d/db node))

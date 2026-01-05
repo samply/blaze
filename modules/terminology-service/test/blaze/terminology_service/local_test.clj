@@ -4,8 +4,9 @@
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.test-util :refer [parameter structure-definition-repo]]
    [blaze.fhir.util :as fu]
+   [blaze.fhir.util-spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.path :refer [path]]
    [blaze.spec]
@@ -263,10 +264,6 @@
 
 (defn- sort-expansion [value-set]
   (update-in value-set [:expansion :contains] (partial sort-by (comp :value :code))))
-
-(defn- parameter [name]
-  (fn [{:keys [parameter]}]
-    (filterv #(= name (:value (:name %))) parameter)))
 
 (defn- concept [code]
   (fn [concepts]

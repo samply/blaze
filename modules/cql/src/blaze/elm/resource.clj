@@ -66,6 +66,9 @@
 (defn handle [resource]
   (.-handle ^Resource resource))
 
+(defn pull [resource]
+  (d/pull (.-db ^Resource resource) (handle resource)))
+
 (defn- patient-last-change-t [db handle]
   (or (d/patient-compartment-last-change-t db (:id handle)) (:t handle)))
 
