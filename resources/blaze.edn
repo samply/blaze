@@ -1533,4 +1533,26 @@
 
     :blaze/cache-collector
     {:caches
-     {"operation-graph-compiled-graph-cache" #blaze/ref :blaze.operation.graph/compiled-graph-cache}}}}]}
+     {"operation-graph-compiled-graph-cache" #blaze/ref :blaze.operation.graph/compiled-graph-cache}}}}
+
+  {:key :cql
+   :name "Operation $cql"
+   :toggle "ENABLE_OPERATION_CQL"
+   :config
+   {:blaze.rest-api/operations
+    [#:blaze.rest-api.operation
+      {:code "cql"
+       :def-uri "https://hl7.org/fhir/uv/cql/OperationDefinition-cql-cql.html"
+       :affects-state false
+       :resource-types ["Resource"]
+       :system-handler #blaze/ref :blaze.fhir.operation/cql
+       :documentation "The $cql operation evaluates a CQL expression and returns the result."}]
+
+    :blaze.fhir.operation/cql
+    {:node #blaze/ref :blaze.db.main/node
+     :terminology-service #blaze/ref :blaze.terminology-service/not-available
+     :clock #blaze/ref :blaze/clock
+     :rng-fn #blaze/ref :blaze/rng-fn}
+
+    :blaze.fhir.operation.cql/compile-duration-seconds {}
+    :blaze.fhir.operation.cql/evaluate-duration-seconds {}}}]}

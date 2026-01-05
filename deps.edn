@@ -25,6 +25,9 @@
   blaze.operation/compact
   {:local/root "modules/operation-compact"}
 
+  blaze.operation/cql
+  {:local/root "modules/operation-cql"}
+
   blaze.operation/graph
   {:local/root "modules/operation-graph"}
 
@@ -195,6 +198,7 @@
     "-d" "modules/openid-auth"
     "-d" "modules/operation-code-system-validate-code"
     "-d" "modules/operation-compact"
+    "-d" "modules/operation-cql"
     "-d" "modules/operation-graphql"
     "-d" "modules/operation-measure-evaluate-measure"
     "-d" "modules/operation-patient-everything"

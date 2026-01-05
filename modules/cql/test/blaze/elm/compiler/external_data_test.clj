@@ -654,7 +654,44 @@
 
           (given (ba/try-anomaly (c/compile {:node node :library library :terminology-service terminology-service} elm))
             ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
+            ::anom/message := "The search-param with code `foo` and type `Observation` was not found."))))
+
+    (testing "missing context result type"
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+        (let [library {:codeSystems
+                       {:def [{:name "sys-def-174848" :id "system-174915"}]}
+                       :statements
+                       {:def
+                        [{:type "ExpressionDef"
+                          :name "name-174207"}]}}
+              elm #elm/retrieve
+                   {:type "Observation"
+                    :context #elm/expression-ref "name-174207"
+                    :codes #elm/list [#elm/code ["sys-def-174848"
+                                                 "code-174911"]]}]
+
+          (given (ba/try-anomaly (c/compile {:node node :library library :terminology-service terminology-service} elm))
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported related context retrieve expression without result type."))))
+
+    (testing "unsupported context result type namespace"
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+        (let [library {:codeSystems
+                       {:def [{:name "sys-def-174848" :id "system-174915"}]}
+                       :statements
+                       {:def
+                        [{:type "ExpressionDef"
+                          :name "name-174207"
+                          :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}]}}
+              elm #elm/retrieve
+                   {:type "Observation"
+                    :context #elm/expression-ref "name-174207"
+                    :codes #elm/list [#elm/code ["sys-def-174848"
+                                                 "code-174911"]]}]
+
+          (given (ba/try-anomaly (c/compile {:node node :library library :terminology-service terminology-service} elm))
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported related context retrieve expression with result type namespace of `urn:hl7-org:elm-types:r1`.")))))
 
   (testing "with unsupported type namespace"
     (let [elm {:type "Retrieve" :dataType "{foo}Bar"}]

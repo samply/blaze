@@ -105,3 +105,7 @@
 
 (s/fdef ba/ignore
   :args (s/cat :x any?))
+
+(s/fdef ba/update
+  :args (s/cat :m map? :k some? :f ifn?)
+  :ret (s/or :result map? :anomaly ::anom/anomaly))

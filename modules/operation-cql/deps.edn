@@ -1,0 +1,53 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/cql
+  {:local/root "../cql"}
+
+  blaze/job-async-interaction
+  {:local/root "../job-async-interaction"}
+
+  blaze/metrics
+  {:local/root "../metrics"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  blaze/rest-util
+  {:local/root "../rest-util"}
+
+  blaze/spec
+  {:local/root "../spec"}
+
+  blaze/thread-pool-executor-collector
+  {:local/root "../thread-pool-executor-collector"}
+
+  ;; this dependency is only here because otherwise it gets loaded concurrently
+  ;; which breaks caching
+  prom-metrics/prom-metrics
+  {:git/url "https://github.com/alexanderkiel/prom-metrics.git"
+   :git/tag "v0.6-alpha.8"
+   :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.91.1392"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {lambdaisland/kaocha-cloverage
+    {:mvn/version "1.1.89"}}
+
+   :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}

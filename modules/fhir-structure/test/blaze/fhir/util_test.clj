@@ -1,11 +1,14 @@
 (ns blaze.fhir.util-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir.structure-definition-repo]
    [blaze.fhir.util :as fu]
    [blaze.fhir.util-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]))
 
@@ -130,3 +133,74 @@
                {:fhir/type :fhir/CodeSystem :id "2"}])
              [{:fhir/type :fhir/CodeSystem :id "2"}
               {:fhir/type :fhir/CodeSystem :id "1"}])))))
+
+(deftest coerce-params-test
+  (testing "simple copy"
+    (given (fu/coerce-params
+            {"a" {:action :copy}}
+            (fu/parameters "a" #fhir/string "b"))
+      :a := "b")
+
+    (testing "camelCase name"
+      (given (fu/coerce-params
+              {"fooBar" {:action :copy}}
+              (fu/parameters "fooBar" #fhir/string "a"))
+        :foo-bar := "a")))
+
+  (testing "multiple copy"
+    (given (fu/coerce-params
+            {"a" {:action :copy :cardinality :many}}
+            (fu/parameters "a" #fhir/string "b" "a" #fhir/string "c"))
+      :as := ["b" "c"])
+
+    (given (fu/coerce-params
+            {"property" {:action :copy :cardinality :many}}
+            (fu/parameters "property" #fhir/string "b" "property" #fhir/string "c"))
+      :properties := ["b" "c"])
+
+    (given (fu/coerce-params
+            {"a" {:action :copy :coerce (comp #(str/split % #",") :value) :cardinality :many}}
+            (fu/parameters "a" #fhir/string "b" "a" #fhir/string "c,d"))
+      :as := ["b" "c" "d"])
+
+    (given (fu/coerce-params
+            {"a" {:action :copy :coerce (comp #(str/split % #",") :value) :cardinality :many}}
+            (fu/parameters "a" #fhir/string "b,c" "a" #fhir/string "d"))
+      :as := ["b" "c" "d"]))
+
+  (testing "coercion"
+    (given (fu/coerce-params
+            {"a" {:action :copy :coerce (comp parse-long :value)}}
+            (fu/parameters "a" #fhir/string "1"))
+      :a := 1)
+
+    (testing "error"
+      (given (fu/coerce-params
+              {"a" {:action :copy :coerce (constantly (ba/incorrect "msg-183537"))}}
+              (fu/parameters "a" #fhir/string "1"))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `a`. msg-183537")))
+
+  (testing "complex type copy"
+    (given (fu/coerce-params
+            {"a" {:action :copy-complex-type}}
+            (fu/parameters "a" #fhir/Coding{:system #fhir/uri"a" :code #fhir/code"b"}))
+      :a := #fhir/Coding{:system #fhir/uri"a" :code #fhir/code"b"}))
+
+  (testing "resource copy"
+    (given (fu/coerce-params
+            {"a" {:action :copy-resource}}
+            (fu/parameters "a" {:fhir/type :fhir/Patient :id "0"}))
+      :a := {:fhir/type :fhir/Patient :id "0"}))
+
+  (testing "unsupported param"
+    (given (fu/coerce-params
+            {"a" {}}
+            (fu/parameters "a" #fhir/string "b"))
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported parameter `a`."))
+
+  (testing "undefined param is ignored"
+    (is (empty? (fu/coerce-params
+                 {"a" {}}
+                 (fu/parameters "b" #fhir/string "c"))))))

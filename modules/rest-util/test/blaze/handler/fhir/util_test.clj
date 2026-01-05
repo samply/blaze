@@ -165,7 +165,7 @@
       {}))
 
   (testing "_elements is present"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [fields (gen/vector fields-gen)]
         (let [values (mapv :string fields)
               values (cond
@@ -205,7 +205,7 @@
       ::anom/message := "The value `invalid` of the query param `start` is no valid date."))
 
   (testing "valid"
-    (tu/satisfies-prop 1000
+    (satisfies-prop 1000
       (prop/for-all [name gen/string-alphanumeric
                      value fg/date-value]
         (let [query-params {name (str value)}]
@@ -238,14 +238,14 @@
          (fhir-util/versioned-instance-url context "Patient" "0" "1"))))
 
 (deftest last-modified-test
-  (tu/satisfies-prop 1000
+  (satisfies-prop 1000
     (prop/for-all [{:blaze.db.tx/keys [instant] :as tx} (s/gen :blaze.db/tx)]
       (= (->> (ZonedDateTime/ofInstant instant (ZoneId/of "GMT"))
               (.format DateTimeFormatter/RFC_1123_DATE_TIME))
          (fhir-util/last-modified tx)))))
 
 (deftest etag-test
-  (tu/satisfies-prop 1000
+  (satisfies-prop 1000
     (prop/for-all [{:blaze.db/keys [t] :as tx} (s/gen :blaze.db/tx)]
       (= (format "W/\"%d\"" t) (fhir-util/etag tx)))))
 

@@ -4,6 +4,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.expand]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util :refer [parameter]]
    [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -69,10 +70,6 @@
        ~txs
        (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
          ~@body))))
-
-(defn- parameter [name]
-  (fn [{:keys [parameter]}]
-    (some #(when (= name (:value (:name %))) %) parameter)))
 
 (deftest handler-test
   (testing "value set not found"
@@ -401,7 +398,7 @@
 
             (given body
               :fhir/type := :fhir/ValueSet
-              [:expansion (parameter "count") :value] := #fhir/integer 0
+              [:expansion (parameter "count") 0 :value] := #fhir/integer 0
               [:expansion :total] := #fhir/integer 1
               [:expansion :contains count] := 0)))
 
@@ -525,7 +522,7 @@
 
           (given body
             :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "count") :value] := #fhir/integer 0
+            [:expansion (parameter "count") 0 :value] := #fhir/integer 0
             [:expansion :total] := #fhir/integer 1
             [:expansion :contains count] := 0))))
 
@@ -554,7 +551,7 @@
 
           (given body
             :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "count") :value] := #fhir/integer 1
+            [:expansion (parameter "count") 0 :value] := #fhir/integer 1
             [:expansion :total] := #fhir/integer 2
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri "system-115910"

@@ -4,8 +4,9 @@
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.test-util :refer [parameter structure-definition-repo]]
    [blaze.fhir.util :as fu]
+   [blaze.fhir.util-spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.path :refer [path]]
    [blaze.spec]
@@ -263,10 +264,6 @@
 
 (defn- sort-expansion [value-set]
   (update-in value-set [:expansion :contains] (partial sort-by (comp :value :code))))
-
-(defn- parameter [name]
-  (fn [{:keys [parameter]}]
-    (filterv #(= name (:value (:name %))) parameter)))
 
 (defn- concept [code]
   (fn [concepts]
@@ -1321,6 +1318,12 @@
                              "excludePostCoordinated" #fhir/string "foo")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `excludePostCoordinated`."))
+
+    (testing "invalid negative parameter count"
+      (given-failed-future (expand-value-set ts
+                             "count" #fhir/integer{:id "0"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `count`. Missing value."))
 
     (testing "invalid negative parameter count"
       (given-failed-future (expand-value-set ts
@@ -5340,6 +5343,18 @@
                              "date" #fhir/dateTime #system/date-time "2025")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `date`."))
+
+    (testing "invalid displayLanguage param"
+      (given-failed-future (value-set-validate-code ts
+                             "displayLanguage" #fhir/dateTime #system/date-time "2025")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `displayLanguage`. Expect FHIR code or string."))
+
+    (testing "missing displayLanguage param value"
+      (given-failed-future (value-set-validate-code ts
+                             "displayLanguage" #fhir/code{:id "foo"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `displayLanguage`. Missing value."))
 
     (testing "not found"
       (testing "url"

@@ -1,6 +1,6 @@
 (ns blaze.elm.ts-util
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.fhir.spec.type :as type]))
 
 (def ^:private result-pred
@@ -10,7 +10,7 @@
   (try
     (:value (:value (some result-pred (:parameter @response))))
     (catch Exception e
-      (ba/throw-anom (ba/fault (msg-fn (ex-message (ex-cause e))))))))
+      (throw-anom (ba/fault (msg-fn (ex-message (ex-cause e))))))))
 
 (defn code-param [code]
   {:fhir/type :fhir.Parameters/parameter

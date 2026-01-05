@@ -14,6 +14,7 @@ patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.en
 echo "calling \$purge via GET should not be allowed"
 test "GET response code" "$(curl -s -o /dev/null -w '%{response_code}' "$base/Patient/$patient_id/\$purge")" "405"
 
+echo "calling \$purge via POST..."
 outcome="$(curl -s -XPOST "$base/Patient/$patient_id/\$purge")"
 
 test "outcome code" "$(echo "$outcome" | jq -r '.issue[0].code')" "success"

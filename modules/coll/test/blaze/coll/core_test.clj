@@ -2,7 +2,7 @@
   (:require
    [blaze.coll.core :as coll :refer [with-open-coll]]
    [blaze.coll.core-spec]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.set :as set]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -173,7 +173,7 @@
         [[1 [:a]] [2 [:b]]] [[1 [:c]] [2 [:d]]] [[1 [:a :c]] [2 [:b :d]]]
         [[1 [:a]] [2 [:b]]] [[1 [:c]]] [[1 [:a :c]]]))
 
-    (tu/satisfies-prop 1000
+    (satisfies-prop 1000
       (prop/for-all [c1 (gen/vector gen/small-integer)
                      c2 (gen/vector gen/small-integer)
                      merge merge-generator]
@@ -183,7 +183,7 @@
                (every? (set c2) res))))))
 
   (testing "three collections"
-    (tu/satisfies-prop 1000
+    (satisfies-prop 1000
       (prop/for-all [c1 (gen/vector gen/small-integer)
                      c2 (gen/vector gen/small-integer)
                      c3 (gen/vector gen/small-integer)
@@ -195,7 +195,7 @@
                (every? (set c3) res))))))
 
   (testing "many collections"
-    (tu/satisfies-prop 1000
+    (satisfies-prop 1000
       (prop/for-all [colls (gen/vector (gen/vector gen/small-integer) 2 100)
                      merge merge-generator]
         (let [res (vec (apply coll/intersection compare merge (map sort colls)))]
@@ -227,7 +227,7 @@
         [[1 [:a]] [2 [:b]]] [[1 [:c]] [2 [:d]]] [[1 [:a :c]] [2 [:b :d]]]
         [[1 [:a]] [2 [:b]]] [[1 [:c]]] [[1 [:a :c]] [2 [:b]]]))
 
-    (tu/satisfies-prop 1000
+    (satisfies-prop 1000
       (prop/for-all [c1 (gen/vector gen/small-integer)
                      c2 (gen/vector gen/small-integer)
                      merge merge-generator]
@@ -236,7 +236,7 @@
                (= (set res) (set/union (set c1) (set c2))))))))
 
   (testing "three collections"
-    (tu/satisfies-prop 1000
+    (satisfies-prop 1000
       (prop/for-all [c1 (gen/vector gen/small-integer)
                      c2 (gen/vector gen/small-integer)
                      c3 (gen/vector gen/small-integer)
@@ -246,7 +246,7 @@
                (= (set res) (set/union (set c1) (set c2) (set c3))))))))
 
   (testing "many collections"
-    (tu/satisfies-prop 1000
+    (satisfies-prop 1000
       (prop/for-all [colls (gen/vector (gen/vector gen/small-integer) 2 100)
                      merge merge-generator]
         (let [res (vec (apply coll/union compare merge (map sort colls)))]

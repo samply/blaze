@@ -6,6 +6,7 @@
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache-spec]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.measure-spec]
@@ -43,7 +44,7 @@
 (def ^:private measure-population-uri
   #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-population")
 
-(def router
+(def ^:private router
   (reitit/router
    [["/MeasureReport" {:name :MeasureReport/type}]]
    {:syntax :bracket}))

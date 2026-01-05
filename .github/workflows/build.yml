@@ -745,6 +745,7 @@ jobs:
         - delete-history
         - patient-purge
         - graph
+        - cql
 
     steps:
     - name: Check out Git repository
@@ -772,6 +773,7 @@ jobs:
         ENABLE_INTERACTION_DELETE_HISTORY: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
         ENABLE_OPERATION_PATIENT_PURGE: ${{ matrix.feature == 'full' || matrix.feature == 'patient-purge' }}
         ENABLE_OPERATION_GRAPH: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
+        ENABLE_OPERATION_CQL: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
       run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml up -d
 
     - name: Wait for Blaze
@@ -974,6 +976,22 @@ jobs:
 
     - name: Download Observation Resources that end before the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=eb2020" 24527
+
+    - name: Operation CQL Arithmetic
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
+      run: .github/scripts/operation-cql-arithmetic.sh
+
+    - name: Operation CQL Observation List
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
+      run: .github/scripts/operation-cql-observation-list.sh
+
+    - name: Operation CQL Patient List
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
+      run: .github/scripts/operation-cql-patient-list.sh
+
+    - name: Operation CQL Patient Age
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
+      run: .github/scripts/operation-cql-patient-age.sh
 
     - name: Check Observation Date Search
       run: .github/scripts/check-date-search.sh "Observation"
