@@ -5,6 +5,7 @@
                   :color? false}
              :coverage {:plugins [:kaocha.plugin/cloverage]
                         :cloverage/opts
-                        {:codecov? true}
+                        {:ns-exclude-regex [".+\\.spec"]
+                         :codecov? true}
                         :reporter kaocha.report/documentation
                         :color? false}}]
