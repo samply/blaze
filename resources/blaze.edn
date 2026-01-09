@@ -411,14 +411,13 @@
   ;; content hashes. It speeds up access to resources which are stored in the
   ;; key-value store in encoded format.
   ;;
-  ;; The env var DB_RESOURCE_CACHE_SIZE can be used to specify the maximum
-  ;; number of resources, the cache can hold. Please note that the actual memory
-  ;; size used depends on resource sizes. Please choose a cache size depending
-  ;; on your use case while monitoring JVM heap size.
+  ;; The env var DB_RESOURCE_CACHE_SIZE_RATIO can be used to specify the maximum
+  ;; ratio of JVM heap size that is allocated to the resource cache. Please
+  ;; choose a ratio depending on your use case while monitoring JVM heap size.
   ;;
   :blaze.db/resource-cache
   {:resource-store #blaze/ref :blaze.db/resource-store
-   :max-size #blaze/cfg ["DB_RESOURCE_CACHE_SIZE" nat-int? 100000]}
+   :max-size-ratio #blaze/cfg ["DB_RESOURCE_CACHE_SIZE_RATIO" double? 0.25]}
 
   ;;
   ;; Search Param Registry
@@ -1534,4 +1533,34 @@
 
     :blaze/cache-collector
     {:caches
-     {"operation-graph-compiled-graph-cache" #blaze/ref :blaze.operation.graph/compiled-graph-cache}}}}]}
+     {"operation-graph-compiled-graph-cache" #blaze/ref :blaze.operation.graph/compiled-graph-cache}}}}
+
+  {:key :cql
+   :name "Operation $cql"
+   :toggle "ENABLE_OPERATION_CQL"
+   :config
+   {:blaze.rest-api/operations
+    [#:blaze.rest-api.operation
+      {:code "cql"
+       :def-uri "https://hl7.org/fhir/uv/cql/OperationDefinition-cql-cql.html"
+       :affects-state false
+       :resource-types ["Resource"]
+       :system-handler #blaze/ref :blaze.fhir.operation/cql
+       :documentation "The $cql operation evaluates a CQL expression and returns the result."}]
+
+    :blaze.fhir.operation/cql
+    {:node #blaze/ref :blaze.db.main/node
+     :terminology-service #blaze/ref :blaze.terminology-service/not-available
+     :executor #blaze/ref :blaze.fhir.operation.cql/executor
+     :clock #blaze/ref :blaze/clock
+     :rng-fn #blaze/ref :blaze/rng-fn
+     :timeout #blaze/ref :blaze.fhir.operation.cql/timeout}
+
+    :blaze.fhir.operation.cql/timeout
+    {:millis #blaze/cfg ["FHIR_OPERATION_CQL_TIMEOUT" nat-int? 60000]}
+
+    :blaze.fhir.operation.cql/executor
+    {:num-threads #blaze/cfg ["FHIR_OPERATION_CQL_THREADS" nat-int? :available-processors]}
+
+    :blaze.fhir.operation.cql/compile-duration-seconds {}
+    :blaze.fhir.operation.cql/evaluate-duration-seconds {}}}]}

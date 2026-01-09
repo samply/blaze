@@ -47,10 +47,9 @@
 (def patient-2-hash (hash/generate patient-2))
 (def code-system-0-hash (hash/generate code-system-0))
 
-(def config
+(def ^:private config
   {:blaze.db/resource-cache
-   {:resource-store (ig/ref ::rs/kv)
-    :max-size 100}
+   {:resource-store (ig/ref ::rs/kv)}
    ::rs/kv
    {:kv-store (ig/ref ::kv/mem)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
@@ -65,6 +64,14 @@
     :use-regex false}
    :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}})
+
+(def ^:private zero-config
+  "Creates a special version of a no-op cache."
+  (assoc-in config [:blaze.db/resource-cache :max-size-ratio] 0))
+
+(def ^:private one-config
+  "Constraints the max-size-ratio to 0.8."
+  (assoc-in config [:blaze.db/resource-cache :max-size-ratio] 1))
 
 (deftest init-test
   (testing "nil config"
@@ -86,53 +93,57 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.db/resource-store]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
-  (testing "invalid max-size"
-    (given-failed-system (assoc-in config [:blaze.db/resource-cache :max-size] ::invalid)
+  (testing "invalid max-size-ratio"
+    (given-failed-system (assoc-in config [:blaze.db/resource-cache :max-size-ratio] ::invalid)
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [::rc/max-size]
+      [:cause-data ::s/problems 0 :via] := [::rc/max-size-ratio]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest get-test
   (testing "success"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
-      @(rs/put! store {patient-0-hash patient-0
-                       patient-1-hash patient-1
-                       code-system-0-hash code-system-0})
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+        @(rs/put! store {patient-0-hash patient-0
+                         patient-1-hash patient-1
+                         code-system-0-hash code-system-0})
 
-      (are [key resource] (= resource @(rc/get cache key))
-        [:fhir/Patient patient-0-hash :complete] patient-0
-        [:fhir/Patient patient-1-hash :complete] patient-1
-        [:fhir/CodeSystem code-system-0-hash :complete] code-system-0
-        [:fhir/CodeSystem code-system-0-hash :summary] {:fhir/type :fhir/CodeSystem :id "0"
-                                                        :meta (type/meta {:tag [fu/subsetted]})}
-        [:fhir/CodeSystem code-system-0-hash :complete] code-system-0)))
+        (are [key resource] (= resource @(rc/get cache key))
+          [:fhir/Patient patient-0-hash :complete] patient-0
+          [:fhir/Patient patient-1-hash :complete] patient-1
+          [:fhir/CodeSystem code-system-0-hash :complete] code-system-0
+          [:fhir/CodeSystem code-system-0-hash :summary] {:fhir/type :fhir/CodeSystem :id "0"
+                                                          :meta (type/meta {:tag [fu/subsetted]})}
+          [:fhir/CodeSystem code-system-0-hash :complete] code-system-0))))
 
   (testing "not-found"
-    (with-system [{cache :blaze.db/resource-cache} config]
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache} config]
 
-      (is (nil? @(rc/get cache [:fhir/Patient patient-0-hash :complete]))))))
+        (is (nil? @(rc/get cache [:fhir/Patient patient-0-hash :complete])))))))
 
 (deftest multi-get-test
   (testing "found both"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
-      @(rs/put! store {patient-0-hash patient-0
-                       patient-1-hash patient-1})
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+        @(rs/put! store {patient-0-hash patient-0
+                         patient-1-hash patient-1})
 
-      (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
-              [:fhir/Patient patient-1-hash :complete] patient-1}
-             @(st/with-instrument-disabled
-                (rc/multi-get cache [[:fhir/Patient patient-0-hash :complete]
-                                     [:fhir/Patient patient-1-hash :complete]]))))))
+        (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
+                [:fhir/Patient patient-1-hash :complete] patient-1}
+               @(st/with-instrument-disabled
+                  (rc/multi-get cache [[:fhir/Patient patient-0-hash :complete]
+                                       [:fhir/Patient patient-1-hash :complete]])))))))
 
   (testing "found one"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
-      @(rs/put! store {patient-0-hash patient-0})
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+        @(rs/put! store {patient-0-hash patient-0})
 
-      (is (= {[:fhir/Patient patient-0-hash :complete] patient-0}
-             @(st/with-instrument-disabled
-                (rc/multi-get cache [[:fhir/Patient patient-0-hash :complete]
-                                     [:fhir/Patient patient-1-hash :complete]])))))))
+        (is (= {[:fhir/Patient patient-0-hash :complete] patient-0}
+               @(st/with-instrument-disabled
+                  (rc/multi-get cache [[:fhir/Patient patient-0-hash :complete]
+                                       [:fhir/Patient patient-1-hash :complete]]))))))))
 
 (defn- generate-patients [n]
   (into
@@ -143,39 +154,45 @@
         [(hash/generate patient) patient])))
    (range n)))
 
+(defn- contains-key? [cache key]
+  (when (instance? DefaultResourceCache cache)
+    (some? (.getIfPresent ^AsyncCache (.cache ^DefaultResourceCache cache) key))))
+
 (defn- cache-size [cache]
   (.size (.asMap ^AsyncCache (.cache ^DefaultResourceCache cache))))
 
 (deftest multi-get-skip-cache-insertion-test
   (testing "just returns two existing patients"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
-      @(rs/put! store {patient-0-hash patient-0
-                       patient-1-hash patient-1})
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+        @(rs/put! store {patient-0-hash patient-0
+                         patient-1-hash patient-1})
 
-      @(rc/get cache [:fhir/Patient patient-0-hash :complete])
-      @(rc/get cache [:fhir/Patient patient-1-hash :complete])
+        @(rc/get cache [:fhir/Patient patient-0-hash :complete])
+        @(rc/get cache [:fhir/Patient patient-1-hash :complete])
 
-      (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
-              [:fhir/Patient patient-1-hash :complete] patient-1}
-             @(st/with-instrument-disabled
-                (rc/multi-get-skip-cache-insertion
-                 cache [[:fhir/Patient patient-0-hash :complete]
-                        [:fhir/Patient patient-1-hash :complete]]))))))
+        (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
+                [:fhir/Patient patient-1-hash :complete] patient-1}
+               @(st/with-instrument-disabled
+                  (rc/multi-get-skip-cache-insertion
+                   cache [[:fhir/Patient patient-0-hash :complete]
+                          [:fhir/Patient patient-1-hash :complete]])))))))
 
   (testing "not inserting both patients"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
-      @(rs/put! store {patient-0-hash patient-0
-                       patient-1-hash patient-1})
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+        @(rs/put! store {patient-0-hash patient-0
+                         patient-1-hash patient-1})
 
-      (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
-              [:fhir/Patient patient-1-hash :complete] patient-1}
-             @(st/with-instrument-disabled
-                (rc/multi-get-skip-cache-insertion
-                 cache [[:fhir/Patient patient-0-hash :complete]
-                        [:fhir/Patient patient-1-hash :complete]]))))
+        (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
+                [:fhir/Patient patient-1-hash :complete] patient-1}
+               @(st/with-instrument-disabled
+                  (rc/multi-get-skip-cache-insertion
+                   cache [[:fhir/Patient patient-0-hash :complete]
+                          [:fhir/Patient patient-1-hash :complete]]))))
 
-      (is (not (rc/contains? cache [:fhir/Patient patient-0-hash :complete])))
-      (is (not (rc/contains? cache [:fhir/Patient patient-1-hash :complete])))))
+        (is (not (contains-key? cache [:fhir/Patient patient-0-hash :complete])))
+        (is (not (contains-key? cache [:fhir/Patient patient-1-hash :complete]))))))
 
   (testing "not inserting second patient"
     (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
@@ -184,7 +201,7 @@
 
       @(rc/get cache [:fhir/Patient patient-0-hash :complete])
 
-      (is (rc/contains? cache [:fhir/Patient patient-0-hash :complete]))
+      (is (contains-key? cache [:fhir/Patient patient-0-hash :complete]))
 
       (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
               [:fhir/Patient patient-1-hash :complete] patient-1}
@@ -193,7 +210,7 @@
                  cache [[:fhir/Patient patient-0-hash :complete]
                         [:fhir/Patient patient-1-hash :complete]]))))
 
-      (is (not (rc/contains? cache [:fhir/Patient patient-1-hash :complete])))))
+      (is (not (contains-key? cache [:fhir/Patient patient-1-hash :complete])))))
 
   (testing "one contained, one non-contained and one not-found patient"
     (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
@@ -202,7 +219,7 @@
 
       @(rc/get cache [:fhir/Patient patient-0-hash :complete])
 
-      (is (rc/contains? cache [:fhir/Patient patient-0-hash :complete]))
+      (is (contains-key? cache [:fhir/Patient patient-0-hash :complete]))
 
       (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
               [:fhir/Patient patient-1-hash :complete] patient-1}
@@ -212,7 +229,7 @@
                         [:fhir/Patient patient-1-hash :complete]
                         [:fhir/Patient patient-2-hash :complete]]))))
 
-      (is (not (rc/contains? cache [:fhir/Patient patient-1-hash :complete])))))
+      (is (not (contains-key? cache [:fhir/Patient patient-1-hash :complete])))))
 
   (testing "100 patients"
     (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
@@ -253,8 +270,7 @@
       (is (= 1 (ccp/-estimated-size cache)))))
 
   (testing "with zero max size"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv}
-                  (assoc-in config [:blaze.db/resource-cache :max-size] 0)]
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} zero-config]
 
       (is (zero? (.hitCount ^CacheStats (ccp/-stats cache))))
       (is (zero? (ccp/-estimated-size cache)))

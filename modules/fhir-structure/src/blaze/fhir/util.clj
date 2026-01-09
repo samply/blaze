@@ -1,8 +1,13 @@
 (ns blaze.fhir.util
+  (:refer-clojure :exclude [str])
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
+   [blaze.fhir.spec.type Base]
+   [com.google.common.base CaseFormat]
    [java.util Comparator]))
 
 (set! *warn-on-reflection* true)
@@ -17,20 +22,22 @@
        (when (some? value)
          {:fhir/type :fhir.Parameters/parameter
           :name (type/string name)
-          (if (:fhir/type value) :resource :value) value})))
+          ;; TODO: improve resource detection
+          (if (instance? Base value) :value :resource) value})))
     (partition 2 nvs))})
 
 (def subsetted
+  "SUBSETTED Coding"
   #fhir/Coding
-   {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+   {:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
     :code #fhir/code "SUBSETTED"})
 
 (defn subsetted?
   "Checks whether `coding` is a SUBSETTED coding."
   {:arglists '([coding])}
-  [{:keys [system code]}]
-  (and (= #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
-       (= #fhir/code "SUBSETTED" code)))
+  [{{system-value :value} :system {code-value :value} :code}]
+  (and (= "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system-value)
+       (= "SUBSETTED" code-value)))
 
 (defn- nat-cmp [^Comparable x y]
   (.compareTo x y))
@@ -66,8 +73,8 @@
   (:blaze.db/t (:blaze.db/tx (meta resource))))
 
 (def ^:private priority-cmp
-  (-> (Comparator/comparing #(-> % :status type/value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
-      (.thenComparing #(-> % :version type/value) version-cmp)
+  (-> (Comparator/comparing #(-> % :status :value) (Comparator/nullsFirst (.reversed (Comparator/naturalOrder))))
+      (.thenComparing #(-> % :version :value) version-cmp)
       (.thenComparing t (Comparator/nullsFirst (Comparator/naturalOrder)))
       (.thenComparing #(% :id) (Comparator/naturalOrder))
       (.reversed)))
@@ -80,3 +87,53 @@
    * id"
   [resources]
   (sort priority-cmp resources))
+
+(defn- camel->kebab [s]
+  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
+
+(defn- plural [s]
+  (if (str/ends-with? s "y")
+    (str (subs s 0 (dec (count s))) "ies")
+    (str s "s")))
+
+(defn- assoc-via [params {:keys [cardinality]} name value]
+  (if (identical? :many cardinality)
+    (update params (keyword (plural (camel->kebab name))) (fnil into []) (if (sequential? value) value [value]))
+    (assoc params (keyword (camel->kebab name)) value)))
+
+(defn coerce-params
+  "Coerces parameters from `parameters` resource according to `specs`.
+
+  Returns an anomaly in case of coercion errors."
+  {:arglists '([specs parameters])}
+  [specs {params :parameter}]
+  (reduce
+   (fn [new-params {{name :value} :name :as param}]
+     (if-let [{:keys [action] :as spec} (specs name)]
+       (case action
+         :copy
+         (assoc-via new-params spec name (:value (:value param)))
+
+         :parse-nat-long
+         (let [value (:value (:value param))]
+           (if-not (neg? value)
+             (assoc-via new-params spec name value)
+             (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name)))))
+
+         :parse
+         (assoc-via new-params spec name ((:parse spec) (:value (:value param))))
+
+         :parse-canonical
+         (assoc-via new-params spec name (:value param))
+
+         :copy-complex-type
+         (assoc-via new-params spec name (:value param))
+
+         :copy-resource
+         (assoc-via new-params spec name (:resource param))
+
+         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
+                                  :http/status 400)))
+       new-params))
+   {}
+   params))

@@ -47,7 +47,7 @@
     ["/MeasureReport/{id}/_history/{vid}" {:name :MeasureReport/versioned-instance}]]
    {:syntax :bracket}))
 
-(defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
+(defmulti entry-tx-op (fn [{{:keys [method]} :request}] (:value method)))
 
 (defmethod entry-tx-op "PUT"
   [{:keys [resource]}]
@@ -157,9 +157,8 @@
        :code (type/code code)})]}))
 
 (defn- cql-expression [expr]
-  {:fhir/type :fhir/Expression
-   :language #fhir/code "text/cql-identifier"
-   :expression (type/string expr)})
+  (type/expression {:language #fhir/code "text/cql-identifier"
+                    :expression (type/string expr)}))
 
 (defn encode-base64 [^String s]
   (-> (Base64/getEncoder)
@@ -629,7 +628,7 @@
             :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2000"
                                     :end #fhir/dateTime #system/date-time "2020"}
             [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-            [:group 0 :population 0 :count type/value] := count))))
+            [:group 0 :population 0 :count :value] := count))))
 
     (testing "with stratifiers"
       (doseq [[library count] [[(library-gender true) 1] [(library-gender false) 0]]]
@@ -667,14 +666,14 @@
               :type := #fhir/code "individual"
               :measure := #fhir/canonical "measure-155502"
               [:subject :reference] := #fhir/string "Patient/0"
-              :date := #system/date-time "1970-01-01T00:00Z"
-              :period := #fhir/Period{:start #fhir/dateTime "2000"
-                                      :end #fhir/dateTime "2020"}
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00Z"
+              :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2000"
+                                      :end #fhir/dateTime #system/date-time "2020"}
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 0 :population 0 :count type/value] := count
+              [:group 0 :population 0 :count :value] := count
               [:group 0 :stratifier 0 :code 0 :text] := #fhir/string "gender"
-              [:group 0 :stratifier 0 :stratum 0 :value :text type/value] := (when (= 1 count) "male")
-              [:group 0 :stratifier 0 :stratum 0 :population 0 :count type/value] := (when (= 1 count) 1))))))
+              [:group 0 :stratifier 0 :stratum 0 :value :text :value] := (when (= 1 count) "male")
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :count :value] := (when (= 1 count) 1))))))
 
     (testing "invalid subject"
       (with-system-data
@@ -880,7 +879,7 @@
 
 (defmacro testing-query [name count]
   `(testing ~name
-     (is (= ~count (-> (first-population (evaluate ~name)) :count type/value)))))
+     (is (= ~count (-> (first-population (evaluate ~name)) :count :value)))))
 
 (deftest integration-test
   (testing-query "q1" 2)
@@ -1176,9 +1175,9 @@
 
   (given (first-stratifier-strata (evaluate "q41-specimen-multi-stratifier"))
     count := 4
-    [0 :component 0 :code :coding 0 :code type/value] := "sample-diagnosis"
+    [0 :component 0 :code :coding 0 :code :value] := "sample-diagnosis"
     [0 :component 0 :value :text] := #fhir/string "C34.9"
-    [0 :component 1 :code :coding 0 :code type/value] := "sample-type"
+    [0 :component 1 :code :coding 0 :code :value] := "sample-type"
     [0 :component 1 :value :text] := #fhir/string "blood-plasma"
     [0 :population 0 :count] := #fhir/integer 2
     [1 :component 0 :value :text] := #fhir/string "C34.9"

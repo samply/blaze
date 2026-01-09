@@ -12,15 +12,15 @@
    (some
     (fn [{:fhir/keys [type] :as resource}]
       (when (identical? :fhir/ValueSet type)
-        (when (= url (type/value (:url resource)))
+        (when (= url (:value (:url resource)))
           (ac/completed-future resource))))
     tx-resources))
   ([tx-resources url version]
    (some
     (fn [{:fhir/keys [type] :as resource}]
       (when (identical? :fhir/ValueSet type)
-        (when (= url (type/value (:url resource)))
-          (when (= version (type/value (:version resource)))
+        (when (= url (:value (:url resource)))
+          (when (= version (:value (:version resource)))
             (ac/completed-future resource)))))
     tx-resources)))
 
@@ -53,7 +53,7 @@
         (reduce
          (fn [param {:keys [url value]}]
            (condp = url
-             "name" (assoc param :name (type/string (type/value value)))
+             "name" (assoc param :name (type/string (:value value)))
              "value" (assoc param :value value)
              param))
          {:fhir/type :fhir.Parameters/parameter}
@@ -64,4 +64,4 @@
   {:arglists '([value-set])}
   [{:keys [language]}]
   (when language
-    {:display-languages [(type/value language)]}))
+    {:display-languages [(:value language)]}))

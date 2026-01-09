@@ -1,0 +1,10 @@
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
+
+ :lint-as
+ {blaze.fhir.operation.cql-test/with-handler clojure.core/fn}}

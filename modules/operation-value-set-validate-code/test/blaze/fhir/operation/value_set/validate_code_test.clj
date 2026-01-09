@@ -4,6 +4,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.validate-code]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util :refer [parameter]]
    [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -69,10 +70,6 @@
        ~txs
        (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
          ~@body))))
-
-(defn- parameter [name]
-  (fn [{:keys [parameter]}]
-    (filterv #(= name (type/value (:name %))) parameter)))
 
 (deftest handler-test
   (testing "value set not found"
@@ -189,7 +186,7 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string "result"
-              [:parameter 0 :value type/value] := result)))
+              [:parameter 0 :value :value] := result)))
 
         (testing "ignores unknown parameter"
           (let [{:keys [status body]}
@@ -218,7 +215,7 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string "result"
-              [:parameter 0 :value type/value] := result))))
+              [:parameter 0 :value :value] := result))))
 
       (testing "and coding"
         (let [{:keys [status body]}
@@ -292,7 +289,7 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string "result"
-              [:parameter 0 :value type/value] := result)))
+              [:parameter 0 :value :value] := result)))
 
         (testing "with display"
           (doseq [lang [nil "de" "en,de"]]
@@ -461,7 +458,7 @@
         (given body
           :fhir/type := :fhir/Parameters
           [:parameter 0 :name] := #fhir/string "result"
-          [:parameter 0 :value type/value] := true))
+          [:parameter 0 :value :value] := true))
 
       (testing "with system-version"
         (let [{:keys [status body]}
@@ -475,7 +472,7 @@
           (given body
             :fhir/type := :fhir/Parameters
             [:parameter 0 :name] := #fhir/string "result"
-            [:parameter 0 :value type/value] := true)))))
+            [:parameter 0 :value :value] := true)))))
 
   (testing "successful validation by valueSet"
     (testing "code only"
@@ -506,7 +503,7 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string "result"
-              [:parameter 0 :value type/value] := result)))))
+              [:parameter 0 :value :value] := result)))))
 
     (testing "code and system"
       (with-handler [handler]
@@ -536,7 +533,7 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string "result"
-              [:parameter 0 :value type/value] := result))))))
+              [:parameter 0 :value :value] := result))))))
 
   (testing "successful validation with externally supplied value set and code system"
     (with-handler [handler]

@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec.impl.xml
   (:require
+   [blaze.anomaly :refer [if-ok]]
    [blaze.fhir.spec.type :as type]
    [clojure.alpha.spec :as s]
    [clojure.data.xml.name :as xml-name])
@@ -26,17 +27,26 @@
 (defn remove-character-content [element]
   (update element :content (partial filter element?)))
 
+(defn xml-constructor [constructor system-constructor]
+  (fn [{{:keys [id value]} :attrs content :content}]
+    (let [extension (some-> (seq content) vec)]
+      (if-ok [value (some-> value system-constructor)]
+        (if (or id extension)
+          (constructor {:id id :extension extension :value value})
+          (constructor value))
+        (fn [_] ::s/invalid)))))
+
 (defn primitive-xml-form
-  ([constructor]
+  ([constructor system-constructor]
    `(s/and
      element?
      (s/conformer remove-character-content set-extension-tag)
      (s/schema {:content (s/coll-of :fhir.xml/Extension)})
-     (s/conformer ~constructor type/to-xml)))
-  ([regex constructor]
+     (s/conformer (xml-constructor ~constructor ~system-constructor) type/to-xml)))
+  ([regex constructor system-constructor]
    `(s/and
      element?
      (fn [~'e] (value-matches? ~regex ~'e))
      (s/conformer remove-character-content set-extension-tag)
      (s/schema {:content (s/coll-of :fhir.xml/Extension)})
-     (s/conformer ~constructor type/to-xml))))
+     (s/conformer (xml-constructor ~constructor ~system-constructor) type/to-xml))))

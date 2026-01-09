@@ -15,3 +15,7 @@
 (s/fdef fu/sort-by-priority
   :args (s/cat :resources (s/coll-of :fhir/Resource))
   :ret (s/coll-of :fhir/Resource))
+
+(s/fdef fu/coerce-params
+  :args (s/cat :specs map? :parameters :fhir/Parameters)
+  :ret map?)

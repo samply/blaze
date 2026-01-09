@@ -29,6 +29,10 @@ Rigorous adherence to these patterns is required:
 * **Java Interop:**
   * Avoid reflection.
   * **Mandatory:** Add `(set! *warn-on-reflection* true)` to any namespace performing Java interop.
+* **Reuse:**
+  * Avoid code duplication.
+  * Use existing functions if possible.
+  * Create a function if code is used more than two times.
 
 ## Verification & Workflow
 
