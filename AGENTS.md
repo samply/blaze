@@ -37,3 +37,7 @@ Before finishing a task, ensure the following commands pass:
 1.  **Format:** `make fmt`
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
 3.  **Test:** `make test` (Runs module and root tests)
+
+## General Rules
+
+* **Do not commit changes:** Never commit changes to the git repository. The user will handle committing.

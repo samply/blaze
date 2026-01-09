@@ -33,14 +33,14 @@
     (re-matches sct-u/module-only-version-pattern version)
     (do-sync [code-systems (cs-u/code-systems db url)]
       (filterv
-       #(str/starts-with? (type/value (:version %)) version)
+       #(str/starts-with? (:value (:version %)) version)
        code-systems))
 
     :else
     (d/pull-many db (vec (code-system-query db url version)))))
 
 (defn- assoc-context [{:keys [version] :as code-system} context]
-  (when-ok [[module-id version] (sct-u/module-version (type/value version))]
+  (when-ok [[module-id version] (sct-u/module-version (:value version))]
     (assoc code-system :sct/context context :sct/module-id module-id
            :sct/version version)))
 
@@ -94,16 +94,16 @@
 
 (defn- fully-specified-name-designation [term]
   {:language #fhir/code "en"
-   :use #fhir/Coding{:system #fhir/uri "http://snomed.info/sct"
+   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
                      :code #fhir/code "900000000000003001"
-                     :display #fhir/string "Fully specified name"}
+                     :display #fhir/string-interned "Fully specified name"}
    :value (type/string term)})
 
 (defn- synonym-designation [[_id [language-code term]]]
   {:language (type/code language-code)
-   :use #fhir/Coding{:system #fhir/uri "http://snomed.info/sct"
+   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
                      :code #fhir/code "900000000000013009"
-                     :display #fhir/string "Synonym"}
+                     :display #fhir/string-interned "Synonym"}
    :value (type/string term)})
 
 (defn- assoc-designations [concept code-system find-synonyms code]
@@ -116,7 +116,7 @@
   [code-system find-synonyms code
    {:keys [include-version include-designations] :as params}]
   (cond->
-   {:system #fhir/uri "http://snomed.info/sct"
+   {:system #fhir/uri-interned "http://snomed.info/sct"
     :code (type/code (str code))
     :display (type/string (display code-system find-synonyms code params))}
     include-version (assoc :version (:version code-system))
@@ -153,7 +153,7 @@
   (into
    []
    (comp
-    (keep (comp parse-sctid type/value :code))
+    (keep (comp parse-sctid :value :code))
     ((if active-only active-concept-xf concept-xf) code-system params))
    concepts))
 

@@ -4,8 +4,8 @@
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.codec.date :as codec-date]
    [blaze.db.impl.index.search-param-value-resource-spec]
+   [blaze.fhir.spec.generators :as fg]
    [blaze.test-util :as tu :refer [satisfies-prop]]
-   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.properties :as prop])
@@ -84,12 +84,12 @@
 (deftest encode-range-test
   (testing "extract lower bound"
     (satisfies-prop 100
-      (prop/for-all [date (s/gen :system/date)]
+      (prop/for-all [date fg/date-value]
         (= (codec-date/lower-bound-bytes (codec-date/encode-range date))
            (codec-date/encode-lower-bound date)))))
 
   (testing "extract upper bound"
     (satisfies-prop 100
-      (prop/for-all [date (s/gen :system/date)]
+      (prop/for-all [date fg/date-value]
         (= (codec-date/upper-bound-bytes (codec-date/encode-range date))
            (codec-date/encode-upper-bound date))))))

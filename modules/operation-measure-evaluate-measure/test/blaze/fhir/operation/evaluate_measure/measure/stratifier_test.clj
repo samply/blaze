@@ -89,16 +89,13 @@
     AgeInYearsAt(encounter.period.start)")
 
 (defn- cql-expression [expr]
-  {:fhir/type :fhir/Expression
-   :language #fhir/code "text/cql-identifier"
-   :expression (type/string expr)})
+  (type/expression {:language #fhir/code "text/cql-identifier"
+                    :expression (type/string expr)}))
 
 (def stratifier-with-missing-expression
   {:fhir/type :fhir.Measure.group/stratifier
    :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-   :criteria
-   {:fhir/type :fhir/Expression
-    :language #fhir/code "text/cql-identifier"}})
+   :criteria #fhir/Expression{:language #fhir/code "text/cql-identifier"}})
 
 (def gender-stratifier
   {:fhir/type :fhir.Measure.group/stratifier
@@ -120,9 +117,7 @@
    :component
    [{:fhir/type :fhir.Measure.group.stratifier/component
      :code #fhir/CodeableConcept{:text #fhir/string "age"}
-     :criteria
-     {:fhir/type :fhir/Expression
-      :language #fhir/code "text/cql-identifier"}}
+     :criteria #fhir/Expression{:language #fhir/code "text/cql-identifier"}}
     {:fhir/type :fhir.Measure.group.stratifier/component
      :code #fhir/CodeableConcept{:text #fhir/string "gender"}
      :criteria (cql-expression "Gender")}]})
@@ -304,13 +299,13 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"
                  :gender #fhir/code "male"
-                 :birthDate #fhir/date "1960"}]
+                 :birthDate #fhir/date #system/date "1960"}]
           [:put {:fhir/type :fhir/Patient :id "2"
                  :gender #fhir/code "female"
-                 :birthDate #fhir/date "1960"}]
+                 :birthDate #fhir/date #system/date "1960"}]
           [:put {:fhir/type :fhir/Patient :id "3"
                  :gender #fhir/code "male"
-                 :birthDate #fhir/date "1950"}]]]
+                 :birthDate #fhir/date #system/date "1950"}]]]
 
         (let [{:keys [db] :as context} (context system library-age-gender)
               handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
@@ -326,27 +321,27 @@
 
     (testing "Encounter measure"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date "2000"}]
-          [:put {:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date "2001"}]
-          [:put {:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date "2003"}]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date #system/date "2000"}]
+          [:put {:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date #system/date "2001"}]
+          [:put {:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date #system/date "2003"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
           [:put {:fhir/type :fhir/Encounter :id "1"
                  :status #fhir/code "finished"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime "2020"}}]
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020"}}]
           [:put {:fhir/type :fhir/Encounter :id "2"
                  :status #fhir/code "planned"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
-                 :period #fhir/Period{:start #fhir/dateTime "2021"}}]
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2021"}}]
           [:put {:fhir/type :fhir/Encounter :id "3"
                  :status #fhir/code "finished"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime "2022"}}]
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2022"}}]
           [:put {:fhir/type :fhir/Encounter :id "4"
                  :status #fhir/code "finished"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime "2022"}}]]]
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2022"}}]]]
 
         (let [{:keys [db] :as context} (context system library-encounter-status-age)
               handles [{:population-handle (em-tu/resource db "Encounter" "0")
@@ -374,16 +369,16 @@
 
     (testing "Quantity"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date "2000"}]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date #system/date "2000"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2020"
+                 :effective #fhir/dateTime #system/date-time "2020"
                  :value #fhir/Quantity
                          {:value #fhir/decimal 1M
                           :code #fhir/code "kg"}}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime "2021"
+                 :effective #fhir/dateTime #system/date-time "2021"
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
 

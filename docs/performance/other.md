@@ -49,8 +49,7 @@ docker run --name blaze --rm -v blaze-data:/app/data \
   -e DB_BLOCK_CACHE_SIZE=16384 \
   -e DB_RESOURCE_INDEXER_THREADS=30 \
   -e DB_RESOURCE_INDEXER_BATCH_SIZE=16 \
-  -e DB_RESOURCE_CACHE_SIZE=500000 \
-  -d samply/blaze:0.11.0-alpha.6
+  -d samply/blaze:1.4
 ```
 
 ### Relevant Startup Log Output
