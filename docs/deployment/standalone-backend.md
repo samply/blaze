@@ -67,6 +67,16 @@ services:
     - "8080:8080"
     volumes:
     - "blaze-data:/app/data"
+    healthcheck:
+      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 volumes:
   blaze-data:
 ```
+
+### Health Check
+
+The command `curl` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
