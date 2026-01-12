@@ -134,6 +134,12 @@ services:
     - kafka-topic-creator-main
     - kafka-topic-creator-admin
     - cassandra-init-data
+    healthcheck:
+      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   blaze-2:
     image: "blaze:latest"
@@ -164,6 +170,12 @@ services:
     - kafka-topic-creator-main
     - kafka-topic-creator-admin
     - cassandra-init-data
+    healthcheck:
+      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   ingress:
     image: "haproxy:2.8@sha256:d533c21b446c45e47dc5b89933df1e256ec09976dc5e83a4c1bea209c2baeeaa"

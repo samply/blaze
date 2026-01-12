@@ -195,12 +195,22 @@ backend:
   volumes:
   - "blaze-data:/app/data"
   - "../../../modules/ingress/keycloak-trust-store.p12:/app/keycloak-trust-store.p12:ro"
+  healthcheck:
+    test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
 ```
 
 > [!IMPORTANT]
 > Please remove the `extra_hosts` key if you use an external running Keycloak instance.
 
 Important environment variables are `ENABLE_ADMIN_API` and `OPENID_PROVIDER_URL`. Both are feature toggles that enable features needed by the frontend. The `OPENID_PROVIDER_URL` should be set to the same value as `AUTH_ISSUER` at the frontend. The `OPENID_CLIENT_TRUST_STORE` is only needed if the server certificate of Keycloak isn't signed by a standard certificate authority. The file `keycloak-trust-store.p12` is generated in the ingress module. You can use similar scripts to generate the trust store in your environment. Full documentation of the environment variables can be found [here](./environment-variables.md).
+
+#### Health Check
+
+The command `curl` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
 
 ### Keycloak Auth Provider
 

@@ -6,6 +6,7 @@ services:
     - "8090:8080"
     volumes:
     - "${GITHUB_WORKSPACE}/.github/openid-auth-test/realm:/opt/keycloak/data/import"
+
   blaze:
     image: "blaze:latest"
     environment:
@@ -17,5 +18,12 @@ services:
     - "blaze-data:/app/data"
     depends_on:
     - keycloak
+    healthcheck:
+      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
 volumes:
   blaze-data:

@@ -173,7 +173,17 @@ blaze-1:
   - kafka-topic-creator-main
   - kafka-topic-creator-admin
   - cassandra-init-data
+  healthcheck:
+    test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
 ```
+
+### Health Check
+
+The command `curl` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
 
 [1]: <http://kafka.apache.org>
 [4]: <https://cassandra.apache.org>

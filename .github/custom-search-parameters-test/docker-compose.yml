@@ -9,5 +9,11 @@ services:
     volumes:
     - "${GITHUB_WORKSPACE}/.github/custom-search-parameters-test/custom-search-parameters.json:/app/custom-search-parameters.json:ro"
     - "blaze-data:/app/data"
+    healthcheck:
+      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 volumes:
   blaze-data:
