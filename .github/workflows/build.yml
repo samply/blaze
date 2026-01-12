@@ -697,6 +697,12 @@ jobs:
         variant:
         - standalone
         - distributed
+        feature:
+        - none
+        - full
+        - delete-history
+        - patient-purge
+        - graph
 
     steps:
     - name: Check out Git repository
@@ -720,12 +726,11 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -e ENABLE_INTERACTION_DELETE_HISTORY=true -e ENABLE_OPERATION_PATIENT_PURGE=true -e ENABLE_OPERATION_GRAPH=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
-      if: ${{ matrix.variant == 'standalone' }}
-
-    - name: Run Kafka, Cassandra and Blaze
-      run: docker compose -f .github/distributed-test/docker-compose.yml up -d
-      if: ${{ matrix.variant == 'distributed' }}
+      env:
+        ENABLE_INTERACTION_DELETE_HISTORY: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
+        ENABLE_OPERATION_PATIENT_PURGE: ${{ matrix.feature == 'full' || matrix.feature == 'patient-purge' }}
+        ENABLE_OPERATION_GRAPH: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
+      run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml up -d
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -739,8 +744,8 @@ jobs:
       run: .github/scripts/wait-for-url.sh http://localhost:8082/metrics
       if: ${{ matrix.variant == 'distributed' }}
 
-    - name: Docker Logs
-      run: docker logs blaze
+    - name: Docker Logs Blaze
+      run: docker compose -f .github/standalone-test/docker-compose.yml logs blaze
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Docker Logs Kafka
@@ -1226,6 +1231,7 @@ jobs:
       run: .github/scripts/patient-everything-paged-date-range.sh
 
     - name: Patient Graph
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
       run: .github/scripts/graph.sh
 
     - name: Patient Identical Update
@@ -1286,6 +1292,7 @@ jobs:
       run: .github/scripts/create-patient-with-ancient-birth-year.sh
 
     - name: Delete History
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
       run: .github/scripts/delete-history.sh
 
     - name: Conditional Delete - Delete All List Resources
@@ -1295,6 +1302,7 @@ jobs:
       run: .github/scripts/conditional-delete-type/delete-multiple-types-in-transaction.sh
 
     - name: Patient Purge
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'patient-purge' }}
       run: .github/scripts/patient-purge.sh
 
     - name: Chaining on DocumentReference
