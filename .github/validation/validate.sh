@@ -9,6 +9,7 @@ java -jar validator_cli.jar -version 4.0.1 -level error \
   -output-style csv -output result.csv \
   -tx http://localhost:8080/fhir -authorise-non-conformant-tx-servers \
   -clear-tx-cache \
+  -ig de.basisprofil.r4#1.5.4 \
   -ig de.medizininformatikinitiative.kerndatensatz.person#2025.0.0 \
   -ig de.medizininformatikinitiative.kerndatensatz.laborbefund#2025.0.2 \
   -ig de.medizininformatikinitiative.kerndatensatz.medikation#2025.0.0 \

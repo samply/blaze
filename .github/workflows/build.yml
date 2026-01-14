@@ -1824,6 +1824,19 @@ jobs:
     - name: Install Validator
       run: .github/scripts/install-validator.sh
 
+    - name: Download FHIR Package Cache
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      with:
+        repository: medizininformatik-initiative/fhir-package-store
+        ref: cache-store
+        path: ~/.fhir
+
+    - name: Cache FHIR Packages
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5
+      with:
+        path: ~/.fhir/packages
+        key: fhir-packages-integration-test-validation
+
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       with:
@@ -1893,6 +1906,19 @@ jobs:
 
     - name: Install Validator
       run: .github/scripts/install-validator.sh
+
+    - name: Download FHIR Package Cache
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      with:
+        repository: medizininformatik-initiative/fhir-package-store
+        ref: cache-store
+        path: ~/.fhir
+
+    - name: Cache FHIR Packages
+      uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5
+      with:
+        path: ~/.fhir/packages
+        key: fhir-packages-terminology-tests
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
