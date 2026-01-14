@@ -1,11 +1,8 @@
-FROM eclipse-temurin:21.0.9_10-jre-noble@sha256:67fc762eabacb56e5444b367889e04ce8c839b8f4b3d8ef3e459c5579fbefd8a
+FROM eclipse-temurin:25-jre-noble@sha256:d8dd4342b7dbb5a9c06d0499eecca86315346acc6a20026080642610344ceb2c
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && \
-    apt-get install libjemalloc2 -y && \
-    apt-get purge wget libncurses6 -y && \
-    apt-get autoremove -y && apt-get clean && \
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl libjemalloc2 wget; \
     rm -rf /var/lib/apt/lists/
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
@@ -15,6 +12,7 @@ WORKDIR /app
 USER 1001
 
 ENV LD_PRELOAD="libjemalloc.so.2"
+ENV BASE_JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow"
 ENV STORAGE="standalone"
 ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
@@ -22,4 +20,4 @@ ENV RESOURCE_DB_DIR="/app/data/resource"
 ENV ADMIN_INDEX_DB_DIR="/app/data/admin-index"
 ENV ADMIN_TRANSACTION_DB_DIR="/app/data/admin-transaction"
 
-CMD ["java", "-jar",  "blaze-1.4.1-standalone.jar"]
+CMD ["sh", "-c", "JAVA_TOOL_OPTIONS=\"${BASE_JAVA_TOOL_OPTIONS} ${JAVA_TOOL_OPTIONS}\" exec java -jar blaze-1.4.1-standalone.jar"]

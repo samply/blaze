@@ -135,11 +135,14 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-1-data:/app/data"
     depends_on:
-    - kafka-topic-creator-main
-    - kafka-topic-creator-admin
-    - cassandra-init-data
+      kafka-topic-creator-main:
+        condition: service_completed_successfully
+      kafka-topic-creator-admin:
+        condition: service_completed_successfully
+      cassandra-init-data:
+        condition: service_completed_successfully
     healthcheck:
-      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -175,11 +178,14 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-2-data:/app/data"
     depends_on:
-    - kafka-topic-creator-main
-    - kafka-topic-creator-admin
-    - cassandra-init-data
+      kafka-topic-creator-main:
+        condition: service_completed_successfully
+      kafka-topic-creator-admin:
+        condition: service_completed_successfully
+      cassandra-init-data:
+        condition: service_completed_successfully
     healthcheck:
-      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -192,8 +198,10 @@ services:
     volumes:
     - "./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"
     depends_on:
-    - blaze-1
-    - blaze-2
+      blaze-1:
+        condition: service_healthy
+      blaze-2:
+        condition: service_healthy
 
 volumes:
   kafka-data:

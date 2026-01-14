@@ -196,7 +196,7 @@ backend:
   - "blaze-data:/app/data"
   - "../../../modules/ingress/keycloak-trust-store.p12:/app/keycloak-trust-store.p12:ro"
   healthcheck:
-    test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+    test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
     interval: 10s
     timeout: 5s
     retries: 5
@@ -208,9 +208,12 @@ backend:
 
 Important environment variables are `ENABLE_ADMIN_API` and `OPENID_PROVIDER_URL`. Both are feature toggles that enable features needed by the frontend. The `OPENID_PROVIDER_URL` should be set to the same value as `AUTH_ISSUER` at the frontend. The `OPENID_CLIENT_TRUST_STORE` is only needed if the server certificate of Keycloak isn't signed by a standard certificate authority. The file `keycloak-trust-store.p12` is generated in the ingress module. You can use similar scripts to generate the trust store in your environment. Full documentation of the environment variables can be found [here](./environment-variables.md).
 
-#### Health Check
+### Health Check
 
-The command `curl` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
+The command `wget` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
+
+> [!CAUTION]
+> The command `curl` was never officially available in the Blaze backend image. It will be removed in version 1.6. Please migrate to use `wget`.
 
 ### Keycloak Auth Provider
 

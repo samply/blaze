@@ -19,7 +19,7 @@ services:
     depends_on:
     - keycloak
     healthcheck:
-      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
       interval: 10s
       timeout: 5s
       retries: 5

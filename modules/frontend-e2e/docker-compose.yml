@@ -31,6 +31,15 @@ services:
     - "../ingress/keycloak-cert.pem:/app/keycloak-cert.pem:ro"
     deploy:
       replicas: 2
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://127.0.0.1:3000/fhir" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
 
   backend:
     image: "blaze:latest"
@@ -50,7 +59,7 @@ services:
     - "blaze-data:/app/data"
     - "../ingress/keycloak-trust-store.p12:/app/keycloak-trust-store.p12:ro"
     healthcheck:
-      test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
       interval: 10s
       timeout: 5s
       retries: 5

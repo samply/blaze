@@ -202,8 +202,10 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-1-data:/app/data"
     depends_on:
-    - kafka-topic-creator
-    - cassandra-init-data
+      kafka-topic-creator:
+        condition: service_completed_successfully
+      cassandra-init-data:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   blaze-2:
@@ -229,8 +231,10 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-2-data:/app/data"
     depends_on:
-    - kafka-topic-creator
-    - cassandra-init-data
+      kafka-topic-creator:
+        condition: service_completed_successfully
+      cassandra-init-data:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   ingress:
@@ -241,8 +245,10 @@ services:
     - "./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"
     - "/dev/log:/dev/log"
     depends_on:
-    - blaze-1
-    - blaze-2
+      blaze-1:
+        condition: service_healthy
+      blaze-2:
+        condition: service_healthy
 
 volumes:
   kafka-1-data:

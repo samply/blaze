@@ -1625,11 +1625,8 @@ jobs:
     - name: Install All KDS Terminology Resources
       run: make -C .github/value-set-expand install
 
-    - name: Wait for the Data Server
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
-
-    - name: Wait for the Terminology Server
-      run: .github/scripts/wait-for-url.sh http://localhost:8082/health
+    - name: Wait for the Servers
+      run: docker compose -f .github/integration-test-kds/docker-compose.yml up --wait
 
     - name: Check Capability Statement of the Data Server
       run: .github/scripts/check-capability-statement.sh
@@ -2357,10 +2354,7 @@ jobs:
       run: .github/scripts/wait-for-url.sh http://localhost:8090/health/ready
 
     - name: Run Blaze
-      run: docker compose -f .github/openid-auth-test/docker-compose.yml up -d blaze
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+      run: docker compose -f .github/openid-auth-test/docker-compose.yml up --wait
 
     - name: Docker Logs Keycloak
       run: docker compose -f .github/openid-auth-test/docker-compose.yml logs keycloak
@@ -2392,10 +2386,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Keycloak and Blaze
-      run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml up -d
-
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+      run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml up --wait
 
     - name: Docker Logs Blaze
       run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml logs blaze
@@ -2548,10 +2539,7 @@ jobs:
       run: make -C modules/frontend-e2e install-playwright
 
     - name: Run Everything Else
-      run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d
-
-    - name: Sleep 30 Seconds
-      run: sleep 30
+      run: docker compose -f modules/frontend-e2e/docker-compose.yml up --wait
 
     - name: Docker Logs
       run: docker compose -f modules/frontend-e2e/docker-compose.yml logs
