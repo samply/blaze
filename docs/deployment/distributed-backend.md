@@ -170,11 +170,14 @@ blaze-1:
   - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
   - "blaze-1-data:/app/data"
   depends_on:
-  - kafka-topic-creator-main
-  - kafka-topic-creator-admin
-  - cassandra-init-data
+    kafka-topic-creator-main:
+      condition: service_completed_successfully
+    kafka-topic-creator-admin:
+      condition: service_completed_successfully
+    cassandra-init-data:
+      condition: service_completed_successfully
   healthcheck:
-    test: [ "CMD", "curl", "-sSf", "http://localhost:8080/health" ]
+    test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
     interval: 10s
     timeout: 5s
     retries: 5
@@ -183,7 +186,10 @@ blaze-1:
 
 ### Health Check
 
-The command `curl` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
+The command `wget` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
+
+> [!CAUTION]
+> The command `curl` was never officially available in the Blaze backend image. It will be removed in version 1.6. Please migrate to use `wget`.
 
 [1]: <http://kafka.apache.org>
 [4]: <https://cassandra.apache.org>
