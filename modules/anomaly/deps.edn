@@ -5,7 +5,7 @@
   {:local/root "../spec"}
 
   org.clj-commons/pretty
-  {:mvn/version "3.6.7"}}
+  {:mvn/version "3.6.8"}}
 
  :aliases
  {:test
