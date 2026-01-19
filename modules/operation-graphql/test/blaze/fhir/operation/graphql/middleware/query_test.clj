@@ -69,7 +69,7 @@
       [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code "error"
       [:body :issue 0 :code] := #fhir/code "invalid"
-      [:body :issue 0 :diagnostics] := #fhir/string "Unrecognized token 'x': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 2]"))
+      [:body :issue 0 :diagnostics] := #fhir/string "Unrecognized token 'x': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]"))
 
   (testing "body with no JSON object"
     (given @(handler
