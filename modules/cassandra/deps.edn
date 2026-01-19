@@ -11,7 +11,7 @@
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
-  {:mvn/version "2.20.1"}
+  {:mvn/version "2.21.0"}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
