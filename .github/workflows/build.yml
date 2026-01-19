@@ -36,7 +36,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cljfmt: 0.13.1
+        cljfmt: 0.15.6
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -51,7 +51,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        clj-kondo: '2025.09.22'
+        clj-kondo: '2026.01.19'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
