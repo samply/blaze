@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jre-noble@sha256:d8dd4342b7dbb5a9c06d0499eecca86315346acc6a20026080642610344ceb2c
+FROM eclipse-temurin:25-jre-noble@sha256:75fede17046e48a8188735f380dc8d71195c135dbb1ed97854a01e419f680aae
 
 RUN set -eux; \
     apt-get update; \
