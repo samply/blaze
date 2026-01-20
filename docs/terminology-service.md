@@ -39,6 +39,10 @@ Because both the LOINC and SNOMED CT data used for terminology operations is cur
 
 The terminology service is designed to work together with the [FHIR Validator][1]. More on that in the [Terminology Service – Validation](terminology-service/validation.md) section.
 
+## Conformance
+
+Conformance data can be found in the [Terminology Service – Conformance](terminology-service/conformance.md) section.
+
 ## Performance
 
 Performance data can be found in the [Performance – Terminology Service](performance/terminology-service.md) section.
