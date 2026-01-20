@@ -166,7 +166,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -230,7 +230,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -275,7 +275,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@3fe9b3ae632c6758d0b7757b0838606ef4287b08 # 13.4
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -316,7 +316,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -376,7 +376,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -434,7 +434,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -2352,7 +2352,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
@@ -2756,7 +2756,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
       with:
-        cli: '1.12.3.1577'
+        cli: '1.12.4.1582'
 
     - name: Check out Git repository
       uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
