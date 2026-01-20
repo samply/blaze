@@ -166,7 +166,7 @@
    m))
 
 (defn- to-map [keys vals]
-  (gen/such-that seq (gen/fmap #(keep-vals (zipmap keys %)) vals) 100))
+  (gen/such-that seq (gen/fmap #(keep-vals (zipmap keys %)) vals) 1000))
 
 (declare extension)
 
@@ -683,7 +683,7 @@
     (gen/such-that #(<= (system/date-time-lower-bound (:value (:start %)))
                         (system/date-time-upper-bound (:value (:end %))))
                    x
-                   100)
+                   1000)
     (gen/fmap type/period x)))
 
 (defn quantity
