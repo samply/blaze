@@ -5,7 +5,8 @@
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.value-set.core :as c]
    [blaze.terminology-service.local.value-set.default]
-   [blaze.terminology-service.local.value-set.loinc]))
+   [blaze.terminology-service.local.value-set.loinc]
+   [blaze.terminology-service.local.value-set.vcl]))
 
 (defn- find-in-tx-resources
   ([tx-resources url]

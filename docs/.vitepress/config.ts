@@ -179,6 +179,7 @@ export default defineConfig({
           { text: "LOINC", link: "/terminology-service/loinc" },
           { text: "SNOMED CT", link: "/terminology-service/snomed-ct" },
           { text: "UCUM", link: "/terminology-service/ucum" },
+          { text: "VCL", link: "/terminology-service/vcl" },
           { text: "Validation", link: "/terminology-service/validation" },
           { text: "Conformance", link: "/terminology-service/conformance" },
         ],

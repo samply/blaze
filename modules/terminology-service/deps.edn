@@ -18,12 +18,18 @@
   {:mvn/version "1.0.10"
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
 
+  ca.uhn.hapi.fhir/org.hl7.fhir.r5
+  {:mvn/version "6.6.7"}
+
   ;; this dependency is only here because otherwise it gets loaded concurrently
   ;; which breaks caching
   prom-metrics/prom-metrics
   {:git/url "https://github.com/alexanderkiel/prom-metrics.git"
    :git/tag "v0.6-alpha.8"
-   :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}}
+   :git/sha "45bc7368b9f6045719bc8b63ebfc82f955469da3"}
+
+  ring/ring-codec
+  {:mvn/version "1.3.0"}}
 
  :deps/prep-lib
  {:alias :build

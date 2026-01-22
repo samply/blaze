@@ -1960,6 +1960,9 @@ jobs:
     - name: SNOMED CT Validate Code
       run: .github/scripts/snomed-ct-validate-code.sh
 
+    - name: SNOMED CT ValueSet Validate Code
+      run: .github/scripts/snomed-ct-vs-validate-code.sh
+
   terminology-tests:
     needs: build
     runs-on: ubuntu-24.04

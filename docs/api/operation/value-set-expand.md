@@ -11,7 +11,7 @@ GET [base]/ValueSet/[id]/$expand
 
 | Name              | Cardinality | Type      | Documentation                                                                                                                                                                                 |
 |-------------------|-------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| url               | 0..1        | uri       | A canonical reference to a value set. The value set has to be already stored on the server.                                                                                                   |
+| url               | 0..1        | uri       | A canonical reference to a value set. [VCL](../../terminology-service/vcl.md) can be used. Otherwise the value set has to be already stored on the server.                                    |
 | valueSet          | 0..1        | ValueSet  | The value set is provided directly as part of the request.                                                                                                                                    |
 | valueSetVersion   | 0..1        | string    | The business version of the value set. If not given and multiple versions exist, an arbitrary version will be chosen.                                                                         | 
 | offset            | 0..1        | integer   | Paging support - where to start if a subset is desired. Currently only 0 is supported.                                                                                                        | 
