@@ -23,13 +23,17 @@ Currently the external code systems shown in the following table are supported.
 
 ## Operations
 
-* [CodeSystem $validate-code](api/operation/code-system-validate-code.md)
-* [ValueSet $expand](api/operation/value-set-expand.md)
-* [ValueSet $validate-code](api/operation/value-set-validate-code.md)
+* [CodeSystem \$validate-code](api/operation/code-system-validate-code.md)
+* [ValueSet \$expand](api/operation/value-set-expand.md)
+* [ValueSet \$validate-code](api/operation/value-set-validate-code.md)
+
+## ValueSet Compose Language (VCL) <Badge type="warning" text="unreleased"/>
+
+ValueSets can be created on-the-fly by using the [ValueSet Compose Language (VCL)](terminology-service/vcl.md) at any place were a ValueSet URL can be specified. It works in [ValueSet \$expand](api/operation/value-set-expand.md) and [ValueSet \$validate-code](api/operation/value-set-validate-code.md).
 
 ## Graph Cache
 
-For stored FHIR code systems, a graph will be build before operations like $validate-code are executed. Building those graph is quite expensive. I order to prevent Blaze to build a graph each time an operation is executed, a graph cache is used. The environment variable `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` allows to set the number of concepts, the graph cache should hold. The default is 100,000.
+For stored FHIR code systems, a graph will be build before operations like \$validate-code are executed. Building those graph is quite expensive. I order to prevent Blaze to build a graph each time an operation is executed, a graph cache is used. The environment variable `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` allows to set the number of concepts, the graph cache should hold. The default is 100,000.
 
 ## Memory Requirements
 

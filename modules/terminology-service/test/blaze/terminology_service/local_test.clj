@@ -3656,7 +3656,7 @@
   (testing "include one concept"
     (with-system-data [{ts ::ts/local} loinc-config]
       [[[:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri "system-152546"
+               :url #fhir/uri "value-set-152546"
                :compose
                {:fhir/type :fhir.ValueSet/compose
                 :include
@@ -3666,14 +3666,16 @@
                   [{:fhir/type :fhir.ValueSet.compose.include/concept
                     :code #fhir/code "26465-5"}]}]}}]]]
 
-      (given @(expand-value-set ts "url" #fhir/uri "system-152546")
-        :fhir/type := :fhir/ValueSet
-        [:expansion :contains count] := 1
-        [:expansion :contains 0 :system] := #fhir/uri "http://loinc.org"
-        [:expansion :contains 0 #(contains? % :inactive)] := false
-        [:expansion :contains 0 :code] := #fhir/code "26465-5"
-        [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"
-        [:expansion :contains 0 #(contains? % :designation)] := false))
+      (doseq [url ["value-set-152546"
+                   "http://fhir.org/VCL?v1=(http://loinc.org)26465-5"]]
+        (given @(expand-value-set ts "url" (type/uri url))
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri "http://loinc.org"
+          [:expansion :contains 0 #(contains? % :inactive)] := false
+          [:expansion :contains 0 :code] := #fhir/code "26465-5"
+          [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"
+          [:expansion :contains 0 #(contains? % :designation)] := false)))
 
     (testing "with inactive concepts"
       (with-system [{ts ::ts/local} loinc-config]
@@ -3745,23 +3747,15 @@
             [:expansion :contains 0 :code] := #fhir/code "26465-5"
             [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"))))))
 
+(defn- vcl-uri [expr]
+  (type/uri (str "http://fhir.org/VCL?v1=" expr)))
+
 (deftest expand-value-set-loinc-include-filter-equals-test
   (testing "COMPONENT = LP14449-0/Hemoglobin"
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP14449-0" "lp14449-0" "Hemoglobin" "hemoglobin" "HEMOGLOBIN"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "COMPONENT"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)COMPONENT=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10 % 100)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3771,18 +3765,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP6870-2" "lp6870-2" "Susc" "susc" "SUSC"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "PROPERTY"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)PROPERTY=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 1000 % 10000)
           [:expansion :contains (concept "18868-0") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3792,18 +3775,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP6960-1" "lp6960-1" "Pt" "pt" "PT"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "TIME_ASPCT"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)TIME_ASPCT=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10000 % 100000)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3813,18 +3785,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP7057-5" "lp7057-5" "Bld" "bld" "BLD"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "SYSTEM"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)SYSTEM=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 1000 % 10000)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3834,18 +3795,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP7753-9" "lp7753-9" "Qn" "qn" "QN"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "SCALE_TYP"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)SCALE_TYP=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10000 % 100000)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3855,18 +3805,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP28723-2" "lp28723-2" "Genotyping" "genotyping" "GENOTYPING"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "METHOD_TYP"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)METHOD_TYP=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 100 % 1000)
           [:expansion :contains (concept "100983-6") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3876,18 +3815,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP7789-3" "lp7789-3" "Cyto" "cyto" "CYTO"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "CLASS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)CLASS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10 % 100)
           [:expansion :contains (concept "50971-1") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3897,18 +3825,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["LP94892-4" "lp94892-4" "Laborders" "laborders" "LABORDERS"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "CLASS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)CLASS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10 % 100)
           [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3918,18 +3835,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["ACTIVE" "active"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "STATUS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)STATUS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3939,18 +3845,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["TRIAL" "trial"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "STATUS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)STATUS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)))))
 
@@ -3958,18 +3853,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["DISCOURAGED" "discouraged"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "STATUS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)STATUS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "69349-9") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3979,18 +3863,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["DEPRECATED" "deprecated"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "STATUS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)STATUS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "29491-8") 0 :system] := #fhir/uri "http://loinc.org"
@@ -3999,18 +3872,7 @@
   (testing "CLASSTYPE = 1 (Laboratory class)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "valueSet"
-                {:fhir/type :fhir/ValueSet
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "http://loinc.org"
-                    :filter
-                    [{:fhir/type :fhir.ValueSet.compose.include/filter
-                      :property #fhir/code "CLASSTYPE"
-                      :op #fhir/code "="
-                      :value #fhir/string "1"}]}]}})
+                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=1")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "3694-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4019,18 +3881,7 @@
   (testing "CLASSTYPE = 2 (Clinical class)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "valueSet"
-                {:fhir/type :fhir/ValueSet
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "http://loinc.org"
-                    :filter
-                    [{:fhir/type :fhir.ValueSet.compose.include/filter
-                      :property #fhir/code "CLASSTYPE"
-                      :op #fhir/code "="
-                      :value #fhir/string "2"}]}]}})
+                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=2")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "71735-5") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4039,18 +3890,7 @@
   (testing "CLASSTYPE = 3 (Claims attachments)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "valueSet"
-                {:fhir/type :fhir/ValueSet
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "http://loinc.org"
-                    :filter
-                    [{:fhir/type :fhir.ValueSet.compose.include/filter
-                      :property #fhir/code "CLASSTYPE"
-                      :op #fhir/code "="
-                      :value #fhir/string "3"}]}]}})
+                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=3")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "39215-9") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4059,18 +3899,7 @@
   (testing "CLASSTYPE = 4 (Surveys)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "valueSet"
-                {:fhir/type :fhir/ValueSet
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "http://loinc.org"
-                    :filter
-                    [{:fhir/type :fhir.ValueSet.compose.include/filter
-                      :property #fhir/code "CLASSTYPE"
-                      :op #fhir/code "="
-                      :value #fhir/string "4"}]}]}})
+                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=4")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "28234-3") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4080,18 +3909,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Observation" "observation" "OBSERVATION"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "ORDER_OBS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)ORDER_OBS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "18868-0") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4101,18 +3919,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Order" "order" "ORDER"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "ORDER_OBS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)ORDER_OBS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "98207-4") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4122,18 +3929,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Both" "both" "BOTH"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "ORDER_OBS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)ORDER_OBS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "13356-1") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4143,18 +3939,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Subset" "subset" "SUBSET"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "ORDER_OBS"
-                        :op #fhir/code "="
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)ORDER_OBS=%s" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? (partial < 100)
           [:expansion :contains (concept "100197-3") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4165,18 +3950,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Hemoglobin|Amprenavir" "hemoglobin|amprenavir" "HEMOGLOBIN|AMPRENAVIR"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "COMPONENT"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)COMPONENT/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10 % 100)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4188,18 +3962,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Susc|CCnc" "susc|ccnc" "SUSC|CCNC"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "PROPERTY"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)PROPERTY/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 1000 % 10000)
           [:expansion :contains (concept "3036-1") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4211,18 +3974,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["10H|18H" "10h|18h"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "TIME_ASPCT"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)TIME_ASPCT/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10 % 100)
           [:expansion :contains (concept "63474-1") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4234,18 +3986,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Bld|Ser/Plas" "bld|ser/plas" "BLD|SER/PLAS"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "SYSTEM"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)SYSTEM/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10000 % 100000)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4257,18 +3998,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Qn|Ord" "qn|ord" "QN|ORD"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "SCALE_TYP"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)SCALE_TYP/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10000 % 100000)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4280,18 +4010,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Genotyping|Molgen" "genotyping|molgen" "GENOTYPING|MOLGEN"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "METHOD_TYP"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)METHOD_TYP/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 1000 % 10000)
           [:expansion :contains (concept "100983-6") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4303,18 +4022,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["ACTIVE|DISCOURAGED" "active|discouraged"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "STATUS"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)STATUS/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 100 % 100000)
           [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4326,18 +4034,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Cyto|Laborders" "cyto|laborders" "CYTO|LABORDERS"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "CLASS"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)CLASS/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10 % 1000)
           [:expansion :contains (concept "50971-1") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4349,18 +4046,7 @@
     (with-system [{ts ::ts/local} loinc-config]
       (doseq [value ["Order|Both" "order|both" "ORDER|BOTH"]]
         (given @(expand-value-set ts
-                  "valueSet"
-                  {:fhir/type :fhir/ValueSet
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri "http://loinc.org"
-                      :filter
-                      [{:fhir/type :fhir.ValueSet.compose.include/filter
-                        :property #fhir/code "ORDER_OBS"
-                        :op #fhir/code "regex"
-                        :value (type/string value)}]}]}})
+                  "url" (vcl-uri (format "(http://loinc.org)ORDER_OBS/\"%s\"" value)))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] :? #(< 10000 % 100000)
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -5280,6 +4966,12 @@
       (given-failed-future (value-set-validate-code ts)
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing both parameters `url` and `valueSet`."))
+
+    (testing "invalid VCL expression"
+      (given-failed-future (value-set-validate-code ts
+                             "url" #fhir/uri "http://fhir.org/VCL?v1=(")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid VCL expression `(`. Expected code at position 1"))
 
     (testing "missing code"
       (given @(value-set-validate-code ts
