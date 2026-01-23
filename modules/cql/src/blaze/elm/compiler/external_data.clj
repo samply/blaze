@@ -15,6 +15,7 @@
    [blaze.elm.resource :as cr]
    [blaze.elm.spec]
    [blaze.elm.util :as elm-util]
+   [blaze.elm.value-set :as value-set]
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]
    [prometheus.alpha :as prom :refer [defcounter]]))
@@ -198,8 +199,12 @@
 
 (defn- compile-codes-expr [context codes-expr]
   (let [codes-expr (core/compile* context codes-expr)]
-    (if (and (sequential? codes-expr) (every? code? codes-expr))
+    (cond
+      (and (sequential? codes-expr) (every? code? codes-expr))
       codes-expr
+      (value-set/value-set? codes-expr)
+      (value-set/expand codes-expr)
+      :else
       (throw-anom (unsupported-dynamic-codes-expr-anom codes-expr)))))
 
 (defmethod core/compile* :elm.compiler.type/retrieve

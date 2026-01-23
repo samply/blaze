@@ -114,7 +114,7 @@ export default defineConfig({
                 collapsed: true,
                 items: [
                   { text: "$compact", link: "/api/operation/compact" },
-                  { text: "$cql", link: "/api/operation/cql" }
+                  { text: "$cql", link: "/api/operation/cql" },
                 ],
               },
               {
@@ -166,6 +166,7 @@ export default defineConfig({
       {
         text: "CQL Queries",
         items: [
+          { text: "Overview", link: "/cql-queries" },
           { text: "via blazectl", link: "/cql-queries/blazectl" },
           { text: "via API", link: "/cql-queries/api" },
           { text: "Conformance", link: "/conformance/cql" },

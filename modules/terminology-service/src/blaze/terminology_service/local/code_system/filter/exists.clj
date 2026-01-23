@@ -12,8 +12,10 @@
     (if-some [value (:value value)]
       (if-some [should-exist? (parse-boolean value)]
         ((if should-exist? identity complement)
-         (fn [{properties :property}]
-           (some #(-> % :code :value (= property)) properties)))
+         (if (= "concept" property)
+           (fn [_] true)
+           (fn [{properties :property}]
+             (some #(-> % :code :value (= property)) properties))))
         (ba/incorrect (format "Invalid %s exists filter value `%s` in code system `%s`. Should be one of `true` or `false`." property value url)))
       (ba/incorrect (format "Missing %s exists filter value in code system `%s`." property url)))
     (ba/incorrect (format "Missing exists filter property in code system `%s`." url))))

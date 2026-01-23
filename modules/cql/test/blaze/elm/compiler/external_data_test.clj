@@ -370,6 +370,83 @@
                     "system-192253|code-192300"
                     "system-192253|code-140541"]]))))))
 
+      (testing "with value set reference"
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "http://system-115910"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-115927"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-140541"}]}]]
+           [[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-115927"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "2"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-140541"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library
+                 {:valueSets
+                  {:def
+                   [{:name "icd10_e10"
+                     :id "http://fhir.org/VCL?v1=(http://system-115910)*"}]}}
+                 :terminology-service terminology-service}
+                elm #elm/retrieve
+                     {:type "Observation"
+                      :codes #elm/value-set-ref "icd10_e10"
+                      :codeComparator "in"}
+                expr (c/compile context elm)
+                db (d/db node)
+                patient (ctu/resource db "Patient" "0")]
+
+            (testing "eval"
+              (given (expr/eval (eval-context db) expr patient)
+                count := 2
+                [0 :fhir/type] := :fhir/Observation
+                [0 :id] := "1"
+                [1 :fhir/type] := :fhir/Observation
+                [1 :id] := "2"))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (ctu/testing-constant-attach-cache expr)
+
+            (ctu/testing-constant-patient-count expr)
+
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
+
+            (testing "optimize"
+              (is (= expr (c/optimize expr db))))
+
+            (testing "form"
+              (has-form expr
+                '(retrieve
+                  "Observation"
+                  [["code"
+                    "http://system-115910|code-140541"
+                    "http://system-115910|code-115927"]]))))))
+
       (testing "unknown code property"
         (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
           (let [context

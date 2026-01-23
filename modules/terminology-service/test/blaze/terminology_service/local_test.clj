@@ -3220,9 +3220,29 @@
         [:expansion :contains 1 :code] := #fhir/code "code-192308"
         [:expansion :contains 1 :display] := #fhir/string "display-192313"))))
 
+(defn- vcl-uri [expr]
+  (type/uri (str "http://fhir.org/VCL?v1=" expr)))
+
 (deftest expand-value-set-include-filter-exists-test
   (testing "with a single concept"
     (testing "without a property"
+      (testing "concept property"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "http://system-182822"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-182832"
+                     :display #fhir/string "display-182717"}]}]]]
+
+          (given @(expand-value-set ts "url" (vcl-uri "(http://system-182822)*"))
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri "http://system-182822"
+            [:expansion :contains 0 :code] := #fhir/code "code-182832"
+            [:expansion :contains 0 :display] := #fhir/string "display-182717")))
+
       (testing "that shouldn't exist"
         (with-system-data [{ts ::ts/local} config]
           [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -3746,9 +3766,6 @@
             [:expansion :contains 0 #(contains? % :inactive)] := false
             [:expansion :contains 0 :code] := #fhir/code "26465-5"
             [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"))))))
-
-(defn- vcl-uri [expr]
-  (type/uri (str "http://fhir.org/VCL?v1=" expr)))
 
 (deftest expand-value-set-loinc-include-filter-equals-test
   (testing "COMPONENT = LP14449-0/Hemoglobin"

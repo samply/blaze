@@ -1099,7 +1099,45 @@
             (testing "the whole expression will be optimized to false"
               (given (library/optimize (d/db node) expression-defs)
                 ["InInitialPopulation" :context] := "Patient"
-                ["InInitialPopulation" expr-form] := false)))))))
+                ["InInitialPopulation" expr-form] := false))))))
+
+    (testing "with value set"
+      (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        valueset vs: 'http://fhir.org/VCL?v1=(http://system-115910)*'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Condition: vs]")]
+        (with-system-data [{:blaze.db/keys [node] :as system} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "http://system-115910"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-115927"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-140541"}]}]]
+           [[:put {:fhir/type :fhir/Condition :id "0"
+                   :code (codeable-concept "http://system-115910" "code-115927")}]]]
+
+          (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
+            (given expression-defs
+              ["InInitialPopulation" :context] := "Patient"
+              ["InInitialPopulation" expr-form] :=
+              '(exists
+                (retrieve "Condition" [["code"
+                                        "http://system-115910|code-140541"
+                                        "http://system-115910|code-115927"]])))
+
+            (testing "there are no references to resolve"
+              (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+            (testing "there are no optimizations available"
+              (is (= expression-defs (library/optimize (d/db node) expression-defs)))))))))
 
   (testing "query with where clause"
     (let [library (t/translate "library test

@@ -6,6 +6,9 @@
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service :as ts]))
 
+(defn value-set? [x]
+  (satisfies? p/ValueSet x))
+
 (defn contains-string? [value-set code]
   (p/-contains-string value-set code))
 
@@ -14,6 +17,9 @@
 
 (defn contains-concept? [value-set concept]
   (p/-contains-concept value-set concept))
+
+(defn expand [value-set]
+  (p/-expand value-set))
 
 (defn- system-param [system]
   {:fhir/type :fhir.Parameters/parameter
@@ -77,4 +83,14 @@
          (fn [cause-msg]
            (format
             "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
-            concept url cause-msg)))))))
+            concept url cause-msg))))
+      (-expand [_]
+        (tu/extract-codes
+         (ts/expand-value-set
+          terminology-service
+           {:fhir/type :fhir/Parameters
+            :parameter [url-param]})
+         (fn [cause-msg]
+           (format
+            "Error while expanding the ValueSet `%s`. Cause: %s"
+            url cause-msg)))))))

@@ -980,6 +980,8 @@
 
   (testing-query "q65-in-code-system-gender" 2)
 
+  (testing-query "q66-icd10-value-set" 2)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :fhir/Resource (:resource result))))
@@ -1247,4 +1249,4 @@
 
 (comment
   (log/set-min-level! :debug)
-  (evaluate "q65-in-code-system-gender"))
+  (evaluate "q66-icd10-value-set"))
