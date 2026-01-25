@@ -121,9 +121,11 @@
     (cond-> expression-defs
       (seq parameters) (library/resolve-params (extract-param-value parameters)))))
 
-(defn- compile-library [context params]
-  (with-open [_ (prom/timer compile-duration-seconds)]
-    (compile-library* context params)))
+(defn- compile-library [context db params]
+  (with-open [_ (prom/timer compile-duration-seconds)
+              db (d/new-batch-db db)]
+    (when-ok [expression-defs (compile-library* context params)]
+      (library/optimize db expression-defs))))
 
 (defn- evaluate-expression-error-msg [e]
   (format "Error while evaluating the expression: %s" (ex-message e)))
@@ -147,9 +149,10 @@
   (when-ok [result (evaluate-expression** context expression resource)]
     (u/to-seq result)))
 
-(defn- evaluate-expression [context expression resource]
-  (with-open [_ (prom/timer evaluate-duration-seconds)]
-    (evaluate-expression* context expression resource)))
+(defn- evaluate-expression [context db expression resource]
+  (with-open [_ (prom/timer evaluate-duration-seconds)
+              db (d/new-batch-db db)]
+    (evaluate-expression* (assoc context :db db) expression resource)))
 
 (defn- cql->fhir [value]
   (condp instance? value
@@ -190,8 +193,8 @@
   {:fhir/type :fhir/Parameters
    :parameter (into [] parameter-xf values)})
 
-(defn- eval-context [{:keys [clock] :as context} db]
-  (assoc context :db db :now (time/offset-date-time clock)))
+(defn- eval-context [{:keys [clock] :as context}]
+  (assoc context :now (time/offset-date-time clock)))
 
 (defn- missing-subject-msg [type id]
   (format "Subject with type `%s` and id `%s` was not found." type id))
@@ -215,9 +218,9 @@
       (if-ok [params (fu/coerce-params param-specs body)
               params (ba/update params :parameters coerce-expr-params)
               subject-resource (subject-resource db params)
-              expression-defs (compile-library context params)]
+              expression-defs (compile-library context db params)]
         (let [{:keys [expression]} (get expression-defs "Expression")]
-          (if-ok [values (evaluate-expression (eval-context context db)
+          (if-ok [values (evaluate-expression (eval-context context) db
                                               expression subject-resource)]
             (-> (create-parameters values)
                 (ring/response)
