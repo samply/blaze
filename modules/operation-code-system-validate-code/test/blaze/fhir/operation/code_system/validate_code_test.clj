@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.code-system.validate-code-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.operation.code-system.validate-code]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
@@ -10,7 +10,6 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.terminology-service :as ts]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -46,16 +45,9 @@
 
 (def config
   (assoc
-   api-stub/mem-node-config
+   mem-node-config
    :blaze.fhir.operation.code-system/validate-code
-   {:terminology-service (ig/ref ::ts/local)}
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::ts-local/graph-cache)}
-   :blaze.test/fixed-rng-fn {}
-   ::ts-local/graph-cache {}))
+   {:terminology-service (ig/ref ::ts/local)}))
 
 (defn wrap-error [handler]
   (fn [request]

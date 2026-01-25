@@ -33,6 +33,8 @@
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
 
+  (-optimize-query [db query])
+
   (-execute-query [db query] [db query arg1])
 
   (-explain-query [db query])
@@ -87,6 +89,8 @@
   (-count [query batch-db]
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
+
+  (-optimize [query batch-db])
 
   (-execute [query batch-db] [query batch-db arg1])
 

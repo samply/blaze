@@ -251,19 +251,31 @@
    "lenient-display-validation" {:action :copy}
    "activeOnly" {:action :copy}})
 
+(defn- db [vnode]
+  (if-some [node @vnode]
+    (d/db node)
+    (ba/unavailable "Terminology service is unavailable.")))
+
 (defn- context-with-db [context db {:keys [tx-resources]}]
   (cond-> (assoc context :db db)
     tx-resources (assoc :tx-resources tx-resources)))
 
-(defn- terminology-service [node context]
+(defn- terminology-service [config context vnode]
   (reify p/TerminologyService
+    (-post-init [_ node]
+      (ensure-code-systems (assoc config :node node) context)
+      (load-all-code-systems node)
+      (vreset! vnode node))
+
     (-code-systems [_]
-      (c/code-systems (d/db node)))
+      (when-ok [db (db vnode)]
+        (c/code-systems db)))
 
     (-code-system-validate-code [_ params]
       (if-ok [params (fu/coerce-params cs-validate-code-param-specs params)
-              params (cs-validate-code-more params)]
-        (let [db (d/new-batch-db (d/db node))]
+              params (cs-validate-code-more params)
+              db (db vnode)]
+        (let [db (d/new-batch-db db)]
           (-> (find-code-system (context-with-db context db params) params)
               (ac/then-apply #(cs/validate-code % params))
               (handle-close db)))
@@ -271,8 +283,9 @@
 
     (-expand-value-set [_ params]
       (if-ok [params (fu/coerce-params vs-expand-param-specs params)
-              params (expand-vs-more params)]
-        (let [db (d/new-batch-db (d/db node))
+              params (expand-vs-more params)
+              db (db vnode)]
+        (let [db (d/new-batch-db db)
               context (context-with-db context db params)
               context (assoc context :params params)]
           (-> (find-value-set context params)
@@ -284,8 +297,9 @@
     (-value-set-validate-code [_ params]
       (let [validate-params (partial fu/coerce-params vs-validate-code-param-specs)]
         (if-ok [params (validate-params params)
-                params (vs-validate-code-more params)]
-          (let [db (d/new-batch-db (d/db node))
+                params (vs-validate-code-more params)
+                db (db vnode)]
+          (let [db (d/new-batch-db db)
                 context (context-with-db context db params)]
             (-> (find-value-set context params)
                 (ac/then-compose
@@ -303,16 +317,13 @@
           ac/completed-future)))))
 
 (defmethod m/pre-init-spec ::ts/local [_]
-  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn ::graph-cache]
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn ::graph-cache]
           :opt-un [::enable-bcp-13 ::enable-bcp-47 ::enable-ucum ::loinc ::sct]))
 
 (defmethod ig/init-key ::ts/local
-  [_ {:keys [node] :as config}]
+  [_ config]
   (log/info "Init local terminology service")
-  (let [context (context config)]
-    (ensure-code-systems config context)
-    (load-all-code-systems node)
-    (terminology-service node context)))
+  (terminology-service config (context config) (volatile! nil)))
 
 (defmethod m/pre-init-spec ::graph-cache [_]
   (s/keys :opt-un [::num-concepts]))

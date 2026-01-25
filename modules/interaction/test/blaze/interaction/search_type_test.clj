@@ -2269,7 +2269,7 @@
                #fhir/CodeableConcept
                 {:coding
                  [#fhir/Coding
-                   {:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                   {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
                     :code #fhir/code "C71.4"}]}}]]]
 
       (doseq [handling ["strict" "lenient"]]

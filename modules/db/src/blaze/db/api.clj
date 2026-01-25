@@ -317,8 +317,24 @@
   [db query]
   (p/-count-query db query))
 
+(defn optimize-query
+  "Optimizes a pre-compiled `query` on `db`.
+
+  The optimized query can be only used on `db` because the optimizations might
+  depend on `db`. Returns the optimized query.
+
+  See:
+   * compile-type-query
+   * compile-compartment-query"
+  {:arglists '([db query])}
+  [db query]
+  (p/-optimize-query db query))
+
 (defn execute-query
   "Executes a pre-compiled `query` with `args` on `db`.
+
+  You may optimize the query before running it, especially if plan to run it
+  multiple times with different arguments.
 
   Returns a reducible collection of all matching resource handles.
 

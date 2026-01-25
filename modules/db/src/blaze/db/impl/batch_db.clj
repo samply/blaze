@@ -66,6 +66,8 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
+(declare new-batch-db)
+
 (defrecord BatchDb [node kv-store snapshot basis-t t since-t]
   p/Db
   (-node [_]
@@ -135,6 +137,9 @@
 
   (-count-query [db query]
     (p/-count query db))
+
+  (-optimize-query [db query]
+    (p/-optimize query db))
 
   (-execute-query [db query]
     (p/-execute query db))
@@ -226,6 +231,11 @@
     (if-ok [search-param (sp-get-by-url db search-param-url)]
       (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param start-type start-id))
       ac/completed-future))
+
+  ;; ---- Batch DB ------------------------------------------------------------
+
+  (-new-batch-db [_]
+    (new-batch-db node basis-t t since-t))
 
   ;; ---- Transaction ---------------------------------------------------------
 
@@ -362,6 +372,8 @@
 
 (defrecord CompartmentQuery [c-hash tid clauses]
   p/Query
+  (-optimize [_ batch-db]
+   )
   (-execute [_ batch-db arg1]
     (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
                              tid clauses))
@@ -389,7 +401,7 @@
   "Creates a new batch database.
 
   A batch database can be used instead of a normal database. It's functionally
-  the same. Only the performance for multiple calls differs. It's not thread
+  is the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^AutoCloseable
   [{:keys [kv-store] :as node} basis-t t since-t]

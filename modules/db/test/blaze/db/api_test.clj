@@ -27,6 +27,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as ts]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.math.combinatorics :as combo]
    [clojure.spec.alpha :as s]
@@ -4137,7 +4138,7 @@
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
-                 {:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
                   :code #fhir/code "C71.4"}]}
              :subject #fhir/Reference{:reference #fhir/string "Patient/id-0"}
              :onset #fhir/Age{:value #fhir/decimal 63M}}]
@@ -4240,6 +4241,80 @@
         count := 1
         [0 :fhir/type] := :fhir/Condition
         [0 :id] := "1"))))
+
+(deftest type-query-condition-code-in-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+             :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+             :content #fhir/code "fragment"
+             :concept
+             [{:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69-C72"}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69-C72"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C71"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69-C72"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69.4"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C71.4"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C71"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C73-C75"}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C73"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C73-C75"}]}]}]]
+     [[:put {:fhir/type :fhir/Condition :id "0"
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                               :code #fhir/code "C71.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "1"}]
+      [:put {:fhir/type :fhir/Condition :id "2"
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                               :code #fhir/code "C69.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "3"
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                               :code #fhir/code "C73"}]}}]]]
+
+    (let [clauses [["code:in" "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72"]]]
+      (given-type-query node "Condition" clauses
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "2")
+
+      (testing "it is possible to start with the second condition"
+        (given (pull-type-query node "Condition" clauses "2")
+          count := 1
+          [0 :id] := "2")))))
 
 (deftest type-query-measure-report-test
   (with-system-data [{:blaze.db/keys [node]} config]

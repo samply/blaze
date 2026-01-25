@@ -17,7 +17,6 @@
    [blaze.rest-api.spec]
    [blaze.spec]
    [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -503,18 +502,10 @@
       [:rest 0 :operation 0 :documentation] := #fhir/markdown "documentation-141700")))
 
 (def ^:private terminology-service-config
-  (-> minimal-config
-      (assoc-in
-       [::rest-api/capabilities-handler :terminology-service]
-       (ig/ref ::ts/local))
-      (assoc
-       ::ts/local
-       {:node (ig/ref :blaze.db/node)
-        :clock (ig/ref :blaze.test/fixed-clock)
-        :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-        :graph-cache (ig/ref ::ts-local/graph-cache)}
-       :blaze.test/fixed-rng-fn {}
-       ::ts-local/graph-cache {})))
+  (assoc-in
+   minimal-config
+   [::rest-api/capabilities-handler :terminology-service]
+   (ig/ref ::ts/local)))
 
 (deftest terminology-test
   (testing "with no code system"

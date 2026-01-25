@@ -43,6 +43,9 @@
   blaze/spec
   {:local/root "../spec"}
 
+  blaze/terminology-service
+  {:local/root "../terminology-service"}
+
   commons-codec/commons-codec
   {:mvn/version "1.20.0"}}
 

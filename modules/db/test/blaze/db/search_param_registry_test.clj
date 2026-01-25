@@ -7,6 +7,7 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -23,12 +24,15 @@
 
 (def config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref :blaze.terminology-service/not-available)}
+   :blaze.terminology-service/not-available {}})
 
 (def config-extra
-  {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :extra-bundle-file "../../.github/custom-search-parameters-test/custom-search-parameters.json"}})
+  (assoc-in
+   config
+   [:blaze.db/search-param-registry :extra-bundle-file]
+   "../../.github/custom-search-parameters-test/custom-search-parameters.json"))
 
 (deftest init-test
   (testing "nil config"
@@ -41,7 +45,8 @@
     (given-failed-system {:blaze.db/search-param-registry {}}
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
 
   (testing "invalid structure-definition-repo"
     (given-failed-system (assoc-in config [:blaze.db/search-param-registry :structure-definition-repo] ::invalid)
@@ -69,9 +74,10 @@
         :reason := ::ig/build-threw-exception)))
 
   (testing "with nil extra bundle file"
-    (is (->> (ig/init {:blaze.db/search-param-registry
-                       {:structure-definition-repo structure-definition-repo
-                        :extra-bundle-file nil}})
+    (is (->> (ig/init (assoc-in
+                       config
+                       [:blaze.db/search-param-registry :extra-bundle-file]
+                       nil))
              :blaze.db/search-param-registry
              (s/valid? :blaze.db/search-param-registry))))
 
