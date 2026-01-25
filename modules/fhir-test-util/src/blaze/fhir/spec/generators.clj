@@ -17,10 +17,10 @@
   (gen/one-of [gen (gen/return nil)]))
 
 (defn rare-nil [gen]
-  (gen/frequency [[9 gen] [1 (gen/return nil)]]))
+  (gen/frequency [[99 gen] [1 (gen/return nil)]]))
 
 (defn often-nil [gen]
-  (gen/frequency [[9 (gen/return nil)] [1 gen]]))
+  (gen/frequency [[99 (gen/return nil)] [1 gen]]))
 
 (def boolean-value
   gen/boolean)
