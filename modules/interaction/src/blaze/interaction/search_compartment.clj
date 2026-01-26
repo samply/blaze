@@ -25,19 +25,22 @@
 (defn- handles-and-clauses
   [{:keys [code id type] :blaze/keys [db] :blaze.preference/keys [handling]
     {:keys [clauses]} :params}]
-  (cond
-    (empty? clauses)
-    {:handles (vec (d/list-compartment-resource-handles db code id type))}
+  (with-open [db (d/new-batch-db db)]
+    (cond
+      (empty? clauses)
+      (when-ok [handles (d/list-compartment-resource-handles db code id type)]
+        {:handles (vec handles)})
 
-    (identical? :blaze.preference.handling/strict handling)
-    (when-ok [handles (d/compartment-query db code id type clauses)]
-      {:handles (vec handles)
-       :clauses clauses})
+      (identical? :blaze.preference.handling/strict handling)
+      (when-ok [handles (d/compartment-query db code id type clauses)]
+        {:handles (vec handles)
+         :clauses clauses})
 
-    :else
-    (let [query (d/compile-compartment-query-lenient db code type clauses)]
-      {:handles (vec (d/execute-query db query id))
-       :clauses (d/query-clauses query)})))
+      :else
+      (when-ok [query (d/compile-compartment-query-lenient db code type clauses)
+                handles (d/execute-query db query id)]
+        {:handles (vec handles)
+         :clauses (d/query-clauses query)}))))
 
 (defn- entries-xf [{{:keys [page-offset page-size]} :params :as context}]
   (comp

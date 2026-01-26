@@ -273,14 +273,26 @@
       (or (compile-patient-type-query search-param-registry type clauses)
           (batch-db/->TypeQuery (codec/tid type) clauses)))))
 
+(defn- seek-compartment-query [search-param-registry code type clauses]
+  (let [search-param-codes (sr/compartment-resources search-param-registry code type)]
+    (if (seq search-param-codes)
+      (batch-db/->SeekCompartmentQuery search-param-registry code
+                                       search-param-codes type clauses)
+      (ba/unsupported (format  "Unsupported `%s` compartment query of type `%s`." code type)))))
+
 (defn- compile-compartment-query
-  [search-param-registry code type clauses lenient?]
-  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
+  ([search-param-registry code type]
+   (seek-compartment-query search-param-registry code type nil))
+  ([search-param-registry code type clauses lenient?]
+   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
                                                  lenient?)]
     (if (empty? clauses)
-      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
-      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                   clauses))))
+      (seek-compartment-query search-param-registry code type nil)
+      (let [[scan-clauses other-clauses] (index/compartment-query-plan* clauses)]
+        (if (seq scan-clauses)
+          (batch-db/->ScanCompartmentQuery (codec/c-hash code) (codec/tid type)
+                                           scan-clauses other-clauses)
+          (seek-compartment-query search-param-registry code type other-clauses)))))))
 
 (def ^:private add-subsetted-xf
   (map #(update % :meta update :tag conj-vec fu/subsetted)))
@@ -377,6 +389,9 @@
 
   (-compile-system-matcher [_ clauses]
     (compile-system-matcher search-param-registry clauses))
+
+  (-compile-compartment-query [_ code type]
+    (compile-compartment-query search-param-registry code type))
 
   (-compile-compartment-query [_ code type clauses]
     (compile-compartment-query search-param-registry code type clauses false))

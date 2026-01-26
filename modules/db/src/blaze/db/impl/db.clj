@@ -1,6 +1,7 @@
 (ns blaze.db.impl.db
   "Primary Database Implementation"
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :refer [with-open-coll]]
    [blaze.db.impl.batch-db :as batch-db]
@@ -76,13 +77,13 @@
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
-  (-compartment-resource-handles [_ compartment tid]
+  (-compartment-type-list [_ compartment tid]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-compartment-resource-handles batch-db compartment tid)))
+      (p/-compartment-type-list batch-db compartment tid)))
 
-  (-compartment-resource-handles [_ compartment tid start-id]
+  (-compartment-type-list [_ compartment tid start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-compartment-resource-handles batch-db compartment tid start-id)))
+      (p/-compartment-type-list batch-db compartment tid start-id)))
 
   ;; ---- Patient-Compartment-Level Functions ---------------------------------
 
@@ -102,9 +103,8 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-execute-query batch-db query)))
 
-  (-execute-query [_ query arg1]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-execute-query batch-db query arg1)))
+  (-execute-query [_ _ _]
+    (ba/unsupported "Unsupported execute query with argument on a non-batch database. Please get a batch database."))
 
   (-explain-query [_ query]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]

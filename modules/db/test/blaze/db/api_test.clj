@@ -1762,9 +1762,14 @@
          ~@body)
        (is (= ~count (count-type-query ~node-or-db ~type ~clauses)))))
 
+(defn- compartment-query [node code id type clauses]
+  (with-open [db (d/new-batch-db (d/db node))]
+    (when-ok [handles (d/compartment-query db code id type clauses)]
+      (vec handles))))
+
 (defn- pull-compartment-query [node code id type clauses]
-  (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
-    @(d/pull-many node (vec handles))))
+  (when-ok [handles (compartment-query node code id type clauses)]
+    @(d/pull-many node handles)))
 
 (defn- pull-system-list
   ([node-or-db]
@@ -2266,7 +2271,13 @@
   (with-system [{:blaze.db/keys [node]} config]
     (testing "a new node has no patients"
       (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]])))
-      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]] "0"))))
+      (with-open [db (d/new-batch-db (d/db node))]
+        (is (coll/empty? (d/type-query db "Patient" [["gender" "male"]] "0"))))
+
+      (testing "calling type-query with a non-batch database is unsupported"
+        (given (d/type-query (d/db node) "Patient" [["gender" "male"]] "0")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported execute query with argument on a non-batch database. Please get a batch database.")))
 
     (testing "sort clauses are only allowed at first position"
       (given (d/type-query (d/db node) "Patient" [["gender" "male"]
@@ -3663,15 +3674,15 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [(mapv #(vector :create {:fhir/type :fhir/Patient :id %}) ids)]
 
-          (let [db (d/db node)
-                ids (shuffle (take 100 ids))
-                clauses [(into ["_id"] ids)]
-                sorted-ids (sort ids)
-                start-id (rand-nth sorted-ids)]
-            (and (= (into [] (map :id) (d/type-query db "Patient" clauses))
-                    sorted-ids)
-                 (= (into [] (map :id) (d/type-query db "Patient" clauses start-id))
-                    (drop-while #(not= start-id %) sorted-ids)))))))))
+          (with-open [db (d/new-batch-db (d/db node))]
+            (let [ids (shuffle (take 100 ids))
+                  clauses [(into ["_id"] ids)]
+                  sorted-ids (sort ids)
+                  start-id (rand-nth sorted-ids)]
+              (and (= (into [] (map :id) (d/type-query db "Patient" clauses))
+                      sorted-ids)
+                   (= (into [] (map :id) (d/type-query db "Patient" clauses start-id))
+                      (drop-while #(not= start-id %) sorted-ids))))))))))
 
 (deftest type-query-sort-test
   (testing "sorting by _id"
@@ -7758,7 +7769,7 @@
             [0 :id] := "0")))
 
       (testing "one unknown search parameter will result in an empty query"
-        (with-open-db [db node]
+        (with-open [db (d/new-batch-db (d/db node))]
           (doseq [target [node db]]
             (let [clauses [["foo" "bar"]]
                   query (d/compile-type-query-lenient target "Patient" clauses)]
@@ -8227,14 +8238,16 @@
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-system [{:blaze.db/keys [node]} config]
       (let [clauses [["code" "foo"]]]
-        (is (coll/empty? (d/compartment-query (d/db node) "Patient" "0" "Observation" clauses)))
+        (is (empty? (compartment-query node "Patient" "0" "Observation" clauses)))
 
         (given (explain-compartment-query node "Patient" "Observation" clauses)
-          :query-type := :compartment
-          :scan-type := nil
-          :scan-clauses := nil
-          [:seek-clauses count] := 1
-          [:seek-clauses 0 :code] := "code"))))
+          :query-type := :type
+          :scan-type := :ordered
+          ;; TODO: the compartment clause is missing here
+          [:scan-clauses count] := 1
+          [:scan-clauses 0 :code] := "code"
+          [:scan-clauses 0 :values] := ["foo"]
+          [:seek-clauses count] := 0))))
 
   (testing "returns the Observation in the Patient/0 compartment"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8332,9 +8345,8 @@
                     :code #fhir/code "code"}]}}]]
        [[:delete "Observation" "0"]]]
 
-      (is (coll/empty? (d/compartment-query
-                        (d/db node) "Patient" "0" "Observation"
-                        [["code" "system|code"]])))))
+      (is (empty? (compartment-query node "Patient" "0" "Observation"
+                                     [["code" "system|code"]])))))
 
   (testing "finds resources after deleted ones"
     (let [observation
@@ -8455,10 +8467,9 @@
             [:seek-clauses 0 :code] := "value-quantity")))
 
       (testing "returns nothing because of non-matching second criteria"
-        (is (coll/empty? (d/compartment-query
-                          (d/db node) "Patient" "0" "Observation"
-                          [["code" "system-191514|code-191518"]
-                           ["value-quantity" "23"]]))))))
+        (is (empty? (compartment-query node "Patient" "0" "Observation"
+                                       [["code" "system-191514|code-191518"]
+                                        ["value-quantity" "23"]]))))))
 
   (testing "returns an anomaly on unknown search param code"
     (with-system [{:blaze.db/keys [node]} config]
@@ -8468,9 +8479,9 @@
 
   (testing "Unknown compartment is not a problem"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (coll/empty? (d/compartment-query
-                        (d/db node) "foo" "bar" "Condition"
-                        [["code" "baz"]])))))
+      (given (compartment-query node "Foo" "bar" "Condition" [["code" "baz"]])
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported `Foo` compartment query of type `Condition`.")))
 
   (testing "Unknown type is not a problem"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8544,7 +8555,7 @@
                  {:system #fhir/uri "system-191514"
                   :code #fhir/code "code-191518"}]}}]]]
 
-    (with-open-db [db node]
+    (with-open [db (d/new-batch-db (d/db node))]
       (doseq [target [node db]]
         (given (let [query (d/compile-compartment-query
                             target "Patient" "Observation"
@@ -8567,7 +8578,7 @@
                   :code #fhir/code "code-191518"}]}}]]]
 
     (testing "the observation can be found"
-      (with-open-db [db node]
+      (with-open [db (d/new-batch-db (d/db node))]
         (doseq [target [node db]]
           (let [clauses [["code" "system-191514|code-191518"]]
                 query (d/compile-compartment-query-lenient
@@ -8588,7 +8599,7 @@
               [:seek-clauses count] := 0)))))
 
     (testing "an unknown search-param is ignored"
-      (with-open-db [db node]
+      (with-open [db (d/new-batch-db (d/db node))]
         (doseq [target [node db]]
           (let [query (d/compile-compartment-query-lenient
                        target "Patient" "Observation"

@@ -23,7 +23,7 @@
 
   (-system-total [db])
 
-  (-compartment-resource-handles
+  (-compartment-type-list
     [db compartment tid]
     [db compartment tid start-id])
 
@@ -79,7 +79,7 @@
 
   (-compile-system-matcher [compiler clauses])
 
-  (-compile-compartment-query [compiler code type clauses])
+  (-compile-compartment-query [compiler code type] [compiler code type clauses])
 
   (-compile-compartment-query-lenient [compiler code type clauses]))
 

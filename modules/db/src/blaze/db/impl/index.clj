@@ -1,11 +1,10 @@
 (ns blaze.db.impl.index
   "This namespace contains query functions."
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.compartment.resource :as cr]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
@@ -325,6 +324,27 @@
   ;; TODO: implement
   [])
 
+(defn- compartment-clause
+  [search-param-registry [code id] compartment-search-param-code type]
+  (resolve-search-params search-param-registry type [[compartment-search-param-code (str code "/" id)]] false))
+
+(defn compartment-clauses
+  [search-param-registry compartment compartment-search-param-codes type]
+  (transduce
+   (comp (map #(compartment-clause search-param-registry compartment % type))
+         (halt-when ba/anomaly?))
+   conj
+   []
+   compartment-search-param-codes))
+
+(defn- type-query-compartment* [batch-db compartment-clause tid other-clauses]
+  (type-query batch-db tid (into [compartment-clause] other-clauses)))
+
+(defn type-query-compartment [batch-db compartment-clauses tid other-clauses]
+  (coll/eduction
+   (mapcat #(type-query-compartment* batch-db % tid other-clauses))
+   compartment-clauses))
+
 (defn- supports-ordered-compartment-index-handles [[search-param _ values]]
   (p/-supports-ordered-compartment-index-handles search-param values))
 
@@ -345,38 +365,20 @@
   ([batch-db compartment tid clauses]
    (if (= 1 (count clauses))
      (ordered-compartment-index-handles* batch-db compartment tid (first clauses))
-     (->> (map #(ordered-compartment-index-handles* batch-db compartment tid %)
-               clauses)
-          (apply coll/intersection ih/id-comp ih/intersection))))
+     (let [ordered-index-handles #(ordered-compartment-index-handles* batch-db compartment tid %)]
+       (intersection-index-handles (map ordered-index-handles clauses)))))
   ([batch-db compartment tid clauses start-id]
    (if (= 1 (count clauses))
      (ordered-compartment-index-handles* batch-db compartment tid (first clauses) start-id)
-     (->> (map #(ordered-compartment-index-handles* batch-db compartment tid % start-id)
-               clauses)
-          (apply coll/intersection ih/id-comp ih/intersection)))))
-
-(defn- compartment-scan
-  [batch-db compartment tid scan-clauses]
-  (if (seq scan-clauses)
-    (ordered-compartment-index-handles batch-db compartment tid scan-clauses)
-    (coll/eduction
-     (map ih/from-resource-handle)
-     (cr/resource-handles batch-db compartment tid))))
+     (let [ordered-index-handles #(ordered-compartment-index-handles* batch-db compartment tid % start-id)]
+       (intersection-index-handles (map ordered-index-handles clauses))))))
 
 (defn compartment-query
   "Returns a reducible collection of resource handles from `batch-db` in
-  `compartment` of type with `tid` that satisfy `clauses`, optionally starting
-  with `start-id`."
-  [batch-db compartment tid clauses]
-  (let [[scan-clauses other-clauses] (compartment-query-plan* clauses)]
-    (coll/eduction
-     (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-     (compartment-scan batch-db compartment tid scan-clauses))))
+  `compartment` of type with `tid` that satisfy `scan-clauses` and
+  `other-clauses`, optionally starting with `start-id`.
 
-(defn compartment-query*
-  "Returns a reducible collection of resource handles from `batch-db` in
-  `compartment` of type with `tid` that satisfy `scan-clauses` and possible
-  empty `other-clauses`, optionally starting with `start-id`."
+  The `scan-clauses` can't be empty."
   ([batch-db compartment tid scan-clauses other-clauses]
    (coll/eduction
     (resource-handle-mapper batch-db tid scan-clauses other-clauses)
@@ -386,11 +388,10 @@
     (resource-handle-mapper batch-db tid scan-clauses other-clauses)
     (ordered-compartment-index-handles batch-db compartment tid scan-clauses start-id))))
 
-(defn compartment-query-plan [clauses]
-  (let [[scan-clauses other-clauses] (compartment-query-plan* clauses)]
-    (cond->
-     {:query-type :compartment
-      :seek-clauses (mapv clause-stats other-clauses)}
-      (seq scan-clauses)
-      (assoc :scan-type :ordered
-             :scan-clauses (mapv clause-stats scan-clauses)))))
+(defn compartment-query-plan [scan-clauses other-clauses]
+  (cond->
+   {:query-type :compartment
+    :seek-clauses (mapv clause-stats other-clauses)}
+    (seq scan-clauses)
+    (assoc :scan-type :ordered
+           :scan-clauses (mapv clause-stats scan-clauses))))

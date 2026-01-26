@@ -117,14 +117,6 @@
       (:total (system-stats/seek-value snapshot t) 0)
       (ba/unsupported "Total is not supported on since-dbs.")))
 
-  ;; ---- Compartment-Level Functions -----------------------------------------
-
-  (-compartment-resource-handles [db compartment tid]
-    (cr/resource-handles db compartment tid))
-
-  (-compartment-resource-handles [db compartment tid start-id]
-    (cr/resource-handles db compartment tid start-id))
-
   ;; ---- Patient-Compartment-Level Functions ---------------------------------
 
   (-patient-compartment-last-change-t [_ patient-id]
@@ -251,6 +243,9 @@
   (-compile-system-matcher [_ clauses]
     (p/-compile-system-matcher node clauses))
 
+  (-compile-compartment-query [_ code type]
+    (p/-compile-compartment-query node code type))
+
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
 
@@ -352,7 +347,7 @@
                         (into scan-clauses)
                         (into other-clauses))))
   (-query-plan [_ _]
-    (index/compartment-query-plan (into scan-clauses other-clauses))))
+    (index/compartment-query-plan scan-clauses other-clauses)))
 
 (defn patient-type-query
   [tid patient-ids compartment-clause scan-clauses other-clauses]
@@ -360,11 +355,11 @@
    tid patient-ids compartment-clause scan-clauses other-clauses
    (fn
      ([batch-db patient-id]
-      (index/compartment-query* batch-db [patient-compartment-hash patient-id]
-                                tid scan-clauses other-clauses))
+      (index/compartment-query batch-db [patient-compartment-hash patient-id]
+                               tid scan-clauses other-clauses))
      ([batch-db patient-id start-id]
-      (index/compartment-query* batch-db [patient-compartment-hash patient-id]
-                                tid scan-clauses other-clauses start-id)))))
+      (index/compartment-query batch-db [patient-compartment-hash patient-id]
+                               tid scan-clauses other-clauses start-id)))))
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
@@ -384,23 +379,32 @@
   (-execute [_ batch-db]
     (index/system-query batch-db clauses)))
 
-(defrecord CompartmentQuery [c-hash tid clauses]
+(defrecord SeekCompartmentQuery
+  [search-param-registry compartment-code compartment-search-param-codes type
+   other-clauses]
+  p/Query
+  (-execute [_ batch-db arg1]
+    (when-ok [compartment-clauses (index/compartment-clauses
+                                   search-param-registry batch-db
+                                   [compartment-code arg1]
+                                   compartment-search-param-codes type)]
+      (index/type-query-compartment batch-db compartment-clauses (codec/tid type)
+                                    other-clauses)))
+  (-query-clauses [_]
+    (decode-clauses other-clauses))
+  (-query-plan [_ batch-db]
+   ;; TODO: compartment clause is missing
+    (index/type-query-plan batch-db (codec/tid type) other-clauses)))
+
+(defrecord ScanCompartmentQuery [c-hash tid scan-clauses other-clauses]
   p/Query
   (-execute [_ batch-db arg1]
     (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
-                             tid clauses))
+                             tid scan-clauses other-clauses))
   (-query-clauses [_]
-    (decode-clauses clauses))
+    (decode-clauses (into scan-clauses other-clauses)))
   (-query-plan [_ _]
-    (index/compartment-query-plan clauses)))
-
-(defrecord EmptyCompartmentQuery [c-hash tid]
-  p/Query
-  (-execute [_ batch-db arg1]
-    (cr/resource-handles batch-db [c-hash (codec/id-byte-string arg1)] tid))
-  (-query-clauses [_])
-  (-query-plan [_ _]
-    {:query-type :compartment}))
+    (index/compartment-query-plan scan-clauses other-clauses)))
 
 (defrecord Matcher [clauses]
   p/Matcher
