@@ -1,7 +1,7 @@
 (ns blaze.interaction.util-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash :as hash]
    [blaze.interaction.util :as iu]
@@ -32,7 +32,7 @@
 
 (deftest put-tx-op-test
   (testing "on empty database"
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
+    (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (testing "with empty if-match header"
         (given (iu/update-tx-op (d/db node) {:fhir/type :fhir/Patient :id "0"} "" nil)
           ::anom/category := ::anom/conflict
@@ -60,7 +60,7 @@
   (testing "with an existing, identical patient; the other patient is there in order to show that the t depends only on the matching patient"
     (let [male-patient {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}
           hash (hash/generate male-patient)]
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
          [[:put male-patient]]
          [[:put {:fhir/type :fhir/Patient :id "1"}]]]

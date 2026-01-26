@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :as api-stub]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type.system :as system]
@@ -93,7 +93,7 @@
 
 (def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze/rest-api
    {:base-url "http://localhost:8080"
     :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
@@ -136,8 +136,6 @@
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :terminology-service (ig/ref ::ts/local)}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
    :blaze.test/page-id-cipher {}
    :blaze.test/json-parser
    {:parsing-context (ig/ref :blaze.fhir.parsing-context/default)}

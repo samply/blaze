@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.cql-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression.cache-spec]
    [blaze.fhir.operation.cql :as cql]
@@ -33,7 +33,7 @@
 
 (def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze.fhir.operation/cql
    {:node (ig/ref :blaze.db/node)
     ::expr/cache (ig/ref ::expr/cache)

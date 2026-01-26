@@ -1,7 +1,7 @@
 (ns blaze.interaction.search.include-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.interaction.search.include :as include]
    [blaze.interaction.search.include-spec]
    [blaze.test-util :as tu]
@@ -13,13 +13,13 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def non-ref-int-config
-  (assoc-in mem-node-config [:blaze.db/node :enforce-referential-integrity] false))
+(def ^:private non-ref-int-config
+  (assoc-in api-stub/mem-node-config [:blaze.db/node :enforce-referential-integrity] false))
 
 (deftest add-includes-test
   (testing "one direct forward include"
     (testing "enforcing referential integrity"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -45,7 +45,7 @@
             [0 :fhir/type] := :fhir/Patient))))
 
     (testing "with non-matching target type"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -59,7 +59,7 @@
           (is (empty? (include/add-includes db include-defs observations)))))))
 
   (testing "two direct forward includes with the same type"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -79,7 +79,7 @@
           [1 :fhir/type] := :fhir/Encounter))))
 
   (testing "one direct reverse include"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -95,7 +95,7 @@
           [0 :fhir/type] := :fhir/Observation))))
 
   (testing "direct forward include followed by iterate forward include"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Organization :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "0"
                :managingOrganization #fhir/Reference{:reference #fhir/string "Organization/0"}}]
@@ -112,7 +112,7 @@
           [1 :fhir/type] := :fhir/Patient))))
 
   (testing "direct forward include followed by iterate reverse include"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Condition :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -129,7 +129,7 @@
           [1 :fhir/type] := :fhir/Patient))))
 
   (testing "direct reverse include followed by iterate forward include"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Condition :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
@@ -146,7 +146,7 @@
           [1 :fhir/type] := :fhir/Encounter))))
 
   (testing "direct reverse include followed by iterate reverse include"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]

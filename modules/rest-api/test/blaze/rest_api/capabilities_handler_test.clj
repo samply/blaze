@@ -1,7 +1,7 @@
 (ns blaze.rest-api.capabilities-handler-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
@@ -37,7 +37,7 @@
 
 (def ^:private minimal-config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    ::rest-api/capabilities-handler
    {:version "version-131640"
     :release-date (system/parse-date-time "2024-01-07")

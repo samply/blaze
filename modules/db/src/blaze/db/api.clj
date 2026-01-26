@@ -326,7 +326,6 @@
   See:
    * compile-type-query
    * compile-compartment-query"
-  {:arglists '([db query])}
   [db query]
   (p/-optimize-query db query))
 

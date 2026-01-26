@@ -27,9 +27,6 @@
   {:namespace "blaze"
    :subsystem "cql"})
 
-(defn- code->clause-value [{:keys [system code]}]
-  (str system "|" code))
-
 (defn- code-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` which have a code equivalent to `code` at `property` and are
@@ -38,26 +35,24 @@
   Example:
   * data-type - \"Observation\"
   * eval-context - \"Patient\"
-  * property - \"code\"
-  * codes - [(code \"http://loinc.org\" nil \"39156-5\")]"
-  [node eval-context data-type property codes]
-  (let [clauses [(into [property] (map code->clause-value) codes)]]
-    (if-ok [type-query (d/compile-type-query node data-type clauses)
-            compartment-query (d/compile-compartment-query node eval-context
-                                                           data-type clauses)]
-      (reify-expr core/Expression
-        (-optimize [expr db]
-         ;; if there is no resource, regardless of the individual patient,
-         ;; available, just return an empty list for further optimizations
-          (if (coll/empty? (d/execute-query db type-query))
-            []
-            expr))
-        (-eval [_ {:keys [db]} {:keys [id]} _]
-          (prom/inc! retrieve-total)
-          (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
-        (-form [_]
-          `(~'retrieve ~data-type ~(d/query-clauses compartment-query))))
-      throw-anom)))
+  * codes-expr - [[\"code\" \"http://loinc.org|39156-5\"]]"
+  [node eval-context data-type clauses]
+  (if-ok [type-query (d/compile-type-query node data-type clauses)
+          compartment-query (d/compile-compartment-query node eval-context
+                                                         data-type clauses)]
+    (reify-expr core/Expression
+      (-optimize [expr db]
+       ;; if there is no resource, regardless of the individual patient,
+       ;; available, just return an empty list for further optimizations
+        (if (coll/empty? (d/execute-query db type-query))
+          []
+          expr))
+      (-eval [_ {:keys [db]} {:keys [id]} _]
+        (prom/inc! retrieve-total)
+        (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
+      (-form [_]
+        `(~'retrieve ~data-type ~(d/query-clauses compartment-query))))
+    throw-anom))
 
 ;; TODO: find a better solution than hard coding this case
 (def ^:private specimen-patient-expr
@@ -136,56 +131,54 @@
       (list 'retrieve (core/-form related-context-expr) data-type (d/query-clauses query)))))
 
 (defn- related-context-expr
-  [node context-expr data-type code-property codes]
-  (if (seq codes)
+  [node context-expr data-type clauses]
+  (if (seq clauses)
     (if-let [result-type-name (:result-type-name (meta context-expr))]
       (let [[value-type-ns context-type] (elm-util/parse-qualified-name result-type-name)]
         (if (= "http://hl7.org/fhir" value-type-ns)
-          (let [clauses [(into [code-property] (map code->clause-value) codes)]]
-            (if-ok [query (d/compile-compartment-query node context-type data-type clauses)]
-              (related-context-expr-with-codes context-expr data-type query)
-              throw-anom))
+          (if-ok [query (d/compile-compartment-query node context-type data-type clauses)]
+            (related-context-expr-with-codes context-expr data-type query)
+            throw-anom)
           (throw-anom (unsupported-type-ns-anom value-type-ns))))
       (throw-anom unsupported-related-context-expr-without-type-anom))
     (related-context-expr-without-codes context-expr data-type)))
 
-(defn- unfiltered-context-expr [node data-type code-property codes]
-  (if (empty? codes)
+(defn- unfiltered-context-expr [node data-type clauses]
+  (if (empty? clauses)
     (reify-expr core/Expression
       (-eval [_ {:keys [db]} _ _]
         (prom/inc! retrieve-total)
         (coll/eduction (cr/resource-mapper db) (d/type-list db data-type)))
       (-form [_]
         `(~'retrieve ~data-type)))
-    (let [clauses [(into [code-property] (map code->clause-value) codes)]]
-      (if-ok [query (d/compile-type-query node data-type clauses)]
-        (reify-expr core/Expression
-          (-eval [_ {:keys [db]} _ _]
-            (prom/inc! retrieve-total)
-            (coll/eduction (cr/resource-mapper db) (d/execute-query db query)))
-          (-form [_]
-            `(~'retrieve ~data-type ~(d/query-clauses query))))
-        throw-anom))))
+    (if-ok [query (d/compile-type-query node data-type clauses)]
+      (reify-expr core/Expression
+        (-eval [_ {:keys [db]} _ _]
+          (prom/inc! retrieve-total)
+          (coll/eduction (cr/resource-mapper db) (d/execute-query db query)))
+        (-form [_]
+          `(~'retrieve ~data-type ~(d/query-clauses query))))
+      throw-anom)))
 
-(defn- expr* [node eval-context data-type code-property codes]
-  (if (empty? codes)
+(defn- expr* [node eval-context data-type clauses]
+  (if (empty? clauses)
     (if (= data-type eval-context)
       resource-expr
       (context-expr eval-context data-type))
-    (code-expr node eval-context data-type code-property codes)))
+    (code-expr node eval-context data-type clauses)))
 
 ;; 11.1. Retrieve
 (defn- expr
-  [{:keys [node eval-context]} context-expr data-type code-property codes]
+  [{:keys [node eval-context]} context-expr data-type clauses]
   (cond
     context-expr
-    (related-context-expr node context-expr data-type code-property codes)
+    (related-context-expr node context-expr data-type clauses)
 
     (= "Unfiltered" eval-context)
-    (unfiltered-context-expr node data-type code-property codes)
+    (unfiltered-context-expr node data-type clauses)
 
     :else
-    (expr* node eval-context data-type code-property codes)))
+    (expr* node eval-context data-type clauses)))
 
 (defn- unsupported-dynamic-codes-expr-anom [codes-expr]
   (ba/unsupported
@@ -197,13 +190,16 @@
    (format "Unsupported type namespace `%s` in Retrieve expression." type-ns)
    :type-ns type-ns))
 
-(defn- compile-codes-expr [context codes-expr]
+(defn- code->clause-value [{:keys [system code]}]
+  (str system "|" code))
+
+(defn- compile-codes-expr [context code-property codes-expr]
   (let [codes-expr (core/compile* context codes-expr)]
     (cond
       (and (sequential? codes-expr) (every? code? codes-expr))
-      codes-expr
+      [(into [code-property] (map code->clause-value) codes-expr)]
       (value-set/value-set? codes-expr)
-      (value-set/expand codes-expr)
+      [[(str code-property ":in") (value-set/url codes-expr)]]
       :else
       (throw-anom (unsupported-dynamic-codes-expr-anom codes-expr)))))
 
@@ -220,6 +216,5 @@
        context
        (some->> context-expr (core/compile* context))
        data-type
-       code-property
-       (some->> codes-expr (compile-codes-expr context)))
+       (some->> codes-expr (compile-codes-expr context code-property)))
       (throw-anom (unsupported-type-namespace-anom type-ns)))))

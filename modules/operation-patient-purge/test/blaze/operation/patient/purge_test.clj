@@ -46,7 +46,7 @@
 (def base-url "base-url-113047")
 (def context-path "/context-path-173858")
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    :blaze.operation.patient/purge

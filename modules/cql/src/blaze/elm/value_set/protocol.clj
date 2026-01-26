@@ -1,6 +1,7 @@
 (ns blaze.elm.value-set.protocol)
 
 (defprotocol ValueSet
+  (-url [_])
   (-contains-string [value-set code])
   (-contains-code [value-set code])
   (-contains-concept [value-set concept])

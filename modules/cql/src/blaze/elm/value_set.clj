@@ -9,6 +9,9 @@
 (defn value-set? [x]
   (satisfies? p/ValueSet x))
 
+(defn url [value-set]
+  (p/-url value-set))
+
 (defn contains-string? [value-set code]
   (p/-contains-string value-set code))
 
@@ -53,6 +56,8 @@
         (list 'value-set url))
 
       p/ValueSet
+      (-url [_]
+        url)
       (-contains-string [_ code]
         (tu/extract-result
          (ts/value-set-validate-code

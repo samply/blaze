@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.value-set.expand-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.expand]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [parameter]]
@@ -44,9 +44,9 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/terminology-service]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze.fhir.operation.value-set/expand
    {:terminology-service (ig/ref ::ts/local)}))
 

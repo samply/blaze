@@ -137,11 +137,11 @@
     [search-param batch-db tid direction]
     [search-param batch-db tid direction start-id]
     "Returns a reducible collection of index handles sorted by the sort clause.")
-  (-supports-ordered-compartment-index-handles [search-param values]
+  (-supports-ordered-compartment-index-handles [search-param modifier values]
     "Returns true if `search-param` supports fetching ordered compartment index handles with `values`.")
   (-ordered-compartment-index-handles
-    [search-param batch-db compartment tid compiled-value]
-    [search-param batch-db compartment tid compiled-value start-id]
+    [search-param batch-db compartment tid modifier compiled-value]
+    [search-param batch-db compartment tid modifier compiled-value start-id]
     "Returns a reducible collection.")
   (-matcher [_ batch-db modifier compiled-values])
   (-single-version-id-matcher [_ batch-db tid modifier compiled-values])

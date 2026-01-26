@@ -7,6 +7,7 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
@@ -22,11 +23,11 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref :blaze.terminology-service/not-available)}
-   :blaze.terminology-service/not-available {}})
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (def config-extra
   (assoc-in

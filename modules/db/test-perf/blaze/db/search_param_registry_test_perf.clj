@@ -3,15 +3,20 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.not-available]
    [clojure.test :refer [deftest testing]]
    [criterium.core :as criterium]
+   [integrant.core :as ig]
    [taoensso.timbre :as log]))
 
 (log/set-min-level! :info)
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (deftest linked-compartments-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]

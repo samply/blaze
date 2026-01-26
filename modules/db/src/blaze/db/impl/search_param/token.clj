@@ -3,8 +3,6 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-string :as bs]
-   [blaze.fhir.spec.type :as type]
-   [blaze.terminology-service :as ts]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
@@ -19,7 +17,9 @@
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.terminology-service :as ts]
    [blaze.util :refer [str]]
    [clojure.string :as str]
    [taoensso.timbre :as log]))
@@ -254,14 +254,19 @@
     (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
                    compiled-value start-id))
 
-  (-supports-ordered-compartment-index-handles [_ values]
+  (-supports-ordered-compartment-index-handles [_ modifier values]
    ;; the CompartmentSearchParamValueResource index only contains values with systems
-    (every? has-system? values))
+   ;; with in-modifier, a ValueSet expansion contains always systems
+    (or (= "in" modifier) (every? has-system? values)))
 
-  (-ordered-compartment-index-handles [_ batch-db compartment tid compiled-value]
-    (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value))
+  (-ordered-compartment-index-handles [_ batch-db compartment tid modifier compiled-value]
+    (if (= "in" modifier)
+      (let [index-handles #(c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid %)]
+        (u/union-index-handles (map index-handles compiled-value)))
+      (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value)))
 
-  (-ordered-compartment-index-handles [_ batch-db compartment tid compiled-value start-id]
+  (-ordered-compartment-index-handles [_ batch-db compartment tid _modifier compiled-value start-id]
+   ;; TODO: is that method called?
     (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value start-id))
 
   (-matcher [_ batch-db modifier compiled-values]
@@ -351,13 +356,13 @@
     (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
                    compiled-value start-id))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db modifier compiled-values]
@@ -434,13 +439,13 @@
      (map ih/from-resource-handle)
      (rao/type-list batch-db tid start-id)))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-postprocess-matches [_ _ _ _])

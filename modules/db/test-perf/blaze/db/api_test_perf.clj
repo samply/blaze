@@ -124,10 +124,10 @@
           :method (type/codeable-concept {:text (type/string (str version))})
           :code
           #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                           {:system #fhir/uri-interned "system-191514"
-                            :code #fhir/code "code-191518"}]}}]))
+           {:coding
+            [#fhir/Coding
+              {:system #fhir/uri-interned "system-191514"
+               :code #fhir/code "code-191518"}]}}]))
 
 (deftest type-test
   (with-system-data [{:blaze.db/keys [node]} config]

@@ -4,7 +4,7 @@
    [blaze.anomaly-spec]
    [blaze.cql.translator :as cql-translator]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
    [blaze.elm.expression :as expr]
@@ -103,7 +103,7 @@
 
 (def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    ::expr/cache
    {:node (ig/ref :blaze.db/node)
     :executor (ig/ref :blaze.test/executor)}

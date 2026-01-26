@@ -4,7 +4,7 @@
    [blaze.anomaly-spec]
    [blaze.cql.translator :as cql-translator]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
@@ -164,7 +164,7 @@
       (assoc :function-defs function-defs))))
 
 (def ^:private config
-  (assoc mem-node-config :blaze.test/executor {}))
+  (assoc api-stub/mem-node-config :blaze.test/executor {}))
 
 (deftest reduce-op-test
   (testing "one component"

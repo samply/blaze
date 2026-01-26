@@ -5,7 +5,7 @@
    [blaze.cache-collector.protocols :as ccp]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.test-util :as ctu]
    [blaze.elm.expression :as expr]
@@ -46,11 +46,12 @@
 (test/use-fixtures :each fixture)
 
 (def ^:private config
-  (assoc mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (deftest init-test
   (testing "nil config"
@@ -136,11 +137,12 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 (def ^:private config
-  (assoc mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (defn- compile-exists-expr [resource-type]
   (let [elm (elm/exists (elm/retrieve {:type resource-type}))]

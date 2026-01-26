@@ -40,10 +40,11 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def config
-  (assoc api-stub/mem-node-config
-         :blaze.interaction/delete
-         {:node (ig/ref :blaze.db/node)}))
+(def ^:private config
+  (assoc
+   api-stub/mem-node-config
+   :blaze.interaction/delete
+   {:node (ig/ref :blaze.db/node)}))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]

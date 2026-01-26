@@ -73,12 +73,13 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def config
-  (assoc api-stub/mem-node-config
-         :blaze.interaction/update
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+(def ^:private config
+  (assoc
+   api-stub/mem-node-config
+   :blaze.interaction/update
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (def disabled-referential-integrity-check-config
   (assoc-in config [:blaze.db/node :enforce-referential-integrity] false))

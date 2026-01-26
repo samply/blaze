@@ -63,7 +63,7 @@
      :name :Patient/compartment-page}
     :path (str context-path "/Patient/0/Observation")}))
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-compartment
@@ -73,7 +73,6 @@
     :page-store (ig/ref :blaze.page-store/local)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    ::search-util/link {:fhir/version "4.0.1"}
-   :blaze.test/fixed-rng-fn {}
    :blaze.page-store/local {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))

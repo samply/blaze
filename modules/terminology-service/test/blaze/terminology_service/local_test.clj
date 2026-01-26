@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [parameter structure-definition-repo]]
@@ -39,7 +39,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private config
-  mem-node-config)
+  api-stub/mem-node-config)
 
 (deftest init-test
   (testing "nil config"
@@ -78,10 +78,10 @@
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def ^:private bcp-13-config
-  (assoc-in mem-node-config [::ts/local :enable-bcp-13] true))
+  (assoc-in api-stub/mem-node-config [::ts/local :enable-bcp-13] true))
 
 (def ^:private bcp-47-config
-  (assoc-in mem-node-config [::ts/local :enable-bcp-47] true))
+  (assoc-in api-stub/mem-node-config [::ts/local :enable-bcp-47] true))
 
 ;; put LOINC data into an opaque function, so that it can't be introspected
 ;; by dev tooling, because it's just large
@@ -95,13 +95,13 @@
   (loinc))
 
 (def ^:private loinc-config
-  (-> (assoc-in mem-node-config [::ts/local :loinc] (ig/ref ::loinc))
+  (-> (assoc-in api-stub/mem-node-config [::ts/local :loinc] (ig/ref ::loinc))
       (assoc ::loinc {})))
 
 (def ^:private sct-config
   (merge-with
    merge
-   mem-node-config
+   api-stub/mem-node-config
    {::ts/local
     {:rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
      :sct (ig/ref ::cs/sct)}
@@ -109,12 +109,12 @@
     ::cs/sct {:release-path (path "sct-release")}}))
 
 (def ^:private ucum-config
-  (assoc-in mem-node-config [::ts/local :enable-ucum] true))
+  (assoc-in api-stub/mem-node-config [::ts/local :enable-ucum] true))
 
 (def ^:private complete-config
   (merge-with
    merge
-   mem-node-config
+   api-stub/mem-node-config
    {::ts/local
     {:rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
      :enable-bcp-13 true

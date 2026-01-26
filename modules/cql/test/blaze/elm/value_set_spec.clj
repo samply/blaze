@@ -12,6 +12,10 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(s/fdef value-set/url
+  :args (s/cat :value-set :blaze.elm/value-set)
+  :ret string?)
+
 (s/fdef value-set/contains-string?
   :args (s/cat :value-set :blaze.elm/value-set :code string?)
   :ret boolean?)

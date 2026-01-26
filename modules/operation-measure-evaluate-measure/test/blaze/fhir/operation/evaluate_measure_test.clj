@@ -2,7 +2,7 @@
   (:require
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.elm.expression :as-alias expr]
@@ -73,7 +73,7 @@
 
 (def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    ::evaluate-measure/handler
    {:node (ig/ref :blaze.db/node)
     ::expr/cache (ig/ref ::expr/cache)

@@ -2,7 +2,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.spec.type :as type]
    [blaze.job.util :as job-util]
    [blaze.job.util-spec]
@@ -134,7 +134,7 @@
   (assoc job :status #fhir/code "in-progress"))
 
 (deftest pull-job-test
-  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+  (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
     (given @(mtu/assoc-thread-name (job-util/pull-job node "0"))
@@ -143,7 +143,7 @@
       :id := "0")))
 
 (deftest update-job-test
-  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+  (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
     (let [job @(job-util/pull-job node "0")]
@@ -160,7 +160,7 @@
               job-util/error-msg := "msg-181135"))))))
 
   (testing "lost updates are detected"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
       (let [job @(job-util/pull-job node "0")]
@@ -184,7 +184,7 @@
 (deftest update-job-plus-test
   (testing "without other resources"
     (testing "with no argument"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
@@ -194,7 +194,7 @@
             :status := #fhir/code "in-progress"))))
 
     (testing "with one argument"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
@@ -204,7 +204,7 @@
             job-util/error-msg := "msg-162452"))))
 
     (testing "with two arguments"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
@@ -213,7 +213,7 @@
             :status := #fhir/code "on-hold")))))
 
   (testing "with one Bundle"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
       (let [job @(job-util/pull-job node "0")]

@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.value-set.validate-code-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.validate-code]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [parameter]]
@@ -44,13 +44,13 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/terminology-service]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze.fhir.operation.value-set/validate-code
    {:terminology-service (ig/ref ::ts/local)}))
 
-(defn wrap-error [handler]
+(defn- wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))

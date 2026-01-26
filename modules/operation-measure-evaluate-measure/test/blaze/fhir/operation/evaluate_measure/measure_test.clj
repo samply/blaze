@@ -2,7 +2,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
@@ -87,7 +87,7 @@
 
 (def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    ::expr/cache
    {:node (ig/ref :blaze.db/node)
     :executor (ig/ref :blaze.test/executor)}

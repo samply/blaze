@@ -19,10 +19,13 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -37,9 +40,11 @@
 (defn birth-date-param [search-param-registry]
   (sr/get search-param-registry "birthdate" "Patient"))
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (deftest birth-date-param-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -91,9 +96,9 @@
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (birth-date-param search-param-registry)]
-      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))
+      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil nil))))))
 
 (defn- lower-bound-instant [date-range-bytes]
   (-> date-range-bytes

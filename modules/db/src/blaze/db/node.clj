@@ -16,6 +16,7 @@
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.query.compartment :as qc]
    [blaze.db.kv :as kv]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
@@ -270,9 +271,9 @@
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
                                                  lenient?)]
     (if (empty? clauses)
-      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
-      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                   clauses))))
+      (qc/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
+      (qc/->CompartmentQuery (codec/c-hash code) (codec/tid type)
+                             clauses))))
 
 (def ^:private add-subsetted-xf
   (map #(update % :meta update :tag conj-vec fu/subsetted)))

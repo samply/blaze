@@ -1762,8 +1762,11 @@
        (is (= ~count (count-type-query ~node-or-db ~type ~clauses)))))
 
 (defn- pull-compartment-query [node code id type clauses]
-  (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
-    @(d/pull-many node (vec handles))))
+  (with-open [db (d/new-batch-db (d/db node))]
+    (when-ok [query (d/compile-compartment-query db code type clauses)
+              query (d/optimize-query db query)
+              handles (d/execute-query db query id)]
+      @(d/pull-many node (vec handles)))))
 
 (defn- pull-system-list
   ([node-or-db]
@@ -4241,80 +4244,6 @@
         count := 1
         [0 :fhir/type] := :fhir/Condition
         [0 :id] := "1"))))
-
-(deftest type-query-condition-code-in-test
-  (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-             :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-             :content #fhir/code "fragment"
-             :concept
-             [{:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C69-C72"}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C69"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C69-C72"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C71"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C69-C72"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C69.4"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C69"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C71.4"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C71"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C73-C75"}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C73"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C73-C75"}]}]}]]
-     [[:put {:fhir/type :fhir/Condition :id "0"
-             :code
-             #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-                               :code #fhir/code "C71.4"}]}}]
-      [:put {:fhir/type :fhir/Condition :id "1"}]
-      [:put {:fhir/type :fhir/Condition :id "2"
-             :code
-             #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-                               :code #fhir/code "C69.4"}]}}]
-      [:put {:fhir/type :fhir/Condition :id "3"
-             :code
-             #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-                               :code #fhir/code "C73"}]}}]]]
-
-    (let [clauses [["code:in" "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72"]]]
-      (given-type-query node "Condition" clauses
-        count := 2
-        [0 :id] := "0"
-        [1 :id] := "2")
-
-      (testing "it is possible to start with the second condition"
-        (given (pull-type-query node "Condition" clauses "2")
-          count := 1
-          [0 :id] := "2")))))
 
 (deftest type-query-measure-report-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -8382,6 +8311,115 @@
               :scan-type := nil
               :scan-clauses := nil
               [:seek-clauses count] := 0)))))))
+
+(deftest query-condition-code-in-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+             :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+             :content #fhir/code "fragment"
+             :concept
+             [{:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69-C72"}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69-C72"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C71"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69-C72"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69.4"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C71.4"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C71"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C73-C75"}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C73"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C73-C75"}]}]}]]
+     [[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Condition :id "0"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                  :code #fhir/code "C71.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "1"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put {:fhir/type :fhir/Condition :id "2"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                  :code #fhir/code "C69.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "3"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                  :code #fhir/code "C73"}]}}]]]
+
+    (let [clauses [["code:in" "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72"]]]
+      (testing "type query"
+        (given-type-query node "Condition" clauses
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "2")
+
+        (given (explain-type-query node "Condition" clauses)
+          :scan-type := :ordered
+          [:scan-clauses count] := 1
+          [:scan-clauses 0 :code] := "code"
+          [:scan-clauses 0 :modifier] := "in"
+          [:seek-clauses count] := 0)
+
+        (testing "it is possible to start with the second condition"
+          (given (pull-type-query node "Condition" clauses "2")
+            count := 1
+            [0 :id] := "2")))
+
+      (testing "compartment query"
+        (given (pull-compartment-query node "Patient" "0" "Condition" clauses)
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "2")
+
+        (given (explain-compartment-query node "Patient" "Condition" clauses)
+          :query-type := :compartment
+          :scan-type := :ordered
+          [:scan-clauses count] := 1
+          [:scan-clauses 0 :code] := "code"
+          [:scan-clauses 0 :modifier] := "in"
+          [:scan-clauses 0 :values] := ["http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72"]
+          [:seek-clauses count] := 0))
+
+      (testing "with ValueSet expansion errors"
+        (with-redefs [ts/expand-value-set (fn [_ _] (ac/completed-future (ba/fault "msg-125400")))]
+          (testing "type query"
+            (given (pull-type-query node "Condition" clauses)
+              ::anom/category := ::anom/fault
+              ::anom/message := "Error while expanding the ValueSet `http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72`. Cause: msg-125400")))))))
 
 (deftest patient-compartment-last-change-t-test
   (testing "non-existing patient"

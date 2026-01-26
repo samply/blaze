@@ -99,7 +99,7 @@
 (def patient-page-match
   (page-match-of "Patient"))
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-type
@@ -117,7 +117,6 @@
 
    ::search-util/link {:fhir/version "4.0.1"}
    :blaze.page-store/local {}
-   :blaze.test/fixed-rng-fn {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))
 

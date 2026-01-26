@@ -3,7 +3,6 @@
 
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
-  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
@@ -22,12 +21,12 @@
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.query.util :as qu]
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
    [blaze.db.node.resource-indexer :as resource-indexer]
-   [blaze.db.search-param-registry :as sr]
-   [blaze.util :refer [str]])
+   [blaze.db.search-param-registry :as sr])
   (:import
    [java.io Writer]
    [java.lang AutoCloseable]))
@@ -286,26 +285,18 @@
 (defmethod print-method BatchDb [^BatchDb db ^Writer w]
   (.write w (format "BatchDb[t=%d]" (.t db))))
 
-(defn- decode-clauses [clauses]
-  (into
-   []
-   (keep
-    (fn [[search-param modifier values]]
-      (if (#{"asc" "desc"} modifier)
-        [:sort (:code search-param) (keyword modifier)]
-        (into [(cond-> (:code search-param) modifier (str ":" modifier))] values))))
-   clauses))
-
 (defrecord TypeQuery [tid clauses]
   p/Query
   (-count [_ batch-db]
     (index/type-query-total batch-db tid clauses))
+  (-optimize [query _]
+    query)
   (-execute [_ batch-db]
     (index/type-query batch-db tid clauses))
   (-execute [_ batch-db start-id]
     (index/type-query batch-db tid clauses (codec/id-byte-string start-id)))
   (-query-clauses [_]
-    (decode-clauses clauses))
+    (qu/decode-clauses clauses))
   (-query-plan [_ batch-db]
     (index/type-query-plan batch-db tid clauses)))
 
@@ -323,6 +314,8 @@
   p/Query
   (-count [query batch-db]
     (ac/completed-future (count (p/-execute query batch-db))))
+  (-optimize [query _]
+    query)
   (-execute [_ batch-db]
     (coll/eduction (mapcat #(compartment-query batch-db %)) patient-ids))
   (-execute [_ batch-db start-id]
@@ -337,7 +330,7 @@
                (mapcat #(compartment-query batch-db %)))
          patient-ids)])))
   (-query-clauses [_]
-    (decode-clauses (into [compartment-clause] clauses)))
+    (qu/decode-clauses (into [compartment-clause] clauses)))
   (-query-plan [_ _]
     (index/compartment-query-plan clauses)))
 
@@ -357,6 +350,8 @@
   (-count [_ batch-db]
     (ac/completed-future
      (:total (type-stats/seek-value (:snapshot batch-db) tid (:t batch-db)) 0)))
+  (-optimize [query _]
+    query)
   (-execute [_ batch-db]
     (rao/type-list batch-db tid))
   (-execute [_ batch-db start-id]
@@ -367,35 +362,17 @@
 
 (defrecord SystemQuery [clauses]
   p/Query
+  (-optimize [query _]
+    query)
   (-execute [_ batch-db]
     (index/system-query batch-db clauses)))
-
-(defrecord CompartmentQuery [c-hash tid clauses]
-  p/Query
-  (-optimize [_ batch-db]
-   )
-  (-execute [_ batch-db arg1]
-    (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
-                             tid clauses))
-  (-query-clauses [_]
-    (decode-clauses clauses))
-  (-query-plan [_ _]
-    (index/compartment-query-plan clauses)))
-
-(defrecord EmptyCompartmentQuery [c-hash tid]
-  p/Query
-  (-execute [_ batch-db arg1]
-    (cr/resource-handles batch-db [c-hash (codec/id-byte-string arg1)] tid))
-  (-query-clauses [_])
-  (-query-plan [_ _]
-    {:query-type :compartment}))
 
 (defrecord Matcher [clauses]
   p/Matcher
   (-transducer [_ batch-db]
     (index/other-clauses-resource-handle-filter batch-db clauses))
   (-matcher-clauses [_]
-    (decode-clauses clauses)))
+    (qu/decode-clauses clauses)))
 
 (defn new-batch-db
   "Creates a new batch database.

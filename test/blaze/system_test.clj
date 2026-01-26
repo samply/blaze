@@ -1,7 +1,7 @@
 (ns blaze.system-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type.system :refer [parse-date-time]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -135,9 +135,9 @@
       :foo := {:default {:read {}
                          :delete-history {}}})))
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze/rest-api
    {:base-url "http://localhost:8080"
     :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
@@ -246,7 +246,6 @@
    ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}
    ::page-store {}
    :blaze.test/page-id-cipher {}
    :blaze.test/json-parser
