@@ -220,7 +220,12 @@
   (fn [[search-param]]
     (contains? codes (:code search-param))))
 
-(defn- compartment-clause-patient-ids [[{:keys [code]} _ values]]
+(defn- compartment-clause-patient-ids
+  "Extracts the patient IDs from `clause` simply by scanning trough it's values.
+
+  Cancels extraction at the first value that doesn't contain a valid patient ID."
+  {:arglists '([clause])}
+  [[{:keys [code]} _ values]]
   (transduce
    (comp
     (map
@@ -248,14 +253,17 @@
   (when-some [codes (sr/patient-compartment-search-param-codes search-param-registry type)]
     (let [{[compartment-clause :as compartment-clauses] true other-clauses false}
           (group-by (clause-with-code-fn? codes) clauses)]
-      (when (and (= 1 (count compartment-clauses)) (seq other-clauses))
-        (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
-          (when (seq patient-ids)
-            (batch-db/patient-type-query
-             (codec/tid type)
-             patient-ids
-             compartment-clause
-             other-clauses)))))))
+      (when (= 1 (count compartment-clauses))
+        (let [[scan-clauses other-clauses] (index/compartment-query-plan* other-clauses)]
+          (when (seq scan-clauses)
+            (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
+              (when (seq patient-ids)
+                (batch-db/patient-type-query
+                 (codec/tid type)
+                 patient-ids
+                 compartment-clause
+                 scan-clauses
+                 other-clauses)))))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses

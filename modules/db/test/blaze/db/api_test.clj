@@ -1746,11 +1746,13 @@
 
 (defn- pull-type-query
   ([node-or-db type clauses]
-   (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses)]
-     @(d/pull-many node-or-db (vec handles))))
+   (with-open [db (d/new-batch-db (ensure-db node-or-db))]
+     (when-ok [handles (d/type-query db type clauses)]
+       @(d/pull-many node-or-db (vec handles)))))
   ([node-or-db type clauses start-id]
-   (when-ok [handles (d/type-query (ensure-db node-or-db) type clauses start-id)]
-     @(d/pull-many node-or-db (vec handles)))))
+   (with-open [db (d/new-batch-db (ensure-db node-or-db))]
+     (when-ok [handles (d/type-query db type clauses start-id)]
+       @(d/pull-many node-or-db (vec handles))))))
 
 (defmacro given-type-query
   "Combines `pull-type-query` with `count-type-query`. Assumes that the first
@@ -3535,7 +3537,7 @@
             [0 :id] := id))
 
         (testing "will find nothing if started with another id"
-          (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" id]] "2")))))
+          (is (empty? (pull-type-query node "Patient" [["_id" id]] "2")))))
 
       (testing "doesn't find the deleted resource"
         (given-type-query node "Patient" [["_id" "2"]]
@@ -5222,12 +5224,12 @@
 
             (when (= "94564-2" code)
               (given (explain-type-query node "Observation" clauses)
-                :query-type := :compartment
-                :scan-type := nil
-                :scan-clauses := nil
-                [:seek-clauses count] := 1
-                [:seek-clauses 0 :code] := "code"
-                [:seek-clauses 0 :values] := ["94564-2"]))))
+                :query-type := :type
+                :scan-type := :ordered
+                [:scan-clauses count] := 2
+                [:scan-clauses 1 :code] := "code"
+                [:scan-clauses 1 :values] := ["94564-2"]
+                [:seek-clauses count] := 0))))
 
         (testing "with one group"
           (given-type-query node "Observation" [["subject" "Group/0"] ["code" code]]
@@ -5786,7 +5788,303 @@
         (testing "it is possible to start with the second observation"
           (given (pull-type-query node "Encounter" clauses "2")
             count := 1
-            [0 :id] := "2"))))))
+            [0 :id] := "2")))))
+
+  (testing "subject with changed encounter"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Patient :id "3"}]
+        [:put {:fhir/type :fhir/Encounter :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "2"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]
+        [:put {:fhir/type :fhir/Encounter :id "3"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]]
+       ;; The patient is removed to exclude the Encounter 2 from the result
+       [[:put {:fhir/type :fhir/Encounter :id "2"}]]]
+
+      (let [clauses [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3"]]]
+        (given-type-query node "Encounter" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "3")
+
+        (given (explain-type-query node "Encounter" clauses)
+          :query-type := :type
+          :scan-type := :ordered
+          [:scan-clauses count] := 1
+          [:scan-clauses 0 :code] := "subject"
+          [:scan-clauses 0 :values] := ["Patient/0" "Patient/1" "Patient/2" "Patient/3"]
+          [:seek-clauses count] := 0)
+
+        (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+               [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3"]]))
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Encounter" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "3"))
+
+        (testing "using a start ID of an Encounter not part of the result works"
+          (given (pull-type-query node "Encounter" clauses "2")
+            count := 1
+            [0 :id] := "3")))))
+
+  (testing "subject and date with changed encounter"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Patient :id "3"}]
+        [:put {:fhir/type :fhir/Patient :id "4"}]
+        [:put {:fhir/type :fhir/Encounter :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-01-01"
+                                    :end #fhir/dateTime #system/date-time "2020-01-01"}}]
+        [:put {:fhir/type :fhir/Encounter :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-02-01"
+                                    :end #fhir/dateTime #system/date-time "2020-02-01"}}]
+        [:put {:fhir/type :fhir/Encounter :id "2"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-03-01"
+                                    :end #fhir/dateTime #system/date-time "2020-03-01"}}]
+        [:put {:fhir/type :fhir/Encounter :id "3"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/3"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-04-01"
+                                    :end #fhir/dateTime #system/date-time "2020-04-01"}}]
+        [:put {:fhir/type :fhir/Encounter :id "4"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/4"}
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-05-01"
+                                    :end #fhir/dateTime #system/date-time "2020-05-01"}}]]
+       ;; The patient is removed to exclude the Encounter 2 from the result
+       [[:put {:fhir/type :fhir/Encounter :id "2"
+               :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-03-01"
+                                    :end #fhir/dateTime #system/date-time "2020-03-01"}}]]]
+
+      (let [clauses [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3"
+                      "Patient/4"]
+                     ["date" "ge2020-01-01"]
+                     ["date" "le2020-04-01"]]]
+        (given-type-query node "Encounter" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "3")
+
+        (given (explain-type-query node "Encounter" clauses)
+          :query-type := :type
+          :scan-type := :ordered
+          [:scan-clauses count] := 1
+          [:scan-clauses 0 :code] := "subject"
+          [:scan-clauses 0 :values] := ["Patient/0" "Patient/1" "Patient/2" "Patient/3" "Patient/4"]
+          [:seek-clauses count] := 2
+          [:seek-clauses 0 :code] := "date"
+          [:seek-clauses 0 :values] := ["ge2020-01-01"]
+          [:seek-clauses 1 :code] := "date"
+          [:seek-clauses 1 :values] := ["le2020-04-01"])
+
+        (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+               [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3" "Patient/4"]
+                ["date" "ge2020-01-01"]
+                ["date" "le2020-04-01"]]))
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Encounter" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "3"))
+
+        (testing "using a start ID of an Encounter not part of the result works"
+          (given (pull-type-query node "Encounter" clauses "2")
+            count := 1
+            [0 :id] := "3")))))
+
+  (testing "subject, class and date"
+    (testing "with changed encounter"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]
+          [:put {:fhir/type :fhir/Patient :id "3"}]
+          [:put {:fhir/type :fhir/Patient :id "4"}]
+          [:put {:fhir/type :fhir/Encounter :id "0"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-01-01"
+                                      :end #fhir/dateTime #system/date-time "2020-01-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-02-01"
+                                      :end #fhir/dateTime #system/date-time "2020-02-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "2"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-03-01"
+                                      :end #fhir/dateTime #system/date-time "2020-03-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "3"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/3"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-04-01"
+                                      :end #fhir/dateTime #system/date-time "2020-04-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "4"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/4"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-05-01"
+                                      :end #fhir/dateTime #system/date-time "2020-05-01"}}]]
+         ;; The patient is removed to exclude the Encounter 2 from the result
+         [[:put {:fhir/type :fhir/Encounter :id "2"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-03-01"
+                                      :end #fhir/dateTime #system/date-time "2020-03-01"}}]]]
+
+        (let [clauses [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3"
+                        "Patient/4"]
+                       ["class" "http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
+                       ["date" "ge2020-01-01"]
+                       ["date" "le2020-04-01"]]]
+          (given-type-query node "Encounter" clauses
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "3")
+
+          (given (explain-type-query node "Encounter" clauses)
+            :query-type := :compartment
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "class"
+            [:scan-clauses 0 :values] := ["http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
+            [:seek-clauses count] := 2
+            [:seek-clauses 0 :code] := "date"
+            [:seek-clauses 0 :values] := ["ge2020-01-01"]
+            [:seek-clauses 1 :code] := "date"
+            [:seek-clauses 1 :values] := ["le2020-04-01"])
+
+          (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+                 [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3" "Patient/4"]
+                  ["class" "http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
+                  ["date" "ge2020-01-01"]
+                  ["date" "le2020-04-01"]]))
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-type-query node "Encounter" clauses "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "3"))
+
+          (testing "using a start ID of an Encounter not part of the result causes an error"
+            (given (pull-type-query node "Encounter" clauses "2")
+              ::anom/category := ::anom/fault
+              ::anom/message := "Patient resource handle referenced from `Encounter/2` not found in database with t=2 and since-t=0."))
+
+          (testing "using a start ID of a non-existing Encounter causes an error"
+            (given (pull-type-query node "Encounter" clauses "5")
+              ::anom/category := ::anom/fault
+              ::anom/message := "Resource handle `Encounter/5` not found in database with t=2 and since-t=0.")))))
+
+    (testing "with deleted encounter"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]
+          [:put {:fhir/type :fhir/Patient :id "3"}]
+          [:put {:fhir/type :fhir/Patient :id "4"}]
+          [:put {:fhir/type :fhir/Encounter :id "0"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-01-01"
+                                      :end #fhir/dateTime #system/date-time "2020-01-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-02-01"
+                                      :end #fhir/dateTime #system/date-time "2020-02-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "2"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-03-01"
+                                      :end #fhir/dateTime #system/date-time "2020-03-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "3"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/3"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-04-01"
+                                      :end #fhir/dateTime #system/date-time "2020-04-01"}}]
+          [:put {:fhir/type :fhir/Encounter :id "4"
+                 :class #fhir/Coding
+                         {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                          :code #fhir/code "IMP"}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/4"}
+                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020-05-01"
+                                      :end #fhir/dateTime #system/date-time "2020-05-01"}}]]
+         [[:delete "Encounter" "2"]]]
+
+        (let [clauses [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3"
+                        "Patient/4"]
+                       ["class" "http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
+                       ["date" "ge2020-01-01"]
+                       ["date" "le2020-04-01"]]]
+          (given-type-query node "Encounter" clauses
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "3")
+
+          (given (explain-type-query node "Encounter" clauses)
+            :query-type := :compartment
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "class"
+            [:scan-clauses 0 :values] := ["http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
+            [:seek-clauses count] := 2
+            [:seek-clauses 0 :code] := "date"
+            [:seek-clauses 0 :values] := ["ge2020-01-01"]
+            [:seek-clauses 1 :code] := "date"
+            [:seek-clauses 1 :values] := ["le2020-04-01"])
+
+          (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+                 [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3" "Patient/4"]
+                  ["class" "http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
+                  ["date" "ge2020-01-01"]
+                  ["date" "le2020-04-01"]]))
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-type-query node "Encounter" clauses "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "3"))
+
+          (testing "using a start ID of a non-existing Encounter causes an error"
+            (given (pull-type-query node "Encounter" clauses "2")
+              ::anom/category := ::anom/fault
+              ::anom/message := "Resource handle `Encounter/2` not found in database with t=2 and since-t=0.")))))))
 
 (deftest type-query-multiple-clauses-test
   (testing "with two token search params"
@@ -7331,7 +7629,7 @@
                         "Procedure"]
                   subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
 
-            (doseq [value ["system|code" "code" "|code"]
+            (doseq [value ["system|code"]
                     clauses [[["code" value]
                               (into ["patient"] subjects)]
                              [(into ["patient"] subjects)
