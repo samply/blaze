@@ -87,7 +87,7 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
     /**
      * This is an estimate of a hash map entry.
      */
-    int MEM_SIZE_PERSISTENT_HASH_MAP_ENTRY = MEM_SIZE_REFERENCE == 4 ? 64 : 96;
+    int MEM_SIZE_PERSISTENT_HASH_MAP_ENTRY = MEM_SIZE_REFERENCE == 4 ? 64 : 128;
 
     /**
      * Memory size {@link java.util.concurrent.atomic.AtomicReference}.
