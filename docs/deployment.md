@@ -1,11 +1,17 @@
+<script setup lang="ts">
+  const release = import.meta.env.VITE_LATEST_RELEASE;
+  const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const tag = release.substring(1);
+</script>
+
 # Deployment
 
 ## Quick Start
 
 Blaze can be started with a single command using docker:
 
-```sh
-docker run -d --name blaze -p 8080:8080 samply/blaze:1.4
+```sh-vue
+docker run -d --name blaze -p 8080:8080 samply/blaze:{{ tag }}@{{ digest }}
 ```
 
 ## Verification <Badge type="warning" text="Since 1.0" />
@@ -14,34 +20,21 @@ For container images, we use [cosign][1] to sign images. This allows users to co
 expected CI pipeline and has not been modified after publication. 
 
 > [!NOTE]
-> The verification is performed on the image currently associated with the tag and not all images that can be ever accessed via that tag. Please use image tag pinning or other means to ensure that you actualy run the verified image.
+> Make sure to use the image digest. **Tags alone are mutable and can be updated to point to different images**. Pinning to the digest (the `@sha256:` part) ensures you use the exact build intended for a given release.
 
-```sh
-cosign verify "samply/blaze:1.4.1" \
+```sh-vue
+cosign verify "samply/blaze:{{ tag }}@{{ digest }}" \
   --certificate-identity-regexp "https://github.com/samply/blaze/.*" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  --certificate-github-workflow-ref="refs/tags/v1.4.1" \
-  -o text
+  --certificate-github-workflow-ref="refs/tags/{{ release }}" \
+  -o text >/dev/null
 ```
 
 The expected output is:
 
-```text
-Verification for index.docker.io/samply/blaze:1.4.1 --
-The following checks were performed on each of these signatures:
-  - The cosign claims were validated
-  - Existence of the claims in the transparency log was verified offline
-  - The code-signing certificate was verified using trusted certificate authority certificates
-Certificate subject: https://github.com/samply/blaze/.github/workflows/build.yml@refs/tags/v1.4.1
-Certificate issuer URL: https://token.actions.githubusercontent.com
-GitHub Workflow Trigger: push
-GitHub Workflow SHA: 79937e53c48b5966bc8774feec98e1708980d73f
-GitHub Workflow Name: Build
-GitHub Workflow Repository: samply/blaze
-GitHub Workflow Ref: refs/tags/v1.4.1
-```
+<<< @/cosign-verify.txt {text}
 
-This output ensures that the image was build on the GitHub workflow on the repository `samply/blaze` and tag `v1.4.1`.
+This output ensures that the image was built by the GitHub Actions workflow of the repository `samply/blaze` and tag `{{ release }}`.
 
 ## Production
 

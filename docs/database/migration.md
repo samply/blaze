@@ -1,3 +1,9 @@
+<script setup lang="ts">
+  const release = import.meta.env.VITE_LATEST_RELEASE;
+  const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const tag = release.substring(1);
+</script>
+
 # Database Migration
 
 If Blaze starts up with the following error message:
@@ -21,8 +27,8 @@ backup of all the data Blaze has written to disk, **plan for a downtime**, delet
 
 Please start Blaze with a shell assuming that you use the volume `blaze-data`:
 
-```sh
-docker run -it -v blaze-data:/app/data samply/blaze:latest sh
+```sh-vue
+docker run -it -v blaze-data:/app/data samply/blaze:{{ tag }}@{{ digest }} sh
 ```
 
 in that shell, go into `/app/data` and list all directories:

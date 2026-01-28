@@ -1,3 +1,9 @@
+<script setup lang="ts">
+  const release = import.meta.env.VITE_LATEST_RELEASE;
+  const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const tag = release.substring(1);
+</script>
+
 # CQL Queries with blazectl
 
 This section describes how to evaluate a CQL measure using the command line only.
@@ -19,8 +25,8 @@ cd blaze
 
 If you don't already have Blaze running, you can read about how to do it in [Deployment](../deployment.md). If you have Docker available just run:
 
-```sh
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:latest
+```sh-vue
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:{{ tag }}@{{ digest }}
 ```
 
 ## Import some data

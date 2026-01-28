@@ -1,0 +1,25 @@
+name: Publish Release
+
+on:
+  release:
+    types: [ released ]
+
+# Declare default permissions as read-only.
+permissions: read-all
+
+jobs:
+  pages:
+    if: github.event.release.target_commitish == 'main'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+      with:
+        egress-policy: audit
+
+    - name: Trigger Pages Build
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh workflow run Docs --ref main --repo ${{ github.repository }}

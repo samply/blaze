@@ -1,3 +1,9 @@
+<script setup lang="ts">
+  const release = import.meta.env.VITE_LATEST_RELEASE;
+  const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const tag = release.substring(1);
+</script>
+
 # Terminology Service <Badge type="info" text="Feature: TERMINOLOGY_SERVICE"/> <Badge type="warning" text="Since 0.32"/>
 
 > [!NOTE]
@@ -57,10 +63,10 @@ The full deployment documentation is available [here](deployment/full-standalone
 
 The SNOMED CT release file has to be uncompressed into a Docker mountable directory. In this example a local directory called `sct-release`. The Docker Compose file would look like this:
 
-```yaml
+```yaml-vue
 services:
   blaze:
-    image: "samply/blaze:latest"
+    image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx8g"
       DB_BLOCK_CACHE_SIZE: "2048"

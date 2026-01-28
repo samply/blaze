@@ -1,0 +1,12 @@
+Verification for index.docker.io/samply/blaze@sha256:<digest> --
+The following checks were performed on each of these signatures:
+  - The cosign claims were validated
+  - Existence of the claims in the transparency log was verified offline
+  - The code-signing certificate was verified using trusted certificate authority certificates
+Certificate subject: https://github.com/samply/blaze/.github/workflows/build.yml@refs/tags/v<tag>
+Certificate issuer URL: https://token.actions.githubusercontent.com
+GitHub Workflow Trigger: push
+GitHub Workflow SHA: <workflow checksum>
+GitHub Workflow Name: Build
+GitHub Workflow Repository: samply/blaze
+GitHub Workflow Ref: refs/tags/v<tag>
