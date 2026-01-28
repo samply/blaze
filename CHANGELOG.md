@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.4.2
+
+The security fix is relevant for the frontend. Please update.
+
+### Security
+
+* Fix CVE-2025-15467: Out-of-bounds Write
+
 ## v1.4.1
 
 ### Security
