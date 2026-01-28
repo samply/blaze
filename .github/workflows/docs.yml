@@ -12,6 +12,7 @@ on:
     branches:
     - main
   merge_group:
+  workflow_dispatch:
 
 permissions: read-all
 
@@ -29,10 +30,25 @@ jobs:
         cache: npm
         cache-dependency-path: 'docs/package-lock.json'
 
+    - name: Get Latest Release Tag using GitHub Script
+      id: gh_latest_tag
+      uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+      with:
+        script: |
+          const latestRelease = await github.rest.repos.getLatestRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+
+          const latestTag = latestRelease.data.tag_name || "v0.0.0"; // Default if no release
+          console.log(`Latest tag: ${latestTag}`);
+          core.setOutput("latest_tag", latestTag);
+
     - name: Build
       working-directory: docs
       env:
         DOCS_BASE: "/${{ github.event.repository.name }}/"
+        VITE_LATEST_RELEASE: ${{ steps.gh_latest_tag.outputs.latest_tag }}
       run: make build
 
     - name: Setup Pages
