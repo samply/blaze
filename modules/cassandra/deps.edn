@@ -5,9 +5,8 @@
   blaze/util
   {:local/root "../util"}
 
-  com.datastax.oss/java-driver-core
-  {:mvn/version "4.17.0"
-   :exclusions [com.github.spotbugs/spotbugs-annotations]}
+  org.apache.cassandra/java-driver-core
+  {:mvn/version "4.19.2"}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
