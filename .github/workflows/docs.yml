@@ -12,6 +12,7 @@ on:
     branches:
     - main
   merge_group:
+  workflow_dispatch:
 
 permissions: read-all
 
@@ -29,10 +30,54 @@ jobs:
         cache: npm
         cache-dependency-path: 'docs/package-lock.json'
 
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4
+
+    - name: Collect Latest Release Information
+      id: release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        version=$(gh release view --json tagName --jq '.tagName')
+        version=${version:-v0.0.0}
+        echo "version=${version}" >>"$GITHUB_OUTPUT"
+
+        digest=$(cosign verify "samply/blaze:${version#v}" \
+          --certificate-identity-regexp "https://github.com/samply/blaze/.*" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          -o json 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]')
+        echo "digest=${digest}" >>"$GITHUB_OUTPUT"
+
+        frontend_digest=$(cosign verify "samply/blaze-frontend:${version#v}" \
+          --certificate-identity-regexp "https://github.com/samply/blaze/.*" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          -o json 2>/dev/null | jq -r '.[0].critical.image["docker-manifest-digest"]')
+        echo "frontend_digest=${frontend_digest}" >>"$GITHUB_OUTPUT"
+
+        cosign verify "samply/blaze:${version#v}@${digest}" \
+          --certificate-identity-regexp "https://github.com/samply/blaze/.*" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          --certificate-github-workflow-ref="refs/tags/${version}" \
+          -o text >/dev/null 2>docs/cosign-verify.txt
+
+    - name: Replace Compose Latest Tags
+      env:
+        RELEASE: ${{ steps.release.outputs.version }}
+        DIGEST: ${{ steps.release.outputs.digest }}
+        FRONTEND_DIGEST: ${{ steps.release.outputs.frontend_digest }}
+      run: |
+        find ./docs -type f -exec sed -i \
+          -e "s|samply/blaze:latest|samply/blaze:${RELEASE#v}@${DIGEST}|g" \
+          -e "s|samply/blaze-frontend:latest|samply/blaze-frontend:${RELEASE#v}@${FRONTEND_DIGEST}|g" \
+        {} +
+
     - name: Build
       working-directory: docs
       env:
         DOCS_BASE: "/${{ github.event.repository.name }}/"
+        VITE_LATEST_RELEASE: ${{ steps.release.outputs.version }}
+        VITE_LATEST_DIGEST: ${{ steps.release.outputs.digest }}
+        VITE_LATEST_FRONTEND_DIGEST: ${{ steps.release.outputs.frontend_digest }}
       run: make build
 
     - name: Setup Pages

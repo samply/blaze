@@ -1,3 +1,10 @@
+<script setup lang="ts">
+  const release = import.meta.env.VITE_LATEST_RELEASE;
+  const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const frontendDigest = import.meta.env.VITE_LATEST_FRONTEND_DIGEST;
+  const tag = release.substring(1);
+</script>
+
 # Full Standalone Deployment
 
 The full standalone setup consists of a frontend and a single standalone backend. 
@@ -151,9 +158,9 @@ More in depth information about the nginx configuration can be found in the READ
 
 The frontend of Blaze runs as separate container. It will talk to the backend directly over HTTP inside the Docker network and to Keycloak over HTTPS. It is stateless and scaled to multiple instances. Scaling the backend in documented [here](./distributed-backend.md).
 
-```yaml
+```yaml-vue
 frontend:
-  image: "samply/blaze-frontend:latest"
+  image: "samply/blaze-frontend:{{ tag }}@{{ frontendDigest }}"
   environment:
     ORIGIN: "https://blaze.localhost"
     BACKEND_BASE_URL: "http://backend:8080"
@@ -180,9 +187,9 @@ The documentation of the environment variables can be found [here](./environment
 
 ### Backend
 
-```yaml 
+```yaml-vue
 backend:
-  image: "samply/blaze:latest"
+  image: "samply/blaze:{{ tag }}@{{ digest }}"
   environment:
     JAVA_TOOL_OPTIONS: "-Xmx2g"
     LOG_LEVEL: "debug"

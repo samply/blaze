@@ -1,3 +1,9 @@
+<script setup lang="ts">
+  const release = import.meta.env.VITE_LATEST_RELEASE;
+  const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const tag = release.substring(1);
+</script>
+
 # Configuration
 
 ## Frontend
@@ -407,10 +413,10 @@ Name of a custom search parameter bundle file. Per default, Blaze supports FHIR 
 
 ##### Example Config
 
-```yaml
+```yaml-vue
 services:
   blaze:
-    image: "samply/blaze:latest"
+    image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
     ports:

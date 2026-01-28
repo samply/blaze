@@ -1,3 +1,9 @@
+<script setup lang="ts">
+  const release = import.meta.env.VITE_LATEST_RELEASE;
+  const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const tag = release.substring(1);
+</script>
+
 # Standalone Backend
 
 Blaze comes as a web application which needs one Docker volume to store its data.
@@ -10,13 +16,13 @@ docker volume create blaze-data
 
 ## Blaze
 
-```sh
-docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:latest
+```sh-vue
+docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:{{ tag }}@{{ digest }}
 ```
 
 Blaze should log something like this:
 
-```text
+```text-vue
 2023-06-09T08:30:21.134Z b45689460ff3 main INFO [blaze.system:181] - Set log level to: info
 2023-06-09T08:30:21.155Z b45689460ff3 main INFO [blaze.system:44] - Try to read blaze.edn ...
 2023-06-09T08:30:21.173Z b45689460ff3 main INFO [blaze.system:160] - Use storage variant standalone
@@ -24,13 +30,13 @@ Blaze should log something like this:
 ...
 2023-06-09T08:30:30.079Z b45689460ff3 main INFO [blaze.server:33] - Start main server on port 8080
 2023-06-09T08:30:30.122Z b45689460ff3 main INFO [blaze.server:33] - Start metrics server on port 8081
-2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:67] - JVM version: 17.0.7
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:67] - JVM version: 25.0.1
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:68] - Maximum available memory: 1738 MiB
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:69] - Number of available processors: 2
-2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 1.0.0 in 9.0 seconds
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version {{ tag }} in 9.0 seconds
 ```
 
-In order to test connectivity, query the health endpoint:
+To test connectivity, query the health endpoint:
 
 ```sh
 curl http://localhost:8080/health
@@ -44,10 +50,10 @@ curl -H 'Accept:application/fhir+json' -s http://localhost:8080/fhir/metadata | 
 
 that should return:
 
-```json
+```json-vue
 {
   "name": "Blaze",
-  "version": "1.0.0"
+  "version": "{{ tag }}"
 }
 ```
 
@@ -57,10 +63,10 @@ Blaze will be configured through environment variables which are documented [her
 
 A Docker Compose file looks like this:
 
-```yaml
+```yaml-vue
 services:
   blaze:
-    image: "samply/blaze:latest"
+    image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
     ports:
