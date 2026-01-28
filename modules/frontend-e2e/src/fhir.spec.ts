@@ -326,9 +326,11 @@ test('Query Plan', async ({ page }) => {
   await expect(page).toHaveTitle('Encounter - Blaze');
   await expectBadge(page.getByRole('note').filter({ hasText: /Total: \d+/ }));
 
-  // Conduct search with query: status=finished
-  await page.getByLabel('Search Param', { exact: true }).selectOption('status');
-  await page.getByLabel('Search Value').fill('finished');
+  // Conduct search with query: class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP
+  await page.getByLabel('Search Param', { exact: true }).selectOption('class');
+  await page
+    .getByLabel('Search Value')
+    .fill('http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP');
   await page.getByRole('button', { name: 'Search Options' }).click();
   await page.getByLabel('Show Plan', { exact: true }).click();
   await page.getByRole('button', { name: 'Search', exact: true }).click();
@@ -342,14 +344,14 @@ test('Query Plan', async ({ page }) => {
 
     const scansItem = page.locator('li', { hasText: 'Scans (ordered)' });
     await expect(scansItem).toBeVisible();
-    await expect(scansItem).toContainText('status');
+    await expect(scansItem).toContainText('class');
 
     const seeksItem = page.locator('li', { hasText: 'Seeks' });
     await expect(seeksItem).toBeVisible();
     await expect(seeksItem).toContainText('-');
   }
 
-  // Conduct search with query: status=finished, date=2021 and patient=Foo
+  // Conduct search with query: class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP, date=2021 and patient=Foo
   await page.getByRole('button', { name: 'add new search param' }).click();
   await page.getByLabel('Search Param', { exact: true }).nth(1).selectOption('date');
   await page.getByLabel('Search Value').nth(1).fill('2021');
@@ -369,11 +371,10 @@ test('Query Plan', async ({ page }) => {
 
     const scansItem = page.locator('li', { hasText: 'Scans' });
     await expect(scansItem).toBeVisible();
-    await expect(scansItem).toContainText('-');
+    await expect(scansItem).toContainText('class');
 
     const seeksItem = page.locator('li', { hasText: 'Seeks' });
     await expect(seeksItem).toBeVisible();
-    await expect(seeksItem).toContainText('status');
     await expect(seeksItem).toContainText('date');
   }
 });

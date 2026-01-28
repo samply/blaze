@@ -1611,7 +1611,7 @@ jobs:
 
     - name: Download Observation Resources of the Year 2020 from patient with SSN 999-89-9294 Plan
       run: |
-        .github/scripts/explain-type-query.sh Observation "date=2020&patient=$(.github/scripts/patient-ids.sh "999-89-9294")" "TYPE: compartment; SCANS: NONE; SEEKS: date"
+        .github/scripts/explain-type-query.sh Observation "date=2020&patient=$(.github/scripts/patient-ids.sh "999-89-9294")" "SCANS(ordered): patient; SEEKS: date"
 
     - name: Download Observation Resources of the Year 2020 from multiple patients
       env:

@@ -18,7 +18,7 @@ In this module dir:
 make install
 make -C test-data install
 make install-playwright
-docker compose up -d
+docker compose up --wait
 ./upload.sh
 ```
 

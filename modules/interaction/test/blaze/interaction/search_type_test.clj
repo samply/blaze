@@ -3408,7 +3408,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code "information"
               [:issue 0 :code] := #fhir/code "informational"
-              [:issue 0 :diagnostics] := #fhir/string "TYPE: compartment; SCANS: NONE; SEEKS: code"))
+              [:issue 0 :diagnostics] := #fhir/string "SCANS(ordered): patient, code; SEEKS: NONE"))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
