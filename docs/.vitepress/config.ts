@@ -1,5 +1,8 @@
 import { defineConfig } from "vitepress";
 
+const currentVersion = process.env.VITE_LATEST_RELEASE || "local";
+const currentYear = new Date().getFullYear();
+
 export default defineConfig({
   title: "Blaze",
   description: "Blaze FHIR Server Documentation",
@@ -25,8 +28,7 @@ export default defineConfig({
     footer: {
       message:
         'Released under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>',
-      copyright:
-        'Copyright 2019 - 2025 The Samply Community • Circuit icons created by <a href="https://www.flaticon.com/free-icons/circuit" title="circuit icons">Eucalyp - Flaticon</a>',
+      copyright: `Copyright 2019 - ${currentYear} The Samply Community • Circuit icons created by <a href="https://www.flaticon.com/free-icons/circuit" title="circuit icons">Eucalyp - Flaticon</a>`,
     },
 
     search: {
@@ -40,7 +42,7 @@ export default defineConfig({
     nav: [
       { text: "Home", link: "/" },
       {
-        text: "v1.4.1",
+        text: `v${currentVersion}`,
         items: [
           {
             text: "Changelog",
