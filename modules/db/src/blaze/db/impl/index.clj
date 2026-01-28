@@ -328,7 +328,7 @@
 (defn- supports-ordered-compartment-index-handles [[search-param _ values]]
   (p/-supports-ordered-compartment-index-handles search-param values))
 
-(defn- compartment-query-plan* [clauses]
+(defn compartment-query-plan* [clauses]
   (let [{scan-clauses true other-clauses false}
         (group-by supports-ordered-compartment-index-handles clauses)]
     [scan-clauses other-clauses]))
@@ -356,33 +356,35 @@
           (apply coll/intersection ih/id-comp ih/intersection)))))
 
 (defn- compartment-scan
-  ([batch-db compartment tid scan-clauses]
-   (if (seq scan-clauses)
-     (ordered-compartment-index-handles batch-db compartment tid scan-clauses)
-     (coll/eduction
-      (map ih/from-resource-handle)
-      (cr/resource-handles batch-db compartment tid))))
-  ([batch-db compartment tid scan-clauses start-id]
-   (if (seq scan-clauses)
-     (ordered-compartment-index-handles batch-db compartment tid scan-clauses start-id)
-     (coll/eduction
-      (map ih/from-resource-handle)
-      (cr/resource-handles batch-db compartment tid start-id)))))
+  [batch-db compartment tid scan-clauses]
+  (if (seq scan-clauses)
+    (ordered-compartment-index-handles batch-db compartment tid scan-clauses)
+    (coll/eduction
+     (map ih/from-resource-handle)
+     (cr/resource-handles batch-db compartment tid))))
 
 (defn compartment-query
   "Returns a reducible collection of resource handles from `batch-db` in
   `compartment` of type with `tid` that satisfy `clauses`, optionally starting
   with `start-id`."
-  ([batch-db compartment tid clauses]
-   (let [[scan-clauses other-clauses] (compartment-query-plan* clauses)]
-     (coll/eduction
-      (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-      (compartment-scan batch-db compartment tid scan-clauses))))
-  ([batch-db compartment tid clauses start-id]
-   (let [[scan-clauses other-clauses] (compartment-query-plan* clauses)]
-     (coll/eduction
-      (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-      (compartment-scan batch-db compartment tid scan-clauses start-id)))))
+  [batch-db compartment tid clauses]
+  (let [[scan-clauses other-clauses] (compartment-query-plan* clauses)]
+    (coll/eduction
+     (resource-handle-mapper batch-db tid scan-clauses other-clauses)
+     (compartment-scan batch-db compartment tid scan-clauses))))
+
+(defn compartment-query*
+  "Returns a reducible collection of resource handles from `batch-db` in
+  `compartment` of type with `tid` that satisfy `scan-clauses` and possible
+  empty `other-clauses`, optionally starting with `start-id`."
+  ([batch-db compartment tid scan-clauses other-clauses]
+   (coll/eduction
+    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
+    (ordered-compartment-index-handles batch-db compartment tid scan-clauses)))
+  ([batch-db compartment tid scan-clauses other-clauses start-id]
+   (coll/eduction
+    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
+    (ordered-compartment-index-handles batch-db compartment tid scan-clauses start-id))))
 
 (defn compartment-query-plan [clauses]
   (let [[scan-clauses other-clauses] (compartment-query-plan* clauses)]

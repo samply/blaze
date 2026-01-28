@@ -302,45 +302,69 @@
 (def ^:private ^:const ^long patient-compartment-hash (codec/c-hash "Patient"))
 (def ^:private ^:const ^long patient-code-hash (codec/c-hash "patient"))
 
+(defn- resource-handle-not-found-msg [{:keys [t since-t]} tid id]
+  (format "Resource handle `%s/%s` not found in database with t=%d and since-t=%d."
+          (codec/tid->type tid) (codec/id-string id) t since-t))
+
+(defn- non-deleted-resource-handle* [batch-db tid id]
+  (when-let [handle (p/-resource-handle batch-db tid id)]
+    (when-not (rh/deleted? handle)
+      handle)))
+
+(defn- non-deleted-resource-handle [batch-db tid id]
+  (or (non-deleted-resource-handle* batch-db tid id)
+      (ba/fault (resource-handle-not-found-msg batch-db tid id))))
+
+(defn- first-referenced-patient-not-found-msg [{:keys [t since-t]} resource-handle]
+  (format "Patient resource handle referenced from `%s/%s` not found in database with t=%d and since-t=%d."
+          (name (:fhir/type resource-handle)) (:id resource-handle) t since-t))
+
+(defn- first-referenced-patient [batch-db resource-handle]
+  (or (coll/first (spc/targets batch-db resource-handle patient-code-hash))
+      (ba/fault (first-referenced-patient-not-found-msg batch-db resource-handle))))
+
 (defn- start-patient-id [batch-db tid start-id]
-  (let [start-handle (p/-resource-handle batch-db tid start-id)
-        start-patient-handle (coll/first (spc/targets batch-db start-handle patient-code-hash))]
+  (when-ok [start-handle (non-deleted-resource-handle batch-db tid start-id)
+            start-patient-handle (first-referenced-patient batch-db start-handle)]
     (codec/id-byte-string (:id start-patient-handle))))
 
 ;; A type query over resources with `tid` and patients with `patient-ids`.
-(defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses
-                             compartment-query]
+(defrecord PatientTypeQuery [tid patient-ids compartment-clause scan-clauses
+                             other-clauses compartment-query]
   p/Query
   (-count [query batch-db]
     (ac/completed-future (count (p/-execute query batch-db))))
   (-execute [_ batch-db]
     (coll/eduction (mapcat #(compartment-query batch-db %)) patient-ids))
   (-execute [_ batch-db start-id]
-    (let [start-id (codec/id-byte-string start-id)
-          start-patient-id (start-patient-id batch-db tid start-id)]
-      (coll/eduction
-       cat
-       [(compartment-query batch-db start-patient-id start-id)
+    (let [start-id (codec/id-byte-string start-id)]
+      (when-ok [start-patient-id (start-patient-id batch-db tid start-id)]
         (coll/eduction
-         (comp (drop-while #(not= start-patient-id %))
-               (drop 1)
-               (mapcat #(compartment-query batch-db %)))
-         patient-ids)])))
+         cat
+         [(compartment-query batch-db start-patient-id start-id)
+          (coll/eduction
+           (comp (drop-while #(not= start-patient-id %))
+                 (drop 1)
+                 (mapcat #(compartment-query batch-db %)))
+           patient-ids)]))))
   (-query-clauses [_]
-    (decode-clauses (into [compartment-clause] clauses)))
+    (decode-clauses (-> [compartment-clause]
+                        (into scan-clauses)
+                        (into other-clauses))))
   (-query-plan [_ _]
-    (index/compartment-query-plan clauses)))
+    (index/compartment-query-plan (into scan-clauses other-clauses))))
 
-(defn patient-type-query [tid patient-ids compartment-clause clauses]
+(defn patient-type-query
+  [tid patient-ids compartment-clause scan-clauses other-clauses]
   (->PatientTypeQuery
-   tid patient-ids compartment-clause clauses
+   tid patient-ids compartment-clause scan-clauses other-clauses
    (fn
      ([batch-db patient-id]
-      (index/compartment-query
-       batch-db [patient-compartment-hash patient-id] tid clauses))
+      (index/compartment-query* batch-db [patient-compartment-hash patient-id]
+                                tid scan-clauses other-clauses))
      ([batch-db patient-id start-id]
-      (index/compartment-query
-       batch-db [patient-compartment-hash patient-id] tid clauses start-id)))))
+      (index/compartment-query* batch-db [patient-compartment-hash patient-id]
+                                tid scan-clauses other-clauses start-id)))))
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
