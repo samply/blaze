@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.cql.translator :as t]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.external-data]
@@ -22,12 +22,10 @@
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
@@ -41,17 +39,6 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
-
-(def ^:private config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::ts-local/graph-cache)}
-   :blaze.test/fixed-rng-fn {}
-   ::ts-local/graph-cache {}))
 
 (defn- compile-context [{:blaze.db/keys [node] ::ts/keys [local]}]
   {:node node :terminology-service local})
@@ -86,7 +73,7 @@
 (deftest compile-retrieve-test
   (testing "Patient context"
     (testing "Patient"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
@@ -119,7 +106,7 @@
             (has-form expr '(retrieve-resource))))))
 
     (testing "Observation"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -154,7 +141,7 @@
             (has-form expr '(retrieve "Observation")))))
 
       (testing "with one code"
-        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -209,7 +196,7 @@
                 '(retrieve "Observation" [["code" "system-192253|code-192300"]])))))
 
         (testing "optimizing into an empty list because Observation isn't available"
-          (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+          (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
             (let [context
                   {:node node
                    :eval-context "Patient"
@@ -229,7 +216,7 @@
               (has-form (c/optimize expr db) [])))))
 
       (testing "with two codes"
-        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -299,7 +286,7 @@
                     "system-192253|code-140541"]]))))))
 
       (testing "with one concept"
-        (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -370,8 +357,84 @@
                     "system-192253|code-192300"
                     "system-192253|code-140541"]]))))))
 
+      (testing "with value set reference"
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "http://system-115910"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-115927"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-140541"}]}]]
+           [[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-115927"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "2"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-140541"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library
+                 {:valueSets
+                  {:def
+                   [{:name "icd10_e10"
+                     :id "http://fhir.org/VCL?v1=(http://system-115910)*"}]}}
+                 :terminology-service terminology-service}
+                elm #elm/retrieve
+                     {:type "Observation"
+                      :codes #elm/value-set-ref "icd10_e10"
+                      :codeComparator "in"}
+                expr (c/compile context elm)
+                db (d/db node)
+                patient (ctu/resource db "Patient" "0")]
+
+            (testing "eval"
+              (given (expr/eval (eval-context db) expr patient)
+                count := 2
+                [0 :fhir/type] := :fhir/Observation
+                [0 :id] := "1"
+                [1 :fhir/type] := :fhir/Observation
+                [1 :id] := "2"))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (ctu/testing-constant-attach-cache expr)
+
+            (ctu/testing-constant-patient-count expr)
+
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
+
+            (testing "optimize"
+              (is (= expr (c/optimize expr db))))
+
+            (testing "form"
+              (has-form expr
+                '(retrieve
+                  "Observation"
+                  [["code:in"
+                    "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))
+
       (testing "unknown code property"
-        (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+        (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -393,7 +456,7 @@
 
   (testing "Specimen context"
     (testing "Patient"
-      (with-system-data [{:blaze.db/keys [node]} (assoc-in mem-node-config [:blaze.db/node :enforce-referential-integrity] false)]
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in api-stub/mem-node-config [:blaze.db/node :enforce-referential-integrity] false)]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Specimen :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -454,7 +517,7 @@
 
   (testing "Unfiltered context"
     (testing "Medication"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Medication :id "0"
                  :code
                  #fhir/CodeableConcept
@@ -503,7 +566,7 @@
               '(retrieve "Medication" [["code" "system-225806|code-225809"]]))))))
 
     (testing "unknown code property"
-      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         (let [context
               {:node node
                :eval-context "Unfiltered"
@@ -530,7 +593,7 @@
 
   (testing "with related context"
     (testing "without code"
-      (with-system-data [{:blaze.db/keys [node] :as system} config]
+      (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -579,7 +642,7 @@
               '(retrieve (singleton-from (retrieve-resource)) "Observation"))))))
 
     (testing "with pre-compiled database query"
-      (with-system-data [{:blaze.db/keys [node] :as system} config]
+      (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :code
@@ -637,7 +700,7 @@
                          [["code" "system-133620|code-133657"]]))))))
 
     (testing "unknown code property"
-      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         (let [library {:codeSystems
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
@@ -657,7 +720,7 @@
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found."))))
 
     (testing "missing context result type"
-      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         (let [library {:codeSystems
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
@@ -675,7 +738,7 @@
             ::anom/message := "Unsupported related context retrieve expression without result type."))))
 
     (testing "unsupported context result type namespace"
-      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         (let [library {:codeSystems
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements

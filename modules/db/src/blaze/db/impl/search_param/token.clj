@@ -17,7 +17,9 @@
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.terminology-service :as ts]
    [blaze.util :refer [str]]
    [clojure.string :as str]
    [taoensso.timbre :as log]))
@@ -167,7 +169,32 @@
 (def ^:private known-reference-modifier
   #{"above" "below" "code-text" "contains" "identifier" "missing" "not-in" "text" "text-advanced"})
 
-(defrecord SearchParamToken [name url type base code target c-hash expression]
+(defn- url-param [url]
+  {:fhir/type :fhir.Parameters/parameter
+   :name #fhir/string "url"
+   :value (type/uri url)})
+
+(defn- parameters [url]
+  {:fhir/type :fhir/Parameters
+   :parameter [(url-param url)]})
+
+(defn- compile-concept [{:keys [system code]}]
+  (codec/v-hash (str (:value system) "|" (:value code))))
+
+(defn- expand-value-set-msg [url cause-msg]
+  (format "Error while expanding the ValueSet `%s`. Cause: %s" url cause-msg))
+
+(defn- compile-concepts [response url]
+  (try
+    (mapv compile-concept (:contains (:expansion @response)))
+    (catch Exception e
+      (ba/fault (expand-value-set-msg url (ex-message (ex-cause e)))))))
+
+(defn- compile-value-set [terminology-service url]
+  (-> (ts/expand-value-set terminology-service (parameters url))
+      (compile-concepts url)))
+
+(defrecord SearchParamToken [terminology-service name url type base code target c-hash expression]
   p/SearchParam
   (-validate-modifier [_ modifier]
     (condp = type
@@ -175,18 +202,23 @@
       (when-not (#{"below"} modifier)
         (some->> modifier (u/modifier-anom known-uri-modifier code)))
       "token"
-      (some->> modifier (u/modifier-anom known-token-modifier code))
+      (when-not (#{"in"} modifier)
+        (some->> modifier (u/modifier-anom known-token-modifier code)))
       ; else / "reference"
       (when-not ((into #{"identifier"} target) modifier)
         (some->> modifier (u/modifier-anom (into known-reference-modifier target) code)))))
 
-  (-compile-value [_ _ value]
-    (if (= "reference" type)
+  (-compile-value [_ modifier value]
+    (cond
+      (= "reference" type)
       (if-let [[type id] (fsr/split-literal-ref value)]
         (codec/tid-id (codec/tid type) (codec/id-byte-string id))
         (if (and (= 1 (count target)) (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" value)))
           (codec/tid-id (codec/tid (first target)) (codec/id-byte-string value))
           (codec/v-hash value)))
+      (= "in" modifier)
+      (compile-value-set terminology-service value)
+      :else
       (codec/v-hash value)))
 
   (-estimated-scan-size [_ batch-db tid modifier compiled-value]
@@ -198,17 +230,21 @@
 
   (-ordered-index-handles
     [search-param batch-db tid modifier compiled-values]
-    (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
-        (u/union-index-handles (map index-handles compiled-values)))))
+    (if (= "in" modifier)
+      (p/-ordered-index-handles search-param batch-db tid nil (flatten compiled-values))
+      (if (= 1 (count compiled-values))
+        (p/-index-handles search-param batch-db tid modifier (first compiled-values))
+        (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+          (u/union-index-handles (map index-handles compiled-values))))))
 
   (-ordered-index-handles
     [search-param batch-db tid modifier compiled-values start-id]
-    (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
-        (u/union-index-handles (map index-handles compiled-values)))))
+    (if (= "in" modifier)
+      (p/-ordered-index-handles search-param batch-db tid nil (flatten compiled-values) start-id)
+      (if (= 1 (count compiled-values))
+        (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
+        (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+          (u/union-index-handles (map index-handles compiled-values))))))
 
   (-index-handles [_ batch-db tid modifier compiled-value]
     (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
@@ -218,14 +254,19 @@
     (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
                    compiled-value start-id))
 
-  (-supports-ordered-compartment-index-handles [_ values]
+  (-supports-ordered-compartment-index-handles [_ modifier values]
    ;; the CompartmentSearchParamValueResource index only contains values with systems
-    (every? has-system? values))
+   ;; with in-modifier, a ValueSet expansion contains always systems
+    (or (= "in" modifier) (every? has-system? values)))
 
-  (-ordered-compartment-index-handles [_ batch-db compartment tid compiled-value]
-    (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value))
+  (-ordered-compartment-index-handles [_ batch-db compartment tid modifier compiled-value]
+    (if (= "in" modifier)
+      (let [index-handles #(c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid %)]
+        (u/union-index-handles (map index-handles compiled-value)))
+      (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value)))
 
-  (-ordered-compartment-index-handles [_ batch-db compartment tid compiled-value start-id]
+  (-ordered-compartment-index-handles [_ batch-db compartment tid _modifier compiled-value start-id]
+   ;; TODO: is that method called?
     (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value start-id))
 
   (-matcher [_ batch-db modifier compiled-values]
@@ -315,13 +356,13 @@
     (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
                    compiled-value start-id))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db modifier compiled-values]
@@ -398,13 +439,13 @@
      (map ih/from-resource-handle)
      (rao/type-list batch-db tid start-id)))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-postprocess-matches [_ _ _ _])
@@ -422,7 +463,7 @@
     expression))
 
 (defmethod sc/search-param "token"
-  [_ {:keys [name url type base code target expression]}]
+  [{:keys [terminology-service]} {:keys [name url type base code target expression]}]
   (if (= "_id" code)
     (->SearchParamId "_id" "id" "_id")
     (if expression
@@ -430,22 +471,22 @@
         (if (= "identifier" code)
           (->SearchParamTokenIdentifier name url type base code target
                                         (codec/c-hash code) expression)
-          (->SearchParamToken name url type base code target (codec/c-hash code)
-                              expression)))
+          (->SearchParamToken terminology-service name url type base code target
+                              (codec/c-hash code) expression)))
       (ba/unsupported (u/missing-expression-msg url)))))
 
 (defmethod sc/search-param "reference"
-  [_ {:keys [name url type base code target expression]}]
+  [{:keys [terminology-service]} {:keys [name url type base code target expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code target (codec/c-hash code)
-                          expression))
+      (->SearchParamToken terminology-service name url type base code target
+                          (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))
 
 (defmethod sc/search-param "uri"
-  [_ {:keys [name url type base code target expression]}]
+  [{:keys [terminology-service]} {:keys [name url type base code target expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code target (codec/c-hash code)
-                          expression))
+      (->SearchParamToken terminology-service name url type base code target
+                          (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))

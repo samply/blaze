@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system with-system-data]]
    [blaze.elm.code :as code]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.clinical-operators]
@@ -20,15 +20,12 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.value-set-spec]
-   [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.terminology-service.protocols :as p]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
@@ -124,17 +121,6 @@
 ;; 
 ;; The third argument is expected to be a CodeSystem, allowing references to 
 ;; code systems to be preserved as references.
-(def ^:private ts-config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::ts-local/graph-cache)}
-   :blaze.test/fixed-rng-fn {}
-   ::ts-local/graph-cache {}))
-
 (defn- eval-context [db]
   {:db db :now (time/offset-date-time)
    :parameters {"nil" nil "code-115927" "code-115927"}})
@@ -152,7 +138,7 @@
 
   (doseq [elm-constructor [elm/in-code-system #_elm/in-code-system-expression]]
     (testing "Null"
-      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         (let [context
               {:library
                {:parameters
@@ -184,7 +170,7 @@
                 (is (false? (expr/eval (eval-context db) expr nil)))))))))
 
     (testing "String"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"
@@ -246,7 +232,7 @@
                 (is (true? (expr/eval (eval-context db) expr nil))))))))
 
       (testing "with failing terminology service"
-        (with-system [{:blaze.db/keys [node]} ts-config]
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
           (let [context
                 {:library
                  {:parameters
@@ -306,7 +292,7 @@
                     ::anom/message := "Error while testing that the code `code-115927` is in CodeSystem `code-system-135750`. Cause: msg-094502"))))))))
 
     (testing "Code"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"
@@ -337,7 +323,7 @@
                 (code-system "system-115910")))))))
 
     (testing "Concept"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"
@@ -416,7 +402,7 @@
 
   (doseq [elm-constructor [elm/in-value-set elm/in-value-set-expression]]
     (testing "Null"
-      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         (let [context
               {:library
                {:parameters
@@ -448,7 +434,7 @@
                 (is (false? (expr/eval (eval-context db) expr nil)))))))))
 
     (testing "String"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"
@@ -532,7 +518,7 @@
                 (is (true? (expr/eval (eval-context db) expr nil))))))))
 
       (testing "with failing terminology service"
-        (with-system [{:blaze.db/keys [node]} ts-config]
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
           (let [context
                 {:library
                  {:parameters
@@ -592,7 +578,7 @@
                     ::anom/message := "Error while testing that the code `code-115927` is in ValueSet `value-set-135750`. Cause: msg-094502"))))))))
 
     (testing "Code"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"
@@ -633,7 +619,7 @@
                 (value-set "value-set-135750")))))))
 
     (testing "Concept"
-      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} ts-config]
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                  :url #fhir/uri "system-115910"
                  :content #fhir/code "complete"

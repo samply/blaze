@@ -1,7 +1,7 @@
 (ns blaze.elm.resource-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression-spec]
    [blaze.elm.resource :as cr]
@@ -32,7 +32,7 @@
   (:id x))
 
 (deftest resource-test
-  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+  (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
     (let [resource (resource (d/db node) "Patient" "0")]

@@ -14,6 +14,8 @@
    [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.alpha.spec :as s]
    [clojure.spec.test.alpha :as st]
@@ -21,6 +23,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -29,9 +32,11 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (defn- near-param [search-param-registry]
   (sr/get search-param-registry "near" "Location"))
@@ -138,9 +143,9 @@
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (near-param search-param-registry)]
-      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))
+      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil nil))))))
 
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))

@@ -429,6 +429,7 @@
   ;;
   :blaze.db/search-param-registry
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
+   :terminology-service #blaze/ref :blaze.terminology-service/not-available
    :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}
 
   ;;
@@ -1456,8 +1457,7 @@
     {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
     :blaze.terminology-service/local
-    {:node #blaze/ref :blaze.db.main/node
-     :clock #blaze/ref :blaze/clock
+    {:clock #blaze/ref :blaze/clock
      :rng-fn #blaze/ref :blaze/rng-fn
      :graph-cache #blaze/ref :blaze.terminology-service.local/graph-cache
      :enable-bcp-13 true
@@ -1472,6 +1472,9 @@
      {"terminology-service-graph-cache" #blaze/ref :blaze.terminology-service.local/graph-cache}}
 
     :blaze.rest-api/capabilities-handler
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}
+
+    :blaze.db/search-param-registry
     {:terminology-service #blaze/ref :blaze.terminology-service/local}}}
 
   {:key :terminology-loinc
@@ -1508,6 +1511,9 @@
      :trust-store-pass #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE_PASS" string?]}
 
     :blaze.fhir.operation.evaluate-measure/handler
+    {:terminology-service #blaze/ref :blaze.terminology-service/extern}
+
+    :blaze.db/search-param-registry
     {:terminology-service #blaze/ref :blaze.terminology-service/extern}}}
 
   {:key :graph

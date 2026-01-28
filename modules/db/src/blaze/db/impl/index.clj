@@ -325,8 +325,8 @@
   ;; TODO: implement
   [])
 
-(defn- supports-ordered-compartment-index-handles [[search-param _ values]]
-  (p/-supports-ordered-compartment-index-handles search-param values))
+(defn- supports-ordered-compartment-index-handles [[search-param modifier values]]
+  (p/-supports-ordered-compartment-index-handles search-param modifier values))
 
 (defn- compartment-query-plan* [clauses]
   (let [{scan-clauses true other-clauses false}
@@ -334,12 +334,12 @@
     [scan-clauses other-clauses]))
 
 (defn- ordered-compartment-index-handles*
-  ([batch-db compartment tid [search-param _ _ compiled-values]]
+  ([batch-db compartment tid [search-param modifier _ compiled-values]]
    (search-param/ordered-compartment-index-handles
-    search-param batch-db compartment tid compiled-values))
-  ([batch-db compartment tid [search-param _ _ compiled-values] start-id]
+    search-param batch-db compartment tid modifier compiled-values))
+  ([batch-db compartment tid [search-param modifier _ compiled-values] start-id]
    (search-param/ordered-compartment-index-handles
-    search-param batch-db compartment tid compiled-values start-id)))
+    search-param batch-db compartment tid modifier compiled-values start-id)))
 
 (defn- ordered-compartment-index-handles
   ([batch-db compartment tid clauses]

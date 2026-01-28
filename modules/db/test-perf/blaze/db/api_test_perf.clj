@@ -16,6 +16,7 @@
    [blaze.fhir.writing-context]
    [blaze.log]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service.not-available]
    [clojure.test :refer [deftest]]
    [criterium.core :as criterium]
    [integrant.core :as ig]
@@ -84,7 +85,10 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref :blaze.terminology-service/not-available)}
+
+   :blaze.terminology-service/not-available {}
 
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
    {:structure-definition-repo structure-definition-repo

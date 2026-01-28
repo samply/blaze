@@ -1,7 +1,7 @@
 (ns blaze.rest-api.capabilities-handler-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
@@ -17,7 +17,6 @@
    [blaze.rest-api.spec]
    [blaze.spec]
    [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -38,7 +37,7 @@
 
 (def ^:private minimal-config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    ::rest-api/capabilities-handler
    {:version "version-131640"
     :release-date (system/parse-date-time "2024-01-07")
@@ -503,18 +502,10 @@
       [:rest 0 :operation 0 :documentation] := #fhir/markdown "documentation-141700")))
 
 (def ^:private terminology-service-config
-  (-> minimal-config
-      (assoc-in
-       [::rest-api/capabilities-handler :terminology-service]
-       (ig/ref ::ts/local))
-      (assoc
-       ::ts/local
-       {:node (ig/ref :blaze.db/node)
-        :clock (ig/ref :blaze.test/fixed-clock)
-        :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-        :graph-cache (ig/ref ::ts-local/graph-cache)}
-       :blaze.test/fixed-rng-fn {}
-       ::ts-local/graph-cache {})))
+  (assoc-in
+   minimal-config
+   [::rest-api/capabilities-handler :terminology-service]
+   (ig/ref ::ts/local)))
 
 (deftest terminology-test
   (testing "with no code system"

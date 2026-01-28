@@ -45,12 +45,13 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def config
-  (assoc api-stub/mem-node-config
-         :blaze.interaction/conditional-delete-type
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+(def ^:private config
+  (assoc
+   api-stub/mem-node-config
+   :blaze.interaction/conditional-delete-type
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]

@@ -98,6 +98,10 @@
       (-> (p/-count-query batch-db query)
           (ac/when-complete (fn [_ _] (.close batch-db))))))
 
+  (-optimize-query [_ query]
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
+      (p/-optimize-query batch-db query)))
+
   (-execute-query [_ query]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-execute-query batch-db query)))

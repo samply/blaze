@@ -1,13 +1,13 @@
 (ns blaze.terminology-service.local-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [parameter structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.fhir.util-spec]
-   [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.module.test-util :refer [given-failed-future given-failed-system]]
    [blaze.path :refer [path]]
    [blaze.spec]
    [blaze.terminology-service :as ts]
@@ -38,17 +38,8 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::local/graph-cache)}
-   :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}
-   ::local/graph-cache {}))
+(def ^:private config
+  api-stub/mem-node-config)
 
 (deftest init-test
   (testing "nil config"
@@ -61,17 +52,9 @@
     (given-failed-system {::ts/local {}}
       :key := ::ts/local
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
-
-  (testing "invalid node"
-    (given-failed-system (assoc-in config [::ts/local :node] ::invalid)
-      :key := ::ts/local
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
-      [:cause-data ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
 
   (testing "invalid clock"
     (given-failed-system (assoc-in config [::ts/local :clock] ::invalid)
@@ -94,31 +77,11 @@
       [:cause-data ::s/problems 0 :via] := [::local/graph-cache]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def bcp-13-config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::local/graph-cache)
-    :enable-bcp-13 true}
-   :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}
-   ::local/graph-cache {}))
+(def ^:private bcp-13-config
+  (assoc-in api-stub/mem-node-config [::ts/local :enable-bcp-13] true))
 
-(def bcp-47-config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::local/graph-cache)
-    :enable-bcp-47 true}
-   :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}
-   ::local/graph-cache {}))
+(def ^:private bcp-47-config
+  (assoc-in api-stub/mem-node-config [::ts/local :enable-bcp-47] true))
 
 ;; put LOINC data into an opaque function, so that it can't be introspected
 ;; by dev tooling, because it's just large
@@ -131,65 +94,37 @@
   [_ _]
   (loinc))
 
-(def loinc-config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::local/graph-cache)
-    :loinc (ig/ref ::loinc)}
-   :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}
-   ::local/graph-cache {}
-   ::loinc {}))
+(def ^:private loinc-config
+  (-> (assoc-in api-stub/mem-node-config [::ts/local :loinc] (ig/ref ::loinc))
+      (assoc ::loinc {})))
 
-(def sct-config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
-    :graph-cache (ig/ref ::local/graph-cache)
-    :sct (ig/ref ::cs/sct)}
-   :blaze.test/fixed-clock {}
-   :blaze.test/incrementing-rng-fn {}
-   ::local/graph-cache {}
-   ::cs/sct {:release-path (path "sct-release")}))
+(def ^:private sct-config
+  (merge-with
+   merge
+   api-stub/mem-node-config
+   {::ts/local
+    {:rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
+     :sct (ig/ref ::cs/sct)}
+    :blaze.test/incrementing-rng-fn {}
+    ::cs/sct {:release-path (path "sct-release")}}))
 
-(def ucum-config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::local/graph-cache)
-    :enable-ucum true}
-   :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}
-   ::local/graph-cache {}))
+(def ^:private ucum-config
+  (assoc-in api-stub/mem-node-config [::ts/local :enable-ucum] true))
 
-(def complete-config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
-    :graph-cache (ig/ref ::local/graph-cache)
-    :enable-bcp-13 true
-    :enable-bcp-47 true
-    :enable-ucum true
-    :loinc (ig/ref ::loinc)
-    :sct (ig/ref ::cs/sct)}
-   :blaze.test/fixed-clock {}
-   :blaze.test/incrementing-rng-fn {}
-   ::local/graph-cache {}
-   ::loinc {}
-   ::cs/sct {:release-path (path "sct-release")}))
+(def ^:private complete-config
+  (merge-with
+   merge
+   api-stub/mem-node-config
+   {::ts/local
+    {:rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
+     :enable-bcp-13 true
+     :enable-bcp-47 true
+     :enable-ucum true
+     :loinc (ig/ref ::loinc)
+     :sct (ig/ref ::cs/sct)}
+    :blaze.test/incrementing-rng-fn {}
+    ::loinc {}
+    ::cs/sct {:release-path (path "sct-release")}}))
 
 (defn- pull-type-list [node type]
   @(d/pull-many node (vec (d/type-list (d/db node) type))))
@@ -3220,9 +3155,29 @@
         [:expansion :contains 1 :code] := #fhir/code "code-192308"
         [:expansion :contains 1 :display] := #fhir/string "display-192313"))))
 
+(defn- vcl-uri [expr]
+  (type/uri (str "http://fhir.org/VCL?v1=" expr)))
+
 (deftest expand-value-set-include-filter-exists-test
   (testing "with a single concept"
     (testing "without a property"
+      (testing "concept property"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "http://system-182822"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-182832"
+                     :display #fhir/string "display-182717"}]}]]]
+
+          (given @(expand-value-set ts "url" (vcl-uri "(http://system-182822)*"))
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri "http://system-182822"
+            [:expansion :contains 0 :code] := #fhir/code "code-182832"
+            [:expansion :contains 0 :display] := #fhir/string "display-182717")))
+
       (testing "that shouldn't exist"
         (with-system-data [{ts ::ts/local} config]
           [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -3746,9 +3701,6 @@
             [:expansion :contains 0 #(contains? % :inactive)] := false
             [:expansion :contains 0 :code] := #fhir/code "26465-5"
             [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"))))))
-
-(defn- vcl-uri [expr]
-  (type/uri (str "http://fhir.org/VCL?v1=" expr)))
 
 (deftest expand-value-set-loinc-include-filter-equals-test
   (testing "COMPONENT = LP14449-0/Hemoglobin"

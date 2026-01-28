@@ -24,16 +24,13 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc api-stub/mem-node-config :blaze.interaction/vread {}))
 
-(def match
+(def ^:private match
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
 
-(def operation-outcome
-  #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome")
-
-(defn wrap-defaults [handler]
+(defn- wrap-defaults [handler]
   (fn [request]
     (handler (assoc request ::reitit/match match))))
 

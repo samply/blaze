@@ -1,7 +1,7 @@
 (ns blaze.elm.expression.cache.bloom-filter-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.test-util :as ctu]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
@@ -32,7 +32,7 @@
 
 (deftest create-test
   (testing "with empty database"
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
+    (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:eval-context "Patient"} elm)]
 
@@ -43,7 +43,7 @@
           ::bloom-filter/mem-size := 11981))))
 
   (testing "with one Patient with one Observation"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -58,7 +58,7 @@
           ::bloom-filter/mem-size := 11981))))
 
   (testing "with two Patients on of which has one Observation"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -75,7 +75,7 @@
 
 (deftest recreate-test
   (testing "with empty database"
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
+    (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:eval-context "Patient"} elm)
             bloom-filter (bloom-filter/create node expr)]
@@ -87,7 +87,7 @@
           ::bloom-filter/mem-size := 11981))))
 
   (testing "with one Patient with one Observation added"
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
+    (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:eval-context "Patient"} elm)
             bloom-filter (bloom-filter/create node expr)]
@@ -103,7 +103,7 @@
           ::bloom-filter/mem-size := 11981))))
 
   (testing "with one additional Patient with one Observation added"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}

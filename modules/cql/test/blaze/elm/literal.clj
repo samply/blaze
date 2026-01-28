@@ -125,7 +125,9 @@
 
 ;; 3.12. ValueSetRef
 (defn value-set-ref [name]
-  {:type "ValueSetRef" :name name})
+  {:type "ValueSetRef"
+   :name name
+   :resultTypeName "{urn:hl7-org:elm-types:r1}ValueSet"})
 
 ;; 7. Parameters
 

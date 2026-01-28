@@ -8,7 +8,7 @@
    [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.fhir.response.create-spec]
@@ -43,16 +43,15 @@
    {:syntax :bracket
     :path context-path}))
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze.interaction/create
    {:node (ig/ref :blaze.db/node)
     :executor (ig/ref :blaze.test/executor)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-   :blaze.test/executor {}
-   :blaze.test/fixed-rng-fn {}))
+   :blaze.test/executor {}))
 
 (deftest init-test
   (testing "nil config"

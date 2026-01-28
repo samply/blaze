@@ -5,7 +5,6 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
-   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.protocols :as p]
@@ -18,6 +17,7 @@
    [blaze.db.impl.search-param.quantity]
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
+   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]))
@@ -101,22 +101,22 @@
   `search-param`.
 
   The index handles are distinct and ordered by id."
-  ([search-param batch-db compartment tid compiled-values]
+  ([search-param batch-db compartment tid modifier compiled-values]
    (if (= 1 (count compiled-values))
      (p/-ordered-compartment-index-handles
-      search-param batch-db compartment tid (first compiled-values))
+      search-param batch-db compartment tid modifier (first compiled-values))
      (->> (map #(p/-ordered-compartment-index-handles
-                 search-param batch-db compartment tid %)
+                 search-param batch-db compartment tid modifier %)
                compiled-values)
-          (apply coll/union ih/id-comp ih/union))))
-  ([search-param batch-db compartment tid compiled-values start-id]
+          (u/union-index-handles))))
+  ([search-param batch-db compartment tid modifier compiled-values start-id]
    (if (= 1 (count compiled-values))
      (p/-ordered-compartment-index-handles
-      search-param batch-db compartment tid (first compiled-values) start-id)
+      search-param batch-db compartment tid modifier (first compiled-values) start-id)
      (->> (map #(p/-ordered-compartment-index-handles
-                 search-param batch-db compartment tid % start-id)
+                 search-param batch-db compartment tid modifier % start-id)
                compiled-values)
-          (apply coll/union ih/id-comp ih/union)))))
+          (u/union-index-handles)))))
 
 (defn matcher
   "Returns a stateful transducer that filters resource handles depending on

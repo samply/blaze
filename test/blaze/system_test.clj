@@ -1,7 +1,7 @@
 (ns blaze.system-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type.system :refer [parse-date-time]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -30,7 +30,6 @@
    [blaze.system :as system]
    [blaze.system-spec]
    [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
@@ -136,9 +135,9 @@
       :foo := {:default {:read {}
                          :delete-history {}}})))
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze/rest-api
    {:base-url "http://localhost:8080"
     :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
@@ -162,8 +161,6 @@
     :job-scheduler (ig/ref :blaze/job-scheduler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
    ::auth-backend {}
    :blaze.interaction/transaction
    {:node (ig/ref :blaze.db/node)
@@ -246,18 +243,11 @@
      :history-type
      #:blaze.rest-api.interaction
       {:handler (ig/ref :blaze.interaction.history/type)}}}
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::ts-local/graph-cache)}
    ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
-   :blaze.test/fixed-rng-fn {}
    ::page-store {}
    :blaze.test/page-id-cipher {}
-   ::ts-local/graph-cache {}
    :blaze.test/json-parser
    {:parsing-context (ig/ref :blaze.fhir.parsing-context/default)}
    :blaze.test/json-writer

@@ -99,7 +99,7 @@
 (def patient-page-match
   (page-match-of "Patient"))
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-type
@@ -117,7 +117,6 @@
 
    ::search-util/link {:fhir/version "4.0.1"}
    :blaze.page-store/local {}
-   :blaze.test/fixed-rng-fn {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))
 
@@ -2269,7 +2268,7 @@
                #fhir/CodeableConcept
                 {:coding
                  [#fhir/Coding
-                   {:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                   {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
                     :code #fhir/code "C71.4"}]}}]]]
 
       (doseq [handling ["strict" "lenient"]]

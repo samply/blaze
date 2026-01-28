@@ -2,6 +2,9 @@
   (:require
    [blaze.terminology-service.protocols :as p]))
 
+(defn post-init! [terminology-service node]
+  (p/-post-init terminology-service node))
+
 (defn code-systems
   "Returns a CompletableFuture that will complete with a list of
   TerminologyCapabilities codeSystem entries or will complete exceptionally with

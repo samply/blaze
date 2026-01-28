@@ -11,7 +11,9 @@
    [blaze.fhir.spec.type.system :as system]
    [blaze.log]
    [blaze.path :refer [dir? path]]
+   [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
+   [blaze.terminology-service :as ts]
    [blaze.util :as u :refer [str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -133,10 +135,10 @@
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
     :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)}
 
-   :blaze.rest-api/requests-total {}
-   :blaze.rest-api/request-duration-seconds {}
-   :blaze.rest-api/parse-duration-seconds {}
-   :blaze.rest-api/generate-duration-seconds {}
+   ::rest-api/requests-total {}
+   ::rest-api/request-duration-seconds {}
+   ::rest-api/parse-duration-seconds {}
+   ::rest-api/generate-duration-seconds {}
 
    :blaze.handler/app
    {:rest-api (ig/ref :blaze/rest-api)
@@ -208,6 +210,12 @@
    base-config
    features))
 
+(defn- post-init
+  [{terminology-service :blaze.terminology-service/local :as system}]
+  (when terminology-service
+    (let [node (system [:blaze.db/node :blaze.db.main/node])]
+      (ts/post-init! terminology-service node))))
+
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
@@ -228,7 +236,8 @@
       (load-namespaces config)
       (-> (ig/bind config bind-map)
           (ig/expand)
-          (ig/init)))
+          (ig/init)
+          (post-init)))
 
     ba/throw-anom))
 

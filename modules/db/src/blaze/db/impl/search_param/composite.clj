@@ -68,6 +68,6 @@
   (assoc anomaly ::anom/category ::anom/unsupported))
 
 (defmethod sc/search-param "composite"
-  [index search-param]
+  [{:keys [index]} search-param]
   (-> (create-search-param index search-param)
       (ba/exceptionally #(handle-anomaly search-param %))))

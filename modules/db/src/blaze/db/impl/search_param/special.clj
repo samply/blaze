@@ -8,7 +8,7 @@
   (fn [_ {:keys [name]}] name))
 
 (defmethod sc/search-param "special"
-  [index search-param]
+  [{:keys [index]} search-param]
   (special-search-param index search-param))
 
 (defmethod special-search-param :default

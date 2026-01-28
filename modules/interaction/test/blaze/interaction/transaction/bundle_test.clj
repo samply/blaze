@@ -1,7 +1,7 @@
 (ns blaze.interaction.transaction.bundle-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.spec.type :as type]
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.transaction.bundle-spec]
@@ -17,7 +17,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (deftest tx-ops-test
-  (with-system [{:blaze.db/keys [node]} mem-node-config]
+  (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
     (testing "create"
       (given (bundle/assoc-tx-ops
               (d/db node)
@@ -169,7 +169,7 @@
           count := 1
           [0 :tx-op] := [:conditional-delete "Patient" [["name-170043" "value-170047"]]]))))
 
-  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+  (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
      [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 

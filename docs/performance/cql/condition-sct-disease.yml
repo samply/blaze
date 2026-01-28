@@ -1,0 +1,5 @@
+library: cql/condition-sct-disease.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation

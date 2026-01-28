@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
@@ -250,11 +250,12 @@
 ;;
 ;; If the argument is null, the result is false.
 (def ^:private exists-config
-  (assoc mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (defmethod elm-spec/expression :elm.spec.type/exists-test [_]
   map?)
@@ -353,7 +354,7 @@
                 (is (false? (expr/eval eval-context expr patient)))))))))
 
     (testing "without caching expressions"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)

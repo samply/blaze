@@ -15,14 +15,25 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [integrant.core :as ig]
    [java-time.api :as time]))
 
-(def ^:private root-system
+(def root-system
   "Root part of the system initialized for performance reasons."
   (ig/init
    {:blaze.db/search-param-registry
-    {:structure-definition-repo structure-definition-repo}
+    {:structure-definition-repo structure-definition-repo
+     :terminology-service (ig/ref ::ts/local)}
+    ::ts/local
+    {:clock (ig/ref :blaze.test/fixed-clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+     :graph-cache (ig/ref ::ts-local/graph-cache)}
+    ::ts-local/graph-cache {}
+    :blaze.test/fixed-clock {}
+    :blaze.test/fixed-rng-fn {}
     :blaze.fhir/parsing-context
     {:structure-definition-repo structure-definition-repo
      :fail-on-unknown-property false
@@ -107,5 +118,6 @@
   Additionally the database is initialized with `txs`."
   [[binding-form config] txs & body]
   `(with-system [system# ~config]
+     (ts/post-init! (::ts/local root-system) (:blaze.db/node system#))
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))

@@ -65,7 +65,7 @@
      :name :history-page}
     :path (str context-path "/__history-page")}))
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    :blaze.interaction.history/system
@@ -74,7 +74,6 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    ::search-util/link {:fhir/version "4.0.1"}
-   :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}))
 
 (deftest init-test

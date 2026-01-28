@@ -1,2 +1,3 @@
 {:lint-as
- {blaze.db.api-stub/with-system-data clojure.core/with-open}}
+ {blaze.db.api-stub/with-system clojure.core/with-open
+  blaze.db.api-stub/with-system-data clojure.core/with-open}}

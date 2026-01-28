@@ -2,7 +2,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
@@ -19,7 +19,6 @@
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -87,18 +86,12 @@
     (update bundle :entry conj library)))
 
 (def ^:private config
-  (assoc mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         ::ts/local
-         {:node (ig/ref :blaze.db/node)
-          :clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-          :graph-cache (ig/ref ::ts-local/graph-cache)}
-         :blaze.test/fixed-rng-fn {}
-         :blaze.test/executor {}
-         ::ts-local/graph-cache {}))
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (defn- evaluate
   ([name]
@@ -980,6 +973,8 @@
 
   (testing-query "q65-in-code-system-gender" 2)
 
+  (testing-query "q66-icd10-value-set" 2)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :fhir/Resource (:resource result))))
@@ -1247,4 +1242,4 @@
 
 (comment
   (log/set-min-level! :debug)
-  (evaluate "q65-in-code-system-gender"))
+  (evaluate "q66-icd10-value-set"))

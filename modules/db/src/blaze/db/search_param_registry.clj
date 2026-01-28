@@ -9,6 +9,7 @@
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry.spec]
    [blaze.module :as m]
+   [blaze.terminology-service.spec]
    [blaze.util :refer [conj-vec str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -169,8 +170,11 @@
     extra-bundle-file
     (into (:entry (read-file-json-resource extra-bundle-file)))))
 
-(defn- index-search-param [index {:keys [url] :as sp}]
-  (if-ok [search-param (sc/search-param index sp)]
+(defn- search-param [terminology-service index def]
+  (sc/search-param {:terminology-service terminology-service :index index} def))
+
+(defn- index-search-param [terminology-service index {:keys [url] :as sp}]
+  (if-ok [search-param (search-param terminology-service index sp)]
     (assoc index url search-param)
     #(if (ba/unsupported? %)
        index
@@ -229,16 +233,16 @@
   "Add special search params to `index`.
 
   See: https://www.hl7.org/fhir/search.html#special"
-  [index]
-  (-> (assoc-in index ["Resource" "_list"] (sc/search-param nil list-search-param))
-      (assoc-in ["Resource" "_has"] (sc/search-param index has-search-param))
-      (assoc-in ["Location" "near"] (sc/search-param index near-search-param))))
+  [terminology-service index]
+  (-> (assoc-in index ["Resource" "_list"] (search-param terminology-service nil list-search-param))
+      (assoc-in ["Resource" "_has"] (search-param terminology-service index has-search-param))
+      (assoc-in ["Location" "near"] (search-param terminology-service index near-search-param))))
 
-(defn- build-url-index* [index filter entries]
+(defn- build-url-index* [terminology-service index filter entries]
   (transduce
    (comp (map :resource)
          filter)
-   (completing index-search-param)
+   (completing (partial index-search-param terminology-service))
    index
    entries))
 
@@ -253,9 +257,9 @@
 
   Ensures that non-composite search params are build first so that composite
   search params will find it's components in the already partial build index."
-  [entries]
-  (when-ok [non-composite (build-url-index* {} remove-composite entries)]
-    (build-url-index* non-composite filter-composite entries)))
+  [terminology-service entries]
+  (when-ok [non-composite (build-url-index* terminology-service {} remove-composite entries)]
+    (build-url-index* terminology-service non-composite filter-composite entries)))
 
 (defn- build-index
   "Builds an index from [type code] to search param."
@@ -348,19 +352,19 @@
       :else #{"subject" "patient"})))
 
 (defmethod m/pre-init-spec :blaze.db/search-param-registry [_]
-  (s/keys :req-un [:blaze.fhir/structure-definition-repo]
+  (s/keys :req-un [:blaze.fhir/structure-definition-repo :blaze/terminology-service]
           :opt-un [::extra-bundle-file]))
 
 (defmethod ig/init-key :blaze.db/search-param-registry
-  [_ {:keys [extra-bundle-file]}]
+  [_ {:keys [terminology-service extra-bundle-file]}]
   (log/info
    (cond-> "Init in-memory fixed R4 search parameter registry"
      extra-bundle-file
      (str " including extra search parameters from file: " extra-bundle-file)))
   (let [entries (read-bundle-entries extra-bundle-file)
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")]
-    (if-ok [url-index (build-url-index entries)]
-      (let [index (-> (build-index url-index entries) add-special)
+    (if-ok [url-index (build-url-index terminology-service entries)]
+      (let [index (->> (build-index url-index entries) (add-special terminology-service))
             index-compartment-resources-by-type (index-compartment-resources-by-type patient-compartment)]
         (->MemSearchParamRegistry
          url-index

@@ -4,7 +4,7 @@
    [blaze.anomaly-spec]
    [blaze.cql.translator :as cql-translator]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
@@ -14,12 +14,10 @@
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
@@ -166,16 +164,7 @@
       (assoc :function-defs function-defs))))
 
 (def ^:private config
-  (assoc
-   mem-node-config
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::ts-local/graph-cache)}
-   :blaze.test/executor {}
-   :blaze.test/fixed-rng-fn {}
-   ::ts-local/graph-cache {}))
+  (assoc api-stub/mem-node-config :blaze.test/executor {}))
 
 (deftest reduce-op-test
   (testing "one component"

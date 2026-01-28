@@ -80,6 +80,7 @@
                :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
+               :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of ::index/handle))
