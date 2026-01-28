@@ -44,29 +44,31 @@
     (d/execute-query db query)))
 
 (defn- handles-and-query
-  [{:blaze/keys [db] :keys [type] :blaze.preference/keys [handling]
-    {:keys [clauses page-id]} :params}]
+  [{:keys [type] :blaze.preference/keys [handling]
+    {:keys [clauses page-id]} :params}
+   db]
   (if (empty? clauses)
     {:handles (type-list db type page-id)}
-    (when-ok [query (compile-type-query db type clauses handling)]
-      {:handles (execute-query db query page-id)
+    (when-ok [query (compile-type-query db type clauses handling)
+              handles (execute-query db query page-id)]
+      {:handles handles
        :query query})))
 
-(defn- build-page* [page-size handles]
+(defn- build-page** [page-size handles]
   (let [handles (into [] (take (inc page-size)) handles)]
     (if (< page-size (count handles))
       {:matches (pop handles)
        :next-match (peek handles)}
       {:matches handles})))
 
-(defn- build-page [db include-defs page-size handles]
-  (let [{:keys [matches] :as res} (build-page* page-size handles)]
+(defn- build-page* [db include-defs page-size handles]
+  (let [{:keys [matches] :as res} (build-page** page-size handles)]
     (if (:direct include-defs)
       (if-ok [includes (include/add-includes db include-defs matches)]
         (assoc res :includes includes)
         #(if (and (-> % :fhir/issue #{"too-costly"})
                   (> page-size 1))
-           (build-page db include-defs (quot page-size 2) handles)
+           (build-page* db include-defs (quot page-size 2) handles)
            %))
       res)))
 
@@ -136,6 +138,13 @@
 (defn- include-pull-opts [params]
   (wrap-cache-handling {} params))
 
+(defn- build-page
+  [{:blaze/keys [db] {:keys [include-defs page-size]} :params :as context}]
+  (with-open [db (d/new-batch-db db)]
+    (when-ok [{:keys [handles query]} (handles-and-query context db)
+              page (build-page* db include-defs page-size handles)]
+      (assoc page :query query))))
+
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
 
@@ -144,14 +153,10 @@
   :next-handle - the resource handle of the first resource of the next page
   :clauses - the actually used clauses
 
-  or an anomaly in case of errors."
+  or will complete exceptionally with an anomaly in case of errors."
   {:arglists '([context])}
-  [{:blaze/keys [db] :keys [type]
-    {:keys [include-defs page-size] :as params} :params
-    :as context}]
-  (if-ok [{:keys [handles query]} (handles-and-query context)
-          {:keys [matches includes next-match]}
-          (build-page db include-defs page-size handles)]
+  [{:blaze/keys [db] :keys [type params] :as context}]
+  (if-ok [{:keys [matches includes next-match query]} (build-page context)]
     (let [total-future (total-future db type query params matches next-match)
           match-future (d/pull-many db matches (match-pull-opts params))
           include-future (if (seq includes)

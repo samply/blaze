@@ -66,10 +66,12 @@
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :clauses :blaze.db.index.query/clauses
+               :scan-clauses :blaze.db.index.query/clauses
+               :other-clauses (s/nilable (s/coll-of :blaze.db.index.query/clause))
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/compartment-query-plan
-  :args (s/cat :clauses :blaze.db.index.query/clauses)
+  :args (s/cat :scan-clauses :blaze.db.index.query/clauses
+               :other-clauses (s/nilable (s/coll-of :blaze.db.index.query/clause)))
   :ret :blaze.db.query/plan)

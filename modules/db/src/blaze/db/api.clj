@@ -264,9 +264,11 @@
 
   Please use `pull-many` to obtain the full resources."
   ([db code id type]
-   (p/-compartment-resource-handles db (compartment code id) (codec/tid type)))
+   (when-ok [query (p/-compile-compartment-query db code type)]
+     (p/-execute-query db query id))
+   (p/-compartment-type-list db (compartment code id) (codec/tid type)))
   ([db code id type start-id]
-   (p/-compartment-resource-handles db (compartment code id) (codec/tid type)
+   (p/-compartment-type-list db (compartment code id) (codec/tid type)
                                     (codec/id-byte-string start-id))))
 
 (defn compartment-query
@@ -297,7 +299,9 @@
 
 (defn compile-compartment-query-lenient
   "Like `compile-compartment-query` but ignores clauses which refer to unknown
-  search parameters."
+  search parameters.
+
+  Returns an anomaly if search values are invalid."
   [node-or-db code type clauses]
   (p/-compile-compartment-query-lenient node-or-db code type clauses))
 

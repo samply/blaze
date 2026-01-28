@@ -220,7 +220,12 @@
   (fn [[search-param]]
     (contains? codes (:code search-param))))
 
-(defn- compartment-clause-patient-ids [[{:keys [code]} _ values]]
+(defn- compartment-clause-patient-ids
+  "Extracts the patient IDs from `clause` simply by scanning trough it's values.
+
+  Cancels extraction at the first value that doesn't contain a valid patient ID."
+  {:arglists '([clause])}
+  [[{:keys [code]} _ values]]
   (transduce
    (comp
     (map
@@ -248,14 +253,17 @@
   (when-some [codes (sr/patient-compartment-search-param-codes search-param-registry type)]
     (let [{[compartment-clause :as compartment-clauses] true other-clauses false}
           (group-by (clause-with-code-fn? codes) clauses)]
-      (when (and (= 1 (count compartment-clauses)) (seq other-clauses))
-        (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
-          (when (seq patient-ids)
-            (batch-db/patient-type-query
-             (codec/tid type)
-             patient-ids
-             compartment-clause
-             other-clauses)))))))
+      (when (= 1 (count compartment-clauses))
+        (let [[scan-clauses other-clauses] (index/compartment-query-plan* other-clauses)]
+          (when (seq scan-clauses)
+            (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
+              (when (seq patient-ids)
+                (batch-db/patient-type-query
+                 (codec/tid type)
+                 patient-ids
+                 compartment-clause
+                 scan-clauses
+                 other-clauses)))))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
@@ -265,14 +273,26 @@
       (or (compile-patient-type-query search-param-registry type clauses)
           (batch-db/->TypeQuery (codec/tid type) clauses)))))
 
+(defn- seek-compartment-query [search-param-registry code type clauses]
+  (let [search-param-codes (sr/compartment-resources search-param-registry code type)]
+    (if (seq search-param-codes)
+      (batch-db/->SeekCompartmentQuery search-param-registry code
+                                       search-param-codes type clauses)
+      (ba/unsupported (format  "Unsupported `%s` compartment query of type `%s`." code type)))))
+
 (defn- compile-compartment-query
-  [search-param-registry code type clauses lenient?]
-  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
+  ([search-param-registry code type]
+   (seek-compartment-query search-param-registry code type nil))
+  ([search-param-registry code type clauses lenient?]
+   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
                                                  lenient?)]
     (if (empty? clauses)
-      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
-      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                   clauses))))
+      (seek-compartment-query search-param-registry code type nil)
+      (let [[scan-clauses other-clauses] (index/compartment-query-plan* clauses)]
+        (if (seq scan-clauses)
+          (batch-db/->ScanCompartmentQuery (codec/c-hash code) (codec/tid type)
+                                           scan-clauses other-clauses)
+          (seek-compartment-query search-param-registry code type other-clauses)))))))
 
 (def ^:private add-subsetted-xf
   (map #(update % :meta update :tag conj-vec fu/subsetted)))
@@ -369,6 +389,9 @@
 
   (-compile-system-matcher [_ clauses]
     (compile-system-matcher search-param-registry clauses))
+
+  (-compile-compartment-query [_ code type]
+    (compile-compartment-query search-param-registry code type))
 
   (-compile-compartment-query [_ code type clauses]
     (compile-compartment-query search-param-registry code type clauses false))
