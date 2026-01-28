@@ -11,7 +11,10 @@ docker run -d --name blaze -p 8080:8080 samply/blaze:1.4
 ## Verification <Badge type="warning" text="Since 1.0" />
 
 For container images, we use [cosign][1] to sign images. This allows users to confirm the image was built by the
-expected CI pipeline and has not been modified after publication.
+expected CI pipeline and has not been modified after publication. 
+
+> [!NOTE]
+> The verification is performed on the image currently associated with the tag and not all images that can be ever accessed via that tag. Please use image tag pinning or other means to ensure that you actualy run the verified image.
 
 ```sh
 cosign verify "samply/blaze:1.4.1" \
