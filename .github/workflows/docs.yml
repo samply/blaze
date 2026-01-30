@@ -60,6 +60,12 @@ jobs:
           --certificate-github-workflow-ref="refs/tags/${version}" \
           -o text >/dev/null 2>docs/cosign-verify.txt
 
+        cosign verify "samply/blaze-frontend:${version#v}@${frontend_digest}" \
+          --certificate-identity-regexp "https://github.com/samply/blaze/.*" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          --certificate-github-workflow-ref="refs/tags/${version}" \
+          -o text >/dev/null 2>docs/cosign-verify-frontend.txt
+
     - name: Replace Compose Latest Tags
       env:
         RELEASE: ${{ steps.release.outputs.version }}

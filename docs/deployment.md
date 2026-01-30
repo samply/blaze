@@ -1,6 +1,7 @@
 <script setup lang="ts">
   const release = import.meta.env.VITE_LATEST_RELEASE;
   const digest = import.meta.env.VITE_LATEST_DIGEST;
+  const frontendDigest = import.meta.env.VITE_LATEST_FRONTEND_DIGEST;
   const tag = release.substring(1);
 </script>
 
@@ -22,7 +23,9 @@ expected CI pipeline and has not been modified after publication.
 > [!NOTE]
 > Make sure to use the image digest. **Tags alone are mutable and can be updated to point to different images**. Pinning to the digest (the `@sha256:` part) ensures you use the exact build intended for a given release.
 
-```sh-vue
+::: code-group
+
+```sh-vue [backend]
 cosign verify "samply/blaze:{{ tag }}@{{ digest }}" \
   --certificate-identity-regexp "https://github.com/samply/blaze/.*" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
@@ -30,9 +33,24 @@ cosign verify "samply/blaze:{{ tag }}@{{ digest }}" \
   -o text >/dev/null
 ```
 
+```sh-vue [frontend]
+cosign verify "samply/blaze-frontend:{{ tag }}@{{ frontendDigest }}" \
+  --certificate-identity-regexp "https://github.com/samply/blaze/.*" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  --certificate-github-workflow-ref="refs/tags/{{ release }}" \
+  -o text >/dev/null
+```
+
+:::
+
 The expected output is:
 
-<<< @/cosign-verify.txt {text}
+::: code-group
+
+<<< @/cosign-verify.txt {text} [backend]
+<<< @/cosign-verify-frontend.txt {text} [frontend]
+
+:::
 
 This output ensures that the image was built by the GitHub Actions workflow of the repository `samply/blaze` and tag `{{ release }}`.
 
