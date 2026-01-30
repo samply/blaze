@@ -1,0 +1,73 @@
+name: Maintenance
+
+on:
+  schedule:
+  - cron: '0 2 * * *' # every day at 2am
+  workflow_dispatch:
+
+# Declare default permissions as read-only.
+permissions: read-all
+
+jobs:
+  ghcr-cleanup:
+    name: Cleanup GHCR
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [ blaze, blaze-frontend ]
+      fail-fast: false
+    permissions:
+      packages: write
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+      with:
+        egress-policy: audit
+
+    - name: Cleanup Untagged Images
+      uses: dataaxiom/ghcr-cleanup-action@cd0cdb900b5dbf3a6f2cc869f0dbb0b8211f50c4 # v1.0.16
+      with:
+        package: "${{ matrix.image }}"
+        delete-untagged: true
+        delete-ghost-images: true
+        delete-partial-images: true
+        delete-orphaned-images: true
+
+    - name: Cleanup >90d Old Images
+      uses: dataaxiom/ghcr-cleanup-action@cd0cdb900b5dbf3a6f2cc869f0dbb0b8211f50c4 # v1.0.16
+      with:
+        package: "${{ matrix.image }}"
+        exclude-tags: "latest,main,nightly,*.*.*"
+        delete-tags: "pr-*,gh-readonly-queue-*"
+        older-than: 90 days
+
+  cache-cleanup:
+    name: Remove old Trivy Caches
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write   # required to delete caches
+      contents: read
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+      with:
+        egress-policy: audit
+
+    - name: Delete caches not from today
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        # Use UTC date to avoid timezone ambiguity on GitHub-hosted runners
+        TODAY="$(date -u +%F)"  # e.g., 2025-09-01
+        KEEP_KEY="cache-trivy-${TODAY}"
+        echo "Keeping cache with key: ${KEEP_KEY}"          
+        
+        # List all caches, filter keys beginning with cache-trivy- that are not today's key, then delete by cache_id
+        gh api "repos/${REPO}/actions/caches" --paginate \
+          -q '.actions_caches[] | select((.key | startswith("cache-trivy-")) and (.key != "'"${KEEP_KEY}"'")) | [.id, .key] | @tsv' |
+        while IFS=$'\t' read -r CACHE_ID CACHE_KEY; do
+          echo "Deleting cache '${CACHE_KEY}'"
+          gh api -X DELETE "repos/${REPO}/actions/caches/${CACHE_ID}"
+        done
