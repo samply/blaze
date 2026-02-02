@@ -276,20 +276,26 @@
 (defmethod print-method BatchDb [^BatchDb db ^Writer w]
   (.write w (format "BatchDb[t=%d]" (.t db))))
 
-(defn- decode-clauses [clauses]
+(defn- decode-sort-clause [[search-param modifier]]
+  [:sort (:code search-param) (keyword modifier)])
+
+(defn- decode-search-clause [[search-param modifier values]]
+  (into [(cond-> (:code search-param) modifier (str ":" modifier))] values))
+
+(defn- decode-clauses [{:keys [sort-clause search-clauses]}]
   (into
-   []
-   (keep
-    (fn [[search-param modifier values]]
-      (if (#{"asc" "desc"} modifier)
-        [:sort (:code search-param) (keyword modifier)]
-        (into [(cond-> (:code search-param) modifier (str ":" modifier))] values))))
-   clauses))
+   (cond-> [] sort-clause (conj (decode-sort-clause sort-clause)))
+   (map
+    (fn [disjunction]
+      (if (= 1 (count disjunction))
+        (decode-search-clause (first disjunction))
+        (mapv decode-search-clause disjunction))))
+   search-clauses))
 
 (defrecord TypeQuery [tid clauses]
   p/Query
   (-count [_ batch-db]
-    (index/type-query-total batch-db tid clauses))
+    (index/type-query-total batch-db tid (:search-clauses clauses)))
   (-execute [_ batch-db]
     (index/type-query batch-db tid clauses))
   (-execute [_ batch-db start-id]
@@ -348,9 +354,9 @@
                  (mapcat #(compartment-query batch-db %)))
            patient-ids)]))))
   (-query-clauses [_]
-    (decode-clauses (-> [compartment-clause]
-                        (into scan-clauses)
-                        (into other-clauses))))
+    (decode-clauses {:search-clauses (-> [[compartment-clause]]
+                                         (into scan-clauses)
+                                         (into other-clauses))}))
   (-query-plan [_ _]
     (index/compartment-query-plan (into scan-clauses other-clauses))))
 
@@ -384,15 +390,15 @@
   (-execute [_ batch-db]
     (index/system-query batch-db clauses)))
 
-(defrecord CompartmentQuery [c-hash tid clauses]
+(defrecord CompartmentQuery [c-hash tid search-clauses]
   p/Query
   (-execute [_ batch-db arg1]
     (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
-                             tid clauses))
+                             tid search-clauses))
   (-query-clauses [_]
-    (decode-clauses clauses))
+    (decode-clauses {:search-clauses search-clauses}))
   (-query-plan [_ _]
-    (index/compartment-query-plan clauses)))
+    (index/compartment-query-plan search-clauses)))
 
 (defrecord EmptyCompartmentQuery [c-hash tid]
   p/Query
@@ -402,12 +408,12 @@
   (-query-plan [_ _]
     {:query-type :compartment}))
 
-(defrecord Matcher [clauses]
+(defrecord Matcher [search-clauses]
   p/Matcher
   (-transducer [_ batch-db]
-    (index/other-clauses-resource-handle-filter batch-db clauses))
+    (index/other-clauses-resource-handle-filter batch-db search-clauses))
   (-matcher-clauses [_]
-    (decode-clauses clauses)))
+    (decode-clauses {:search-clauses search-clauses})))
 
 (defn new-batch-db
   "Creates a new batch database.

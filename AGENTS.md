@@ -33,6 +33,14 @@ Rigorous adherence to these patterns is required:
   * Avoid code duplication.
   * Use existing functions if possible.
   * Create a function if code is used more than two times.
+* **Testing:**
+  * **Spec Instrumentation:** Always enable spec instrumentation in tests to catch spec violations early.
+    * Require `[clojure.spec.test.alpha :as st]`.
+    * Call `(st/instrument)` at the top level of the test namespace.
+  * **Java Interop:** Enable reflection warnings (`(set! *warn-on-reflection* true)`) ONLY if the test namespace performs Java interop.
+  * **Fixtures:** Use the standard test fixture in all test namespaces.
+    * Require `[blaze.test-util :as tu]`.
+    * Call `(test/use-fixtures :each tu/fixture)`.
 
 ## Verification & Workflow
 

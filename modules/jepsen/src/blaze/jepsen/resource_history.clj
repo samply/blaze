@@ -20,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-(ig/init {:blaze.fhir/structure-definition-repo {}})
+(ig/init-key :blaze.fhir/structure-definition-repo {})
 
 (defn read-history "Reads all history values." [_ _]
   {:type :invoke :f :read :value nil})

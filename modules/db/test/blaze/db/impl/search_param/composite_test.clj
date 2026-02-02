@@ -326,10 +326,11 @@
       (fn [_]
         {::anom/category ::anom/fault})]
       (given (sc/search-param
-              {"url-210148"
-               {:type "token"}
-               "url-211659"
-               {:type "token"}}
+              {:index
+               {"url-210148"
+                {:type "token"}
+                "url-211659"
+                {:type "token"}}}
               {:type "composite"
                :component
                [{:definition "url-210148"

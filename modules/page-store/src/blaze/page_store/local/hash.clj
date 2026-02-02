@@ -17,7 +17,10 @@
   "Calculates a SHA256 hash of `hashes`."
   [hashes]
   (let [hasher (.newHasher (Hashing/sha256))]
-    (run! #(.putBytes ^Hasher hasher (.asBytes ^HashCode %)) hashes)
+    (run!
+     (fn [hashes]
+       (run! #(.putBytes ^Hasher hasher (.asBytes ^HashCode %)) hashes))
+     hashes)
     (.hash hasher)))
 
 (defn encode

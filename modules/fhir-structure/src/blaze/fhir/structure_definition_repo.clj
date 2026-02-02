@@ -30,6 +30,22 @@
   [repo]
   (p/-resources repo))
 
+(defn code-expressions
+  "Returns a set of FHIRPath expressions that evaluate to a primitive code type
+  on R4 resources."
+  [repo]
+  (into
+   #{}
+   (mapcat
+    (fn [{:keys [snapshot]}]
+      (keep
+       (fn [{:keys [path type]}]
+         (when (and (= 1 (count type))
+                    (= "code" (:code (first type))))
+           path))
+       (:element snapshot))))
+   (resources repo)))
+
 (defn- register-all!
   "Register specs for all FHIR data types and resources.
 

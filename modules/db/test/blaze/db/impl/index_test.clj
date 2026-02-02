@@ -23,6 +23,25 @@
    {:structure-definition-repo structure-definition-repo}})
 
 (deftest resolve-search-params-test
+  (testing "sort clauses are only allowed at first position"
+    (testing "second position"
+      (with-system [{:blaze.db/keys [search-param-registry]} config]
+        (doseq [lenient? [true false]]
+          (given (index/resolve-search-params
+                  search-param-registry "Patient"
+                  [["gender" "male"] [:sort "_lastUpdated" :desc]] lenient?)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Sort clauses are only allowed at first position."))))
+
+    (testing "inside disjunction"
+      (with-system [{:blaze.db/keys [search-param-registry]} config]
+        (doseq [lenient? [true false]]
+          (given (index/resolve-search-params
+                  search-param-registry "Patient"
+                  [[[:sort "_lastUpdated" :desc] ["gender" "male"]]] lenient?)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Sort clauses are only allowed at first position.")))))
+
   (testing "invalid clauses are detected"
     (testing "search clause"
       (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -40,16 +59,46 @@
           ::anom/category := ::anom/incorrect
           ::anom/message := "Clause `[:sort \"code\" :invalid]` isn't valid."))))
 
-  (testing "invalid clauses are detected"
+  (testing "with lenient handling"
+    (testing "unknown search clauses are ignored"
+      (with-system [{:blaze.db/keys [search-param-registry]} config]
+        (is (empty? (index/resolve-search-params search-param-registry "Observation"
+                                                 [["foo" "bar"]] true)))))
+
+    (testing "unkown sort clauses cause an error"
+      (with-system [{:blaze.db/keys [search-param-registry]} config]
+        (given (index/resolve-search-params search-param-registry "Observation"
+                                            [[:sort "foo" :asc]] true)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown search-param `foo` in sort clause."))))
+
+  (testing "without lenient handling"
+    (testing "unknown search clauses cause an error"
+      (with-system [{:blaze.db/keys [search-param-registry]} config]
+        (given (index/resolve-search-params search-param-registry "Observation"
+                                            [["foo" "bar"]] false)
+          ::anom/category := ::anom/not-found
+          ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
+
+    (testing "unkown sort clauses cause an error"
+      (with-system [{:blaze.db/keys [search-param-registry]} config]
+        (given (index/resolve-search-params search-param-registry "Observation"
+                                            [[:sort "foo" :asc]] true)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unknown search-param `foo` in sort clause."))))
+
+  (testing "valid clause"
     (with-system [{:blaze.db/keys [search-param-registry]} config]
       (given (index/resolve-search-params search-param-registry "GraphDefinition"
                                           [["url" "foo"]] false)
-        count := 1
-        [0 count] := 4
-        [0 0 :code] := "url"
-        [0 1] := nil
-        [0 2 0] := "foo"
-        [0 3 0] :? bs/byte-string?)))
+        :sort-clause := nil
+        [:search-clauses count] := 1
+        [:search-clauses 0 count] := 1
+        [:search-clauses 0 0 count] := 4
+        [:search-clauses 0 0 0 :code] := "url"
+        [:search-clauses 0 0 1] := nil
+        [:search-clauses 0 0 2 0] := "foo"
+        [:search-clauses 0 0 3 0] :? bs/byte-string?)))
 
   (testing "modifier handling"
     (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -77,4 +126,17 @@
             (is (ba/anomaly? (resolve-sp "value-string:exact" false))))
 
           (testing "lenient ignores"
-            (is (not (ba/anomaly? (resolve-sp "value-string:exact" true))))))))))
+            (is (not (ba/anomaly? (resolve-sp "value-string:exact" true)))))))))
+
+  (testing "disjunction"
+    (with-system [{:blaze.db/keys [search-param-registry]} config]
+      (given (index/resolve-search-params search-param-registry "Observation"
+                                          [[["status" "final"] ["code" "94564-2"]]]
+                                          false)
+        :sort-clause := nil
+        [:search-clauses count] := 1
+        [:search-clauses 0 count] := 2
+        [:search-clauses 0 0 count] := 4
+        [:search-clauses 0 0 0 :code] := "status"
+        [:search-clauses 0 1 count] := 4
+        [:search-clauses 0 1 0 :code] := "code"))))

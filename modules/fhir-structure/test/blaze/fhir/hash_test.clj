@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(ig/init {:blaze.fhir/structure-definition-repo {}})
+(ig/init-key :blaze.fhir/structure-definition-repo {})
 
 (test/use-fixtures :each tu/fixture)
 

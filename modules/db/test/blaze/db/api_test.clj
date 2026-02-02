@@ -3692,7 +3692,7 @@
             :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_id"
-            [:seek-clauses count] := 0)
+            :seek-clauses :? empty?)
 
           (testing "it is possible to start with the second patient"
             (given (pull-type-query node "Patient" clauses "1")
@@ -3722,7 +3722,7 @@
             :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_lastUpdated"
-            [:seek-clauses count] := 0)))
+            :seek-clauses :? empty?)))
 
       (testing "the newest patient comes first"
         (let [clauses [[:sort "_lastUpdated" :desc]]]
@@ -3735,7 +3735,7 @@
             :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_lastUpdated"
-            [:seek-clauses count] := 0)))))
+            :seek-clauses :? empty?)))))
 
   (testing "a node with three patients in three transactions"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4322,7 +4322,7 @@
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_profile"
             [:scan-clauses 0 :modifier] := "below"
-            [:seek-clauses count] := 0)
+            :seek-clauses :? empty?)
 
           (testing "it is possible to start with the second observation"
             (given (pull-type-query node "Observation" clauses "id-1")
@@ -5220,7 +5220,7 @@
                 [:scan-clauses count] := 1
                 [:scan-clauses 0 :code] := "code"
                 [:scan-clauses 0 :values] := ["http://loinc.org|94564-2"]
-                [:seek-clauses count] := 0))
+                :seek-clauses :? empty?))
 
             (when (= "94564-2" code)
               (given (explain-type-query node "Observation" clauses)
@@ -5229,7 +5229,7 @@
                 [:scan-clauses count] := 2
                 [:scan-clauses 1 :code] := "code"
                 [:scan-clauses 1 :values] := ["94564-2"]
-                [:seek-clauses count] := 0))))
+                :seek-clauses :? empty?))))
 
         (testing "with one group"
           (given-type-query node "Observation" [["subject" "Group/0"] ["code" code]]
@@ -5820,7 +5820,7 @@
           [:scan-clauses count] := 1
           [:scan-clauses 0 :code] := "subject"
           [:scan-clauses 0 :values] := ["Patient/0" "Patient/1" "Patient/2" "Patient/3"]
-          [:seek-clauses count] := 0)
+          :seek-clauses :? empty?)
 
         (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
                [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3"]]))
@@ -6220,6 +6220,252 @@
         [2 :id] := "2"
         [3 :id] := "3"))))
 
+(deftest type-query-disjunction-test
+  (testing "with two token search params"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code "final"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "94564-2"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code "preliminary"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "94564-2"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :status #fhir/code "final"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "8462-4"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :status #fhir/code "preliminary"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "8462-4"}]}}]]]
+
+      (let [clauses [[["status" "final"] ["code" "94564-2"]]]]
+        (given-type-query node "Observation" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (given (explain-type-query node "Observation" clauses)
+          :scan-type := :ordered
+          [:scan-clauses count] := 2
+          [:scan-clauses 0 :code] := "status"
+          [:scan-clauses 1 :code] := "code"
+          :seek-clauses :? empty?)
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2")))
+
+      (let [clauses [[["code" "94564-2"] ["status" "final"]]]]
+        (given-type-query node "Observation" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (given (explain-type-query node "Observation" clauses)
+          :scan-type := :ordered
+          [:scan-clauses count] := 2
+          [:scan-clauses 0 :code] := "code"
+          [:scan-clauses 1 :code] := "status"
+          :seek-clauses :? empty?)
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2"))))
+
+    (testing "with additional, single date search param"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :status #fhir/code "final"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "94564-2"}]}
+                 :effective #fhir/dateTime #system/date-time "2025"}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :status #fhir/code "preliminary"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "94564-2"}]}
+                 :effective #fhir/dateTime #system/date-time "2025"}]
+          [:put {:fhir/type :fhir/Observation :id "2"
+                 :status #fhir/code "final"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "8462-4"}]}
+                 :effective #fhir/dateTime #system/date-time "2025"}]
+          [:put {:fhir/type :fhir/Observation :id "3"
+                 :status #fhir/code "preliminary"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "8462-4"}]}
+                 :effective #fhir/dateTime #system/date-time "2025"}]
+          [:put {:fhir/type :fhir/Observation :id "4"
+                 :status #fhir/code "final"
+                 :effective #fhir/dateTime #system/date-time "2026"}]]]
+
+        (doseq [clauses [[[["status" "final"] ["code" "94564-2"]] ["date" "2025"]]
+                         [["date" "2025"] [["status" "final"] ["code" "94564-2"]]]]]
+          (given-type-query node "Observation" clauses
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "2")
+
+          (given (explain-type-query node "Observation" clauses)
+            :scan-type := :ordered
+            [:scan-clauses count] := 2
+            [:scan-clauses 0 :code] := "status"
+            [:scan-clauses 1 :code] := "code"
+            [:seek-clauses count] := 1
+            [:seek-clauses 0 :code] := "date")
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-type-query node "Observation" clauses "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "2"))))))
+
+  (testing "with one token and one date search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code "final"
+               :effective #fhir/dateTime #system/date-time "2025"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code "preliminary"
+               :effective #fhir/dateTime #system/date-time "2025"}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :status #fhir/code "final"
+               :effective #fhir/dateTime #system/date-time "2026"}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :status #fhir/code "preliminary"
+               :effective #fhir/dateTime #system/date-time "2026"}]]]
+
+      (let [clauses [[["status" "final"] ["date" "2025"]]]]
+        (given-type-query node "Observation" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "2"
+          [2 :id] := "1")
+
+        (given (explain-type-query node "Observation" clauses)
+          :scan-type := :unordered
+          [:scan-clauses count] := 2
+          [:scan-clauses 0 :code] := "status"
+          [:scan-clauses 1 :code] := "date"
+          :seek-clauses :? empty?)
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" clauses "2")
+            count := 2
+            [0 :id] := "2"
+            [1 :id] := "1")))
+
+      (let [clauses [[["date" "2025"] ["status" "final"]]]]
+        (given-type-query node "Observation" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (given (explain-type-query node "Observation" clauses)
+          :scan-type := :unordered
+          [:scan-clauses count] := 2
+          [:scan-clauses 0 :code] := "date"
+          [:scan-clauses 1 :code] := "status"
+          :seek-clauses :? empty?)
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2"))))
+
+    (testing "with additional, single token search param"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :status #fhir/code "final"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "94564-2"}]}
+                 :effective #fhir/dateTime #system/date-time "2025"}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :status #fhir/code "preliminary"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "94564-2"}]}
+                 :effective #fhir/dateTime #system/date-time "2025"}]
+          [:put {:fhir/type :fhir/Observation :id "2"
+                 :status #fhir/code "final"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "94564-2"}]}
+                 :effective #fhir/dateTime #system/date-time "2026"}]
+          [:put {:fhir/type :fhir/Observation :id "3"
+                 :status #fhir/code "preliminary"
+                 :code #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                           {:system #fhir/uri "http://loinc.org"
+                            :code #fhir/code "94564-2"}]}
+                 :effective #fhir/dateTime #system/date-time "2026"}]
+          [:put {:fhir/type :fhir/Observation :id "4"
+                 :status #fhir/code "final"}]]]
+
+        (doseq [clauses [[["code" "94564-2"] [["status" "final"] ["date" "2025"]]]
+                         [[["status" "final"] ["date" "2025"]] ["code" "94564-2"]]]]
+          (given-type-query node "Observation" clauses
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "2")
+
+          (given (explain-type-query node "Observation" clauses)
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "code"
+            [:seek-clauses count] := 2
+            [:seek-clauses 0 :code] := "status"
+            [:seek-clauses 1 :code] := "date")
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-type-query node "Observation" clauses "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "2")))))))
+
 (deftest type-query-date-equal-test
   (testing "with second precision"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -6250,7 +6496,7 @@
           :scan-type := :unordered
           [:scan-clauses count] := 1
           [:scan-clauses 0 :code] := "date"
-          [:seek-clauses count] := 0)
+          :seek-clauses :? empty?)
 
         (testing "it is possible to start with the second observation"
           (given (pull-type-query node "Observation" clauses "2")
@@ -7012,7 +7258,7 @@
               [:scan-clauses count] := 2
               [:scan-clauses 0 :code] := "diagnosis:Condition.code"
               [:scan-clauses 1 :code] := "status"
-              [:seek-clauses count] := 0))))
+              :seek-clauses :? empty?))))
 
       (testing "Encounter with foo Condition"
         (let [clauses [["diagnosis:Condition.code" "foo"]]]
@@ -7070,7 +7316,7 @@
               [:scan-clauses count] := 2
               [:scan-clauses 0 :code] := "diagnosis:Condition.code"
               [:scan-clauses 1 :code] := "status"
-              [:seek-clauses count] := 0))))
+              :seek-clauses :? empty?))))
 
       (testing "Encounter with bar Condition"
         (given-type-query node "Encounter" [["diagnosis:Condition.code" "bar"]]
@@ -7233,7 +7479,7 @@
             :scan-type := :unordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "patient.active"
-            [:seek-clauses count] := 0)
+            :seek-clauses :? empty?)
 
           (testing "it is possible to start with the second Observation"
             (given (pull-type-query node "Observation" clauses "3")
@@ -7520,7 +7766,7 @@
         :scan-type := :ordered
         [:scan-clauses count] := 1
         [:scan-clauses 0 :code] := "near"
-        [:seek-clauses count] := 0)
+        :seek-clauses :? empty?)
 
       (testing "near"
         (testing "with unit"
@@ -7622,19 +7868,17 @@
             [1] := ["active" "true"])))
 
       (testing "PatientTypeQuery"
-        (testing "patient/subject and code"
+        (testing "patient and code"
           (doseq [target [node (d/db node)]
                   type ["Condition" "DiagnosticReport" "MedicationAdministration"
                         "MedicationRequest" "MedicationStatement" "Observation"
                         "Procedure"]
-                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
-
-            (doseq [value ["system|code"]
-                    clauses [[["code" value]
-                              (into ["patient"] subjects)]
-                             [(into ["patient"] subjects)
-                              ["code" value]]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]
+                  clauses [[["code" "system|code"]
+                            (into ["patient"] subjects)]
+                           [(into ["patient"] subjects)
+                            ["code" "system|code"]]]]
+            (is (patient-type-query? (d/compile-type-query target type clauses)))))
 
         (testing "patient and category"
           (doseq [target [node (d/db node)]
@@ -7665,7 +7909,7 @@
 
         (testing "patient and type"
           (doseq [target [node (d/db node)]
-                  type ["Specimen"]
+                  type ["Account" "Specimen"]
                   subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
 
             (let [clauses [["type" "system|code"]
@@ -7674,10 +7918,11 @@
 
         (testing "patient and status"
           (doseq [target [node (d/db node)]
-                  type ["Account"]
+                  type ["Account" "Observation" "Specimen"]
+                  status ["system|code" "code"]
                   subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
 
-            (let [clauses [["type" "system|code"]
+            (let [clauses [["status" status]
                            (into ["patient"] subjects)]]
               (is (patient-type-query? (d/compile-type-query target type clauses))))))
 
@@ -7717,9 +7962,18 @@
 
         (testing "subject and type"
           (doseq [target [node (d/db node)]
-                  type ["Specimen"]]
+                  type ["Account" "Specimen"]]
 
             (let [clauses [["type" "system|code"]
+                           ["subject" "Patient/0" "Patient/1"]]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "subject and status"
+          (doseq [target [node (d/db node)]
+                  type ["Account" "Observation" "Specimen"]
+                  status ["system|code" "code"]]
+
+            (let [clauses [["status" status]
                            ["subject" "Patient/0" "Patient/1"]]]
               (is (patient-type-query? (d/compile-type-query target type clauses)))))))
 
@@ -7779,8 +8033,8 @@
               (testing "explain query"
                 (given (d/explain-query db query)
                   :scan-type := nil
-                  [:scan-clauses count] := 0
-                  [:seek-clauses count] := 0))
+                  :scan-clauses :? empty?
+                  :seek-clauses :? empty?))
 
               (testing "count query"
                 (is (= 2 @(d/count-query db query)))))))))
@@ -8034,18 +8288,34 @@
 
     (with-open-db [db node]
       (doseq [target [node db]]
-        (let [matcher (d/compile-system-matcher target [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
-              xform (d/matcher-transducer db matcher)]
-          (given (into [] xform (d/type-list db "Patient"))
-            count := 1
-            [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0"))))
+        (testing "tag only"
+          (let [matcher (d/compile-system-matcher target [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Patient"))
+              count := 1
+              [0 :id] := "0")))
+
+        (testing "tag and id"
+          (let [matcher (d/compile-system-matcher target [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
+                                                           ["_id" "1"]]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Patient"))
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")))))
 
     (testing "clauses can be read back"
-      (given (-> (d/compile-system-matcher node [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
-                 (d/matcher-clauses))
-        count := 1
-        [0] := ["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]))
+      (testing "tag only"
+        (is (= (-> (d/compile-system-matcher node [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
+                   (d/matcher-clauses))
+               [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])))
+
+      (testing "tag and id"
+        (is (= (-> (d/compile-system-matcher node [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
+                                                    ["_id" "1"]]])
+                   (d/matcher-clauses))
+               [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
+                 ["_id" "1"]]]))))
 
     (testing "an unknown search-param errors"
       (with-open-db [db node]
@@ -8259,7 +8529,7 @@
           :scan-type := :ordered
           [:scan-clauses count] := 1
           [:scan-clauses 0 :code] := "code"
-          [:seek-clauses count] := 0))))
+          :seek-clauses :? empty?))))
 
   (testing "returns only the matching Observation in the Patient/0 compartment"
     (let [observation
@@ -8434,7 +8704,7 @@
             [:scan-clauses count] := 2
             [:scan-clauses 0 :code] := "code"
             [:scan-clauses 1 :code] := "category"
-            [:seek-clauses count] := 0)))
+            :seek-clauses :? empty?)))
 
       (testing "matches code and value-quantity criteria"
         (let [clauses [["code" "system-191514|code-191518"]
@@ -8532,6 +8802,58 @@
           [0 :fhir/type] := :fhir/Condition
           [0 :id] := "1")))))
 
+(deftest compartment-query-disjunction-test
+  (testing "with two token search params"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code "final"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "94564-2"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code "preliminary"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "94564-2"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :status #fhir/code "final"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "8462-4"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :status #fhir/code "preliminary"
+               :code #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "8462-4"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+      (let [clauses [[["status" "final"] ["code" "http://loinc.org|94564-2"]]]]
+        (given (pull-compartment-query node "Patient" "0" "Observation" clauses)
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (given (explain-compartment-query node "Patient" "Observation" clauses)
+          :query-type := :compartment
+          :scan-type := :ordered
+          [:scan-clauses count] := 2
+          [:scan-clauses 0 :code] := "status"
+          [:scan-clauses 1 :code] := "code"
+          :seek-clauses :? empty?)))))
+
 (deftest compile-compartment-query-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -8585,7 +8907,7 @@
               :scan-type := :ordered
               [:scan-clauses count] := 1
               [:scan-clauses 0 :code] := "code"
-              [:seek-clauses count] := 0)))))
+              :seek-clauses :? empty?)))))
 
     (testing "an unknown search-param is ignored"
       (with-open-db [db node]
@@ -8604,7 +8926,7 @@
               :query-type := :compartment
               :scan-type := nil
               :scan-clauses := nil
-              [:seek-clauses count] := 0)))))))
+              :seek-clauses :? empty?)))))))
 
 (deftest patient-compartment-last-change-t-test
   (testing "non-existing patient"

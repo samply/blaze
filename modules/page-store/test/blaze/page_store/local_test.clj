@@ -101,7 +101,25 @@
 
         (given-failed-future (page-store/get store token)
           ::anom/category := ::anom/not-found
-          ::anom/message := (format "Clauses of token `%s` not found." token))))))
+          ::anom/message := (format "Clauses of token `%s` not found." token)))))
+
+  (testing "with disjunction"
+    (with-system [{store :blaze.page-store/local} config]
+      (let [token @(page-store/put! store [[["patient" (patient-ref "a")]
+                                            ["active" "true"]]
+                                           ["code" "foo"]])]
+
+        (testing "returns the clauses stored"
+          (is (= @(page-store/get store token)
+                 [[["patient" (patient-ref "a")] ["active" "true"]]
+                  ["code" "foo"]])))
+
+        (testing "not-found after one clause is invalidated"
+          (invalidate-clause! store ["patient" (patient-ref "a")])
+
+          (given-failed-future (page-store/get store token)
+            ::anom/category := ::anom/not-found
+            ::anom/message := (format "Clauses of token `%s` not found." token)))))))
 
 (deftest put-test
   (with-system [{store :blaze.page-store/local} config]

@@ -59,8 +59,7 @@
   (ex/await-termination executor 10 TimeUnit/SECONDS))
 
 (defonce structure-definition-repo
-  (:blaze.fhir/structure-definition-repo
-   (ig/init {:blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key :blaze.fhir/structure-definition-repo {}))
 
 (defn link-url [body link-relation]
   (->> body :link (filter (comp #{link-relation} :value :relation)) first :url :value))
