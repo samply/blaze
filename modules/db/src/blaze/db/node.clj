@@ -216,9 +216,9 @@
     (ac/completed-future (deleted-resource resource-handle))
     (rc/get resource-cache (node-util/rs-key resource-handle variant))))
 
-(defn- clause-with-code-fn? [codes]
-  (fn [[search-param]]
-    (contains? codes (:code search-param))))
+(defn- single-clause-with-code-fn? [codes]
+  (fn [clauses]
+    (and (= 1 (count clauses)) (contains? codes (:code (ffirst clauses))))))
 
 (defn- compartment-clause-patient-ids
   "Extracts the patient IDs from `clause` simply by scanning trough it's values.
@@ -249,21 +249,23 @@
 (defn- compile-patient-type-query
   "Tries to compile `clauses` into a PatientTypeQuery. Return nil if that isn't
   possible."
-  [search-param-registry type clauses]
-  (when-some [codes (sr/patient-compartment-search-param-codes search-param-registry type)]
-    (let [{[compartment-clause :as compartment-clauses] true other-clauses false}
-          (group-by (clause-with-code-fn? codes) clauses)]
-      (when (= 1 (count compartment-clauses))
-        (let [[scan-clauses other-clauses] (index/compartment-query-plan* other-clauses)]
-          (when (seq scan-clauses)
-            (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
-              (when (seq patient-ids)
-                (batch-db/patient-type-query
-                 (codec/tid type)
-                 patient-ids
-                 compartment-clause
-                 scan-clauses
-                 other-clauses)))))))))
+  {:arglists '([search-param-registry type clauses])}
+  [search-param-registry type {:keys [sort-clause search-clauses]}]
+  (when-not sort-clause
+    (when-some [codes (sr/patient-compartment-search-param-codes search-param-registry type)]
+      (let [{[[compartment-clause] :as compartment-clauses] true other-clauses false}
+            (group-by (single-clause-with-code-fn? codes) search-clauses)]
+        (when (= 1 (count compartment-clauses))
+          (let [[scan-clauses other-clauses] (index/compartment-query-plan* other-clauses)]
+            (when (seq scan-clauses)
+              (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
+                (when (seq patient-ids)
+                  (batch-db/patient-type-query
+                   (codec/tid type)
+                   patient-ids
+                   compartment-clause
+                   scan-clauses
+                   other-clauses))))))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
@@ -275,12 +277,14 @@
 
 (defn- compile-compartment-query
   [search-param-registry code type clauses lenient?]
-  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
-                                                 lenient?)]
-    (if (empty? clauses)
-      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
-      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                   clauses))))
+  (when-ok [clauses (index/resolve-search-params search-param-registry type
+                                                 clauses lenient?)]
+    (if (:sort-clause clauses)
+      (ba/unsupported "Sorting is unsupported in compartment queries.")
+      (if (empty? (:search-clauses clauses))
+        (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
+        (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
+                                     (:search-clauses clauses))))))
 
 (def ^:private add-subsetted-xf
   (map #(update % :meta update :tag conj-vec fu/subsetted)))
@@ -297,7 +301,7 @@
 (defn- compile-system-matcher [search-param-registry clauses]
   (when-ok [clauses (index/resolve-search-params search-param-registry
                                                  "Resource" clauses false)]
-    (batch-db/->Matcher clauses)))
+    (batch-db/->Matcher (:search-clauses clauses))))
 
 (defrecord Node [context tx-log tx-cache kv-store resource-cache resource-store
                  sync-fn search-param-registry resource-indexer read-only-matcher
@@ -368,7 +372,7 @@
   (-compile-type-matcher [_ type clauses]
     (when-ok [clauses (index/resolve-search-params search-param-registry type
                                                    clauses false)]
-      (batch-db/->Matcher clauses)))
+      (batch-db/->Matcher (:search-clauses clauses))))
 
   (-compile-system-query [_ clauses]
     (when-ok [clauses (index/resolve-search-params search-param-registry

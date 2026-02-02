@@ -10,7 +10,7 @@
   in the registry. Other namespaces can provide their own implementations here.
 
   The conversion can return an anomaly."
-  {:arglists '([index definition])}
+  {:arglists '([context definition])}
   (fn [_ {:keys [type]}] type))
 
 (defmethod search-param :default

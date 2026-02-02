@@ -167,7 +167,7 @@
 (def ^:private known-reference-modifier
   #{"above" "below" "code-text" "contains" "identifier" "missing" "not-in" "text" "text-advanced"})
 
-(defrecord SearchParamToken [name url type base code target c-hash expression]
+(defrecord SearchParamToken [name url type base code target c-hash expression code-expression?]
   p/SearchParam
   (-validate-modifier [_ modifier]
     (condp = type
@@ -219,8 +219,9 @@
                    compiled-value start-id))
 
   (-supports-ordered-compartment-index-handles [_ values]
-   ;; the CompartmentSearchParamValueResource index only contains values with systems
-    (every? has-system? values))
+   ;; the CompartmentSearchParamValueResource index only contains values with
+   ;; systems or values of type :fhir/code
+    (or code-expression? (every? has-system? values)))
 
   (-ordered-compartment-index-handles [_ batch-db compartment tid compiled-value]
     (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid compiled-value))
@@ -407,6 +408,11 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
+  (-matcher [_ _ _ compiled-values]
+    (let [ids (into #{} (map codec/id-string) compiled-values)
+          pred (comp ids :id)]
+      (filter pred)))
+
   (-postprocess-matches [_ _ _ _])
 
   (-index-values [_ _ _]))
@@ -422,16 +428,17 @@
     expression))
 
 (defmethod sc/search-param "token"
-  [_ {:keys [name url type base code target expression]}]
+  [{:keys [code-expression?]} {:keys [name url type base code target expression]}]
   (if (= "_id" code)
     (->SearchParamId "_id" "id" "_id")
     (if expression
-      (when-ok [expression (fhir-path/compile (fix-expr url expression))]
-        (if (= "identifier" code)
-          (->SearchParamTokenIdentifier name url type base code target
-                                        (codec/c-hash code) expression)
-          (->SearchParamToken name url type base code target (codec/c-hash code)
-                              expression)))
+      (let [code-expression? (code-expression? expression)]
+        (when-ok [expression (fhir-path/compile (fix-expr url expression))]
+          (if (= "identifier" code)
+            (->SearchParamTokenIdentifier name url type base code target
+                                          (codec/c-hash code) expression)
+            (->SearchParamToken name url type base code target (codec/c-hash code)
+                                expression code-expression?))))
       (ba/unsupported (u/missing-expression-msg url)))))
 
 (defmethod sc/search-param "reference"
@@ -439,7 +446,7 @@
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParamToken name url type base code target (codec/c-hash code)
-                          expression))
+                          expression false))
     (ba/unsupported (u/missing-expression-msg url))))
 
 (defmethod sc/search-param "uri"
@@ -447,5 +454,5 @@
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParamToken name url type base code target (codec/c-hash code)
-                          expression))
+                          expression false))
     (ba/unsupported (u/missing-expression-msg url))))

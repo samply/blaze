@@ -58,17 +58,18 @@
   (when-let [search-param (date-search-param batch-db source-type)]
     (let [start-clause (date-start-clause search-param start)
           end-clause (date-end-clause search-param end)]
-      (index/other-clauses-resource-handle-filter batch-db [start-clause end-clause]))))
+      (index/other-clauses-resource-handle-filter batch-db [[start-clause]
+                                                            [end-clause]]))))
 
 (defn- date-start-filter [batch-db source-type start]
   (when-let [search-param (date-search-param batch-db source-type)]
     (let [clause (date-start-clause search-param start)]
-      (index/other-clauses-resource-handle-filter batch-db [clause]))))
+      (index/other-clauses-resource-handle-filter batch-db [[clause]]))))
 
 (defn- date-end-filter [batch-db source-type end]
   (when-let [search-param (date-search-param batch-db source-type)]
     (let [clause (date-end-clause search-param end)]
-      (index/other-clauses-resource-handle-filter batch-db [clause]))))
+      (index/other-clauses-resource-handle-filter batch-db [[clause]]))))
 
 (defn- date-filter [batch-db source-type start end]
   (cond

@@ -9,19 +9,27 @@
 (def ^:private cbor-object-mapper
   (j/object-mapper {:factory (CBORFactory.)}))
 
-(defmulti decode-sort-clause (fn [[key]] key))
+(defmulti decode-clause (fn [[key]] key))
 
-(defmethod decode-sort-clause "_sort"
+(defmethod decode-clause "_sort"
   [[_key param direction]] [:sort param (keyword direction)])
 
-(defmethod decode-sort-clause :default
+(defmethod decode-clause :default
   [clause] clause)
 
-(defn- decode-sort-clauses
+(defn- multiple-clauses? [disjunction]
+  (sequential? (first disjunction)))
+
+(defn- decode-disjunction [disjunction]
+  (if (multiple-clauses? disjunction)
+    (mapv decode-clause disjunction)
+    (decode-clause disjunction)))
+
+(defn- decode-conjunction
   "Decodes the strings in sort clauses to keywords because CBOR can't store
   keywords."
   [clauses]
-  (mapv decode-sort-clause clauses))
+  (mapv decode-disjunction clauses))
 
 (defn- parse-msg [token cause-msg]
   (format "Error while parsing resource content with token `%s`: %s"
@@ -29,25 +37,30 @@
 
 (defn decode [bytes token]
   (-> (ba/try-all ::anom/incorrect (j/read-value bytes cbor-object-mapper))
-      (ba/map decode-sort-clauses)
+      (ba/map decode-conjunction)
       (ba/exceptionally
        #(assoc %
                ::anom/message (parse-msg token (::anom/message %))
                :blaze.page-store/token token))))
 
-(defmulti encode-sort-clause (fn [[key]] key))
+(defmulti encode-clause (fn [[key]] key))
 
-(defmethod encode-sort-clause :sort
+(defmethod encode-clause :sort
   [[_key param direction]] ["_sort" param (name direction)])
 
-(defmethod encode-sort-clause :default
+(defmethod encode-clause :default
   [clause] clause)
 
-(defn- encode-sort-clauses
+(defn- encode-disjunction [disjunction]
+  (if (multiple-clauses? disjunction)
+    (mapv encode-clause disjunction)
+    (encode-clause disjunction)))
+
+(defn- encode-conjunction
   "Encodes the keywords in sort clauses to strings because CBOR can't store
   keywords."
   [clauses]
-  (mapv encode-sort-clause clauses))
+  (mapv encode-disjunction clauses))
 
 (defn encode [clauses]
-  (j/write-value-as-bytes (encode-sort-clauses clauses) cbor-object-mapper))
+  (j/write-value-as-bytes (encode-conjunction clauses) cbor-object-mapper))

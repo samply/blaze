@@ -28,8 +28,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (defonce structure-definition-repo
-  (:blaze.fhir/structure-definition-repo
-   (ig/init {:blaze.fhir/structure-definition-repo {}})))
+  (ig/init-key :blaze.fhir/structure-definition-repo {}))
 
 (defn- regexes->str
   "Replaces all regular expression patterns in `form` with their string

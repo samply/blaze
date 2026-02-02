@@ -67,8 +67,12 @@
   (s/or :search-clause :blaze.db.query/search-clause
         :sort-clause :blaze.db.query/sort-clause))
 
+(s/def :blaze.db.query/disjunction
+  (s/or :clause :blaze.db.query/clause
+        :clauses (s/coll-of :blaze.db.query/clause :kind vector?)))
+
 (s/def :blaze.db.query/clauses
-  (s/coll-of :blaze.db.query/clause :kind vector?))
+  (s/coll-of :blaze.db.query/disjunction :kind vector?))
 
 (s/def :blaze/java-tool-options
   string?)

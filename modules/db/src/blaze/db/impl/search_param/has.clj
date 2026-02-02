@@ -156,5 +156,5 @@
     []))
 
 (defmethod special/special-search-param "_has"
-  [index _]
+  [{:keys [index]} _]
   (->SearchParamHas index "_has" "special" "_has"))

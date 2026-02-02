@@ -4,12 +4,12 @@
    [taoensso.timbre :as log]))
 
 (defmulti special-search-param
-  {:arglists '([index definition])}
+  {:arglists '([context definition])}
   (fn [_ {:keys [name]}] name))
 
 (defmethod sc/search-param "special"
-  [index search-param]
-  (special-search-param index search-param))
+  [context search-param]
+  (special-search-param context search-param))
 
 (defmethod special-search-param :default
   [_ {:keys [url code]}]

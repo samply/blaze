@@ -28,19 +28,35 @@
   (HashCode/fromBytes (.decode (BaseEncoding/base16) ^String token)))
 
 (defn- load [^Cache cache token]
-  (some->> (.getIfPresent cache (decode-token token))
-           (reduce #(if-some [clause (.getIfPresent cache %2)]
-                      (conj %1 clause)
-                      (reduced nil))
-                   [])))
+  (some->>
+   (.getIfPresent cache (decode-token token))
+   (reduce
+    (fn [ret hashes]
+      (if-some [clauses (reduce
+                         #(if-some [clause (.getIfPresent cache %2)]
+                            (conj %1 clause)
+                            (reduced nil))
+                         []
+                         hashes)]
+        (conj ret (cond-> clauses (= 1 (count clauses)) first))
+        (reduced nil)))
+    [])))
 
 (defn- store-clause [^Cache cache clause]
   (let [hash (hash/hash-clause clause)]
     (.get cache hash (fn [_] clause))
     hash))
 
+(defn- multiple-clauses? [disjunction]
+  (sequential? (first disjunction)))
+
+(defn- store-disjunction [cache disjunction]
+  (if (multiple-clauses? disjunction)
+    (mapv (partial store-clause cache) disjunction)
+    [(store-clause cache disjunction)]))
+
 (defn- store [^Cache cache clauses]
-  (let [hashes (mapv (partial store-clause cache) clauses)
+  (let [hashes (mapv (partial store-disjunction cache) clauses)
         hash (hash/hash-hashes hashes)]
     (.get cache hash (fn [_] hashes))
     (hash/encode hash)))

@@ -131,6 +131,11 @@
   (let [[url version] (str/split canonical #"\|")]
     [(or url "") (some-> version version-parts)]))
 
+(defn intersection-index-handles
+  "Returns a reducible and iterable collection of the intersection of `index-handles`."
+  [index-handles]
+  (apply coll/intersection ih/id-comp ih/intersection index-handles))
+
 (defn union-index-handles
   "Returns a reducible and iterable collection of the union of `index-handles`."
   [index-handles]
