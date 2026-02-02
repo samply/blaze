@@ -13,6 +13,7 @@
    [blaze.fhir.spec.memory :as mem]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.fhir.writing-context]
@@ -34,7 +35,8 @@
    [blaze.fhir.spec.type Base]
    [blaze.fhir.spec.type.system DateTime Times]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-   [com.google.common.hash Hashing]))
+   [com.google.common.hash Hashing]
+   [java.nio.charset StandardCharsets]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
@@ -109,8 +111,8 @@
   `(prop/for-all [value# (~(symbol "fg" type))]
      (let [source# (write-cbor value#)]
        (>= (Base/memSize (parse-cbor ~(fg/kebab->pascal type) source#))
-           (mem/total-size* (parse-cbor ~(fg/kebab->pascal type) source#)
-                            (parse-cbor ~(fg/kebab->pascal type) source#))))))
+           (mem/total-size (parse-cbor ~(fg/kebab->pascal type) source#)
+                           (parse-cbor ~(fg/kebab->pascal type) source#))))))
 
 (deftest resource-test
   (testing "valid"
@@ -612,7 +614,7 @@
 
   (testing "Observation with valueTime with id"
     (is (= {:fhir/type :fhir/Observation
-            :value #fhir/time{:id "foo" :value #system/time"16:26:42"}}
+            :value #fhir/time{:id "foo" :value #system/time "16:26:42"}}
            (write-parse-json
             {:resourceType "Observation"
              :valueTime "16:26:42"
@@ -620,7 +622,7 @@
 
   (testing "Observation with valueTime with extension"
     (is (= {:fhir/type :fhir/Observation
-            :value #fhir/time{:extension [#fhir/Extension{:url "foo"}] :value #system/time"16:26:42"}}
+            :value #fhir/time{:extension [#fhir/Extension{:url "foo"}] :value #system/time "16:26:42"}}
            (write-parse-json
             {:resourceType "Observation"
              :valueTime "16:26:42"
@@ -873,7 +875,7 @@
     (testing "Observation with valueTime with id"
       (are [resource] (= resource (write-parse-cbor resource))
         {:fhir/type :fhir/Observation
-         :value #fhir/time{:id "foo" :value #system/time"00:00"}}))))
+         :value #fhir/time{:id "foo" :value #system/time "00:00"}}))))
 
 (defn- conform-xml [sexp]
   (fhir-spec/conform-xml (prxml/sexp-as-element sexp)))
@@ -1123,8 +1125,8 @@
   32 GiB, were the reference size is 8 byte."
   [type & body]
   `(are [x# size#] (= (Base/memSize (write-parse-json ~type x#))
-                      (mem/total-size* (write-parse-json ~type x#)
-                                       (write-parse-json ~type x#))
+                      (mem/total-size (write-parse-json ~type x#)
+                                      (write-parse-json ~type x#))
                       size#)
      ~@(select-size body)))
 
@@ -1135,13 +1137,16 @@
   reference size is 4 bytes, while the second one is for heap sizes larger than
   32 GiB, were the reference size is 8 byte."
   [& body]
-  `(are [x# size#] (= (Base/memSize x#) (mem/total-size x#) size#)
+  `(are [x# size#] (= (Base/memSize x#) (mem/total-size x# x#) size#)
      ~@(select-size body)))
 
 ;; ---- Primitive Types -------------------------------------------------------
 
 (defn- emit [element]
   (xml/emit-str (assoc element :tag :foo)))
+
+(defn- copy-str [^String s]
+  (String. (.getBytes s StandardCharsets/UTF_8) StandardCharsets/UTF_8))
 
 (deftest fhir-boolean-test
   (testing "parsing"
@@ -1198,7 +1203,7 @@
 
 (deftest ^:mem-size fhir-boolean-mem-size-test
   (primitive-mem-size-test
-   #fhir/boolean{:id "id-205204"} 88 104))
+   (type/boolean {:id (copy-str "id-205204")}) 88 104))
 
 (deftest fhir-integer-test
   (testing "parsing"
@@ -1256,7 +1261,7 @@
 (deftest ^:mem-size fhir-integer-mem-size-test
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/integer 1 24 24)))
+     (type/integer 1) 24 24)))
 
 (deftest fhir-string-test
   (testing "parsing"
@@ -1334,13 +1339,13 @@
       (pos? (Base/memSize string))))
 
   (testing "interning"
-    (are [x y] (zero? (mem/total-size* x y))
+    (are [x y] (zero? (mem/total-size x y))
       #fhir/string "1234"
       #fhir/string "1234"))
 
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/string "string-131125" 72 80)))
+     (type/string (copy-str "string-131125")) 72 80)))
 
 (deftest fhir-decimal-test
   (testing "parsing"
@@ -1555,7 +1560,7 @@
   (satisfies-prop 10
     (prop/for-all [value (fg/canonical :id (gen/return nil) :extension (gen/return nil))]
       (and (zero? (Base/memSize value))
-           (= (mem/total-size value) (mem/total-size value value))))))
+           (zero? (mem/total-size value value))))))
 
 (deftest fhir-base64Binary-test
   (testing "parsing"
@@ -1729,9 +1734,9 @@
 
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/date #system/date "2025" 32 40
-     #fhir/date #system/date "2025-01" 32 40
-     #fhir/date #system/date "2025-01-01" 32 40)))
+     (type/date (system/parse-date "2025")) 32 40
+     (type/date (system/parse-date "2025-01")) 32 40
+     (type/date (system/parse-date "2025-01-01")) 32 40)))
 
 (deftest fhir-dateTime-test
   (testing "parsing"
@@ -1788,10 +1793,10 @@
 
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/dateTime #system/date-time "2025" 32 40
-     #fhir/dateTime #system/date-time "2025-01" 32 40
-     #fhir/dateTime #system/date-time "2025-01-01" 32 40
-     #fhir/dateTime #system/date-time "2025-01-01T01:01:01" 64 80)))
+     (type/dateTime (system/parse-date-time "2025")) 32 40
+     (type/dateTime (system/parse-date-time "2025-01")) 32 40
+     (type/dateTime (system/parse-date-time "2025-01-01")) 32 40
+     (type/dateTime (system/parse-date-time "2025-01-01T01:01:01")) 64 80)))
 
 (deftest fhir-time-test
   (testing "parsing"
@@ -1898,6 +1903,10 @@
                                       [(type/extension {:url extension-url})]
                                       :value value})))))))))
 
+(deftest ^:mem-size fhir-code-mem-size-test
+  (primitive-mem-size-test
+   (type/code {:id (copy-str "J34q57466") :value (copy-str "\n+Q")}) 160 192))
+
 (deftest fhir-oid-test
   (testing "parsing"
     (testing "XML"
@@ -1953,7 +1962,7 @@
 (deftest ^:mem-size fhir-oid-mem-size-test
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/oid "oid-144200" 64 72)))
+     (type/oid (copy-str "oid-144200")) 64 72)))
 
 (deftest fhir-id-test
   (testing "parsing"
@@ -2010,7 +2019,7 @@
 (deftest ^:mem-size fhir-id-mem-size-test
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/id "id-144058" 64 72)))
+     (type/id (copy-str "id-144058")) 64 72)))
 
 (deftest fhir-markdown-test
   (testing "parsing"
@@ -2069,7 +2078,7 @@
 (deftest ^:mem-size fhir-markdown-mem-size-test
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/markdown "markdown-144058" 72 80)))
+     (type/markdown (copy-str "markdown-144058")) 72 80)))
 
 (deftest fhir-unsignedInt-test
   (testing "parsing"
@@ -2126,7 +2135,7 @@
 (deftest ^:mem-size fhir-unsignedInt-mem-size-test
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/unsignedInt 1 16 24)))
+     (type/unsignedInt 1) 16 24)))
 
 (deftest fhir-positiveInt-test
   (testing "parsing"
@@ -2183,7 +2192,7 @@
 (deftest ^:mem-size fhir-positiveInt-mem-size-test
   (testing "examples"
     (primitive-mem-size-test
-     #fhir/positiveInt 1 16 24)))
+     (type/positiveInt 1) 16 24)))
 
 (deftest fhir-uuid-test
   (testing "parsing"
@@ -3047,8 +3056,8 @@
   (satisfies-prop 50
     (prop/for-all [source (gen/fmap write-cbor (fg/bundle-entry-search))]
       (>= (Base/memSize (parse-cbor "Bundle.entry.search" source))
-          (mem/total-size* (parse-cbor "Bundle.entry.search" source)
-                           (parse-cbor "Bundle.entry.search" source)))))
+          (mem/total-size (parse-cbor "Bundle.entry.search" source)
+                          (parse-cbor "Bundle.entry.search" source)))))
 
   (testing "examples"
     (mem-size-test "Bundle.entry.search"
@@ -3165,8 +3174,8 @@
     (memsize-prop "codeable-concept"))
 
   (testing "interning"
-    (are [x] (zero? (mem/total-size* (write-parse-json "CodeableConcept" x)
-                                     (write-parse-json "CodeableConcept" x)))
+    (are [x] (zero? (mem/total-size (write-parse-json "CodeableConcept" x)
+                                    (write-parse-json "CodeableConcept" x)))
       {:coding
        [{:system "http://snomed.info/sct"
          :code "160903007"
@@ -3321,15 +3330,16 @@
     (memsize-prop "coding"))
 
   (testing "interning"
-    (are [x] (zero? (mem/total-size* (write-parse-json "Coding" x)
-                                     (write-parse-json "Coding" x)))
+    (are [x] (zero? (mem/total-size (write-parse-json "Coding" x)
+                                    (write-parse-json "Coding" x)))
       {:system "http://snomed.info/sct"
        :code "160903007"
        :display "Full-time employment (finding)"}))
 
   (testing "examples"
     (mem-size-test "Coding"
-      {:id "id-173830"} 112 144)))
+      {:id "id-173830"} 112 144
+      {:_code {:id "id-185245"} :code "value-185250"} 208 264)))
 
 (deftest contact-detail-test
   (testing "FHIR spec"
@@ -4516,11 +4526,11 @@
   (satisfies-prop 50
     (prop/for-all [source (gen/fmap write-cbor (fg/extension :value (fg/extension-value)))]
       (>= (Base/memSize (parse-cbor "Extension" source))
-          (mem/total-size* (parse-cbor "Extension" source)
-                           (parse-cbor "Extension" source)))))
+          (mem/total-size (parse-cbor "Extension" source)
+                          (parse-cbor "Extension" source)))))
 
   (testing "interning"
-    (are [x y] (zero? (mem/total-size* x y))
+    (are [x y] (zero? (mem/total-size x y))
       #fhir/Extension{:url "url-191107"}
       #fhir/Extension{:url "url-191107"}
 
@@ -6020,8 +6030,8 @@
   (satisfies-prop 50
     (prop/for-all [source (gen/fmap write-cbor (fg/timing-repeat))]
       (>= (Base/memSize (parse-cbor "Timing.repeat" source))
-          (mem/total-size* (parse-cbor "Timing.repeat" source)
-                           (parse-cbor "Timing.repeat" source)))))
+          (mem/total-size (parse-cbor "Timing.repeat" source)
+                          (parse-cbor "Timing.repeat" source)))))
 
   (testing "examples"
     (mem-size-test "Timing.repeat"
@@ -6318,8 +6328,8 @@
   (satisfies-prop 50
     (prop/for-all [source (gen/fmap write-cbor (fg/bundle-entry))]
       (>= (Base/memSize (parse-cbor "Bundle.entry" source))
-          (mem/total-size* (parse-cbor "Bundle.entry" source)
-                           (parse-cbor "Bundle.entry" source)))))
+          (mem/total-size (parse-cbor "Bundle.entry" source)
+                          (parse-cbor "Bundle.entry" source)))))
 
   (testing "examples"
     (mem-size-test "Bundle.entry"
