@@ -20,7 +20,18 @@ public interface Strings {
      */
     int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + MEM_SIZE_REFERENCE + 4 + 1 + 1 + 7) & ~7;
 
-    int MEM_SIZE_SERIALIZED_STRING_OBJECT = 32;
+    /**
+     * Memory size of {@link SerializedString}.
+     * <p>
+     * 8 byte - object header
+     * 4 or 8 byte - String reference
+     * 4 or 8 byte - byte array reference
+     * 4 or 8 byte - byte array reference
+     * 4 or 8 byte - char array reference
+     * 4 or 8 byte - String reference
+     */
+    int MEM_SIZE_SERIALIZED_STRING_OBJECT = (MEM_SIZE_OBJECT_HEADER + 5 * MEM_SIZE_REFERENCE + 7) & ~7;
+
     byte HASH_MARKER = 1;
 
     @SuppressWarnings("UnstableApiUsage")
