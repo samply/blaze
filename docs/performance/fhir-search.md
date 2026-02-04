@@ -27,7 +27,7 @@ The following datasets were used:
 
 | Dataset | History  | # Pat. ¹ | # Res. ² | # Obs. ³ | Size on SSD |
 |---------|----------|---------:|---------:|---------:|------------:|
-| 100k    | 10 years |    100 k |    104 M |     59 M |     202 GiB |
+| 100k    | 10 years |    100 k |    104 M |     59 M |     110 GiB |
 | 1M      | 10 years |      1 M |   1044 M |    593 M |    1045 GiB |
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
