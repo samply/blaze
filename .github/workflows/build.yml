@@ -39,7 +39,7 @@ jobs:
         cljfmt: 0.15.6
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Check Formatting
       run: make fmt
@@ -54,7 +54,7 @@ jobs:
         clj-kondo: '2026.01.19'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Actionlint
       run: .github/scripts/install-actionlint.sh
@@ -67,7 +67,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Setup Node
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
@@ -169,7 +169,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -233,7 +233,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -278,7 +278,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -319,7 +319,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -379,7 +379,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -437,7 +437,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -487,7 +487,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Setup Node
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
@@ -535,7 +535,7 @@ jobs:
       run: docker load --input /tmp/${{ matrix.image }}.tar
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
@@ -558,7 +558,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -749,7 +749,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -1422,7 +1422,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -1666,7 +1666,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -1745,7 +1745,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -1806,7 +1806,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Setup Node
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
@@ -1884,7 +1884,7 @@ jobs:
         java-version: '21'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Setup Node
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
@@ -1900,7 +1900,7 @@ jobs:
       run: .github/scripts/install-validator.sh
 
     - name: Download FHIR Package Cache
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with:
         repository: medizininformatik-initiative/fhir-package-store
         ref: cache-store
@@ -1975,7 +1975,7 @@ jobs:
         java-version: '21'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Setup Node
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
@@ -1986,7 +1986,7 @@ jobs:
       run: .github/scripts/install-validator.sh
 
     - name: Download FHIR Package Cache
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       with:
         repository: medizininformatik-initiative/fhir-package-store
         ref: cache-store
@@ -2046,7 +2046,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2095,7 +2095,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2142,7 +2142,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2188,7 +2188,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2228,7 +2228,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2271,7 +2271,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -2300,7 +2300,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -2331,7 +2331,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2376,7 +2376,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -2432,7 +2432,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -2470,7 +2470,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -2499,7 +2499,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2551,7 +2551,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -2589,7 +2589,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Setup Node
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
@@ -2669,7 +2669,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -2720,7 +2720,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Install Blazectl
       env:
@@ -2780,7 +2780,7 @@ jobs:
         cli: '1.12.4.1582'
 
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
@@ -2919,7 +2919,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Uberjar
       if: ${{ matrix.image.context == '.' }}
