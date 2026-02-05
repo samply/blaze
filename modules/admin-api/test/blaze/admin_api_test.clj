@@ -1162,10 +1162,10 @@
           :status := 404
           [:body "msg"] := "The feature \"CQL Expression Cache\" is disabled."))))
 
-  (with-handler [handler {::expr/keys [cache]}] (with-cql-expr-cache (config!)) []
+  (with-handler [handler {node [:blaze.db/node :blaze.db.main/node] ::expr/keys [cache]}] (with-cql-expr-cache (config!)) []
     (let [elm {:type "Exists"
                :operand {:type "Retrieve" :dataType "{http://hl7.org/fhir}Observation"}}
-          expr (c/compile {:eval-context "Patient"} elm)]
+          expr (c/compile {:node node :eval-context "Patient"} elm)]
       (ec/get cache expr))
 
     (Thread/sleep 100)

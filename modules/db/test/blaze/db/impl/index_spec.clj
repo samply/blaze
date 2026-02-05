@@ -47,6 +47,14 @@
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :conjunction ::query/search-clauses))
 
+(s/fdef index/ordered-resource-handles
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
+               :tid :blaze.db/tid
+               :scan-clauses ::query/search-clauses
+               :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?))
+               :start-id (s/? :blaze.db/id-byte-string))
+  :ret (cs/coll-of :blaze.db/resource-handle))
+
 (s/fdef index/type-query
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
@@ -75,18 +83,12 @@
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :search-clauses ::query/search-clauses)
-  :ret (cs/coll-of :blaze.db/resource-handle))
-
-(s/fdef index/compartment-query*
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
-               :compartment :blaze.db/compartment
-               :tid :blaze.db/tid
                :scan-clauses ::query/search-clauses
                :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?))
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/compartment-query-plan
-  :args (s/cat :search-clauses ::query/search-clauses)
+  :args (s/cat :scan-clauses ::query/search-clauses
+               :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?)))
   :ret :blaze.db.query/plan)

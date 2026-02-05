@@ -3,7 +3,6 @@
 
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
-  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
@@ -12,7 +11,6 @@
    [blaze.db.impl.batch-db.patient-everything :as pe]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
-   [blaze.db.impl.index.compartment.resource :as cr]
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
@@ -22,12 +20,12 @@
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.query.util :as qu]
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
    [blaze.db.node.resource-indexer :as resource-indexer]
-   [blaze.db.search-param-registry :as sr]
-   [blaze.util :refer [str]])
+   [blaze.db.search-param-registry :as sr])
   (:import
    [java.io Writer]
    [java.lang AutoCloseable]))
@@ -117,14 +115,6 @@
       (:total (system-stats/seek-value snapshot t) 0)
       (ba/unsupported "Total is not supported on since-dbs.")))
 
-  ;; ---- Compartment-Level Functions -----------------------------------------
-
-  (-compartment-resource-handles [db compartment tid]
-    (cr/resource-handles db compartment tid))
-
-  (-compartment-resource-handles [db compartment tid start-id]
-    (cr/resource-handles db compartment tid start-id))
-
   ;; ---- Patient-Compartment-Level Functions ---------------------------------
 
   (-patient-compartment-last-change-t [_ patient-id]
@@ -141,6 +131,9 @@
 
   (-execute-query [db query arg1]
     (p/-execute query db arg1))
+
+  (-execute-query [db query arg1 arg2]
+    (p/-execute query db arg1 arg2))
 
   (-explain-query [db query]
     (p/-query-plan query db))
@@ -251,6 +244,9 @@
   (-compile-system-matcher [_ clauses]
     (p/-compile-system-matcher node clauses))
 
+  (-compile-compartment-query [_ code type]
+    (p/-compile-compartment-query node code type))
+
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
 
@@ -276,144 +272,12 @@
 (defmethod print-method BatchDb [^BatchDb db ^Writer w]
   (.write w (format "BatchDb[t=%d]" (.t db))))
 
-(defn- decode-sort-clause [[search-param modifier]]
-  [:sort (:code search-param) (keyword modifier)])
-
-(defn- decode-search-clause [[search-param modifier values]]
-  (into [(cond-> (:code search-param) modifier (str ":" modifier))] values))
-
-(defn- decode-clauses [{:keys [sort-clause search-clauses]}]
-  (into
-   (cond-> [] sort-clause (conj (decode-sort-clause sort-clause)))
-   (map
-    (fn [disjunction]
-      (if (= 1 (count disjunction))
-        (decode-search-clause (first disjunction))
-        (mapv decode-search-clause disjunction))))
-   search-clauses))
-
-(defrecord TypeQuery [tid clauses]
-  p/Query
-  (-count [_ batch-db]
-    (index/type-query-total batch-db tid (:search-clauses clauses)))
-  (-execute [_ batch-db]
-    (index/type-query batch-db tid clauses))
-  (-execute [_ batch-db start-id]
-    (index/type-query batch-db tid clauses (codec/id-byte-string start-id)))
-  (-query-clauses [_]
-    (decode-clauses clauses))
-  (-query-plan [_ batch-db]
-    (index/type-query-plan batch-db tid clauses)))
-
-(def ^:private ^:const ^long patient-compartment-hash (codec/c-hash "Patient"))
-(def ^:private ^:const ^long patient-code-hash (codec/c-hash "patient"))
-
-(defn- resource-handle-not-found-msg [{:keys [t since-t]} tid id]
-  (format "Resource handle `%s/%s` not found in database with t=%d and since-t=%d."
-          (codec/tid->type tid) (codec/id-string id) t since-t))
-
-(defn- non-deleted-resource-handle* [batch-db tid id]
-  (when-let [handle (p/-resource-handle batch-db tid id)]
-    (when-not (rh/deleted? handle)
-      handle)))
-
-(defn- non-deleted-resource-handle [batch-db tid id]
-  (or (non-deleted-resource-handle* batch-db tid id)
-      (ba/fault (resource-handle-not-found-msg batch-db tid id))))
-
-(defn- first-referenced-patient-not-found-msg [{:keys [t since-t]} resource-handle]
-  (format "Patient resource handle referenced from `%s/%s` not found in database with t=%d and since-t=%d."
-          (name (:fhir/type resource-handle)) (:id resource-handle) t since-t))
-
-(defn- first-referenced-patient [batch-db resource-handle]
-  (or (coll/first (spc/targets batch-db resource-handle patient-code-hash))
-      (ba/fault (first-referenced-patient-not-found-msg batch-db resource-handle))))
-
-(defn- start-patient-id [batch-db tid start-id]
-  (when-ok [start-handle (non-deleted-resource-handle batch-db tid start-id)
-            start-patient-handle (first-referenced-patient batch-db start-handle)]
-    (codec/id-byte-string (:id start-patient-handle))))
-
-;; A type query over resources with `tid` and patients with `patient-ids`.
-(defrecord PatientTypeQuery [tid patient-ids compartment-clause scan-clauses
-                             other-clauses compartment-query]
-  p/Query
-  (-count [query batch-db]
-    (ac/completed-future (count (p/-execute query batch-db))))
-  (-execute [_ batch-db]
-    (coll/eduction (mapcat #(compartment-query batch-db %)) patient-ids))
-  (-execute [_ batch-db start-id]
-    (let [start-id (codec/id-byte-string start-id)]
-      (when-ok [start-patient-id (start-patient-id batch-db tid start-id)]
-        (coll/eduction
-         cat
-         [(compartment-query batch-db start-patient-id start-id)
-          (coll/eduction
-           (comp (drop-while #(not= start-patient-id %))
-                 (drop 1)
-                 (mapcat #(compartment-query batch-db %)))
-           patient-ids)]))))
-  (-query-clauses [_]
-    (decode-clauses {:search-clauses (-> [[compartment-clause]]
-                                         (into scan-clauses)
-                                         (into other-clauses))}))
-  (-query-plan [_ _]
-    (index/compartment-query-plan (into scan-clauses other-clauses))))
-
-(defn patient-type-query
-  [tid patient-ids compartment-clause scan-clauses other-clauses]
-  (->PatientTypeQuery
-   tid patient-ids compartment-clause scan-clauses other-clauses
-   (fn
-     ([batch-db patient-id]
-      (index/compartment-query* batch-db [patient-compartment-hash patient-id]
-                                tid scan-clauses other-clauses))
-     ([batch-db patient-id start-id]
-      (index/compartment-query* batch-db [patient-compartment-hash patient-id]
-                                tid scan-clauses other-clauses start-id)))))
-
-(defrecord EmptyTypeQuery [tid]
-  p/Query
-  (-count [_ batch-db]
-    (ac/completed-future
-     (:total (type-stats/seek-value (:snapshot batch-db) tid (:t batch-db)) 0)))
-  (-execute [_ batch-db]
-    (rao/type-list batch-db tid))
-  (-execute [_ batch-db start-id]
-    (rao/type-list batch-db tid (codec/id-byte-string start-id)))
-  (-query-clauses [_])
-  (-query-plan [_ _]
-    {:query-type :type}))
-
-(defrecord SystemQuery [clauses]
-  p/Query
-  (-execute [_ batch-db]
-    (index/system-query batch-db clauses)))
-
-(defrecord CompartmentQuery [c-hash tid search-clauses]
-  p/Query
-  (-execute [_ batch-db arg1]
-    (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
-                             tid search-clauses))
-  (-query-clauses [_]
-    (decode-clauses {:search-clauses search-clauses}))
-  (-query-plan [_ _]
-    (index/compartment-query-plan search-clauses)))
-
-(defrecord EmptyCompartmentQuery [c-hash tid]
-  p/Query
-  (-execute [_ batch-db arg1]
-    (cr/resource-handles batch-db [c-hash (codec/id-byte-string arg1)] tid))
-  (-query-clauses [_])
-  (-query-plan [_ _]
-    {:query-type :compartment}))
-
 (defrecord Matcher [search-clauses]
   p/Matcher
   (-transducer [_ batch-db]
     (index/other-clauses-resource-handle-filter batch-db search-clauses))
   (-matcher-clauses [_]
-    (decode-clauses {:search-clauses search-clauses})))
+    (qu/decode-clauses {:search-clauses search-clauses})))
 
 (defn new-batch-db
   "Creates a new batch database.

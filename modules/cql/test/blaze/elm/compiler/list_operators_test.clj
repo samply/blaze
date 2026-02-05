@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
@@ -96,27 +96,28 @@
 
   (testing "attach cache"
     (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
-      (testing "with one element"
-        (let [elm (elm/list [#elm/exists #elm/retrieve{:type "Observation"}])
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0] := expr
-            [1 count] := 1
-            [1 0] := '(exists (retrieve "Observation")))))
+      (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+        (testing "with one element"
+          (let [elm (elm/list [#elm/exists #elm/retrieve{:type "Observation"}])
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 1
+              [1 0] := '(exists (retrieve "Observation")))))
 
-      (testing "with two elements"
-        (let [elm (elm/list [#elm/exists #elm/retrieve{:type "Observation"}
-                             #elm/exists #elm/retrieve{:type "Condition"}])
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0] := expr
-            [1 count] := 2
-            [1 0] := '(exists (retrieve "Observation"))
-            [1 1] := '(exists (retrieve "Condition")))))))
+        (testing "with two elements"
+          (let [elm (elm/list [#elm/exists #elm/retrieve{:type "Observation"}
+                               #elm/exists #elm/retrieve{:type "Condition"}])
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 2
+              [1 0] := '(exists (retrieve "Observation"))
+              [1 1] := '(exists (retrieve "Condition"))))))))
 
   (testing "resolve expression references"
     (let [elm #elm/list [#elm/expression-ref "x"]
@@ -250,7 +251,7 @@
 ;;
 ;; If the argument is null, the result is false.
 (def ^:private exists-config
-  (assoc mem-node-config
+  (assoc api-stub/mem-node-config
          ::expr/cache
          {:node (ig/ref :blaze.db/node)
           :executor (ig/ref :blaze.test/executor)}
@@ -291,9 +292,9 @@
       {:type "Null"} false)
 
     (testing "doesn't attach the cache downstream because there is no need for double caching"
-      (with-system [{::expr/keys [cache]} exists-config]
+      (with-system [{:blaze.db/keys [node] ::expr/keys [cache]} exists-config]
         (let [elm #elm/exists {:type "ExistsTest"}
-              expr (c/compile {:eval-context "Patient"} elm)
+              expr (c/compile {:node node :eval-context "Patient"} elm)
               ;; ensure Bloom filter is available
               _ (do (c/attach-cache expr cache) (Thread/sleep 100))
               expr (first (c/attach-cache expr cache))]
@@ -353,7 +354,7 @@
                 (is (false? (expr/eval eval-context expr patient)))))))))
 
     (testing "without caching expressions"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)

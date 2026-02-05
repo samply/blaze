@@ -5,7 +5,6 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.compartment.resource :as cr]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.plan :as plan]
    [blaze.db.impl.protocols :as p]
@@ -221,7 +220,7 @@
       (let [{small-clauses :small large-clauses :large}
             (plan/group-by-estimated-scan-size batch-db tid ordered-support-clauses)]
         [small-clauses
-         (into large-clauses other-clauses)])
+         (into (or large-clauses []) other-clauses)])
 
       :else
       [nil other-clauses])))
@@ -239,7 +238,7 @@
     (resource-handle-mapper* batch-db tid all-clauses other-clauses)
     (resource-handle-mapper* batch-db tid all-clauses)))
 
-(defn- ordered-resource-handles
+(defn ordered-resource-handles
   ([batch-db tid scan-clauses other-clauses]
    (coll/eduction
     (resource-handle-mapper batch-db tid scan-clauses other-clauses)
@@ -352,6 +351,12 @@
   ;; TODO: implement
   [])
 
+(defn compartment-clauses
+  [search-param-registry compartment-code search-param-codes type]
+  (let [clauses [(mapv #(vector % (str compartment-code "/0")) search-param-codes)]]
+    (when-ok [clauses (resolve-search-params search-param-registry type clauses false)]
+      (:search-clauses clauses))))
+
 (defn- supports-ordered-compartment-index-handles [[search-param _ values]]
   (p/-supports-ordered-compartment-index-handles search-param values))
 
@@ -392,25 +397,7 @@
      (let [f #(ordered-compartment-index-handles* batch-db compartment tid % start-id)]
        (u/intersection-index-handles (map f conjunction))))))
 
-(defn- compartment-scan
-  [batch-db compartment tid scan-clauses]
-  (if (seq scan-clauses)
-    (ordered-compartment-index-handles batch-db compartment tid scan-clauses)
-    (coll/eduction
-     (map ih/from-resource-handle)
-     (cr/resource-handles batch-db compartment tid))))
-
 (defn compartment-query
-  "Returns a reducible collection of resource handles from `batch-db` in
-  `compartment` of type with `tid` that satisfy `search-clauses`, optionally
-  starting with `start-id`."
-  [batch-db compartment tid search-clauses]
-  (let [[scan-clauses other-clauses] (compartment-query-plan* search-clauses)]
-    (coll/eduction
-     (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-     (compartment-scan batch-db compartment tid scan-clauses))))
-
-(defn compartment-query*
   "Returns a reducible collection of resource handles from `batch-db` in
   `compartment` of type with `tid` that satisfy `scan-clauses` and possible
   empty `other-clauses`, optionally starting with `start-id`."
@@ -423,12 +410,10 @@
     (resource-handle-mapper batch-db tid scan-clauses other-clauses)
     (ordered-compartment-index-handles batch-db compartment tid scan-clauses start-id))))
 
-(defn compartment-query-plan
-  [search-clauses]
-  (let [[scan-clauses other-clauses] (compartment-query-plan* search-clauses)]
-    (cond->
-     {:query-type :compartment
-      :seek-clauses (into [] (mapcat clause-stats) other-clauses)}
-      (seq scan-clauses)
-      (assoc :scan-type :ordered
-             :scan-clauses (into [] (mapcat clause-stats) scan-clauses)))))
+(defn compartment-query-plan [scan-clauses other-clauses]
+  (cond->
+   {:query-type :compartment
+    :seek-clauses (into [] (mapcat clause-stats) other-clauses)}
+    (seq scan-clauses)
+    (assoc :scan-type :ordered
+           :scan-clauses (into [] (mapcat clause-stats) scan-clauses))))

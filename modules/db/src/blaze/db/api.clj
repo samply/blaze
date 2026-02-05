@@ -246,28 +246,28 @@
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
-(defn- compartment [code id]
-  [(codec/c-hash code) (codec/id-byte-string id)])
-
-(defn list-compartment-resource-handles
+(defn compartment-type-list
   "Returns a reducible collection of all resource handles of `type` in `db`
   linked to the compartment with `code` and `id`.
 
   The code is the code of the compartment not necessary the same as a resource
   type. One common compartment is `Patient`.
 
+  Returns an anomaly if the compartment isn't supported.
+
   An optional `start-id` (inclusive) can be supplied.
 
   Example:
 
-    (list-compartment-resource-handles db \"Patient\" \"0\" \"Observation\")
+    (compartment-type-list db \"Patient\" \"0\" \"Observation\")
 
   Please use `pull-many` to obtain the full resources."
   ([db code id type]
-   (p/-compartment-resource-handles db (compartment code id) (codec/tid type)))
+   (when-ok [query (p/-compile-compartment-query db code type)]
+     (p/-execute-query db query id)))
   ([db code id type start-id]
-   (p/-compartment-resource-handles db (compartment code id) (codec/tid type)
-                                    (codec/id-byte-string start-id))))
+   (when-ok [query (p/-compile-compartment-query db code type)]
+     (p/-execute-query db query id start-id))))
 
 (defn compartment-query
   "Returns a reducible collection of all resource handles of `type` in `db`
@@ -281,23 +281,33 @@
 
   Returns an anomaly if search parameters in clauses can't be resolved.
 
+  An optional `start-id` (inclusive) can be supplied.
+
   Please use `pull-many` to obtain the full resources."
-  [db code id type clauses]
-  (when-ok [query (p/-compile-compartment-query db code type clauses)]
-    (p/-execute-query db query id)))
+  ([db code id type clauses]
+   (when-ok [query (p/-compile-compartment-query db code type clauses)]
+     (p/-execute-query db query id)))
+  ([db code id type clauses start-id]
+   (when-ok [query (p/-compile-compartment-query db code type clauses)]
+     (p/-execute-query db query id start-id))))
 
 (defn compile-compartment-query
-  "Same as `compartment-query` but in a two-step process of pre-compilation and
-  later execution by `execute-query`. The `id` of the compartments (`code`)
-  resource will be supplied as argument to `execute-query`.
+  "Same as `compartment-type-list` or `compartment-query` but in a two-step
+  process of pre-compilation and later execution by `execute-query`. The `id`
+  of the compartments (`code`) resource will be supplied as first argument to
+  `execute-query`.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
-  [node-or-db code type clauses]
-  (p/-compile-compartment-query node-or-db code type clauses))
+  Returns an anomaly if search parameters in `clauses` can't be resolved."
+  ([node-or-db code type]
+   (p/-compile-compartment-query node-or-db code type))
+  ([node-or-db code type clauses]
+   (p/-compile-compartment-query node-or-db code type clauses)))
 
 (defn compile-compartment-query-lenient
   "Like `compile-compartment-query` but ignores clauses which refer to unknown
-  search parameters."
+  search parameters.
+
+  Returns an anomaly if search values are invalid."
   [node-or-db code type clauses]
   (p/-compile-compartment-query-lenient node-or-db code type clauses))
 

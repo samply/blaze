@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.db.api :as d]
+   [blaze.db.api-stub :as api-stub]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
@@ -13,6 +14,7 @@
    [blaze.elm.resource :as cr]
    [blaze.elm.spec :as elm-spec]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.module.test-util :refer [with-system]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :refer [is testing]]
@@ -260,28 +262,30 @@
   [elm-constructor]
   `(testing "attach cache"
      (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
-       (let [elm# (~elm-constructor #elm/exists #elm/retrieve{:type "Observation"})
-             ctx# {:eval-context "Patient"}
-             expr# (c/compile ctx# elm#)]
-         (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
-           count := 2
-           [0] := expr#
-           [1 count] := 1
-           [1 0] := '(~'exists (~'retrieve "Observation")))))))
-
-(defmacro testing-unary-precision-attach-cache
-  [elm-constructor & precisions]
-  `(testing "attach cache"
-     (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
-       (doseq [precision# ~(vec precisions)]
-         (let [elm# (~elm-constructor [#elm/exists #elm/retrieve{:type "Observation"} precision#])
-               ctx# {:eval-context "Patient"}
+       (with-system [{node# :blaze.db/node} api-stub/mem-node-config]
+         (let [elm# (~elm-constructor #elm/exists #elm/retrieve{:type "Observation"})
+               ctx# {:node node# :eval-context "Patient"}
                expr# (c/compile ctx# elm#)]
            (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
              count := 2
              [0] := expr#
              [1 count] := 1
              [1 0] := '(~'exists (~'retrieve "Observation"))))))))
+
+(defmacro testing-unary-precision-attach-cache
+  [elm-constructor & precisions]
+  `(testing "attach cache"
+     (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+       (with-system [{node# :blaze.db/node} api-stub/mem-node-config]
+         (doseq [precision# ~(vec precisions)]
+           (let [elm# (~elm-constructor [#elm/exists #elm/retrieve{:type "Observation"} precision#])
+                 ctx# {:node node# :eval-context "Patient"}
+                 expr# (c/compile ctx# elm#)]
+             (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+               count := 2
+               [0] := expr#
+               [1 count] := 1
+               [1 0] := '(~'exists (~'retrieve "Observation")))))))))
 
 (defmacro testing-unary-patient-count [elm-constructor]
   `(testing "patient count"
@@ -535,35 +539,37 @@
   [elm-constructor]
   `(testing "attach cache"
      (with-redefs [ec/get mock-cache-get]
-       (let [elm# (~elm-constructor
-                   [#elm/exists #elm/retrieve{:type "Observation"}
-                    #elm/exists #elm/retrieve{:type "Condition"}])
-             ctx# {:eval-context "Patient"}
-             expr# (c/compile ctx# elm#)]
-         (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
-           count := 2
-           [0] := expr#
-           [1 count] := 2
-           [1 0] := '(~'exists (~'retrieve "Observation"))
-           [1 1] := (ba/unavailable "No Bloom filter available."))))))
+       (with-system [{node# :blaze.db/node} api-stub/mem-node-config]
+         (let [elm# (~elm-constructor
+                     [#elm/exists #elm/retrieve{:type "Observation"}
+                      #elm/exists #elm/retrieve{:type "Condition"}])
+               ctx# {:node node# :eval-context "Patient"}
+               expr# (c/compile ctx# elm#)]
+           (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+             count := 2
+             [0] := expr#
+             [1 count] := 2
+             [1 0] := '(~'exists (~'retrieve "Observation"))
+             [1 1] := (ba/unavailable "No Bloom filter available.")))))))
 
 (defmacro testing-ternary-attach-cache
   [elm-constructor]
   `(testing "attach cache"
      (with-redefs [ec/get mock-cache-get]
-       (let [elm# (~elm-constructor
-                   [#elm/exists #elm/retrieve{:type "Observation"}
-                    #elm/exists #elm/retrieve{:type "Condition"}
-                    #elm/exists #elm/retrieve{:type "Specimen"}])
-             ctx# {:eval-context "Patient"}
-             expr# (c/compile ctx# elm#)]
-         (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
-           count := 2
-           [0] := expr#
-           [1 count] := 3
-           [1 0] := '(~'exists (~'retrieve "Observation"))
-           [1 1] := (ba/unavailable "No Bloom filter available.")
-           [1 2] := (ba/unavailable "No Bloom filter available."))))))
+       (with-system [{node# :blaze.db/node} api-stub/mem-node-config]
+         (let [elm# (~elm-constructor
+                     [#elm/exists #elm/retrieve{:type "Observation"}
+                      #elm/exists #elm/retrieve{:type "Condition"}
+                      #elm/exists #elm/retrieve{:type "Specimen"}])
+               ctx# {:node node# :eval-context "Patient"}
+               expr# (c/compile ctx# elm#)]
+           (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+             count := 2
+             [0] := expr#
+             [1 count] := 3
+             [1 0] := '(~'exists (~'retrieve "Observation"))
+             [1 1] := (ba/unavailable "No Bloom filter available.")
+             [1 2] := (ba/unavailable "No Bloom filter available.")))))))
 
 (defmacro testing-binary-precision-attach-cache
   ([elm-constructor]
@@ -571,19 +577,20 @@
   ([elm-constructor & precisions]
    `(testing "attach cache"
       (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
-        (doseq [precision# ~(vec precisions)]
-          (let [elm# (~elm-constructor
-                      [#elm/exists #elm/retrieve{:type "Observation"}
-                       #elm/exists #elm/retrieve{:type "Condition"}
-                       precision#])
-                ctx# {:eval-context "Patient"}
-                expr# (c/compile ctx# elm#)]
-            (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
-              count := 2
-              [0] := expr#
-              [1 count] := 2
-              [1 0] := '(~'exists (~'retrieve "Observation"))
-              [1 1] := '(~'exists (~'retrieve "Condition")))))))))
+        (with-system [{node# :blaze.db/node} api-stub/mem-node-config]
+          (doseq [precision# ~(vec precisions)]
+            (let [elm# (~elm-constructor
+                        [#elm/exists #elm/retrieve{:type "Observation"}
+                         #elm/exists #elm/retrieve{:type "Condition"}
+                         precision#])
+                  ctx# {:node node# :eval-context "Patient"}
+                  expr# (c/compile ctx# elm#)]
+              (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+                count := 2
+                [0] := expr#
+                [1 count] := 2
+                [1 0] := '(~'exists (~'retrieve "Observation"))
+                [1 1] := '(~'exists (~'retrieve "Condition"))))))))))
 
 (defmacro testing-binary-patient-count [elm-constructor]
   `(testing "patient count"

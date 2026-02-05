@@ -74,16 +74,6 @@
     (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-system-total batch-db)))
 
-  ;; ---- Compartment-Level Functions -----------------------------------------
-
-  (-compartment-resource-handles [_ compartment tid]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-compartment-resource-handles batch-db compartment tid)))
-
-  (-compartment-resource-handles [_ compartment tid start-id]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-compartment-resource-handles batch-db compartment tid start-id)))
-
   ;; ---- Patient-Compartment-Level Functions ---------------------------------
 
   (-patient-compartment-last-change-t [_ patient-id]
@@ -105,6 +95,10 @@
   (-execute-query [_ query arg1]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
       (p/-execute-query batch-db query arg1)))
+
+  (-execute-query [_ query arg1 arg2]
+    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
+      (p/-execute-query batch-db query arg1 arg2)))
 
   (-explain-query [_ query]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
@@ -221,6 +215,9 @@
 
   (-compile-system-matcher [_ clauses]
     (p/-compile-system-matcher node clauses))
+
+  (-compile-compartment-query [_ code type]
+    (p/-compile-compartment-query node code type))
 
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
