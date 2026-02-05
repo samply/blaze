@@ -14,7 +14,7 @@
     "format": "prettier --write ."
   },
   "devDependencies": {
-    "@sveltejs/adapter-node": "5.4.0",
+    "@sveltejs/adapter-node": "5.5.2",
     "@sveltejs/kit": "2.50.1",
     "@sveltejs/vite-plugin-svelte": "5.1.1",
     "@tailwindcss/vite": "4.1.18",
