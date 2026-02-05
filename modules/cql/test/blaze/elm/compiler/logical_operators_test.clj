@@ -5,6 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.anomaly :as ba]
+   [blaze.db.api-stub :as api-stub]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.logical-operators :as ops]
@@ -14,6 +15,7 @@
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.module.test-util :refer [with-system]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [juxt.iota :refer [given]]))
@@ -123,17 +125,18 @@
                              (assert (= ::cache cache))
                              (when-not (= '(exists (retrieve "Observation")) (c/form expr))
                                (bloom-filter/build-bloom-filter expr 0 nil)))]
-        (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Observation"}
-                            #elm/exists #elm/retrieve{:type "Condition"}]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(and (exists (retrieve "Condition"))
-                                (exists (retrieve "Observation")))
-            [1 count] := 2
-            [1 0 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))"
-            [1 1] := (ba/unavailable "No Bloom filter available.")))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Observation"}
+                              #elm/exists #elm/retrieve{:type "Condition"}]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(and (exists (retrieve "Condition"))
+                                  (exists (retrieve "Observation")))
+              [1 count] := 2
+              [1 0 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))"
+              [1 1] := (ba/unavailable "No Bloom filter available."))))))
 
     (testing "both bloom filters available with first having more patients"
       (with-redefs [ec/get (fn [cache expr]
@@ -143,17 +146,18 @@
                                (bloom-filter/build-bloom-filter expr 0 ["0" "1"])
                                (= (c/form expr) '(exists (retrieve "Condition")))
                                (bloom-filter/build-bloom-filter expr 0 ["0"])))]
-        (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
-                            #elm/exists #elm/retrieve{:type "Observation"}]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(and (exists (retrieve "Condition"))
-                                (exists (retrieve "Observation")))
-            [1 count] := 2
-            [1 0 ::bloom-filter/patient-count] := 1
-            [1 1 ::bloom-filter/patient-count] := 2))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                              #elm/exists #elm/retrieve{:type "Observation"}]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(and (exists (retrieve "Condition"))
+                                  (exists (retrieve "Observation")))
+              [1 count] := 2
+              [1 0 ::bloom-filter/patient-count] := 1
+              [1 1 ::bloom-filter/patient-count] := 2)))))
 
     (testing "with three expressions"
       (with-redefs [ec/get (fn [cache expr]
@@ -165,20 +169,21 @@
                                (bloom-filter/build-bloom-filter expr 0 ["0"])
                                '(exists (retrieve "Specimen"))
                                nil))]
-        (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Observation"}
-                            #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
-                                      #elm/exists #elm/retrieve{:type "Specimen"}]]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(and (exists (retrieve "Condition"))
-                                (exists (retrieve "Observation"))
-                                (exists (retrieve "Specimen")))
-            [1 count] := 3
-            [1 0 ::bloom-filter/patient-count] := 1
-            [1 1 ::bloom-filter/patient-count] := 2
-            [1 2 ::bloom-filter/patient-count] := nil))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Observation"}
+                              #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                                        #elm/exists #elm/retrieve{:type "Specimen"}]]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(and (exists (retrieve "Condition"))
+                                  (exists (retrieve "Observation"))
+                                  (exists (retrieve "Specimen")))
+              [1 count] := 3
+              [1 0 ::bloom-filter/patient-count] := 1
+              [1 1 ::bloom-filter/patient-count] := 2
+              [1 2 ::bloom-filter/patient-count] := nil)))))
 
     (testing "with four expressions"
       (with-redefs [ec/get (fn [cache expr]
@@ -192,23 +197,24 @@
                                (bloom-filter/build-bloom-filter expr 0 ["0" "1"])
                                '(exists (retrieve "MedicationAdministration"))
                                (bloom-filter/build-bloom-filter expr 0 ["0"])))]
-        (let [elm #elm/and [#elm/and [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
-                                      #elm/exists #elm/retrieve{:type "Specimen"}]
-                            #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
-                                      #elm/exists #elm/retrieve{:type "Observation"}]]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(and (exists (retrieve "MedicationAdministration"))
-                                (exists (retrieve "Specimen"))
-                                (exists (retrieve "Condition"))
-                                (exists (retrieve "Observation")))
-            [1 count] := 4
-            [1 0 ::bloom-filter/patient-count] := 1
-            [1 1 ::bloom-filter/patient-count] := 2
-            [1 2 ::bloom-filter/patient-count] := 3
-            [1 3 ::bloom-filter/patient-count] := nil))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/and [#elm/and [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                        #elm/exists #elm/retrieve{:type "Specimen"}]
+                              #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                                        #elm/exists #elm/retrieve{:type "Observation"}]]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(and (exists (retrieve "MedicationAdministration"))
+                                  (exists (retrieve "Specimen"))
+                                  (exists (retrieve "Condition"))
+                                  (exists (retrieve "Observation")))
+              [1 count] := 4
+              [1 0 ::bloom-filter/patient-count] := 1
+              [1 1 ::bloom-filter/patient-count] := 2
+              [1 2 ::bloom-filter/patient-count] := 3
+              [1 3 ::bloom-filter/patient-count] := nil)))))
 
     (testing "with five expressions"
       (with-redefs [ec/get (fn [cache expr]
@@ -224,26 +230,27 @@
                                (bloom-filter/build-bloom-filter expr 0 ["0"])
                                '(exists (retrieve "Procedure"))
                                nil))]
-        (let [elm #elm/and [#elm/and [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
-                                      #elm/and [#elm/exists #elm/retrieve{:type "Procedure"}
-                                                #elm/exists #elm/retrieve{:type "Specimen"}]]
-                            #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
-                                      #elm/exists #elm/retrieve{:type "Observation"}]]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(and (exists (retrieve "MedicationAdministration"))
-                                (exists (retrieve "Specimen"))
-                                (exists (retrieve "Condition"))
-                                (exists (retrieve "Procedure"))
-                                (exists (retrieve "Observation")))
-            [1 count] := 5
-            [1 0 ::bloom-filter/patient-count] := 1
-            [1 1 ::bloom-filter/patient-count] := 2
-            [1 2 ::bloom-filter/patient-count] := 3
-            [1 3 ::bloom-filter/patient-count] := nil
-            [1 4 ::bloom-filter/patient-count] := nil)))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/and [#elm/and [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                        #elm/and [#elm/exists #elm/retrieve{:type "Procedure"}
+                                                  #elm/exists #elm/retrieve{:type "Specimen"}]]
+                              #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                                        #elm/exists #elm/retrieve{:type "Observation"}]]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(and (exists (retrieve "MedicationAdministration"))
+                                  (exists (retrieve "Specimen"))
+                                  (exists (retrieve "Condition"))
+                                  (exists (retrieve "Procedure"))
+                                  (exists (retrieve "Observation")))
+              [1 count] := 5
+              [1 0 ::bloom-filter/patient-count] := 1
+              [1 1 ::bloom-filter/patient-count] := 2
+              [1 2 ::bloom-filter/patient-count] := 3
+              [1 3 ::bloom-filter/patient-count] := nil
+              [1 4 ::bloom-filter/patient-count] := nil))))))
 
   (ctu/testing-binary-op elm/and)
 
@@ -462,16 +469,17 @@
                              (assert (= ::cache cache))
                              (when-not (= '(exists (retrieve "Observation")) (c/form expr))
                                (bloom-filter/build-bloom-filter expr 0 nil)))]
-        (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
-                           #elm/exists #elm/retrieve{:type "Condition"}]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0] := expr
-            [1 count] := 2
-            [1 0] := (ba/unavailable "No Bloom filter available.")
-            [1 1 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))"))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                             #elm/exists #elm/retrieve{:type "Condition"}]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 2
+              [1 0] := (ba/unavailable "No Bloom filter available.")
+              [1 1 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))")))))
 
     (testing "both bloom filters available with second having more patients"
       (with-redefs [ec/get (fn [cache expr]
@@ -481,17 +489,18 @@
                                (bloom-filter/build-bloom-filter expr 0 ["0"])
                                (= (c/form expr) '(exists (retrieve "Condition")))
                                (bloom-filter/build-bloom-filter expr 0 ["0" "1"])))]
-        (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
-                           #elm/exists #elm/retrieve{:type "Condition"}]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(or (exists (retrieve "Condition"))
-                               (exists (retrieve "Observation")))
-            [1 count] := 2
-            [1 0 ::bloom-filter/patient-count] := 2
-            [1 1 ::bloom-filter/patient-count] := 1))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                             #elm/exists #elm/retrieve{:type "Condition"}]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(or (exists (retrieve "Condition"))
+                                 (exists (retrieve "Observation")))
+              [1 count] := 2
+              [1 0 ::bloom-filter/patient-count] := 2
+              [1 1 ::bloom-filter/patient-count] := 1)))))
 
     (testing "with three expressions"
       (with-redefs [ec/get (fn [cache expr]
@@ -503,20 +512,21 @@
                                (bloom-filter/build-bloom-filter expr 0 ["0"])
                                '(exists (retrieve "Specimen"))
                                nil))]
-        (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
-                           #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
-                                    #elm/exists #elm/retrieve{:type "Specimen"}]]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(or (exists (retrieve "Specimen"))
-                               (exists (retrieve "Observation"))
-                               (exists (retrieve "Condition")))
-            [1 count] := 3
-            [1 0 ::bloom-filter/patient-count] := nil
-            [1 1 ::bloom-filter/patient-count] := 2
-            [1 2 ::bloom-filter/patient-count] := 1))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                             #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
+                                      #elm/exists #elm/retrieve{:type "Specimen"}]]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(or (exists (retrieve "Specimen"))
+                                 (exists (retrieve "Observation"))
+                                 (exists (retrieve "Condition")))
+              [1 count] := 3
+              [1 0 ::bloom-filter/patient-count] := nil
+              [1 1 ::bloom-filter/patient-count] := 2
+              [1 2 ::bloom-filter/patient-count] := 1)))))
 
     (testing "with four expressions"
       (with-redefs [ec/get (fn [cache expr]
@@ -530,23 +540,24 @@
                                nil
                                '(exists (retrieve "MedicationAdministration"))
                                (bloom-filter/build-bloom-filter expr 0 ["0"])))]
-        (let [elm #elm/or [#elm/or [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
-                                    #elm/exists #elm/retrieve{:type "Specimen"}]
-                           #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
-                                    #elm/exists #elm/retrieve{:type "Observation"}]]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(or (exists (retrieve "Specimen"))
-                               (exists (retrieve "Observation"))
-                               (exists (retrieve "Condition"))
-                               (exists (retrieve "MedicationAdministration")))
-            [1 count] := 4
-            [1 0 ::bloom-filter/patient-count] := nil
-            [1 1 ::bloom-filter/patient-count] := 4
-            [1 2 ::bloom-filter/patient-count] := 3
-            [1 3 ::bloom-filter/patient-count] := 1))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/or [#elm/or [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                      #elm/exists #elm/retrieve{:type "Specimen"}]
+                             #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
+                                      #elm/exists #elm/retrieve{:type "Observation"}]]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(or (exists (retrieve "Specimen"))
+                                 (exists (retrieve "Observation"))
+                                 (exists (retrieve "Condition"))
+                                 (exists (retrieve "MedicationAdministration")))
+              [1 count] := 4
+              [1 0 ::bloom-filter/patient-count] := nil
+              [1 1 ::bloom-filter/patient-count] := 4
+              [1 2 ::bloom-filter/patient-count] := 3
+              [1 3 ::bloom-filter/patient-count] := 1)))))
 
     (testing "with five expressions"
       (with-redefs [ec/get (fn [cache expr]
@@ -562,26 +573,27 @@
                                nil
                                '(exists (retrieve "MedicationAdministration"))
                                (bloom-filter/build-bloom-filter expr 0 ["0"])))]
-        (let [elm #elm/or [#elm/or [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
-                                    #elm/exists #elm/retrieve{:type "Specimen"}]
-                           #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
-                                    #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
-                                             #elm/exists #elm/retrieve{:type "Procedure"}]]]
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0 c/form] := '(or (exists (retrieve "Specimen"))
-                               (exists (retrieve "Procedure"))
-                               (exists (retrieve "Observation"))
-                               (exists (retrieve "Condition"))
-                               (exists (retrieve "MedicationAdministration")))
-            [1 count] := 5
-            [1 0 ::bloom-filter/patient-count] := nil
-            [1 1 ::bloom-filter/patient-count] := nil
-            [1 2 ::bloom-filter/patient-count] := 4
-            [1 3 ::bloom-filter/patient-count] := 3
-            [1 4 ::bloom-filter/patient-count] := 1)))))
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm #elm/or [#elm/or [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                      #elm/exists #elm/retrieve{:type "Specimen"}]
+                             #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
+                                      #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                                               #elm/exists #elm/retrieve{:type "Procedure"}]]]
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0 c/form] := '(or (exists (retrieve "Specimen"))
+                                 (exists (retrieve "Procedure"))
+                                 (exists (retrieve "Observation"))
+                                 (exists (retrieve "Condition"))
+                                 (exists (retrieve "MedicationAdministration")))
+              [1 count] := 5
+              [1 0 ::bloom-filter/patient-count] := nil
+              [1 1 ::bloom-filter/patient-count] := nil
+              [1 2 ::bloom-filter/patient-count] := 4
+              [1 3 ::bloom-filter/patient-count] := 3
+              [1 4 ::bloom-filter/patient-count] := 1))))))
 
   (ctu/testing-binary-resolve-refs elm/or)
 

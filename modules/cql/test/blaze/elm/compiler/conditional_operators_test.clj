@@ -4,11 +4,13 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.db.api-stub :as api-stub]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.literal-spec]
+   [blaze.module.test-util :refer [with-system]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [juxt.iota :refer [given]]))
@@ -137,41 +139,43 @@
   (testing "attach cache"
     (testing "multi-conditional"
       (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
-        (let [elm {:type "Case"
-                   :caseItem
-                   [{:when #elm/exists #elm/retrieve{:type "Encounter"}
-                     :then #elm/exists #elm/retrieve{:type "Observation"}}]
-                   :else #elm/exists #elm/retrieve{:type "Condition"}}
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm {:type "Case"
+                     :caseItem
+                     [{:when #elm/exists #elm/retrieve{:type "Encounter"}
+                       :then #elm/exists #elm/retrieve{:type "Observation"}}]
+                     :else #elm/exists #elm/retrieve{:type "Condition"}}
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
 
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0] := expr
-            [1 count] := 3
-            [1 0] := '(exists (retrieve "Encounter"))
-            [1 1] := '(exists (retrieve "Observation"))
-            [1 2] := '(exists (retrieve "Condition"))))))
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 3
+              [1 0] := '(exists (retrieve "Encounter"))
+              [1 1] := '(exists (retrieve "Observation"))
+              [1 2] := '(exists (retrieve "Condition")))))))
 
     (testing "comparand-based"
       (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
-        (let [elm {:type "Case"
-                   :comparand #elm/exists #elm/retrieve{:type "Encounter"}
-                   :caseItem
-                   [{:when #elm/exists #elm/retrieve{:type "Observation"}
-                     :then #elm/exists #elm/retrieve{:type "Condition"}}]
-                   :else #elm/exists #elm/retrieve{:type "MedicationAdministration"}}
-              ctx {:eval-context "Patient"}
-              expr (c/compile ctx elm)]
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm {:type "Case"
+                     :comparand #elm/exists #elm/retrieve{:type "Encounter"}
+                     :caseItem
+                     [{:when #elm/exists #elm/retrieve{:type "Observation"}
+                       :then #elm/exists #elm/retrieve{:type "Condition"}}]
+                     :else #elm/exists #elm/retrieve{:type "MedicationAdministration"}}
+                ctx {:node node :eval-context "Patient"}
+                expr (c/compile ctx elm)]
 
-          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-            count := 2
-            [0] := expr
-            [1 count] := 4
-            [1 0] := '(exists (retrieve "Encounter"))
-            [1 1] := '(exists (retrieve "Observation"))
-            [1 2] := '(exists (retrieve "Condition"))
-            [1 3] := '(exists (retrieve "MedicationAdministration")))))))
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 4
+              [1 0] := '(exists (retrieve "Encounter"))
+              [1 1] := '(exists (retrieve "Observation"))
+              [1 2] := '(exists (retrieve "Condition"))
+              [1 3] := '(exists (retrieve "MedicationAdministration"))))))))
 
   (testing "resolve expression references"
     (testing "multi-conditional"
@@ -302,18 +306,19 @@
 
   (testing "attach cache"
     (with-redefs [ec/get #(do (assert (= ::cache %1)) %2)]
-      (let [elm #elm/if [#elm/exists #elm/retrieve{:type "Encounter"}
-                         #elm/exists #elm/retrieve{:type "Observation"}
-                         #elm/exists #elm/retrieve{:type "Condition"}]
-            ctx {:eval-context "Patient"}
-            expr (c/compile ctx elm)]
-        (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-          count := 2
-          [0] := expr
-          [1 count] := 3
-          [1 0 c/form] := '(exists (retrieve "Encounter"))
-          [1 1 c/form] := '(exists (retrieve "Observation"))
-          [1 2 c/form] := '(exists (retrieve "Condition"))))))
+      (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+        (let [elm #elm/if [#elm/exists #elm/retrieve{:type "Encounter"}
+                           #elm/exists #elm/retrieve{:type "Observation"}
+                           #elm/exists #elm/retrieve{:type "Condition"}]
+              ctx {:node node :eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0] := expr
+            [1 count] := 3
+            [1 0 c/form] := '(exists (retrieve "Encounter"))
+            [1 1 c/form] := '(exists (retrieve "Observation"))
+            [1 2 c/form] := '(exists (retrieve "Condition")))))))
 
   (testing "resolve expression references"
     (let [elm #elm/if [#elm/expression-ref "c"

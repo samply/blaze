@@ -16,6 +16,9 @@
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.query.compartment :as qc]
+   [blaze.db.impl.query.system :as qs]
+   [blaze.db.impl.query.type :as qt]
    [blaze.db.kv :as kv]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
@@ -246,9 +249,12 @@
    []
    values))
 
-(defn- compile-patient-type-query
-  "Tries to compile `clauses` into a PatientTypeQuery. Return nil if that isn't
-  possible."
+(defn- try-compile-patient-type-query
+  "Tries to compile `clauses` into a PatientTypeQuery.
+
+  Queries need, among other things, at least one valid compartment scan clause.
+
+  Return nil if that isn't possible."
   {:arglists '([search-param-registry type clauses])}
   [search-param-registry type {:keys [sort-clause search-clauses]}]
   (when-not sort-clause
@@ -260,31 +266,42 @@
             (when (seq scan-clauses)
               (let [patient-ids (compartment-clause-patient-ids compartment-clause)]
                 (when (seq patient-ids)
-                  (batch-db/patient-type-query
-                   (codec/tid type)
-                   patient-ids
-                   compartment-clause
-                   scan-clauses
+                  (qt/patient-type-query
+                   (codec/tid type) patient-ids compartment-clause scan-clauses
                    other-clauses))))))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
                                                  lenient?)]
     (if (empty? clauses)
-      (batch-db/->EmptyTypeQuery (codec/tid type))
-      (or (compile-patient-type-query search-param-registry type clauses)
-          (batch-db/->TypeQuery (codec/tid type) clauses)))))
+      (qt/->EmptyTypeQuery (codec/tid type))
+      (or (try-compile-patient-type-query search-param-registry type clauses)
+          (qt/->TypeQuery (codec/tid type) clauses)))))
+
+(defn- compartment-clauses [search-param-registry code type]
+  (let [search-param-codes (sr/compartment-resources search-param-registry code type)]
+    (if (seq search-param-codes)
+      (index/compartment-clauses search-param-registry code search-param-codes type)
+      (ba/unsupported (format "Unsupported `%s` compartment query of type `%s`." code type)))))
 
 (defn- compile-compartment-query
-  [search-param-registry code type clauses lenient?]
-  (when-ok [clauses (index/resolve-search-params search-param-registry type
-                                                 clauses lenient?)]
-    (if (:sort-clause clauses)
-      (ba/unsupported "Sorting is unsupported in compartment queries.")
-      (if (empty? (:search-clauses clauses))
-        (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
-        (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                     (:search-clauses clauses))))))
+  ([search-param-registry code type]
+   (when-ok [clauses (compartment-clauses search-param-registry code type)]
+     (qc/->CompartmentListQuery code clauses (codec/tid type))))
+  ([search-param-registry code type clauses lenient?]
+   (when-ok [clauses (index/resolve-search-params search-param-registry type
+                                                  clauses lenient?)]
+     (if (:sort-clause clauses)
+       (ba/unsupported "Sorting is unsupported in compartment queries.")
+       (let [search-clauses (:search-clauses clauses)]
+         (if (empty? search-clauses)
+           (compile-compartment-query search-param-registry code type)
+           (let [[scan-clauses other-clauses] (index/compartment-query-plan* search-clauses)]
+             (if (seq scan-clauses)
+               (qc/->CompartmentQuery (codec/c-hash code) (codec/tid type)
+                                      scan-clauses other-clauses)
+               (when-ok [clauses (compartment-clauses search-param-registry code type)]
+                 (qc/->CompartmentSeekQuery code clauses (codec/tid type) other-clauses))))))))))
 
 (def ^:private add-subsetted-xf
   (map #(update % :meta update :tag conj-vec fu/subsetted)))
@@ -377,10 +394,13 @@
   (-compile-system-query [_ clauses]
     (when-ok [clauses (index/resolve-search-params search-param-registry
                                                    "Resource" clauses false)]
-      (batch-db/->SystemQuery clauses)))
+      (qs/->SystemQuery clauses)))
 
   (-compile-system-matcher [_ clauses]
     (compile-system-matcher search-param-registry clauses))
+
+  (-compile-compartment-query [_ code type]
+    (compile-compartment-query search-param-registry code type))
 
   (-compile-compartment-query [_ code type clauses]
     (compile-compartment-query search-param-registry code type clauses false))

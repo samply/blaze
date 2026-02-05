@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.cql.translator :as t]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.external-data]
@@ -44,7 +44,7 @@
 
 (def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    ::ts/local
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
@@ -86,7 +86,7 @@
 (deftest compile-retrieve-test
   (testing "Patient context"
     (testing "Patient"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
@@ -118,8 +118,15 @@
           (testing "form"
             (has-form expr '(retrieve-resource))))))
 
+    (testing "non-existing type"
+      (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+        (let [context {:node node :eval-context "Patient" :library {}}]
+          (given (ba/try-anomaly (c/compile context #elm/retrieve{:type "Foo"}))
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported `Patient` compartment query of type `Foo`."))))
+
     (testing "Observation"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -299,7 +306,7 @@
                     "system-192253|code-140541"]]))))))
 
       (testing "with one concept"
-        (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -393,7 +400,7 @@
 
   (testing "Specimen context"
     (testing "Patient"
-      (with-system-data [{:blaze.db/keys [node]} (assoc-in mem-node-config [:blaze.db/node :enforce-referential-integrity] false)]
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in api-stub/mem-node-config [:blaze.db/node :enforce-referential-integrity] false)]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Specimen :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]

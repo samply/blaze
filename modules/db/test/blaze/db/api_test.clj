@@ -40,7 +40,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [blaze.db.impl.batch_db PatientTypeQuery]
+   [blaze.db.impl.query.type PatientTypeQuery]
    [com.google.common.base CaseFormat]
    [java.time Instant]
    [java.util.concurrent TimeUnit]))
@@ -1762,9 +1762,13 @@
          ~@body)
        (is (= ~count (count-type-query ~node-or-db ~type ~clauses)))))
 
-(defn- pull-compartment-query [node code id type clauses]
-  (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
-    @(d/pull-many node (vec handles))))
+(defn- pull-compartment-query
+  ([node code id type clauses]
+   (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
+     @(d/pull-many node (vec handles))))
+  ([node code id type clauses start-id]
+   (when-ok [handles (d/compartment-query (d/db node) code id type clauses start-id)]
+     @(d/pull-many node (vec handles)))))
 
 (defn- pull-system-list
   ([node-or-db]
@@ -2142,7 +2146,7 @@
           [0 :meta :versionId] := #fhir/id "2"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
+        (is (zero? (count (d/type-list (d/db node) "Patient" "2")))))))
 
   (testing "a node with two patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8329,7 +8333,7 @@
 (deftest system-list-and-total-test
   (testing "a new node has no resources"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (coll/empty? (d/system-list (d/db node))))
+      (is (zero? (count (d/system-list (d/db node)))))
       (is (zero? (d/system-total (d/db node))))))
 
   (testing "a node with one patient"
@@ -8390,7 +8394,7 @@
           [0 :meta :versionId] := #fhir/id "1"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (coll/empty? (d/system-list (d/db node) "Patient" "1")))))))
+        (is (zero? (count (d/system-list (d/db node) "Patient" "1"))))))))
 
 (deftest system-query-test
   (testing "a new node has no resources"
@@ -8414,17 +8418,18 @@
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
-(defn- pull-compartment-resources
+(defn- pull-compartment-type-list
   ([node code id type]
-   @(d/pull-many node (vec (d/list-compartment-resource-handles (d/db node) code id type))))
+   (when-ok [handles (d/compartment-type-list (d/db node) code id type)]
+     @(d/pull-many node (vec handles))))
   ([node code id type start-id]
-   @(d/pull-many node (vec (d/list-compartment-resource-handles (d/db node) code id type start-id)))))
+   (when-ok [handles (d/compartment-type-list (d/db node) code id type start-id)]
+     @(d/pull-many node (vec handles)))))
 
-(deftest list-compartment-resources-test
+(deftest compartment-type-list-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (coll/empty? (d/list-compartment-resource-handles
-                        (d/db node) "Patient" "0" "Observation")))))
+      (is (empty? (pull-compartment-type-list node "Patient" "0" "Observation")))))
 
   (testing "a node contains one Observation in the Patient/0 compartment"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8432,7 +8437,7 @@
        [[:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (given (pull-compartment-resources node "Patient" "0" "Observation")
+      (given (pull-compartment-type-list node "Patient" "0" "Observation")
         count := 1
         [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
@@ -8446,7 +8451,7 @@
        [[:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (given (pull-compartment-resources node "Patient" "0" "Observation")
+      (given (pull-compartment-type-list node "Patient" "0" "Observation")
         count := 2
         [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
@@ -8462,8 +8467,7 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]
        [[:delete "Observation" "0"]]]
 
-      (is (coll/empty? (d/list-compartment-resource-handles
-                        (d/db node) "Patient" "0" "Observation")))))
+      (is (empty? (pull-compartment-type-list node "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8475,7 +8479,7 @@
        [[:put {:fhir/type :fhir/Observation :id "2"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (given (pull-compartment-resources node "Patient" "0" "Observation" "1")
+      (given (pull-compartment-type-list node "Patient" "0" "Observation" "1")
         count := 2
         [0 :fhir/type] := :fhir/Observation
         [0 :id] := "1"
@@ -8484,10 +8488,11 @@
         [1 :id] := "2"
         [1 :meta :versionId] := #fhir/id "4")))
 
-  (testing "Unknown compartment is not a problem"
+  (testing "Unknown compartment results in an error"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (coll/empty? (d/list-compartment-resource-handles
-                        (d/db node) "foo" "bar" "Condition"))))))
+      (given (pull-compartment-type-list node "Foo" "bar" "Condition")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported `Foo` compartment query of type `Condition`."))))
 
 (defn- explain-compartment-query [node code type clauses]
   (when-ok [query (d/compile-compartment-query node code type clauses)]
@@ -8500,11 +8505,13 @@
         (is (coll/empty? (d/compartment-query (d/db node) "Patient" "0" "Observation" clauses)))
 
         (given (explain-compartment-query node "Patient" "Observation" clauses)
-          :query-type := :compartment
-          :scan-type := nil
-          :scan-clauses := nil
-          [:seek-clauses count] := 1
-          [:seek-clauses 0 :code] := "code"))))
+          :query-type := :type
+          :scan-type := :ordered
+          [:scan-clauses count] := 3
+          [:scan-clauses 0 :code] := "subject"
+          [:scan-clauses 1 :code] := "performer"
+          [:scan-clauses 2 :code] := "code"
+          :seek-clauses :? empty?))))
 
   (testing "returns the Observation in the Patient/0 compartment"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8576,18 +8583,33 @@
           [:put (observation "1" #fhir/code "code-1")]
           [:put (observation "3" #fhir/code "code-2")]]]
 
-        (given (pull-compartment-query
-                node "Patient" "0" "Observation"
-                [["code" "system|code-2"]])
-          count := 3
-          [0 :fhir/type] := :fhir/Observation
-          [0 :id] := "0"
-          [0 :meta :versionId] := #fhir/id "2"
-          [1 :fhir/type] := :fhir/Observation
-          [1 :id] := "2"
-          [1 :meta :versionId] := #fhir/id "1"
-          [2 :id] := "3"
-          [2 :meta :versionId] := #fhir/id "1"))))
+        (doseq [clauses [[["code" "system|code-2"]]
+                         [["code" "code-2"]]]]
+          (given (pull-compartment-query
+                  node "Patient" "0" "Observation"
+                  clauses)
+            count := 3
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [0 :meta :versionId] := #fhir/id "2"
+            [1 :fhir/type] := :fhir/Observation
+            [1 :id] := "2"
+            [1 :meta :versionId] := #fhir/id "1"
+            [2 :fhir/type] := :fhir/Observation
+            [2 :id] := "3"
+            [2 :meta :versionId] := #fhir/id "1")
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-compartment-query
+                    node "Patient" "0" "Observation"
+                    clauses "2")
+              count := 2
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "2"
+              [0 :meta :versionId] := #fhir/id "1"
+              [1 :fhir/type] := :fhir/Observation
+              [1 :id] := "3"
+              [1 :meta :versionId] := #fhir/id "1"))))))
 
   (testing "doesn't return deleted resources"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8704,7 +8726,15 @@
             [:scan-clauses count] := 2
             [:scan-clauses 0 :code] := "code"
             [:scan-clauses 1 :code] := "category"
-            :seek-clauses :? empty?)))
+            :seek-clauses :? empty?)
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-compartment-query
+                    node "Patient" "0" "Observation"
+                    clauses "1")
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "1"))))
 
       (testing "matches code and value-quantity criteria"
         (let [clauses [["code" "system-191514|code-191518"]
@@ -8736,11 +8766,12 @@
                                   [["unknown" "foo"]])
         ::anom/category := ::anom/not-found)))
 
-  (testing "Unknown compartment is not a problem"
+  (testing "Unknown compartment results in an error"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (coll/empty? (d/compartment-query
-                        (d/db node) "foo" "bar" "Condition"
-                        [["code" "baz"]])))))
+      (given (d/compartment-query (d/db node) "Foo" "bar" "Condition"
+                                  [["code" "baz"]])
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported `Foo` compartment query of type `Condition`.")))
 
   (testing "Unknown type is not a problem"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8793,14 +8824,35 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
         [:put {:fhir/type :fhir/Condition :id "2"
                :onset #fhir/dateTime #system/date-time "2025-07-26"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Condition :id "3"
+               :onset #fhir/dateTime #system/date-time "2025-07-24"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (testing "only returns the condition with onset <= 2025-07-25"
-        (given (pull-compartment-query node "Patient" "0" "Condition"
-                                       [["onset-date" "le2025-07-25"]])
-          count := 1
-          [0 :fhir/type] := :fhir/Condition
-          [0 :id] := "1")))))
+        (let [clauses [["onset-date" "le2025-07-25"]]]
+          (given (pull-compartment-query node "Patient" "0" "Condition"
+                                         clauses)
+            count := 2
+            [0 :fhir/type] := :fhir/Condition
+            [0 :id] := "1"
+            [1 :id] := "3")
+
+          (given (explain-compartment-query node "Patient" "Condition" clauses)
+            :query-type := :type
+            :scan-type := :ordered
+            [:scan-clauses count] := 2
+            [:scan-clauses 0 :code] := "patient"
+            [:scan-clauses 1 :code] := "asserter"
+            [:seek-clauses count] := 1
+            [:seek-clauses 0 :code] := "onset-date")
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-compartment-query node "Patient" "0" "Condition"
+                                           clauses "3")
+              count := 1
+              [0 :fhir/type] := :fhir/Condition
+              [0 :id] := "3")))))))
 
 (deftest compartment-query-disjunction-test
   (testing "with two token search params"
@@ -8868,13 +8920,33 @@
 
     (with-open-db [db node]
       (doseq [target [node db]]
-        (given (let [query (d/compile-compartment-query
-                            target "Patient" "Observation"
-                            [["code" "system-191514|code-191518"]])]
-                 (pull-query db query "0"))
-          count := 1
-          [0 :fhir/type] := :fhir/Observation
-          [0 :id] := "0")))))
+        (testing "with invalid compartment"
+          (given (d/compile-compartment-query target "Foo" "Observation")
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported `Foo` compartment query of type `Observation`."))
+
+        (testing "with invalid sort clause"
+          (given (d/compile-compartment-query target "Foo" "Observation"
+                                              [[:sort "_id" :asc]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Sorting is unsupported in compartment queries."))
+
+        (testing "without clauses"
+          (given (let [query (d/compile-compartment-query
+                              target "Patient" "Observation")]
+                   (pull-query db query "0"))
+            count := 1
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"))
+
+        (testing "with code clause"
+          (given (let [query (d/compile-compartment-query
+                              target "Patient" "Observation"
+                              [["code" "system-191514|code-191518"]])]
+                   (pull-query db query "0"))
+            count := 1
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"))))))
 
 (deftest compile-compartment-query-lenient-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -8888,9 +8960,15 @@
                  {:system #fhir/uri "system-191514"
                   :code #fhir/code "code-191518"}]}}]]]
 
-    (testing "the observation can be found"
-      (with-open-db [db node]
-        (doseq [target [node db]]
+    (with-open-db [db node]
+      (doseq [target [node db]]
+        (testing "with invalid sort clause"
+          (given (d/compile-compartment-query-lenient target "Foo" "Observation"
+                                                      [[:sort "_id" :asc]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Sorting is unsupported in compartment queries."))
+
+        (testing "with system|code"
           (let [clauses [["code" "system-191514|code-191518"]]
                 query (d/compile-compartment-query-lenient
                        target "Patient" "Observation"
@@ -8907,11 +8985,30 @@
               :scan-type := :ordered
               [:scan-clauses count] := 1
               [:scan-clauses 0 :code] := "code"
-              :seek-clauses :? empty?)))))
+              :seek-clauses :? empty?)))
 
-    (testing "an unknown search-param is ignored"
-      (with-open-db [db node]
-        (doseq [target [node db]]
+        (testing "with code only"
+          (let [clauses [["code" "code-191518"]]
+                query (d/compile-compartment-query-lenient
+                       target "Patient" "Observation"
+                       clauses)]
+            (given (pull-query db query "0")
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "0")
+
+            (is (= clauses (d/query-clauses query)))
+
+            (given (d/explain-query db query)
+              :query-type := :type
+              :scan-type := :ordered
+              [:scan-clauses count] := 3
+              [:scan-clauses 0 :code] := "subject"
+              [:scan-clauses 1 :code] := "performer"
+              [:scan-clauses 2 :code] := "code"
+              :seek-clauses :? empty?)))
+
+        (testing "an unknown search-param is ignored"
           (let [query (d/compile-compartment-query-lenient
                        target "Patient" "Observation"
                        [["foo" "bar"]])]
@@ -8923,9 +9020,11 @@
             (is (empty? (d/query-clauses query)))
 
             (given (d/explain-query db query)
-              :query-type := :compartment
-              :scan-type := nil
-              :scan-clauses := nil
+              :query-type := :type
+              :scan-type := :ordered
+              [:scan-clauses count] := 2
+              [:scan-clauses 0 :code] := "subject"
+              [:scan-clauses 1 :code] := "performer"
               :seek-clauses :? empty?)))))))
 
 (deftest patient-compartment-last-change-t-test

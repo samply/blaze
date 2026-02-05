@@ -49,19 +49,19 @@
    {:syntax :bracket
     :path context-path}))
 
-(def match
+(defn- match-of [code id]
   (reitit/map->Match
    {:data
-    {:fhir.compartment/code "Patient"
-     :name :Patient/compartment}
-    :path (str context-path "/Patient/0/Observation")}))
+    {:fhir.compartment/code code
+     :name (keyword code "compartment")}
+    :path (str context-path (format "/%s/%s/Observation" code id))}))
 
-(def page-match
+(defn- page-match-of [code id]
   (reitit/map->Match
    {:data
-    {:fhir.compartment/code "Patient"
-     :name :Patient/compartment-page}
-    :path (str context-path "/Patient/0/Observation")}))
+    {:fhir.compartment/code code
+     :name (keyword code "compartment-page")}
+    :path (str context-path (format "/%s/%s/Observation" code id))}))
 
 (def config
   (assoc
@@ -130,17 +130,18 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(defn wrap-defaults [handler]
-  (fn [request]
-    (handler
-     (assoc request
-            :blaze/base-url base-url
-            ::reitit/router router
-            ::reitit/match match))))
-
-(defn wrap-db [handler node page-id-cipher]
+(defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
-    (if (= page-match match)
+    (handler
+     (cond-> (assoc request
+                    :blaze/base-url base-url
+                    ::reitit/router router)
+       (nil? match)
+       (assoc ::reitit/match (match-of "Patient" "0"))))))
+
+(defn- wrap-db [handler node page-id-cipher]
+  (fn [{::reitit/keys [match] :as request}]
+    (if (= "compartment-page" (some-> match :data :name name))
       ((decrypt-page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node 100)
         page-id-cipher)
@@ -514,6 +515,36 @@
           :type := #fhir/code "searchset"
           :total := #fhir/unsignedInt 0))))
 
+  (testing "Returns an error on Invalid Compartment"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler
+              {::reitit/match (match-of "Foo" "0")
+               :path-params {:id "0" :type "Observation"}})]
+
+        (is (= 422 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-supported"
+          [:issue 0 :diagnostics] := #fhir/string "Unsupported `Foo` compartment query of type `Observation`."))))
+
+  (testing "Returns an error on Unsupported _sort search param"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler
+              {:path-params {:id "0" :type "Observation"}
+               :params {"_sort" "_id"}})]
+
+        (is (= 422 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-supported"
+          [:issue 0 :diagnostics] := #fhir/string "Sorting is unsupported in compartment queries."))))
+
   (testing "with two Observations"
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -562,6 +593,36 @@
 
             (testing "the bundle contains no entry"
               (is (empty? (:entry body))))))
+
+        (testing "with status=final"
+          (doseq [handling ["strict" "lenient"]]
+            (let [{:keys [status body]}
+                  @(handler (-> (assoc-in request [:params "status"] "final")
+                                (assoc-in [:headers "prefer"] (str "handling=" handling))))]
+
+              (is (= 200 status))
+
+              (testing "the body contains a bundle"
+                (is (= :fhir/Bundle (:fhir/type body))))
+
+              (testing "the bundle type is searchset"
+                (is (= #fhir/code "searchset" (:type body))))
+
+              (testing "the total count is 1"
+                (is (= #fhir/unsignedInt 1 (:total body))))
+
+              (testing "has a self link"
+                (is (= (str base-url context-path "/Patient/0/Observation?status=final&_count=50")
+                       (link-url body "self"))))
+
+              (testing "the bundle contains two entries"
+                (is (= 1 (count (:entry body)))))
+
+              (testing "the first entry"
+                (given (-> body :entry first)
+                  [:fullUrl :value] := (str base-url context-path "/Observation/0")
+                  [:resource :fhir/type] := :fhir/Observation
+                  [:resource :id] := "0")))))
 
         (testing "with no query param"
           (let [{:keys [status body]} @(handler request)]
@@ -631,7 +692,7 @@
           (testing "following the next link"
             (let [{:keys [status body]}
                   @(handler
-                    {::reitit/match page-match
+                    {::reitit/match (page-match-of "Patient" "0")
                      :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-offset" "1"})})]
 
               (is (= 200 status))

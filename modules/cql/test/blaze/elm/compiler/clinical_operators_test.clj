@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.code :as code]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.clinical-operators]
@@ -126,7 +126,7 @@
 ;; code systems to be preserved as references.
 (def ^:private ts-config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    ::ts/local
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)

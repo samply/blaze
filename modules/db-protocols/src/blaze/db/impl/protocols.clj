@@ -23,17 +23,13 @@
 
   (-system-total [db])
 
-  (-compartment-resource-handles
-    [db compartment tid]
-    [db compartment tid start-id])
-
   (-patient-compartment-last-change-t [db patient-id])
 
   (-count-query [db query]
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
 
-  (-execute-query [db query] [db query arg1])
+  (-execute-query [db query] [db query arg1] [db query arg1 arg2])
 
   (-explain-query [db query])
 
@@ -79,7 +75,7 @@
 
   (-compile-system-matcher [compiler clauses])
 
-  (-compile-compartment-query [compiler code type clauses])
+  (-compile-compartment-query [compiler code type] [compiler code type clauses])
 
   (-compile-compartment-query-lenient [compiler code type clauses]))
 
@@ -88,7 +84,7 @@
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
 
-  (-execute [query batch-db] [query batch-db arg1])
+  (-execute [query batch-db] [query batch-db arg1] [query batch-db arg1 arg2])
 
   (-query-clauses [query])
 

@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.code :as code]
    [blaze.elm.code-spec]
    [blaze.elm.compiler :as c]
@@ -156,7 +156,7 @@
           (has-form expr [1 1])))))
 
   (testing "Retrieve queries"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code "female"}]
         [:put {:fhir/type :fhir/Patient :id "1"
@@ -356,7 +356,7 @@
                     (retrieve "Patient"))))))))))
 
   (testing "With clause"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -652,7 +652,7 @@
                       (retrieve "Observation")))))))))))
 
   (testing "Without clause"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -697,7 +697,7 @@
 
   (testing "Sort"
     (testing "ByExpression"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Encounter :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
@@ -731,7 +731,7 @@
             (is (= ["0" "1"] (map :id (core/-eval expr {:db db} patient nil))))))))))
 
 (deftest compile-query-medication-reference-test
-  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+  (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/MedicationAdministration :id "0"
              :medication #fhir/Reference{:reference #fhir/string "Medication/0"}

@@ -10,29 +10,11 @@
    [blaze.db.impl.index.resource-as-of-spec]
    [blaze.db.impl.index.system-as-of-spec]
    [blaze.db.impl.index.type-as-of-spec]
+   [blaze.db.impl.query.compartment-spec]
+   [blaze.db.impl.query.type-spec]
    [blaze.db.impl.search-param.chained-spec]
    [blaze.db.index.query :as-alias query]
    [clojure.spec.alpha :as s]))
-
-(s/fdef batch-db/->TypeQuery
-  :args (s/cat :tid :blaze.db/tid :clauses ::query/clauses))
-
-(s/fdef batch-db/patient-type-query
-  :args (s/cat :tid :blaze.db/tid
-               :patient-ids (s/coll-of :blaze.db/id-byte-string :kind vector? :min-count 1)
-               :compartment-clause ::query/search-clause
-               :scan-clauses ::query/search-clauses
-               :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?))))
-
-(s/fdef batch-db/->EmptyTypeQuery
-  :args (s/cat :tid :blaze.db/tid))
-
-(s/fdef batch-db/->CompartmentQuery
-  :args (s/cat :c-hash :blaze.db/c-hash :tid :blaze.db/tid
-               :search-clauses ::query/search-clauses))
-
-(s/fdef batch-db/->EmptyCompartmentQuery
-  :args (s/cat :c-hash :blaze.db/c-hash :tid :blaze.db/tid))
 
 (s/fdef batch-db/->Matcher
   :args (s/cat :search-clauses ::query/search-clauses))

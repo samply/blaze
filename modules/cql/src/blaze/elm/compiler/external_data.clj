@@ -75,20 +75,20 @@
 (defn- context-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` related to the resource in execution `context`."
-  [context data-type]
+  [node context data-type]
   (case context
     "Specimen"
     (case data-type
       "Patient"
       specimen-patient-expr)
-    (reify-expr core/Expression
-      (-eval [_ {:keys [db]} {:keys [id]} _]
-        (prom/inc! retrieve-total)
-        (coll/eduction
-         (cr/resource-mapper db)
-         (d/list-compartment-resource-handles db context id data-type)))
-      (-form [_]
-        `(~'retrieve ~data-type)))))
+    (if-ok [compartment-query (d/compile-compartment-query node context data-type)]
+      (reify-expr core/Expression
+        (-eval [_ {:keys [db]} {:keys [id]} _]
+          (prom/inc! retrieve-total)
+          (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
+        (-form [_]
+          `(~'retrieve ~data-type)))
+      throw-anom)))
 
 (def ^:private resource-expr
   (reify-expr core/Expression
@@ -103,16 +103,16 @@
 (def ^:private unsupported-related-context-expr-without-type-anom
   (ba/unsupported "Unsupported related context retrieve expression without result type."))
 
-(defn- related-context-expr-without-codes [related-context-expr data-type]
+(defn- related-context-expr-without-codes [node related-context-expr data-type]
   (reify-expr core/Expression
     (-resolve-refs [_ expression-defs]
       (related-context-expr-without-codes
-       (core/-resolve-refs related-context-expr expression-defs) data-type))
+       node (core/-resolve-refs related-context-expr expression-defs) data-type))
     (-eval [_ context resource scope]
       (prom/inc! retrieve-total)
       (when-let [context-resource (core/-eval related-context-expr context resource scope)]
         (core/-eval
-         (context-expr (-> context-resource :fhir/type name) data-type)
+         (context-expr node (-> context-resource :fhir/type name) data-type)
          context
          context-resource
          scope)))
@@ -146,7 +146,7 @@
               throw-anom))
           (throw-anom (unsupported-type-ns-anom value-type-ns))))
       (throw-anom unsupported-related-context-expr-without-type-anom))
-    (related-context-expr-without-codes context-expr data-type)))
+    (related-context-expr-without-codes node context-expr data-type)))
 
 (defn- unfiltered-context-expr [node data-type code-property codes]
   (if (empty? codes)
@@ -170,7 +170,7 @@
   (if (empty? codes)
     (if (= data-type eval-context)
       resource-expr
-      (context-expr eval-context data-type))
+      (context-expr node eval-context data-type))
     (code-expr node eval-context data-type code-property codes)))
 
 ;; 11.1. Retrieve
