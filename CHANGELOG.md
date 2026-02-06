@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.5.0
+
+### Notes
+
+The sizing of the resource cache is changed from count-based to size-based. The env var `DB_RESOURCE_CACHE_SIZE` is replaced by the env var `DB_RESOURCE_CACHE_SIZE_RATIO`. It's default is `0.25` so that 25 % of the Java Heap memory is used for the resource cache. That default should be safe for most deployments. It can be increased but not over `0.8` or 80 %. Please only increase the ratio if [Monitoring](https://samply.github.io/blaze/monitoring.html) is available.
+
+Health checks are now officially supported via `wget`. In case you use `curl` for health checks, please replace it with `wget`. The `curl` command will be removed from the images in release v1.6.
+
+### Enhancements
+
+* Switch Resource Cache Sizing from Count to Memory-Based ([#3253](https://github.com/samply/blaze/issues/3253))
+* Implement $cql Operation ([#3230](https://github.com/samply/blaze/issues/3230))
+* Implement CQL Operator InCodeSystem ([#3157](https://github.com/samply/blaze/issues/3157))
+* Implement Basic VCL Support ([#3275](https://github.com/samply/blaze/issues/3275))
+* Offer Health Checks ([#3338](https://github.com/samply/blaze/issues/3338))
+
+### Bugfixes
+
+* Disable CompartmentResourceType Index Usage ([#3294](https://github.com/samply/blaze/issues/3294))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/117?closed=1).
+
 ## v1.4.2
 
 The security fix is relevant for the frontend. Please update.

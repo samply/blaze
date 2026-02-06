@@ -1,4 +1,4 @@
-# Operation \$cql <Badge type="info" text="Feature: ENABLE_OPERATION_CQL"/> <Badge type="warning" text="unreleased"/>
+# Operation \$cql <Badge type="info" text="Feature: ENABLE_OPERATION_CQL"/> <Badge type="warning" text="Since 1.5.0"/>
 
 > [!CAUTION]
 > The operation \$cql is currently **beta**. Only the parameters, described here, are implemented.
