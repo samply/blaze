@@ -33,7 +33,7 @@ Currently the external code systems shown in the following table are supported.
 * [ValueSet \$expand](api/operation/value-set-expand.md)
 * [ValueSet \$validate-code](api/operation/value-set-validate-code.md)
 
-## ValueSet Compose Language (VCL) <Badge type="warning" text="unreleased"/>
+## ValueSet Compose Language (VCL) <Badge type="warning" text="Since 1.5.0"/>
 
 ValueSets can be created on-the-fly by using the [ValueSet Compose Language (VCL)](terminology-service/vcl.md) at any place were a ValueSet URL can be specified. It works in [ValueSet \$expand](api/operation/value-set-expand.md) and [ValueSet \$validate-code](api/operation/value-set-validate-code.md).
 

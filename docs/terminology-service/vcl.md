@@ -1,4 +1,4 @@
-# ValueSet Compose Language (VCL) <Badge type="warning" text="unreleased"/>
+# ValueSet Compose Language (VCL) <Badge type="warning" text="Since 1.5.0"/>
 
 > [!CAUTION]
 > The VCL standard is curently in development. The implementation in currently **beta**.
