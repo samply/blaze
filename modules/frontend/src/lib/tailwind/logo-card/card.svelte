@@ -1,8 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import type { ResolvedPathname } from '$app/types';
 
   interface Props {
-    href: string;
+    href: ResolvedPathname;
     title: string;
     logo?: Snippet;
     children?: Snippet;
@@ -10,6 +11,8 @@
 
   let { href, title, logo, children }: Props = $props();
 </script>
+
+<!-- eslint-disable svelte/no-navigation-without-resolve -->
 
 <li class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-600">
   <div

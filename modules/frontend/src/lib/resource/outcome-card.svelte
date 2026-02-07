@@ -10,6 +10,7 @@
 
   function isPlan(issue: OperationOutcomeIssue) {
     return (
+      issue.severity === 'information' &&
       issue.code === 'informational' &&
       issue.diagnostics?.includes('SCANS') &&
       issue.diagnostics?.includes('SEEKS')
@@ -18,7 +19,7 @@
 </script>
 
 {#if outcome.issue}
-  {#each outcome.issue as issue ([issue.code, issue.details])}
+  {#each outcome.issue as issue}
     {#if isPlan(issue) && issue.diagnostics}
       <!-- TODO check for detail code = query-plan -->
       <QueryPlanCard diagnostics={issue.diagnostics}></QueryPlanCard>

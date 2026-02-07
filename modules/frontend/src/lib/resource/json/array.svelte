@@ -10,7 +10,7 @@
   let { indent, values }: Props = $props();
 
   const maxLength = 100;
-  let length = Math.min(values.length, maxLength);
+  let length = $derived(Math.min(values.length, maxLength));
 </script>
 
 [{#if length < values.length}&nbsp;!!!&nbsp;SHORTENED&nbsp;-&nbsp;DO&nbsp;NOT&nbsp;COPY&nbsp;!!!{/if}{'\n'}{#each values.slice(0, maxLength) as value, index}<Value

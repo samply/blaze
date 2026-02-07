@@ -15,6 +15,7 @@
 <a
   {href}
   {title}
+  rel="external"
   class="font-medium text-indigo-600 dark:text-indigo-300 hover:text-indigo-500 hover:dark:text-indigo-400"
   >{@render children?.()}
   <ArrowTopRightOnSquare

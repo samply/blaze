@@ -26,7 +26,7 @@
     return plan as Plan;
   }
 
-  let { type, scanType, scans, seeks } = parsePlan(diagnostics);
+  let { type, scanType, scans, seeks } = $derived(parsePlan(diagnostics));
 </script>
 
 <div class="my-2 py-2 px-4 sm:px-6 bg-gray-50 dark:bg-gray-700 rounded-lg">

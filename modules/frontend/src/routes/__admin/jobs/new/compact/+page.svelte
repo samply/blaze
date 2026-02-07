@@ -9,7 +9,7 @@
 
   let { form }: Props = $props();
 
-  let selectedDatabase = $state(form?.database ?? 'index');
+  let selectedDatabase = $derived(form?.database ?? 'index');
 </script>
 
 <svelte:head>
