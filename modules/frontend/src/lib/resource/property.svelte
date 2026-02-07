@@ -38,19 +38,21 @@
     return Array.isArray(x) ? x : [x];
   }
 
-  const singlePrimitiveValue =
+  const singlePrimitiveValue = $derived(
     isPrimitive(property.type) && !Array.isArray(property.value)
       ? (property.value as FhirPrimitive)
-      : undefined;
+      : undefined
+  );
 
-  const multiplePrimitiveValues =
+  const multiplePrimitiveValues = $derived(
     isPrimitive(property.type) && Array.isArray(property.value)
       ? (property.value as FhirPrimitive[])
-      : undefined;
+      : undefined
+  );
 
-  const multipleComplexValues = !isPrimitive(property.type)
-    ? (toArray(property.value) as FhirObject[])
-    : undefined;
+  const multipleComplexValues = $derived(
+    !isPrimitive(property.type) ? (toArray(property.value) as FhirObject[]) : undefined
+  );
 
   function asAttachmentValues(property: FhirProperty) {
     return toArray(property.value) as FhirObject<Attachment>[];

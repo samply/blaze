@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte';
   import type { Element, FhirResource, Meta, Resource } from 'fhir/r4';
   import type { FhirObject } from './resource-card.js';
+  import type { ResolvedPathname } from '$app/types';
 
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
@@ -31,7 +32,7 @@
     return (element as Resource).meta !== undefined;
   }
 
-  function href(resource: FhirObject) {
+  function href(resource: FhirObject): ResolvedPathname {
     const type = resource.type.code;
     const id = resource.object.id;
     const vid = (resource.object as Resource).meta?.versionId;

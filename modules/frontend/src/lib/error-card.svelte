@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import type { ResolvedPathname } from '$app/types';
 
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import type { ResolvedPathname } from '$app/types';
 
   interface Props {
     status?: number;
