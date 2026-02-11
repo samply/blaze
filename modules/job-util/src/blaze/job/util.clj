@@ -1,10 +1,15 @@
 (ns blaze.job.util
   (:require
+   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler :as-alias js]
-   [cognitect.anomalies :as anom]))
+   [cognitect.anomalies :as anom])
+  (:import
+   [java.util.concurrent TimeUnit]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:const job-number-url
   "https://samply.github.io/blaze/fhir/sid/JobNumber")
@@ -200,16 +205,57 @@
 
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
-  {:arglists '([node job f] [node job f x])}
   ([node job f]
    (update-job+ node job nil f))
   ([node job f x]
    (update-job+ node job nil f x)))
 
+(declare update-job-with-retry*)
+
+(defn- should-retry? [anomaly n i]
+  (and (ba/conflict? anomaly) (= 412 (:http/status anomaly)) (< i n)))
+
+(defn- delayed-executor [i]
+  (ac/delayed-executor (+ (* 1000 (int (Math/pow 2 i))) (rand-int 1000))
+                       TimeUnit/NANOSECONDS))
+
+(defn- maybe-retry [node n i id f]
+  (fn [anomaly]
+    (if (should-retry? anomaly n i)
+      (-> (ac/supply-async #() (delayed-executor i))
+          (ac/then-compose
+           (fn [_] (update-job-with-retry* node n (inc i) id f))))
+      (ac/completed-future anomaly))))
+
+(defn- update-job-with-retry* [node n i id f]
+  (-> (pull-job node id)
+      (ac/then-compose
+       #(if-ok [job (f %)]
+          (d/transact node [(update-tx-op job)])
+          ac/completed-future))
+      (then-pull-job node id)
+      (ac/exceptionally-compose (maybe-retry node n i id f))
+      (ac/exceptionally tag-update-error)))
+
+(defn update-job-with-retry
+  "Submits a transaction that updates `job` to a state as result of applying
+  `f` to `job` and any supplied args.
+
+  Returns a CompletableFuture that will complete with the job after the
+  transaction in case of success or will complete exceptionally with an anomaly
+  in case of a transaction error or other errors.
+
+  Retries the update up to `n` times on concurrent update problems.
+
+  Functions applied after the returned future are executed on the common
+  ForkJoinPool."
+  [node n id f]
+  (update-job-with-retry* node n 0 id f))
+
 (defn job-update-failed?
   {:arglists '([anomaly])}
-  [{::anom/keys [category] ::js/keys [action]}]
-  (and (= ::anom/conflict category) (= :update-job action)))
+  [{::js/keys [action] :as anomaly}]
+  (and (ba/conflict? anomaly) (= :update-job action)))
 
 (defn fail-job [job {::anom/keys [category message]}]
   (-> (assoc job :status #fhir/code "failed")

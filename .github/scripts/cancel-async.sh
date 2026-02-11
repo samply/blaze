@@ -2,23 +2,30 @@
 
 #
 # This script verifies the correct cancellation of async requests.
+#
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
 base="http://localhost:8080/fhir"
-headers=$(curl -s -H 'Prefer: respond-async' -H 'Accept: application/fhir+json' -o /dev/null -D - "$base/Observation?date=lt2100&_summary=count")
+headers=$(curl -s -H 'Prefer: respond-async' -H 'Accept: application/fhir+json' -o /dev/null -D - "$base/Observation?date=gt2000&date=lt2100&_summary=count")
 status_url=$(echo "$headers" | grep -i content-location | tr -d '\r' | cut -d: -f2- | xargs)
 
-status_code=$(curl -s -XDELETE -o /dev/null -w '%{response_code}' "$status_url")
-test "cancel status code" "$status_code" "202"
+response=$(curl -s -XDELETE -w "%{response_code}" "$status_url")
+status_code="${response: -3}"
+if [ "$status_code" = "202" ]; then
+  echo "✅ the cancel status code is 202"
+else
+  echo "🆘 the cancel status code is $status_code, expected 202, diagnostics: $(echo "${response%???}" | jq -r '.issue[0].diagnostics')"
+  exit 1
+fi
 
-test "status code after cancel" "$(curl -s -o /dev/null -w '%{response_code}' "$status_url")" "404"
-response="$(curl -s "$status_url")"
-test "after cancel resource type" "$(echo "$response" | jq -r .resourceType)" "OperationOutcome"
-test "after cancel issue code" "$(echo "$response" | jq -r '.issue[0].code')" "not-found"
+response=$(curl -s -w '%{response_code}' "$status_url")
+test "status code after cancel" "${response: -3}" "404"
+test "after cancel resource type" "$(echo "${response%???}" | jq -r '.resourceType')" "OperationOutcome"
+test "after cancel issue code" "$(echo "${response%???}" | jq -r '.issue[0].code')" "not-found"
 
-diagnostics="$(curl -s -H 'Accept: application/fhir+json' "$status_url" | jq -r '.issue[0].diagnostics')"
+diagnostics="$(echo "${response%???}" | jq -r '.issue[0].diagnostics')"
 if [[ "$diagnostics" =~ The\ asynchronous\ request\ with\ id\ \`[A-Z0-9]+\`\ is\ cancelled. ]]; then
     echo "✅ the diagnostics message is right"
 else

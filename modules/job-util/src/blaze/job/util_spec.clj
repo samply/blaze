@@ -69,6 +69,10 @@
   :args (s/cat :node :blaze.db/node :job :fhir/Task :f fn? :args (s/* any?))
   :ret ac/completable-future?)
 
+(s/fdef job-util/update-job-with-retry
+  :args (s/cat :node :blaze.db/node :n pos-int? :id string? :f fn? :args (s/* any?))
+  :ret ac/completable-future?)
+
 (s/fdef job-util/job-update-failed?
   :args (s/cat :anomaly ::anom/anomaly)
   :ret boolean?)
