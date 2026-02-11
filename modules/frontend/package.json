@@ -22,7 +22,7 @@
     "@types/eslint": "9.6.1",
     "@types/fhir": "0.0.41",
     "@types/humanize-duration": "3.27.4",
-    "@types/node": "24.10.9",
+    "@types/node": "24.10.12",
     "change-case": "5.4.4",
     "eslint": "9.39.2",
     "eslint-config-prettier": "10.1.8",
