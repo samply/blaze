@@ -153,3 +153,7 @@
   (if (known? modifier)
     (unsupported-modifier-anom code modifier)
     (unknown-modifier-anom code modifier)))
+
+(defn drop-while-not-start-id [start-id]
+  (let [start-id (codec/id-string start-id)]
+    (drop-while #(not= start-id (:id %)))))

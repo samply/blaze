@@ -128,7 +128,10 @@
   (-sorted-index-handles
     [search-param batch-db tid direction]
     [search-param batch-db tid direction start-id]
-    "Returns a reducible collection of index handles sorted by the sort clause.")
+    "Returns a reducible collection of index handles sorted by the sort clause.
+
+    The `start-id` is only a performance hint. Search params are allowed to
+    return all index handles, even if a `start-id` is supplied.")
   (-supports-ordered-compartment-index-handles [search-param values]
     "Returns true if `search-param` supports fetching ordered compartment index handles with `values`.")
   (-ordered-compartment-index-handles

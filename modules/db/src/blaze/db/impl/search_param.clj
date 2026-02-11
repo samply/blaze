@@ -78,6 +78,9 @@
   "Returns a reducible collection of index handles sorted by `search-param` in
   `direction`, starting with `start-id` (optional).
 
+  The `start-id` is only a performance hint. Search params are allowed to return
+  all index handles, even if a `start-id` is supplied.
+
   The index handles are not distinct and not ordered by id."
   ([search-param batch-db tid direction]
    (p/-sorted-index-handles search-param batch-db tid direction))

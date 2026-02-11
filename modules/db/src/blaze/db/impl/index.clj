@@ -4,7 +4,6 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
-   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.plan :as plan]
    [blaze.db.impl.protocols :as p]
@@ -261,10 +260,9 @@
       (comp (resource-handle-mapper batch-db tid clauses other-clauses)
             (distinct))
       (index-handles* batch-db tid (first first-clause) start-id))
-     (let [start-id (codec/id-string start-id)]
-       (coll/eduction
-        (drop-while #(not= start-id (:id %)))
-        (unordered-resource-handles batch-db tid clauses))))))
+     (coll/eduction
+      (u/drop-while-not-start-id start-id)
+      (unordered-resource-handles batch-db tid clauses)))))
 
 (defn type-query
   "Returns a reducible collection of resource handles from `batch-db` of type
@@ -273,7 +271,8 @@
   ([batch-db tid {:keys [sort-clause search-clauses]}]
    (if sort-clause
      (coll/eduction
-      (resource-handle-mapper batch-db tid search-clauses search-clauses)
+      (comp (resource-handle-mapper batch-db tid search-clauses search-clauses)
+            (distinct))
       (sorted-index-handles batch-db tid sort-clause))
      (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]
        (if (seq scan-clauses)
@@ -282,7 +281,9 @@
   ([batch-db tid {:keys [sort-clause search-clauses]} start-id]
    (if sort-clause
      (coll/eduction
-      (resource-handle-mapper batch-db tid search-clauses search-clauses)
+      (comp (resource-handle-mapper batch-db tid search-clauses search-clauses)
+            (distinct)
+            (u/drop-while-not-start-id start-id))
       (sorted-index-handles batch-db tid sort-clause start-id))
      (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]
        (if (seq scan-clauses)

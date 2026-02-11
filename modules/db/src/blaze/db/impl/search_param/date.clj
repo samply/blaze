@@ -420,13 +420,9 @@
        (all-keys batch-db c-hash tid)
        (all-keys-prev batch-db c-hash tid))))
 
-  (-sorted-index-handles [_ batch-db tid direction start-id]
-    (coll/eduction
-     (comp drop-value
-           u/by-id-grouper)
-     (if (= :asc direction)
-       (all-keys batch-db c-hash tid start-id)
-       (all-keys-prev batch-db c-hash tid start-id))))
+  (-sorted-index-handles [search-param batch-db tid direction _start-id]
+   ;; starting with a particilar id isn't possible
+    (p/-sorted-index-handles search-param batch-db tid direction))
 
   (-supports-ordered-compartment-index-handles [_ _]
     false)

@@ -122,13 +122,12 @@
      (p/-index-handles search-param batch-db ref-tid modifier compiled-value)))
 
   (-index-handles [this batch-db tid modifier compiled-value start-id]
-    (let [start-id (codec/id-string start-id)]
-      (coll/eduction
-       (comp (u/resource-handle-xf batch-db tid)
-             (distinct)
-             (drop-while #(not= start-id (:id %)))
-             (map ih/from-resource-handle))
-       (p/-index-handles this batch-db tid modifier compiled-value))))
+    (coll/eduction
+     (comp (u/resource-handle-xf batch-db tid)
+           (distinct)
+           (u/drop-while-not-start-id start-id)
+           (map ih/from-resource-handle))
+     (p/-index-handles this batch-db tid modifier compiled-value)))
 
   (-supports-ordered-compartment-index-handles [_ _]
     false)
