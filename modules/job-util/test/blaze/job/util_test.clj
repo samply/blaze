@@ -1,6 +1,7 @@
 (ns blaze.job.util-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.spec.type :as type]
@@ -224,6 +225,87 @@
           job-util/error := (ba/fault "msg-181135"))
 
         (is (some? (d/resource-handle (d/db node) "Bundle" "0")))))))
+
+(defn- start-job* [{:keys [status] :as job}]
+  (if (nil? status)
+    (assoc job :status #fhir/code "in-progress")
+    (ba/conflict "already started")))
+
+(defn- add-unknown-bundle-reference [job]
+  (job-util/add-output job "foo" "bar" #fhir/Reference {:reference #fhir/string "Bundle/unknown"}))
+
+(deftest update-job-with-retry-test
+  (testing "retry"
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+
+      (given @(job-util/update-job-with-retry node 1 "0" start-job*)
+        [:meta :versionId] := #fhir/id "2"
+        :status := #fhir/code "in-progress")
+
+      (testing "fails because it's already started"
+        (given-failed-future (job-util/update-job-with-retry node 1 "0" start-job*)
+          ::anom/category := ::anom/conflict
+          ::anom/message := "already started"))))
+
+  (testing "referential integrity problem"
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+
+      (given-failed-future (job-util/update-job-with-retry node 1 "0" add-unknown-bundle-reference)
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Bundle/unknown` doesn't exist."))))
+
+(def ^:private mask-anomaly vector)
+
+(defn- start-job-with-retry [node id]
+  (-> (job-util/update-job-with-retry node 5 id start-job*)
+      (ac/exceptionally mask-anomaly)))
+
+(defn- increment-unsigned-int [value n]
+  (type/unsignedInt (+ (:value value) n)))
+
+(defn- increment-count [job]
+  (job-util/update-output-value job "my" "count" increment-unsigned-int 1))
+
+(defn- increment-count-with-retry [node n id]
+  (job-util/update-job-with-retry node n id increment-count))
+
+(defn- get-count [job]
+  (job-util/output-value job "my" "count"))
+
+(deftest update-job-with-retry-concurrent-test
+  (testing "single status change"
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+
+      (let [futures (repeatedly 5 #(start-job-with-retry node "0"))]
+        @(ac/all-of futures)
+        (let [{jobs true anomalies false} (group-by map? (map ac/join futures))]
+          (is (= 1 (count jobs)))
+          (is (= #fhir/code "in-progress" (:status (first jobs))))
+          (is (every? (comp #{"already started"} ::anom/message) (map first anomalies)))))))
+
+  (testing "multiple counter increments"
+    (testing "are all sucessful"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put (-> {:fhir/type :fhir/Task :id "0"}
+                    (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
+
+        (let [futures (repeatedly 5 #(increment-count-with-retry node 4 "0"))]
+          @(ac/all-of futures)
+          (let [jobs (map ac/join futures)]
+            (is (= 5 (count jobs)))
+            (is (= #{1 2 3 4 5} (into #{} (map (comp :value get-count)) jobs)))))))
+
+    (testing "at least one fails"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put (-> {:fhir/type :fhir/Task :id "0"}
+                    (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
+
+        (given-failed-future (ac/all-of (repeatedly 50 #(increment-count-with-retry node 2 "0")))
+          ::anom/category := ::anom/conflict
+          :http/status := 412)))))
 
 (deftest job-update-failed-test
   (are [anomaly] (false? (job-util/job-update-failed? anomaly))

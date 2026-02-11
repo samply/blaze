@@ -166,15 +166,20 @@
                   (log/debug "Created new job with id =" id)
                   (d/pull db (d/resource-handle db "Task" id))))))))))
 
-(defn- cancel-job* [job]
-  (-> (assoc
-       job
-       :status #fhir/code "cancelled"
-       :businessStatus job-util/cancellation-requested-sub-status)
-      (dissoc :statusReason)))
-
 (defn- cancel-conflict-msg [{:keys [id status]}]
   (format "Can't cancel job `%s` because it's status is `%s`." id (:value status)))
+
+(defn- cancel-conflict-anom [{:keys [status] :as job}]
+  (ba/conflict (cancel-conflict-msg job) :job/status (:value status)))
+
+(defn- cancel-job* [{:keys [status] :as job}]
+  (if-not (#{"completed" "failed" "cancelled"} (:value status))
+    (-> (assoc
+         job
+         :status #fhir/code "cancelled"
+         :businessStatus job-util/cancellation-requested-sub-status)
+        (dissoc :statusReason))
+    (cancel-conflict-anom job)))
 
 (defn cancel-job
   "Returns a CompletableFuture that will complete with a possibly cancelled job
@@ -182,17 +187,13 @@
 
   In case the status of the job is one of `completed`, `failed` or `cancelled`
   the job will not be cancelled and the anomaly will have the category conflict
-  and contain the status under the key :job/status."
+  and contain the status under the key :job/status.
+
+  Retries the cancellation up to 5 times on concurrent update problems."
   {:arglists '([job-scheduler id])}
   [{{:keys [node]} :context} id]
   (log/debug "Try to cancel job with id =" id)
-  (-> (job-util/pull-job node id)
-      (ac/then-compose
-       (fn [{{status-value :value} :status :as job}]
-         (if-not (#{"completed" "failed" "cancelled"} status-value)
-           (job-util/update-job node job cancel-job*)
-           (ac/completed-future
-            (ba/conflict (cancel-conflict-msg job) :job/status status-value)))))))
+  (job-util/update-job-with-retry node 5 id cancel-job*))
 
 (defn- hold-job** [job reason]
   (assoc

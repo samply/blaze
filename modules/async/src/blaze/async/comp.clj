@@ -93,7 +93,7 @@
   (.completeExceptionally ^CompletableFuture future e))
 
 (defn delayed-executor
-  "Returns a new Executor that submits a task to the default executor after
+  "Returns a new executor that submits a task to the default executor after
   `delay` in `unit`.
 
   Each delay commences upon invocation of the returned executor's `execute`
