@@ -2378,22 +2378,25 @@
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0")))
 
-  ;; TODO: fix this https://github.com/samply/blaze/issues/904
-  #_(testing "sorting by _lastUpdated returns only the newest version of the patient"
-      (with-system-data [{:blaze.db/keys [node]} (with-system-clock config)]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+  (testing "sorting by _lastUpdated returns every resource only once"
+    (with-system-data [{:blaze.db/keys [node]} system-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
-        ;; we have to sleep more than one second here because dates are index only with second resolution
-        (Thread/sleep 2000)
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      ;; we have to sleep more than one second here because dates are index only with second resolution
+      (Thread/sleep 1100)
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-        (doseq [dir [:asc :desc]]
-          (given-type-query node "Patient" [[:sort "_lastUpdated" dir]]
-            count := 2
-            [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0"
-            [0 :active] := #fhir/boolean false))))
+      (let [clauses [[:sort "_lastUpdated" :desc]]]
+        (given-type-query node "Patient" clauses
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" clauses "1")
+            count := 1
+            [0 :id] := "1")))))
 
   (testing "a node with three patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -2402,18 +2405,16 @@
         [:put {:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]]]
 
       (testing "two active patients will be found"
-        (given-type-query node "Patient" [["active" "true"]]
-          count := 2
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"
-          [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "2"))
+        (let [clauses [["active" "true"]]]
+          (given-type-query node "Patient" clauses
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "2")
 
-      (testing "it is possible to start with the second patient"
-        (given (pull-type-query node "Patient" [["active" "true"]] "2")
-          count := 1
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "2"))))
+          (testing "it is possible to start with the second patient"
+            (given (pull-type-query node "Patient" clauses "2")
+              count := 1
+              [0 :id] := "2"))))))
 
   (testing "special case of _lastUpdated date search parameter"
     (testing "inequality searches do return every resource only once"
@@ -2422,7 +2423,7 @@
          [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         ;; we have to sleep more than one second here because dates are index only with second resolution
-        (Thread/sleep 2000)
+        (Thread/sleep 1100)
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (given-type-query node "Patient" [["_lastUpdated" "ge2000-01-01"]]
