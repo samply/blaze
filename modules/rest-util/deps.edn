@@ -19,7 +19,7 @@
   {:mvn/version "2.21.0"}
 
   org.apache.httpcomponents.core5/httpcore5
-  {:mvn/version "5.4"}
+  {:mvn/version "5.4.1"}
 
   metosin/reitit-ring
   {:mvn/version "0.10.0"
