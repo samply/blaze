@@ -32,7 +32,7 @@
   gen/large-integer)
 
 (def ^:private non-latin-alphabetic-code-point
-  (gen/such-that #(Character/isAlphabetic (long %)) (gen/choose 256 65535) 1000))
+  (gen/such-that #(Character/isAlphabetic (long %)) (gen/choose 256 65535) 1001))
 
 (def ^:private char-printable-whitespace
   (gen/fmap char (gen/one-of [(gen/choose 9 10) (gen/return 13) (gen/choose 32 126) (gen/choose 160 255) non-latin-alphabetic-code-point])))
@@ -58,12 +58,16 @@
 (def canonical-value
   (gen/fmap str/join (gen/vector char-printable-non-blank)))
 
+(def ^:private char-base64Binary-value
+  (gen/frequency [[14 gen/char-alphanumeric] [2 (gen/elements [\+ \/])]]))
+
+(def ^:private base64Binary-value-part
+  (->> (gen/vector char-base64Binary-value 4)
+       (gen/fmap str/join)))
+
 (def base64Binary-value
-  (->> (gen/vector gen/char-alphanumeric 4)
-       (gen/fmap str/join)
-       (gen/vector)
-       (gen/fmap str/join)
-       (gen/such-that (partial re-matches #"([0-9a-zA-Z\\+/=]{4})+"))))
+  (->> (gen/vector base64Binary-value-part 1 10)
+       (gen/fmap str/join)))
 
 (def year
   (gen/choose 1 9999))
@@ -135,10 +139,13 @@
                  (gen/fmap (partial str "urn:oid:0.")
                            (gen/fmap str/join (gen/vector char-digit)))))
 
+(def ^:private char-id-value
+  (gen/frequency [[14 gen/char-alphanumeric] [2 (gen/elements [\- \.])]]))
+
 (def id-value
-  (gen/such-that (partial re-matches #"[A-Za-z0-9\-\ .]{1,64}")
-                 (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 64))
-                 1000))
+  (gen/fmap str/join (gen/vector char-id-value 1 64)))
+
+(gen/sample id-value)
 
 (def markdown-value
   (gen/fmap str/join (gen/vector char-printable-whitespace)))
@@ -166,7 +173,7 @@
    m))
 
 (defn- to-map [keys vals]
-  (gen/such-that seq (gen/fmap #(keep-vals (zipmap keys %)) vals) 1000))
+  (gen/such-that seq (gen/fmap #(keep-vals (zipmap keys %)) vals) 1002))
 
 (declare extension)
 
@@ -683,7 +690,7 @@
     (gen/such-that #(<= (system/date-time-lower-bound (:value (:start %)))
                         (system/date-time-upper-bound (:value (:end %))))
                    x
-                   1000)
+                   1003)
     (gen/fmap type/period x)))
 
 (defn quantity
