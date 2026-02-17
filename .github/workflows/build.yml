@@ -1415,6 +1415,11 @@ jobs:
 
     - name: Docker Stats
       run: docker stats --no-stream
+      if: always()
+
+    - name: Docker Logs on Failure
+      run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml logs
+      if: failure()
 
   integration-test-synthea-1000:
     needs: build
