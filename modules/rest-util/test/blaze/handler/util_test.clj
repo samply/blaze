@@ -69,6 +69,9 @@
         [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
         [:issue 0 :severity] := #fhir/code "error"
         [:issue 0 :code] := #fhir/code "structure"
+        [:issue 0 :details :fhir/type] := :fhir/CodeableConcept
+        [:issue 0 :details :coding count] := 1
+        [:issue 0 :details :coding 0 :fhir/type] := :fhir/Coding
         [:issue 0 :details :coding 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
         [:issue 0 :details :coding 0 :code] := #fhir/code "MSG_JSON_OBJECT"))
 

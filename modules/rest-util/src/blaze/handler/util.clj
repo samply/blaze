@@ -74,9 +74,11 @@
     operation-outcome
     (assoc
      :details
-     {:coding
-      [{:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/operation-outcome"
-        :code (type/code operation-outcome)}]})
+     (type/codeable-concept
+      {:coding
+       [(type/coding
+         {:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/operation-outcome"
+          :code (type/code operation-outcome)})]}))
     message
     (assoc :diagnostics (type/string message))
     stacktrace
