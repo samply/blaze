@@ -486,8 +486,31 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+    - name: Setup Java
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      with:
+        cli: '1.12.4.1582'
+
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      with:
+        path: ~/.gitlibs
+        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: Setup Node
       uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
@@ -496,6 +519,12 @@ jobs:
 
     - name: Build Frontend
       run: make build-frontend
+
+    - name: Upload Frontend Build Directory
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      with:
+        name: blaze-frontend-build-dir
+        path: modules/frontend/build
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -2882,15 +2911,12 @@ jobs:
         name: blaze-uberjar
         path: target
 
-    - name: Setup Node
+    - name: Download Frontend Build Directory
       if: ${{ matrix.image.context == 'modules/frontend' }}
-      uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       with:
-        node-version-file: .nvmrc
-
-    - name: Build Frontend
-      if: ${{ matrix.image.context == 'modules/frontend' }}
-      run: make build-frontend
+        name: blaze-frontend-build-dir
+        path: modules/frontend/build
 
     - name: Download Image
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
