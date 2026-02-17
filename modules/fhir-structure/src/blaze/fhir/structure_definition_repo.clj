@@ -79,7 +79,7 @@
        []
        (comp (map :resource)
              (filter (comp #{"primitive-type"} :kind)))
-       (:entry (read-bundle "blaze/fhir/r4/profiles-types.json"))))
+       (:entry (read-bundle "blaze/fhir/4.0.1/profiles-types.json"))))
     (-complex-types [_]
       (into
        []
@@ -87,7 +87,7 @@
              (filter (comp #{"complex-type"} :kind))
              (remove :abstract)
              (remove (comp #{"constraint"} :derivation)))
-       (:entry (read-bundle "blaze/fhir/r4/profiles-types.json"))))
+       (:entry (read-bundle "blaze/fhir/4.0.1/profiles-types.json"))))
     (-resources [_]
       (into
        []
@@ -95,7 +95,7 @@
              (filter (comp #{"resource"} :kind))
              (remove :abstract)
              (remove :experimental))
-       (:entry (read-bundle "blaze/fhir/r4/profiles-resources.json"))))))
+       (:entry (read-bundle "blaze/fhir/4.0.1/profiles-resources.json"))))))
 
 (defmethod ig/init-key :blaze.fhir/structure-definition-repo
   [_ _]

@@ -10,7 +10,10 @@ fmt: install
 lint: install
 	npm run lint
 
-test: install
+build-fhir-structure:
+	$(MAKE) -C ../fhir-structure build
+
+test: install build-fhir-structure
 	npm run test:unit
 
 build: test

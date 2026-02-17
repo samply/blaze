@@ -31,13 +31,16 @@
 
  :deps/prep-lib
  {:alias :build
-  :fn compile
+  :fn all
   :ensure "target/classes"}
 
  :aliases
  {:build
   {:deps
-   {io.github.clojure/tools.build
+   {hato/hato
+    {:mvn/version "1.0.0"}
+
+    io.github.clojure/tools.build
     {:git/tag "v0.10.12" :git/sha "97c5562"}}
    :ns-default build}
 
