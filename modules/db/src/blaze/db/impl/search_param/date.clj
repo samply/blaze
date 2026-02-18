@@ -13,7 +13,9 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.type.system :as system]
    [cognitect.anomalies :as anom]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.time Instant ZoneOffset]))
 
 (set! *warn-on-reflection* true)
 
@@ -344,7 +346,7 @@
        :ap (approximately? value param-lb param-ub)))
    values))
 
-(defn- single-version-id-matcher [{:keys [snapshot]} tid c-hash values]
+(defn- single-version-id-matcher [{:keys [snapshot]} tid c-hash compiled-values]
   (r-sp-v/value-filter
    snapshot (r-sp-v/single-version-id-search-param-encoder tid c-hash)
    (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
@@ -358,7 +360,7 @@
        :sa (starts-after? param-ub value)
        :eb (ends-before? value param-lb)
        :ap (approximately? value param-lb param-ub)))
-   values))
+   compiled-values))
 
 (defn- invalid-date-time-value-msg [code value]
   (format "Invalid date-time value `%s` in search parameter `%s`." value code))
@@ -381,17 +383,16 @@
 
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
-      (if-ok [date-time-value (system/parse-date-time value)]
+      (if-ok [date-time (system/parse-date-time value)]
         (case op
           (:eq :ne :ge :le :ap)
-          (dual-bound-value op date-time-value)
+          (dual-bound-value op date-time)
           (:gt :sa)
           {:op op
-           :upper-bound (codec-date/encode-upper-bound date-time-value)}
+           :upper-bound (codec-date/encode-upper-bound date-time)}
           (:lt :eb)
           {:op op
-           :lower-bound (codec-date/encode-lower-bound date-time-value)}
-          (ba/unsupported (u/unsupported-prefix-msg code op)))
+           :lower-bound (codec-date/encode-lower-bound date-time)})
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
   (-estimated-scan-size [_ _ _ _ _]
@@ -433,11 +434,160 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db _ values]
-    (matcher batch-db c-hash values))
+  (-matcher [_ batch-db _ compiled-values]
+    (matcher batch-db c-hash compiled-values))
 
-  (-single-version-id-matcher [_ batch-db tid _ values]
-    (single-version-id-matcher batch-db tid c-hash values))
+  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+    (single-version-id-matcher batch-db tid c-hash compiled-values))
+
+  (-postprocess-matches [_ _ _ _])
+
+  (-index-values [search-param resolver resource]
+    (when-ok [values (fhir-path/eval resolver expression resource)]
+      (coll/eduction (p/-index-value-compiler search-param) values)))
+
+  (-index-value-compiler [_]
+    (mapcat (partial index-entries url))))
+
+(defn- last-updated-dual-bound-value [op date-time]
+  {:op op
+   :lower-bound (codec-date/encode-lower-bound date-time)
+   :upper-bound (codec-date/encode-upper-bound date-time)
+   :lower-bound-dt (system/date-time-lower-bound date-time)
+   :upper-bound-dt (system/date-time-upper-bound date-time)})
+
+(defn- last-updated [batch-db resource-handle]
+  (let [t (:t resource-handle)
+        tx (p/-tx batch-db t)
+        instant (:blaze.db.tx/instant tx)]
+    (.atOffset ^Instant instant ZoneOffset/UTC)))
+
+(defn- last-updated-equal?
+  "Returns true if the parameter value interval `[param-lb param-ub]` fully
+  contains the resource value interval `value`."
+  [value param-lb param-ub]
+  (and (<= param-lb (system/date-time-lower-bound value))
+       (<= (system/date-time-upper-bound value) param-ub)))
+
+(defn- last-updated-not-equal? [value param-lb param-ub]
+  (not (last-updated-equal? value param-lb param-ub)))
+
+(defn- last-updated-greater-than? [param-ub value]
+  (< param-ub (system/date-time-upper-bound value)))
+
+(defn- last-updated-less-than? [value param-lb]
+  (< (system/date-time-lower-bound value) param-lb))
+
+(defn- last-updated-greater-equal?
+  "The range above the parameter value intersects (i.e. overlaps) with the range
+  of the resource value, or the range of the parameter value fully contains the
+  range of the resource value."
+  [param-lb param-ub value]
+  (or (<= param-ub (system/date-time-upper-bound value))
+      (<= param-lb (system/date-time-lower-bound value))))
+
+(defn- last-updated-less-equal? [date-time param-lb param-ub]
+  (or (<= (system/date-time-lower-bound date-time) param-lb)
+      (<= (system/date-time-upper-bound date-time) param-ub)))
+
+(defn- last-updated-starts-after? [param-ub value]
+  (<= param-ub (system/date-time-lower-bound value)))
+
+(defn- last-updated-ends-before? [value param-lb]
+  (<= (system/date-time-upper-bound value) param-lb))
+
+(defn- last-updated-approximately?
+  "Returns true if the interval `v` overlaps with the interval `q`."
+  [value param-lb param-ub]
+  (let [v-lb (system/date-time-lower-bound value)
+        v-ub (system/date-time-upper-bound value)]
+    (or (<= param-lb v-lb param-ub)
+        (<= param-lb v-ub param-ub)
+        (and (< v-lb param-lb) (< param-ub v-ub)))))
+
+(defn- last-updated-matcher [batch-db compiled-values]
+  (filter
+   (fn [resource-handle]
+     (let [value (last-updated batch-db resource-handle)]
+       (some
+        (fn [{:keys [op] param-lb :lower-bound-dt param-ub :upper-bound-dt}]
+          (case op
+            :eq (last-updated-equal? value param-lb param-ub)
+            :ne (last-updated-not-equal? value param-lb param-ub)
+            :gt (last-updated-greater-than? param-ub value)
+            :lt (last-updated-less-than? value param-lb)
+            :ge (last-updated-greater-equal? param-lb param-ub value)
+            :le (last-updated-less-equal? value param-lb param-ub)
+            :sa (last-updated-starts-after? param-ub value)
+            :eb (last-updated-ends-before? value param-lb)
+            :ap (last-updated-approximately? value param-lb param-ub)))
+        compiled-values)))))
+
+(defrecord SearchParamDateLastUpdated [name url type base code c-hash expression]
+  p/SearchParam
+  (-validate-modifier [_ modifier]
+    (some->> modifier (u/modifier-anom #{"missing"} code)))
+
+  (-compile-value [_ _ value]
+    (let [[op value] (u/separate-op value)]
+      (if-ok [date-time (system/parse-date-time value)]
+        (case op
+          (:eq :ne :ge :le :ap)
+          (last-updated-dual-bound-value op date-time)
+          (:gt :sa)
+          {:op op
+           :upper-bound (codec-date/encode-upper-bound date-time)
+           :upper-bound-dt (system/date-time-upper-bound date-time)}
+          (:lt :eb)
+          {:op op
+           :lower-bound (codec-date/encode-lower-bound date-time)
+           :lower-bound-dt (system/date-time-lower-bound date-time)})
+        #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
+
+  (-estimated-scan-size [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-supports-ordered-index-handles [_ _ _ _ _]
+    false)
+
+  (-ordered-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-index-handles [_ batch-db tid _ compiled-value]
+    (index-handles batch-db c-hash tid compiled-value))
+
+  (-index-handles [_ batch-db tid _ compiled-value start-id]
+    (index-handles batch-db c-hash tid compiled-value start-id))
+
+  (-sorted-index-handles [_ batch-db tid direction]
+    (coll/eduction
+     (comp drop-value
+           u/by-id-grouper)
+     (if (= :asc direction)
+       (all-keys batch-db c-hash tid)
+       (all-keys-prev batch-db c-hash tid))))
+
+  (-sorted-index-handles [search-param batch-db tid direction _start-id]
+   ;; starting with a particilar id isn't possible
+    (p/-sorted-index-handles search-param batch-db tid direction))
+
+  (-supports-ordered-compartment-index-handles [_ _]
+    false)
+
+  (-ordered-compartment-index-handles [_ _ _ _ _]
+    (ba/unsupported))
+
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+    (ba/unsupported))
+
+  (-matcher [_ batch-db _ compiled-values]
+    (last-updated-matcher batch-db compiled-values))
+
+  (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
+    (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
   (-postprocess-matches [_ _ _ _])
 
@@ -452,5 +602,7 @@
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamDate name url type base code (codec/c-hash code) expression))
+      (if (= "_lastUpdated" code)
+        (->SearchParamDateLastUpdated name url type base code (codec/c-hash code) expression)
+        (->SearchParamDate name url type base code (codec/c-hash code) expression)))
     (ba/unsupported (u/missing-expression-msg url))))

@@ -19,3 +19,8 @@
 
 (defn hash-prefix [single-version-id]
   (bit-and (.hashPrefix ^SingleVersionId single-version-id) 0xFFFFFFFF))
+
+(defn matches-hash?
+  "Tests whether `single-version-id` has the prefix of `hash`."
+  [single-version-id hash]
+  (.matchesHash ^SingleVersionId single-version-id hash))

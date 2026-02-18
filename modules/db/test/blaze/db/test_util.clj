@@ -56,6 +56,7 @@
 
    :blaze.test/fixed-clock {}
    :blaze.test/system-clock {}
+   :blaze.test/step-clock {}
 
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}

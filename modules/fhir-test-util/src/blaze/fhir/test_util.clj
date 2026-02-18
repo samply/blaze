@@ -9,9 +9,10 @@
   (:import
    [com.google.crypto.tink Aead DeterministicAead KeysetHandle RegistryConfiguration]
    [com.google.crypto.tink.daead DeterministicAeadConfig PredefinedDeterministicAeadParameters]
-   [java.time Clock Instant]
+   [java.time Instant InstantSource ZoneOffset]
    [java.util Random]
-   [java.util.concurrent Executors TimeUnit]))
+   [java.util.concurrent Executors TimeUnit]
+   [java.util.concurrent.atomic AtomicReference]))
 
 (set! *warn-on-reflection* true)
 (DeterministicAeadConfig/register)
@@ -26,7 +27,16 @@
 
 (defmethod ig/init-key :blaze.test/system-clock
   [_ _]
-  (Clock/systemUTC))
+  (time/system-clock))
+
+(defmethod ig/init-key :blaze.test/step-clock
+  [_ _]
+  (let [current (AtomicReference. Instant/EPOCH)]
+    (.withZone
+     (reify InstantSource
+       (instant [_]
+         (.getAndUpdate current #(.plus ^Instant % (time/seconds 1)))))
+     ZoneOffset/UTC)))
 
 (defmethod ig/init-key :blaze.test/fixed-rng-fn
   [_ {:keys [n] :or {n 0}}]

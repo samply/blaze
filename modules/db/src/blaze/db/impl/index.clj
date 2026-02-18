@@ -28,7 +28,7 @@
     (not (#{:asc :desc} direction))
     (ba/incorrect (format "Clause `%s` isn't valid." clause))
 
-    (not (#{"_id" "_lastUpdated"} param))
+    (not (#{"_id" "_lastUpdated" "birthdate"} param))
     (ba/incorrect (format "Unknown search-param `%s` in sort clause." param))
 
     (and (= "_id" param) (= :desc direction))

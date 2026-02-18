@@ -9,8 +9,10 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
+   [blaze.db.impl.codec.date :as codec-date]
    [blaze.db.impl.db-spec]
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+   [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
@@ -278,7 +280,7 @@
   (doseq [gen `[fg/activity-definition fg/allergy-intolerance fg/bundle fg/claim
                 fg/code-system fg/condition fg/consent fg/diagnostic-report
                 fg/encounter fg/imaging-study fg/library fg/medication-administration
-                fg/observation fg/patient  fg/procedure fg/task fg/value-set]]
+                fg/observation fg/patient fg/procedure fg/task fg/value-set]]
     (satisfies-prop 10
       (prop/for-all [tx-ops (create-tx ((resolve gen)) 20)]
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -1740,6 +1742,9 @@
 (def system-clock-config
   (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
 
+(def step-clock-config
+  (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/step-clock)))
+
 (defn- count-type-query [node-or-db type clauses]
   (when-ok [query (d/compile-type-query node-or-db type clauses)]
     @(d/count-query (ensure-db node-or-db) query)))
@@ -2378,26 +2383,6 @@
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0")))
 
-  (testing "sorting by _lastUpdated returns every resource only once"
-    (with-system-data [{:blaze.db/keys [node]} system-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
-
-      ;; we have to sleep more than one second here because dates are index only with second resolution
-      (Thread/sleep 1100)
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-
-      (let [clauses [[:sort "_lastUpdated" :desc]]]
-        (given-type-query node "Patient" clauses
-          count := 2
-          [0 :id] := "0"
-          [1 :id] := "1")
-
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" clauses "1")
-            count := 1
-            [0 :id] := "1")))))
-
   (testing "a node with three patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]
@@ -2415,26 +2400,6 @@
             (given (pull-type-query node "Patient" clauses "2")
               count := 1
               [0 :id] := "2"))))))
-
-  (testing "special case of _lastUpdated date search parameter"
-    (testing "inequality searches do return every resource only once"
-      (with-system-data [{:blaze.db/keys [node]} system-clock-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
-
-        ;; we have to sleep more than one second here because dates are index only with second resolution
-        (Thread/sleep 1100)
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-
-        (given-type-query node "Patient" [["_lastUpdated" "ge2000-01-01"]]
-          count := 2
-          [0 :id] := "0"
-          [1 :id] := "1")
-
-        (given-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]]
-          count := 2
-          [0 :id] := "0"
-          [1 :id] := "1"))))
 
   (testing "Patient phonetic"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -3712,24 +3677,27 @@
 
   (testing "a node with two patients in two transactions"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date #system/date "2021"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date #system/date "2020"}]]]
 
-      (testing "the oldest patient comes first"
+      (testing "the oldest (transaction) patient comes first"
         (let [clauses [[:sort "_lastUpdated" :asc]]]
           (given-type-query node "Patient" clauses
             count := 2
-            [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0"
             [1 :id] := "1")
 
           (given (explain-type-query node "Patient" clauses)
+            :query-type := :type
             :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_lastUpdated"
+            [:scan-clauses 0 :modifier] := "asc"
             :seek-clauses :? empty?)))
 
-      (testing "the newest patient comes first"
+      (testing "the newest (transaction) patient comes first"
         (let [clauses [[:sort "_lastUpdated" :desc]]]
           (given-type-query node "Patient" clauses
             count := 2
@@ -3737,9 +3705,41 @@
             [1 :id] := "0")
 
           (given (explain-type-query node "Patient" clauses)
+            :query-type := :type
             :scan-type := :ordered
             [:scan-clauses count] := 1
             [:scan-clauses 0 :code] := "_lastUpdated"
+            [:scan-clauses 0 :modifier] := "desc"
+            :seek-clauses :? empty?)))
+
+      (testing "the oldest (birthDate) patient comes first"
+        (let [clauses [[:sort "birthdate" :asc]]]
+          (given-type-query node "Patient" clauses
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "0")
+
+          (given (explain-type-query node "Patient" clauses)
+            :query-type := :type
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "birthdate"
+            [:scan-clauses 0 :modifier] := "asc"
+            :seek-clauses :? empty?)))
+
+      (testing "the newest (birthDate) patient comes first"
+        (let [clauses [[:sort "birthdate" :desc]]]
+          (given-type-query node "Patient" clauses
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1")
+
+          (given (explain-type-query node "Patient" clauses)
+            :query-type := :type
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "birthdate"
+            [:scan-clauses 0 :modifier] := "desc"
             :seek-clauses :? empty?)))))
 
   (testing "a node with three patients in three transactions"
@@ -7183,6 +7183,92 @@
       (with-system-data [{:blaze.db/keys [node]} config]
         [tx-ops]
         (every-found-observation-matches? approximately node "ap" date-time)))))
+
+(deftest type-query-last-updated-test
+  (testing "sorting returns every resource only once"
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+      (let [clauses [[:sort "_lastUpdated" :desc]]]
+        (given-type-query node "Patient" clauses
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" clauses "1")
+            count := 1
+            [0 :id] := "1")))))
+
+  (testing "inequality searches do return every resource only once"
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+      (given-type-query node "Patient" [["_lastUpdated" "ge1970-01-01"]]
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1")
+
+      (given-type-query node "Patient" [["_lastUpdated" "lt1970-01-02"]]
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1")))
+
+  (testing "updating back to the original state is no problem"
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :active #fhir/boolean false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0"
+               :active #fhir/boolean true}]]
+       [[:put {:fhir/type :fhir/Patient :id "0"
+               :active #fhir/boolean false}]]]
+
+      (testing "there are three history entries"
+        (is (= 3 (count (d/instance-history (d/db node) "Patient" "0")))))
+
+      (testing "search for past _lastUpdated returns nothing"
+        (given-type-query node "Patient" [["_lastUpdated" "ge1970-01-01T00:00:01Z"]
+                                          ["_lastUpdated" "le1970-01-01T00:00:01Z"]]
+          count := 0))
+
+      (testing "search for current _lastUpdated returns one entry"
+        (given-type-query node "Patient" [["_lastUpdated" "ge1970-01-01T00:00:00Z"]
+                                          ["_lastUpdated" "le1970-01-01T00:00:02Z"]]
+          count := 1
+          [0 :id] := "0"))
+
+      (testing "SearchParamValueResource index"
+        (is (= (->> (sp-vr-tu/decode-index-entries (:kv-store node) :code :v-hash)
+                    (filter (fn [[code]] (= "_lastUpdated" code)))
+                    (map (fn [[_ value]] value)))
+               [(codec-date/encode-range #system/date-time "1970-01-01T00:00:00Z")
+                (codec-date/encode-range #system/date-time "1970-01-01T00:00:01Z")
+                (codec-date/encode-range #system/date-time "1970-01-01T00:00:02Z")])))
+
+      (testing "ResourceSearchParamValue index looks like it should"
+        (is (= (->> (r-sp-v-tu/decode-index-entries (:kv-store node) :code :hash-prefix :v-hash)
+                    (filter (fn [[code]] (= "_lastUpdated" code)))
+                    (map rest))
+               [[750927770 (codec-date/encode-range #system/date-time "1970-01-01T00:00:01Z")]
+                [1329668693 (codec-date/encode-range #system/date-time "1970-01-01T00:00:00Z")]
+                [1329668693 (codec-date/encode-range #system/date-time "1970-01-01T00:00:02Z")]])))))
+
+  (testing "all prefixes work"
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :active #fhir/boolean true}]]]
+
+      (doseq [value ["eq1970-01-01" "ne1969-12-31" "gt1969-12-31" "lt1970-01-02" "ge1970-01-01"
+                     "le1970-01-01" "sa1969-12-31" "eb1970-01-02" "ap1970-01-01"]]
+        (given-type-query node "Patient" [["active" "true"] ["_lastUpdated" value]]
+          count := 1
+          [0 :id] := "0")))))
 
 (deftest type-query-forward-chaining-test
   (testing "Encounter"

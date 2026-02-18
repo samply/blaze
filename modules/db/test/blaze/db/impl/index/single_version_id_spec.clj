@@ -23,3 +23,7 @@
 (s/fdef svi/hash-prefix
   :args (s/cat :single-version-id ::index/single-version-id)
   :ret int?)
+
+(s/fdef svi/matches-hash?
+  :args (s/cat :single-version-id ::index/single-version-id :hash :blaze.resource/hash)
+  :ret boolean?)
