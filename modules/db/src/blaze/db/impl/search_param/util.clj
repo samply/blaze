@@ -41,28 +41,28 @@
     (let [acc (volatile! nil)]
       (fn
         ([result]
-         (let [mvi @acc
-               result (if (nil? mvi)
+         (let [ih @acc
+               result (if (nil? ih)
                         result
                         (do (vreset! acc nil)
-                            (unreduced (rf result mvi))))]
+                            (unreduced (rf result ih))))]
            (rf result)))
         ([result svi]
-         (let [mvi @acc
+         (let [ih @acc
                id (svi/id svi)]
            (cond
-             (nil? mvi)
+             (nil? ih)
              (do
                (vreset! acc (ih/from-single-version-id svi))
                result)
 
-             (= id (ih/id mvi))
+             (= id (ih/id ih))
              (do
-               (vreset! acc (ih/conj mvi svi))
+               (vreset! acc (ih/conj ih svi))
                result)
 
              :else
-             (let [ret (rf result mvi)]
+             (let [ret (rf result ih)]
                (vreset! acc (if (reduced? ret) nil (ih/from-single-version-id svi)))
                ret))))))))
 
@@ -77,7 +77,21 @@
   [batch-db tid]
   (rao/resource-handle-type-xf
    batch-db tid ih/id
-   (fn [mvi handle] (ih/matches-hash? mvi (:hash handle)))))
+   (fn [ih handle] (ih/matches-hash? ih (:hash handle)))))
+
+(defn- svi-resource-handle-xf
+  "Returns a stateful transducer that receives single version ids and emits
+  resource handles when found."
+  [batch-db tid]
+  (rao/resource-handle-type-xf
+   batch-db tid svi/id
+   (fn [svi handle] (svi/matches-hash? svi (:hash handle)))))
+
+(defn single-version-id-matcher
+  [search-param batch-db tid modifier compiled-values]
+  (comp (svi-resource-handle-xf batch-db tid)
+        (p/-matcher search-param batch-db modifier compiled-values)
+        (map svi/from-resource-handle)))
 
 (defn missing-expression-msg [url]
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."

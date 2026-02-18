@@ -7,7 +7,6 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
-   [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.special :as special]
    [blaze.db.impl.search-param.util :as u]
@@ -145,10 +144,7 @@
     (filter #(matches? batch-db % compiled-values)))
 
   (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
-    (comp (map ih/from-single-version-id)
-          (u/resource-handle-xf batch-db tid)
-          (p/-matcher search-param batch-db modifier compiled-values)
-          (map svi/from-resource-handle)))
+    (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
   (-postprocess-matches [_ _ _ _])
 

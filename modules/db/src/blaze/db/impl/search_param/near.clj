@@ -5,7 +5,6 @@
    [blaze.db.api :as d]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-as-of :as rao]
-   [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.near.geo :as spng]
    [blaze.db.impl.search-param.special :as special]
@@ -179,10 +178,7 @@
     (filter #(matches? batch-db % compiled-values)))
 
   (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
-    (comp (map ih/from-single-version-id)
-          (u/resource-handle-xf batch-db tid)
-          (p/-matcher search-param batch-db modifier compiled-values)
-          (map svi/from-resource-handle)))
+    (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
   (-postprocess-matches [_ batch-db _ compiled-values]
     (postprocess-matches-xf batch-db compiled-values))
