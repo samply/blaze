@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: "apache/kafka:4.0.0"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     environment:
       KAFKA_NODE_ID: 1
       CLUSTER_ID: '5L6g3nShT-eMCtK--X86sw'
@@ -35,7 +35,7 @@ services:
       retries: 10
 
   kafka-topic-creator-main:
-    image: "apache/kafka:4.0.0"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
       --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
       --topic blaze-tx-main --partitions 1 --replication-factor 1 
@@ -49,7 +49,7 @@ services:
         condition: service_healthy
 
   kafka-topic-creator-admin:
-    image: "apache/kafka:4.0.0"
+    image: "apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40"
     command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
       --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
       --topic blaze-tx-admin --partitions 1 --replication-factor 1 
@@ -63,13 +63,12 @@ services:
         condition: service_healthy
 
   cassandra-1:
-    image: "cassandra:4.1.4"
+    image: "cassandra:5.0.6@sha256:1db58146a934222d329f5ff90f89ebc2b2fe28955ab3e2cd2be271167d76ba7a"
     volumes:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "512M"
-      HEAP_NEWSIZE: "100M"
+      MAX_HEAP_SIZE: "1536M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -78,13 +77,12 @@ services:
       retries: 10
 
   cassandra-2:
-    image: "cassandra:4.1.4"
+    image: "cassandra:5.0.6@sha256:1db58146a934222d329f5ff90f89ebc2b2fe28955ab3e2cd2be271167d76ba7a"
     volumes:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "512M"
-      HEAP_NEWSIZE: "100M"
+      MAX_HEAP_SIZE: "1536M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -93,7 +91,7 @@ services:
       retries: 10
 
   cassandra-init-data:
-    image: "cassandra:4.1.4"
+    image: "cassandra:5.0.6@sha256:1db58146a934222d329f5ff90f89ebc2b2fe28955ab3e2cd2be271167d76ba7a"
     command: "cqlsh -f /scripts/cassandra-init.cql"
     environment:
       CQLSH_HOST: "cassandra-1"
@@ -108,7 +106,7 @@ services:
   blaze-1:
     image: "blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -130,6 +128,12 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-1-data:/app/data"
     depends_on:
+      kafka:
+        condition: service_healthy
+      cassandra-1:
+        condition: service_healthy
+      cassandra-2:
+        condition: service_healthy
       kafka-topic-creator-main:
         condition: service_completed_successfully
       kafka-topic-creator-admin:
@@ -146,7 +150,7 @@ services:
   blaze-2:
     image: "blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -168,6 +172,12 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-2-data:/app/data"
     depends_on:
+      kafka:
+        condition: service_healthy
+      cassandra-1:
+        condition: service_healthy
+      cassandra-2:
+        condition: service_healthy
       kafka-topic-creator-main:
         condition: service_completed_successfully
       kafka-topic-creator-admin:
@@ -182,7 +192,7 @@ services:
       start_period: 30s
 
   ingress:
-    image: "haproxy:2.8@sha256:d533c21b446c45e47dc5b89933df1e256ec09976dc5e83a4c1bea209c2baeeaa"
+    image: "haproxy:3.3@sha256:071ba2381e61cce5f7e294254b41db920f165bc2492a03fa3de39c3893d10408"
     ports:
     - "8080:8080"
     volumes:

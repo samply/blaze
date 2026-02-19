@@ -103,7 +103,6 @@ cassandra-1:
   environment:
     CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
     MAX_HEAP_SIZE: "512M"
-    HEAP_NEWSIZE: "100M"
   healthcheck:
     test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
     start_period: 45s

@@ -2,7 +2,8 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.executors :as ex]
-   [clojure.spec.alpha :as s])
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom])
   (:import
    [java.util.concurrent TimeUnit]))
 
@@ -114,11 +115,14 @@
   :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)
 
-(s/fdef ac/when-complete-async
-  :args (s/cat :stage ac/completion-stage? :f ifn?
-               :executor ex/executor?)
-  :ret ac/completion-stage?)
-
 (s/fdef ac/->completable-future
   :args (s/cat :stage ac/completion-stage?)
+  :ret ac/completable-future?)
+
+(s/fdef ac/retry
+  :args (s/cat :f ifn? :action-name string? :num-retries pos-int?)
+  :ret ac/completable-future?)
+
+(s/fdef ac/retry2
+  :args (s/cat :f ifn? :retry? (s/fspec :args (s/cat :e ::anom/anomaly) :ret boolean?))
   :ret ac/completable-future?)

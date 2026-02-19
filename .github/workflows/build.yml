@@ -774,43 +774,10 @@ jobs:
         ENABLE_OPERATION_PATIENT_PURGE: ${{ matrix.feature == 'full' || matrix.feature == 'patient-purge' }}
         ENABLE_OPERATION_GRAPH: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
         ENABLE_OPERATION_CQL: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
-      run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml up -d
+      run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml up --wait
 
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
-      if: ${{ matrix.variant == 'standalone' }}
-
-    - name: Wait for Blaze 1
-      run: .github/scripts/wait-for-url.sh http://localhost:8081/metrics
-      if: ${{ matrix.variant == 'distributed' }}
-
-    - name: Wait for Blaze 2
-      run: .github/scripts/wait-for-url.sh http://localhost:8082/metrics
-      if: ${{ matrix.variant == 'distributed' }}
-
-    - name: Docker Logs Blaze
-      run: docker compose -f .github/standalone-test/docker-compose.yml logs blaze
-      if: ${{ matrix.variant == 'standalone' }}
-
-    - name: Docker Logs Kafka
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs kafka
-      if: ${{ matrix.variant == 'distributed' }}
-
-    - name: Docker Logs Cassandra 1
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs cassandra-1
-      if: ${{ matrix.variant == 'distributed' }}
-
-    - name: Docker Logs Cassandra 2
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
-      if: ${{ matrix.variant == 'distributed' }}
-
-    - name: Docker Logs Blaze 1
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs blaze-1
-      if: ${{ matrix.variant == 'distributed' }}
-
-    - name: Docker Logs Blaze 2
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs blaze-2
-      if: ${{ matrix.variant == 'distributed' }}
+    - name: Docker Logs
+      run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml logs -t
 
     - name: Docker Stats
       run: docker stats --no-stream
@@ -1418,7 +1385,7 @@ jobs:
       if: always()
 
     - name: Docker Logs on Failure
-      run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml logs
+      run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml logs -t
       if: failure()
 
   integration-test-synthea-1000:
@@ -2643,7 +2610,7 @@ jobs:
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up --wait
 
     - name: Docker Logs
-      run: docker compose -f modules/frontend-e2e/docker-compose.yml logs
+      run: docker compose -f modules/frontend-e2e/docker-compose.yml logs -t
 
     - name: Load Data
       run: modules/frontend-e2e/upload.sh
@@ -2818,28 +2785,10 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Kafka, Cassandra and Blaze
-      run: docker compose -f .github/distributed-test/docker-compose.yml up -d
+      run: docker compose -f .github/distributed-test/docker-compose.yml up --wait
 
-    - name: Wait for Blaze 1
-      run: .github/scripts/wait-for-url.sh http://localhost:8081/metrics
-
-    - name: Wait for Blaze 2
-      run: .github/scripts/wait-for-url.sh http://localhost:8082/metrics
-
-    - name: Docker Logs Kafka
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs kafka
-
-    - name: Docker Logs Cassandra 1
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs cassandra-1
-
-    - name: Docker Logs Cassandra 2
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
-
-    - name: Docker Logs Blaze 1
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs blaze-1
-
-    - name: Docker Logs Blaze 2
-      run: docker compose -f .github/distributed-test/docker-compose.yml logs blaze-2
+    - name: Docker Logs
+      run: docker compose -f .github/distributed-test/docker-compose.yml logs -t
 
     - name: Docker Stats
       run: docker stats --no-stream
