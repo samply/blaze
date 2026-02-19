@@ -68,7 +68,7 @@ services:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "1536M"
+      MAX_HEAP_SIZE: "2G"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -82,7 +82,7 @@ services:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "1536M"
+      MAX_HEAP_SIZE: "2G"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
