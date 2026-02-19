@@ -26,12 +26,28 @@
   (take 14 (iterate #(* 2 %) 0.001))
   "op")
 
+(defn- code-system-validate-code [base-uri http-opts params]
+  (let [timer (prom/timer request-duration-seconds "code-system-validate-code")]
+    (-> (fhir-client/execute-type-post base-uri "CodeSystem" "validate-code" params http-opts)
+        (ac/when-complete
+         (fn [result _]
+           (log/trace "CodeSystem $validate-code result: " result)
+           (prom/observe-duration! timer))))))
+
+(defn- code-system-validate-code-cache [base-uri http-opts]
+  (-> (Caffeine/newBuilder)
+      (.maximumSize 1000)
+      (.refreshAfterWrite (time/hours 1))
+      (^[AsyncCacheLoader] Caffeine/.buildAsync
+       (fn [params _]
+         (code-system-validate-code base-uri http-opts params)))))
+
 (defn- expand-value-set [base-uri http-opts params]
   (let [timer (prom/timer request-duration-seconds "expand-value-set")]
     (-> (fhir-client/execute-type-post base-uri "ValueSet" "expand" params http-opts)
         (ac/when-complete
          (fn [result _]
-           (log/trace "Valueset $expand result: " result)
+           (log/trace "ValueSet $expand result: " result)
            (prom/observe-duration! timer))))))
 
 (defn- value-set-validate-code [base-uri http-opts params]
@@ -39,7 +55,7 @@
     (-> (fhir-client/execute-type-post base-uri "ValueSet" "validate-code" params http-opts)
         (ac/when-complete
          (fn [result _]
-           (log/trace "Valueset $validate-code result: " result)
+           (log/trace "ValueSet $validate-code result: " result)
            (prom/observe-duration! timer))))))
 
 (defn- value-set-validate-code-cache [base-uri http-opts]
@@ -60,8 +76,12 @@
   (let [http-opts {:http-client http-client
                    :parsing-context parsing-context
                    :writing-context writing-context}
+        code-system-validate-code-cache (code-system-validate-code-cache base-uri http-opts)
         value-set-validate-code-cache (value-set-validate-code-cache base-uri http-opts)]
     (reify p/TerminologyService
+      (-code-system-validate-code [_ params]
+        (.get ^AsyncLoadingCache code-system-validate-code-cache params))
+
       (-expand-value-set [_ params]
         (expand-value-set base-uri http-opts params))
 
