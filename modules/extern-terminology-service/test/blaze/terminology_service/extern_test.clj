@@ -7,15 +7,16 @@
    [blaze.fhir.util :as fu]
    [blaze.fhir.writing-context]
    [blaze.http-client.spec]
+   [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service-spec]
-   [blaze.terminology-service.extern]
+   [blaze.terminology-service.extern :as extern]
    [blaze.terminology-service.extern.spec]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [jsonista.core :as j]
@@ -66,7 +67,7 @@
     (given-failed-system (assoc-in config [::ts/extern :base-uri] ::invalid)
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.terminology-service.extern/base-uri]
+      [:cause-data ::s/problems 0 :via] := [::extern/base-uri]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid http-client"
@@ -90,11 +91,47 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
+(deftest duration-seconds-collector-init-test
+  (with-system [{collector ::extern/request-duration-seconds} {::extern/request-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
 (defn- params-matcher [{:blaze.fhir/keys [writing-context]} params]
   (Matchers/is (fhir-spec/write-json-as-string writing-context params)))
 
-(defn- expand-value-set [ts & nvs]
-  (ts/expand-value-set ts (apply fu/parameters nvs)))
+(deftest code-system-validate-code-test
+  (testing "success"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/CodeSystem/$validate-code")
+            (.withBody (params-matcher system params))
+            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
+            (.withHeader "content-type" "application/fhir+json"))
+
+        (given @(ts/code-system-validate-code ts params)
+          :fhir/type := :fhir/Parameters))))
+
+  (testing "code-system not-found"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/CodeSystem/$validate-code")
+            (.withBody (params-matcher system params))
+            (.doReturn 400 (j/write-value-as-string
+                            {:resourceType "OperationOutcome"
+                             :issue
+                             [{:severity "error"
+                               :code "not-found"
+                               :diagnostics "The value set `http://hl7.org/fhir/CodeSystem/administrative-gender` was not found."}]}))
+            (.withHeader "content-type" "application/fhir+json"))
+
+        (given-failed-future (ts/code-system-validate-code ts params)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Unexpected response status 400."
+          [:fhir/issues count] := 1
+          [:fhir/issues 0 :severity] := #fhir/code "error"
+          [:fhir/issues 0 :code] := #fhir/code "not-found"
+          [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/CodeSystem/administrative-gender` was not found.")))))
 
 (deftest expand-value-set-test
   (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
