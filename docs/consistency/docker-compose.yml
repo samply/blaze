@@ -126,7 +126,6 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "2G"
-      HEAP_NEWSIZE: "100M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 30s
@@ -141,7 +140,6 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "2G"
-      HEAP_NEWSIZE: "100M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 30s
@@ -156,7 +154,6 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "2G"
-      HEAP_NEWSIZE: "100M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 30s

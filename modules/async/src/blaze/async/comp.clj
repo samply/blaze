@@ -297,23 +297,24 @@
 (defn- retryable? [{::anom/keys [category]}]
   (#{::anom/not-found ::anom/busy} category))
 
-(defn- retry* [future-fn max-retries num-retry]
+(defn- retry* [future-fn action-name max-retries num-retry]
   (-> (future-fn)
       (exceptionally-compose
        (fn [e]
          (if (and (retryable? e) (< num-retry max-retries))
            (let [delay (* (long (math/pow 2.0 num-retry)) 100)]
-             (log/warn (format "Wait %d ms before retrying an action." delay))
+             (log/warn (format "Wait %d ms before retrying %s." delay action-name))
              (-> (future)
                  (complete-on-timeout!
                   nil delay TimeUnit/MILLISECONDS)
                  (then-compose
-                  (fn [_] (retry* future-fn max-retries (inc num-retry))))))
+                  (fn [_]
+                    (retry* future-fn action-name max-retries (inc num-retry))))))
            e)))))
 
 (defn retry
   "Returns a CompletionStage that, when the CompletionStage as result of calling
-  the function`f` with no arguments completes normally will complete with its
+  the function `f` with no arguments completes normally will complete with its
   result.
 
   Otherwise retires by calling `f` again with no arguments. Wait's between
@@ -321,8 +322,8 @@
 
   Please be aware that `num-retries` shouldn't be higher than the max stack
   depth. Otherwise, the CompletionStage would fail with a StackOverflowException."
-  [f num-retries]
-  (retry* f num-retries 0))
+  [f action-name num-retries]
+  (retry* f action-name num-retries 0))
 
 (defn retry2
   "Returns a CompletionStage that, when the CompletionStage as result of calling

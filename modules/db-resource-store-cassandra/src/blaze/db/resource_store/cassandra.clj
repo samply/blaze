@@ -63,7 +63,8 @@
       (ac/exceptionally (partial map-execute-get-error hash))))
 
 (defn- execute-get [session parsing-context statement key]
-  (-> (ac/retry #(execute-get* session parsing-context statement key) 5)
+  (-> (ac/retry #(execute-get* session parsing-context statement key)
+                "resource-store-cassandra-get" 5)
       (ac/exceptionally #(when-not (ba/not-found? %) %))))
 
 (defn- execute-multi-get [session parsing-context get-statement keys]
@@ -86,7 +87,8 @@
       (ac/exceptionally (partial map-execute-put-error hash resource))))
 
 (defn- execute-put [session writing-context statement entry]
-  (ac/retry #(execute-put* session writing-context statement entry) 5))
+  (ac/retry #(execute-put* session writing-context statement entry)
+            "resource-store-cassandra-put" 5))
 
 (defn- execute-multi-put [session writing-context statement entries]
   (map #(ac/->completable-future (execute-put session writing-context statement %)) entries))

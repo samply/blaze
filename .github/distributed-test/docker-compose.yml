@@ -69,7 +69,6 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       MAX_HEAP_SIZE: "1536M"
-      HEAP_NEWSIZE: "200M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -84,7 +83,6 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       MAX_HEAP_SIZE: "1536M"
-      HEAP_NEWSIZE: "200M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -136,6 +134,12 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-1-data:/app/data"
     depends_on:
+      kafka:
+        condition: service_healthy
+      cassandra-1:
+        condition: service_healthy
+      cassandra-2:
+        condition: service_healthy
       kafka-topic-creator-main:
         condition: service_completed_successfully
       kafka-topic-creator-admin:
@@ -180,6 +184,12 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-2-data:/app/data"
     depends_on:
+      kafka:
+        condition: service_healthy
+      cassandra-1:
+        condition: service_healthy
+      cassandra-2:
+        condition: service_healthy
       kafka-topic-creator-main:
         condition: service_completed_successfully
       kafka-topic-creator-admin:

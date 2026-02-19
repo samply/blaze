@@ -52,7 +52,8 @@
       (ac/exceptionally (partial map-execute-get-error token))))
 
 (defn- execute-get [session statement token]
-  (-> (ac/retry #(execute-get* session statement token) 5)
+  (-> (ac/retry #(execute-get* session statement token)
+                "page-store-cassandra-get" 5)
       (ac/exceptionally #(when-not (ba/not-found? %) %))))
 
 (defn- bind-put [statement token clauses]
@@ -71,7 +72,8 @@
       (ac/exceptionally (partial map-execute-put-error token clauses))))
 
 (defn- execute-put [session statement token clauses]
-  (ac/retry #(execute-put* session statement token clauses) 5))
+  (ac/retry #(execute-put* session statement token clauses)
+            "page-store-cassandra-put" 5))
 
 (defrecord CassandraPageStore [session get-statement put-statement]
   p/PageStore

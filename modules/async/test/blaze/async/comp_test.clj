@@ -356,7 +356,7 @@
 (deftest retry-test
   (testing "with first call successful"
     (let [future-fn #(ac/completed-future ::x)]
-      (is (= ::x @(ac/retry future-fn 1)))))
+      (is (= ::x @(ac/retry future-fn "action-114844" 1)))))
 
   (testing "with second call successful"
     (testing "first call retryable"
@@ -364,14 +364,14 @@
             future-fn #(ac/completed-future
                         (let [n (swap! counter inc)]
                           (if (= 2 n) ::x (ba/busy))))]
-        (is (= ::x @(ac/retry future-fn 1)))))
+        (is (= ::x @(ac/retry future-fn "action-114844" 1)))))
 
     (testing "first call not retryable"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                         (let [n (swap! counter inc)]
                           (if (= 2 n) ::x (ba/fault))))]
-        (given-failed-future (ac/retry future-fn 1)
+        (given-failed-future (ac/retry future-fn "action-114844" 1)
           ::anom/category := ::anom/fault))))
 
   (testing "with third call successful"
@@ -380,14 +380,14 @@
             future-fn #(ac/completed-future
                         (let [n (swap! counter inc)]
                           (if (= 3 n) ::x (ba/busy))))]
-        (is (= ::x @(ac/retry future-fn 2)))))
+        (is (= ::x @(ac/retry future-fn "action-114844" 2)))))
 
     (testing "one retry"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                         (let [n (swap! counter inc)]
                           (if (= 3 n) ::x (ba/busy))))]
-        (given-failed-future (ac/retry future-fn 1)
+        (given-failed-future (ac/retry future-fn "action-114844" 1)
           ::anom/category := ::anom/busy))))
 
   (testing "times"
@@ -397,7 +397,7 @@
                         (let [n (swap! counter inc)]
                           (if (= 2 n) ::x (ba/busy))))
             start (System/nanoTime)]
-        @(ac/retry future-fn 1)
+        @(ac/retry future-fn "action-114844" 1)
         (is (< 1e8 (- (System/nanoTime) start)))))
 
     (testing "with third call successful"
@@ -406,7 +406,7 @@
                         (let [n (swap! counter inc)]
                           (if (= 3 n) ::x (ba/busy))))
             start (System/nanoTime)]
-        @(ac/retry future-fn 2)
+        @(ac/retry future-fn "action-114844" 2)
         (is (< 3e8 (- (System/nanoTime) start)))))
 
     (testing "with fourth call successful"
@@ -415,7 +415,7 @@
                         (let [n (swap! counter inc)]
                           (if (= 4 n) ::x (ba/busy))))
             start (System/nanoTime)]
-        @(ac/retry future-fn 3)
+        @(ac/retry future-fn "action-114844" 3)
         (is (< 7e8 (- (System/nanoTime) start)))))))
 
 (deftest retry2-test
