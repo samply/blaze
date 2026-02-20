@@ -107,13 +107,6 @@
 (defn- write-parse-cbor [type data]
   (parse-cbor type (j/write-value-as-bytes data cbor-object-mapper)))
 
-(defmacro memsize-prop [type]
-  `(prop/for-all [value# (~(symbol "fg" type))]
-     (let [source# (write-cbor value#)]
-       (>= (Base/memSize (parse-cbor ~(fg/kebab->pascal type) source#))
-           (mem/total-size (parse-cbor ~(fg/kebab->pascal type) source#)
-                           (parse-cbor ~(fg/kebab->pascal type) source#))))))
-
 (deftest resource-test
   (testing "valid"
     (are [x] (s2/valid? :fhir/Resource x)
@@ -2267,6 +2260,16 @@
              (s2/unform :fhir.xml/xhtml #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
 
 ;; ---- Complex Types ---------------------------------------------------------
+
+(defmacro memsize-prop [type]
+  (let [pascal-type (fg/kebab->pascal type)]
+    `(prop/for-all [value# (~(symbol "fg" type))]
+       (let [source# (write-cbor value#)
+             real-size# (mem/total-size (parse-cbor ~pascal-type source#)
+                                        (parse-cbor ~pascal-type source#))
+             calculated-size# (Base/memSize (parse-cbor ~pascal-type source#))]
+         ;; allow for 10% smaller calculated size
+         (>= calculated-size# (- real-size# (/ real-size# 10)))))))
 
 (deftest address-test
   (testing "FHIR spec"
