@@ -18,8 +18,11 @@
   {:mvn/version "1.0.10"
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
 
+  ca.uhn.hapi.fhir/hapi-fhir-base
+  {:mvn/version "8.8.0"}
+
   ca.uhn.hapi.fhir/org.hl7.fhir.r5
-  {:mvn/version "6.6.7"}
+  {:mvn/version "6.8.1"}
 
   ;; this dependency is only here because otherwise it gets loaded concurrently
   ;; which breaks caching
