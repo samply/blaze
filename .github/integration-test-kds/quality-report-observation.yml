@@ -1,0 +1,12 @@
+library: .github/integration-test-kds/quality-report-observation.cql
+group:
+- type: Observation
+  code: Observation
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: "Laborparameter LOINC observed"
+    expression: "Laborparameter LOINC observed"
+
+  - code: "Inadmissible categorical values Laborparameter LOINC"
+    expression: "Inadmissible categorical values Laborparameter LOINC"

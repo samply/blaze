@@ -27,13 +27,26 @@ services:
     - "8082:8080"
     volumes:
     - "blaze-terminology-data:/app/data"
-    - "../../SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z:/app/sct-release"
+    - "./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release"
     healthcheck:
       test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  fhir-validator:
+    image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.3"
+    environment:
+      JAVA_OPTS: "-Xmx2g"
+      TX_SERVER: "http://terminology-server:8080/fhir"
+    ports:
+    - "8084:8080"
+    volumes:
+    - ./fhir-settings.json:/app/fhir-settings.json:ro
+    depends_on:
+      terminology-server:
+        condition: service_healthy
 
 volumes:
   blaze-data:

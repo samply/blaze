@@ -445,16 +445,6 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing required parameter `coding.code`."))
 
-    (testing "codeableConcept with two codings"
-      (given-failed-future (code-system-validate-code ts
-                             "url" #fhir/uri "url-194718"
-                             "codeableConcept"
-                             #fhir/CodeableConcept
-                              {:coding [#fhir/Coding{}
-                                        #fhir/Coding{}]})
-        ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported parameter `codeableConcept` with more than one coding."))
-
     (testing "codeableConcept version mismatch"
       (given-failed-future (code-system-validate-code ts
                              "url" #fhir/uri "url-194718"
@@ -668,6 +658,28 @@
           [(parameter "code") 0 :value] := #fhir/code "code-115927"
           [(parameter "system") 0 :value] := #fhir/uri "system-115910")
 
+        (testing "multiple codings"
+          (doseq [codings [[#fhir/Coding
+                             {:system #fhir/uri "system-115910"
+                              :code #fhir/code "code-115927"}
+                            #fhir/Coding
+                             {:system #fhir/uri "system-115910"
+                              :code #fhir/code "bar"}]
+                           [#fhir/Coding
+                             {:system #fhir/uri "system-115910"
+                              :code #fhir/code "bar"}
+                            #fhir/Coding
+                             {:system #fhir/uri "system-115910"
+                              :code #fhir/code "code-115927"}]]]
+            (given @(code-system-validate-code ts
+                      "url" #fhir/uri "system-115910"
+                      "codeableConcept" (type/codeable-concept {:coding codings}))
+              :fhir/type := :fhir/Parameters
+              [(parameter "result") 0 :value] := #fhir/boolean true
+              [(parameter "code") 0 :value] := #fhir/code "code-115927"
+              [(parameter "system") 0 :value] := #fhir/uri "system-115910"
+              [(parameter "codeableConcept") 0 :value] := (type/codeable-concept {:coding codings}))))
+
         (testing "with top-level version"
           (given @(code-system-validate-code ts
                     "url" #fhir/uri "system-115910"
@@ -755,9 +767,13 @@
             :fhir/type := :fhir/Parameters
             [(parameter "result") 0 :value] := #fhir/boolean false
             [(parameter "message") 0 :value] := #fhir/string "Unknown code `code-153948` was not found in the code system `system-115910|version-203456`."
-            [(parameter "code") 0 :value] := #fhir/code "code-153948"
-            [(parameter "system") 0 :value] := #fhir/uri "system-115910"
-            [(parameter "version") 0 :value] := #fhir/string "version-203456"))))
+            [(parameter "code") count] := 0
+            [(parameter "system") count] := 0
+            [(parameter "version") 0 :value] := #fhir/string "version-203456"
+            [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                         {:coding
+                                                          [#fhir/Coding{:system #fhir/uri "system-115910"
+                                                                        :code #fhir/code "code-153948"}]}))))
 
     (testing "multiple code-systems with the same url"
       (testing "the code-system with the higher version number is used"
@@ -5012,17 +5028,6 @@
         [(parameter "result") 0 :value] := #fhir/boolean false
         [(parameter "message") 0 :value] := #fhir/string "Missing required parameter `coding.code`."))
 
-    (testing "codeableConcept with two codings"
-      (given @(value-set-validate-code ts
-                "valueSet" {:fhir/type :fhir/ValueSet}
-                "codeableConcept"
-                #fhir/CodeableConcept
-                 {:coding [#fhir/Coding{}
-                           #fhir/Coding{}]})
-        :fhir/type := :fhir/Parameters
-        [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := #fhir/string "Unsupported parameter `codeableConcept` with more than one coding."))
-
     (testing "both url and valueSet parameters"
       (given-failed-future (value-set-validate-code ts
                              "url" #fhir/uri "value-set-161213"
@@ -5055,7 +5060,10 @@
                                "code" #fhir/code "code-083955"
                                "inferSystem" #fhir/boolean true)
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-194718` was not found."))
+          ::anom/message := "The value set `url-194718` was not found."
+          [:fhir/issues 0 :fhir.issues/details :coding 0 :system] := #fhir/uri "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
+          [:fhir/issues 0 :fhir.issues/details :coding 0 :code] := #fhir/code "not-found"
+          [:fhir/issues 0 :fhir.issues/details :text] := #fhir/string "A definition for the value Set `url-194718` could not be found."))
 
       (testing "url and version"
         (given-failed-future (value-set-validate-code ts
@@ -5262,6 +5270,283 @@
         ::anom/message := "The code system `system-172718|version-172744` was not found."))))
 
 (deftest value-set-validate-code-include-all-test
+  (testing "system only"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-115927"}]}]
+        [:put {:fhir/type :fhir/CodeSystem :id "1"
+               :url #fhir/uri "system-184039"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-184043"}]}]
+        [:put {:fhir/type :fhir/CodeSystem :id "2"
+               :url #fhir/uri "system-184047"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-184052"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri "value-set-135750"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "system-115910"}]}}]]]
+
+      (testing "system/code"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri "value-set-135750"
+                  "code" #fhir/code "code-115927"
+                  "system" #fhir/uri "system-115910")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code "code-115927"
+          [(parameter "system") 0 :value] := #fhir/uri "system-115910"))
+
+      (testing "coding"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri "value-set-135750"
+                  "coding" #fhir/Coding
+                            {:system #fhir/uri "system-115910"
+                             :code #fhir/code "code-115927"})
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code "code-115927"
+          [(parameter "system") 0 :value] := #fhir/uri "system-115910"))
+
+      (testing "codeableConcept"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri "value-set-135750"
+                  "codeableConcept"
+                  #fhir/CodeableConcept
+                   {:coding
+                    [#fhir/Coding
+                      {:system #fhir/uri "system-115910"
+                       :code #fhir/code "code-115927"}]})
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code "code-115927"
+          [(parameter "system") 0 :value] := #fhir/uri "system-115910"
+          [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                       {:coding
+                                                        [#fhir/Coding
+                                                          {:system #fhir/uri "system-115910"
+                                                           :code #fhir/code "code-115927"}]})
+
+        (testing "non-existing code"
+          (given @(value-set-validate-code ts
+                    "url" #fhir/uri "value-set-135750"
+                    "codeableConcept"
+                    #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                        {:system #fhir/uri "system-115910"
+                         :code #fhir/code "code-173732"}]})
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean false
+            [(parameter "message") 0 :value] := #fhir/string "The provided code `system-115910#code-173732` was not found in the value set `value-set-135750`."
+            [(parameter "code") count] := 0
+            [(parameter "system") count] := 0
+            [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                         {:coding
+                                                          [#fhir/Coding
+                                                            {:system #fhir/uri "system-115910"
+                                                             :code #fhir/code "code-173732"}]}))
+
+        (testing "multiple codings"
+          (doseq [codings [[#fhir/Coding
+                             {:system #fhir/uri "system-115910"
+                              :code #fhir/code "code-115927"}
+                            #fhir/Coding
+                             {:system #fhir/uri "foo"
+                              :code #fhir/code "bar"}]
+                           [#fhir/Coding
+                             {:system #fhir/uri "foo"
+                              :code #fhir/code "bar"}
+                            #fhir/Coding
+                             {:system #fhir/uri "system-115910"
+                              :code #fhir/code "code-115927"}]]]
+            (given @(value-set-validate-code ts
+                      "url" #fhir/uri "value-set-135750"
+                      "codeableConcept" (type/codeable-concept {:coding codings}))
+              :fhir/type := :fhir/Parameters
+              [(parameter "result") 0 :value] := #fhir/boolean true
+              [(parameter "code") 0 :value] := #fhir/code "code-115927"
+              [(parameter "system") 0 :value] := #fhir/uri "system-115910"
+              [(parameter "codeableConcept") 0 :value] := (type/codeable-concept {:coding codings})))
+
+          (testing "all non-included"
+            (given @(value-set-validate-code ts
+                      "url" #fhir/uri "value-set-135750"
+                      "codeableConcept"
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "system-184039"
+                           :code #fhir/code "code-184043"}
+                         #fhir/Coding
+                          {:system #fhir/uri "system-184047"
+                           :code #fhir/code "code-184052"}]})
+              :fhir/type := :fhir/Parameters
+              [(parameter "result") 0 :value] := #fhir/boolean false
+              [(parameter "message") 0 :value] := #fhir/string "A definition for the code system `system-184047` could not be found, so the code cannot be validated."
+              [(parameter "code") count] := 0
+              [(parameter "system") count] := 0
+              [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                           {:coding
+                                                            [#fhir/Coding
+                                                              {:system #fhir/uri "system-184039"
+                                                               :code #fhir/code "code-184043"}
+                                                             #fhir/Coding
+                                                              {:system #fhir/uri "system-184047"
+                                                               :code #fhir/code "code-184052"}]}))))))
+
+  (testing "with versions"
+    (testing "choosing an explicit version"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "1.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "1"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "2.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-092722"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "2"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "3.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115357"}]}]
+          [:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri "value-set-135750"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri "system-115910"
+                    :version #fhir/string "2.0.0"}]}}]]]
+
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri "value-set-135750"
+                  "code" #fhir/code "code-092722"
+                  "system" #fhir/uri "system-115910")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code "code-092722"
+          [(parameter "system") 0 :value] := #fhir/uri "system-115910")))
+
+    (testing "choosing the newest version by default"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "1.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "1"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "2.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-092722"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "2"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "3.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115357"}]}]
+          [:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri "value-set-135750"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri "system-115910"}]}}]]]
+
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri "value-set-135750"
+                  "code" #fhir/code "code-115357"
+                  "system" #fhir/uri "system-115910")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code "code-115357"
+          [(parameter "system") 0 :value] := #fhir/uri "system-115910")))
+
+    (testing "choosing the version by parameter"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "1.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "1"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "2.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-092722"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "2"
+                 :url #fhir/uri "system-115910"
+                 :version #fhir/string "3.0.0"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115357"}]}]
+          [:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri "value-set-135750"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri "system-115910"}]}}]]]
+
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri "value-set-135750"
+                  "code" #fhir/code "code-092722"
+                  "system" #fhir/uri "system-115910"
+                  "system-version" #fhir/canonical "system-115910|2.0.0")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code "code-092722"
+          [(parameter "system") 0 :value] := #fhir/uri "system-115910"
+          [(parameter "version") 0 :value] := #fhir/string "2.0.0")
+
+        (testing "code system with version not found"
+          (given @(value-set-validate-code ts
+                    "url" #fhir/uri "value-set-135750"
+                    "code" #fhir/code "code-092722"
+                    "system" #fhir/uri "system-115910"
+                    "system-version" #fhir/canonical "system-115910|4.0.0")
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean false
+            [(parameter "code") 0 :value] := #fhir/code "code-092722"
+            [(parameter "system") 0 :value] := #fhir/uri "system-115910"
+            [(parameter "version") 0 :value] := #fhir/string "4.0.0"
+            [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
+            [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "not-found"
+            [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-found")
+            [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string "A definition for the code system `system-115910|4.0.0` could not be found, so the code cannot be validated.",
+            [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string "system"])))))
+
   (testing "version *"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -5288,175 +5573,41 @@
         [(parameter "code") 0 :value] := #fhir/code "code-182832"
         [(parameter "system") 0 :value] := #fhir/uri "system-182822"))))
 
-(deftest value-set-validate-code-include-concept-test
-  (testing "with one code system"
-    (testing "with one code"
-      (with-system-data [{ts ::ts/local} config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "value-set-135750"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}]}}]]]
-
-        (given @(value-set-validate-code ts
-                  "url" #fhir/uri "value-set-135750"
-                  "code" #fhir/code "code-115927"
-                  "system" #fhir/uri "system-115910")
-          :fhir/type := :fhir/Parameters
-          [(parameter "result") 0 :value] := #fhir/boolean true
-          [(parameter "code") 0 :value] := #fhir/code "code-115927"
-          [(parameter "system") 0 :value] := #fhir/uri "system-115910"))
-
-      (testing "with versions"
-        (testing "choosing an explicit version"
-          (with-system-data [{ts ::ts/local} config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "1.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-115927"}]}]
-              [:put {:fhir/type :fhir/CodeSystem :id "1"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "2.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-092722"}]}]
-              [:put {:fhir/type :fhir/CodeSystem :id "2"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "3.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-115357"}]}]
-              [:put {:fhir/type :fhir/ValueSet :id "0"
-                     :url #fhir/uri "value-set-135750"
-                     :compose
-                     {:fhir/type :fhir.ValueSet/compose
-                      :include
-                      [{:fhir/type :fhir.ValueSet.compose/include
-                        :system #fhir/uri "system-115910"
-                        :version #fhir/string "2.0.0"}]}}]]]
-
-            (given @(value-set-validate-code ts
-                      "url" #fhir/uri "value-set-135750"
-                      "code" #fhir/code "code-092722"
-                      "system" #fhir/uri "system-115910")
-              :fhir/type := :fhir/Parameters
-              [(parameter "result") 0 :value] := #fhir/boolean true
-              [(parameter "code") 0 :value] := #fhir/code "code-092722"
-              [(parameter "system") 0 :value] := #fhir/uri "system-115910")))
-
-        (testing "choosing the newest version by default"
-          (with-system-data [{ts ::ts/local} config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "1.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-115927"}]}]
-              [:put {:fhir/type :fhir/CodeSystem :id "1"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "2.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-092722"}]}]
-              [:put {:fhir/type :fhir/CodeSystem :id "2"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "3.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-115357"}]}]
-              [:put {:fhir/type :fhir/ValueSet :id "0"
-                     :url #fhir/uri "value-set-135750"
-                     :compose
-                     {:fhir/type :fhir.ValueSet/compose
-                      :include
-                      [{:fhir/type :fhir.ValueSet.compose/include
-                        :system #fhir/uri "system-115910"}]}}]]]
-
-            (given @(value-set-validate-code ts
-                      "url" #fhir/uri "value-set-135750"
-                      "code" #fhir/code "code-115357"
-                      "system" #fhir/uri "system-115910")
-              :fhir/type := :fhir/Parameters
-              [(parameter "result") 0 :value] := #fhir/boolean true
-              [(parameter "code") 0 :value] := #fhir/code "code-115357"
-              [(parameter "system") 0 :value] := #fhir/uri "system-115910")))
-
-        (testing "choosing the version by parameter"
-          (with-system-data [{ts ::ts/local} config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "1.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-115927"}]}]
-              [:put {:fhir/type :fhir/CodeSystem :id "1"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "2.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-092722"}]}]
-              [:put {:fhir/type :fhir/CodeSystem :id "2"
-                     :url #fhir/uri "system-115910"
-                     :version #fhir/string "3.0.0"
-                     :content #fhir/code "complete"
-                     :concept
-                     [{:fhir/type :fhir.CodeSystem/concept
-                       :code #fhir/code "code-115357"}]}]
-              [:put {:fhir/type :fhir/ValueSet :id "0"
-                     :url #fhir/uri "value-set-135750"
-                     :compose
-                     {:fhir/type :fhir.ValueSet/compose
-                      :include
-                      [{:fhir/type :fhir.ValueSet.compose/include
-                        :system #fhir/uri "system-115910"}]}}]]]
-
-            (given @(value-set-validate-code ts
-                      "url" #fhir/uri "value-set-135750"
-                      "code" #fhir/code "code-092722"
-                      "system" #fhir/uri "system-115910"
-                      "system-version" #fhir/canonical "system-115910|2.0.0")
-              :fhir/type := :fhir/Parameters
-              [(parameter "result") 0 :value] := #fhir/boolean true
-              [(parameter "code") 0 :value] := #fhir/code "code-092722"
-              [(parameter "system") 0 :value] := #fhir/uri "system-115910"
-              [(parameter "version") 0 :value] := #fhir/string "2.0.0")
-
-            (testing "code system with version not found"
-              (given @(value-set-validate-code ts
-                        "url" #fhir/uri "value-set-135750"
-                        "code" #fhir/code "code-092722"
-                        "system" #fhir/uri "system-115910"
-                        "system-version" #fhir/canonical "system-115910|4.0.0")
-                :fhir/type := :fhir/Parameters
-                [(parameter "result") 0 :value] := #fhir/boolean false
-                [(parameter "code") 0 :value] := #fhir/code "code-092722"
-                [(parameter "system") 0 :value] := #fhir/uri "system-115910"
-                [(parameter "version") 0 :value] := #fhir/string "4.0.0"
-                [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
-                [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "not-found"
-                [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-found")
-                [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string "A definition for the code system `system-115910|4.0.0` could not be found, so the code cannot be validated.",
-                [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string "system"]))))))))
-
 (deftest value-set-validate-code-include-value-set-refs-test
+  (testing "one missing value set ref"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-180814"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-180828"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "1"
+               :url #fhir/uri "value-set-161213"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :valueSet [#fhir/canonical "value-set-135750"]}]}}]]]
+
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri "value-set-161213"
+                "code" #fhir/code "code-180828"
+                "system" #fhir/uri "system-180814")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string "A definition for the value Set `value-set-135750` could not be found. Unable to check whether the code is in the value set `value-set-161213` because the value set `value-set-135750` was not found."
+        [(parameter "code") 0 :value] := #fhir/code "code-180828"
+        [(parameter "system") 0 :value] := #fhir/uri "system-180814"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "not-found"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-found")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string "A definition for the value Set `value-set-135750` could not be found."
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code "warning"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code "not-found"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "vs-invalid")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string "Unable to check whether the code is in the value set `value-set-161213` because the value set `value-set-135750` was not found.")))
+
   (testing "one value set ref"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -8222,7 +8373,8 @@
                                                       [#fhir/Coding
                                                         {:system #fhir/uri "http://hl7.org/fhir/test/CodeSystem/simple"
                                                          :code #fhir/code "code1x"}]}
-        [(parameter "system") 0 :value] := #fhir/uri "http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "code") count] := 0
+        [(parameter "system") count] := 0
         [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
         [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "code-invalid"
         [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
@@ -8249,7 +8401,7 @@
                 "system" #fhir/uri "http://hl7.org/fhir/test/CodeSystem/simple")
         :fhir/type := :fhir/Parameters
         [(parameter "result") 0 :value] := #fhir/boolean false
-        [(parameter "message") 0 :value] := #fhir/string "A definition for the value Set `http://hl7.org/fhir/test/ValueSet/simple-filter-isaX` could not be found."
+        [(parameter "message") 0 :value] := #fhir/string "A definition for the value Set `http://hl7.org/fhir/test/ValueSet/simple-filter-isaX` could not be found. Unable to check whether the code is in the value set `http://hl7.org/fhir/test/ValueSet/simple-import-bad|5.0.0` because the value set `http://hl7.org/fhir/test/ValueSet/simple-filter-isaX` was not found."
         [(parameter "code") 0 :value] := #fhir/code "code1"
         [(parameter "system") 0 :value] := #fhir/uri "http://hl7.org/fhir/test/CodeSystem/simple"
         [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"

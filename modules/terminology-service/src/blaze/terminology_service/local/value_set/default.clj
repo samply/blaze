@@ -4,7 +4,8 @@
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.util :as fu]
-   [blaze.terminology-service.local.value-set.core :as c]))
+   [blaze.terminology-service.local.value-set.core :as c]
+   [blaze.terminology-service.local.value-set.validate-code.issue :as issue]))
 
 (defn- clauses [url version]
   (cond-> [["url" url]] version (conj ["version" version])))
@@ -21,4 +22,8 @@
   [{:keys [db]} url & [version]]
   (do-sync [value-sets (d/pull-many db (vec (value-set-query db url version)))]
     (or (first (fu/sort-by-priority value-sets))
-        (ba/not-found (not-found-msg url version)))))
+        (ba/not-found
+         (not-found-msg url version)
+         :fhir/issues
+         [{:fhir.issues/code "not-found"
+           :fhir.issues/details (issue/value-set-not-found-details url)}]))))

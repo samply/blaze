@@ -99,20 +99,23 @@
     (cond->> concept
       display (vc/check-display {} params))))
 
-(defn validate-code*
-  [code-system params]
-  (if-ok [concept (validate-code** code-system params)]
-    (vc/parameters-from-concept concept params)
-    #(vc/fail-parameters-from-anom % params)))
-
 (defn- assoc-system-info [clause {{url :value} :url {version :value} :version}]
   (cond-> clause url (assoc :system url) version (assoc :version version)))
+
+(defn- validate-code*
+  [code-system params]
+  (validate-code** code-system (update params :clause assoc-system-info code-system)))
 
 (defn validate-code
   "Returns a Parameters resource that contains the response of the validation
   `params`."
-  [code-system params]
-  (validate-code* code-system (update params :clause assoc-system-info code-system)))
+  [code-system [first-params & other-params]]
+  (if-ok [concept (validate-code* code-system first-params)]
+    (vc/parameters-from-concept concept first-params)
+    (fn [e]
+      (if (seq other-params)
+        (validate-code code-system other-params)
+        (vc/fail-parameters-from-anom e first-params)))))
 
 (defn expand-complete
   "Returns a list of all concepts as expansion of `code-system`."

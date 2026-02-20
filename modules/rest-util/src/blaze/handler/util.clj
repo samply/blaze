@@ -46,21 +46,22 @@
     #fhir/code "exception"))
 
 (defn- operation-outcome-issues [issues category]
-  (mapv (fn [{:fhir.issues/keys [severity code diagnostics expression]}]
-          (cond->
-           {:fhir/type :fhir.OperationOutcome/issue
-            :severity #fhir/code "error"
-            :code (or (some-> code type/code) (issue-code category))}
-            severity
-            (assoc :severity (type/code severity))
-            diagnostics
-            (assoc :diagnostics (type/string diagnostics))
-            (coll? expression)
-            (assoc :expression (mapv type/string expression))
-            (and (not (coll? expression))
-                 (some? expression))
-            (assoc :expression [(type/string expression)])))
-        issues))
+  (mapv
+   (fn [{:fhir.issues/keys [severity code details diagnostics expression]}]
+     (cond->
+      {:fhir/type :fhir.OperationOutcome/issue
+       :severity (or (some-> severity type/code) #fhir/code "error")
+       :code (or (some-> code type/code) (issue-code category))}
+       details
+       (assoc :details details)
+       diagnostics
+       (assoc :diagnostics (type/string diagnostics))
+       (coll? expression)
+       (assoc :expression (mapv type/string expression))
+       (and (not (coll? expression))
+            (some? expression))
+       (assoc :expression [(type/string expression)])))
+   issues))
 
 (defn- operation-outcome-issue
   [{:fhir/keys [issue operation-outcome]

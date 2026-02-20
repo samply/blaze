@@ -4,6 +4,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]
+   [clojure.string :as str]
    [cognitect.anomalies :as anom]))
 
 (defn issue-anom-clause [{:keys [code system version]} issue]
@@ -11,6 +12,14 @@
     (cond-> (ba/not-found (:value text) :code code :issues [issue])
       system (assoc :system system)
       version (assoc :version version))))
+
+(defn- details-texts [issues]
+  (str/join " " (keep (comp :value :text :details) issues)))
+
+(defn issues-anom-clause [{:keys [code system version]} issues]
+  (cond-> (ba/not-found (details-texts issues) :code code :issues issues)
+    system (assoc :system system)
+    version (assoc :version version)))
 
 (defn issue-anom-concept [{:keys [code system version display inactive]} issue]
   (let [{{:keys [text]} :details :as issue} issue]
@@ -73,7 +82,7 @@
 (defn parameters-from-concept
   {:arglists '([concept params])}
   [{:keys [code system version inactive] :as concept}
-   {{:keys [origin] :as clause} :clause}]
+   {:keys [codeable-concept]}]
   (fu/parameters
    "result" #fhir/boolean true
    "code" code
@@ -81,37 +90,19 @@
    "version" version
    "display" (some-> (display concept) type/string)
    "inactive" (some-> inactive type/boolean)
-   "codeableConcept"
-   (when (= "CodeableConcept.coding[0]" origin)
-     (type/codeable-concept
-      {:coding
-       [(type/coding
-         (cond->
-          {:system (type/uri-interned (:system clause))
-           :code (type/code (:code clause))}
-           (:version clause) (assoc :version (type/string (:version clause)))
-           (:display clause) (assoc :display (type/string (:display clause)))))]}))))
+   "codeableConcept" codeable-concept))
 
 (defn fail-parameters-from-anom
   [{::anom/keys [message]
     :keys [code system version display inactive issues result-override]}
-   {{:keys [origin] :as clause} :clause}]
+   {:keys [codeable-concept]}]
   (fu/parameters
    "result" (type/boolean (or result-override false))
    "message" (type/string message)
-   "code" (some-> code type/code)
-   "system" (some-> system type/uri-interned)
+   "code" (when-not codeable-concept (some-> code type/code))
+   "system" (when-not codeable-concept (some-> system type/uri-interned))
    "version" (some-> version type/string)
    "display" (some-> display type/string)
    "inactive" (some-> inactive type/boolean)
    "issues" {:fhir/type :fhir/OperationOutcome :issue issues}
-   "codeableConcept"
-   (when (= "CodeableConcept.coding[0]" origin)
-     (type/codeable-concept
-      {:coding
-       [(type/coding
-         (cond->
-          {:system (type/uri-interned (:system clause))
-           :code (type/code (:code clause))}
-           (:version clause) (assoc :version (type/string (:version clause)))
-           (:display clause) (assoc :display (type/string (:display clause)))))]}))))
+   "codeableConcept" codeable-concept))

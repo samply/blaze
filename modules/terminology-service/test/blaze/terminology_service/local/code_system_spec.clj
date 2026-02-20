@@ -24,7 +24,8 @@
   :ret :fhir/CodeSystem)
 
 (s/fdef cs/validate-code
-  :args (s/cat :code-system :fhir/CodeSystem :params ::cs/validate-code-params)
+  :args (s/cat :code-system :fhir/CodeSystem
+               :params (s/coll-of ::cs/validate-code-params))
   :ret :fhir/Parameters)
 
 (s/fdef cs/expand-complete

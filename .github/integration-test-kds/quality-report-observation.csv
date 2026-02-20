@@ -1,0 +1,30 @@
+"stratum-index","system","code","display","text","count"
+0,,,,"null",6
+1,"http://loinc.org","81695-9","Microsatellite instability [Interpretation] in Cancer specimen Qualitative",,1
+2,"http://loinc.org","8302-2","Body height",,1
+3,"http://loinc.org","69548-6","Genetic variant assessment",,2
+4,"http://loinc.org","9279-1","Respiratory Rate",,2
+5,"http://loinc.org","51968-6",,,1
+6,"http://loinc.org","8867-4","Heart Rate",,1
+7,"http://loinc.org","11475-1","Microorganism identified in Specimen by Culture",,1
+8,"http://loinc.org","53041-0","DNA region of interest panel",,19
+9,"http://loinc.org","26453-1","Erythrocytes [#/volume] in Blood",,1
+10,"http://loinc.org","49223-1","Colony count [#/volume] in Unspecified specimen by Visual count",,1
+11,"http://loinc.org","26464-8","Leukocytes [#/volume] in Blood",,1
+12,"http://loinc.org","94076-7","Mutations/Megabase [# Ratio] in Tumor",,1
+13,"http://loinc.org","26515-7","Platelets [#/volume] in Blood",,1
+14,"http://loinc.org","84413-4","Genotype display name",,1
+15,"http://loinc.org","85354-9","Blood pressure panel with all children optional",,1
+16,"http://loinc.org","20570-8","Hematocrit [Volume Fraction] of Blood",,1
+17,"http://loinc.org","18868-0","Aztreonam [Susceptibility]",,1
+18,"http://loinc.org","9843-4","Head Occipital-frontal circumference",,1
+19,"http://loinc.org","67162-8",,,2
+20,"http://loinc.org","718-7","Hemoglobin [Mass/volume] in Blood",,1
+21,"http://loinc.org","8333-7","Tympanic membrane temperature",,1
+21,"http://loinc.org","8310-5","Body temperature",,1
+22,"http://loinc.org","29463-7","Body weight",,1
+23,"http://loinc.org","59407-7","Oxygen saturation in Blood Preductal by Pulse oximetry",,1
+24,"http://loinc.org","92253-4","Microorganism identified in Isolate or Specimen by Molecular genetics method",,1
+25,"http://loinc.org","788-0","Erythrocyte distribution width [Ratio] by Automated count",,1
+26,"http://loinc.org","50697-2","Influenza virus A Ag [Identifier] in Isolate",,1
+0,,,,"null",53

@@ -25,8 +25,8 @@ env:
   BLAZECTL_CHECKSUM: df1f0cc9bb7d2c249e77e560fbab8b0c7a24dae5ec503b6e8cc08362d9976c90
 
   # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
-  VALIDATOR_VERSION: 6.5.21
-  VALIDATOR_CHECKSUM: e6a0ff10247a77e48faa5b34eeec1b136d6a5580a0616d70274ccd4cf24b6040
+  VALIDATOR_VERSION: 6.8.1
+  VALIDATOR_CHECKSUM: 7d05b31196557a8ed2748d3c8a1646deba9b6600f5b6946be598949bd11eefe2
 
 jobs:
   fmt:
@@ -1689,11 +1689,11 @@ jobs:
     - name: Download SNOMED CT Release
       uses: ./.github/actions/speicherwolke-download
       with:
-        token: ${{ secrets.SCT_DOWNLOAD_TOKEN }}
-        filename: SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+        token: ${{ secrets.SCT_INT_20250701_DOWNLOAD_TOKEN }}
+        filename: SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip
 
     - name: Unzip SNOMED CT Release
-      run: unzip SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+      run: unzip ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip -d .github/integration-test-kds
 
     - name: Run Blaze
       run: docker compose -f .github/integration-test-kds/docker-compose.yml up -d
@@ -1725,6 +1725,9 @@ jobs:
     - name: Check Terminology Capabilities of the Terminology Server
       run: .github/scripts/check-terminology-capabilities.sh http://localhost:8082/fhir
 
+    - name: Validate KDS Test Data
+      run: .github/integration-test-kds/validate.sh
+
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/kds-testdata-2024.0.1/tx
 
@@ -1739,6 +1742,9 @@ jobs:
 
     - name: Run Condition Quality Report
       run: .github/integration-test-kds/evaluate-measure.sh quality-report-condition 8
+
+    - name: Run Observation Quality Report
+      run: .github/integration-test-kds/evaluate-measure.sh quality-report-observation 53
 
   integration-test-patient-purge:
     needs: build
