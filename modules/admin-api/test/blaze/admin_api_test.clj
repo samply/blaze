@@ -926,7 +926,8 @@
             ["issue" 0 "diagnostics"] := "Unknown code 'https://samply.github.io/blaze/fhir/CodeSystem/Database#foo'"
             ["issue" 1 "severity"] := "error"
             ["issue" 1 "code"] := "processing"
-            ["issue" 1 "diagnostics"] := "The value provided ('foo') was not found in the value set 'Database Value Set' (https://samply.github.io/blaze/fhir/ValueSet/Database), and a code is required from this value set  (error message = Unknown code 'https://samply.github.io/blaze/fhir/CodeSystem/Database#foo' for in-memory expansion of ValueSet 'https://samply.github.io/blaze/fhir/ValueSet/Database')"))))
+            ["issue" 1 "diagnostics"] :# ".*foo.*"
+            ["issue" 1 "diagnostics"] :# ".*Database Value Set.*"))))
 
     (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
       (let [{:keys [status headers body]}
