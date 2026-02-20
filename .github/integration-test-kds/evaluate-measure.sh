@@ -21,7 +21,7 @@ else
   exit 1
 fi
 
-stratifier_data=$(echo "$report" | jq -rf "$path/$name.jq")
+stratifier_data=$(echo "$report" | jq -rf "$path/quality-report.jq")
 expected_stratifier_data=$(cat "$path/$name.csv")
 
 if [ "$stratifier_data" = "$expected_stratifier_data" ]; then

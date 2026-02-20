@@ -36,6 +36,15 @@
          :issues [not-in-vs (issue/missing-system clause)])))
     (ba/incorrect "Missing required parameter `coding.code`.")))
 
+(defn- coding-clauses [value-set codings]
+  (transduce
+   (comp
+    (map-indexed #(coding-clause value-set %2 (format "CodeableConcept.coding[%d]" %1)))
+    (halt-when ba/anomaly?))
+   conj
+   []
+   codings))
+
 (defn- validate-params*
   [value-set
    {:keys [code system infer-system coding codeable-concept] :as params}]
@@ -43,26 +52,24 @@
     code
     (cond
       system
-      (assoc params :clause (code-system-clause code system params))
+      [(assoc params :clause (code-system-clause code system params))]
 
       infer-system
-      (assoc params :clause (code-clause code params))
+      [(assoc params :clause (code-clause code params))]
 
       :else
       (ba/incorrect "Missing required parameter `system`."))
 
     coding
     (when-ok [clause (coding-clause value-set coding "Coding")]
-      (assoc params :clause clause))
+      [(assoc params :clause clause)])
 
     codeable-concept
-    (let [{:keys [coding]} codeable-concept]
-      (condp = (count coding)
-        1 (when-ok [clause (coding-clause value-set (first coding) "CodeableConcept.coding[0]")]
-            (assoc params :clause clause))
-        0 (ba/incorrect "Incorrect parameter `codeableConcept` with no coding.")
-
-        (ba/unsupported "Unsupported parameter `codeableConcept` with more than one coding.")))
+    (let [{codings :coding} codeable-concept]
+      (if (zero? (count codings))
+        (ba/incorrect "Incorrect parameter `codeableConcept` with no coding.")
+        (when-ok [clauses (coding-clauses value-set codings)]
+          (mapv (partial assoc params :clause) clauses))))
 
     :else
     (ba/incorrect "Missing one of the parameters `code`, `coding` or `codeableConcept`.")))
@@ -75,10 +82,11 @@
     clause))
 
 (defn- validate-params
-  "Tries to extract :clause from `params`."
+  "Tries to extract :clause from `params` returning multiple param maps, one for
+  each coding to validate."
   [value-set params]
-  (let [params (validate-params* value-set params)]
-    (update params :clause resolve-version params)))
+  (when-ok [params-list (validate-params* value-set params)]
+    (mapv #(update % :clause resolve-version params) params-list)))
 
 (defn- anom-clause
   ([{:keys [code system version]}]
@@ -170,8 +178,10 @@
   (-> (vs/find context url)
       (ac/exceptionally
        (fn [_]
-         (-> (vc/issue-anom-clause clause (issue/value-set-not-found url))
-             (update :issues conj (issue/unknown-value-set (:value-set context) url))
+         (-> (vc/issues-anom-clause
+              clause
+              [(issue/value-set-not-found url)
+               (issue/unknown-value-set (:value-set context) url)])
              (assoc :terminal true))))
       (ac/then-compose #(validate-code*** context % params))))
 
@@ -241,8 +251,8 @@
 
 (defn- validate-code**
   {:arglists '([context value-set params])}
-  [context value-set {:keys [clause] :as params}]
-  (-> (validate-code*** context value-set params)
+  [context value-set [{:keys [clause] :as first-params} & other-params]]
+  (-> (validate-code*** context value-set first-params)
       (ac/exceptionally
        (fn [e]
          (cond-> e
@@ -250,9 +260,13 @@
            (as-> e (let [{{{text :value} :text} :details :as issue} (issue/not-in-vs value-set clause)]
                      (cond-> (update e :issues (partial into [issue]))
                        (not (::message-important e)) (assoc ::anom/message text)))))))
-      (ac/then-apply (display-validator context params))
-      (ac/then-apply #(vc/parameters-from-concept % params))
-      (ac/exceptionally #(vc/fail-parameters-from-anom % params))))
+      (ac/then-apply (display-validator context first-params))
+      (ac/then-apply #(vc/parameters-from-concept % first-params))
+      (ac/exceptionally-compose
+       (fn [e]
+         (if (seq other-params)
+           (validate-code** context value-set other-params)
+           (ac/completed-future (vc/fail-parameters-from-anom e first-params)))))))
 
 (defn- supplement-xf [context]
   (keep

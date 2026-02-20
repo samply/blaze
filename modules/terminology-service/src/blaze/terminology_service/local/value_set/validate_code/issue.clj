@@ -131,14 +131,16 @@
      :text (type/string (format "The code `%s` is valid but is not active." code))})
    :expression [(type/string (cond->> "code" origin (str origin ".")))]})
 
+(defn value-set-not-found-details [url]
+  (type/codeable-concept
+   {:coding [not-found-coding]
+    :text (type/string (format "A definition for the value Set `%s` could not be found." url))}))
+
 (defn value-set-not-found [url]
   {:fhir/type :fhir.OperationOutcome/issue
    :severity #fhir/code "error"
    :code #fhir/code "not-found"
-   :details
-   (type/codeable-concept
-    {:coding [not-found-coding]
-     :text (type/string (format "A definition for the value Set `%s` could not be found." url))})})
+   :details (value-set-not-found-details url)})
 
 (defn code-system-not-found
   {:arglists '([clause])}

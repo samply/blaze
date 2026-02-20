@@ -102,6 +102,7 @@
             {::anom/category ::anom/fault
              :fhir/issues
              [{:fhir.issues/code "invariant"
+               :fhir.issues/details #fhir/CodeableConcept{:text #fhir/string "text-190546"}
                :fhir.issues/diagnostics "diagnostics-083243"
                :fhir.issues/expression "expr-082940"}
               {:fhir.issues/expression ["expr-082940" "expr-083056"]}]})
@@ -109,6 +110,7 @@
       [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
       [:issue 0 :severity] := #fhir/code "error"
       [:issue 0 :code] := #fhir/code "invariant"
+      [:issue 0 :details] := #fhir/CodeableConcept{:text #fhir/string "text-190546"}
       [:issue 0 :expression] := [#fhir/string "expr-082940"]
       [:issue 1 :fhir/type] := :fhir.OperationOutcome/issue
       [:issue 1 :severity] := #fhir/code "error"

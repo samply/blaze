@@ -51,46 +51,49 @@
     (cond-> {:code code :origin origin} display (assoc :display display))
     (ba/incorrect "Missing required parameter `coding.code`.")))
 
+(defn- cs-coding-param
+  [{:keys [url code-system] :as params}
+   {{system :value} :system {version :value} :version :as coding} origin]
+  (if code-system
+    (when-ok [clause (cs-coding-clause coding origin)]
+      (assoc params :clause clause))
+    (if-let [url (or url system)]
+      (when-ok [_ (check-url-system url system "url" (str origin ".system"))
+                version (check-version-version (:version params) version "version" (str origin ".version"))
+                clause (cs-coding-clause coding origin)]
+        (cond-> (assoc params :url url :clause clause)
+          version (assoc :version version)))
+      (ba/incorrect (format "Missing all of the parameters `url`, `%s.system` and `codeSystem`." origin)))))
+
+(defn- cs-coding-params [params codings]
+  (transduce
+   (comp
+    (map-indexed #(cs-coding-param params %2 (format "codeableConcept.coding[%d]" %1)))
+    (halt-when ba/anomaly?))
+   conj
+   []
+   codings))
+
 (defn- cs-validate-code-more
-  "Tries to extract :url, :version and :clause from `params`."
+  "Tries to extract :url, :version and :clause from `params` returning multiple
+  param maps, one for each coding to validate."
   [{:keys [url code-system code coding codeable-concept display] :as params}]
   (if-not (and url code-system)
     (cond
       code
       (if (or url code-system)
-        (assoc params :clause (cond-> {:code code} display (assoc :display display)))
+        [(assoc params :clause (cond-> {:code code} display (assoc :display display)))]
         (ba/incorrect "Missing both parameters `url` and `codeSystem`."))
 
       coding
-      (let [{{system :value} :system {version :value} :version} coding]
-        (if code-system
-          (when-ok [clause (cs-coding-clause coding "coding")]
-            (assoc params :clause clause))
-          (if-let [url (or url system)]
-            (when-ok [_ (check-url-system url system "url" "coding.system")
-                      version (check-version-version (:version params) version "version" "coding.version")
-                      clause (cs-coding-clause coding "coding")]
-              (cond-> (assoc params :url url :clause clause)
-                version (assoc :version version)))
-            (ba/incorrect "Missing all of the parameters `url`, `coding.system` and `codeSystem`."))))
+      (when-ok [params (cs-coding-param params coding "coding")]
+        [params])
 
       codeable-concept
-      (let [{[fist-coding :as codings] :coding} codeable-concept]
-        (condp = (count codings)
-          1 (let [{{system :value} :system {version :value} :version} fist-coding]
-              (if code-system
-                (when-ok [clause (cs-coding-clause fist-coding "codeableConcept")]
-                  (assoc params :clause clause))
-                (if-let [url (or url system)]
-                  (when-ok [_ (check-url-system url system "url" "codeableConcept.coding[0].system")
-                            version (check-version-version (:version params) version "version" "codeableConcept.coding[0].version")
-                            clause (cs-coding-clause fist-coding "codeableConcept")]
-                    (cond-> (assoc params :url url :clause clause)
-                      version (assoc :version version)))
-                  (ba/incorrect "Missing all of the parameters `url`, `codeableConcept.coding[0].system` and `codeSystem`."))))
-          0 (ba/incorrect "Incorrect parameter `codeableConcept` with no coding.")
-
-          (ba/unsupported "Unsupported parameter `codeableConcept` with more than one coding.")))
+      (let [{codings :coding} codeable-concept]
+        (if (zero? (count codings))
+          (ba/incorrect "Incorrect parameter `codeableConcept` with no coding.")
+          (cs-coding-params params codings)))
 
       :else
       (ba/incorrect "Missing one of the parameters `code`, `coding` or `codeableConcept`."))
@@ -262,10 +265,11 @@
 
     (-code-system-validate-code [_ params]
       (if-ok [params (fu/coerce-params cs-validate-code-param-specs params)
-              params (cs-validate-code-more params)]
+              [first-params :as all-params] (cs-validate-code-more params)]
         (let [db (d/new-batch-db (d/db node))]
-          (-> (find-code-system (context-with-db context db params) params)
-              (ac/then-apply #(cs/validate-code % params))
+          (-> (find-code-system (context-with-db context db first-params)
+                                first-params)
+              (ac/then-apply #(cs/validate-code % all-params))
               (handle-close db)))
         ac/completed-future))
 

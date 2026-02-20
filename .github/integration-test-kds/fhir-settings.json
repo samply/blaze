@@ -1,0 +1,10 @@
+{
+  "servers": [
+    {
+      "url": "http://terminology-server:8080/fhir",
+      "type": "fhir",
+      "authenticationType": "none",
+      "allowHttp": true
+    }
+  ]
+}

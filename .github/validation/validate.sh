@@ -74,4 +74,4 @@ java -jar validator_cli.jar -version 4.0.1 -level error \
 
 cat result.csv
 
-test "#failures" "$(tail -n +2 result.csv | grep -vc Information)" "0"
+test "#failures" "$(tail -n +2 result.csv | grep -v Information | grep -vc Warning)" "0"

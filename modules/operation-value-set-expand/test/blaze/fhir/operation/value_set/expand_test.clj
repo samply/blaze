@@ -97,7 +97,9 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "not-found"
-            [:issue 0 :diagnostics] := #fhir/string "The value set `153404` was not found.")))))
+            [:issue 0 :details :coding 0 :system] := #fhir/uri "http://hl7.org/fhir/tools/CodeSystem/tx-issue-type"
+            [:issue 0 :details :coding 0 :code] := #fhir/code "not-found"
+            [:issue 0 :details :text] := #fhir/string "A definition for the value Set `153404` could not be found.")))))
 
   (testing "unsupported parameters"
     (with-handler [handler]
