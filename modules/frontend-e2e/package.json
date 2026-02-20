@@ -13,9 +13,9 @@
   "devDependencies": {
     "@playwright/test": "1.57.0",
     "@types/node": "24.10.12",
-    "prettier": "3.7.4",
-    "eslint": "9.38.0",
+    "prettier": "3.8.1",
+    "eslint": "9.39.3",
     "eslint-config-prettier": "10.1.8",
-    "typescript-eslint": "8.46.2"
+    "typescript-eslint": "8.56.0"
   }
 }
