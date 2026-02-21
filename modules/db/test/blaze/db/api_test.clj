@@ -1781,11 +1781,18 @@
   ([node-or-db start-type start-id]
    @(d/pull-many node-or-db (vec (d/system-list (ensure-db node-or-db) start-type start-id)))))
 
+(def ^:private plus-1 (time/plus Instant/EPOCH (time/seconds 1)))
+(def ^:private plus-2 (time/plus Instant/EPOCH (time/seconds 2)))
+(def ^:private plus-4 (time/plus Instant/EPOCH (time/seconds 4)))
+
 (deftest since-test
   (testing "with one patient only"
-    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
-                       system-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+    (with-system [{:blaze.db/keys [node] :blaze.test/keys [step-clock]} step-clock-config]
+
+      ;; take one tick from the clock so that the first transaction happens on epoch + 1
+      (time/offset-date-time step-clock)
+
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]])
 
       (testing "Since is not supported on batch-db"
         (with-open [batch-db (d/new-batch-db (d/db node))]
@@ -1793,25 +1800,27 @@
             ::anom/category := ::anom/unsupported
             ::anom/message := "Since is not supported on batch-db.")))
 
-      (Thread/sleep 2000)
+      (is (= 1 (:t (d/resource-handle (d/db node) "Patient" "0"))))
+      (is (= plus-1 (:blaze.db.tx/instant (d/tx node 1))))
 
-      (let [inst-1 (time/instant system-clock)
-            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
-            db-2 (d/db node)]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
 
-        (Thread/sleep 2000)
+      (let [db-2 (d/db node)]
+
+        (is (= 2 (:t (d/resource-handle (d/db node) "Patient" "0"))))
+        (is (= plus-2 (:blaze.db.tx/instant (d/tx node 2))))
 
         (testing "since-t"
           (is (= 0 (d/since-t db-2)))
           (is (= 0 (d/since-t (d/since db-2 Instant/EPOCH))))
-          (is (= 1 (d/since-t (d/since db-2 inst-1))))
-          (with-open [batch-db (d/new-batch-db (d/since db-2 inst-1))]
+          (is (= 1 (d/since-t (d/since db-2 plus-1))))
+          (with-open [batch-db (d/new-batch-db (d/since db-2 plus-1))]
             (is (= 1 (d/since-t batch-db)))))
 
         (testing "multiple calls to since"
-          (is (= 1 (-> db-2 (d/since Instant/EPOCH) (d/since inst-1) d/since-t))))
+          (is (= 1 (-> db-2 (d/since Instant/EPOCH) (d/since plus-1) d/since-t))))
 
-        (let [db-1->2 (d/since db-2 inst-1)
+        (let [db-1->2 (d/since db-2 plus-1)
               dbs [db-1->2 db-2]]
           (testing "since db looks the same as db"
             (doseq [db dbs]
@@ -1842,37 +1851,37 @@
             (is (= (d/total-num-of-instance-changes db-1->2 "Patient" "0") 1)))))))
 
   (testing "with multiple resources"
-    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
-                       system-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
-      (let [inst-2 (time/instant system-clock)
-            _ (Thread/sleep 2000)
-            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
-                                 [:put {:fhir/type :fhir/Condition :id "2"
-                                        :code
-                                        #fhir/CodeableConcept
-                                         {:coding
-                                          [#fhir/Coding
-                                            {:system #fhir/uri "system"
-                                             :code #fhir/code "code-a"}]}
-                                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
-            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]])
-            _ (Thread/sleep 2000)
-            inst-4 (time/instant system-clock)
-            db-4 (d/db node)]
+    (with-system [{:blaze.db/keys [node] :blaze.test/keys [step-clock]} step-clock-config]
+
+      ;; take one tick from the clock so that the first transaction happens on epoch + 1
+      (time/offset-date-time step-clock)
+
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+                         [:put {:fhir/type :fhir/Condition :id "2"
+                                :code
+                                #fhir/CodeableConcept
+                                 {:coding
+                                  [#fhir/Coding
+                                    {:system #fhir/uri "system"
+                                     :code #fhir/code "code-a"}]}
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]])
+
+      (let [db-4 (d/db node)]
 
         (testing "since-t"
           (is (= 0 (d/since-t db-4)))
           (is (= 0 (d/since-t (d/since db-4 Instant/EPOCH))))
-          (is (= 2 (d/since-t (d/since db-4 inst-2))))
-          (is (= 4 (d/since-t (d/since db-4 inst-4)))))
+          (is (= 2 (d/since-t (d/since db-4 plus-2))))
+          (is (= 4 (d/since-t (d/since db-4 plus-4)))))
 
         (testing "multiple calls to since"
-          (is (= 0 (-> db-4 (d/since inst-4) (d/since Instant/EPOCH) d/since-t)))
-          (is (= 2 (-> db-4 (d/since inst-4) (d/since inst-2) d/since-t)))
-          (is (= 2 (-> db-4 (d/since Instant/EPOCH) (d/since inst-2) d/since-t)))
-          (is (= 4 (-> db-4 (d/since Instant/EPOCH) (d/since inst-4) d/since-t))))
+          (is (= 0 (-> db-4 (d/since plus-4) (d/since Instant/EPOCH) d/since-t)))
+          (is (= 2 (-> db-4 (d/since plus-4) (d/since plus-2) d/since-t)))
+          (is (= 2 (-> db-4 (d/since Instant/EPOCH) (d/since plus-2) d/since-t)))
+          (is (= 4 (-> db-4 (d/since Instant/EPOCH) (d/since plus-4) d/since-t))))
 
         (testing "db since EPOCH is same as db"
           (let [db-0->4 (d/since db-4 Instant/EPOCH)
@@ -1895,7 +1904,7 @@
             (is (apply = (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
             (is (apply = (map #(d/total-num-of-instance-changes % "Patient" "1") dbs)))))
 
-        (let [db2->4 (d/since db-4 inst-2)
+        (let [db2->4 (d/since db-4 plus-2)
               dbs [db2->4 db-4]]
           (testing "since db looks the same as db for changed instances"
             (doseq [db dbs]
@@ -1976,7 +1985,7 @@
                 [0 :meta :versionId] := #fhir/id "3"))))
 
         (testing "db since now is empty"
-          (let [db-4->4 (d/since db-4 inst-4)
+          (let [db-4->4 (d/since db-4 plus-4)
                 dbs [db-4->4 db-4]]
             (is (apply = (map d/t dbs)))
             (is (apply = (map d/basis-t dbs)))
