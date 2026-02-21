@@ -93,7 +93,9 @@
                     blaze.core]
                   :compile-opts
                   {:direct-linking true
-                   :elide-meta [:doc :file :line :added]}})
+                   :elide-meta [:doc :file :line :added]}
+                  :java-opts
+                  ["--enable-native-access=ALL-UNNAMED"]})
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis

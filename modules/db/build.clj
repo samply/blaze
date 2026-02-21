@@ -17,8 +17,9 @@
                 "ValueSet-Database"]]
     (b/copy-file
      {:src (str "../../job-ig/fsh-generated/resources/" file ".json")
-      :target (str "resources/blaze/db/" file ".json")})))
+      :target (str "target/generated-resources/blaze/db/" file ".json")})))
 
 (defn all [_]
   (compile nil)
-  (copy-profiles nil))
+  (copy-profiles nil)
+  (b/write-file {:path "target/prep-done" :string ""}))

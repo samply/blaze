@@ -26,6 +26,6 @@ validator_cli.jar:
 	wget https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target resources
+	rm -rf .clj-kondo/.cache .cpcache target
 
 .PHONY: fmt lint prep build test test-coverage cloc-prod cloc-test clean

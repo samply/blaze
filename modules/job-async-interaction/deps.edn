@@ -1,4 +1,4 @@
-{:paths ["src" "resources"]
+{:paths ["src" "target/generated-resources"]
 
  :deps
  {blaze/job-scheduler
@@ -13,7 +13,7 @@
  :deps/prep-lib
  {:alias :build
   :fn copy-profiles
-  :ensure "resources/blaze/job/async_interaction"}
+  :ensure "target/generated-resources"}
 
  :aliases
  {:build

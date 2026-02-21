@@ -1,4 +1,4 @@
-{:paths ["src" "resources"]
+{:paths ["src" "target/generated-resources"]
 
  :deps
  {blaze/db
@@ -37,7 +37,7 @@
  :deps/prep-lib
  {:alias :build
   :fn download-loinc
-  :ensure "resources/blaze/terminology_service/local/code_system/loinc"}
+  :ensure "target/prep-done"}
 
  :aliases
  {:build

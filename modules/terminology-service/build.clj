@@ -47,5 +47,6 @@
 (defn download-loinc [_]
   (download-file "https://speicherwolke.uni-leipzig.de/index.php/s/S8Bej7LPjbGACdo/download/Loinc_2.78.zip" "loinc.zip")
   (verify-download "loinc.zip" "ab5528a4c703bdc79deabbdd5e1def1335d127a643da97b68f686814ed526d46")
-  (b/unzip {:zip-file "loinc.zip" :target-dir "resources/blaze/terminology_service/local/code_system/loinc"})
-  (b/delete {:path "loinc.zip"}))
+  (b/unzip {:zip-file "loinc.zip" :target-dir "target/generated-resources/blaze/terminology_service/local/code_system/loinc"})
+  (b/delete {:path "loinc.zip"})
+  (b/write-file {:path "target/prep-done" :string ""}))
