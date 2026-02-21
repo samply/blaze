@@ -1,4 +1,4 @@
-{:paths ["src" "resources" "java" "target/classes"]
+{:paths ["src" "resources" "java" "target/classes" "target/generated-resources"]
 
  :deps
  {blaze/async
@@ -49,7 +49,7 @@
  :deps/prep-lib
  {:alias :build
   :fn all
-  :ensure "target/classes"}
+  :ensure "target/prep-done"}
 
  :aliases
  {:build

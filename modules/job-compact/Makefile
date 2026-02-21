@@ -23,6 +23,6 @@ cloc-test:
 	cloc test
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target resources
+	rm -rf .clj-kondo/.cache .cpcache target
 
 .PHONY: fmt lint prep build test test-coverage cloc-prod cloc-test clean

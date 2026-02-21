@@ -58,9 +58,10 @@
 (defn download-definitions [{:keys [version]}]
   (download-file (format "https://hl7.org/fhir/%s/definitions.json.zip" (download-versions version)) "definitions.zip")
   (verify-download "definitions.zip" "ecd74b1d57d86869992b4171e490d1a3fcebb8877110756b73f7be0f7159f534")
-  (b/unzip {:zip-file "definitions.zip" :target-dir (str "resources/blaze/fhir/" version)})
+  (b/unzip {:zip-file "definitions.zip" :target-dir (str "target/generated-resources/blaze/fhir/" version)})
   (b/delete {:path "definitions.zip"}))
 
 (defn all [_]
   (compile nil)
-  (download-definitions {:version "4.0.1"}))
+  (download-definitions {:version "4.0.1"})
+  (b/write-file {:path "target/prep-done" :string ""}))

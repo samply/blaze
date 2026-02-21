@@ -1,5 +1,5 @@
 fmt:
-	cljfmt --file-pattern "\.(clj|edn)?$$" check resources src test build.clj deps.edn tests.edn
+	cljfmt --file-pattern "\.(clj|edn)?$$" check src test build.clj deps.edn tests.edn
 
 lint:
 	clj-kondo --lint src test build.clj deps.edn
@@ -29,6 +29,6 @@ cloc-test:
 	cloc test
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target resources/blaze/terminology_service/local/code_system/loinc
+	rm -rf .clj-kondo/.cache .cpcache target
 
 .PHONY: fmt lint prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean

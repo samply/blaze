@@ -16,7 +16,9 @@ function readBundle(name: string): Bundle {
 }
 
 function readStructureDefinitionFrom(file: string, name: string): StructureDefinition | undefined {
-  const bundle = readBundle(`../fhir-structure/resources/blaze/fhir/4.0.1/profiles-${file}.json`);
+  const bundle = readBundle(
+    `../fhir-structure/target/generated-resources/blaze/fhir/4.0.1/profiles-${file}.json`
+  );
   return bundle.entry?.find((e) => e.resource?.id === name)?.resource as StructureDefinition;
 }
 

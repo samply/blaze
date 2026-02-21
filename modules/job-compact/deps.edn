@@ -1,4 +1,4 @@
-{:paths ["resources" "src"]
+{:paths ["src" "target/generated-resources"]
 
  :deps
  {blaze/job-scheduler
@@ -17,7 +17,7 @@
  :deps/prep-lib
  {:alias :build
   :fn copy-profiles
-  :ensure "resources/blaze/job/compact"}
+  :ensure "target/generated-resources"}
 
  :aliases
  {:build

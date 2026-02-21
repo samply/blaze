@@ -37,9 +37,7 @@ cloc-prod:
 cloc-test:
 	cloc test
 
-IG_PROFILES := $(wildcard resources/blaze/db/[A-Z]*.json)
-
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target $(IG_PROFILES)
+	rm -rf .clj-kondo/.cache .cpcache target
 
 .PHONY: fmt lint prep build test test-coverage deps-tree deps-list cloc-prod cloc-test clean

@@ -35,6 +35,6 @@ cloc-test:
 	cloc test
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target resources/blaze/fhir/*
+	rm -rf .clj-kondo/.cache .cpcache target
 
 .PHONY: fmt lint prep build test test-coverage deps-tree deps-list cloc-prod cloc-test clean
