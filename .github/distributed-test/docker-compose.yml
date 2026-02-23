@@ -63,7 +63,7 @@ services:
         condition: service_healthy
 
   cassandra-1:
-    image: "cassandra:5.0.6@sha256:1db58146a934222d329f5ff90f89ebc2b2fe28955ab3e2cd2be271167d76ba7a"
+    image: "cassandra:5.0.6@sha256:2c74bccb038a57ec3d568ea3dd5353652f70efd8746b1901d73fdb7f372874e9"
     volumes:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
@@ -77,7 +77,7 @@ services:
       retries: 10
 
   cassandra-2:
-    image: "cassandra:5.0.6@sha256:1db58146a934222d329f5ff90f89ebc2b2fe28955ab3e2cd2be271167d76ba7a"
+    image: "cassandra:5.0.6@sha256:2c74bccb038a57ec3d568ea3dd5353652f70efd8746b1901d73fdb7f372874e9"
     volumes:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
@@ -91,7 +91,7 @@ services:
       retries: 10
 
   cassandra-init-data:
-    image: "cassandra:5.0.6@sha256:1db58146a934222d329f5ff90f89ebc2b2fe28955ab3e2cd2be271167d76ba7a"
+    image: "cassandra:5.0.6@sha256:2c74bccb038a57ec3d568ea3dd5353652f70efd8746b1901d73fdb7f372874e9"
     command: "cqlsh -f /scripts/cassandra-init.cql"
     environment:
       CQLSH_HOST: "cassandra-1"
