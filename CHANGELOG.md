@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.5.1
+
+### Bugfixes
+
+* Fix FHIR _lastUpdated Inequality Search False Positives ([#3367](https://github.com/samply/blaze/issues/3367))
+* Fix Missing FHIR Types in OperationOutcome ([#3365](https://github.com/samply/blaze/issues/3365))
+* Fix CQL Operator InCodeSystem with external TS ([#3349](https://github.com/samply/blaze/issues/3349))
+* Fix Sorting by _lastUpdated ([#904](https://github.com/samply/blaze/issues/904))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/120?closed=1).
+
 ## v1.5.0
 
 ### Notes
