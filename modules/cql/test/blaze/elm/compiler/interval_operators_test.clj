@@ -714,7 +714,56 @@
 ;;
 ;; Normalized to Contains
 (deftest compile-in-test
-  (ctu/unsupported-binary-operand "In"))
+  (testing "first argument null"
+    (testing "Static"
+      (is (nil? (c/compile {} (elm/in [{:type "Null"} #elm/interval [#elm/integer "0" #elm/integer "1"]])))))
+
+    (testing "Dynamic"
+      (is (false? (ctu/dynamic-compile-eval
+                    (elm/in [#elm/integer "1" #elm/parameter-ref "nil"]))))))
+
+  (testing "Interval"
+    (testing "Integer"
+      (are [x interval pred] (pred (c/compile {} (elm/in [x interval])))
+                             #elm/integer "1" #elm/interval [#elm/integer "1" #elm/integer "1"] true?
+                             #elm/integer "2" #elm/interval [#elm/integer "1" #elm/integer "1"] false?
+                             {:type "Null"} #elm/interval [#elm/integer "1" #elm/integer "1"] nil?))
+
+    (testing "Date"
+      (are [x interval pred] (pred (c/compile {} (elm/in [x interval])))
+                             #elm/date "2020" #elm/interval [#elm/date "2019" #elm/date "2021"] true?
+                             #elm/date-time "2020-05-15T17:12" #elm/interval [#elm/date "2019" #elm/date "2021"] true?
+                             #elm/date "2020" #elm/interval [#elm/date-time "2019-05-15T17:12" #elm/date-time "2021-05-15T17:12"] true?
+                             #elm/date "2022" #elm/interval [#elm/date "2019" #elm/date "2021"] false?
+                             {:type "Null"} #elm/interval [#elm/date "2019" #elm/date "2021"] nil?))
+
+    (testing "Date with precision"
+      (testing "Static"
+        (are [x interval pred] (pred (c/compile {} (elm/in [x interval "year"])))
+                               #elm/date "2020" #elm/interval [#elm/date "2019" #elm/date "2021"] true?
+                               #elm/date "2022" #elm/interval [#elm/date "2019" #elm/date "2021"] false?
+                               {:type "Null"} #elm/interval [#elm/date "2019" #elm/date "2021"] nil?))
+
+      (testing "Dynamic"
+        (are [x interval pred] (pred (ctu/dynamic-compile-eval (elm/in [x interval "year"])))
+                               #elm/date "2020" #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] true?
+                               #elm/date "2022" #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] false?
+                               {:type "Null"} #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] nil?))))
+
+  (testing "List"
+    (are [x list pred] (pred (core/-eval (c/compile {} (elm/in [x list])) {} nil nil))
+                       #elm/integer "1" #elm/list [] false?
+
+                       #elm/integer "1" #elm/list [#elm/integer "1"] true?
+                       #elm/integer "2" #elm/list [#elm/integer "1"] false?
+
+                       #elm/quantity [100 "cm"] #elm/list [#elm/quantity [1 "m"]] true?
+
+                       #elm/date "2019-01" #elm/list [#elm/date "2019"] false?
+
+                       {:type "Null"} #elm/list [] nil?))
+
+  (ctu/testing-binary-precision-op elm/in))
 
 ;; 19.13. Includes
 ;;

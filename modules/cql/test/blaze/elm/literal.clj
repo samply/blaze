@@ -616,6 +616,14 @@
 (defn except [ops]
   {:type "Except" :operand ops})
 
+;; 19.12. In
+(defn in [[x list precision]]
+  (cond->
+    {:type "In"
+     :operand [x list]}
+    precision
+    (assoc :precision precision)))
+
 ;; 19.13. Includes
 (defn includes [[x y precision]]
   (cond->

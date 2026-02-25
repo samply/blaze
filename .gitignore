@@ -5,3 +5,6 @@ classes
 .nrepl-port
 fhir-tx-ecosystem-ig
 validator_cli.jar
+.idea
+**/.clj-kondo
+**/*.iml

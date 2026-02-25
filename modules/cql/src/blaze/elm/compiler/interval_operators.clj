@@ -139,9 +139,9 @@
 ;; TODO 19.11. Expand
 
 ;; 19.12. In
-(defmethod core/compile* :elm.compiler.type/in
-  [_ _]
-  (throw (Exception. "Unsupported In expression. Please normalize the ELM tree before compiling.")))
+(defbinopp in
+  [x list-or-interval precision]
+  (p/contains list-or-interval x precision))
 
 ;; 19.13. Includes
 (defbinopp includes [x y precision]
