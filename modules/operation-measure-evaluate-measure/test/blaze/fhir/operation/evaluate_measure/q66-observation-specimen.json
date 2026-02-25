@@ -1,0 +1,629 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "0",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "258503004"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "collection": {
+          "collectedDateTime": "2023-01-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "0",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "50697-2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "effectiveDateTime": "2023-01-01",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "10828004"
+            }
+          ]
+        },
+        "specimen": {
+          "reference": "Specimen/0"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "1",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "472862007"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/1"
+        },
+        "collection": {
+          "collectedPeriod": {
+            "start": "2023-01-01",
+            "end": "2023-01-02"
+          }
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "1",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "50697-2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/1"
+        },
+        "effectiveDateTime": "2023-01-02",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "10828004"
+            }
+          ]
+        },
+        "specimen": {
+          "reference": "Specimen/1"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "2",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "258505006"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/2"
+        },
+        "collection": {
+          "collectedDateTime": "2027-01-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "2",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "50697-2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/2"
+        },
+        "effectiveDateTime": "2023-01-01",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "10828004"
+            }
+          ]
+        },
+        "specimen": {
+          "reference": "Specimen/2"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "3"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "3",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "111111"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/3"
+        },
+        "collection": {
+          "collectedDateTime": "2023-01-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "3",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "50697-2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/3"
+        },
+        "effectiveDateTime": "2023-01-01",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "10828004"
+            }
+          ]
+        },
+        "specimen": {
+          "reference": "Specimen/3"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "4"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/4"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "4",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "472885008"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/4"
+        },
+        "collection": {
+          "collectedDateTime": "2023-01-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/4"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "4",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "50697-2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/4"
+        },
+        "effectiveDateTime": "2023-01-01",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "222222"
+            }
+          ]
+        },
+        "specimen": {
+          "reference": "Specimen/4"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/4"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "5"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/5"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "5",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "258503004"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/5"
+        },
+        "collection": {
+          "collectedDateTime": "2023-01-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/5"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "5",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/5"
+        },
+        "effectiveDateTime": "2023-01-01",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "10828004"
+            }
+          ]
+        },
+        "specimen": {
+          "reference": "Specimen/5"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/5"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "6"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/6"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "6",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "258503004"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/6"
+        },
+        "collection": {
+          "collectedDateTime": "2023-01-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/6"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "6",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "50697-2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/6"
+        },
+        "effectiveDateTime": "2027-01-01",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "10828004"
+            }
+          ]
+        },
+        "specimen": {
+          "reference": "Specimen/6"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/6"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "7"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/7"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "7",
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "258503004"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/7"
+        },
+        "collection": {
+          "collectedDateTime": "2023-01-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/7"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "7",
+        "status": "final",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252318005"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "50697-2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/7"
+        },
+        "effectiveDateTime": "2023-01-01",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "10828004"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/7"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql-identifier",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}
