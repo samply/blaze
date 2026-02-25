@@ -49,6 +49,7 @@ Before finishing a task, ensure the following commands pass:
 1.  **Format:** `make fmt`
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
 3.  **Test:** `make test` (Runs module and root tests)
+4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage)
 
 ## General Rules
 
