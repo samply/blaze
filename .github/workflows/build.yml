@@ -83,7 +83,7 @@ jobs:
       run: make validate
 
     - name: Upload Profiles
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources/*.json
@@ -184,7 +184,7 @@ jobs:
         key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Download Job IG Profiles
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
@@ -202,7 +202,7 @@ jobs:
 
     - name: Upload Coverage Report
       if: ${{ matrix.java-version == '21' && matrix.module != 'db' && matrix.module != 'jepsen' }}
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: coverage-report-${{ matrix.module }}
         path: modules/${{ matrix.module }}/target/coverage/codecov.json
@@ -248,7 +248,7 @@ jobs:
         key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Download Job IG Profiles
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
@@ -334,7 +334,7 @@ jobs:
         key: ${{ runner.os }}-gitlibs-db-coverage-${{ hashFiles('modules/db/deps.edn') }}
 
     - name: Download Job IG Profiles
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
@@ -351,7 +351,7 @@ jobs:
       run: .github/scripts/fix-codecov-path.sh db
 
     - name: Upload Coverage Report
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: coverage-report-db-${{ matrix.kind }}
         path: modules/db/target/coverage/codecov.json
@@ -394,7 +394,7 @@ jobs:
         key: ${{ runner.os }}-gitlibs-${{ hashFiles('deps.edn') }}
 
     - name: Download Job IG Profiles
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
@@ -408,7 +408,7 @@ jobs:
 
     steps:
     - name: Download Coverage Reports
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         pattern: coverage-report-*
 
@@ -452,7 +452,7 @@ jobs:
         key: ${{ runner.os }}-gitlibs-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
@@ -461,7 +461,7 @@ jobs:
       run: make uberjar
 
     - name: Upload Blaze Uberjar
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: blaze-uberjar
         path: target/blaze-*-standalone.jar
@@ -477,7 +477,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: blaze-image
         path: /tmp/blaze.tar
@@ -521,7 +521,7 @@ jobs:
       run: make build-frontend
 
     - name: Upload Frontend Build Directory
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: blaze-frontend-build-dir
         path: modules/frontend/build
@@ -537,7 +537,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze-frontend.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: blaze-frontend-image
         path: /tmp/blaze-frontend.tar
@@ -555,7 +555,7 @@ jobs:
 
     steps:
     - name: Download Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: ${{ matrix.image }}-image
         path: /tmp
@@ -598,7 +598,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -789,7 +789,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -1434,7 +1434,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -1678,7 +1678,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -1763,7 +1763,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -1829,7 +1829,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -1920,7 +1920,7 @@ jobs:
         key: fhir-packages-integration-test-validation
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2006,7 +2006,7 @@ jobs:
         key: fhir-packages-terminology-tests
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2064,7 +2064,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2110,7 +2110,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2160,7 +2160,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2206,7 +2206,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2246,7 +2246,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2281,7 +2281,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2310,7 +2310,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2346,7 +2346,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2407,7 +2407,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2442,7 +2442,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2480,7 +2480,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2514,7 +2514,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2561,7 +2561,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2609,7 +2609,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2618,7 +2618,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Download Blaze Frontend Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-frontend-image
         path: /tmp
@@ -2665,7 +2665,7 @@ jobs:
     - name: Run Playwright Tests
       run: make -C modules/frontend-e2e test
 
-    - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+    - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
       with:
         name: playwright-report
         path: modules/frontend-e2e/playwright-report/
@@ -2679,7 +2679,7 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2735,7 +2735,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2811,7 +2811,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-image
         path: /tmp
@@ -2912,20 +2912,20 @@ jobs:
 
     - name: Download Blaze Uberjar
       if: ${{ matrix.image.context == '.' }}
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-uberjar
         path: target
 
     - name: Download Frontend Build Directory
       if: ${{ matrix.image.context == 'modules/frontend' }}
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: blaze-frontend-build-dir
         path: modules/frontend/build
 
     - name: Download Image
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8
       with:
         name: ${{ matrix.image.name }}-image
         path: /tmp
