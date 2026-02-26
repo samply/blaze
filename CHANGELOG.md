@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.6.0
+
+### Enhancements
+
+* Support Multiple Codings in Terminology Operations ([#3347](https://github.com/samply/blaze/issues/3347))
+
+### Bugfixes
+
+* Fix Incomplete CQL Operator Normalization ([#3386](https://github.com/samply/blaze/issues/3386))
+ 
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/119?closed=1).
+
 ## v1.5.1
 
 ### Bugfixes
