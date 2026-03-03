@@ -5,6 +5,10 @@ GET [base]/[type]?param1=value&...
 POST [base]/[type]/_search
 ```
 
+## Handling Errors
+
+By default, Blaze ignores unknown or unsupported search parameters. If you prefer to get an error instead, you can set the `Prefer` header to `handling=strict`. In this case, Blaze will return a `400 Bad Request` with an `OperationOutcome` detailing the unknown or unsupported search parameters.
+
 ## Implemented Modifiers
 
 The following search param modifiers are supported:

@@ -44,6 +44,8 @@ Rigorous adherence to these patterns is required:
 
 ## Verification & Workflow
 
+When starting to work on an issue, you can use the GitHub CLI to fetch the issue details: `gh issue view <issue-number>`
+
 Before finishing a task, ensure the following commands pass:
 
 1.  **Format:** `make fmt`
@@ -51,6 +53,10 @@ Before finishing a task, ensure the following commands pass:
 3.  **Test:** `make test` (Runs module and root tests)
 4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage)
 
-## General Rules
+After verification, when working on an issue:
 
-* **Do not commit changes:** Never commit changes to the git repository. The user will handle committing.
+1. Create a feature branch using the GitHub CLI: `gh issue develop <issue-number> --checkout`
+2. Commit the changes: `git add .` and `git commit`
+   * The commit title should be the issue title.
+   * The commit body should just contain: `Closes: #<issue-number>`
+3. There should be exactly one commit per issue. Multiple changes have to be ammended to the first commit.
