@@ -5,7 +5,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 test_data_dir="$script_dir/../test-data/kds-testdata-2024.0.1/resources"
 
-java -jar validator_cli.jar -version 4.0.1 -level error \
+java -Xmx8g -jar validator_cli.jar -version 4.0.1 -level error \
   -output-style csv -output result.csv \
   -tx http://localhost:8080/fhir -authorise-non-conformant-tx-servers \
   -clear-tx-cache \
