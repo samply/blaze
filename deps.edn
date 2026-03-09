@@ -104,7 +104,7 @@
   :emacs-repl
   {:extra-deps
    {nrepl/nrepl
-    {:mvn/version "1.5.2"}
+    {:mvn/version "1.6.0"}
 
     ;; Emacs middleware below this line
 
