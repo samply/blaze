@@ -22,7 +22,7 @@
   {:mvn/version "8.8.0"}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.r5
-  {:mvn/version "6.8.1"}
+  {:mvn/version "6.8.2"}
 
   ;; this dependency is only here because otherwise it gets loaded concurrently
   ;; which breaks caching
