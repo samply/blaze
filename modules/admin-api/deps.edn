@@ -35,7 +35,7 @@
   {:local/root "../spec"}
 
   fi.metosin/reitit-openapi
-  {:mvn/version "0.10.0"
+  {:mvn/version "0.10.1"
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation
