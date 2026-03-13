@@ -2943,7 +2943,7 @@ jobs:
       uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
     - name: Login to GHCR
-      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2951,7 +2951,7 @@ jobs:
 
     - name: Login to DockerHub
       if: env.dockerhub_username != ''
-      uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
         username: ${{ env.dockerhub_username }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
