@@ -467,7 +467,7 @@ jobs:
         path: target/blaze-*-standalone.jar
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
     - name: Build and Export to Docker
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
@@ -527,7 +527,7 @@ jobs:
         path: modules/frontend/build
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
     - name: Build and Export to Docker
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
@@ -2937,7 +2937,7 @@ jobs:
       uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
     - name: Install Cosign
       uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
