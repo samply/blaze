@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.code-system.loinc-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :as api-stub]
    [blaze.fhir.test-util]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service.local.code-system :as-alias cs]
@@ -15,10 +15,9 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
-   :blaze.test/fixed-clock {}
+   api-stub/mem-node-config
    :blaze.test/incrementing-rng-fn {}
    ::cs/loinc {}))
 

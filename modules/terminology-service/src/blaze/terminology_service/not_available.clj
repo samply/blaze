@@ -14,6 +14,8 @@
   [_ _]
   (log/info "Init not-available terminology service")
   (reify p/TerminologyService
+    (-post-init [_ _])
+
     (-code-systems [_]
       (ac/completed-future unsupported-anom))
 

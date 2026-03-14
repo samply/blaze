@@ -2,6 +2,17 @@
   (:require
    [blaze.terminology-service.protocols :as p]))
 
+(defn post-init!
+  "Post intitialization hat supplies the database node and ensuares that
+  built-in code systems exist.
+
+  The database node can't be supplied at normal initialization, because the
+  terminology service is needed by the node itself.
+
+  This function will block and return an anomaly on erros."
+  [terminology-service node]
+  (p/-post-init terminology-service node))
+
 (defn code-systems
   "Returns a CompletableFuture that will complete with a list of
   TerminologyCapabilities codeSystem entries or will complete exceptionally with
