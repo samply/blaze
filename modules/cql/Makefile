@@ -5,7 +5,7 @@ lint:
 	clj-kondo --fail-level error --lint src test deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -X:deps prep :aliases '[:test]'
 
 cql-test:
     # Please remove --no-check-certificate if the certificate is ok gain.

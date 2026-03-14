@@ -143,6 +143,7 @@ jobs:
         - scheduler
         - server
         - terminology-service
+        - terminology-service-local
         - thread-pool-executor-collector
 
         java-version:

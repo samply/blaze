@@ -5,7 +5,7 @@ lint:
 	clj-kondo --lint src test deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -X:deps prep :aliases '[:test]'
 
 test: prep
 	clojure -M:test:kaocha --profile :ci

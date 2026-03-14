@@ -1,11 +1,11 @@
-(ns blaze.terminology-service.local.code-system.bcp-13-test
+(ns blaze.terminology-service.local.code-system.ucum-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :as api-stub]
    [blaze.fhir.test-util]
    [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.terminology-service.local.code-system.bcp-13 :as bcp-13]
+   [blaze.terminology-service.local.code-system.ucum :as ucum]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]))
@@ -14,20 +14,19 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
-   :blaze.test/fixed-clock {}
+   api-stub/mem-node-config
    :blaze.test/incrementing-rng-fn {}))
 
 (deftest ensure-code-system-test
   (with-system [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock incrementing-rng-fn]} config]
     (let [context {:node node :clock fixed-clock :rng-fn incrementing-rng-fn}]
       (testing "after creation"
-        (let [db @(bcp-13/ensure-code-system context)]
+        (let [db @(ucum/ensure-code-system context)]
 
           (testing "the code system is available"
             (is (= 1 (d/type-total db "CodeSystem"))))))
 
       (testing "a second call does nothing"
-        (is (nil? @(bcp-13/ensure-code-system context)))))))
+        (is (nil? @(ucum/ensure-code-system context)))))))

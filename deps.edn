@@ -67,6 +67,9 @@
   blaze/terminology-service
   {:local/root "modules/terminology-service"}
 
+  blaze/terminology-service-local
+  {:local/root "modules/terminology-service-local"}
+
   blaze/thread-pool-executor-collector
   {:local/root "modules/thread-pool-executor-collector"}
 
@@ -216,6 +219,7 @@
     "-d" "modules/server"
     "-d" "modules/spec"
     "-d" "modules/terminology-service"
+    "-d" "modules/terminology-service-local"
     "-d" "modules/test-util"
     "-d" "modules/thread-pool-executor-collector"
     "--exclude" "org.antlr/antlr4"

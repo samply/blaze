@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.code-system-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.code-system-spec]
    [blaze.test-util :as tu]
@@ -15,7 +15,7 @@
 
 (deftest list-test
   (testing "with one code system"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "id-160617"
                :url #fhir/uri "system-192435"
                :content #fhir/code "complete"}]]]
@@ -30,7 +30,7 @@
     (testing "with same URL"
       (testing "which are identical"
         (testing "created in the same transaction"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :content #fhir/code "complete"}]
@@ -47,7 +47,7 @@
                 [0 val 1 :id] := "id-0"))))
 
         (testing "created in different transactions"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri "system-192435"
                      :content #fhir/code "complete"}]]
@@ -65,7 +65,7 @@
 
       (testing "with different versions"
         (testing "major only"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :version #fhir/string "2"
@@ -84,7 +84,7 @@
                 [0 val 1 :id] := "id-1"))))
 
         (testing "same major but different numeric minor"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :version #fhir/string "1.10"
@@ -103,7 +103,7 @@
                 [0 val 1 :id] := "id-1"))))
 
         (testing "same major but different mixed minor"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :version #fhir/string "1.a"
@@ -122,7 +122,7 @@
                 [0 val 1 :id] := "id-1"))))
 
         (testing "major and major.minor"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :version #fhir/string "2"
@@ -141,7 +141,7 @@
                 [0 val 1 :id] := "id-1"))))
 
         (testing "active version comes before no version"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :status #fhir/code "active"
@@ -161,7 +161,7 @@
                 [0 val 1 :id] := "id-1"))))
 
         (testing "active version comes before draft version"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :version #fhir/string "1.1"
@@ -182,7 +182,7 @@
                 [0 val 1 :id] := "id-1"))))
 
         (testing "draft version comes before retired version"
-          (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri "system-192435"
                      :version #fhir/string "1.1"

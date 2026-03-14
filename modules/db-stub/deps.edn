@@ -5,4 +5,7 @@
   {:local/root "../db"}
 
   blaze/fhir-test-util
-  {:local/root "../fhir-test-util"}}}
+  {:local/root "../fhir-test-util"}
+
+  blaze/terminology-service-local
+  {:local/root "../terminology-service-local"}}}

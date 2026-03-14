@@ -2,6 +2,15 @@
  {blaze/fhir-client
   {:local/root "../fhir-client"}
 
+  blaze/cache-collector
+  {:local/root "../cache-collector"}
+
+  blaze/metrics
+  {:local/root "../metrics"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
   blaze/terminology-service
   {:local/root "../terminology-service"}}
 
