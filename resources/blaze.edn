@@ -1456,8 +1456,7 @@
     {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
     :blaze.terminology-service/local
-    {:node #blaze/ref :blaze.db.main/node
-     :clock #blaze/ref :blaze/clock
+    {:clock #blaze/ref :blaze/clock
      :rng-fn #blaze/ref :blaze/rng-fn
      :graph-cache #blaze/ref :blaze.terminology-service.local/graph-cache
      :enable-bcp-13 true

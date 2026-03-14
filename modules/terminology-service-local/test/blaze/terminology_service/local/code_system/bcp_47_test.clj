@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.code-system.bcp-47-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :as api-stub]
    [blaze.fhir.test-util]
    [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
@@ -14,10 +14,9 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
-   :blaze.test/fixed-clock {}
+   api-stub/mem-node-config
    :blaze.test/incrementing-rng-fn {}))
 
 (deftest ensure-code-system-test

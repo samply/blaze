@@ -81,6 +81,7 @@
     blaze.job.compact job-compact
     blaze.middleware.fhir.db db
     blaze.middleware.fhir.output fhir-output
+    blaze.module.test-util mtu
     blaze.rest-api.header header
     blaze.scheduler sched
     blaze.terminology-service ts

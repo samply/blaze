@@ -1,19 +1,16 @@
 fmt:
-	cljfmt --file-pattern "\.(clj|edn)?$$" check src test build.clj deps.edn tests.edn
+	cljfmt --file-pattern "\.(clj|edn)?$$" check src test deps.edn tests.edn
 
 lint:
-	clj-kondo --lint src test build.clj deps.edn
+	clj-kondo --lint src test deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -X:deps prep :aliases '[:test]'
 
-build: prep
-	clojure -T:build download-loinc
-
-test: build
+test: prep
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: build
+test-coverage: prep
 	clojure -M:test:coverage
 
 deps-tree:

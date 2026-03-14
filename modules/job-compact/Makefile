@@ -5,7 +5,7 @@ lint:
 	clj-kondo --lint src test build.clj deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -X:deps prep :aliases '[:test]'
 
 build: prep
 	clojure -T:build copy-profiles
