@@ -69,6 +69,8 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       MAX_HEAP_SIZE: "2G"
+    ulimits:
+      memlock: -1
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -83,6 +85,8 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       MAX_HEAP_SIZE: "2G"
+    ulimits:
+      memlock: -1
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
