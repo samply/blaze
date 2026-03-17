@@ -14,6 +14,7 @@
    [blaze.terminology-service.local.code-system.sct]
    [blaze.terminology-service.local.code-system.ucum]
    [blaze.terminology-service.local.graph :as graph]
+   [blaze.terminology-service.local.lookup :as lookup]
    [blaze.terminology-service.local.validate-code :as vc]
    [blaze.terminology-service.local.value-set.validate-code.issue :as issue]))
 
@@ -106,6 +107,12 @@
 
 (defn- assoc-system-info [clause {{url :value} :url {version :value} :version}]
   (cond-> clause url (assoc :system url) version (assoc :version version)))
+
+(defn lookup
+  "Returns a Parameters resource that contains the response from the code lookup."
+  [code-system params]
+  (when-ok [concept (find-code code-system params)]
+    (lookup/parameters-from-concept code-system concept)))
 
 (defn- validate-code*
   [code-system params]

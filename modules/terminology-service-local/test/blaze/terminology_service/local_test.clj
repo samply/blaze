@@ -324,6 +324,543 @@
 
       (is (empty? @(ts/code-systems ts))))))
 
+(defn- code-system-lookup [ts & nvs]
+  (ts/code-system-lookup ts (apply fu/parameters nvs)))
+
+(deftest code-system-lookup-fails-test
+  (with-system [{ts ::ts/local} config]
+    (testing "no parameters"
+      (given-failed-future (code-system-lookup ts)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing one of the parameters `code` or `coding`."))
+
+    (testing "missing system"
+      (given-failed-future (code-system-lookup ts
+                             "code" #fhir/code "code-212423")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing parameter `system`."))
+
+    (testing "missing code"
+      (given-failed-future (code-system-lookup ts
+                             "system" #fhir/uri "system-194718")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing one of the parameters `code` or `coding`."))
+
+    (testing "incomplete coding"
+      (given-failed-future (code-system-lookup ts
+                             "coding" #fhir/Coding{})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing one or more required parameters in `coding` (`code`, `system`).")
+
+      (given-failed-future (code-system-lookup ts
+                             "coding" #fhir/Coding{:system #fhir/uri "system-194718"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing one or more required parameters in `coding` (`code`, `system`).")
+
+      (given-failed-future (code-system-lookup ts
+                             "coding" #fhir/Coding{:code #fhir/code "code-212423"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing one or more required parameters in `coding` (`code`, `system`)."))
+
+    (testing "coding version mismatch"
+      (given-failed-future (code-system-lookup ts
+                             "system" #fhir/uri "system-194718"
+                             "version" #fhir/string "version-203135"
+                             "coding" #fhir/Coding {:code #fhir/code "code-203107"
+                                                    :version #fhir/string "version-203128"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Parameter `version` differs from parameter `coding.version`."))
+
+    (testing "unsupported param"
+      (given-failed-future (code-system-lookup ts
+                             "date" #fhir/dateTime #system/date-time "2025")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported parameter `date`."))
+
+    (testing "not found"
+      (testing "system"
+        (given-failed-future (code-system-lookup ts
+                               "system" #fhir/uri "system-194718"
+                               "code" #fhir/code "code-083955")
+          ::anom/category := ::anom/not-found
+          ::anom/message := "The code system `system-194718` was not found."))
+
+      (testing "system and version"
+        (given-failed-future (code-system-lookup ts
+                               "system" #fhir/uri "system-144258"
+                               "code" #fhir/code "code-083955"
+                               "version" #fhir/string "version-144244")
+          ::anom/category := ::anom/not-found
+          ::anom/message := "The code system `system-144258|version-144244` was not found.")))
+
+    (testing "with non-complete code system"
+      (doseq [content ["not-present" "example" "supplement"]]
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "system-115910"
+                   :content (type/code content)}]]]
+
+          (given-failed-future (code-system-lookup ts
+                                 "system" #fhir/uri "system-115910"
+                                 "code" #fhir/code "code-115927")
+            ::anom/category := ::anom/conflict
+            ::anom/message := (format "Can't use the code system `system-115910` because it's content is not one of complete, fragment. It's content is `%s`." content)))))))
+
+(deftest code-system-lookup-test
+  (testing "status property with type Coding doesn't crash"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :name #fhir/string "name-134300"
+               :url #fhir/uri "system-115910"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-154735"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem.concept/property
+                   :code #fhir/code "status"
+                   :value
+                   #fhir/Coding{:system #fhir/uri "http://devices.fhir.org/CodeSystem/MDC-concept-status",
+                                :code #fhir/code "published"}}]}]}]]]
+
+      (given @(code-system-lookup ts
+                "system" #fhir/uri "system-115910"
+                "code" #fhir/code "code-154735")
+        :fhir/type := :fhir/Parameters
+        [(parameter "name") 0 :value :value] := "name-134300")))
+
+  (testing "with url"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :name #fhir/string "name-134300"
+               :version #fhir/string "version-203456"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-115927"
+                 :display #fhir/string "display-112832"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-154735"
+                 :display #fhir/string "display-154737"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem.concept/property
+                   :code #fhir/code "status"
+                   :value #fhir/code "retired"}]}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-155156"
+                 :display #fhir/string "display-155159"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem.concept/property
+                   :code #fhir/code "inactive"
+                   :value #fhir/boolean true}]}]}]]]
+
+      (testing "existing code"
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "system-115910"
+                  "code" #fhir/code "code-115927")
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "name-134300"
+          [(parameter "version") 0 :value] := #fhir/string "version-203456"
+          [(parameter "display") 0 :value] := #fhir/string "display-112832")
+
+        (testing "with version"
+          (given @(code-system-lookup ts
+                    "system" #fhir/uri "system-115910"
+                    "code" #fhir/code "code-115927"
+                    "version" #fhir/string "version-203456")
+            :fhir/type := :fhir/Parameters
+            [(parameter "name") 0 :value] := #fhir/string "name-134300"
+            [(parameter "version") 0 :value] := #fhir/string "version-203456"
+            [(parameter "display") 0 :value] := #fhir/string "display-112832")))
+
+      (testing "non-existing code"
+        (given-failed-future @(code-system-lookup ts
+                                "system" #fhir/uri "system-115910"
+                                "code" #fhir/code "code-153948")
+
+          ::anom/category := ::anom/not-found
+          ::anom/message := "Unknown code `code-153948` was not found in the provided code system."))
+
+      (testing "existing coding"
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "system-115910"
+                  "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                         :code #fhir/code "code-115927"})
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "name-134300"
+          [(parameter "version") 0 :value] := #fhir/string "version-203456"
+          [(parameter "display") 0 :value] := #fhir/string "display-112832")
+
+        (testing "with top-level version"
+          (given @(code-system-lookup ts
+                    "system" #fhir/uri "system-115910"
+                    "version" #fhir/string "version-203456"
+                    "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                           :code #fhir/code "code-115927"})
+            :fhir/type := :fhir/Parameters
+            [(parameter "name") 0 :value] := #fhir/string "name-134300"
+            [(parameter "version") 0 :value] := #fhir/string "version-203456"
+            [(parameter "display") 0 :value] := #fhir/string "display-112832"))
+
+        (testing "with coding version"
+          (given @(code-system-lookup ts
+                    "system" #fhir/uri "system-115910"
+                    "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                           :code #fhir/code "code-115927"
+                                           :version #fhir/string "version-203456"})
+            :fhir/type := :fhir/Parameters
+            [(parameter "name") 0 :value] := #fhir/string "name-134300"
+            [(parameter "version") 0 :value] := #fhir/string "version-203456"
+            [(parameter "display") 0 :value] := #fhir/string "display-112832"))
+
+        (testing "with top-level and coding version"
+          (given @(code-system-lookup ts
+                    "system" #fhir/uri "system-115910"
+                    "version" #fhir/string "version-203456"
+                    "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                           :code #fhir/code "code-115927"
+                                           :version #fhir/string "version-203456"})
+            :fhir/type := :fhir/Parameters
+            [(parameter "name") 0 :value] := #fhir/string "name-134300"
+            [(parameter "version") 0 :value] := #fhir/string "version-203456"
+            [(parameter "display") 0 :value] := #fhir/string "display-112832")))
+
+      (testing "non-existing coding"
+        (testing "with non-existing system"
+          (given-failed-future (code-system-lookup ts
+                                 "system" #fhir/uri "system-115910"
+                                 "coding" #fhir/Coding {:system #fhir/uri "system-170454"
+                                                        :code #fhir/code "code-115927"})
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Parameter `system` differs from parameter `coding.system`."))
+
+        (testing "with non-existing code"
+          (given-failed-future @(code-system-lookup ts
+                                  "system" #fhir/uri "system-115910"
+                                  "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                                         :code #fhir/code "code-153948"})
+            ::anom/category := ::anom/not-found
+            ::anom/message := "Unknown code `code-153948` was not found in the provided code system."))))
+
+    (testing "multiple code-systems with the same url"
+      (testing "the code-system with the higher version number is used"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "system-120349"
+                   :name #fhir/string "name-134300"
+                   :version #fhir/string "1.1.0"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-120333"}]}]
+            [:put {:fhir/type :fhir/CodeSystem :id "1"
+                   :url #fhir/uri "system-120349"
+                   :name #fhir/string "name-141500"
+                   :version #fhir/string "1.0.0"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-120413"}]}]]]
+
+          (given @(code-system-lookup ts
+                    "system" #fhir/uri "system-120349"
+                    "code" #fhir/code "code-120333")
+            :fhir/type := :fhir/Parameters
+            [(parameter "name") 0 :value] := #fhir/string "name-134300"
+            [(parameter "version") 0 :value] := #fhir/string "1.1.0")
+
+          (given-failed-future @(code-system-lookup ts
+                                  "system" #fhir/uri "system-120349"
+                                  "code" #fhir/code "code-120413")
+            ::anom/category := ::anom/not-found
+            ::anom/message := "Unknown code `code-120413` was not found in the provided code system.")))
+
+      (testing "the active code-system is used"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "system-120349"
+                   :name #fhir/string "name-182700"
+                   :status #fhir/code "active"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-120333"}]}]
+            [:put {:fhir/type :fhir/CodeSystem :id "1"
+                   :url #fhir/uri "system-120349"
+                   :name #fhir/string "name-182710"
+                   :status #fhir/code "draft"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-120413"}]}]]]
+
+          (given @(code-system-lookup ts
+                    "system" #fhir/uri "system-120349"
+                    "code" #fhir/code "code-120333")
+            :fhir/type := :fhir/Parameters
+            [(parameter "name") 0 :value] := #fhir/string "name-182700")
+
+          (given-failed-future @(code-system-lookup ts
+                                  "system" #fhir/uri "system-120349"
+                                  "code" #fhir/code "code-120413")
+            ::anom/category := ::anom/not-found
+            ::anom/message := "Unknown code `code-120413` was not found in the provided code system.")))))
+
+  (testing "with coding only"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :name #fhir/string "name-182700"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-115927"}]}]]]
+
+      (given @(code-system-lookup ts
+                "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                       :code #fhir/code "code-115927"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "name") 0 :value] := #fhir/string "name-182700"))
+
+    (testing "with version"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "system-115910"
+                 :name #fhir/string "name-182700"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "1"
+                 :url #fhir/uri "system-115910"
+                 :name #fhir/string "name-182710"
+                 :version #fhir/string "version-124939"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-124951"}]}]]]
+
+        (given @(code-system-lookup ts
+                  "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                         :version #fhir/string "version-124939"
+                                         :code #fhir/code "code-124951"})
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "name-182710"
+          [(parameter "version") 0 :value] := #fhir/string "version-124939")
+
+        (given-failed-future @(code-system-lookup ts
+                                "coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                                       :version #fhir/string "version-124939"
+                                                       :code #fhir/code "code-115927"})
+          ::anom/category := ::anom/not-found
+          ::anom/message := "Unknown code `code-115927` was not found in the provided code system.")))))
+
+(deftest code-system-lookup-bcp-13-test
+  (with-system [{ts ::ts/local} bcp-13-config]
+    (testing "existing code"
+      (doseq [[code]
+              [["text/plain"]
+               ["application/fhir+json"]]]
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "urn:ietf:bcp:13"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "BCP-13"
+          [(parameter "version") 0 :value] := #fhir/string "1.0.0")))
+
+    (testing "non-existing code"
+      (doseq [code ["text-plain" "xx/yyy"]]
+        (given-failed-future @(code-system-lookup ts
+                                "system" #fhir/uri "urn:ietf:bcp:13"
+                                "code" (type/code code))
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "Unknown code `%s` was not found in the provided code system." code))))))
+
+(deftest code-system-lookup-bcp-47-test
+  (with-system [{ts ::ts/local} bcp-47-config]
+    (testing "existing code"
+      (doseq [[code display]
+              [["de" "German"]
+               ["de-DE" "German (Region=Germany)"]
+               ["nn-NO" "Norwegian Nynorsk (Region=Norway)"]
+               ["dje-Latn-NE" "Zarma (Script=Latin, Region=Niger)"]
+               ["sr-Cyrl-ME" "Serbian (Script=Cyrillic, Region=Montenegro)"]]]
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "urn:ietf:bcp:47"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "BCP-47"
+          [(parameter "version") 0 :value] := #fhir/string "1.0.0"
+          [(parameter "display") 0 :value] := (type/string display))))
+
+    (testing "non-existing code"
+      (doseq [code ["xx-yyy" "de-XYZ"]]
+        (given-failed-future @(code-system-lookup ts
+                                "system" #fhir/uri "urn:ietf:bcp:47"
+                                "code" (type/code code))
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "Unknown code `%s` was not found in the provided code system." code))))))
+
+(deftest code-system-lookup-loinc-test
+  (with-system [{ts ::ts/local} loinc-config]
+    (testing "existing code"
+      (doseq [[code display]
+              [["718-7" "Hemoglobin [Mass/volume] in Blood"]
+               ["LA26421-0" "Consider alternative medication"]]]
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "http://loinc.org"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "LOINC"
+          [(parameter "version") 0 :value] := #fhir/string "2.78"
+          [(parameter "display") 0 :value] := (type/string display)))
+
+      (testing "with version"
+        (doseq [[code display]
+                [["718-7" "Hemoglobin [Mass/volume] in Blood"]
+                 ["LA26421-0" "Consider alternative medication"]]]
+          (given @(code-system-lookup ts
+                    "system" #fhir/uri "http://loinc.org"
+                    "code" (type/code code)
+                    "version" #fhir/string "2.78")
+            :fhir/type := :fhir/Parameters
+            [(parameter "name") 0 :value] := #fhir/string "LOINC"
+            [(parameter "version") 0 :value] := #fhir/string "2.78"
+            [(parameter "display") 0 :value] := (type/string display))))
+
+      (testing "inactive"
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "http://loinc.org"
+                  "code" #fhir/code "1009-0")
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "LOINC"
+          [(parameter "version") 0 :value] := #fhir/string "2.78")))
+
+    (testing "non-existing code"
+      (doseq [code ["non-existing" "0815" "718-8"]]
+        (given-failed-future @(code-system-lookup ts
+                                "system" #fhir/uri "http://loinc.org"
+                                "code" (type/code code))
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "Unknown code `%s` was not found in the provided code system." code))))
+
+    (testing "non-existing system version"
+      (given-failed-future
+       (code-system-lookup ts
+         "system" #fhir/uri "http://loinc.org"
+         "code" #fhir/code "code-160652"
+         "version" #fhir/string "non-existing-160221")
+        ::anom/category := ::anom/not-found
+        ::anom/message := "The code system `http://loinc.org|non-existing-160221` was not found."))))
+
+(deftest code-system-lookup-sct-test
+  (with-system [{ts ::ts/local} sct-config]
+    (testing "existing code"
+      (doseq [[input-version
+               output-version]
+              [[nil
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/900000000000207008"
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/900000000000207008/version/20241001"
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/11000274103"
+                "http://snomed.info/sct/11000274103/version/20241115"]
+               ["http://snomed.info/sct/11000274103/version/20241115"
+                "http://snomed.info/sct/11000274103/version/20241115"]
+               ["http://snomed.info/sct/11000274103/version/20240515"
+                "http://snomed.info/sct/11000274103/version/20240515"]]]
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "http://snomed.info/sct"
+                  "code" #fhir/code "441510007"
+                  "version" (some-> input-version type/string))
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := nil
+          [(parameter "version") 0 :value :value] := output-version
+          [(parameter "display") 0 :value] := #fhir/string "Blood specimen with anticoagulant")))
+
+    (testing "non-existing code"
+      (doseq [code ["non-existing" "0815" "441510008"]]
+        (given-failed-future @(code-system-lookup ts
+                                "system" #fhir/uri "http://snomed.info/sct"
+                                "code" (type/code code))
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "Unknown code `%s` was not found in the provided code system." code))))
+
+    (testing "existing coding"
+      (doseq [[input-version
+               output-version]
+              [[nil
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/900000000000207008"
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/900000000000207008/version/20241001"
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/11000274103"
+                "http://snomed.info/sct/11000274103/version/20241115"]
+               ["http://snomed.info/sct/11000274103/version/20241115"
+                "http://snomed.info/sct/11000274103/version/20241115"]
+               ["http://snomed.info/sct/11000274103/version/20240515"
+                "http://snomed.info/sct/11000274103/version/20240515"]]]
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "http://snomed.info/sct"
+                  "coding" (cond-> #fhir/Coding{:system #fhir/uri "http://snomed.info/sct" :code #fhir/code "441510007"}
+                             input-version (assoc :version (type/string input-version))))
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := nil
+          [(parameter "version") 0 :value :value] := output-version
+          [(parameter "display") 0 :value] := #fhir/string "Blood specimen with anticoagulant")))
+
+    (testing "non-existing coding"
+      (given-failed-future @(code-system-lookup ts
+                              "system" #fhir/uri "http://snomed.info/sct"
+                              "coding" #fhir/Coding{:system #fhir/uri "http://snomed.info/sct" :code #fhir/code "non-existing"})
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Unknown code `non-existing` was not found in the provided code system."))
+
+    (testing "non-existing system version"
+      (given-failed-future
+       (code-system-lookup ts
+         "system" #fhir/uri "http://snomed.info/sct"
+         "code" #fhir/code "code-160626"
+         "version" #fhir/string "non-existing-160221")
+        ::anom/category := ::anom/not-found
+        ::anom/message := "The code system `http://snomed.info/sct|non-existing-160221` was not found."))))
+
+(deftest code-system-lookup-ucum-test
+  (with-system [{ts ::ts/local} ucum-config]
+    (testing "existing code"
+      (given @(code-system-lookup ts
+                "system" #fhir/uri "http://unitsofmeasure.org"
+                "code" #fhir/code "s")
+        :fhir/type := :fhir/Parameters
+        [(parameter "name") 0 :value] := #fhir/string "UCUM"
+        [(parameter "version") 0 :value] := #fhir/string "2013.10.21"))
+
+    (testing "non-existing code"
+      (given-failed-future @(code-system-lookup ts
+                              "system" #fhir/uri "http://unitsofmeasure.org"
+                              "code" #fhir/code "non-existing")
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Unknown code `non-existing` was not found in the provided code system."))
+
+    (testing "existing coding"
+      (given @(code-system-lookup ts
+                "system" #fhir/uri "http://unitsofmeasure.org"
+                "coding" #fhir/Coding{:system #fhir/uri "http://unitsofmeasure.org" :code #fhir/code "km"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "name") 0 :value] := #fhir/string "UCUM"
+        [(parameter "version") 0 :value] := #fhir/string "2013.10.21"))
+
+    (testing "non-existing coding"
+      (testing "with non-existing code"
+        (given-failed-future @(code-system-lookup ts
+                                "system" #fhir/uri "http://unitsofmeasure.org"
+                                "coding" #fhir/Coding{:system #fhir/uri "http://unitsofmeasure.org" :code #fhir/code "non-existing"})
+          ::anom/category := ::anom/not-found
+          ::anom/message := "Unknown code `non-existing` was not found in the provided code system.")))))
+
 (defn- code-system-validate-code [ts & nvs]
   (ts/code-system-validate-code ts (apply fu/parameters nvs)))
 
@@ -1175,15 +1712,30 @@
           [(parameter "version") 0 :value] := #fhir/string "http://snomed.info/sct/900000000000207008/version/20241001")))
 
     (testing "existing coding"
-      (given @(code-system-validate-code ts
-                "url" #fhir/uri "http://snomed.info/sct"
-                "coding" #fhir/Coding{:system #fhir/uri "http://snomed.info/sct" :code #fhir/code "441510007"})
-        :fhir/type := :fhir/Parameters
-        [(parameter "result") 0 :value] := #fhir/boolean true
-        [(parameter "code") 0 :value] := #fhir/code "441510007"
-        [(parameter "system") 0 :value] := #fhir/uri "http://snomed.info/sct"
-        [(parameter "version") 0 :value] := #fhir/string "http://snomed.info/sct/900000000000207008/version/20241001"
-        [(parameter "display") 0 :value] := #fhir/string "Blood specimen with anticoagulant"))
+      (doseq [[input-version
+               output-version]
+              [[nil
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/900000000000207008"
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/900000000000207008/version/20241001"
+                "http://snomed.info/sct/900000000000207008/version/20241001"]
+               ["http://snomed.info/sct/11000274103"
+                "http://snomed.info/sct/11000274103/version/20241115"]
+               ["http://snomed.info/sct/11000274103/version/20241115"
+                "http://snomed.info/sct/11000274103/version/20241115"]
+               ["http://snomed.info/sct/11000274103/version/20240515"
+                "http://snomed.info/sct/11000274103/version/20240515"]]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri "http://snomed.info/sct"
+                  "coding" (cond-> #fhir/Coding{:system #fhir/uri "http://snomed.info/sct" :code #fhir/code "441510007"}
+                             input-version (assoc :version (type/string input-version))))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code "441510007"
+          [(parameter "system") 0 :value] := #fhir/uri "http://snomed.info/sct"
+          [(parameter "version") 0 :value :value] := output-version
+          [(parameter "display") 0 :value] := #fhir/string "Blood specimen with anticoagulant")))
 
     (testing "non-existing coding"
       (given @(code-system-validate-code ts

@@ -1,5 +1,5 @@
-(ns blaze.fhir.operation.code-system.validate-code
-  "Main entry point into the CodeSystem $validate-code operation."
+(ns blaze.fhir.operation.code-system.lookup
+  "Main entry point into the CodeSystem $lookup operation."
   (:require
    [blaze.anomaly :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -16,16 +16,14 @@
    [taoensso.timbre :as log]))
 
 (def ^:private parameter-specs
-  {"url" {:action :copy :coerce #(type/uri %2)}
-   "codeSystem" {:action :complex}
-   "code" {:action :copy :coerce #(type/code %2)}
+  {"code" {:action :copy :coerce #(type/code %2)}
+   "system" {:action :copy :coerce #(type/uri %2)}
    "version" {:action :copy :coerce #(type/string %2)}
-   "display" {:action :copy :coerce #(type/string %2)}
    "coding" {:action :complex}
-   "codeableConcept" {:action :complex}
    "date" {}
-   "abstract" {}
-   "displayLanguage" {:action :copy :coerce #(type/code %2)}
+   "displayLanguage" {}
+   "property" {}
+   "useSupplement" {}
    "tx-resource" {:action :complex}})
 
 (defn- validate-params* [{:keys [request-method body query-params]}]
@@ -36,30 +34,33 @@
 (defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
   (if-ok [params (validate-params* request)]
     (if id
-      (do-sync [{:keys [url]} (fhir-util/pull db "CodeSystem" id :summary)]
-        (update params :parameter (fnil conj []) (fu/parameter "url" url)))
+      (do-sync [{:keys [url version]} (fhir-util/pull db "CodeSystem" id :summary)]
+        (update params :parameter
+                (fnil conj [])
+                (fu/parameter "system" url)
+                (fu/parameter "version" version)))
       (ac/completed-future params))
     ac/completed-future))
 
-(defn- validate-code* [terminology-service params]
-  (-> (ts/code-system-validate-code terminology-service params)
+(defn- lookup* [terminology-service params]
+  (-> (ts/code-system-lookup terminology-service params)
       (ac/exceptionally
        (fn [{::anom/keys [category] :as anomaly}]
          (cond-> anomaly (= ::anom/not-found category) (assoc :http/status 400))))))
 
-(defn- validate-code [terminology-service request]
+(defn- lookup [terminology-service request]
   (-> (validate-params request)
-      (ac/then-compose (partial validate-code* terminology-service))))
+      (ac/then-compose (partial lookup* terminology-service))))
 
 (defn- handler [terminology-service]
   (fn [request]
-    (do-sync [response (validate-code terminology-service request)]
+    (do-sync [response (lookup terminology-service request)]
       (ring/response response))))
 
-(defmethod m/pre-init-spec :blaze.fhir.operation.code-system/validate-code [_]
+(defmethod m/pre-init-spec :blaze.fhir.operation.code-system/lookup [_]
   (s/keys :req-un [:blaze/terminology-service]))
 
-(defmethod ig/init-key :blaze.fhir.operation.code-system/validate-code
+(defmethod ig/init-key :blaze.fhir.operation.code-system/lookup
   [_ {:keys [terminology-service]}]
-  (log/info "Init FHIR CodeSystem $validate-code operation handler")
+  (log/info "Init FHIR CodeSystem $lookup operation handler")
   (handler terminology-service))

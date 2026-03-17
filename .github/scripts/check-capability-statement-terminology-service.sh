@@ -14,6 +14,8 @@ test "URL" "$(echo "$capability_statement" | jq -r .implementation.url)" "http:/
 test "FHIR version" "$(echo "$capability_statement" | jq -r .fhirVersion)" "4.0.1"
 test "format" "$(echo "$capability_statement" | jq -r '.format | join(",")')" "application/fhir+json,application/fhir+xml"
 
+test "Operation CodeSystem \$lookup Definition" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "CodeSystem") .operation[] | select(.name == "lookup") | .definition')" "http://hl7.org/fhir/OperationDefinition/CodeSystem-lookup"
+test "Operation CodeSystem \$lookup Documentation" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "CodeSystem") .operation[] | select(.name == "lookup") | .documentation')" "Lookup a coded value in its code system."
 test "Operation CodeSystem \$validate-code Definition" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "CodeSystem") .operation[] | select(.name == "validate-code") | .definition')" "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code"
 test "Operation CodeSystem \$validate-code Documentation" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "CodeSystem") .operation[] | select(.name == "validate-code") | .documentation')" "Validate that a coded value is in the code system."
 test "Operation ValueSet \$expand Definition" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "ValueSet") .operation[] | select(.name == "expand") | .definition')" "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"

@@ -26,6 +26,12 @@
       ::anom/category := ::anom/unsupported
       ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service.")))
 
+(deftest code-system-lookup-test
+  (with-system [{terminology-service ::ts/not-available} config]
+    (given-failed-future (ts/code-system-lookup terminology-service {:fhir/type :fhir/Parameters})
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service.")))
+
 (deftest code-system-validate-code-test
   (with-system [{terminology-service ::ts/not-available} config]
     (given-failed-future (ts/code-system-validate-code terminology-service {:fhir/type :fhir/Parameters})

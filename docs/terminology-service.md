@@ -29,6 +29,7 @@ Currently the external code systems shown in the following table are supported.
 
 ## Operations
 
+* [CodeSystem \$lookup](api/operation/code-system-lookup.md)
 * [CodeSystem \$validate-code](api/operation/code-system-validate-code.md)
 * [ValueSet \$expand](api/operation/value-set-expand.md)
 * [ValueSet \$validate-code](api/operation/value-set-validate-code.md)

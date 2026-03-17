@@ -2123,6 +2123,9 @@ jobs:
     - name: Validate Resources
       run: .github/validation/validate.sh
 
+    - name: SNOMED CT Lookup
+      run: .github/scripts/snomed-ct-lookup.sh
+
     - name: SNOMED CT Validate Code
       run: .github/scripts/snomed-ct-validate-code.sh
 

@@ -17,6 +17,9 @@
     (-code-systems [_]
       (ac/completed-future unsupported-anom))
 
+    (-code-system-lookup [_ _]
+      (ac/completed-future unsupported-anom))
+
     (-code-system-validate-code [_ _]
       (ac/completed-future unsupported-anom))
 
