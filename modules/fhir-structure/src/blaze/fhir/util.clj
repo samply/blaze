@@ -1,7 +1,7 @@
 (ns blaze.fhir.util
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]
    [clojure.string :as str]
@@ -13,19 +13,32 @@
 
 (set! *warn-on-reflection* true)
 
+(declare parameter*)
+
+(defn- parameter** [name value]
+  [{:fhir/type :fhir.Parameters/parameter
+    :name (type/string name)
+
+    ;; TODO: improve resource detection
+    (cond (instance? Base value) :value
+          (sequential? value) :part
+          :else :resource)
+    (if (sequential? value)
+      (into [] (mapcat parameter*) (partition 2 value))
+      value)}])
+
+(defn- parameter* [[name value]]
+  (cond
+    (nil? value) []
+    (sequential? value) (mapcat #(parameter** name %) value)
+    :else (parameter** name value)))
+
+(defn parameter [name value]
+  (first (parameter** name value)))
+
 (defn parameters [& nvs]
   {:fhir/type :fhir/Parameters
-   :parameter
-   (into
-    []
-    (keep
-     (fn [[name value]]
-       (when (some? value)
-         {:fhir/type :fhir.Parameters/parameter
-          :name (type/string name)
-          ;; TODO: improve resource detection
-          (if (instance? Base value) :value :resource) value})))
-    (partition 2 nvs))})
+   :parameter (into [] (mapcat parameter*) (partition 2 nvs))})
 
 (def subsetted
   "SUBSETTED Coding"
@@ -153,3 +166,37 @@
        new-params))
    {}
    params))
+
+(defn coerce-boolean [name value]
+  (if-some [value (parse-boolean value)]
+    (type/boolean value)
+    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
+
+(defn coerce-integer [name value]
+  (if-let [value (parse-long value)]
+    (type/integer value)
+    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be an integer." name))))
+
+(defn- validate-query-params* [parameter-specs params]
+  (reduce-kv
+   (fn [new-params name value]
+     (if-let [{:keys [action coerce]} (parameter-specs name)]
+       (case action
+         :copy
+         (if-ok [value (coerce name value)]
+           (conj new-params (parameter name value))
+           reduced)
+
+         :complex
+         (reduced (ba/unsupported (format "Unsupported parameter `%s` in GET request. Please use POST." name)
+                                  :http/status 400))
+
+         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
+                                  :http/status 400)))
+       new-params))
+   []
+   params))
+
+(defn validate-query-params [parameter-specs query-params]
+  (when-ok [params (validate-query-params* parameter-specs query-params)]
+    {:fhir/type :fhir/Parameters :parameter params}))

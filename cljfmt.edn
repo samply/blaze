@@ -20,6 +20,7 @@
   clojure.test.check.properties/for-all [[:block 1]]
   blaze.metrics.core/collector [[:block 0]]
   reify-expr [[:inner 0] [:inner 1]]
+  code-system-lookup [[:block 1]]
   code-system-validate-code [[:block 1]]
   expand-value-set [[:block 1]]
   value-set-validate-code [[:block 1]]

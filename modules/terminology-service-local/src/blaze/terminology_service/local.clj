@@ -90,6 +90,38 @@
    []
    codings))
 
+(defn- check-coding-param [param-1 param-2 param-name-1 param-name-2]
+  (cond
+    (nil? param-1) param-2
+    (nil? param-2) param-1
+    (= param-1 param-2)
+    param-1
+    :else
+    (ba/incorrect (format "Parameter `%s` differs from parameter `%s`."
+                          param-name-1 param-name-2))))
+
+(defn- cs-lookup-more
+  [context {:keys [code system version coding] :as params}]
+  (cond
+    code
+    (if system
+      (cond-> (assoc params :url system :clause {:code code})
+        version (assoc :version (cs/resolve-version context system version)))
+      (ba/incorrect "Missing parameter `system`."))
+
+    coding
+    (let [{{code :value} :code {system :value} :system {version :value} :version} coding]
+      (when-ok [code (check-coding-param (:code params) code "code" "coding.code")
+                system (check-coding-param (:system params) system "system" "coding.system")
+                version (check-coding-param (:version params) version "version" "coding.version")]
+        (if (and code system)
+          (cond-> (assoc params :url system :clause {:code code})
+            version (assoc :version (cs/resolve-version context system version)))
+          (ba/incorrect "Missing one or more required parameters in `coding` (`code`, `system`)."))))
+
+    :else
+    (ba/incorrect "Missing one of the parameters `code` or `coding`.")))
+
 (defn- cs-validate-code-more
   "Tries to extract :url, :version and :clause from `params` returning multiple
   param maps, one for each coding to validate."
@@ -198,6 +230,17 @@
     (log/info "Successfully loaded all code systems in"
               (format "%.1f" (u/duration-s start)) "seconds")))
 
+(def ^:private cs-lookup-param-specs
+  {"code" {:action :copy}
+   "system" {:action :copy}
+   "version" {:action :copy}
+   "coding" {:action :copy-complex-type}
+   "date" {}
+   "displayLanguage" {}
+   "property" {}
+   "useSupplement" {}
+   "tx-resource" {:action :copy-resource :cardinality :many}})
+
 (def ^:private cs-validate-code-param-specs
   {"url" {:action :copy}
    "codeSystem" {:action :copy-resource}
@@ -293,6 +336,16 @@
     (-code-systems [_]
       (if-ok [db (db vnode)]
         (c/code-systems db)
+        ac/completed-future))
+
+    (-code-system-lookup [_ params]
+      (if-ok [params (fu/coerce-params cs-lookup-param-specs params)
+              params (cs-lookup-more context params)
+              db (db vnode)]
+        (let [db (d/new-batch-db db)]
+          (-> (find-code-system (context-with-db context db params) params)
+              (ac/then-apply #(cs/lookup % params))
+              (handle-close db)))
         ac/completed-future))
 
     (-code-system-validate-code [_ params]

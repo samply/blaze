@@ -1,6 +1,7 @@
 (ns blaze.fhir.util-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo]
    [blaze.fhir.util :as fu]
    [blaze.fhir.util-spec]
@@ -34,7 +35,59 @@
   (given (fu/parameters "foo" {:fhir/type :fhir/ValueSet})
     :fhir/type := :fhir/Parameters
     [:parameter 0 :name] := #fhir/string "foo"
-    [:parameter 0 :resource] := {:fhir/type :fhir/ValueSet}))
+    [:parameter 0 :resource] := {:fhir/type :fhir/ValueSet})
+
+  (given (fu/parameters "foo" [#fhir/string "bar"])
+    :fhir/type := :fhir/Parameters
+    [:parameter count] := 1
+    [:parameter 0 :name] := #fhir/string "foo"
+    [:parameter 0 :value] := #fhir/string "bar")
+
+  (given (fu/parameters "foo" [#fhir/string "bar"
+                               #fhir/string "buz"])
+    :fhir/type := :fhir/Parameters
+    [:parameter count] := 2
+    [:parameter 0 :name] := #fhir/string "foo"
+    [:parameter 0 :value] := #fhir/string "bar"
+    [:parameter 1 :name] := #fhir/string "foo"
+    [:parameter 1 :value] := #fhir/string "buz")
+
+  (given (fu/parameters "foo" [["bar" #fhir/string "buz"]])
+    :fhir/type := :fhir/Parameters
+    [:parameter 0 :name] := #fhir/string "foo"
+    [:parameter 0 :part count] := 1
+    [:parameter 0 :part 0 :name] := #fhir/string "bar"
+    [:parameter 0 :part 0 :value] := #fhir/string "buz")
+
+  (given (fu/parameters "foo" [["param-1" #fhir/string "param-1-value"
+                                "param-2" #fhir/string "param-2-value"]])
+    :fhir/type := :fhir/Parameters
+    [:parameter count] := 1
+    [:parameter 0 :name] := #fhir/string "foo"
+    [:parameter 0 :part count] := 2
+    [:parameter 0 :part 0 :name] := #fhir/string "param-1"
+    [:parameter 0 :part 0 :value] := #fhir/string "param-1-value"
+    [:parameter 0 :part 1 :name] := #fhir/string "param-2"
+    [:parameter 0 :part 1 :value] := #fhir/string "param-2-value")
+
+  (given (fu/parameters "foo" [["param-1-1" #fhir/string "param-1-1-value"
+                                "param-1-2" #fhir/string "param-1-2-value"]
+                               ["param-2-1" #fhir/string "param-2-1-value"
+                                "param-2-2" #fhir/string "param-2-2-value"]])
+    :fhir/type := :fhir/Parameters
+    [:parameter count] := 2
+    [:parameter 0 :name] := #fhir/string "foo"
+    [:parameter 0 :part count] := 2
+    [:parameter 0 :part 0 :name] := #fhir/string "param-1-1"
+    [:parameter 0 :part 0 :value] := #fhir/string "param-1-1-value"
+    [:parameter 0 :part 1 :name] := #fhir/string "param-1-2"
+    [:parameter 0 :part 1 :value] := #fhir/string "param-1-2-value"
+    [:parameter 1 :name] := #fhir/string "foo"
+    [:parameter 1 :part count] := 2
+    [:parameter 1 :part 0 :name] := #fhir/string "param-2-1"
+    [:parameter 1 :part 0 :value] := #fhir/string "param-2-1-value"
+    [:parameter 1 :part 1 :name] := #fhir/string "param-2-2"
+    [:parameter 1 :part 1 :value] := #fhir/string "param-2-2-value"))
 
 (deftest subsetted-test
   (are [coding] (fu/subsetted? coding)
@@ -204,3 +257,72 @@
     (is (empty? (fu/coerce-params
                  {"a" {}}
                  (fu/parameters "b" #fhir/string "c"))))))
+
+(deftest validate-query-params-test
+  (testing "empty parameter spec"
+    (given (fu/validate-query-params
+            {}
+            {"param" "param-165900"})
+      [:parameter count] := 0))
+
+  (testing "param not in spec ignored"
+    (given (fu/validate-query-params
+            {"code" {:action :copy :coerce #(type/code %2)}}
+            {"different-param" "code-165900"})
+      [:parameter count] := 0))
+
+  (testing "param action :complex not supported with GET"
+    (given (fu/validate-query-params
+            {"coding" {:action :complex}}
+            {"coding" #fhir/Coding {:system #fhir/uri "system-115910"
+                                    :version #fhir/string "version-152300"
+                                    :code #fhir/code "code-115927"}})
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported parameter `coding` in GET request. Please use POST."))
+
+  (testing "param not supported"
+    (given (fu/validate-query-params
+            {"code" {}}
+            {"code" "code-165900"})
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported parameter `code`."))
+
+  (testing "type/code"
+    (given (fu/validate-query-params
+            {"code" {:action :copy :coerce #(type/code %2)}}
+            {"code" "code-165900"})
+      [:parameter count] := 1
+      [:parameter 0 :name] := #fhir/string "code"
+      [:parameter 0 :value] := #fhir/code "code-165900"))
+
+  (testing "type/boolean"
+    (doseq [value [true false]]
+      (given (fu/validate-query-params
+              {"param-boolean" {:action :copy :coerce fu/coerce-boolean}}
+              {"param-boolean" (str value)})
+        [:parameter count] := 1
+        [:parameter 0 :name] := #fhir/string "param-boolean"
+        [:parameter 0 :value] := (type/boolean value)))
+
+    (doseq [value ["True" "False" "123" "1.5" "nil"]]
+      (given (fu/validate-query-params
+              {"param-boolean" {:action :copy :coerce fu/coerce-boolean}}
+              {"param-boolean" value})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-boolean`. Has to be a boolean.")))
+
+  (testing "type/integer"
+    (doseq [value [123 -123]]
+      (given (fu/validate-query-params
+              {"param-integer" {:action :copy :coerce fu/coerce-integer}}
+              {"param-integer" (str value)})
+        [:parameter count] := 1
+        [:parameter 0 :name] := #fhir/string "param-integer"
+        [:parameter 0 :value] := (type/integer value)))
+
+    (doseq [value ["true" "false" "1.5" "nil"]]
+      (given (fu/validate-query-params
+              {"param-integer" {:action :copy :coerce fu/coerce-integer}}
+              {"param-integer" value})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-integer`. Has to be an integer."))))

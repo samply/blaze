@@ -249,4 +249,63 @@
             [:parameter 1 :name] := #fhir/string "code"
             [:parameter 1 :value] := #fhir/code "code-115927"
             [:parameter 2 :name] := #fhir/string "system"
-            [:parameter 2 :value] := #fhir/uri "system-115910"))))))
+            [:parameter 2 :value] := #fhir/uri "system-115910")))))
+
+  (testing "optional parameters"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :version #fhir/string "version-160100"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-115927"
+                 :display #fhir/string "display-160200"
+                 :designation
+                 [{:fhir/type :fhir.CodeSystem.concept/designation
+                   :language #fhir/code "en"
+                   :value #fhir/string "designation-112200"}]}]}]]]
+
+      (testing "version"
+        (let [{:keys [status body]}
+              @(handler {:query-params {"url" "system-115910"
+                                        "code" "code-115927"
+                                        "version" "version-160100"}})]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/Parameters
+            [:parameter 0 :name] := #fhir/string "result"
+            [:parameter 0 :value :value] := true)))
+
+      (testing "display"
+        (let [{:keys [status body]}
+              @(handler {:query-params {"url" "system-115910"
+                                        "code" "code-115927"
+                                        "display" "display-160200"}})]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/Parameters
+            [:parameter 0 :name] := #fhir/string "result"
+            [:parameter 0 :value :value] := true
+            [:parameter 4 :name] := #fhir/string "display"
+            [:parameter 4 :value :value] := "display-160200"))
+
+        (testing "displayLanguage"
+          (let [{:keys [status body]}
+                @(handler {:query-params {"url" "system-115910"
+                                          "code" "code-115927"
+                                          "display" "designation-112200"
+                                          "displayLanguage" "en"}})]
+
+            (is (= 200 status))
+
+            (given body
+              :fhir/type := :fhir/Parameters
+              [:parameter 0 :name] := #fhir/string "result"
+              [:parameter 0 :value :value] := true
+              [:parameter 4 :name] := #fhir/string "display"
+              [:parameter 4 :value :value] := "display-160200")))))))
