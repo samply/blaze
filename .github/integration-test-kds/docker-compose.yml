@@ -36,7 +36,7 @@ services:
       start_period: 30s
 
   fhir-validator:
-    image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.3"
+    image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.3@sha256:72133f7c554743012be02edaa0ef183a22b46ee413b02f425b8c5302b7d92c1f"
     environment:
       JAVA_OPTS: "-Xmx2g"
       TX_SERVER: "http://terminology-server:8080/fhir"
