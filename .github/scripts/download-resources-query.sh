@@ -20,7 +20,7 @@ total_count() {
 test "_summary=count count" "$(summary_count)" "$expected_size"
 test "_total=accurate count" "$(total_count)" "$expected_size"
 
-page_size="$(shuf -i 50-500 -n 1)"
+page_size="$(shuf -i 250-1000 -n 1)"
 echo "ℹ️ use a page size of $page_size"
 
 blazectl --server "$base" download "$type" -q "$query&_count=$page_size" -o "$file_name_prefix-get.ndjson" 2> /dev/null
@@ -49,7 +49,10 @@ else
   exit 1
 fi
 
-blazectl --server "$base" download "$type" -p -q "$query" -o "$file_name_prefix-post.ndjson" 2> /dev/null
+page_size="$(shuf -i 250-1000 -n 1)"
+echo "ℹ️ use a page size of $page_size"
+
+blazectl --server "$base" download "$type" -p -q "$query&_count=$page_size" -o "$file_name_prefix-post.ndjson" 2> /dev/null
 
 size=$(wc -l "$file_name_prefix-post.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$expected_size" = "$size" ]; then
