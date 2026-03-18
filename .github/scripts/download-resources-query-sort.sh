@@ -7,7 +7,10 @@ sort=$3
 expected_size=$4
 file_name_prefix="$(uuidgen)"
 
-blazectl --server "$base" download "$type" -q "_sort=$sort&$query&_count=$(shuf -i 50-500 -n 1)" -o "$file_name_prefix-get.ndjson"
+page_size="$(shuf -i 250-1000 -n 1)"
+echo "ℹ️ use a page size of $page_size"
+
+blazectl --server "$base" download "$type" -q "_sort=$sort&$query&_count=$page_size" -o "$file_name_prefix-get.ndjson"
 
 size=$(wc -l "$file_name_prefix-get.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$expected_size" = "$size" ]; then
@@ -18,7 +21,10 @@ else
   exit 1
 fi
 
-blazectl --server "$base" download "$type" -p -q "_sort=$sort&$query" -o "$file_name_prefix-post.ndjson"
+page_size="$(shuf -i 250-1000 -n 1)"
+echo "ℹ️ use a page size of $page_size"
+
+blazectl --server "$base" download "$type" -p -q "_sort=$sort&$query&_count=$page_size" -o "$file_name_prefix-post.ndjson"
 
 size=$(wc -l "$file_name_prefix-post.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$expected_size" = "$size" ]; then
