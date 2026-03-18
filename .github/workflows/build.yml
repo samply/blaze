@@ -1720,6 +1720,9 @@ jobs:
     - name: Check Terminology Capabilities of the Terminology Server
       run: .github/scripts/check-terminology-capabilities.sh http://localhost:8082/fhir
 
+    - name: Check SNOMED CT Version
+      run: .github/scripts/check-sct-version.sh http://snomed.info/sct/900000000000207008/version/20250701 http://localhost:8082/fhir
+
     - name: Upload KDS Terminology Resources into the Terminology Server
       run: .github/value-set-expand/upload-all.sh http://localhost:8082/fhir
 
