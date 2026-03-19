@@ -22,7 +22,7 @@
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
 
   ca.uhn.hapi.fhir/hapi-fhir-base
-  {:mvn/version "8.8.0"}
+  {:mvn/version "8.8.1"}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.r5
   {:mvn/version "6.8.1"}
