@@ -6,6 +6,6 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 base="http://localhost:8080/fhir"
 type=$1
 expected_size=$(curl -s "$base/${type}?_summary=count" | jq -r .total)
-actual_size=$(blazectl --server "$base" download "$type" -q '_count=1000' 2>/dev/null | wc -l | xargs)
+actual_size=$(blazectl --server "$base" download "$type" -q '_count=1000' | wc -l | xargs)
 
 test "download size" "$actual_size" "$expected_size"

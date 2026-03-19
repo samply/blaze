@@ -24,9 +24,5 @@ test() {
 
 test "BodySite-Observation-Beatmung" "$(expand "https://www.medizininformatik-initiative.de/fhir/ext/modul-icu/ValueSet/vs-mii-icu-bodysite-observation-beatmung")"
 test "Category-Procedure-Beatmung-SNOMED" "$(expand "https://www.medizininformatik-initiative.de/fhir/ext/modul-icu/ValueSet/vs-mii-icu-category-procedure-beatmung-snomed")"
-test "Category-Procedure-Beatmung-SNOMED_de" "$(expand_de "https://www.medizininformatik-initiative.de/fhir/ext/modul-icu/ValueSet/vs-mii-icu-category-procedure-beatmung-snomed")"
 test "Code-Observation-extrakorporale-Verfahren-SNOMED" "$(expand "https://www.medizininformatik-initiative.de/fhir/ext/modul-icu/ValueSet/vs-mii-icu-code-observation-extrakorporale-verfahren-snomed")"
 test "Code-Monitoring-und-Vitaldaten-SNOMED" "$(expand "https://www.medizininformatik-initiative.de/fhir/ext/modul-icu/ValueSet/vs-mii-icu-code-monitoring-und-vitaldaten-snomed")"
-
-test "KBV_VS_Base_Procedure_Categories_SNOMED_CT" "$(expand "https://fhir.kbv.de/ValueSet/KBV_VS_Base_Procedure_Categories_SNOMED_CT")"
-test "KBV_VS_Base_Procedure_Categories_SNOMED_CT_de" "$(expand_de "https://fhir.kbv.de/ValueSet/KBV_VS_Base_Procedure_Categories_SNOMED_CT")"

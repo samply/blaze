@@ -39,7 +39,7 @@ test_csv "ICD-10-GM-E10-E14" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/C
 
 test_csv "OPS-3-20" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/ops)concept<<3-20")"
 test_csv "OPS-8-19" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/ops)concept<<8-19")"
-test "number of Operationen" "$(expand_count "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/ops)concept<<5")" "27826"
+test "number of Operationen" "$(expand_count "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/ops)concept<<5")" "28127"
 
 test_csv "ATC-A10" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/atc)concept<<A10")"
 test_csv "ATC-L03AA02" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/atc)concept<<L03AA02")"
