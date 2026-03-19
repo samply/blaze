@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.6.1
+
+### Maintenance
+
+* Update SNOMED CT Release Versions ([#3435](https://github.com/samply/blaze/issues/3435))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/122?closed=1).
+
 ## v1.6.0
 
 ### Enhancements
