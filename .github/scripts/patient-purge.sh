@@ -35,5 +35,5 @@ for type in "CarePlan" \
   "Observation" \
   "Procedure" \
   "Provenance"; do
-  test "number of references from ${type}s to the purged patient" "$(blazectl --server "$base" download "$type" -q '_elements=subject&_count=500' 2>/dev/null | jq -rc '.subject.reference' | sort -u | grep -c "Patient/$patient_id")" "0"
+  test "number of references from ${type}s to the purged patient" "$(blazectl --server "$base" download "$type" -q '_elements=subject&_count=1000' 2>/dev/null | jq -rc '.subject.reference' | sort -u | grep -c "Patient/$patient_id")" "0"
 done

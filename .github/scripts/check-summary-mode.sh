@@ -8,8 +8,8 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 base="http://localhost:8080/fhir"
 type="$1"
 property="$2"
-normal_result=$(blazectl --server "$base" download "$type" 2>/dev/null | jq -c ".$property | values")
-summary_result=$(blazectl --server "$base" download "$type" -q '_summary=true' 2>/dev/null | jq ".$property | values")
+normal_result=$(blazectl --server "$base" download "$type" -q '_count=1000' 2>/dev/null | jq -c ".$property | values")
+summary_result=$(blazectl --server "$base" download "$type" -q '_summary=true&_count=1000' 2>/dev/null | jq ".$property | values")
 
 test_non_empty "normal result" "$normal_result"
 test_empty "summary result" "$summary_result"
