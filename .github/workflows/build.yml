@@ -173,13 +173,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
@@ -246,13 +246,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
@@ -291,13 +291,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-25-maven-fhir-structure-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-fhir-structure-${{ hashFiles('**/deps.edn') }}
@@ -332,13 +332,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-db-coverage-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-db-coverage-${{ hashFiles('**/deps.edn') }}
@@ -392,13 +392,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -450,13 +450,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-build-${{ hashFiles('**/deps.edn') }}
@@ -511,13 +511,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
@@ -1927,7 +1927,7 @@ jobs:
         path: ~/.fhir
 
     - name: Cache FHIR Packages
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.fhir/packages
         key: fhir-packages-integration-test-validation
@@ -2013,7 +2013,7 @@ jobs:
         path: ~/.fhir
 
     - name: Cache FHIR Packages
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.fhir/packages
         key: fhir-packages-terminology-tests
@@ -2399,13 +2399,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
@@ -2803,13 +2803,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
