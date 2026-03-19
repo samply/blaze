@@ -190,6 +190,15 @@ jobs:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
 
+    - name: Download LOINC ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: S8Bej7LPjbGACdo
+        filename: Loinc_2.78.zip
+
+    - name: Copy LOINC ZIP
+      run: cp Loinc_2.78.zip modules/terminology-service-local/Loinc_2.78.zip
+
     - name: Test
       run: make -C modules/${{ matrix.module }} test
 
@@ -285,13 +294,13 @@ jobs:
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-fhir-structure-${{ hashFiles('modules/fhir-structure/deps.edn') }}
+        key: ${{ runner.os }}-temurin-25-maven-fhir-structure-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-fhir-structure-${{ hashFiles('modules/fhir-structure/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-fhir-structure-${{ hashFiles('**/deps.edn') }}
 
     - name: Test
       run: make -C modules/fhir-structure test-mem-size-${{ matrix.kind }}
@@ -326,13 +335,13 @@ jobs:
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-db-coverage-${{ hashFiles('modules/db/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-db-coverage-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-db-coverage-${{ hashFiles('modules/db/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-db-coverage-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -386,13 +395,13 @@ jobs:
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -505,13 +514,13 @@ jobs:
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: Setup Node
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
@@ -2393,13 +2402,13 @@ jobs:
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update
@@ -2797,13 +2806,13 @@ jobs:
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update

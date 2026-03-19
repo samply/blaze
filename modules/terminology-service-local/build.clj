@@ -10,6 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (defn download-file [url output-path]
+  (println "Download:" output-path)
   (let [http-client (hc/build-http-client {:redirect-policy :normal})
         response (hc/get url {:http-client http-client :as :byte-array})]
     (with-open [out (FileOutputStream. ^String output-path)]
@@ -45,8 +46,10 @@
                        :actual actual-sha})))))
 
 (defn download-loinc [_]
-  (download-file "https://speicherwolke.uni-leipzig.de/index.php/s/S8Bej7LPjbGACdo/download/Loinc_2.78.zip" "loinc.zip")
-  (verify-download "loinc.zip" "ab5528a4c703bdc79deabbdd5e1def1335d127a643da97b68f686814ed526d46")
-  (b/unzip {:zip-file "loinc.zip" :target-dir "target/generated-resources/blaze/terminology_service/local/code_system/loinc"})
-  (b/delete {:path "loinc.zip"})
+  (let [filename "Loinc_2.78.zip"]
+    (when-not (.exists (io/file filename))
+      (download-file "https://speicherwolke.uni-leipzig.de/index.php/s/S8Bej7LPjbGACdo/download/Loinc_2.78.zip" filename))
+    (verify-download filename "ab5528a4c703bdc79deabbdd5e1def1335d127a643da97b68f686814ed526d46")
+    (b/unzip {:zip-file filename :target-dir "target/generated-resources/blaze/terminology_service/local/code_system/loinc"})
+    (b/delete {:path filename}))
   (b/write-file {:path "target/prep-done" :string ""}))
