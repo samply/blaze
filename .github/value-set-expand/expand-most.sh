@@ -4,7 +4,7 @@ base="http://localhost:8080/fhir"
 
 start=$(date +%s)
 
-for url in $(blazectl --server "$base" download ValueSet -q "_elements=url&_count=500" 2>/dev/null | jq -r '.url'); do
+for url in $(blazectl --server "$base" download ValueSet -q "_elements=url&_count=1000" 2>/dev/null | jq -r '.url'); do
   if [[ "$url" == "http://dicom.nema.org/"* ]]; then
     continue
   elif echo "$url" | grep -q -E "^http://terminology\.hl7\.org/ValueSet/(v2-0567|v2-0568|v3-UnitsOfMeasureCaseSensitive)$"; then

@@ -7,7 +7,7 @@ base="http://localhost:8080/fhir"
 type=$1
 
 download() {
-  blazectl --server "$base" download "$type" -q "date=$1" 2>/dev/null | wc -l | xargs
+  blazectl --server "$base" download "$type" -q "date=$1&_count=1000" 2>/dev/null | wc -l | xargs
 }
 
 count() {
