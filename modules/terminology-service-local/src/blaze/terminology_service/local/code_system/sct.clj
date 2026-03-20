@@ -8,7 +8,7 @@
    [blaze.module :as m]
    [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.core :as c]
-   [blaze.terminology-service.local.code-system.sct.context :as context :refer [core-version-prefix url]]
+   [blaze.terminology-service.local.code-system.sct.context :as context :refer [core-version-prefix]]
    [blaze.terminology-service.local.code-system.sct.filter.core :as filter]
    [blaze.terminology-service.local.code-system.sct.filter.descendent-of]
    [blaze.terminology-service.local.code-system.sct.filter.equals]
@@ -31,13 +31,13 @@
 (defn- handles [db version]
   (cond
     (re-matches sct-u/module-only-version-pattern version)
-    (do-sync [code-systems (cs-u/code-systems db url)]
+    (do-sync [code-systems (cs-u/code-systems db sct-u/url)]
       (filterv
        #(str/starts-with? (:value (:version %)) version)
        code-systems))
 
     :else
-    (d/pull-many db (vec (code-system-query db url version)))))
+    (d/pull-many db (vec (code-system-query db sct-u/url version)))))
 
 (defn- assoc-context [{:keys [version] :as code-system} context]
   (when-ok [[module-id version] (sct-u/module-version (:value version))]
@@ -45,7 +45,7 @@
            :sct/version version)))
 
 (defn- code-system-not-found-msg [version]
-  (format "The code system `%s|%s` was not found." url version))
+  (format "The code system `%s|%s` was not found." sct-u/url version))
 
 (defmethod c/find :sct
   [{:keys [db] :sct/keys [context]} _ & [version]]
@@ -206,7 +206,7 @@
   "Ensures that all SNOMED CT code systems are present in the database node."
   {:arglists '([context sct-context])}
   [{:keys [node] :as context} {:keys [code-systems]}]
-  (-> (cs-u/code-system-versions (d/db node) url)
+  (-> (cs-u/code-system-versions (d/db node) sct-u/url)
       (ac/then-compose
        (fn [existing-versions]
          (let [tx-ops (cs-u/tx-ops context existing-versions code-systems)]

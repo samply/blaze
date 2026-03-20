@@ -98,7 +98,7 @@
    {:keys [codeable-concept]}]
   (fu/parameters
    "result" (type/boolean (or result-override false))
-   "message" (type/string message)
+   "message" (some-> message type/string)
    "code" (when-not codeable-concept (some-> code type/code))
    "system" (when-not codeable-concept (some-> system type/uri-interned))
    "version" (some-> version type/string)
