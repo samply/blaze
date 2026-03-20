@@ -5,6 +5,7 @@ lint:
 	clj-kondo --fail-level error --lint src test build.clj deps.edn
 
 prep:
+	$(MAKE) -C ../module-base prep
 	clojure -X:deps prep :aliases '[:test]'
 
 build: prep

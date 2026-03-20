@@ -23,6 +23,7 @@ build-byte-buffer:
 	$(MAKE) -C modules/byte-buffer build
 
 prep: build-byte-buffer
+	$(MAKE) -C modules/module-base prep
 	clojure -X:deps prep
 
 test-root: prep
