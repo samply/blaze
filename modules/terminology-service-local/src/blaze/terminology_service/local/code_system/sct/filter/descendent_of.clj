@@ -3,16 +3,17 @@
   concept provided as the value (include descendant codes)."
   (:require
    [blaze.anomaly :as ba]
-   [blaze.terminology-service.local.code-system.sct.context :as context :refer [url]]
+   [blaze.terminology-service.local.code-system.sct.context :as context]
    [blaze.terminology-service.local.code-system.sct.filter.core :as core]
-   [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]))
+   [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]
+   [blaze.terminology-service.local.code-system.sct.util :as sct-u]))
 
 (def ^:private missing-concept-filter-value-msg
-  (format "Missing concept descendent-of filter value in code system `%s`." url))
+  (format "Missing concept descendent-of filter value in code system `%s`." sct-u/url))
 
 (defn- invalid-value-msg [value]
   (format "Invalid concept descendent-of filter value `%s` in code system `%s`."
-          value url))
+          value sct-u/url))
 
 (defn- expand-filter
   [{{:keys [module-dependency-index child-index]} :sct/context
@@ -25,11 +26,11 @@
       (ba/incorrect (invalid-value-msg value)))))
 
 (def ^:private missing-property-msg
-  (format "Missing descendent-of filter property in code system `%s`." url))
+  (format "Missing descendent-of filter property in code system `%s`." sct-u/url))
 
 (defn- unsupported-property-msg [property]
   (format "Unsupported descendent-of filter property `%s` in code system `%s`."
-          property url))
+          property sct-u/url))
 
 (defmethod core/expand-filter :descendent-of
   [code-system {{property :value} :property {:keys [value]} :value}]

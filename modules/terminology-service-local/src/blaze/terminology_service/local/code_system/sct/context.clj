@@ -2,15 +2,12 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.fhir.spec.type :as type]
-   [blaze.fhir.spec.type.system :as system]
+   [blaze.terminology-service.local.code-system.sct.util :as sct-u]
    [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
    [com.google.common.base CaseFormat]
    [java.nio.file Files Path]
-   [java.time LocalDate]
-   [java.time.format DateTimeFormatter]
    [java.util UUID]
    [java.util.stream Stream]))
 
@@ -22,9 +19,7 @@
 (def ^:private ^:const ^long is-a 116680003)
 (def ^:private ^:const ^long model-component-module 900000000000012004)
 (def ^:private ^:const ^long core-module 900000000000207008)
-
-(def ^:const ^String url "http://snomed.info/sct")
-(def ^:const ^String core-version-prefix (str url "/" core-module))
+(def ^:const ^String core-version-prefix (str sct-u/url "/" core-module))
 
 (defn- pascal->kebab [s]
   (.to CaseFormat/UPPER_CAMEL CaseFormat/LOWER_HYPHEN s))
@@ -352,9 +347,6 @@
                  (acceptability acceptability-id)))
        (partial merge-with merge))))
 
-(defn- version-url [module-id date]
-  (format "%s/%s/version/%s" url module-id date))
-
 (def ^:private published-release-versions
   "This map contains the known published release versions by module. Only
   CodeSystem resources with that versions are created given that the data from
@@ -517,37 +509,11 @@
 
 (defn- create-code-system
   [module-dependency-index fully-specified-name-index module-id version]
-  {:fhir/type :fhir/CodeSystem
-   :meta
-   #fhir/Meta
-    {:tag
-     [#fhir/Coding
-       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code "read-only"}]}
-   :url (type/uri-interned url)
-   :version (type/string (version-url module-id version))
-   :title (type/string (find-fully-specified-name module-dependency-index
-                                                  fully-specified-name-index
-                                                  module-id version
-                                                  module-id))
-   :status #fhir/code "active"
-   :experimental #fhir/boolean false
-   :date (type/dateTime (system/parse-date-time (str (LocalDate/parse (str version) DateTimeFormatter/BASIC_ISO_DATE))))
-   :caseSensitive #fhir/boolean true
-   :hierarchyMeaning #fhir/code "is-a"
-   :versionNeeded #fhir/boolean false
-   :content #fhir/code "not-present"
-   :filter
-   [{:fhir/type :fhir.CodeSystem/filter
-     :code #fhir/code "concept"
-     :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value."
-     :operator [#fhir/code "is-a"]
-     :value #fhir/string "A SNOMED CT code"}
-    {:fhir/type :fhir.CodeSystem/filter
-     :code #fhir/code "concept"
-     :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value, excluding the code itself."
-     :operator [#fhir/code "descendent-of"]
-     :value #fhir/string "A SNOMED CT code"}]})
+  (sct-u/create-code-system module-id version
+                            (find-fully-specified-name module-dependency-index
+                                                       fully-specified-name-index
+                                                       module-id version
+                                                       module-id)))
 
 (defn- build-code-systems
   "Generates a list of CodeSystem resources based on the `lines` of the module
