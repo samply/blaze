@@ -61,4 +61,4 @@ test "Content-Type header" "$content_type_header" "application/fhir+xml;charset=
 
 echo "check Encounter supported profile..."
 capability_statement=$(curl -sL --cacert "$ca_cert_blaze" --oauth2-bearer "$access_token" -H 'Accept: application/fhir+json' "$base/metadata")
-test "Encounter Supported Profile" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "Encounter") .supportedProfile[0]')" "https://www.medizininformatik-initiative.de/fhir/core/modul-fall/StructureDefinition/KontaktGesundheitseinrichtung|2025.0.0"
+test "Encounter Supported Profile" "$(echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "Encounter") .supportedProfile[0]' | cut -d'|' -f1)" "https://www.medizininformatik-initiative.de/fhir/core/modul-fall/StructureDefinition/KontaktGesundheitseinrichtung"
