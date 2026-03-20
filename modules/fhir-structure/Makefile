@@ -5,6 +5,7 @@ lint:
 	clj-kondo --lint src test build.clj deps.edn
 
 prep:
+	$(MAKE) -C ../module-base prep
 	clojure -X:deps prep
 
 build: prep
