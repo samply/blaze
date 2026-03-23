@@ -48,6 +48,12 @@ Blaze can be started with a single command using docker:
 docker run -d --name blaze -p 8080:8080 samply/blaze:latest
 ```
 
+## Commercial Support
+
+While Blaze is an open-source project, enterprise-grade commercial support and consulting services are available through [KF Digital Health GmbH](https://kf-digital-health.de/). They offer dedicated assistance and expert guidance for integrating, scaling, and deploying Blaze within your organization.
+
+If your organization requires specific features or enhancements, custom development can be commissioned. Issues in our tracker that are labeled with [`commercial`](https://github.com/samply/blaze/labels/commercial) indicate functionalities that are available to be implemented by KF Digital Health GmbH upon request.
+
 ## YourKit Profiler
 
 ![YourKit logo](https://www.yourkit.com/images/yklogo.png)
