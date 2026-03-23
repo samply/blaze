@@ -68,7 +68,7 @@ services:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "2G"
+      MAX_HEAP_SIZE: "1G"
     ulimits:
       memlock: -1
     healthcheck:
@@ -84,7 +84,7 @@ services:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "2G"
+      MAX_HEAP_SIZE: "1G"
     ulimits:
       memlock: -1
     healthcheck:
@@ -110,7 +110,7 @@ services:
   blaze-1:
     image: "blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -160,7 +160,7 @@ services:
   blaze-2:
     image: "blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
