@@ -96,7 +96,7 @@
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def ^:private copyright
-  #fhir/markdown "Copyright 2019 - 2025 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
+  #fhir/markdown "Copyright 2019 - 2026 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
 
 (defmacro with-handler [[handler-binding config] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -114,7 +114,7 @@
       (is (= 200 status))
 
       (testing "ETag header"
-        (is (= "W/\"707af296\"" (get headers "ETag"))))
+        (is (re-matches #"W/\"[0-9a-f]{8}\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
@@ -180,7 +180,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"707af296\"" "W/\"707af296\", \"foo\""]]
+      (doseq [if-none-match ["W/\"5f166f55\"" "W/\"5f166f55\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -189,7 +189,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"707af296\"" (get headers "ETag"))))))))
+            (is (= "W/\"5f166f55\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]
