@@ -48,7 +48,7 @@
 (defn download-loinc [_]
   (let [filename "Loinc_2.78.zip"]
     (when-not (.exists (io/file filename))
-      (download-file "https://speicherwolke.uni-leipzig.de/index.php/s/S8Bej7LPjbGACdo/download/Loinc_2.78.zip" filename))
+      (download-file (str "https://speicherwolke.uni-leipzig.de/index.php/s/S8Bej7LPjbGACdo/download/" filename) filename))
     (verify-download filename "ab5528a4c703bdc79deabbdd5e1def1335d127a643da97b68f686814ed526d46")
     (b/unzip {:zip-file filename :target-dir "target/generated-resources/blaze/terminology_service/local/code_system/loinc"})
     (b/delete {:path filename}))
