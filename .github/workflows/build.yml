@@ -506,6 +506,10 @@ jobs:
     needs: job-ig
     runs-on: ubuntu-24.04
 
+    permissions:
+      contents: read
+      packages: write
+
     steps:
     - name: Setup Java
       uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
@@ -569,21 +573,30 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
-    - name: Build and Export to Docker
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
+
+    - name: Build and Push Image
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
       with:
         context: .
-        tags: blaze:latest
-        outputs: type=docker,dest=/tmp/blaze.tar
-
-    - name: Upload Blaze Image
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
-      with:
-        name: blaze-image
-        path: /tmp/blaze.tar
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }}
 
   build-frontend:
     runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
     - name: Setup Java
@@ -638,18 +651,23 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
-    - name: Build and Export to Docker
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
+
+    - name: Build and Push Image
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
       with:
         context: modules/frontend
-        tags: blaze-frontend:latest
-        outputs: type=docker,dest=/tmp/blaze-frontend.tar
-
-    - name: Upload Blaze Image
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
-      with:
-        name: blaze-frontend-image
-        path: /tmp/blaze-frontend.tar
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ghcr.io/${{ github.repository_owner }}/blaze-frontend:${{ github.sha }}
 
   image-scan:
     needs: [ build, build-frontend ]
@@ -663,14 +681,15 @@ jobs:
         - blaze-frontend
 
     steps:
-    - name: Download Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: ${{ matrix.image }}-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Image
-      run: docker load --input /tmp/${{ matrix.image }}.tar
+    - name: Pull Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }} ${{ matrix.image }}:latest
 
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -706,14 +725,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e CQL_EXPR_CACHE_SIZE=1000 -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
@@ -870,7 +890,7 @@ jobs:
 
   integration-test:
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.variant == 'distributed' && 'ubicloud-standard-4-ubuntu-2404' || 'ubuntu-24.04' }}
 
     strategy:
       matrix:
@@ -897,14 +917,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       env:
@@ -1542,14 +1563,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e DB_SCALE_FACTOR=2 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -1786,14 +1808,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Download SNOMED CT Release
       uses: ./.github/actions/speicherwolke-download
@@ -1874,14 +1897,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -1940,14 +1964,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Download SNOMED CT Release
       uses: ./.github/actions/speicherwolke-download
@@ -2031,14 +2056,15 @@ jobs:
         path: ~/.fhir/packages
         key: fhir-packages-integration-test-validation
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Download SNOMED CT Release
       uses: ./.github/actions/speicherwolke-download
@@ -2117,14 +2143,15 @@ jobs:
         path: ~/.fhir/packages
         key: fhir-packages-terminology-tests
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2175,14 +2202,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2221,14 +2249,15 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2271,14 +2300,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2317,14 +2347,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2357,14 +2388,15 @@ jobs:
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2392,14 +2424,15 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2421,14 +2454,15 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2457,14 +2491,15 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2527,14 +2562,15 @@ jobs:
     - name: Install Gnuplot
       run: sudo apt-get install gnuplot
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_INTERACTION_DELETE_HISTORY=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2562,14 +2598,15 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Keycloak
       run: docker compose -f .github/openid-auth-test/docker-compose.yml up -d keycloak
@@ -2600,14 +2637,15 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Keycloak and Blaze
       run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml up --wait
@@ -2634,14 +2672,15 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Test Setup
       run: docker compose -f docs/data-sync/copy/docker-compose.yml -f .github/doc-copy-data-test/docker-compose.override.yml up -d
@@ -2681,14 +2720,15 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
@@ -2729,23 +2769,18 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
-    - name: Download Blaze Frontend Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-      with:
-        name: blaze-frontend-image
-        path: /tmp
-
-    - name: Load Blaze Frontend Image
-      run: docker load --input /tmp/blaze-frontend.tar
+    - name: Pull Blaze Frontend Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze-frontend:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze-frontend:${{ github.sha }} blaze-frontend:latest
 
       # https://bugs.webkit.org/show_bug.cgi?id=160504
     - name: Add Blaze Localhost Entry needed for Webkit
@@ -2799,14 +2834,15 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Create a Data Dir
       run: mkdir data
@@ -2855,14 +2891,15 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: .github/scripts/install-blazectl.sh
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze in the Version 0.27 before Introduction of the PatientLastChange Index
       run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
@@ -2940,14 +2977,15 @@ jobs:
     - name: Install Gnuplot
       run: sudo apt-get install gnuplot
 
-    - name: Download Blaze Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
-        name: blaze-image
-        path: /tmp
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Kafka, Cassandra and Blaze
       run: docker compose -f .github/distributed-test/docker-compose.yml up --wait
@@ -3040,44 +3078,15 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-    - name: Download Blaze Uberjar
-      if: ${{ matrix.image.context == '.' }}
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-      with:
-        name: blaze-uberjar
-        path: target
-
-    - name: Download Frontend Build Directory
-      if: ${{ matrix.image.context == 'modules/frontend' }}
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-      with:
-        name: blaze-frontend-build-dir
-        path: modules/frontend/build
-
-    - name: Download Image
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-      with:
-        name: ${{ matrix.image.name }}-image
-        path: /tmp
-
-    - name: Load Image
-      run: docker load --input /tmp/${{ matrix.image.name }}.tar
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
-
-    - name: Install Cosign
-      uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
-
     - name: Login to GHCR
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
     - name: Login to DockerHub
       if: env.dockerhub_username != ''
@@ -3100,22 +3109,35 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
 
-    - name: Build and Push Image
-      id: push
-      uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
-      with:
-        context: ${{ matrix.image.context }}
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+
+    - name: Retag Images
+      id: retag
+      run: |
+        SOURCE_IMG="ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}:${{ github.sha }}"
+        
+        # Create an array for tags to avoid word splitting issues
+        TAG_ARGS=()
+        while IFS= read -r TAG; do
+          if [ -n "$TAG" ]; then
+            TAG_ARGS+=("-t" "$TAG")
+          fi
+        done <<< "${{ steps.meta.outputs.tags }}"
+        
+        echo "Copying to ${TAG_ARGS[*]}"
+        docker buildx imagetools create "${TAG_ARGS[@]}" "$SOURCE_IMG"
+        
+        # Get the digest for signing
+        DIGEST="sha256:$(docker buildx imagetools inspect --raw "$SOURCE_IMG" | sha256sum | awk '{print $1}')"
+        echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
     - name: Sign GHCR Image
-      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.push.outputs.digest }}"
+      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.retag.outputs.digest }}"
 
     - name: Sign DockerHub Image
       if: env.dockerhub_username != ''
-      run: cosign sign --yes "${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.push.outputs.digest }}"
+      run: cosign sign --yes "${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.retag.outputs.digest }}"
 
   release:
     if: github.ref_type == 'tag'
