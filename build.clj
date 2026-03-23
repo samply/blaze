@@ -110,6 +110,7 @@
             ".*-ppc64le.so$"
             ".*-s390x.so$"
             ".*-linux32.so$"
+            ".*-linux-riscv64.so$"
             ".*.dll$"
             ".*.jnilib$"]
            :conflict-handlers
