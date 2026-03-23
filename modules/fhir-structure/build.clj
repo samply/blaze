@@ -18,6 +18,7 @@
     :javac-opts ["-Xlint:all" "-proc:none" "--release" "21"]}))
 
 (defn download-file [url output-path]
+  (println "Download:" output-path)
   (let [http-client (hc/build-http-client {:redirect-policy :normal})
         response (hc/get url {:http-client http-client :as :byte-array})]
     (with-open [out (FileOutputStream. ^String output-path)]
@@ -52,14 +53,18 @@
                        :expected expected-sha
                        :actual actual-sha})))))
 
-(def download-versions
-  {"4.0.1" "R4"})
+(def metadata
+  {"4.0.1"
+   {:token "KQGqr6Wz29xHK9W"
+    :sha "ecd74b1d57d86869992b4171e490d1a3fcebb8877110756b73f7be0f7159f534"}})
 
 (defn download-definitions [{:keys [version]}]
-  (download-file (format "https://hl7.org/fhir/%s/definitions.json.zip" (download-versions version)) "definitions.zip")
-  (verify-download "definitions.zip" "ecd74b1d57d86869992b4171e490d1a3fcebb8877110756b73f7be0f7159f534")
-  (b/unzip {:zip-file "definitions.zip" :target-dir (str "target/generated-resources/blaze/fhir/" version)})
-  (b/delete {:path "definitions.zip"}))
+  (let [filename (format "fhir-definitions-%s.zip" version)]
+    (when-not (.exists (io/file filename))
+      (download-file (format "https://speicherwolke.uni-leipzig.de/index.php/s/%s/download/%s" (get-in metadata [version :token]) filename) filename))
+    (verify-download filename (get-in metadata [version :sha]))
+    (b/unzip {:zip-file filename :target-dir (str "target/generated-resources/blaze/fhir/" version)})
+    (b/delete {:path filename})))
 
 (defn all [_]
   (compile nil)

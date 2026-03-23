@@ -190,6 +190,15 @@ jobs:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
 
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
+
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
@@ -263,6 +272,15 @@ jobs:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
 
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
+
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
@@ -311,6 +329,15 @@ jobs:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-fhir-structure-${{ hashFiles('**/deps.edn') }}
 
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
+
     - name: Test
       run: make -C modules/fhir-structure test-mem-size-${{ matrix.kind }}
 
@@ -357,6 +384,15 @@ jobs:
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
+
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -427,6 +463,15 @@ jobs:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
 
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
+
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
@@ -494,6 +539,15 @@ jobs:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources
 
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
+
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
@@ -550,13 +604,22 @@ jobs:
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-frontend-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-frontend-${{ hashFiles('**/deps.edn') }}
+
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: Setup Node
       uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
@@ -2446,6 +2509,15 @@ jobs:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
 
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
+
     - name: APT Update
       run: sudo apt-get update
 
@@ -2849,6 +2921,15 @@ jobs:
       with:
         path: ~/.gitlibs
         key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
+
+    - name: Download FHIR 4.0.1 Definition ZIP
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: KQGqr6Wz29xHK9W
+        filename: fhir-definitions-4.0.1.zip
+
+    - name: Copy FHIR 4.0.1 Definition ZIP
+      run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: APT Update
       run: sudo apt-get update
