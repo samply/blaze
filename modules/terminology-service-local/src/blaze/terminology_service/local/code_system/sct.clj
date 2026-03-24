@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.code-system.sct
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
@@ -25,19 +25,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- code-system-query [db url version]
-  (d/type-query db "CodeSystem" [["url" url] ["version" version]]))
-
-(defn- handles [db version]
-  (cond
-    (re-matches sct-u/module-only-version-pattern version)
-    (do-sync [code-systems (cs-u/code-systems db sct-u/url)]
-      (filterv
-       #(str/starts-with? (:value (:version %)) version)
-       code-systems))
-
-    :else
-    (d/pull-many db (vec (code-system-query db sct-u/url version)))))
+(defn- find-code-system [{:keys [code-systems]} version]
+  (->> (filter #(str/starts-with? (:value (:version %)) version) code-systems)
+       (fu/sort-by-priority)
+       (first)))
 
 (defn- assoc-context [{:keys [version] :as code-system} context]
   (when-ok [[module-id version] (sct-u/module-version (:value version))]
@@ -47,14 +38,21 @@
 (defn- code-system-not-found-msg [version]
   (format "The code system `%s|%s` was not found." sct-u/url version))
 
-(defmethod c/find :sct
-  [{:keys [db] :sct/keys [context]} _ & [version]]
+(defmethod c/resolve-version :sct
+  [{:sct/keys [context]} _ version]
   (if (or (nil? version) (= version core-version-prefix))
-    (ac/completed-future (assoc-context (:current-int-system context) context))
-    (do-sync [code-systems (handles db version)]
-      (or (some-> (first (fu/sort-by-priority code-systems))
-                  (assoc-context context))
-          (ba/not-found (code-system-not-found-msg version))))))
+    (:value (:version (:current-int-system context)))
+    (or (:value (:version (find-code-system context version)))
+        version)))
+
+(defmethod c/find :sct
+  [{:sct/keys [context]} _ & [version]]
+  (ac/completed-future
+   (or (and (nil? version)
+            (assoc-context (:current-int-system context) context))
+       (some-> (find-code-system context version)
+               (assoc-context context))
+       (ba/not-found (code-system-not-found-msg version)))))
 
 (defmethod c/enhance :sct
   [{:sct/keys [context]} code-system]

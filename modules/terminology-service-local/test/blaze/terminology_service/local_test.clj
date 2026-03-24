@@ -5010,6 +5010,29 @@
           ::anom/category := ::anom/not-found
           ::anom/message := "The value set `url-144258|version-144244` was not found.")))
 
+    (testing "incorrect combination of concept and filter"
+      (given @(value-set-validate-code ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri "system-112646"
+                    :concept
+                    [{:fhir/type :fhir.ValueSet.compose.include/concept
+                      :code #fhir/code "code-112924"}]
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code "property-160019"
+                      :op #fhir/code "op-120524"
+                      :value #fhir/string "value-160032"}]}]}}
+                "code" #fhir/code "code-112924"
+                "system" #fhir/uri "system-112646")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string "Incorrect combination of concept and filter."))
+
     (testing "unsupported filter operator"
       (doseq [[system code]
               [["system-182822" "code-182832"]
@@ -7858,7 +7881,68 @@
           [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "code-invalid"
           [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
           [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string "The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
-          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string "code"])))))
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string "code"]))))
+
+  (testing "with system-version"
+    (with-system [{ts ::ts/local} sct-config]
+      (doseq [coding
+              [#fhir/Coding{:system #fhir/uri "http://snomed.info/sct"
+                            :code #fhir/code "445295009"}
+               #fhir/Coding{:system #fhir/uri "http://snomed.info/sct"
+                            :version #fhir/string "http://snomed.info/sct/900000000000207008"
+                            :code #fhir/code "445295009"}
+               #fhir/Coding{:system #fhir/uri "http://snomed.info/sct"
+                            :version #fhir/string "http://snomed.info/sct/900000000000207008/version/20241001"
+                            :code #fhir/code "445295009"}]
+              system-version
+              [#fhir/canonical "http://snomed.info/sct|http://snomed.info/sct/900000000000207008"
+               #fhir/canonical "http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/20241001"]]
+
+        (testing "coding"
+          (given @(value-set-validate-code ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri "http://snomed.info/sct"
+                        :version #fhir/string "http://snomed.info/sct/900000000000207008/version/20241001"
+                        :filter
+                        [{:fhir/type :fhir.ValueSet.compose.include/filter
+                          :property #fhir/code "concept"
+                          :op #fhir/code "is-a"
+                          :value #fhir/string "441510007"}]}]}}
+                    "coding" coding
+                    "system-version" system-version)
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean true
+            [(parameter "code") 0 :value] := #fhir/code "445295009"
+            [(parameter "system") 0 :value] := #fhir/uri "http://snomed.info/sct"
+            [(parameter "version") 0 :value] := #fhir/string "http://snomed.info/sct/900000000000207008/version/20241001"))
+
+        (testing "codeableConcept"
+          (given @(value-set-validate-code ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri "http://snomed.info/sct"
+                        :version #fhir/string "http://snomed.info/sct/900000000000207008/version/20241001"
+                        :filter
+                        [{:fhir/type :fhir.ValueSet.compose.include/filter
+                          :property #fhir/code "concept"
+                          :op #fhir/code "is-a"
+                          :value #fhir/string "441510007"}]}]}}
+                    "codeableConcept" (type/codeable-concept {:coding [coding]})
+                    "system-version" system-version)
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean true
+            [(parameter "code") 0 :value] := #fhir/code "445295009"
+            [(parameter "system") 0 :value] := #fhir/uri "http://snomed.info/sct"
+            [(parameter "version") 0 :value] := #fhir/string "http://snomed.info/sct/900000000000207008/version/20241001"))))))
 
 (deftest value-set-validate-code-sct-include-filter-descendent-of-test
   (with-system-data [{ts ::ts/local} sct-config]

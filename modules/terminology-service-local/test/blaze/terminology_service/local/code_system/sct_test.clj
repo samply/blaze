@@ -5,12 +5,12 @@
    [blaze.fhir.test-util]
    [blaze.module.test-util :refer [with-system]]
    [blaze.path :refer [path]]
-   [blaze.terminology-service.local.code-system :as-alias cs]
+   [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.code-system.sct :as sct]
    [blaze.terminology-service.local.code-system.sct-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]]))
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 
@@ -36,3 +36,10 @@
 
       (testing "a second call does nothing"
         (is (nil? @(sct/ensure-code-systems context sct)))))))
+
+(deftest resolve-version-test
+  (with-system [{context ::cs/sct} {::cs/sct {:release-path (path "sct-release")}}]
+    (are [version result] (= result (cs/resolve-version {:sct/context context} "http://snomed.info/sct" version))
+      nil "http://snomed.info/sct/900000000000207008/version/20241001"
+      "http://snomed.info/sct/900000000000207008" "http://snomed.info/sct/900000000000207008/version/20241001"
+      "http://snomed.info/sct/11000274103" "http://snomed.info/sct/11000274103/version/20241115")))

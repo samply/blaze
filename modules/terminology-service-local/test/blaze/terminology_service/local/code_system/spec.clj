@@ -17,6 +17,9 @@
           :opt-un [::local/tx-resources]
           :opt [:sct/context ::cs/required-content]))
 
+(s/def ::cs/resolve-version-context
+  (s/keys :opt [:sct/context]))
+
 (s/def ::active-only
   boolean?)
 

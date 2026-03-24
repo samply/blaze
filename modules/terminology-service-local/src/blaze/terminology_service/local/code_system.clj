@@ -85,6 +85,11 @@
    (or (find-in-tx-resources context url version)
        (c/find context url version))))
 
+(defn resolve-version
+  "Returns the possibly resolved version."
+  [context url version]
+  (c/resolve-version context url version))
+
 (defn enhance
   "Adds additional data to `code-system`."
   [context code-system]
