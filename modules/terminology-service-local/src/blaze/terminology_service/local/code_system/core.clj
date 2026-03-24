@@ -1,6 +1,21 @@
 (ns blaze.terminology-service.local.code-system.core
   (:refer-clojure :exclude [find]))
 
+(defmulti resolve-version
+  {:arglists '([context url version])}
+  (fn [context url & _]
+    (condp = url
+      "http://loinc.org" (when (:loinc/context context) :loinc)
+      "http://snomed.info/sct" (when (:sct/context context) :sct)
+      "urn:ietf:bcp:13" :bcp-13
+      "urn:ietf:bcp:47" :bcp-47
+      "http://unitsofmeasure.org" :ucum
+      nil)))
+
+(defmethod resolve-version :default
+  [_ _ version]
+  version)
+
 (defmulti find
   {:arglists '([context url] [context url version])}
   (fn [context url & _]

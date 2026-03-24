@@ -66,23 +66,25 @@
     (ba/incorrect "Missing required parameter `coding.code`.")))
 
 (defn- cs-coding-param
-  [{:keys [url code-system] :as params}
+  [context {:keys [url code-system] :as params}
    {{system :value} :system {version :value} :version :as coding} origin]
   (if code-system
     (when-ok [clause (cs-coding-clause coding origin)]
       (assoc params :clause clause))
     (if-let [url (or url system)]
       (when-ok [_ (check-url-system url system "url" (str origin ".system"))
-                version (check-version-version (:version params) version "version" (str origin ".version"))
+                param-version (some->> (:version params) (cs/resolve-version context url))
+                version (cs/resolve-version context url version)
+                version (check-version-version param-version version "version" (str origin ".version"))
                 clause (cs-coding-clause coding origin)]
         (cond-> (assoc params :url url :clause clause)
           version (assoc :version version)))
       (ba/incorrect (format "Missing all of the parameters `url`, `%s.system` and `codeSystem`." origin)))))
 
-(defn- cs-coding-params [params codings]
+(defn- cs-coding-params [context params codings]
   (transduce
    (comp
-    (map-indexed #(cs-coding-param params %2 (format "codeableConcept.coding[%d]" %1)))
+    (map-indexed #(cs-coding-param context params %2 (format "codeableConcept.coding[%d]" %1)))
     (halt-when ba/anomaly?))
    conj
    []
@@ -91,23 +93,25 @@
 (defn- cs-validate-code-more
   "Tries to extract :url, :version and :clause from `params` returning multiple
   param maps, one for each coding to validate."
-  [{:keys [url code-system code coding codeable-concept display] :as params}]
+  [context {:keys [url code-system code coding codeable-concept display] :as params}]
   (if-not (and url code-system)
     (cond
       code
       (if (or url code-system)
-        [(assoc params :clause (cond-> {:code code} display (assoc :display display)))]
+        (let [url (or url (:value (:url code-system)))]
+          [(cond-> (assoc params :clause (cond-> {:code code} display (assoc :display display)))
+             url (update :version (partial cs/resolve-version context url)))])
         (ba/incorrect "Missing both parameters `url` and `codeSystem`."))
 
       coding
-      (when-ok [params (cs-coding-param params coding "coding")]
+      (when-ok [params (cs-coding-param context params coding "coding")]
         [params])
 
       codeable-concept
       (let [{codings :coding} codeable-concept]
         (if (zero? (count codings))
           (ba/incorrect "Incorrect parameter `codeableConcept` with no coding.")
-          (cs-coding-params params codings)))
+          (cs-coding-params context params codings)))
 
       :else
       (ba/incorrect "Missing one of the parameters `code`, `coding` or `codeableConcept`."))
@@ -293,7 +297,7 @@
 
     (-code-system-validate-code [_ params]
       (if-ok [params (fu/coerce-params cs-validate-code-param-specs params)
-              [first-params :as all-params] (cs-validate-code-more params)
+              [first-params :as all-params] (cs-validate-code-more context params)
               db (db vnode)]
         (let [db (d/new-batch-db db)]
           (-> (find-code-system (context-with-db context db first-params)

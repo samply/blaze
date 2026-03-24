@@ -74,19 +74,17 @@
     :else
     (ba/incorrect "Missing one of the parameters `code`, `coding` or `codeableConcept`.")))
 
-(defn- resolve-version [{:keys [system version] :as clause} params]
-  (if-not version
-    (if-some [version (vs-u/find-version params system)]
-      (assoc clause :version version)
-      clause)
+(defn- resolve-version [{:keys [system version] :as clause} context params]
+  (if-some [version (or version (vs-u/find-version params system))]
+    (assoc clause :version (cs/resolve-version context system version))
     clause))
 
 (defn- validate-params
   "Tries to extract :clause from `params` returning multiple param maps, one for
   each coding to validate."
-  [value-set params]
+  [context value-set params]
   (when-ok [params-list (validate-params* value-set params)]
-    (mapv #(update % :clause resolve-version params) params-list)))
+    (mapv #(update % :clause resolve-version context params) params-list)))
 
 (defn- anom-clause
   ([{:keys [code system version]}]
@@ -156,21 +154,23 @@
   [context
    {{system :value} :system {version :value} :version concepts :concept filters :filter}
    {:keys [clause] :as params}]
-  (if-let [matched-clause (match-clause system (ignore-star-version version) clause)]
-    (if (and (seq concepts) (seq filters))
-      (ac/completed-future (ba/incorrect "Incorrect combination of concept and filter."))
-      (do-sync [code-system (find-code-system context matched-clause)]
-        (cond
-          (seq concepts) (find-concepts code-system concepts params matched-clause)
-          (seq filters)
-          (if-ok [concept (find-filters code-system filters (assoc params :clause matched-clause))]
-            (or concept (anom-clause code-system matched-clause))
-            #(-> (vc/issue-anom-clause matched-clause (issue/invalid-value-set (:value-set context) %))
-                 (assoc :terminal true)))
-          :else (find-complete code-system params matched-clause))))
-    (ac/completed-future
-     (-> (vc/issue-anom-clause clause (issue/code-system-not-found clause))
-         (assoc ::message-important true)))))
+  (let [version (some->> (ignore-star-version version)
+                         (cs/resolve-version context system))]
+    (if-let [matched-clause (match-clause system version clause)]
+      (if (and (seq concepts) (seq filters))
+        (ac/completed-future (ba/incorrect "Incorrect combination of concept and filter." :terminal true))
+        (do-sync [code-system (find-code-system context matched-clause)]
+          (cond
+            (seq concepts) (find-concepts code-system concepts params matched-clause)
+            (seq filters)
+            (if-ok [concept (find-filters code-system filters (assoc params :clause matched-clause))]
+              (or concept (anom-clause code-system matched-clause))
+              #(-> (vc/issue-anom-clause matched-clause (issue/invalid-value-set (:value-set context) %))
+                   (assoc :terminal true)))
+            :else (find-complete code-system params matched-clause))))
+      (ac/completed-future
+       (-> (vc/issue-anom-clause clause (issue/code-system-not-found clause))
+           (assoc ::message-important true))))))
 
 (declare validate-code***)
 
@@ -292,6 +292,6 @@
   that contains the response of the validation request over `value-set`
   or will complete exceptionally with an anomaly in case of errors."
   [context value-set params]
-  (if-ok [params (validate-params value-set params)]
+  (if-ok [params (validate-params context value-set params)]
     (validate-code* context value-set params)
     (comp ac/completed-future #(vc/fail-parameters-from-anom % params))))

@@ -19,6 +19,10 @@
   :args (s/cat :context ::cs/find-context :url string? :version (s/? string?))
   :ret ac/completable-future?)
 
+(s/fdef cs/resolve-version
+  :args (s/cat :context ::cs/resolve-version-context :url string? :version (s/nilable string?))
+  :ret (s/nilable string?))
+
 (s/fdef cs/enhance
   :args (s/cat :context map? :code-system :fhir/CodeSystem)
   :ret :fhir/CodeSystem)
