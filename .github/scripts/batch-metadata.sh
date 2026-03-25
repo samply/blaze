@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # This script fetches the CapabilityStatement through a batch request.
@@ -25,7 +26,7 @@ cat <<END
 }
 END
 }
-result=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
+result=$(curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
 test "resource type" "$(echo "$result" | jq -r .resourceType)" "Bundle"
 test "bundle type" "$(echo "$result" | jq -r .type)" "batch-response"

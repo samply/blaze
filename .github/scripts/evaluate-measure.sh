@@ -1,11 +1,12 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 . "$script_dir/evaluate-measure-util.sh"
 
 evaluate_measure() {
-  curl -s "$1/Measure/\$evaluate-measure?measure=urn:uuid:$2&periodStart=2000&periodEnd=2030"
+  curl -sfH 'Accept: application/fhir+json' "$1/Measure/\$evaluate-measure?measure=urn:uuid:$2&periodStart=2000&periodEnd=2030"
 }
 
 base="http://localhost:8080/fhir"

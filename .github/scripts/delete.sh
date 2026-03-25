@@ -1,15 +1,16 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
 base="http://localhost:8080/fhir"
 patient_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
-headers=$(curl -sfXDELETE -D - "$base/Patient/$patient_id")
+headers=$(curl -sf -XDELETE -D - "$base/Patient/$patient_id")
 
 test_empty "content type header" "$(echo "$headers" | grep -i content-type | tr -d '\r')"
 
-patient_history=$(curl -s "$base/Patient/$patient_id/_history")
+patient_history=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/_history")
 
 total=$(echo "$patient_history" | jq .total)
 if [ "$total" = "1" ]; then
@@ -43,7 +44,7 @@ else
   exit 1
 fi
 
-patient_outcome=$(curl -s "$base/Patient/$patient_id")
+patient_outcome=$(curl -sH 'Accept: application/fhir+json' "$base/Patient/$patient_id")
 
 code=$(echo "$patient_outcome" | jq -r .issue[].code)
 if [ "$code" = "deleted" ]; then

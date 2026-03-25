@@ -1,14 +1,15 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/../util.sh"
 
 base="http://localhost:8080/fhir"
 
-error_message="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Patient\"}" "$base/__admin/Task" | jq -r '.issue[].diagnostics')"
+error_message="$(curl -sH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\"}" "$base/__admin/Task" | jq -r '.issue[].diagnostics')"
 test "error message" "$error_message" "Incorrect resource type \`Patient\`. Expected type is \`Task\`."
 
-error_message="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "{\"resourceType\": \"Task\"}" "$base/__admin/Task" | jq -r '.issue[].details.text')"
+error_message="$(curl -sH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Task\"}" "$base/__admin/Task" | jq -r '.issue[].details.text')"
 test "error message" "$error_message" "No allowed profile found."
 
 re-index-job() {
@@ -50,5 +51,5 @@ cat <<END
 END
 }
 
-error_message="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(re-index-job)" "$base/__admin/Task" | jq -r '.issue[0].diagnostics')"
+error_message="$(curl -sH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d "$(re-index-job)" "$base/__admin/Task" | jq -r '.issue[0].diagnostics')"
 test "error message" "$error_message" "Constraint failed: status-reason-on-hold: 'Assigns possible reasons to the 'on-hold' status.' (defined in https://samply.github.io/blaze/fhir/StructureDefinition/Job)"

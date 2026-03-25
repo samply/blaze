@@ -1,10 +1,11 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/../util.sh"
 
 base="http://localhost:8080/fhir"
-result=$(curl -sXDELETE -H "Prefer: return=OperationOutcome" "$base/Observation")
+result=$(curl -s -XDELETE -H "Prefer: return=OperationOutcome" "$base/Observation")
 
 test "resource type" "$(echo "$result" | jq -r .resourceType)" "OperationOutcome"
 test "severity" "$(echo "$result" | jq -r .issue[0].severity)" "error"

@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -21,7 +22,7 @@ END
 location "Leipzig" "51.3397" "12.3731" | create "$base/Location" >/dev/null
 location "Jakarta" "-6.2" "106.8167" | create "$base/Location" >/dev/null
 
-response="$(curl -s -H "Content-Type: application/fhir+json" "$base/Location?near=43.77925|11.24626|900|km")"
+response="$(curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" "$base/Location?near=43.77925|11.24626|900|km")"
 
 test "Location 900km from Florence finds Leipzig" "$(echo "$response" | jq -r .total)" "1"
 

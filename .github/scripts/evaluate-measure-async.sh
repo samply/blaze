@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -12,7 +13,7 @@ eclipsed() {
 }
 
 evaluate_measure() {
-  curl -s -H "Prefer: respond-async" -o /dev/null -D - "$1/Measure/\$evaluate-measure?measure=urn:uuid:$2&periodStart=2000&periodEnd=2030"
+  curl -sfH 'Accept: application/fhir+json' -H "Prefer: respond-async" -o /dev/null -D - "$1/Measure/\$evaluate-measure?measure=urn:uuid:$2&periodStart=2000&periodEnd=2030"
 }
 
 base="http://localhost:8080/fhir"
@@ -31,7 +32,7 @@ while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}'
   sleep 0.1
 done
 
-bundle="$(curl -s -H 'Accept: application/fhir+json' "$status_url")"
+bundle="$(curl -sfH 'Accept: application/fhir+json' "$status_url")"
 count=$(echo "$bundle" | jq -r ".entry[0].resource.group[0].population[0].count")
 
 if [ "$count" = "$expected_count" ]; then

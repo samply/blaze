@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 # Returns the patient IDs if patient with identifiers taken as first argument.
 

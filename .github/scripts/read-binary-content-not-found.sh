@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 # This script queries the server for a non-existent binary resource
 # and verifies that we get the 404 error message.

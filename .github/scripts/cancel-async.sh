@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # This script verifies the correct cancellation of async requests.
@@ -8,7 +9,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
 base="http://localhost:8080/fhir"
-headers=$(curl -s -H 'Prefer: respond-async' -H 'Accept: application/fhir+json' -o /dev/null -D - "$base/Observation?date=gt2000&date=lt2100&_summary=count")
+headers=$(curl -sf -H 'Prefer: respond-async' -H 'Accept: application/fhir+json' -o /dev/null -D - "$base/Observation?date=gt2000&date=lt2100&_summary=count")
 status_url=$(echo "$headers" | grep -i content-location | tr -d '\r' | cut -d: -f2- | xargs)
 
 response=$(curl -s -XDELETE -w "%{response_code}" "$status_url")

@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -11,7 +12,7 @@ download() {
 }
 
 count() {
-  curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?date=$1&_summary=count" | jq .total
+  curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?date=$1&_summary=count" | jq .total
 }
 
 size() {

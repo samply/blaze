@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # Queries all patients and returns the ID and the birth date.

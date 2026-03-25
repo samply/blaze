@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 # Checks that resources of type $1 have no property $2, if retrieved with _summary=true.
 

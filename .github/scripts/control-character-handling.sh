@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # This script creates an observation with a string value containing the NUL char

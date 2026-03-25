@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/../util.sh"
@@ -6,7 +7,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 type="$1"
 
 base="http://localhost:8080/fhir"
-result=$(curl -sXDELETE -H "Prefer: return=OperationOutcome" "$base/$type")
+result=$(curl -sH 'Accept: application/fhir+json' -XDELETE -H "Prefer: return=OperationOutcome" "$base/$type")
 
 test "resource type" "$(echo "$result" | jq -r .resourceType)" "OperationOutcome"
 test "severity" "$(echo "$result" | jq -r .issue[0].severity)" "success"

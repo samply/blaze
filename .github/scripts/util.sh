@@ -55,17 +55,17 @@ test_non_empty() {
 }
 
 create() {
-  curl -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1"
+  curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1"
 }
 
 update() {
-  curl -XPUT -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- -o /dev/null "$1"
+  curl -XPUT -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- -o /dev/null "$1"
 }
 
 transact() {
-  curl -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1"
+  curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1"
 }
 
 transact_return_representation() {
-  curl -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d @- "$1"
+  curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d @- "$1"
 }

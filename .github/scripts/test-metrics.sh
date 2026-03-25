@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -8,7 +9,7 @@ url="http://localhost:8081/metrics"
 num-metrics() {
   local name="$1"
   local filter="$2"
-  curl -s "$url" | grep "$name" | grep -c "$filter"
+  curl -sf "$url" | grep "$name" | grep -c "$filter"
 }
 
 test "blaze_rocksdb_block_cache_data_miss index" "$(num-metrics "blaze_rocksdb_block_cache_data_miss" "name=\"index\"")" "1"
