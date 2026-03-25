@@ -6,21 +6,18 @@ lint:
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -X:deps prep
+	clojure -X:deps prep :current true
 
-build: prep
-	clojure -T:build all
-
-test: build
+test: prep
 	clojure -M:test:kaocha --profile :ci --skip-meta :mem-size
 
-test-mem-size-normal-heap: build
+test-mem-size-normal-heap: prep
 	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx4g -M:test:kaocha --profile :ci --focus-meta :mem-size
 
-test-mem-size-large-heap: build
+test-mem-size-large-heap: prep
 	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx32g -M:test:kaocha --profile :ci --focus-meta :mem-size
 
-test-coverage: build
+test-coverage: prep
 	clojure -M:test:coverage --skip-meta :mem-size
 
 deps-tree:
@@ -38,4 +35,4 @@ cloc-test:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep build test test-coverage deps-tree deps-list cloc-prod cloc-test clean
+.PHONY: fmt lint prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean

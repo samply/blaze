@@ -11,7 +11,7 @@ lint: install
 	npm run lint
 
 build-fhir-structure:
-	$(MAKE) -C ../fhir-structure build
+	$(MAKE) -C ../fhir-structure prep
 
 test: install build-fhir-structure
 	npm run test:unit

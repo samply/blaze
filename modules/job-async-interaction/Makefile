@@ -6,15 +6,12 @@ lint:
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -X:deps prep :aliases '[:test]'
+	clojure -X:deps prep :aliases '[:test]' :current true
 
-build: prep
-	clojure -T:build copy-profiles
-
-test: build
+test: prep
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: build
+test-coverage: prep
 	clojure -M:test:coverage
 
 cloc-prod:
@@ -29,4 +26,4 @@ validator_cli.jar:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep build test test-coverage cloc-prod cloc-test clean
+.PHONY: fmt lint prep test test-coverage cloc-prod cloc-test clean

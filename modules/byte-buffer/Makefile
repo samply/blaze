@@ -5,15 +5,12 @@ lint:
 	clj-kondo --lint src test build.clj deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -X:deps prep :current true
 
-build: prep
-	clojure -T:build compile
-
-test: build
+test: prep
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: build
+test-coverage: prep
 	clojure -M:test:coverage
 
 deps-tree:
@@ -31,4 +28,4 @@ cloc-test:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep build test test-coverage deps-tree deps-list cloc-prod cloc-test clean
+.PHONY: fmt lint prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean
