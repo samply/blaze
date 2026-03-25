@@ -176,13 +176,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -258,13 +260,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -321,13 +325,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -371,13 +377,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -449,13 +457,15 @@ jobs:
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -529,13 +539,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -617,13 +629,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -2055,6 +2069,7 @@ jobs:
       with:
         path: ~/.fhir/packages
         key: fhir-packages-integration-test-validation
+        restore-keys: fhir-packages
 
     - name: Login to GHCR
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
@@ -2142,6 +2157,7 @@ jobs:
       with:
         path: ~/.fhir/packages
         key: fhir-packages-terminology-tests
+        restore-keys: fhir-packages
 
     - name: Login to GHCR
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
@@ -2536,13 +2552,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -2951,13 +2969,15 @@ jobs:
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
