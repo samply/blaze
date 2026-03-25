@@ -19,10 +19,7 @@ lint: $(MODULES) lint-root
 build-job-ig:
 	$(MAKE) -C job-ig build
 
-build-byte-buffer:
-	$(MAKE) -C modules/byte-buffer build
-
-prep: build-byte-buffer
+prep:
 	$(MAKE) -C modules/module-base prep
 	clojure -X:deps prep
 
@@ -78,7 +75,7 @@ cloc-test-root:
 
 cloc-test: $(MODULES) cloc-test-root
 
-.PHONY: $(MODULES) lint-root lint build-job-ig build-byte-buffer prep \
+.PHONY: $(MODULES) lint-root lint build-job-ig prep \
     test-root test test-coverage clean-root clean build-frontend \
     build-frontend-image build-ingress uberjar build-all \
 	outdated deps-tree deps-list emacs-repl cloc-prod cloc-test
