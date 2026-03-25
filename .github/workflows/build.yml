@@ -173,16 +173,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -255,16 +255,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-${{ matrix.module }}-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -318,16 +318,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-25-maven-fhir-structure-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-25-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-fhir-structure-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -368,16 +368,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-db-coverage-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-db-coverage-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -526,16 +526,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-build-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-build-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -614,16 +614,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-frontend-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-frontend-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -2533,16 +2533,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -2948,16 +2948,16 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-${{ hashFiles('**/deps.edn') }}
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
       with:
         path: ~/.gitlibs
-        key: ${{ runner.os }}-gitlibs-jepsen-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-gitlibs-${{ hashFiles('**/deps.edn') }}
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
