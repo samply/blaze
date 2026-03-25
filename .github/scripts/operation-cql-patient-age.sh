@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # Queries all patients and returns the ID and the birth date.
@@ -9,7 +10,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080/fhir"
 patient_identifier="X79746011X"
-patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
 
 parameters() {
 cat <<END

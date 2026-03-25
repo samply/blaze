@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 # This script creates a large binary resource (8 MiB) and verifies that its binary content
 # * can be read correctly via direct binary upload, and that
@@ -20,7 +21,7 @@ echo "Testing direct binary upload and download..."
 dd if=/dev/urandom bs=8388608 count=1 2>/dev/null > "$temp_original"
 
 # Create Binary resource via direct binary upload
-id=$(curl -sH 'Content-Type: application/octet-stream' --data-binary "@$temp_original" "$base/Binary" | jq -r '.id')
+id=$(curl -sfH 'Accept: application/fhir+json' -H 'Content-Type: application/octet-stream' --data-binary "@$temp_original" "$base/Binary" | jq -r '.id')
 
 echo "Created Binary resource via direct binary upload with id: $id"
 

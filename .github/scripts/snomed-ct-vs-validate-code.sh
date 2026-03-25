@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -9,7 +10,7 @@ validate_code() {
   local expr="$1"
   local params="$2"
   local display="$3"
-  result=$(curl -sH 'Accept: application/fhir+json' "$base/ValueSet/\$validate-code?url=http://fhir.org/VCL?v1=(http://snomed.info/sct)$expr&inferSystem=true&$params")
+  result=$(curl -sfH 'Accept: application/fhir+json' "$base/ValueSet/\$validate-code?url=http://fhir.org/VCL?v1=(http://snomed.info/sct)$expr&inferSystem=true&$params")
 
   test "result" "$(echo "$result" | jq -r '.parameter[] | select(.name == "result").valueBoolean')" "true"
   test "display" "$(echo "$result" | jq -r '.parameter[] | select(.name == "display").valueString')" "$display"

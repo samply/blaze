@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 # issues an async request and inspects the resulting job
 
@@ -12,12 +13,12 @@ else
 fi
 
 base="http://localhost:8080/fhir"
-headers=$(curl -s -H 'Prefer: respond-async' -H 'Accept: application/fhir+json' -o /dev/null -D - "$base/Observation?code=http://loinc.org|8310-5&_summary=count")
+headers=$(curl -sfH 'Accept: application/fhir+json' -H 'Prefer: respond-async' -o /dev/null -D - "$base/Observation?code=http://loinc.org|8310-5&_summary=count")
 job_id=$(echo "$headers" | grep -i content-location | tr -d '\r' | cut -d '/' -f6)
 
 # wait to fetch the completed job
 sleep 1
-job=$(curl -s -H 'Accept: application/fhir+json' "$base/__admin/Task/$job_id")
+job=$(curl -sfH 'Accept: application/fhir+json' "$base/__admin/Task/$job_id")
 
 test "profile URL" "$(echo "$job" | jq -r '.meta.profile[]')" "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
 test "status" "$(echo "$job" | jq -r '.status')" "completed"
@@ -51,7 +52,7 @@ test "processing-duration unit system" "$(echo "$processing_duration" | jq -r .s
 test "processing-duration unit code" "$(echo "$processing_duration" | jq -r .code)" "s"
 
 # History
-job_history=$(curl -s -H 'Accept: application/fhir+json' "$base/__admin/Task/$job_id/_history")
+job_history=$(curl -sfH 'Accept: application/fhir+json' "$base/__admin/Task/$job_id/_history")
 
 test "history resource type" "$(echo "$job_history" | jq -r '.resourceType')" "Bundle"
 test "history bundle type" "$(echo "$job_history" | jq -r '.type')" "history"

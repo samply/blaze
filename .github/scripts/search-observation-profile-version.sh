@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -20,7 +21,7 @@ END
 }
 
 create() {
-  curl -s -f -H "Content-Type: application/fhir+json" -H 'Accept: application/fhir+json' -d @- -o /dev/null "$base/Observation"
+  curl -sfH "Content-Type: application/fhir+json" -H 'Accept: application/fhir+json' -d @- -o /dev/null "$base/Observation"
 }
 
 observation "1.2.3" | create
@@ -28,7 +29,7 @@ observation "1.3.4" | create
 observation "2.1.6" | create
 
 search() {
-  curl -s -H "Content-Type: application/fhir+json" "$base/Observation?_profile$1=$profile_url$2&_summary=count" | jq -r .total
+  curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" "$base/Observation?_profile$1=$profile_url$2&_summary=count" | jq -r .total
 }
 
 test "Observation below v1 count" "$(search ":below" "|1")" "2"

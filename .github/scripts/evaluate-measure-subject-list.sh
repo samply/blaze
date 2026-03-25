@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -31,11 +32,11 @@ END
 }
 
 evaluate_measure() {
-  parameters "$2" | curl -sH "Content-Type: application/fhir+json" -d @- "$1/Measure/\$evaluate-measure"
+  parameters "$2" | curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1/Measure/\$evaluate-measure"
 }
 
 fetch_patients() {
-  curl -s "$1/Patient?_list=$2&_count=200"
+  curl -sfH 'Accept: application/fhir+json' "$1/Patient?_list=$2&_count=200"
 }
 
 base="http://localhost:8080/fhir"
@@ -56,6 +57,10 @@ else
   echo "Report:"
   echo "$report" | jq .
   exit 1
+fi
+
+if [ "0" = "$expected_count" ]; then
+  exit 0
 fi
 
 list_id=$(echo "$report" | jq -r '.group[0].population[0].subjectResults.reference | split("/")[1]')

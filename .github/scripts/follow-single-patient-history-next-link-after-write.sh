@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # This script does the following:
@@ -39,18 +40,18 @@ patient_id=$(create | jq -r '.id')
 # update the patient to create a second version
 patient "$patient_id" "male" | update "$patient_id"
 
-first_page="$(curl -sH "Accept: application/fhir+json" "$base/Patient/$patient_id/_history?_count=1")"
+first_page="$(curl -sfH "Accept: application/fhir+json" "$base/Patient/$patient_id/_history?_count=1")"
 total="$(echo "$first_page" | jq -r .total)"
 next_link="$(echo "$first_page" | jq -r '.link[] | select(.relation == "next") | .url')"
 
 # update the patient to create a third version
 patient "$patient_id" "female" | update "$patient_id"
 
-second_page="$(curl -sH "Accept: application/fhir+json" "$next_link")"
+second_page="$(curl -sfH "Accept: application/fhir+json" "$next_link")"
 
 test "first page total" "$total" "2"
 test "second page total" "$(echo "$second_page" | jq -r .total)" "$total"
 
-after_update_total="$(curl -sH "Accept: application/fhir+json" "$base/Patient/$patient_id/_history" | jq -r .total)"
+after_update_total="$(curl -sfH "Accept: application/fhir+json" "$base/Patient/$patient_id/_history" | jq -r .total)"
 
 test "after update total" "$after_update_total" "3"

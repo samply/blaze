@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -38,11 +39,11 @@ eclipsed() {
 }
 
 evaluate_measure() {
-  parameters "$2" | curl -s -H "Prefer: respond-async,return=representation" -H "Content-Type: application/fhir+json" -d @- -o /dev/null -D - "$1/Measure/\$evaluate-measure"
+  parameters "$2" | curl -sfH "Prefer: respond-async,return=representation" -H "Content-Type: application/fhir+json" -d @- -o /dev/null -D - "$1/Measure/\$evaluate-measure"
 }
 
 fetch_patients() {
-  curl -s "$1/Patient?_list=$2&_count=200"
+  curl -sfH 'Accept: application/fhir+json' "$1/Patient?_list=$2&_count=200"
 }
 
 base="http://localhost:8080/fhir"
@@ -61,7 +62,7 @@ while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}'
   sleep 0.1
 done
 
-bundle="$(curl -s -H 'Accept: application/fhir+json' "$status_url")"
+bundle="$(curl -sfH 'Accept: application/fhir+json' "$status_url")"
 report=$(echo "$bundle" | jq -r ".entry[0].resource")
 count=$(echo "$report" | jq -r ".group[0].population[0].count")
 

@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # Queries all pain severity (72514-3) observations and returns the patient ID,

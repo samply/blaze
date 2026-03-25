@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -10,11 +11,11 @@ expected_size=$3
 file_name_prefix="$(uuidgen)"
 
 summary_count() {
-  curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_summary=count" | jq .total
+  curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_summary=count" | jq .total
 }
 
 total_count() {
-  curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_total=accurate" | jq .total
+  curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_total=accurate" | jq .total
 }
 
 test "_summary=count count" "$(summary_count)" "$expected_size"

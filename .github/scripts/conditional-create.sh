@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 base="http://localhost:8080/fhir"
 

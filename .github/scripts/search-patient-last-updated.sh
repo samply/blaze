@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 # This script tests that the _lastUpdated search works at least in a way that
 # there are no patients updated after the current timestamp.
@@ -8,7 +9,7 @@
 
 base="http://localhost:8080/fhir"
 now=$(date +%Y-%m-%dT%H:%M:%S)
-patient_count=$(curl -sH 'Prefer: handling=strict' "$base/Patient?_lastUpdated=gt$now&_summary=count" | jq -r .total)
+patient_count=$(curl -sfH 'Accept: application/fhir+json' -H 'Prefer: handling=strict' "$base/Patient?_lastUpdated=gt$now&_summary=count" | jq -r .total)
 
 if [ "$patient_count" -eq 0 ]; then
   echo "✅ no patents are updated after $now"

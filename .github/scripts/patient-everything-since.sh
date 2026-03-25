@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -47,14 +48,14 @@ curl -sSfH "Content-Type: application/fhir+json" \
   -d "$(observation "B")" "$base/Observation" >/dev/null
 
 # Fetch full $everything bundle
-bundle=$(curl -sSf "$base/Patient/$patient_id/\$everything")
+bundle=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything")
 actual_size=$(echo "$bundle" | jq -r .total)
 
 # There should be at least 3 resources in the bundle (Patient and Observation A+B)
 test "number of all resources" "$actual_size" "3"
 
 # Fetch $everything bundle since 'before creating observation B'
-bundle=$(curl -sSf "$base/Patient/$patient_id/\$everything?_since=${before_b_time}")
+bundle=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything?_since=${before_b_time}")
 actual_size=$(echo "$bundle" | jq -r .total)
 
 # There should be only 2 resources in the bundle (Patient and Observation B)

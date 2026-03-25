@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # This script verifies that the patient and all resources that are part of the
@@ -9,13 +10,13 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080/fhir"
 patient_identifier="X26238298X"
-patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
 
 echo "calling \$purge via GET should not be allowed"
 test "GET response code" "$(curl -s -o /dev/null -w '%{response_code}' "$base/Patient/$patient_id/\$purge")" "405"
 
 echo "calling \$purge via POST..."
-outcome="$(curl -s -XPOST "$base/Patient/$patient_id/\$purge")"
+outcome="$(curl -sfH 'Accept: application/fhir+json' -XPOST "$base/Patient/$patient_id/\$purge")"
 
 test "outcome code" "$(echo "$outcome" | jq -r '.issue[0].code')" "success"
 test "read patient response code" "$(curl -s -o /dev/null -w '%{response_code}' "$base/Patient/$patient_id")" "404"

@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -71,7 +72,7 @@ create-measure() {
 }
 
 evaluate-measure() {
-  curl -s "$1/Measure/$2/\$evaluate-measure?periodStart=2000&periodEnd=2030&subject=$3"
+  curl -sfH 'Accept: application/fhir+json' "$1/Measure/$2/\$evaluate-measure?periodStart=2000&periodEnd=2030&subject=$3"
 }
 
 base="http://localhost:8080/fhir"
@@ -84,7 +85,7 @@ create-library "$library_uri" "$data" | create "$base/Library" > /dev/null
 
 measure_id=$(create-measure "$measure_uri" "$library_uri" | create "$base/Measure" | jq -r .id)
 
-male_patient_id=$(curl -s "$base/Patient?gender=male&_count=1" | jq -r '.entry[].resource.id')
+male_patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?gender=male&_count=1" | jq -r '.entry[].resource.id')
 count=$(evaluate-measure "$base" "$measure_id" "$male_patient_id" | jq -r ".group[0].population[0].count")
 if [ "$count" = "1" ]; then
   echo "✅ count ($count) equals the expected count"
@@ -93,7 +94,7 @@ else
   exit 1
 fi
 
-female_patient_id=$(curl -s "$base/Patient?gender=female&_count=1" | jq -r ".entry[].resource.id")
+female_patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?gender=female&_count=1" | jq -r ".entry[].resource.id")
 count=$(evaluate-measure "$base" "$measure_id" "$female_patient_id" | jq -r ".group[0].population[0].count")
 if [ "$count" = "0" ]; then
   echo "✅ count ($count) equals the expected count"

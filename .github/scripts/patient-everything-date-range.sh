@@ -1,12 +1,13 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
 base="http://localhost:8080/fhir"
 patient_identifier="X79746011X"
-patient_id=$(curl -s "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
-bundle=$(curl -s "$base/Patient/$patient_id/\$everything?start=2013&end=2014")
+patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+bundle=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything?start=2013&end=2014")
 actual_size=$(echo "$bundle" | jq -r .total)
 ids="$(echo "$bundle" | jq -r '.entry[].resource.id')"
 

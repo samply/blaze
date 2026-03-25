@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/../util.sh"
@@ -39,7 +40,7 @@ cat <<END
 }
 END
 }
-result=$(curl -sfH "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
+result=$(curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
 test "resource type" "$(echo "$result" | jq -r .resourceType)" "Bundle"
 test "bundle type" "$(echo "$result" | jq -r .type)" "transaction-response"

@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 #
 # This script posts an invalid transaction bundle with a null resource.
@@ -22,7 +23,7 @@ cat <<END
 }
 END
 }
-result=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
+result=$(curl -sH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
 test "resource type" "$(echo "$result" | jq -r .resourceType)" "OperationOutcome"
 test "severity" "$(echo "$result" | jq -r '.issue[0].severity')" "error"

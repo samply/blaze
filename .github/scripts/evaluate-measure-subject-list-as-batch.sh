@@ -1,4 +1,5 @@
 #!/bin/bash -e
+set -o pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -114,7 +115,7 @@ evaluate_measure() {
 }
 
 fetch_patients() {
-  curl -s "$1/Patient?_list=$2&_count=200"
+  curl -sfH 'Accept: application/fhir+json' "$1/Patient?_list=$2&_count=200"
 }
 
 base="http://localhost:8080/fhir"

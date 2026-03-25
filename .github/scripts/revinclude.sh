@@ -1,11 +1,12 @@
 #!/bin/bash -e
+set -o pipefail
 
 base="http://localhost:8080/fhir"
-expected_num_patients=$(curl -s "$base/Patient?_summary=count" | jq -r .total)
-expected_num_observations=$(curl -s "$base/Observation?_summary=count" | jq -r .total)
-expected_num_conditions=$(curl -s "$base/Condition?_summary=count" | jq -r .total)
-expected_num_encounters=$(curl -s "$base/Encounter?_summary=count" | jq -r .total)
-expected_num_procedures=$(curl -s "$base/Procedure?_summary=count" | jq -r .total)
+expected_num_patients=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?_summary=count" | jq -r .total)
+expected_num_observations=$(curl -sfH 'Accept: application/fhir+json' "$base/Observation?_summary=count" | jq -r .total)
+expected_num_conditions=$(curl -sfH 'Accept: application/fhir+json' "$base/Condition?_summary=count" | jq -r .total)
+expected_num_encounters=$(curl -sfH 'Accept: application/fhir+json' "$base/Encounter?_summary=count" | jq -r .total)
+expected_num_procedures=$(curl -sfH 'Accept: application/fhir+json' "$base/Procedure?_summary=count" | jq -r .total)
 
 blazectl --server $base download Patient -q '_count=1&_revinclude=Observation:subject&_revinclude=Condition:subject&_revinclude=Procedure:subject&_revinclude=Encounter:subject' -o output.ndjson
 
