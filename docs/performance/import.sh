@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 n=100000
 c=8

@@ -11,7 +11,10 @@ fmt: $(MODULES) fmt-root
 lint-workflows:
 	actionlint
 
-lint-root: lint-workflows
+lint-shell:
+	./scripts/lint-shell.sh
+
+lint-root: lint-workflows lint-shell
 	clj-kondo --lint dev src test deps.edn
 
 lint: $(MODULES) lint-root
@@ -75,7 +78,7 @@ cloc-test-root:
 
 cloc-test: $(MODULES) cloc-test-root
 
-.PHONY: $(MODULES) lint-root lint build-job-ig prep \
+.PHONY: $(MODULES) lint-root lint-shell lint build-job-ig prep \
     test-root test test-coverage clean-root clean build-frontend \
     build-frontend-image build-ingress uberjar build-all \
 	outdated deps-tree deps-list emacs-repl cloc-prod cloc-test

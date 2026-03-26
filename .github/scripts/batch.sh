@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 #
 # This script creates a patient and tries to retrieve it through a batch request.

@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 # This script tests that the _lastUpdated search works at least in a way that
 # there are no patients updated after the current timestamp.

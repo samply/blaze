@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 gnuplot simple-code-search-100k.gnuplot
 gnuplot simple-code-search-100k-fh.gnuplot

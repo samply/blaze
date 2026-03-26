@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 # This script creates a binary resource and verifies that its binary content
 # can be read (via JSON).

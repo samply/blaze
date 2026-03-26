@@ -1,4 +1,5 @@
-#!/bin/sh -e
+#!/bin/bash
+set -euo pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 

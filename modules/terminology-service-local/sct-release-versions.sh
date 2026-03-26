@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 ## Creates the data needed for the Clojure var: blaze.terminology-service.local.code-system.sct.context/published-release-versions
 

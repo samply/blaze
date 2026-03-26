@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 # This script creates a large binary resource (8 MiB) and verifies that its binary content
 # * can be read correctly via direct binary upload, and that

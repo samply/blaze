@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 #
 # Adds module path prefix to the paths in codecov.json files.

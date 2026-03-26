@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 # This test creates two observations both referencing different patients where
 # only one of the patients exists.
