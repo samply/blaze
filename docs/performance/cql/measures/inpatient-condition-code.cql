@@ -7,7 +7,7 @@ codesystem act: 'http://terminology.hl7.org/CodeSystem/v3-ActCode'
 context Patient
 
 define "Inpatient Encounter":
-  [Encounter: class in Code 'IMP' from act]
+  [Encounter: class ~ Code 'IMP' from act]
 
 define InInitialPopulation:
   from [Condition] C
