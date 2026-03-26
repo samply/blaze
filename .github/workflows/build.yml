@@ -505,7 +505,7 @@ jobs:
         pattern: coverage-report-*
 
     - name: Codecov Upload
-      uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
+      uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
       with:
         name: codecov-umbrella
         version: 'v10.1.1'
