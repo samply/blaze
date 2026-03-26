@@ -941,6 +941,12 @@ jobs:
     - name: Pull Blaze Image
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
+    - name: Tune Kernel for Cassandra
+      if: ${{ matrix.variant == 'distributed' }}
+      run: |
+        sudo swapoff -a
+        sudo sysctl -w vm.max_map_count=1048575
+
     - name: Run Blaze
       env:
         ENABLE_INTERACTION_DELETE_HISTORY: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
