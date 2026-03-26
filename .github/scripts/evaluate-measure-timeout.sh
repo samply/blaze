@@ -1,9 +1,10 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 base="http://localhost:8080/fhir"
 name="$1"
 
-diagnostics=$(blazectl --server "$base" evaluate-measure --force-sync ".github/scripts/cql/$name.yml" 2> /dev/null | grep Diagnostics | cut -d: -f2 | xargs)
+diagnostics=$({ blazectl --server "$base" evaluate-measure --force-sync ".github/scripts/cql/$name.yml" 2> /dev/null || true; } | grep Diagnostics | cut -d: -f2 | xargs)
 
 if [ "$diagnostics" = "Timeout of 10 millis eclipsed while evaluating." ]; then
   echo "✅ timeout happened"

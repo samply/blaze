@@ -1,10 +1,12 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 # Usage: save-data.sh <source-base-url> <destination-dir>
 
 src_base_uri="$1"
 dst_dir="$2"
 page_size=1000
+transaction_bundle_size=1000
 num_jobs=2
 
 save-bundle() {

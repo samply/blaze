@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 #
 # This script verifies the correct cancellation of async requests.

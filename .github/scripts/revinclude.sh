@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 base="http://localhost:8080/fhir"
 expected_num_patients=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?_summary=count" | jq -r .total)

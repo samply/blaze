@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
@@ -21,7 +22,7 @@ fi
 count="$(echo "$report" | jq -r '.group[0].population[0].count')"
 
 sleep 10
-for i in {0..3}
+for _ in {0..3}
 do
   sleep 1
   blazectl --server "$base" evaluate-measure --force-sync "$script_dir/$file.yml" 2> /dev/null |\

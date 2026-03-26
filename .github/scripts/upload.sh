@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 filename=$1
 base="http://localhost:8080/fhir"

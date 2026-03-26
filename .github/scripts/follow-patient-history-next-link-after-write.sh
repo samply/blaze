@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 #
 # This script fetches the first Patient history bundle, adds a new Patient and

@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
   time="gtime"
@@ -67,7 +68,7 @@ count-resources-raw() {
   count=$(curl -s "$base/$resource_type?$search_params&_summary=count" | jq .total)
 
   # this are 4 tests of which 3 will be taken for the statistics
-  for i in {0..3}; do
+  for _ in {0..3}; do
     curl -s "$base/$resource_type?$search_params&_summary=count" -o /dev/null -w '%{time_total}\n' >> "$times_file"
   done
 
@@ -85,7 +86,7 @@ count-resources-raw-post() {
   count=$(curl -s -d @<(echo -n "$search_params") "$url" | jq .total)
 
   # this are 4 tests of which 3 will be taken for the statistics
-  for i in {0..3}; do
+  for _ in {0..3}; do
     curl -s -d @<(echo -n "$search_params") "$url" -o /dev/null -w '%{time_total}\n' >> "$times_file"
   done
 
@@ -102,7 +103,7 @@ download-resources-raw() {
   count=$(curl -s "$base/$resource_type?$search_params&_summary=count" | jq .total)
 
   # this are 4 tests of which 3 will be taken for the statistics
-  for i in {0..3}; do
+  for _ in {0..3}; do
     local download_count
     download_count=$($time -f "%e" -a -o "$times_file" blazectl download --server "$base" "$resource_type" -q "$search_params&_count=1000" 2>/dev/null | wc -l | xargs)
 
@@ -125,7 +126,7 @@ download-resources-raw-post() {
   count=$(curl -s -d @<(echo -n "$search_params") "$base/$resource_type/_search?_summary=count" | jq .total)
 
   # this are 4 tests of which 3 will be taken for the statistics
-  for i in {0..3}; do
+  for _ in {0..3}; do
     local download_count
     download_count=$($time -f "%e" -a -o "$times_file" blazectl download --server "$base" "$resource_type" -p -q @<(echo -n "$search_params&_count=1000") 2>/dev/null | wc -l | xargs)
 

@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 ca_cert="$script_dir/../ingress/keycloak-cert.pem"

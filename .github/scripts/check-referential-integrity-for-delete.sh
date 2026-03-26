@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 # Creates a Patient and an Observation referring to this Patient. After that
 # tries to delete the Patient. The status code of the delete response can be

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 java -jar validator_cli.jar txTests -test-version 1.7.5 \
   -tx http://localhost:8080/fhir \

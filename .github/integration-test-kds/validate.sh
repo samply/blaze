@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 base="http://localhost:8084"
 

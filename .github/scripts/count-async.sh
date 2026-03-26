@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 # Takes a LOINC `code` and `count` and issues am async _summary=count request.
 # Tests that the total value in result bundle equals to `count`.

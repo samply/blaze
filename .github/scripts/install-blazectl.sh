@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 url="https://github.com/samply/blazectl/releases/download/$BLAZECTL_VERSION/blazectl-${BLAZECTL_VERSION#v}-linux-amd64.tar.gz"
 curl -sSfL "$url" > blazectl.tar.gz

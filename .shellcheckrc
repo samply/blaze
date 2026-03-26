@@ -1,0 +1,10 @@
+# shellcheck configuration file
+
+# Follow sourced files
+external-sources=true
+
+# Disable some rules that are currently too noisy
+# SC1091: Not following: ... (often fails because of dynamic paths)
+# SC2155: Declare and assign separately to avoid masking return values (very common in this codebase)
+# SC2086: Double quote to prevent globbing and word splitting (very common in this codebase)
+disable=SC1091,SC2155,SC2086

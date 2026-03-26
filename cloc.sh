@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 cloc() {
   make "cloc-$2" | grep "$1" | awk '{print $NF}' | awk '{sum+=$1} END {print sum}' | xargs

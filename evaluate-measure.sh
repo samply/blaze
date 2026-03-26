@@ -1,4 +1,5 @@
-#!/usr/bin/env bash
+#!/bin/bash
+set -euo pipefail
 
 # Usage: ./evaluate-measure.sh -f <query>.cql <server-base>
 
@@ -110,6 +111,7 @@ do
     f) file=$OPTARG ;;
     t) subject_type=$OPTARG ;;
     r) report_type=$OPTARG ;;
+    *) usage ;;
   esac
 done
 

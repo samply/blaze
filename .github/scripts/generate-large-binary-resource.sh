@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 # generate random data as Base64
 data=$(openssl rand -base64 "$1")

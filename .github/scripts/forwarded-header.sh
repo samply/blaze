@@ -1,5 +1,5 @@
-#!/bin/bash -e
-set -o pipefail
+#!/bin/bash
+set -euo pipefail
 
 proto=$1
 expected_self_link="$proto://blaze.de/fhir/Patient"

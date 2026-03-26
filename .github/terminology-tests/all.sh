@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
 
 java -jar validator_cli.jar txTests \
   -tx http://localhost:8080/fhir \

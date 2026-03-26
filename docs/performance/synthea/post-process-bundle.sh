@@ -1,4 +1,5 @@
-#!/bin/sh -e
+#!/bin/bash
+set -euo pipefail
 
 jq -f post-process-bundles.jq "$1" >"$1.tmp"
 rm "$1"
