@@ -11,7 +11,7 @@ define Stress:
   [Condition: Code '73595000' from sct]
 
 define "Inpatient Encounter":
-  [Encounter: class in Code 'IMP' from act]
+  [Encounter: class ~ Code 'IMP' from act]
 
 define InInitialPopulation:
   exists Stress C
