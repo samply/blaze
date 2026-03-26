@@ -904,7 +904,7 @@ jobs:
 
   integration-test:
     needs: build
-    runs-on: ${{ matrix.variant == 'distributed' && 'ubicloud-standard-4-ubuntu-2404' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.variant == 'distributed' && 'ubicloud-standard-8-ubuntu-2404' || 'ubuntu-24.04' }}
 
     strategy:
       matrix:
@@ -977,7 +977,7 @@ jobs:
       run: .github/scripts/check-resource-read-only.sh StructureDefinition "http://hl7.org/fhir/StructureDefinition/Patient"
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload -c 1 .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
 
     - name: Check Total-Number of Resources are 92299
       run: .github/scripts/check-total-number-of-resources.sh 92299
