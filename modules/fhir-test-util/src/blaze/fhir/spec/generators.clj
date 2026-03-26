@@ -131,13 +131,17 @@
 (def code-value
   (gen/fmap str/join (gen/vector char-printable-whitespace)))
 
-(def char-digit
-  (gen/fmap char (gen/choose 48 57)))
+(def ^:private oid-component
+  (gen/one-of [(gen/return "0")
+               (gen/fmap #(str (inc %)) gen/nat)]))
 
 (def oid-value
-  (gen/such-that (partial re-matches #"urn:oid:[0-2](\.(0|[1-9][0-9]*))+")
-                 (gen/fmap (partial str "urn:oid:0.")
-                           (gen/fmap str/join (gen/vector char-digit)))))
+  (gen/fmap
+   (fn [[first-part components]]
+     (str "urn:oid:" first-part "." (str/join "." components)))
+   (gen/tuple
+    (gen/elements ["0" "1" "2"])
+    (gen/vector oid-component 1 5))))
 
 (def ^:private char-id-value
   (gen/frequency [[14 gen/char-alphanumeric] [2 (gen/elements [\- \.])]]))
@@ -159,9 +163,12 @@
 (def uuid-value
   (gen/fmap (partial str "urn:uuid:") gen/uuid))
 
+(def ^:private non-empty-string-alphanumeric
+  (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 10)))
+
 (def xhtml-value
-  (->> (gen/such-that (comp pos? clojure.core/count) gen/string-alphanumeric)
-       (gen/fmap #(str "<div xmlns=\"http://www.w3.org/1999/xhtml\">" % "</div>"))))
+  (gen/fmap #(str "<div xmlns=\"http://www.w3.org/1999/xhtml\">" % "</div>")
+            non-empty-string-alphanumeric))
 
 (defn- keep-vals [m]
   (reduce-kv
@@ -685,13 +692,15 @@
            extension (extensions)
            start (nilable (dateTime))
            end (nilable (dateTime))}}]
-  (as-> (gen/tuple id extension start end) x
-    (to-map [:id :extension :start :end] x)
-    (gen/such-that #(<= (system/date-time-lower-bound (:value (:start %)))
-                        (system/date-time-upper-bound (:value (:end %))))
-                   x
-                   1003)
-    (gen/fmap type/period x)))
+  (->> (gen/tuple id extension start end)
+       (to-map [:id :extension :start :end])
+       (gen/fmap (fn [{:keys [start end] :as m}]
+                   (cond-> m
+                     (and start end
+                          (> (system/date-time-lower-bound (:value start))
+                             (system/date-time-upper-bound (:value end))))
+                     (assoc :start end :end start))))
+       (gen/fmap type/period)))
 
 (defn quantity
   [& {:keys [id extension value comparator unit system code]
