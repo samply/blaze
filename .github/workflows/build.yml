@@ -25,8 +25,8 @@ env:
   BLAZECTL_CHECKSUM: ed411d59b4856667c7817235caacdd0933c59858a342f91982141e6ce2c0e663
 
   # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
-  VALIDATOR_VERSION: 6.9.3
-  VALIDATOR_CHECKSUM: 6b3401690a93c39cb24e20a6a09c6bfdf04bd015006f8c0bad1d1553afd60b36
+  VALIDATOR_VERSION: 6.9.4
+  VALIDATOR_CHECKSUM: ca6bfdc525ebca6985cfeaa79139a7db947c15791b920b7f99d1822a2f2ec12a
 
 jobs:
   fmt:
