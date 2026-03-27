@@ -719,7 +719,7 @@ jobs:
 
     - name: Upload Trivy Scan Results to GitHub Security Tab
       if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
-      uses: github/codeql-action/upload-sarif@b8bb9f28b8d3f992092362369c57161b755dea45 # v4
+      uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4
       with:
         sarif_file: trivy-results.sarif
 
