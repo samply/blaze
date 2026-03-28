@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [compile str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
@@ -62,11 +63,12 @@
 
 (defn- link-path-resource-handles [path]
   (fn [db source-resource _target-node]
-    (let [[res & more] (fhir-path/eval noop-resolver path source-resource)]
-      (when (and (nil? more) (= :fhir/Reference (:fhir/type res)))
-        (when-let [ref (-> res :reference :value)]
-          (when-let [[type id] (fsr/split-literal-ref ref)]
-            (ba/map (fhir-util/resource-handle db type id) vector)))))))
+    (ac/completed-future
+     (let [[res & more] (fhir-path/eval noop-resolver path source-resource)]
+       (when (and (nil? more) (= :fhir/Reference (:fhir/type res)))
+         (when-let [ref (-> res :reference :value)]
+           (when-let [[type id] (fsr/split-literal-ref ref)]
+             (ba/map (fhir-util/resource-handle db type id) vector))))))))
 
 (defn- clauses [params]
   (->> (ring-codec/form-decode params)

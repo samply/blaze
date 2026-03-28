@@ -1,7 +1,7 @@
 (ns blaze.db.impl.index
   "This namespace contains query functions."
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.impl.index.index-handle :as ih]
@@ -15,12 +15,12 @@
   [registry type [param & values :as clause] lenient?]
   (let [values (cond->> values (< 1 (count values)) (into [] (distinct)))]
     (if (empty? values)
-      (ba/incorrect (format "Clause `%s` isn't valid." clause))
+      (ac/completed-future (ba/incorrect (format "Clause `%s` isn't valid." clause)))
       (if-ok [[search-param modifier] (sr/parse registry type param)
               _ (search-param/validate-modifier search-param modifier)]
-        (when-ok [compiled-values (search-param/compile-values search-param modifier values)]
-          [search-param modifier values compiled-values])
-        #(if lenient? nil %)))))
+        (-> (search-param/compile-values search-param modifier values)
+            (ac/then-apply (fn [cv] [search-param modifier values cv])))
+        #(ac/completed-future (if lenient? nil %))))))
 
 (defn- resolve-sort-clause
   [registry type [_ param direction :as clause]]
@@ -40,40 +40,54 @@
 
 (defn- resolve-search-clause-only [registry type clause lenient?]
   (if (identical? :sort (first clause))
-    (ba/incorrect "Sort clauses are only allowed at first position.")
+    (ac/completed-future (ba/incorrect "Sort clauses are only allowed at first position."))
     (resolve-search-clause registry type clause lenient?)))
 
 (defn- multiple-clauses? [disjunction]
   (vector? (first disjunction)))
 
-(defn resolve-search-params* [registry type clauses lenient?]
-  (transduce
-   (comp
-    (map
-     (fn [disjunction]
-       (transduce
-        (comp (keep #(resolve-search-clause-only registry type % lenient?))
-              (halt-when ba/anomaly?))
-        conj
-        []
-        (cond-> disjunction (not (multiple-clauses? disjunction)) vector))))
-    (filter seq)
-    (halt-when ba/anomaly?))
-   conj
-   []
-   clauses))
+(defn- resolve-disjunction [registry type disjunction lenient?]
+  (let [clause-futures
+        (mapv #(resolve-search-clause-only registry type % lenient?)
+              (cond-> disjunction (not (multiple-clauses? disjunction)) vector))]
+    (-> (ac/all-of clause-futures)
+        (ac/then-apply (fn [_] (into [] (keep ac/join) clause-futures))))))
 
-(defn resolve-search-params [registry type clauses lenient?]
+(defn resolve-search-params* [registry type clauses lenient?]
+  (let [disjunction-futures
+        (mapv #(resolve-disjunction registry type % lenient?) clauses)]
+    (-> (ac/all-of disjunction-futures)
+        (ac/then-apply
+         (fn [_]
+           (into [] (comp (map ac/join) (remove empty?)) disjunction-futures))))))
+
+(defn resolve-search-params
+  "Resolves all search parameter `clauses` for resource `type` against
+  `registry` in parallel.
+
+  Returns a CompletableFuture that completes with a map of
+  `:search-clauses` and optionally `:sort-clause` or completes exceptionally
+  with an anomaly if any clause references an unknown search parameter and
+  `lenient?` is false.
+
+  When `lenient?` is true, clauses that reference unknown search
+  parameters are silently dropped instead of causing a failure."
+  [registry type clauses lenient?]
   (if (identical? :sort (ffirst clauses))
-    (when-ok [sort-clause (resolve-sort-clause registry type (first clauses))
-              search-clauses (resolve-search-params* registry type (rest clauses) lenient?)]
-      (cond-> {:sort-clause sort-clause}
-        (seq search-clauses)
-        (assoc :search-clauses search-clauses)))
-    (when-ok [search-clauses (resolve-search-params* registry type clauses lenient?)]
-      (cond-> {}
-        (seq search-clauses)
-        (assoc :search-clauses search-clauses)))))
+    (if-ok [sort-clause (resolve-sort-clause registry type (first clauses))]
+      (-> (resolve-search-params* registry type (rest clauses) lenient?)
+          (ac/then-apply
+           (fn [search-clauses]
+             (cond-> {:sort-clause sort-clause}
+               (seq search-clauses)
+               (assoc :search-clauses search-clauses)))))
+      ac/completed-future)
+    (-> (resolve-search-params* registry type clauses lenient?)
+        (ac/then-apply
+         (fn [search-clauses]
+           (cond-> {}
+             (seq search-clauses)
+             (assoc :search-clauses search-clauses)))))))
 
 (defn- matcher [batch-db [search-param modifier _ values]]
   (search-param/matcher search-param batch-db modifier values))
@@ -355,11 +369,11 @@
 (defn compartment-clauses
   [search-param-registry compartment-code search-param-codes type]
   (let [clauses [(mapv #(vector % (str compartment-code "/0")) search-param-codes)]]
-    (when-ok [clauses (resolve-search-params search-param-registry type clauses false)]
-      (:search-clauses clauses))))
+    (-> (resolve-search-params search-param-registry type clauses false)
+        (ac/then-apply :search-clauses))))
 
-(defn- supports-ordered-compartment-index-handles [[search-param _ values]]
-  (p/-supports-ordered-compartment-index-handles search-param values))
+(defn- supports-ordered-compartment-index-handles [[search-param modifier values]]
+  (p/-supports-ordered-compartment-index-handles search-param modifier values))
 
 (defn compartment-query-plan* [search-clauses]
   (let [{scan-clauses true other-clauses false}
@@ -367,12 +381,12 @@
     [scan-clauses other-clauses]))
 
 (defn- ordered-compartment-index-handles**
-  ([batch-db compartment tid [search-param _ _ compiled-values]]
+  ([batch-db compartment tid [search-param modifier _ compiled-values]]
    (search-param/ordered-compartment-index-handles
-    search-param batch-db compartment tid compiled-values))
-  ([batch-db compartment tid [search-param _ _ compiled-values] start-id]
+    search-param batch-db compartment tid modifier compiled-values))
+  ([batch-db compartment tid [search-param modifier _ compiled-values] start-id]
    (search-param/ordered-compartment-index-handles
-    search-param batch-db compartment tid compiled-values start-id)))
+    search-param batch-db compartment tid modifier compiled-values start-id)))
 
 (defn- ordered-compartment-index-handles*
   ([batch-db compartment tid disjunction]

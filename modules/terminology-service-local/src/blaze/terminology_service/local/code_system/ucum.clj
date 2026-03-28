@@ -78,6 +78,9 @@
 (defn ensure-code-system
   "Ensures that the UCUM code system is present in the database node."
   [{:keys [node] :as context}]
-  (if-let [_ (coll/first (ucum-query (d/db node)))]
-    (ac/completed-future nil)
-    (create-code-system context)))
+  (-> (ucum-query (d/db node))
+      (ac/then-compose
+       (fn [handles]
+         (if (coll/first handles)
+           (ac/completed-future nil)
+           (create-code-system context))))))

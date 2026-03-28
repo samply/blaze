@@ -1,6 +1,7 @@
 (ns blaze.db.impl.query.compartment
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.async.comp :as ac]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.protocols :as p]
@@ -8,16 +9,21 @@
    [blaze.db.impl.search-param :as search-param]
    [blaze.util :refer [str]]))
 
+(defn- compile-search-param-values
+  "Compiles the `values` via `search-param`.
+
+  Most likely the search param is of type reference. Because compiling
+  references isn't really async, we can join here."
+  [search-param modifier values]
+  (ac/join (search-param/compile-values search-param modifier values)))
+
+(defn- value-compiler [values]
+  (fn [[search-param modifier]]
+    [search-param modifier values
+     (compile-search-param-values search-param modifier values)]))
+
 (defn- inject-values [compartment-clauses values]
-  (mapv
-   (fn [disjunction]
-     (mapv
-      (fn [[search-param modifier]]
-        [search-param modifier
-         values
-         (search-param/compile-values search-param modifier values)])
-      disjunction))
-   compartment-clauses))
+  (mapv (partial mapv (value-compiler values)) compartment-clauses))
 
 (defn- list-clauses [clauses code id]
   (inject-values clauses [(str code "/" id)]))

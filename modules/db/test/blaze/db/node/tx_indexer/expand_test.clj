@@ -1,5 +1,6 @@
 (ns blaze.db.node.tx-indexer.expand-test
   (:require
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
@@ -13,13 +14,15 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
+
+(set! *warn-on-reflection* true)
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -30,8 +33,9 @@
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
 
 (defn- expand-tx-cmds [node tx-cmds]
-  (with-open [db (d/new-batch-db (d/db node))]
-    (expand/expand-tx-cmds db tx-cmds)))
+  (let [db (d/new-batch-db (d/db node))]
+    (-> (expand/expand-tx-cmds db tx-cmds)
+        (ac/when-complete (fn [_ _] (.close db))))))
 
 (deftest expand-tx-cmds-conditional-create-test
   (testing "conflict"
@@ -41,11 +45,12 @@
         [:put {:fhir/type :fhir/Patient :id "1"
                :birthDate #fhir/date #system/date "2020"}]]]
 
-      (given (expand-tx-cmds
-              node
-              [{:op "create" :type "Patient" :id "foo"
-                :hash (hash/generate patient-0)
-                :if-none-exist [["birthdate" "2020"]]}])
+      (given-failed-future
+       (expand-tx-cmds
+        node
+        [{:op "create" :type "Patient" :id "foo"
+          :hash (hash/generate patient-0)
+          :if-none-exist [["birthdate" "2020"]]}])
         ::anom/category := ::anom/conflict
         ::anom/message := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
         :http/status := 412)))
@@ -54,11 +59,11 @@
       [[[:put {:fhir/type :fhir/Patient :id "2"
                :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
-      (given (expand-tx-cmds
-              node
-              [{:op "create" :type "Patient" :id "0"
-                :hash (hash/generate patient-0)
-                :if-none-exist [["identifier" "120426"]]}])
+      (given @(expand-tx-cmds
+               node
+               [{:op "create" :type "Patient" :id "0"
+                 :hash (hash/generate patient-0)
+                 :if-none-exist [["identifier" "120426"]]}])
         count := 1
         [0 :op] := "hold"
         [0 :type] := "Patient"
@@ -72,20 +77,20 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
-        (is (empty? (expand-tx-cmds
-                     node
-                     [{:op "conditional-delete" :type "Patient"
-                       :clauses [["identifier" "foo"]]}])))))
+        (is (empty? @(expand-tx-cmds
+                      node
+                      [{:op "conditional-delete" :type "Patient"
+                        :clauses [["identifier" "foo"]]}])))))
 
     (testing "one patient match"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
-        (given (expand-tx-cmds
-                node
-                [{:op "conditional-delete" :type "Patient"
-                  :clauses [["identifier" "120426"]]}])
+        (given @(expand-tx-cmds
+                 node
+                 [{:op "conditional-delete" :type "Patient"
+                   :clauses [["identifier" "120426"]]}])
           count := 1
           [0 :op] := "delete"
           [0 :type] := "Patient"
@@ -98,9 +103,10 @@
                   [:create {:fhir/type :fhir/Patient :id id
                             :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]))]
 
-          (given (expand-tx-cmds node
-                                 [{:op "conditional-delete" :type "Patient"
-                                   :clauses [["identifier" "120426"]]}])
+          (given-failed-future
+           (expand-tx-cmds node
+                           [{:op "conditional-delete" :type "Patient"
+                             :clauses [["identifier" "120426"]]}])
             ::anom/category := ::anom/conflict
             ::anom/message := "Conditional delete of one single Patient with query `identifier=120426` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
             :http/status := 412)))
@@ -111,10 +117,11 @@
                   [:create {:fhir/type :fhir/Patient :id (str id)
                             :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]))]
 
-          (given (expand-tx-cmds node
-                                 [{:op "conditional-delete" :type "Patient"
-                                   :clauses [["identifier" "120426"]]
-                                   :allow-multiple true}])
+          (given-failed-future
+           (expand-tx-cmds node
+                           [{:op "conditional-delete" :type "Patient"
+                             :clauses [["identifier" "120426"]]
+                             :allow-multiple true}])
             ::anom/category := ::anom/conflict
             ::anom/message := "Conditional delete of Patients with query `identifier=120426` failed because more than 10,000 matches were found."
             :fhir/issue "too-costly")))
@@ -125,10 +132,10 @@
                   [:create {:fhir/type :fhir/Patient :id id
                             :identifier [#fhir/Identifier{:value #fhir/string  "120426"}]}]))]
 
-          (given (expand-tx-cmds node
-                                 [{:op "conditional-delete" :type "Patient"
-                                   :clauses [["identifier" "120426"]]
-                                   :allow-multiple true}])
+          (given @(expand-tx-cmds node
+                                  [{:op "conditional-delete" :type "Patient"
+                                    :clauses [["identifier" "120426"]]
+                                    :allow-multiple true}])
             count := 2
             [0 :op] := "delete"
             [0 :type] := "Patient"
@@ -140,20 +147,20 @@
 (deftest expand-tx-cmds-patient-purge-test
   (testing "empty database"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (expand-tx-cmds node [{:op "patient-purge" :id "0"}])))))
+      (is (empty? @(expand-tx-cmds node [{:op "patient-purge" :id "0"}])))))
 
   (testing "patient only"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (given (expand-tx-cmds node [{:op "patient-purge" :id "0"}])
+      (given @(expand-tx-cmds node [{:op "patient-purge" :id "0"}])
         count := 1
         [0 :op] := "purge"
         [0 :type] := "Patient"
         [0 :id] := "0"
         [0 :check-refs] := false)
 
-      (given (expand-tx-cmds node [{:op "patient-purge" :id "0" :check-refs true}])
+      (given @(expand-tx-cmds node [{:op "patient-purge" :id "0" :check-refs true}])
         count := 1
         [0 :op] := "purge"
         [0 :type] := "Patient"
@@ -166,7 +173,7 @@
         [:create {:fhir/type :fhir/Observation :id "0"
                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (given (expand-tx-cmds node [{:op "patient-purge" :id "0"}])
+      (given @(expand-tx-cmds node [{:op "patient-purge" :id "0"}])
         count := 2
         [0 :op] := "purge"
         [0 :type] := "Patient"

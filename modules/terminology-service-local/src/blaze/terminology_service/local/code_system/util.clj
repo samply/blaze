@@ -1,12 +1,13 @@
 (ns blaze.terminology-service.local.code-system.util
   (:require
-   [blaze.async.comp :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.luid :as luid]
    [blaze.module :as m]))
 
 (defn code-systems [db url]
-  (d/pull-many db (vec (d/type-query db "CodeSystem" [["url" url]]))))
+  (-> (d/type-query db "CodeSystem" [["url" url]])
+      (ac/then-compose #(d/pull-many db (vec %)))))
 
 (defn code-system-versions [db url]
   (do-sync [code-systems (code-systems db url)]

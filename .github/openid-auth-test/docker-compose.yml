@@ -6,6 +6,12 @@ services:
     - "8090:8080"
     volumes:
     - "${GITHUB_WORKSPACE}/.github/openid-auth-test/realm:/opt/keycloak/data/import"
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost:9000\r\nConnection: close\r\n\r\n' >&3; grep -q '\"status\": \"UP\"' <&3" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   blaze:
     image: "blaze:latest"
@@ -16,14 +22,15 @@ services:
     - "8080:8080"
     volumes:
     - "blaze-data:/app/data"
-    depends_on:
-    - keycloak
     healthcheck:
       test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
 volumes:
   blaze-data:

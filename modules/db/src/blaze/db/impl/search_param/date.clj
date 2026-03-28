@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.date
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -383,17 +384,18 @@
 
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
-      (if-ok [date-time (system/parse-date-time value)]
-        (case op
-          (:eq :ne :ge :le :ap)
-          (dual-bound-value op date-time)
-          (:gt :sa)
-          {:op op
-           :upper-bound (codec-date/encode-upper-bound date-time)}
-          (:lt :eb)
-          {:op op
-           :lower-bound (codec-date/encode-lower-bound date-time)})
-        #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
+      (ac/completed-future
+       (if-ok [date-time (system/parse-date-time value)]
+         (case op
+           (:eq :ne :ge :le :ap)
+           (dual-bound-value op date-time)
+           (:gt :sa)
+           {:op op
+            :upper-bound (codec-date/encode-upper-bound date-time)}
+           (:lt :eb)
+           {:op op
+            :lower-bound (codec-date/encode-lower-bound date-time)})
+         #(assoc % ::anom/message (invalid-date-time-value-msg code value))))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -425,13 +427,13 @@
    ;; starting with a particilar id isn't possible
     (p/-sorted-index-handles search-param batch-db tid direction))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db _ compiled-values]
@@ -530,19 +532,20 @@
 
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
-      (if-ok [date-time (system/parse-date-time value)]
-        (case op
-          (:eq :ne :ge :le :ap)
-          (last-updated-dual-bound-value op date-time)
-          (:gt :sa)
-          {:op op
-           :upper-bound (codec-date/encode-upper-bound date-time)
-           :upper-bound-dt (system/date-time-upper-bound date-time)}
-          (:lt :eb)
-          {:op op
-           :lower-bound (codec-date/encode-lower-bound date-time)
-           :lower-bound-dt (system/date-time-lower-bound date-time)})
-        #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
+      (ac/completed-future
+       (if-ok [date-time (system/parse-date-time value)]
+         (case op
+           (:eq :ne :ge :le :ap)
+           (last-updated-dual-bound-value op date-time)
+           (:gt :sa)
+           {:op op
+            :upper-bound (codec-date/encode-upper-bound date-time)
+            :upper-bound-dt (system/date-time-upper-bound date-time)}
+           (:lt :eb)
+           {:op op
+            :lower-bound (codec-date/encode-lower-bound date-time)
+            :lower-bound-dt (system/date-time-lower-bound date-time)})
+         #(assoc % ::anom/message (invalid-date-time-value-msg code value))))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -574,13 +577,13 @@
    ;; starting with a particilar id isn't possible
     (p/-sorted-index-handles search-param batch-db tid direction))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db _ compiled-values]

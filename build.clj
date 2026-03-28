@@ -24,28 +24,44 @@
                   :class-dir class-dir
                   :ns-compile
                   '[blaze.admin-api
-                    blaze.handler.app
-                    blaze.handler.health
                     blaze.cache-collector
-                    blaze.elm.expression.cache
+                    blaze.core
+                    blaze.cql
+                    blaze.db.kv.mem
+                    blaze.db.kv.rocksdb
                     blaze.db.node
+                    blaze.db.node.resource-indexer
                     blaze.db.resource-cache
+                    blaze.db.resource-store.cassandra
+                    blaze.db.resource-store.kv
                     blaze.db.search-param-registry
                     blaze.db.tx-cache
-                    blaze.db.node.resource-indexer
-                    blaze.db.tx-log.local
-                    blaze.db.resource-store.kv
-                    blaze.db.resource-store.cassandra
                     blaze.db.tx-log.kafka
-                    blaze.terminology-service.extern
+                    blaze.db.tx-log.local
+                    blaze.elm.expression.cache
+                    blaze.fhir.operation.code-system.lookup
+                    blaze.fhir.operation.code-system.validate-code
+                    blaze.fhir.operation.compact
+                    blaze.fhir.operation.cql
+                    blaze.fhir.operation.evaluate-measure
+                    blaze.fhir.operation.graphql
+                    blaze.fhir.operation.graphql.middleware
+                    blaze.fhir.operation.totals
+                    blaze.fhir.operation.value-set.expand
+                    blaze.fhir.operation.value-set.validate-code
                     blaze.fhir.parsing-context
                     blaze.fhir.structure-definition-repo
                     blaze.fhir.writing-context
+                    blaze.handler.app
+                    blaze.handler.health
                     blaze.http-client
                     blaze.interaction.conditional-delete-type
                     blaze.interaction.create
                     blaze.interaction.delete
                     blaze.interaction.delete-history
+                    blaze.interaction.history.instance
+                    blaze.interaction.history.system
+                    blaze.interaction.history.type
                     blaze.interaction.read
                     blaze.interaction.search-compartment
                     blaze.interaction.search-system
@@ -53,45 +69,32 @@
                     blaze.interaction.transaction
                     blaze.interaction.update
                     blaze.interaction.vread
-                    blaze.interaction.history.instance
-                    blaze.interaction.history.system
-                    blaze.interaction.history.type
+                    blaze.job-scheduler
                     blaze.job.async-interaction
                     blaze.job.compact
                     blaze.job.re-index
-                    blaze.job-scheduler
-                    blaze.db.kv.mem
                     blaze.metrics.handler
+                    blaze.metrics.registry
                     blaze.openid-auth
-                    blaze.fhir.operation.code-system.lookup
-                    blaze.fhir.operation.code-system.validate-code
-                    blaze.fhir.operation.compact
-                    blaze.fhir.operation.cql
                     blaze.operation.graph
-                    blaze.fhir.operation.graphql
-                    blaze.fhir.operation.graphql.middleware
-                    blaze.fhir.operation.evaluate-measure
                     blaze.operation.patient.everything
                     blaze.operation.patient.purge
-                    blaze.fhir.operation.totals
-                    blaze.fhir.operation.value-set.expand
-                    blaze.fhir.operation.value-set.validate-code
                     blaze.page-id-cipher
-                    blaze.page-store.local
                     blaze.page-store.cassandra
+                    blaze.page-store.local
                     blaze.rest-api
                     blaze.rest-api.async-status-cancel-handler
                     blaze.rest-api.async-status-handler
                     blaze.rest-api.batch-handler
                     blaze.rest-api.capabilities-handler
-                    blaze.db.kv.rocksdb
                     blaze.scheduler
                     blaze.server
+                    blaze.terminology-service.extern
                     blaze.terminology-service.local
                     blaze.terminology-service.local.code-system.loinc
                     blaze.terminology-service.local.code-system.sct
-                    blaze.thread-pool-executor-collector
-                    blaze.core]
+                    blaze.terminology-service.not-available
+                    blaze.thread-pool-executor-collector]
                   :compile-opts
                   {:direct-linking true
                    :elide-meta [:doc :file :line :added]}

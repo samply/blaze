@@ -27,7 +27,8 @@
 
 (defn- find-key-set-resource [db]
   (log/trace "try to find the key set resource")
-  (coll/first (d/type-query db "DocumentReference" [["identifier" identifier]])))
+  (-> (d/type-query db "DocumentReference" [["identifier" identifier]])
+      (ac/then-apply coll/first)))
 
 (defn- b64-encode [bytes]
   (.encodeToString (Base64/getEncoder) bytes))
@@ -62,10 +63,13 @@
   ([{:keys [node] :as context}]
    (find-or-create-key-set-resource context (d/db node)))
   ([{:keys [node] :as context} db]
-   (if-let [handle (find-key-set-resource db)]
-     (d/pull node handle)
-     (-> (d/transact node [(key-set-resource-create-op context)])
-         (ac/then-compose (partial find-or-create-key-set-resource context))))))
+   (-> (find-key-set-resource db)
+       (ac/then-compose
+        (fn [handle]
+          (if handle
+            (d/pull node handle)
+            (-> (d/transact node [(key-set-resource-create-op context)])
+                (ac/then-compose (partial find-or-create-key-set-resource context)))))))))
 
 (defn- b64-decode [s]
   (.decode (Base64/getDecoder) ^String s))
@@ -125,8 +129,8 @@
   "Rotates the keys in the key set available at DocumentReference with
   identifier `page-id-cipher` in `node`."
   ([node]
-   (when-let [handle (find-key-set-resource (d/db node))]
-     (rotate-keys node @(d/pull node handle))))
+   (when-let [handle @(find-key-set-resource (d/db node))]
+     @(rotate-keys node @(d/pull node handle))))
   ([node key-set-resource]
    (log/debug "Rotate page ID cipher keys")
    (update-resource node key-set-resource #(update-key-set-handle % impl/rotate-keys))))

@@ -145,12 +145,15 @@
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
       (let [if-none-exist (-> entry :request :ifNoneExist :value)
-            clauses (conditional-clauses if-none-exist)
-            handle (coll/first (d/type-query db type clauses))]
-        (if (identical? :blaze.preference.return/representation return-preference)
-          (do-sync [resource (pull db handle)]
-            (assoc (noop-entry db handle) :resource resource))
-          (ac/completed-future (noop-entry db handle)))))))
+            clauses (conditional-clauses if-none-exist)]
+        (-> (d/type-query db type clauses)
+            (ac/then-compose
+             (fn [handles]
+               (let [handle (coll/first handles)]
+                 (if (identical? :blaze.preference.return/representation return-preference)
+                   (do-sync [resource (pull db handle)]
+                     (assoc (noop-entry db handle) :resource resource))
+                   (ac/completed-future (noop-entry db handle)))))))))))
 
 (defn- update-entry
   [{:blaze/keys [db] :as context} type tx-op old-handle {:keys [id] :as handle}]

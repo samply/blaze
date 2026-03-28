@@ -103,7 +103,8 @@
                    id (* duration 1e3))))))))
 
 (defn- first-library-by-url [db url]
-  (coll/first (d/type-query db "Library" [["url" url]])))
+  (do-sync [handles (d/type-query db "Library" [["url" url]])]
+    (coll/first handles)))
 
 (defn- non-deleted-library-handle [db id]
   (when-let [handle (d/resource-handle db "Library" id)]
@@ -111,22 +112,25 @@
       handle)))
 
 (defn- find-library-handle [db library-ref]
-  (if-let [handle (first-library-by-url db library-ref)]
-    handle
-    (let [literal-ref (s/conform :blaze.fhir/literal-ref library-ref)]
-      (when-not (s/invalid? literal-ref)
-        (let [[type id] literal-ref]
-          (when (= "Library" type)
-            (non-deleted-library-handle db id)))))))
+  (do-sync [handle (first-library-by-url db library-ref)]
+    (or handle
+        (let [literal-ref (s/conform :blaze.fhir/literal-ref library-ref)]
+          (when-not (s/invalid? literal-ref)
+            (let [[type id] literal-ref]
+              (when (= "Library" type)
+                (non-deleted-library-handle db id))))))))
 
 (defn- find-library [db library-ref]
-  (if-let [handle (find-library-handle db library-ref)]
-    (d/pull db handle)
-    (ac/completed-future
-     (ba/incorrect
-      (format "The Library resource with canonical URI `%s` was not found." library-ref)
-      :fhir/issue "value"
-      :fhir.issue/expression "Measure.library"))))
+  (-> (find-library-handle db library-ref)
+      (ac/then-compose
+       (fn [handle]
+         (if handle
+           (d/pull db handle)
+           (ac/completed-future
+            (ba/incorrect
+             (format "The Library resource with canonical URI `%s` was not found." library-ref)
+             :fhir/issue "value"
+             :fhir.issue/expression "Measure.library")))))))
 
 (defn- remove-unused-defs
   "Removes all expression definitions from `expression-defs` that are not

@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.quantity-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string-spec]
    [blaze.db.impl.codec :as codec]
@@ -17,11 +18,15 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -32,7 +37,9 @@
 
 (def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (deftest resource-keys-test
   (testing "non matching op"
@@ -78,6 +85,7 @@
 (defn compile-quantity-value [search-param-registry value]
   (-> (value-quantity-param search-param-registry)
       (search-param/compile-values nil [value])
+      (ac/join)
       (first)))
 
 (deftest compile-value-test
@@ -148,14 +156,14 @@
           :exact-value := (codec/quantity nil 1M))))
 
     (testing "invalid decimal value"
-      (given (search-param/compile-values
-              (value-quantity-param search-param-registry) nil ["a"])
+      (given-failed-future (search-param/compile-values
+                            (value-quantity-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`."))
 
     (testing "unsupported prefix"
-      (given (search-param/compile-values
-              (value-quantity-param search-param-registry) nil ["ne23"])
+      (given-failed-future (search-param/compile-values
+                            (value-quantity-param search-param-registry) nil ["ne23"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))))
 
@@ -174,9 +182,9 @@
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (value-quantity-param search-param-registry)]
-      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))
+      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil nil))))))
 
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))

@@ -104,7 +104,9 @@
 
 (defprotocol SearchParam
   (-validate-modifier [search-param modifier] "Can return an anomaly.")
-  (-compile-value [search-param modifier value] "Can return an anomaly.")
+  (-compile-value [search-param modifier value]
+    "Returns a CompletableFuture that completes with the compiled value or
+    completes exceptionally with an anomaly.")
   (-estimated-scan-size
     [search-param batch-db tid modifier compiled-value]
     "Returns a relative estimation of the amount of work to do while scanning
@@ -132,11 +134,11 @@
 
     The `start-id` is only a performance hint. Search params are allowed to
     return all index handles, even if a `start-id` is supplied.")
-  (-supports-ordered-compartment-index-handles [search-param values]
+  (-supports-ordered-compartment-index-handles [search-param modifier values]
     "Returns true if `search-param` supports fetching ordered compartment index handles with `values`.")
   (-ordered-compartment-index-handles
-    [search-param batch-db compartment tid compiled-value]
-    [search-param batch-db compartment tid compiled-value start-id]
+    [search-param batch-db compartment tid modifier compiled-values]
+    [search-param batch-db compartment tid modifier compiled-values start-id]
     "Returns a reducible collection.")
   (-matcher [_ batch-db modifier compiled-values])
   (-single-version-id-matcher [_ batch-db tid modifier compiled-values])

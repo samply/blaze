@@ -96,6 +96,9 @@
 (defn ensure-code-system
   "Ensures that the BCP-47 code system is present in the database node."
   [{:keys [node] :as context}]
-  (if-let [_ (coll/first (bcp-47-query (d/db node)))]
-    (ac/completed-future nil)
-    (create-code-system context)))
+  (-> (bcp-47-query (d/db node))
+      (ac/then-compose
+       (fn [handles]
+         (if (coll/first handles)
+           (ac/completed-future nil)
+           (create-code-system context))))))

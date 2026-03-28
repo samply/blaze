@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.chained
   (:require
    [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -129,13 +130,13 @@
            (map ih/from-resource-handle))
      (p/-index-handles this batch-db tid modifier compiled-value)))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db modifier values]
@@ -158,6 +159,14 @@
 
   (-postprocess-matches [_ _ _ _]))
 
+(defn- compile-ref-search-param-value
+  "Compiles the value of the reference of `resource-handle` via
+  `ref-search-param`.
+
+  Because compiling references isn't really async, we can join here."
+  [ref-search-param resource-handle]
+  (ac/join (p/-compile-value ref-search-param nil (reference resource-handle))))
+
 (defn chained-search-param
   "Creates a new chaining search param from the following arguments:
 
@@ -175,5 +184,5 @@
   [(->ChainedSearchParam search-param ref-search-param
                          (codec/c-hash (:code ref-search-param))
                          (codec/tid ref-type) original-code
-                         #(p/-compile-value ref-search-param nil (reference %)))
+                         #(compile-ref-search-param-value ref-search-param %))
    modifier])

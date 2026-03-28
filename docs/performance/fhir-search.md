@@ -130,7 +130,7 @@ If only a subset of a resource's information is needed, the `_elements` search p
 
 ¹ resources per second
 
-## Multiple Code Search
+## Multiple Codes Search
 
 This section evaluates the performance of FHIR Search for selecting Observation resources with multiple codes.
 
@@ -141,18 +141,14 @@ The following codes were used:
 
 ### Script
 
-The script `multiple-code-searchs.sh` is used.
+The script `multiple-codes-search.sh` is used.
 
 ### Counting
 
-| System | Dataset | Codes |  # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|-------|--------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 10    |  27.9 M |    11.08 |  0.109 |   2.5 M |
-| LEA47  | 1M      | 100   | 322.6 M |   165.30 |  0.985 |   2.0 M |
-| LEA58  | 1M      | 10    |  27.9 M |    11.24 |  0.180 |   2.5 M |
-| LEA58  | 1M      | 100   | 322.6 M |   171.82 |  1.402 |   1.9 M |
-| A5N46  | 1M      | 10    |  27.9 M |     5.28 |  0.032 |   5.3 M |
-| A5N46  | 1M      | 100   | 322.6 M |    82.95 |  0.082 |   3.9 M |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      | 10    | 29.1 M |     6.41 |  0.034 |   4.5 M |
+| A5N46  | 1M      | 100   | 36.3 M |     9.44 |  0.021 |   3.8 M |
 
 ¹ resources per second
 
@@ -160,14 +156,43 @@ The script `multiple-code-searchs.sh` is used.
 
 ![](fhir-search/multiple-code-search-download-1M.png)
 
-| System | Dataset | Codes |  # Hits | Time (s) | StdDev | Res/s ¹ |
-|--------|---------|-------|--------:|---------:|-------:|--------:|
-| LEA47  | 1M      | 10    |  27.9 M |   677.48 |  4.174 |  41.2 k |
-| LEA47  | 1M      | 100   | 322.6 M | 11148.16 | 62.879 |  28.9 k |
-| LEA58  | 1M      | 10    |  27.9 M |   456.25 |  0.690 |  61.1 k |
-| LEA58  | 1M      | 100   | 322.6 M |  9776.25 | 83.038 |  33.0 k |
-| A5N46  | 1M      | 10    |  27.9 M |   278.13 |  3.040 | 100.3 k |
-| A5N46  | 1M      | 100   | 322.6 M |  4699.36 |  9.647 |  68.6 k |
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      | 10    | 29.1 M |   287.30 |  0.301 | 101.2 k |
+| A5N46  | 1M      | 100   | 36.3 M |  1053.73 |  7.206 |  34.5 k |
+
+¹ resources per second
+
+## Multiple Codes Search – ValueSet
+
+This section evaluates the performance of FHIR Search for selecting Observation resources with multiple codes using the in-modifier with a VCL value set URL.
+
+The following codes were used:
+
+* 10 LOINC codes from `observation-codes-10.txt`
+* 100 LOINC codes from `observation-codes-100.txt`
+
+### Script
+
+The script `multiple-codes-search-vs.sh` is used.
+
+### Counting
+
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      | 10    | 29.1 M |     6.16 |  0.024 |   4.7 M |
+| A5N46  | 1M      | 100   | 36.3 M |     9.54 |  0.005 |   3.8 M |
+
+¹ resources per second
+
+### Downloading Resources
+
+![](fhir-search/multiple-code-search-download-1M.png)
+
+| System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------|-------:|---------:|-------:|--------:|
+| A5N46  | 1M      | 10    | 29.1 M |   286.60 | 14.831 | 101.4 k |
+| A5N46  | 1M      | 100   | 36.3 M |   881.79 |  0.657 |  41.2 k |
 
 ¹ resources per second
 

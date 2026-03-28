@@ -2,7 +2,7 @@
   "This namespace contains the local database node component."
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.async.flow :as flow]
    [blaze.db.api :as d]
@@ -103,7 +103,7 @@
 
 (defn- index-tx [context tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
-    (tx-indexer/index-tx context tx-data)))
+    (ba/try-anomaly (ac/join (tx-indexer/index-tx context tx-data)))))
 
 (defn- advance-t! [state t]
   (log/trace "advance state to t =" t)
@@ -271,37 +271,40 @@
                    other-clauses))))))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
-  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
-                                                 lenient?)]
-    (if (empty? clauses)
-      (qt/->EmptyTypeQuery (codec/tid type))
-      (or (try-compile-patient-type-query search-param-registry type clauses)
-          (qt/->TypeQuery (codec/tid type) clauses)))))
+  (-> (index/resolve-search-params search-param-registry type clauses lenient?)
+      (ac/then-apply
+       (fn [clauses]
+         (if (empty? clauses)
+           (qt/->EmptyTypeQuery (codec/tid type))
+           (or (try-compile-patient-type-query search-param-registry type clauses)
+               (qt/->TypeQuery (codec/tid type) clauses)))))))
 
 (defn- compartment-clauses [search-param-registry code type]
   (let [search-param-codes (sr/compartment-resources search-param-registry code type)]
     (if (seq search-param-codes)
       (index/compartment-clauses search-param-registry code search-param-codes type)
-      (ba/unsupported (format "Unsupported `%s` compartment query of type `%s`." code type)))))
+      (ac/completed-future (ba/unsupported (format "Unsupported `%s` compartment query of type `%s`." code type))))))
 
 (defn- compile-compartment-query
   ([search-param-registry code type]
-   (when-ok [clauses (compartment-clauses search-param-registry code type)]
+   (do-sync [clauses (compartment-clauses search-param-registry code type)]
      (qc/->CompartmentListQuery code clauses (codec/tid type))))
   ([search-param-registry code type clauses lenient?]
-   (when-ok [clauses (index/resolve-search-params search-param-registry type
-                                                  clauses lenient?)]
-     (if (:sort-clause clauses)
-       (ba/unsupported "Sorting is unsupported in compartment queries.")
-       (let [search-clauses (:search-clauses clauses)]
-         (if (empty? search-clauses)
-           (compile-compartment-query search-param-registry code type)
-           (let [[scan-clauses other-clauses] (index/compartment-query-plan* search-clauses)]
-             (if (seq scan-clauses)
-               (qc/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                      scan-clauses other-clauses)
-               (when-ok [clauses (compartment-clauses search-param-registry code type)]
-                 (qc/->CompartmentSeekQuery code clauses (codec/tid type) other-clauses))))))))))
+   (-> (index/resolve-search-params search-param-registry type clauses lenient?)
+       (ac/then-compose
+        (fn [clauses]
+          (if (:sort-clause clauses)
+            (ac/completed-future (ba/unsupported "Sorting is unsupported in compartment queries."))
+            (let [search-clauses (:search-clauses clauses)]
+              (if (empty? search-clauses)
+                (compile-compartment-query search-param-registry code type)
+                (let [[scan-clauses other-clauses] (index/compartment-query-plan* search-clauses)]
+                  (if (seq scan-clauses)
+                    (ac/completed-future
+                     (qc/->CompartmentQuery (codec/c-hash code) (codec/tid type)
+                                            scan-clauses other-clauses))
+                    (do-sync [clauses (compartment-clauses search-param-registry code type)]
+                      (qc/->CompartmentSeekQuery code clauses (codec/tid type) other-clauses))))))))))))
 
 (def ^:private add-subsetted-xf
   (map #(update % :meta update :tag conj-vec fu/subsetted)))
@@ -316,9 +319,8 @@
     (into [] (take-while #(= t (:t %))) (d/type-history db type))))
 
 (defn- compile-system-matcher [search-param-registry clauses]
-  (when-ok [clauses (index/resolve-search-params search-param-registry
-                                                 "Resource" clauses false)]
-    (batch-db/->Matcher (:search-clauses clauses))))
+  (-> (index/resolve-search-params search-param-registry "Resource" clauses false)
+      (ac/then-apply (fn [clauses] (batch-db/->Matcher (:search-clauses clauses))))))
 
 (defrecord Node [context tx-log tx-cache kv-store resource-cache resource-store
                  sync-fn search-param-registry resource-indexer read-only-matcher
@@ -387,13 +389,11 @@
     (compile-type-query search-param-registry type clauses true))
 
   (-compile-type-matcher [_ type clauses]
-    (when-ok [clauses (index/resolve-search-params search-param-registry type
-                                                   clauses false)]
+    (do-sync [clauses (index/resolve-search-params search-param-registry type clauses false)]
       (batch-db/->Matcher (:search-clauses clauses))))
 
   (-compile-system-query [_ clauses]
-    (when-ok [clauses (index/resolve-search-params search-param-registry
-                                                   "Resource" clauses false)]
+    (do-sync [clauses (index/resolve-search-params search-param-registry "Resource" clauses false)]
       (qs/->SystemQuery clauses)))
 
   (-compile-system-matcher [_ clauses]
@@ -533,9 +533,10 @@
       (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))))
 
 (defn- compile-read-only-matcher [search-param-registry]
-  (compile-system-matcher
-   search-param-registry
-   [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]]))
+  (ac/join
+   (compile-system-matcher
+    search-param-registry
+    [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])))
 
 (defmethod m/pre-init-spec :blaze.db/node [_]
   (s/keys

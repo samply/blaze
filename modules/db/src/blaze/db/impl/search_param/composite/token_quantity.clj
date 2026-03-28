@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.composite.token-quantity
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -33,20 +34,21 @@
     (some->> modifier (u/unknown-modifier-anom code)))
 
   (-compile-value [_ _ value]
-    (when-ok [[v1 v2] (cc/split-value value)]
-      (let [token-value (cc/compile-component-value c1 v1)]
-        (if-ok [quantity-value (cc/compile-component-value c2 v2)]
-          (prefix-with quantity-value token-value)
-          #(case (::spq/category %)
-             ::spq/invalid-decimal-value
-             (assoc %
-                    ::anom/message (u/invalid-decimal-value-msg code v2))
-             ::spq/unsupported-prefix
-             (assoc %
-                    ::anom/message
-                    (u/unsupported-prefix-msg
-                     code (::spq/unsupported-prefix %)))
-             %)))))
+    (if-ok [[v1 v2] (cc/split-value value)]
+      (let [f1 (cc/compile-component-value c1 v1)
+            f2 (-> (cc/compile-component-value c2 v2)
+                   (ac/exceptionally
+                    (fn [{::spq/keys [category] :as anom}]
+                      (case category
+                        ::spq/invalid-decimal-value
+                        (assoc anom ::anom/message (u/invalid-decimal-value-msg code v2))
+                        ::spq/unsupported-prefix
+                        (assoc anom ::anom/message
+                               (u/unsupported-prefix-msg code (::spq/unsupported-prefix anom)))
+                        anom))))]
+        (-> (ac/all-of [f1 f2])
+            (ac/then-apply (fn [_] (prefix-with (ac/join f2) (ac/join f1))))))
+      ac/completed-future))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -66,13 +68,13 @@
   (-index-handles [_ batch-db tid _ compiled-value start-id]
     (spq/index-handles batch-db c-hash tid prefix-length compiled-value start-id))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db _ compiled-values]

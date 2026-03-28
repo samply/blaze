@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.string
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -79,7 +80,7 @@
     (some->> modifier (u/modifier-anom #{"contains" "exact" "missing" "text"} code)))
 
   (-compile-value [_ _ value]
-    (codec/string (normalize value)))
+    (ac/completed-future (codec/string (normalize value))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -99,13 +100,13 @@
   (-index-handles [_ batch-db tid _ compiled-value start-id]
     (index-handles batch-db c-hash tid compiled-value start-id))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db _ compled-values]
