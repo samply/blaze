@@ -95,7 +95,7 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
      * 8 byte - object header
      * 4 or 8 byte - value reference
      */
-    int MEM_SIZE_ATOMIC_REFERENCE = 16;
+    int MEM_SIZE_ATOMIC_REFERENCE = MEM_SIZE_OBJECT_HEADER + 8;
 
     byte HASH_MARKER_LIST = 36;
     byte HASH_MARKER_MAP = 37;
@@ -223,10 +223,17 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
         };
     }
 
+    static int memSizeArray(int byteSize) {
+        return (MEM_SIZE_OBJECT_HEADER + 4 + byteSize + 7) & ~7;
+    }
+
+    static int memSizeObjectArray(int size) {
+        return memSizeArray(size * MEM_SIZE_REFERENCE);
+    }
+
     @SuppressWarnings("unchecked")
     static int memSizeArrayMap(PersistentArrayMap m) {
-        return MEM_SIZE_PERSISTENT_ARRAY_MAP_OBJECT + 16 +
-                ((m.size() * MEM_SIZE_REFERENCE * 2 + 3) & ~7) +
+        return MEM_SIZE_PERSISTENT_ARRAY_MAP_OBJECT + memSizeObjectArray(m.size() * 2) +
                 m.values().stream().mapToInt(Base::memSize).sum();
     }
 
@@ -249,7 +256,7 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
     static int memSizeNormalVector(PersistentVector list) {
         // TODO: improve calculation for lists with more than 32 elements
         return MEM_SIZE_PERSISTENT_VECTOR_OBJECT + (list.size() <= 32
-                ? 16 + ((list.size() * MEM_SIZE_REFERENCE + 3) & ~7)
+                ? memSizeObjectArray(list.size())
                 : list.size() * MEM_SIZE_REFERENCE * 3)
                 + list.stream().mapToInt(Base::memSize).sum();
     }
