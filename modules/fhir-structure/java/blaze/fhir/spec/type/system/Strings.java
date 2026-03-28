@@ -1,5 +1,6 @@
 package blaze.fhir.spec.type.system;
 
+import blaze.fhir.spec.type.Base;
 import com.fasterxml.jackson.core.io.SerializedString;
 import com.google.common.hash.PrimitiveSink;
 
@@ -52,7 +53,7 @@ public interface Strings {
                 break;
             }
         }
-        return MEM_SIZE_OBJECT + (MEM_SIZE_OBJECT_HEADER + 4 + byteLength + 7) & ~7;
+        return MEM_SIZE_OBJECT + Base.memSizeArray(byteLength);
     }
 
     static int memSize(SerializedString value) {

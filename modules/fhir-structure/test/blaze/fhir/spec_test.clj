@@ -4735,7 +4735,8 @@
 
   (testing "examples"
     (mem-size-test "HumanName"
-      {:given ["given-171612"]} 160 216)))
+      {:given ["given-171612"]} 160 216
+      {:given (repeat 32 "given-171612")} 2272 2696)))
 
 (deftest identifier-test
   (testing "FHIR spec"
