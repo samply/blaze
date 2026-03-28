@@ -40,7 +40,7 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    :blaze.fhir.operation/totals

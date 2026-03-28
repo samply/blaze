@@ -50,8 +50,7 @@
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-   :blaze.test/fixed-rng-fn {}))
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}))
 
 (defn- wrap-defaults [handler]
   (fn [request]

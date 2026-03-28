@@ -66,8 +66,7 @@
    ::rest-api/async-status-cancel-handler
    {:job-scheduler (ig/ref :blaze/job-scheduler)}
 
-   :blaze.job/no-op {}
-   :blaze.test/fixed-rng-fn {}))
+   :blaze.job/no-op {}))
 
 (defn wrap-error [handler]
   (fn [request]

@@ -25,7 +25,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    ::graphql/handler

@@ -21,14 +21,15 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 (def config-extra
-  {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :extra-bundle-file "../../.github/custom-search-parameters-test/custom-search-parameters.json"}})
+  (assoc-in
+   config
+   [:blaze.db/search-param-registry :extra-bundle-file]
+   "../../.github/custom-search-parameters-test/custom-search-parameters.json"))
 
 (deftest init-test
   (testing "nil config"
@@ -69,9 +70,10 @@
         :reason := ::ig/build-threw-exception)))
 
   (testing "with nil extra bundle file"
-    (is (->> (ig/init {:blaze.db/search-param-registry
-                       {:structure-definition-repo structure-definition-repo
-                        :extra-bundle-file nil}})
+    (is (->> (ig/init (assoc-in
+                       config
+                       [:blaze.db/search-param-registry :extra-bundle-file]
+                       nil))
              :blaze.db/search-param-registry
              (s/valid? :blaze.db/search-param-registry))))
 

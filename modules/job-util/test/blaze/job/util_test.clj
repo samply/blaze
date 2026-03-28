@@ -3,7 +3,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.spec.type :as type]
    [blaze.job.util :as job-util]
    [blaze.job.util-spec]
@@ -135,7 +135,7 @@
   (assoc job :status #fhir/code "in-progress"))
 
 (deftest pull-job-test
-  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+  (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
     (given @(mtu/assoc-thread-name (job-util/pull-job node "0"))
@@ -144,7 +144,7 @@
       :id := "0")))
 
 (deftest update-job-test
-  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+  (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
     (let [job @(job-util/pull-job node "0")]
@@ -161,7 +161,7 @@
               job-util/error-msg := "msg-181135"))))))
 
   (testing "lost updates are detected"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
       (let [job @(job-util/pull-job node "0")]
@@ -185,7 +185,7 @@
 (deftest update-job-plus-test
   (testing "without other resources"
     (testing "with no argument"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
@@ -195,7 +195,7 @@
             :status := #fhir/code "in-progress"))))
 
     (testing "with one argument"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
@@ -205,7 +205,7 @@
             job-util/error-msg := "msg-162452"))))
 
     (testing "with two arguments"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
@@ -214,7 +214,7 @@
             :status := #fhir/code "on-hold")))))
 
   (testing "with one Bundle"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
       (let [job @(job-util/pull-job node "0")]
@@ -236,7 +236,7 @@
 
 (deftest update-job-with-retry-test
   (testing "retry"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
       (given @(job-util/update-job-with-retry node 1 "0" start-job*)
@@ -249,7 +249,7 @@
           ::anom/message := "already started"))))
 
   (testing "referential integrity problem"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
       (given-failed-future (job-util/update-job-with-retry node 1 "0" add-unknown-bundle-reference)
@@ -276,7 +276,7 @@
 
 (deftest update-job-with-retry-concurrent-test
   (testing "single status change"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
       (let [futures (repeatedly 5 #(start-job-with-retry node "0"))]
@@ -288,7 +288,7 @@
 
   (testing "multiple counter increments"
     (testing "are all sucessful"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put (-> {:fhir/type :fhir/Task :id "0"}
                     (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
 
@@ -299,7 +299,7 @@
             (is (= #{1 2 3 4 5} (into #{} (map (comp :value get-count)) jobs)))))))
 
     (testing "at least one fails"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put (-> {:fhir/type :fhir/Task :id "0"}
                     (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
 

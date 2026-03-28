@@ -24,7 +24,7 @@
 (defn list-param [search-param-registry]
   (sr/get search-param-registry "_list" "Patient"))
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 

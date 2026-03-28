@@ -31,7 +31,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    :blaze.operation/graph
@@ -40,7 +40,6 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    ::graph/compiled-graph-cache {}
-   :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}))
 
 (deftest init-test

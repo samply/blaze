@@ -35,7 +35,7 @@
 (defn code-param [search-param-registry]
   (sr/get search-param-registry "code" "Observation"))
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 

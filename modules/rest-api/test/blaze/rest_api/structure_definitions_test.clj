@@ -1,7 +1,7 @@
 (ns blaze.rest-api.structure-definitions-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :as api-stub]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module-spec]
@@ -17,9 +17,9 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
    {:structure-definition-repo structure-definition-repo}
    :blaze.test/fixed-clock {}

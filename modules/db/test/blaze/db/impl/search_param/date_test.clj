@@ -37,7 +37,7 @@
 (defn birth-date-param [search-param-registry]
   (sr/get search-param-registry "birthdate" "Patient"))
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
