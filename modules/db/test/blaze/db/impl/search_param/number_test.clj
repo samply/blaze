@@ -38,7 +38,7 @@
       (search-param/compile-values nil [value])
       (first)))
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 

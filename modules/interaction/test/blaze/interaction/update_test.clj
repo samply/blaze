@@ -73,7 +73,7 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def config
+(def ^:private config
   (assoc api-stub/mem-node-config
          :blaze.interaction/update
          {:node (ig/ref :blaze.db/node)

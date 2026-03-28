@@ -24,7 +24,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 

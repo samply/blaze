@@ -1,6 +1,6 @@
 (ns blaze.rest-api.routes-test
   (:require
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :as api-stub]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -83,12 +83,11 @@
 
 (def ^:private system-config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-   :blaze.test/fixed-rng-fn {}
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
    {:structure-definition-repo structure-definition-repo}
    :blaze.fhir/writing-context

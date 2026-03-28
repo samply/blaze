@@ -1,7 +1,7 @@
 (ns blaze.job.async-interaction.util-test
   (:require
    [blaze.db.api-spec]
-   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.kv.mem]
    [blaze.db.search-param-registry]
    [blaze.db.search-param-registry-spec]
@@ -35,13 +35,13 @@
 
 (deftest pull-request-bundle-test
   (testing "missing request bundle reference"
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
+    (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (given-failed-future (u/pull-request-bundle node {:fhir/type :fhir/Task})
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing request bundle reference.")))
 
   (testing "invalid request bundle reference"
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
+    (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (given-failed-future
        (u/pull-request-bundle
         node
@@ -51,7 +51,7 @@
         ::anom/message := "Invalid request bundle reference `invalid-173750`.")))
 
   (testing "request bundle not found"
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
+    (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (given-failed-future
        (u/pull-request-bundle
         node
@@ -62,7 +62,7 @@
         ::anom/message := "Can't find the request bundle with id `175805` of job with id `175832`.")))
 
   (testing "request bundle deleted"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]
        [[:delete "Bundle" "180302"]]]
 
@@ -76,7 +76,7 @@
         ::anom/message := "The request bundle with id `180302` of job with id `180340` was deleted.")))
 
   (testing "success"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]]
 
       (let [task {:fhir/type :fhir/Task :id "180340"

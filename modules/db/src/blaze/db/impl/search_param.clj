@@ -5,7 +5,6 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
-   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.protocols :as p]
@@ -18,6 +17,7 @@
    [blaze.db.impl.search-param.quantity]
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
+   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]))
@@ -111,7 +111,7 @@
      (->> (map #(p/-ordered-compartment-index-handles
                  search-param batch-db compartment tid %)
                compiled-values)
-          (apply coll/union ih/id-comp ih/union))))
+          (u/union-index-handles))))
   ([search-param batch-db compartment tid compiled-values start-id]
    (if (= 1 (count compiled-values))
      (p/-ordered-compartment-index-handles
@@ -119,7 +119,7 @@
      (->> (map #(p/-ordered-compartment-index-handles
                  search-param batch-db compartment tid % start-id)
                compiled-values)
-          (apply coll/union ih/id-comp ih/union)))))
+          (u/union-index-handles)))))
 
 (defn matcher
   "Returns a stateful transducer that filters resource handles depending on

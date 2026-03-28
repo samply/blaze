@@ -50,7 +50,7 @@
    :blaze.fhir.operation.value-set/validate-code
    {:terminology-service (ig/ref ::ts/local)}))
 
-(defn wrap-error [handler]
+(defn- wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))

@@ -24,10 +24,10 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def config
+(def ^:private config
   (assoc api-stub/mem-node-config :blaze.interaction/vread {}))
 
-(def match
+(def ^:private match
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
 
 (def operation-outcome

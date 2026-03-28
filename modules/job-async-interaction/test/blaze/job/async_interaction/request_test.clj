@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :as api-stub]
    [blaze.fhir.test-util]
    [blaze.job.async-interaction.request :as req]
    [blaze.job.async-interaction.request-spec]
@@ -23,7 +23,7 @@
 
 (def ^:private config
   (assoc
-   mem-node-config
+   api-stub/mem-node-config
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)

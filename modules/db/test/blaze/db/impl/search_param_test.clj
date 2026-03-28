@@ -44,7 +44,7 @@
 (defn compile-birthdate [search-param-registry value]
   (first (search-param/compile-values (birthdate search-param-registry) nil [value])))
 
-(def config
+(def ^:private config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
