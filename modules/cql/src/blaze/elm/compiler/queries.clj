@@ -5,7 +5,8 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [comparator sort-by str])
   (:require
-   [blaze.anomaly :refer [if-ok]]
+   [blaze.anomaly :refer [if-ok try-anomaly]]
+   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.elm.compiler.core :as core]
@@ -146,6 +147,9 @@
   (when (= 'filter name)
     (filter-medication-refs arg)))
 
+(defn- compile-medication-matcher [db source-type medication-refs]
+  (try-anomaly (ac/join (d/compile-type-matcher db source-type [(into ["medication"] medication-refs)]))))
+
 (defn- eduction-expr [xform-factory source]
   (reify-expr core/Expression
     (-resolve-refs [_ expression-defs]
@@ -162,7 +166,7 @@
             (if-let [medication-refs (where-medication-refs (-form xform-factory))]
               (if (empty? medication-refs)
                 []
-                (if-ok [matcher (d/compile-type-matcher db source-type [(into ["medication"] medication-refs)])]
+                (if-ok [matcher (compile-medication-matcher db source-type medication-refs)]
                   (eduction-expr (where-search-param-xform-factory matcher) source)
                   (fn [{::anom/keys [message]}]
                     (log/warn "Error while trying to optimize a query expression:" message)

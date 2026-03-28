@@ -1,7 +1,7 @@
 (ns blaze.module.test-util
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.test-util :as tu]
    [clojure.string :as str]
    [clojure.test :refer [is]]
@@ -34,7 +34,7 @@
       (= (.getName (Thread/currentThread)) thread-name)))
 
 (defmacro given-failed-future [future & body]
-  `(given (ba/try-anomaly (deref ~future) (is false))
+  `(given (ba/try-anomaly (ac/join ~future) (is false))
      ~@body))
 
 (defmacro given-failed-system

@@ -7,8 +7,7 @@
   in time `t`."
   (:refer-clojure :exclude [str sync])
   (:require
-   [blaze.anomaly :refer [when-ok]]
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.protocols :as p]
@@ -153,30 +152,31 @@
   (p/-type-total db (codec/tid type)))
 
 (defn type-query
-  "Returns a reducible collection of all resource handles of `type` in `db`
-  matching `clauses`.
+  "Returns a CompletableFuture that completes with a reducible collection of
+  all resource handles of `type` in `db` matching `clauses`, or completes
+  exceptionally if search parameters in clauses can't be resolved.
 
   A clause is a vector were the first element is a search param code and the
   following elements are values which are combined with logical or.
-
-  Returns an anomaly if search parameters in clauses can't be resolved.
 
   An optional `start-id` (inclusive) can be supplied.
 
   Please use `pull-many` to obtain the full resources."
   ([db type clauses]
    (log/trace "Execute type query on" type)
-   (when-ok [query (p/-compile-type-query db type clauses)]
+   (do-sync [query (p/-compile-type-query db type clauses)]
      (p/-execute-query db query)))
   ([db type clauses start-id]
-   (when-ok [query (p/-compile-type-query db type clauses)]
+   (do-sync [query (p/-compile-type-query db type clauses)]
      (p/-execute-query db query start-id))))
 
 (defn compile-type-query
   "Same as `type-query` but in a two-step process of pre-compilation and later
   execution by `execute-query`.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
+  Returns a CompletableFuture that completes with the compiled query or
+  completes exceptionally with an anomaly if search parameters in clauses can't
+  be resolved."
   [node-or-db type clauses]
   (p/-compile-type-query node-or-db type clauses))
 
@@ -184,7 +184,8 @@
   "Like `compile-type-query` but ignores clauses which refer to unknown search
   parameters.
 
-  Returns an anomaly if search values are invalid."
+  Returns a CompletableFuture that completes with the compiled query or
+  completes exceptionally with an anomaly if search values are invalid."
   [node-or-db type clauses]
   (p/-compile-type-query-lenient node-or-db type clauses))
 
@@ -192,7 +193,9 @@
   "Returns a matcher that can be later used in `matcher-transducer` to obtain
   a transducer that will filter resource handles of `type` matching `clauses`.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
+  Returns a CompletableFuture that completes with the compiled matcher or
+  completes exceptionally with an anomaly if search parameters in clauses can't
+  be resolved."
   [node-or-db type clauses]
   (p/-compile-type-matcher node-or-db type clauses))
 
@@ -216,23 +219,25 @@
   (p/-system-total db))
 
 (defn system-query
-  "Returns a reducible collection of all resource handles in `db` matching `clauses`.
+  "Returns a CompletableFuture that completes with a reducible collection of
+  all resource handles in `db` matching `clauses`, or completes exceptionally
+  with an anomaly if search parameters in clauses can't be resolved.
 
   A clause is a vector were the first element is a search param code and the
   following elements are values which are combined with logical or.
 
-  Returns an anomaly if search parameters in clauses can't be resolved.
-
   Please use `pull-many` to obtain the full resources."
   [db clauses]
-  (when-ok [query (p/-compile-system-query db clauses)]
+  (do-sync [query (p/-compile-system-query db clauses)]
     (p/-execute-query db query)))
 
 (defn compile-system-query
   "Same as `system-query` but in a two-step process of pre-compilation and later
   execution by `execute-query`.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
+  Returns a CompletableFuture that completes with the compiled query or
+  completes exceptionally with an anomaly if search parameters in clauses can't
+  be resolved."
   [node-or-db clauses]
   (p/-compile-system-query node-or-db clauses))
 
@@ -240,20 +245,21 @@
   "Returns a matcher that can be later used in `matcher-transducer` to obtain
   a transducer that will filter resource handles matching `clauses`.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
+  Returns a CompletableFuture that completes with the compiled matcher or
+  completes exceptionally with an anomaly if search parameters in clauses can't
+  be resolved."
   [node-or-db clauses]
   (p/-compile-system-matcher node-or-db clauses))
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
 (defn compartment-type-list
-  "Returns a reducible collection of all resource handles of `type` in `db`
-  linked to the compartment with `code` and `id`.
+  "Returns a CompletableFuture that completes with a reducible collection of
+  all resource handles of `type` in `db` linked to the compartment with `code`
+  and `id`, or completes exceptionally if the compartment isn't supported.
 
   The code is the code of the compartment not necessary the same as a resource
   type. One common compartment is `Patient`.
-
-  Returns an anomaly if the compartment isn't supported.
 
   An optional `start-id` (inclusive) can be supplied.
 
@@ -263,15 +269,16 @@
 
   Please use `pull-many` to obtain the full resources."
   ([db code id type]
-   (when-ok [query (p/-compile-compartment-query db code type)]
+   (do-sync [query (p/-compile-compartment-query db code type)]
      (p/-execute-query db query id)))
   ([db code id type start-id]
-   (when-ok [query (p/-compile-compartment-query db code type)]
+   (do-sync [query (p/-compile-compartment-query db code type)]
      (p/-execute-query db query id start-id))))
 
 (defn compartment-query
-  "Returns a reducible collection of all resource handles of `type` in `db`
-  matching `clauses` linked to the compartment with `code` and `id`.
+  "Returns a CompletableFuture that completes with a reducible collection of all
+  resource handles of `type` in `db` matching `clauses` linked to the
+  compartment with `code` and `id`.
 
   The code is the code of the compartment not necessary the same as a resource
   type. One common compartment is `Patient`.
@@ -279,16 +286,17 @@
   A clause is a vector were the first element is a search param code and the
   following elements are values with are combined with logical or.
 
-  Returns an anomaly if search parameters in clauses can't be resolved.
+  Completes exceptionally with an anomaly if search parameters in clauses can't
+  be resolved.
 
   An optional `start-id` (inclusive) can be supplied.
 
   Please use `pull-many` to obtain the full resources."
   ([db code id type clauses]
-   (when-ok [query (p/-compile-compartment-query db code type clauses)]
+   (do-sync [query (p/-compile-compartment-query db code type clauses)]
      (p/-execute-query db query id)))
   ([db code id type clauses start-id]
-   (when-ok [query (p/-compile-compartment-query db code type clauses)]
+   (do-sync [query (p/-compile-compartment-query db code type clauses)]
      (p/-execute-query db query id start-id))))
 
 (defn compile-compartment-query
@@ -329,6 +337,9 @@
 
 (defn execute-query
   "Executes a pre-compiled `query` with `args` on `db`.
+
+  You may optimize the query before running it, especially if plan to run it
+  multiple times with different arguments.
 
   Returns a reducible collection of all matching resource handles.
 

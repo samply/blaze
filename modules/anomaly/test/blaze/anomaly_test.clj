@@ -8,7 +8,9 @@
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
   (:import
-   [java.util.concurrent CancellationException ExecutionException TimeoutException]))
+   [java.util.concurrent
+    CancellationException CompletionException ExecutionException
+    TimeoutException]))
 
 (st/instrument)
 
@@ -278,6 +280,11 @@
       ::foo := ::bar)))
 
 (deftest anomaly-test
+  (testing "CompletionException"
+    (given (ba/anomaly (CompletionException. (Exception. "msg-184245")))
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-184245"))
+
   (testing "ExecutionException"
     (given (ba/anomaly (ExecutionException. (Exception. "msg-184245")))
       ::anom/category := ::anom/fault

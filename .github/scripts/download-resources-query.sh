@@ -11,15 +11,28 @@ expected_size=$3
 file_name_prefix="$(uuidgen)"
 
 summary_count() {
-  curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_summary=count" | jq .total
+  body=$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_summary=count")
+  if [ "$(echo "$body" | jq -r .resourceType)" = "OperationOutcome" ]; then
+    echo "🆘 OperationOutcome: $(echo "$body" | jq -r '.issue[0].diagnostics')" >&2
+    return 1
+  fi
+  echo "$body" | jq .total
 }
 
 total_count() {
-  curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_total=accurate" | jq .total
+  body=$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&_total=accurate")
+  if [ "$(echo "$body" | jq -r .resourceType)" = "OperationOutcome" ]; then
+    echo "🆘 OperationOutcome: $(echo "$body" | jq -r '.issue[0].diagnostics')" >&2
+    return 1
+  fi
+  echo "$body" | jq .total
 }
 
-test "_summary=count count" "$(summary_count)" "$expected_size"
-test "_total=accurate count" "$(total_count)" "$expected_size"
+count=$(summary_count)
+test "_summary=count count" "$count" "$expected_size"
+
+count=$(total_count)
+test "_total=accurate count" "$count" "$expected_size"
 
 page_size="$(shuf -i 250-1000 -n 1)"
 echo "ℹ️ use a page size of $page_size"

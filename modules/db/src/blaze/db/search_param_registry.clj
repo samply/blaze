@@ -249,19 +249,14 @@
 (def ^:private filter-composite
   (filter (comp #{"composite"} :type)))
 
-(defn- search-param-context [code-expression? index]
-  {:code-expression? code-expression?
-   :index index})
-
 (defn- build-url-index
   "Builds an index from url to search-param.
 
   Ensures that non-composite search params are build first so that composite
   search params will find it's components in the already partial build index."
-  [code-expression? entries]
-  (when-ok [non-composite (build-url-index*
-                           (search-param-context code-expression? {})
-                           remove-composite entries)]
+  [context entries]
+  (when-ok [non-composite (build-url-index* (assoc context :index {})
+                                            remove-composite entries)]
     (build-url-index* non-composite filter-composite entries)))
 
 (defn- build-index
@@ -355,21 +350,22 @@
       :else #{"subject" "patient"})))
 
 (defmethod m/pre-init-spec :blaze.db/search-param-registry [_]
-  (s/keys :req-un [:blaze.fhir/structure-definition-repo]
+  (s/keys :req-un [:blaze.fhir/structure-definition-repo :blaze/terminology-service]
           :opt-un [::extra-bundle-file]))
 
 (defmethod ig/init-key :blaze.db/search-param-registry
-  [_ {:keys [structure-definition-repo extra-bundle-file]}]
+  [_ {:keys [structure-definition-repo terminology-service extra-bundle-file]}]
   (log/info
    (cond-> "Init in-memory fixed R4 search parameter registry"
      extra-bundle-file
      (str " including extra search parameters from file: " extra-bundle-file)))
   (let [entries (read-bundle-entries extra-bundle-file)
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")
-        code-expression? (sdr/code-expressions structure-definition-repo)]
-    (if-ok [{url-index :index} (build-url-index code-expression? entries)]
+        context {:code-expression? (sdr/code-expressions structure-definition-repo)
+                 :terminology-service terminology-service}]
+    (if-ok [{url-index :index} (build-url-index context entries)]
       (let [index (build-index url-index entries)
-            {:keys [index]} (add-special (search-param-context code-expression? index))
+            {:keys [index]} (add-special (assoc context :index index))
             index-compartment-resources-by-type (index-compartment-resources-by-type patient-compartment)]
         (->MemSearchParamRegistry
          url-index

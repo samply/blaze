@@ -137,7 +137,8 @@
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :terminology-service (ig/ref ::ts/local)}
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/local)}
    :blaze.test/page-id-cipher {}
    :blaze.test/json-parser
    {:parsing-context (ig/ref :blaze.fhir.parsing-context/default)}
@@ -175,7 +176,7 @@
 
   (testing "can't delete the Patient StructureDefinition"
     (with-system [{:blaze.db/keys [node]} config]
-      (let [[{:keys [id]}] (vec (d/type-query (d/db node) "StructureDefinition" [["url" "http://hl7.org/fhir/StructureDefinition/Patient"]]))]
+      (let [[{:keys [id]}] (vec @(d/type-query (d/db node) "StructureDefinition" [["url" "http://hl7.org/fhir/StructureDefinition/Patient"]]))]
         (given-failed-future (d/transact node [[:delete "StructureDefinition" id]])
           ::anom/category := ::anom/conflict
           ::anom/message := (format "Can't delete the read-only resource `StructureDefinition/%s`." id))))))

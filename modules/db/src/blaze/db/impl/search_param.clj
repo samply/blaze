@@ -1,7 +1,8 @@
 (ns blaze.db.impl.search-param
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -17,7 +18,6 @@
    [blaze.db.impl.search-param.quantity]
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
-   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]))
@@ -32,15 +32,12 @@
 (defn compile-values
   "Compiles `values` according to `search-param`.
 
-  Returns an anomaly on errors."
+  Returns a CompletableFuture that completes with a vector of compiled values
+  or completes exceptionally with an anomaly."
   [search-param modifier values]
-  (reduce
-   (fn [ret value]
-     (if-ok [compiled-value (p/-compile-value search-param modifier value)]
-       (conj ret compiled-value)
-       reduced))
-   []
-   values))
+  (let [futures (mapv #(p/-compile-value search-param modifier %) values)]
+    (-> (ac/all-of futures)
+        (ac/then-apply (fn [_] (mapv ac/join futures))))))
 
 (defn estimated-scan-size
   "Returns a relative estimation of the amount of work to do while scanning the
@@ -104,22 +101,12 @@
   `search-param`.
 
   The index handles are distinct and ordered by id."
-  ([search-param batch-db compartment tid compiled-values]
-   (if (= 1 (count compiled-values))
-     (p/-ordered-compartment-index-handles
-      search-param batch-db compartment tid (first compiled-values))
-     (->> (map #(p/-ordered-compartment-index-handles
-                 search-param batch-db compartment tid %)
-               compiled-values)
-          (u/union-index-handles))))
-  ([search-param batch-db compartment tid compiled-values start-id]
-   (if (= 1 (count compiled-values))
-     (p/-ordered-compartment-index-handles
-      search-param batch-db compartment tid (first compiled-values) start-id)
-     (->> (map #(p/-ordered-compartment-index-handles
-                 search-param batch-db compartment tid % start-id)
-               compiled-values)
-          (u/union-index-handles)))))
+  ([search-param batch-db compartment tid modifier compiled-values]
+   (p/-ordered-compartment-index-handles
+    search-param batch-db compartment tid modifier compiled-values))
+  ([search-param batch-db compartment tid modifier compiled-values start-id]
+   (p/-ordered-compartment-index-handles
+    search-param batch-db compartment tid modifier compiled-values start-id)))
 
 (defn matcher
   "Returns a stateful transducer that filters resource handles depending on

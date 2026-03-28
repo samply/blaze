@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param-test
   (:require
+   [blaze.async.comp :as ac]
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.codec.date :as codec-date]
@@ -14,10 +15,14 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
@@ -42,16 +47,19 @@
   (sr/get search-param-registry "birthdate" "Patient"))
 
 (defn compile-birthdate [search-param-registry value]
-  (first (search-param/compile-values (birthdate search-param-registry) nil [value])))
+  (-> (search-param/compile-values (birthdate search-param-registry) nil [value])
+      (ac/then-apply first)))
 
 (def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Date"
-      (given (compile-birthdate search-param-registry "2020-10-30")
+      (given @(compile-birthdate search-param-registry "2020-10-30")
         :op := :eq
         :lower-bound := (codec-date/encode-lower-bound #system/date-time"2020-10-30")
         :upper-bound := (codec-date/encode-upper-bound #system/date-time"2020-10-30")))))

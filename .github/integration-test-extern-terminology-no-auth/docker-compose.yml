@@ -1,0 +1,45 @@
+services:
+  data-server:
+    image: "blaze:latest"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      DB_BLOCK_CACHE_SIZE: "2048"
+      DB_SCALE_FACTOR: "2"
+      EXTERN_TERMINOLOGY_SERVICE_URL: "http://terminology-server:8080/fhir"
+      LOG_LEVEL: "debug"
+    ports:
+    - "8080:8080"
+    volumes:
+    - "blaze-data:/app/data"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  terminology-server:
+    image: "blaze:latest"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx5g"
+      ENABLE_TERMINOLOGY_SERVICE: "true"
+      ENABLE_TERMINOLOGY_LOINC: "true"
+      ENABLE_TERMINOLOGY_SNOMED_CT: "true"
+      SNOMED_CT_RELEASE_PATH: "/app/sct-release"
+      LOG_LEVEL: "debug"
+    ports:
+    - "8081:8081"
+    - "8082:8080"
+    volumes:
+    - "blaze-terminology-data:/app/data"
+    - "./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  blaze-data:
+  blaze-terminology-data:

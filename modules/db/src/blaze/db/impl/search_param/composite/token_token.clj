@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.composite.token-token
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
@@ -18,10 +19,12 @@
     (some->> modifier (u/unknown-modifier-anom code)))
 
   (-compile-value [_ _ value]
-    (when-ok [[v1 v2] (cc/split-value value)]
-      (let [v1 (cc/compile-component-value c1 v1)
-            v2 (cc/compile-component-value c1 v2)]
-        (bs/concat v1 v2))))
+    (if-ok [[v1 v2] (cc/split-value value)]
+      (let [f1 (cc/compile-component-value c1 v1)
+            f2 (cc/compile-component-value c2 v2)]
+        (-> (ac/all-of [f1 f2])
+            (ac/then-apply (fn [_] (bs/concat (ac/join f1) (ac/join f2))))))
+      ac/completed-future))
 
   (-estimated-scan-size [_ batch-db tid _ compiled-value]
     (sp-vr/estimated-scan-size (:kv-store batch-db) c-hash tid compiled-value))
@@ -49,13 +52,13 @@
   (-index-handles [_ batch-db tid _ compiled-value start-id]
     (spt/index-handles batch-db c-hash tid compiled-value start-id))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db _ compiled-values]

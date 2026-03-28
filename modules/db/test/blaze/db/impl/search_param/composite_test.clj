@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.composite-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.byte-string-spec]
@@ -16,11 +17,15 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -39,7 +44,9 @@
 
 (def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (deftest code-value-quantity-param-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -54,6 +61,7 @@
 (defn compile-code-quantity-value [search-param-registry value]
   (-> (code-value-quantity-param search-param-registry)
       (search-param/compile-values nil [value])
+      (ac/join)
       (first)))
 
 (deftest validate-modifier-test
@@ -78,14 +86,14 @@
         :exact-value := (bs/concat (codec/v-hash "8480-6") (codec/quantity "kg/m2" 23.00M))))
 
     (testing "invalid quantity decimal value"
-      (given (search-param/compile-values
-              (code-value-quantity-param search-param-registry) nil ["a$a"])
+      (given-failed-future (search-param/compile-values
+                            (code-value-quantity-param search-param-registry) nil ["a$a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid decimal value `a` in search parameter `code-value-quantity`."))
 
     (testing "unsupported quantity prefix"
-      (given (search-param/compile-values
-              (code-value-quantity-param search-param-registry) nil ["a$ne1"])
+      (given-failed-future (search-param/compile-values
+                            (code-value-quantity-param search-param-registry) nil ["a$ne1"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported prefix `ne` in search parameter `code-value-quantity`."))))
 

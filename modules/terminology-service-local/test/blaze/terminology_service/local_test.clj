@@ -130,6 +130,9 @@
 (defn- pull-type-list [node type]
   @(d/pull-many node (vec (d/type-list (d/db node) type))))
 
+(defn- vcl-uri [expr]
+  (type/uri (str "http://fhir.org/VCL?v1=" expr)))
+
 (deftest init-bcp-13-test
   (with-system [{:blaze.db/keys [node]} bcp-13-config]
     (testing "the BCP-13 code system is available"
@@ -4170,8 +4173,8 @@
                   [{:fhir/type :fhir.ValueSet.compose.include/concept
                     :code #fhir/code "26465-5"}]}]}}]]]
 
-      (doseq [url ["value-set-152546"
-                   "http://fhir.org/VCL?v1=(http://loinc.org)26465-5"]]
+      (doseq [url [#fhir/uri "value-set-152546"
+                   (vcl-uri "(http://loinc.org)26465-5")]]
         (given @(expand-value-set ts "url" (type/uri url))
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
@@ -4249,10 +4252,25 @@
             [:expansion :contains 0 :system] := #fhir/uri "http://loinc.org"
             [:expansion :contains 0 #(contains? % :inactive)] := false
             [:expansion :contains 0 :code] := #fhir/code "26465-5"
-            [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"))))))
+            [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid")))))
 
-(defn- vcl-uri [expr]
-  (type/uri (str "http://fhir.org/VCL?v1=" expr)))
+  (testing "VCL - multiple codes"
+    (with-system [{ts ::ts/local} loinc-config]
+      (given @(expand-value-set ts
+                "url" (vcl-uri "(http://loinc.org)(1742-6;1920-8;28245-9;94040-3;1751-7;6768-6;6095-4;33037-3;5767-9;9843-4)"))
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 10
+        [:expansion :contains 0 :system] := #fhir/uri "http://loinc.org"
+        [:expansion :contains 0 :code] := #fhir/code "1742-6"
+        [:expansion :contains 1 :code] := #fhir/code "1920-8"
+        [:expansion :contains 2 :code] := #fhir/code "28245-9"
+        [:expansion :contains 3 :code] := #fhir/code "94040-3"
+        [:expansion :contains 4 :code] := #fhir/code "1751-7"
+        [:expansion :contains 5 :code] := #fhir/code "6768-6"
+        [:expansion :contains 6 :code] := #fhir/code "6095-4"
+        [:expansion :contains 7 :code] := #fhir/code "33037-3"
+        [:expansion :contains 8 :code] := #fhir/code "5767-9"
+        [:expansion :contains 9 :code] := #fhir/code "9843-4"))))
 
 (deftest expand-value-set-loinc-include-filter-equals-test
   (testing "COMPONENT = LP14449-0/Hemoglobin"
@@ -4376,7 +4394,7 @@
   (testing "CLASSTYPE = 1 (Laboratory class)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=1")
+                "url" (vcl-uri "(http://loinc.org)CLASSTYPE=1"))
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "3694-7") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4385,7 +4403,7 @@
   (testing "CLASSTYPE = 2 (Clinical class)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=2")
+                "url" (vcl-uri "(http://loinc.org)CLASSTYPE=2"))
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "71735-5") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4394,7 +4412,7 @@
   (testing "CLASSTYPE = 3 (Claims attachments)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=3")
+                "url" (vcl-uri "(http://loinc.org)CLASSTYPE=3"))
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "39215-9") 0 :system] := #fhir/uri "http://loinc.org"
@@ -4403,7 +4421,7 @@
   (testing "CLASSTYPE = 4 (Surveys)"
     (with-system [{ts ::ts/local} loinc-config]
       (given @(expand-value-set ts
-                "url" #fhir/uri "http://fhir.org/VCL?v1=(http://loinc.org)CLASSTYPE=4")
+                "url" (vcl-uri "(http://loinc.org)CLASSTYPE=4"))
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] :? (partial < 100)
         [:expansion :contains (concept "28234-3") 0 :system] := #fhir/uri "http://loinc.org"

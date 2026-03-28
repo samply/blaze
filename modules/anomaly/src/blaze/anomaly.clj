@@ -6,7 +6,7 @@
   (:import
    [clojure.lang APersistentMap ExceptionInfo]
    [java.util Map]
-   [java.util.concurrent CancellationException ExecutionException TimeoutException]))
+   [java.util.concurrent CancellationException CompletionException ExecutionException TimeoutException]))
 
 (set! *warn-on-reflection* true)
 
@@ -148,6 +148,9 @@
   (-anomaly [x]))
 
 (extend-protocol ToAnomaly
+  CompletionException
+  (-anomaly [e]
+    (-anomaly (ex-cause e)))
   ExecutionException
   (-anomaly [e]
     (-anomaly (ex-cause e)))

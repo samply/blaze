@@ -2,8 +2,8 @@
   "Main entry point into the $evaluate-measure operation."
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.elm.expression :as-alias expr]
@@ -85,34 +85,37 @@
   [db {{:keys [id]} :path-params {:keys [measure]} ::params :keys [request-method]}]
   (cond
     id
-    (or (d/resource-handle db "Measure" id)
-        (ba/not-found (measure-with-id-not-found-msg id)))
+    (ac/completed-future
+     (or (d/resource-handle db "Measure" id)
+         (ba/not-found (measure-with-id-not-found-msg id))))
 
     measure
-    (or (coll/first (d/type-query db "Measure" [["url" measure]]))
-        (ba/not-found (measure-with-reference-not-found-msg measure)
-                      :http/status (if (= :post request-method) 422 400)))
+    (do-sync [handles (d/type-query db "Measure" [["url" measure]])]
+      (or (coll/first handles)
+          (ba/not-found (measure-with-reference-not-found-msg measure)
+                        :http/status (if (= :post request-method) 422 400))))
 
     :else
-    (ba/incorrect "The measure parameter is missing."
-                  (cond-> {:fhir/issue "required"}
-                    (= :post request-method)
-                    (assoc :http/status 422)))))
+    (ac/completed-future
+     (ba/incorrect "The measure parameter is missing."
+                   (cond-> {:fhir/issue "required"}
+                     (= :post request-method)
+                     (assoc :http/status 422))))))
 
 (defn- measure-deleted-msg [{:keys [id]}]
   (format "The Measure resource with the id `%s` was deleted." id))
 
 (defn- find-measure-handle [db request]
-  (when-ok [measure-handle (find-measure-handle* db request)]
-    (if (d/deleted? measure-handle)
-      (ba/not-found (measure-deleted-msg measure-handle)
+  (do-sync [handle (find-measure-handle* db request)]
+    (if (d/deleted? handle)
+      (ba/not-found (measure-deleted-msg handle)
                     :http/status 410
                     :fhir/issue "deleted")
-      measure-handle)))
+      handle)))
 
 (defn- handler [context]
   (fn [{:blaze/keys [db] :as request}]
-    (-> (ac/completed-future (find-measure-handle db request))
+    (-> (find-measure-handle db request)
         (ac/then-compose
          (fn [measure-handle]
            (-> (d/pull db measure-handle)
