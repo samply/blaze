@@ -121,16 +121,19 @@
   (onComplete [_]))
 
 (defn- current-job-number-observation [{:keys [node] :as context} db]
-  (if-let [handle (coll/first (d/type-query db "Observation" [["identifier" "job-number"]]))]
-    (d/pull node handle)
-    (-> (d/transact node
-                    [[:create
-                      {:fhir/type :fhir/Observation
-                       :id (m/luid context)
-                       :identifier [#fhir/Identifier{:value #fhir/string "job-number"}]
-                       :value #fhir/integer 0}
-                      [["identifier" "job-number"]]]])
-        (ac/then-compose (partial current-job-number-observation context)))))
+  (-> (d/type-query db "Observation" [["identifier" "job-number"]])
+      (ac/then-compose
+       (fn [handles]
+         (if-let [handle (coll/first handles)]
+           (d/pull node handle)
+           (-> (d/transact node
+                           [[:create
+                             {:fhir/type :fhir/Observation
+                              :id (m/luid context)
+                              :identifier [#fhir/Identifier{:value #fhir/string "job-number"}]
+                              :value #fhir/integer 0}
+                             [["identifier" "job-number"]]]])
+               (ac/then-compose (partial current-job-number-observation context))))))))
 
 (def ^:private inc-fhir-integer
   (comp type/integer inc :value))

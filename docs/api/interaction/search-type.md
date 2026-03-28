@@ -13,11 +13,12 @@ By default, Blaze ignores unknown or unsupported search parameters. If you prefe
 
 The following search param modifiers are supported:
 
-| Modifier     | Types                   | Description                                                                                                                            |
-|--------------|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `below`      | uri                     | Tests whether the value in a resource is or is subsumed by the supplied parameter value (is-a, or hierarchical relationships).         |
-| `identifier` | reference               | Tests whether the `Reference.identifier` in a resource matches the supplied parameter value.                                           |
-| `:[type]`    | reference               | Tests whether the value in a resource points to a resource of the supplied parameter type (e.g., `:Patient`).                          |
+| Modifier     | Types     | Description                                                                                                                                                                                                                                                                                                                                                                                                           |
+|--------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `below`      | uri       | Tests whether the value in a resource is or is subsumed by the supplied parameter value (is-a, or hierarchical relationships).                                                                                                                                                                                                                                                                                        |
+| `in`         | token     | The search parameter is a URI (relative or absolute) that identifies a value set, and the search parameter tests whether the coding is in the specified value set. The reference may be literal (to an address where the value set can be found) or logical (a reference to ValueSet.url). If the server can treat the reference as a literal URL, it does, else it tries to match known logical ValueSet.url values. |
+| `identifier` | reference | Tests whether the `Reference.identifier` in a resource matches the supplied parameter value.                                                                                                                                                                                                                                                                                                                          |
+| `:[type]`    | reference | Tests whether the value in a resource points to a resource of the supplied parameter type (e.g., `:Patient`).                                                                                                                                                                                                                                                                                                         |
 
 See [search modifiers][4] for a complete list of modifiers
 
@@ -39,6 +40,10 @@ See [search modifiers][4] for a complete list of modifiers
 ## _profile
 
 Search for `Resource.meta.profile` is supported using the `_profile` search param with exact match or using the `below` modifier as in `_profile:below` with major and minor version prefix match. [Semver][1] is expected for version numbers so a search value of `<url>|1` will find all versions with major version `1` and a search value of `<url>|1.2` will find all versions with major version `1` and minor version `2`. Patch versions are not supported with the `below` modifier.
+
+## Token in Modifier
+
+The `in` modifier works only in case either the external or the internal terminology service is enabled. More informations are available in the  [Terminology Service](../../terminology-service.md) section.
 
 ## Date Search
 

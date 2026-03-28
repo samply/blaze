@@ -303,8 +303,11 @@
   (d/type-query db "StructureDefinition" [["type" type] ["derivation" "constraint"]]))
 
 (defn- supported-profiles [db type]
-  (do-sync [profiles (d/pull-many db (vec (supported-profiles-query db type)))]
-    (mapv profile-canonical profiles)))
+  (-> (supported-profiles-query db type)
+      (ac/then-compose
+       (fn [handles]
+         (do-sync [profiles (d/pull-many db (vec handles))]
+           (mapv profile-canonical profiles))))))
 
 (defn- assoc-supported-profiles** [db {:keys [type] :as resource}]
   (do-sync [supported-profiles (supported-profiles db (:value type))]

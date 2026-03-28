@@ -1,7 +1,9 @@
 (ns blaze.log
   (:require
    [clojure.string :as str]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.util.logging Level Logger]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,6 +23,8 @@
       (when-not no-stacktrace?
         (when-let [err ?err]
           (str "\n" (log/stacktrace err opts))))))))
+
+(.setLevel (Logger/getLogger "com.github.benmanes.caffeine") Level/SEVERE)
 
 (log/merge-config!
  {:timestamp-opts

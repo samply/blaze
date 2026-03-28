@@ -1,7 +1,7 @@
 (ns blaze.interaction.search-compartment
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
@@ -25,20 +25,22 @@
 (defn- handles-and-clauses
   [{:keys [code id type] :blaze/keys [db] :blaze.preference/keys [handling]
     {:keys [clauses]} :params}]
-  (with-open [db (d/new-batch-db db)]
-    (cond
-      (empty? clauses)
-      (when-ok [handles (d/compartment-type-list db code id type)]
-        {:handles (vec handles)})
+  (cond
+    (empty? clauses)
+    (do-sync [query (d/compile-compartment-query db code type)]
+      (with-open [batch-db (d/new-batch-db db)]
+        {:handles (vec (d/execute-query batch-db query id))}))
 
-      (identical? :blaze.preference.handling/strict handling)
-      (when-ok [handles (d/compartment-query db code id type clauses)]
-        {:handles (vec handles)
-         :clauses clauses})
+    (identical? :blaze.preference.handling/strict handling)
+    (do-sync [query (d/compile-compartment-query db code type clauses)]
+      (with-open [batch-db (d/new-batch-db db)]
+        {:handles (vec (d/execute-query batch-db query id))
+         :clauses clauses}))
 
-      :else
-      (when-ok [query (d/compile-compartment-query-lenient db code type clauses)]
-        {:handles (vec (d/execute-query db query id))
+    :else
+    (do-sync [query (d/compile-compartment-query-lenient db code type clauses)]
+      (with-open [batch-db (d/new-batch-db db)]
+        {:handles (vec (d/execute-query batch-db query id))
          :clauses (d/query-clauses query)}))))
 
 (defn- entries-xf [{{:keys [page-offset page-size]} :params :as context}]
@@ -84,23 +86,24 @@
       (update :link conj next-link))))
 
 (defn- search-normal [{:blaze/keys [db] :as context}]
-  (if-ok [{:keys [handles clauses]} (handles-and-clauses context)]
-    (-> (d/pull-many db handles)
-        (ac/exceptionally
-         #(assoc %
-                 ::anom/category ::anom/fault
-                 :fhir/issue "incomplete"))
-        (ac/then-apply (partial entries context))
-        (ac/then-compose (partial bundle context handles clauses)))
-    ac/completed-future))
+  (-> (handles-and-clauses context)
+      (ac/then-compose
+       (fn [{:keys [handles clauses]}]
+         (-> (d/pull-many db handles)
+             (ac/exceptionally
+              #(assoc %
+                      ::anom/category ::anom/fault
+                      :fhir/issue "incomplete"))
+             (ac/then-apply (partial entries context))
+             (ac/then-compose (partial bundle context handles clauses)))))))
 
 (defn- search-summary [context]
-  (when-ok [{:keys [handles clauses]} (handles-and-clauses context)]
-    (bundle* context handles clauses)))
+  (-> (handles-and-clauses context)
+      (ac/then-apply (fn [{:keys [handles clauses]}] (bundle* context handles clauses)))))
 
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
-    (ac/completed-future (search-summary context))
+    (search-summary context)
     (search-normal context)))
 
 (defn page-match [router code id type]

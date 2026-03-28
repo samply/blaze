@@ -54,9 +54,12 @@
              (if-let [handle (d/resource-handle db-after type id)]
                (response/build-response
                 (response-context request db-after) tx-op nil handle)
-               (let [handle (coll/first (d/type-query db-after type conditional-clauses))]
-                 (response/build-response
-                  (response-context request db-after) tx-op handle handle)))))
+               (-> (d/type-query db-after type conditional-clauses)
+                   (ac/then-compose
+                    (fn [handles]
+                      (let [handle (coll/first handles)]
+                        (response/build-response
+                         (response-context request db-after) tx-op handle handle))))))))
           (ac/exceptionally
            (fn [e]
              (cond-> e

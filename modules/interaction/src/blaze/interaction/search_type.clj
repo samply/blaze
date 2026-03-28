@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-   [blaze.anomaly :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
@@ -43,15 +43,13 @@
     (d/execute-query db query page-id)
     (d/execute-query db query)))
 
-(defn- handles-and-query
+(defn- compile-query
   [{:keys [type] :blaze.preference/keys [handling]
-    {:keys [clauses page-id]} :params}
+    {:keys [clauses]} :params}
    db]
   (if (empty? clauses)
-    {:handles (type-list db type page-id)}
-    (when-ok [query (compile-type-query db type clauses handling)]
-      {:handles (execute-query db query page-id)
-       :query query})))
+    (ac/completed-future nil)
+    (compile-type-query db type clauses handling)))
 
 (defn- build-page** [page-size handles]
   (let [handles (into [] (take (inc page-size)) handles)]
@@ -138,11 +136,16 @@
   (wrap-cache-handling {} params))
 
 (defn- build-page
-  [{:blaze/keys [db] {:keys [include-defs page-size]} :params :as context}]
-  (with-open [db (d/new-batch-db db)]
-    (when-ok [{:keys [handles query]} (handles-and-query context db)
-              page (build-page* db include-defs page-size handles)]
-      (assoc page :query query))))
+  [{:blaze/keys [db]
+    {:keys [include-defs page-size]} :params
+    {:keys [page-id]} :params :as context}]
+  (do-sync [query (compile-query context db)]
+    (with-open [batch-db (d/new-batch-db db)]
+      (let [handles (if query
+                      (execute-query batch-db query page-id)
+                      (type-list batch-db (:type context) page-id))]
+        (when-ok [page (build-page* batch-db include-defs page-size handles)]
+          (assoc page :query query))))))
 
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
@@ -155,26 +158,30 @@
   or will complete exceptionally with an anomaly in case of errors."
   {:arglists '([context])}
   [{:blaze/keys [db] :keys [type params] :as context}]
-  (if-ok [{:keys [matches includes next-match query]} (build-page context)]
-    (let [total-future (total-future db type query params matches next-match)
-          match-future (d/pull-many db matches (match-pull-opts params))
-          include-future (if (seq includes)
-                           (d/pull-many db includes (include-pull-opts params))
-                           (ac/completed-future nil))]
-      (-> (ac/all-of [total-future match-future include-future])
-          (ac/exceptionally
-           #(assoc %
-                   ::anom/category ::anom/fault
-                   :fhir/issue "incomplete"))
-          (ac/then-apply
-           (fn [_]
-             (cond->
-              {:entries (entries context query match-future include-future)
-               :next-handle next-match
-               :total (ac/join total-future)}
-               query
-               (assoc :clauses (d/query-clauses query)))))))
-    ac/completed-future))
+  (-> (build-page context)
+      (ac/then-compose
+       (fn [result]
+         (if (ba/anomaly? result)
+           (ac/completed-future result)
+           (let [{:keys [matches includes next-match query]} result
+                 total-future (total-future db type query params matches next-match)
+                 match-future (d/pull-many db matches (match-pull-opts params))
+                 include-future (if (seq includes)
+                                  (d/pull-many db includes (include-pull-opts params))
+                                  (ac/completed-future nil))]
+             (-> (ac/all-of [total-future match-future include-future])
+                 (ac/exceptionally
+                  #(assoc %
+                          ::anom/category ::anom/fault
+                          :fhir/issue "incomplete"))
+                 (ac/then-apply
+                  (fn [_]
+                    (cond->
+                     {:entries (entries context query match-future include-future)
+                      :next-handle next-match
+                      :total (ac/join total-future)}
+                      query
+                      (assoc :clauses (d/query-clauses query))))))))))))
 
 (defn- self-link
   [{::search-util/keys [link] :keys [self-link-url-fn]} clauses]
@@ -250,15 +257,16 @@
     :blaze.preference/keys [handling] :as context}]
   (if (empty? clauses)
     (no-query-summary-response context)
-    (if-ok [query (compile-type-query db type clauses handling)]
-      (let [clauses (d/query-clauses query)]
-        (if (empty? clauses)
-          (no-query-summary-response context)
-          (if (:blaze.preference/respond-async context)
-            (req/handle-async context (:request context))
-            (do-sync [total (d/count-query db query)]
-              (summary-response context total clauses)))))
-      ac/completed-future)))
+    (-> (compile-type-query db type clauses handling)
+        (ac/then-compose
+         (fn [query]
+           (let [clauses (d/query-clauses query)]
+             (if (empty? clauses)
+               (no-query-summary-response context)
+               (if (:blaze.preference/respond-async context)
+                 (req/handle-async context (:request context))
+                 (do-sync [total (d/count-query db query)]
+                   (summary-response context total clauses))))))))))
 
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)

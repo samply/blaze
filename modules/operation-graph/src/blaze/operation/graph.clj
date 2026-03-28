@@ -26,14 +26,14 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- graph-def-query [db uri]
-  (d/type-query db "GraphDefinition" [["url" uri]]))
-
 (defn- find-graph-def [db uri]
-  (do-sync [graph-defs (d/pull-many db (vec (graph-def-query db uri)))]
-    (or (first (fu/sort-by-priority graph-defs))
-        (ba/not-found (format "The graph definition `%s` was not found." uri)
-                      :http/status 400))))
+  (-> (d/type-query db "GraphDefinition" [["url" uri]])
+      (ac/then-compose
+       (fn [handles]
+         (do-sync [graph-defs (d/pull-many db (vec handles))]
+           (or (first (fu/sort-by-priority graph-defs))
+               (ba/not-found (format "The graph definition `%s` was not found." uri)
+                             :http/status 400)))))))
 
 (defn- compile
   [compiled-graph-cache {:keys [id] {version :versionId} :meta :as graph-def}]
@@ -51,10 +51,13 @@
 (defn- process-link
   [db graph resource processed-resources {:keys [target-id resource-handles]}]
   (let [target-node (find-node graph target-id)]
-    (reduce
-     (partial process-node db graph target-node)
-     processed-resources
-     (resource-handles db resource target-node))))
+    (-> (resource-handles db resource target-node)
+        (ac/then-compose
+         (fn [handles]
+           (reduce
+            (partial process-node db graph target-node)
+            processed-resources
+            handles))))))
 
 (defn- process-node
   "Processes `resource-handle` on `node`.

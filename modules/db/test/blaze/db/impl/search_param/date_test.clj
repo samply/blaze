@@ -18,11 +18,15 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -39,7 +43,9 @@
 
 (def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (deftest birth-date-param-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -65,14 +71,14 @@
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "invalid date value"
-      (given (search-param/compile-values
-              (birth-date-param search-param-registry) nil ["a"])
+      (given-failed-future (search-param/compile-values
+                            (birth-date-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid date-time value `a` in search parameter `birthdate`."))
 
     (testing "less than"
-      (given (search-param/compile-values
-              (birth-date-param search-param-registry) nil ["lt2020"])
+      (given @(search-param/compile-values
+               (birth-date-param search-param-registry) nil ["lt2020"])
         [0 :op] := :lt
         [0 :lower-bound] := (codec-date/encode-lower-bound #system/date"2020")))))
 
@@ -91,9 +97,9 @@
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (birth-date-param search-param-registry)]
-      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))
+      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil nil))))))
 
 (defn- lower-bound-instant [date-range-bytes]
   (-> date-range-bytes

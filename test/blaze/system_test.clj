@@ -30,6 +30,8 @@
    [blaze.system :as system]
    [blaze.system-spec]
    [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
@@ -162,7 +164,9 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}
    ::auth-backend {}
    :blaze.interaction/transaction
    {:node (ig/ref :blaze.db/node)

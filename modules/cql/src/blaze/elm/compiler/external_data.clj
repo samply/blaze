@@ -6,6 +6,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok throw-anom]]
+   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.elm.code :refer [code?]]
@@ -40,23 +41,22 @@
   * property - \"code\"
   * codes - [(code \"http://loinc.org\" nil \"39156-5\")]"
   [node eval-context data-type property codes]
-  (let [clauses [(into [property] (map code->clause-value) codes)]]
-    (if-ok [type-query (d/compile-type-query node data-type clauses)
-            compartment-query (d/compile-compartment-query node eval-context
-                                                           data-type clauses)]
-      (reify-expr core/Expression
-        (-optimize [expr db]
-         ;; if there is no resource, regardless of the individual patient,
-         ;; available, just return an empty list for further optimizations
-          (if (coll/empty? (d/execute-query db type-query))
-            []
-            expr))
-        (-eval [_ {:keys [db]} {:keys [id]} _]
-          (prom/inc! retrieve-total)
-          (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
-        (-form [_]
-          `(~'retrieve ~data-type ~(d/query-clauses compartment-query))))
-      throw-anom)))
+  (let [clauses [(into [property] (map code->clause-value) codes)]
+        type-query (ac/join (d/compile-type-query node data-type clauses))
+        compartment-query (ac/join (d/compile-compartment-query node eval-context
+                                                                data-type clauses))]
+    (reify-expr core/Expression
+      (-optimize [expr db]
+       ;; if there is no resource, regardless of the individual patient,
+       ;; available, just return an empty list for further optimizations
+        (if (coll/empty? (d/execute-query db type-query))
+          []
+          expr))
+      (-eval [_ {:keys [db]} {:keys [id]} _]
+        (prom/inc! retrieve-total)
+        (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
+      (-form [_]
+        `(~'retrieve ~data-type ~(d/query-clauses compartment-query))))))
 
 ;; TODO: find a better solution than hard coding this case
 (def ^:private specimen-patient-expr
@@ -81,14 +81,13 @@
     (case data-type
       "Patient"
       specimen-patient-expr)
-    (if-ok [compartment-query (d/compile-compartment-query node context data-type)]
+    (let [compartment-query (ac/join (d/compile-compartment-query node context data-type))]
       (reify-expr core/Expression
         (-eval [_ {:keys [db]} {:keys [id]} _]
           (prom/inc! retrieve-total)
           (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
         (-form [_]
-          `(~'retrieve ~data-type)))
-      throw-anom)))
+          `(~'retrieve ~data-type))))))
 
 (def ^:private resource-expr
   (reify-expr core/Expression
@@ -140,10 +139,9 @@
     (if-let [result-type-name (:result-type-name (meta context-expr))]
       (let [[value-type-ns context-type] (elm-util/parse-qualified-name result-type-name)]
         (if (= "http://hl7.org/fhir" value-type-ns)
-          (let [clauses [(into [code-property] (map code->clause-value) codes)]]
-            (if-ok [query (d/compile-compartment-query node context-type data-type clauses)]
-              (related-context-expr-with-codes context-expr data-type query)
-              throw-anom))
+          (let [clauses [(into [code-property] (map code->clause-value) codes)]
+                query (ac/join (d/compile-compartment-query node context-type data-type clauses))]
+            (related-context-expr-with-codes context-expr data-type query))
           (throw-anom (unsupported-type-ns-anom value-type-ns))))
       (throw-anom unsupported-related-context-expr-without-type-anom))
     (related-context-expr-without-codes node context-expr data-type)))
@@ -157,14 +155,13 @@
       (-form [_]
         `(~'retrieve ~data-type)))
     (let [clauses [(into [code-property] (map code->clause-value) codes)]]
-      (if-ok [query (d/compile-type-query node data-type clauses)]
+      (let [query (ac/join (d/compile-type-query node data-type clauses))]
         (reify-expr core/Expression
           (-eval [_ {:keys [db]} _ _]
             (prom/inc! retrieve-total)
             (coll/eduction (cr/resource-mapper db) (d/execute-query db query)))
           (-form [_]
-            `(~'retrieve ~data-type ~(d/query-clauses query))))
-        throw-anom))))
+            `(~'retrieve ~data-type ~(d/query-clauses query))))))))
 
 (defn- expr* [node eval-context data-type code-property codes]
   (if (empty? codes)

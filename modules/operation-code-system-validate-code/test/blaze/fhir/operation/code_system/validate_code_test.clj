@@ -195,7 +195,7 @@
                            :body (fu/parameters
                                   "coding" #fhir/Coding{:system #fhir/uri "system-115910"
                                                         :code #fhir/code "code-115927"}
-                                  "foo" "bar")})]
+                                  "foo" #fhir/string "bar")})]
 
             (is (= 200 status))
 

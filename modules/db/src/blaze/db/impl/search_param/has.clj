@@ -1,7 +1,8 @@
 (ns blaze.db.impl.search-param.has
   "https://www.hl7.org/fhir/search.html#has"
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -100,13 +101,14 @@
   (-validate-modifier [_ _])
 
   (-compile-value [_ modifier value]
-    (when-ok [[type chain-code code] (split-modifier modifier)
-              search-param (resolve-search-param index type code)
-              chain-search-param (resolve-search-param index type chain-code)]
-      [search-param
-       chain-search-param
-       (codec/tid type)
-       (p/-compile-value search-param nil value)]))
+    (if-ok [[type chain-code code] (split-modifier modifier)
+            search-param (resolve-search-param index type code)
+            chain-search-param (resolve-search-param index type chain-code)]
+      (-> (p/-compile-value search-param nil value)
+          (ac/then-apply
+           (fn [cv]
+             [search-param chain-search-param (codec/tid type) cv])))
+      ac/completed-future))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -131,13 +133,13 @@
            (map ih/from-resource-handle))
      (resource-handles batch-db tid compiled-value)))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db _ compiled-values]

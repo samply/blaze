@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -247,19 +248,20 @@
   (-compile-value [_ _ value]
     (let [[op value-and-unit] (u/separate-op value)
           [value unit] (str/split value-and-unit #"\s*\|\s*" 2)]
-      (if-ok [decimal-value (system/parse-decimal value)]
-        (case op
-          :eq
-          (u/eq-value (partial codec/quantity unit) decimal-value)
-          (:gt :lt :ge :le)
-          {:op op :exact-value (codec/quantity unit decimal-value)}
-          (ba/unsupported
-           (u/unsupported-prefix-msg code op)
-           ::category ::unsupported-prefix
-           ::unsupported-prefix op))
-        #(assoc %
-                ::category ::invalid-decimal-value
-                ::anom/message (u/invalid-decimal-value-msg code value)))))
+      (ac/completed-future
+       (if-ok [decimal-value (system/parse-decimal value)]
+         (case op
+           :eq
+           (u/eq-value (partial codec/quantity unit) decimal-value)
+           (:gt :lt :ge :le)
+           {:op op :exact-value (codec/quantity unit decimal-value)}
+           (ba/unsupported
+            (u/unsupported-prefix-msg code op)
+            ::category ::unsupported-prefix
+            ::unsupported-prefix op))
+         #(assoc %
+                 ::category ::invalid-decimal-value
+                 ::anom/message (u/invalid-decimal-value-msg code value))))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -280,13 +282,13 @@
     (index-handles batch-db c-hash tid codec/v-hash-size compiled-value
                    start-id))
 
-  (-supports-ordered-compartment-index-handles [_ _]
+  (-supports-ordered-compartment-index-handles [_ _ _]
     false)
 
-  (-ordered-compartment-index-handles [_ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-ordered-compartment-index-handles [_ _ _ _ _ _]
+  (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
   (-matcher [_ batch-db _ values]
