@@ -126,6 +126,9 @@
   (-count-query [db query]
     (p/-count query db))
 
+  (-optimize-query [db query]
+    (p/-optimize query db))
+
   (-execute-query [db query]
     (p/-execute query db))
 

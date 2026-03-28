@@ -17,7 +17,8 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.module.test-util :as mtu]
-   [blaze.terminology-service :as ts]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
    [blaze.terminology-service.local :as local]
    [integrant.core :as ig]
    [java-time.api :as time]))
@@ -102,7 +103,8 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/local)}
 
    ::ts/local
    {:clock (ig/ref :blaze.test/fixed-clock)
