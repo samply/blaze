@@ -1310,12 +1310,107 @@
    status (rare-nil (code))
    input (gen/vector (task-input) 0 5)])
 
+(defn- value-set-compose-include-concept-designation
+  [& {:keys [id extension language use value]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           language (often-nil (blaze.fhir.spec.generators/code))
+           use (often-nil (coding))
+           value (string)}}]
+  (->> (gen/tuple id extension language use value)
+       (to-map [:id :extension :language :use :value])
+       (fhir-type :fhir.ValueSet.compose.include.concept/designation)))
+
+(defn- value-set-compose-include-concept
+  [& {:keys [id extension code display designation]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           code (blaze.fhir.spec.generators/code)
+           display (often-nil (string))
+           designation (gen/vector (value-set-compose-include-concept-designation) 0 3)}}]
+  (->> (gen/tuple id extension code display designation)
+       (to-map [:id :extension :code :display :designation])
+       (fhir-type :fhir.ValueSet.compose.include/concept)))
+
+(defn- value-set-compose-include-filter
+  [& {:keys [id extension property op value]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           property (blaze.fhir.spec.generators/code)
+           op (blaze.fhir.spec.generators/code)
+           value (string)}}]
+  (->> (gen/tuple id extension property op value)
+       (to-map [:id :extension :property :op :value])
+       (fhir-type :fhir.ValueSet.compose.include/filter)))
+
+(defn- value-set-compose-include
+  [& {:keys [id extension system version concept filter valueSet]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           system (often-nil (uri))
+           version (often-nil (string))
+           concept (gen/vector (value-set-compose-include-concept) 0 5)
+           filter (gen/vector (value-set-compose-include-filter) 0 3)
+           valueSet (gen/vector (canonical) 0 3)}}]
+  (->> (gen/tuple id extension system version concept filter valueSet)
+       (to-map [:id :extension :system :version :concept :filter :valueSet])
+       (fhir-type :fhir.ValueSet.compose/include)))
+
 (defn- value-set-compose
-  [& {:keys [inactive]
-      :or {inactive (often-nil (boolean))}}]
-  (->> (gen/tuple inactive)
-       (to-map [:inactive])
+  [& {:keys [id extension lockedDate inactive include exclude]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           lockedDate (often-nil (date))
+           inactive (often-nil (boolean))
+           include (gen/vector (value-set-compose-include) 1 5)
+           exclude (gen/vector (value-set-compose-include) 0 3)}}]
+  (->> (gen/tuple id extension lockedDate inactive include exclude)
+       (to-map [:id :extension :lockedDate :inactive :include :exclude])
        (fhir-type :fhir.ValueSet/compose)))
+
+(defn- value-set-expansion-parameter
+  [& {:keys [id extension name value]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           name (string)
+           value (often-nil (gen/one-of [(string) (boolean) (integer) (decimal)
+                                         (uri) (blaze.fhir.spec.generators/code)
+                                         (dateTime)]))}}]
+  (->> (gen/tuple id extension name value)
+       (to-map [:id :extension :name :value])
+       (fhir-type :fhir.ValueSet.expansion/parameter)))
+
+(defn- value-set-expansion-contains
+  [& {:keys [id extension system abstract inactive version code display designation contains]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           system (often-nil (uri))
+           abstract (often-nil (boolean))
+           inactive (often-nil (boolean))
+           version (often-nil (string))
+           code (often-nil (blaze.fhir.spec.generators/code))
+           display (often-nil (string))
+           designation (gen/vector (value-set-compose-include-concept-designation) 0 3)
+           contains (gen/return [])}}]
+  (->> (gen/tuple id extension system abstract inactive version code display
+                  designation contains)
+       (to-map [:id :extension :system :abstract :inactive :version :code :display
+                :designation :contains])
+       (fhir-type :fhir.ValueSet.expansion/contains)))
+
+(defn- value-set-expansion
+  [& {:keys [id extension identifier timestamp total offset parameter contains]
+      :or {id (often-nil id-value)
+           extension (extensions)
+           identifier (often-nil (uri))
+           timestamp (dateTime)
+           total (often-nil (integer))
+           offset (often-nil (integer))
+           parameter (gen/vector (value-set-expansion-parameter) 0 5)
+           contains (gen/vector (value-set-expansion-contains) 0 5)}}]
+  (->> (gen/tuple id extension identifier timestamp total offset parameter contains)
+       (to-map [:id :extension :identifier :timestamp :total :offset :parameter :contains])
+       (fhir-type :fhir.ValueSet/expansion)))
 
 (def-resource-gen value-set
   [id id-value
@@ -1328,4 +1423,14 @@
    title (nilable (string))
    status (rare-nil (code))
    experimental (nilable (boolean))
-   compose (value-set-compose)])
+   date (often-nil (dateTime))
+   publisher (often-nil (string))
+   contact (gen/vector (contact-detail) 0 5)
+   description (often-nil (markdown))
+   useContext (gen/vector (usage-context) 0 5)
+   jurisdiction (gen/vector (codeable-concept) 0 5)
+   immutable (often-nil (boolean))
+   purpose (often-nil (markdown))
+   copyright (often-nil (markdown))
+   compose (nilable (value-set-compose))
+   expansion (often-nil (value-set-expansion))])
