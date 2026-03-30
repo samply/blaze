@@ -211,7 +211,7 @@
    base-config
    features))
 
-(defn- post-init
+(defn- post-init!
   [{local-terminology-service ::ts/local :as system}]
   (when local-terminology-service
     (let [main-node (system [:blaze.db/node :blaze.db.main/node])]
@@ -235,11 +235,12 @@
           config (-> (merge-with merge root-config config)
                      (resolve-config env settings))]
       (load-namespaces config)
-      (-> (ig/bind config bind-map)
-          (ig/expand)
-          (ig/init)
-          (post-init)))
-
+      (let [system (-> (ig/bind config bind-map)
+                       (ig/expand)
+                       (ig/init))]
+        (if-ok [_ (post-init! system)]
+          system
+          ba/throw-anom)))
     ba/throw-anom))
 
 (defn shutdown! [system]

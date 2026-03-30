@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.6.2
+
+### Bugfixes
+
+* Fix SNOMED CT CodeSystem Generation ([#3456](https://github.com/samply/blaze/issues/3456))
+* Resolve Versions in Terminology Service ([#3470](https://github.com/samply/blaze/issues/3470))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/123?closed=1).
+
 ## v1.6.1
 
 ### Maintenance
