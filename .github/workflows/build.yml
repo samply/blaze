@@ -576,12 +576,6 @@ jobs:
     - name: Build Uberjar
       run: make uberjar
 
-    - name: Upload Blaze Uberjar
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
-      with:
-        name: blaze-uberjar
-        path: target/blaze-*-standalone.jar
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
@@ -1901,6 +1895,94 @@ jobs:
     - name: Run Observation Quality Report
       run: .github/integration-test-kds/evaluate-measure.sh quality-report-observation 53
 
+  integration-test-extern-terminology:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+    - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
+    - name: Login to GHCR
+      uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
+
+    - name: Download SNOMED CT Release
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: ${{ secrets.SCT_INT_20250701_DOWNLOAD_TOKEN }}
+        filename: SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip
+
+    - name: Unzip SNOMED CT Release
+      run: unzip ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip -d .github/integration-test-extern-terminology
+
+    - name: Start the Servers
+      run: docker compose -f .github/integration-test-extern-terminology/docker-compose.yml up -d
+
+    - name: Download Synthea Test Data
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: kDsa2ifeMFdqK35
+        filename: synthea-1000.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-1000
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-1000 -xf synthea-1000.tar
+
+    - name: Wait for the Servers
+      run: docker compose -f .github/integration-test-extern-terminology/docker-compose.yml up --wait
+
+    - name: Check Capability Statement of the Data Server
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Capability Statement of the Terminology Server
+      run: .github/scripts/check-capability-statement.sh http://localhost:8082/fhir
+
+    - name: Check Referential Integrity Enforced
+      run: .github/scripts/check-referential-integrity-enforced.sh
+
+    - name: Check Terminology Capabilities of the Terminology Server
+      run: .github/scripts/check-terminology-capabilities.sh http://localhost:8082/fhir
+
+    - name: Check SNOMED CT Version
+      run: .github/scripts/check-sct-version.sh http://snomed.info/sct/900000000000207008/version/20250701 http://localhost:8082/fhir
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-1000
+
+    - name: Check Total-Number of Resources are 1099779
+      run: .github/scripts/check-total-number-of-resources.sh 1099779
+
+    - name: Download All Diabetes mellitus Condition Resources
+      run: .github/scripts/download-resources-query.sh Condition "code:in=http://fhir.org/VCL?v1=(http://snomed.info/sct)concept<<73211009" 96
+
+    - name: Download All Disease Condition Resources
+      run: .github/scripts/download-resources-query.sh Condition "code:in=http://fhir.org/VCL?v1=(http://snomed.info/sct)concept<<64572001" 8247
+
+    - name: Docker Stats
+      run: docker stats --no-stream
+      if: always()
+
+    - name: Docker Logs on Failure
+      run: docker compose -f .github/integration-test-extern-terminology/docker-compose.yml logs -t
+      if: failure()
+
   integration-test-patient-purge:
     needs: build
     runs-on: ubuntu-24.04
@@ -3052,6 +3134,7 @@ jobs:
     - integration-test
     - integration-test-synthea-1000
     - integration-test-kds
+    - integration-test-extern-terminology
     - integration-test-patient-purge
     - integration-test-value-set-expand
     - integration-test-validation

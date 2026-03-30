@@ -104,20 +104,20 @@
   `search-param`.
 
   The index handles are distinct and ordered by id."
-  ([search-param batch-db compartment tid compiled-values]
+  ([search-param batch-db compartment tid modifier compiled-values]
    (if (= 1 (count compiled-values))
      (p/-ordered-compartment-index-handles
-      search-param batch-db compartment tid (first compiled-values))
+      search-param batch-db compartment tid modifier (first compiled-values))
      (->> (map #(p/-ordered-compartment-index-handles
-                 search-param batch-db compartment tid %)
+                 search-param batch-db compartment tid modifier %)
                compiled-values)
           (u/union-index-handles))))
-  ([search-param batch-db compartment tid compiled-values start-id]
+  ([search-param batch-db compartment tid modifier compiled-values start-id]
    (if (= 1 (count compiled-values))
      (p/-ordered-compartment-index-handles
-      search-param batch-db compartment tid (first compiled-values) start-id)
+      search-param batch-db compartment tid modifier (first compiled-values) start-id)
      (->> (map #(p/-ordered-compartment-index-handles
-                 search-param batch-db compartment tid % start-id)
+                 search-param batch-db compartment tid modifier % start-id)
                compiled-values)
           (u/union-index-handles)))))
 

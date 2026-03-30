@@ -2414,6 +2414,99 @@
           [:issue 0 :code] := #fhir/code "invalid"
           [:issue 0 :diagnostics] := #fhir/string "Ambiguous target types `Condition, Procedure` in the chain `diagnosis.code`. Please use a modifier to constrain the type.")))))
 
+(deftest handler-token-in-test
+  (with-handler [handler]
+    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+             :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+             :content #fhir/code "fragment"
+             :concept
+             [{:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69-C72"}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69-C72"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C71"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69-C72"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C69.4"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C69"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C71.4"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C71"}]}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C73-C75"}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "C73"
+               :property
+               [{:fhir/type :fhir.CodeSystem.concept/property
+                 :code #fhir/code "parent"
+                 :value #fhir/code "C73-C75"}]}]}]]
+     [[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Condition :id "0"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                               :code #fhir/code "C71.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "1"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put {:fhir/type :fhir/Condition :id "2"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                               :code #fhir/code "C69.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "3"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                               :code #fhir/code "C73"}]}}]]]
+
+    (testing "success"
+      (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+            @(handler
+              {::reitit/match (match-of "Condition")
+               :params {"code:in" "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code "searchset" (:type body))))
+
+        (testing "the bundle contains one entry"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= (str base-url context-path "/Condition/0")
+                 (-> first-entry :fullUrl :value))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= (str base-url context-path "/Condition/2")
+                 (-> second-entry :fullUrl :value))))))))
+
 (deftest handler-include-resources-test
   (testing "direct include"
     (with-handler [handler _ page-id-cipher]

@@ -429,6 +429,7 @@
   ;;
   :blaze.db/search-param-registry
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
+   :terminology-service #blaze/ref :blaze.terminology-service/not-available
    :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}
 
   ;;
@@ -1482,6 +1483,9 @@
      {"terminology-service-graph-cache" #blaze/ref :blaze.terminology-service.local/graph-cache}}
 
     :blaze.rest-api/capabilities-handler
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}
+
+    :blaze.db/search-param-registry
     {:terminology-service #blaze/ref :blaze.terminology-service/local}}}
 
   {:key :terminology-loinc
@@ -1518,6 +1522,9 @@
      :trust-store-pass #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE_PASS" string?]}
 
     :blaze.fhir.operation.evaluate-measure/handler
+    {:terminology-service #blaze/ref :blaze.terminology-service/extern}
+
+    :blaze.db/search-param-registry
     {:terminology-service #blaze/ref :blaze.terminology-service/extern}}}
 
   {:key :graph

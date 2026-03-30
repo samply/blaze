@@ -19,6 +19,8 @@
    [blaze.page-id-cipher]
    [blaze.page-id-cipher.spec]
    [blaze.scheduler.spec]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
@@ -110,7 +112,10 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+
+   ::ts/not-available {}
 
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
    {:structure-definition-repo structure-definition-repo

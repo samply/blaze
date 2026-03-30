@@ -43,6 +43,9 @@
   blaze/spec
   {:local/root "../spec"}
 
+  blaze/terminology-service
+  {:local/root "../terminology-service"}
+
   commons-codec/commons-codec
   {:mvn/version "1.21.0"}}
 
@@ -64,6 +67,9 @@
    :extra-deps
    {blaze/fhir-test-util
     {:local/root "../fhir-test-util"}
+
+    blaze/terminology-service-local
+    {:local/root "../terminology-service-local"}
 
     org.clojure/math.combinatorics
     {:mvn/version "0.3.2"}}}

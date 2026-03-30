@@ -9,6 +9,9 @@
   This multi-method is used to convert search parameters before storing them
   in the registry. Other namespaces can provide their own implementations here.
 
+  The `context` contains a :code-expression? function, a :terminology-service
+  and a :index.
+
   The conversion can return an anomaly."
   {:arglists '([context definition])}
   (fn [_ {:keys [type]}] type))

@@ -29,6 +29,8 @@
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
 
+  (-optimize-query [db query])
+
   (-execute-query [db query] [db query arg1] [db query arg1 arg2])
 
   (-explain-query [db query])
@@ -84,6 +86,8 @@
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
 
+  (-optimize [query batch-db])
+
   (-execute [query batch-db] [query batch-db arg1] [query batch-db arg1 arg2])
 
   (-query-clauses [query])
@@ -132,11 +136,11 @@
 
     The `start-id` is only a performance hint. Search params are allowed to
     return all index handles, even if a `start-id` is supplied.")
-  (-supports-ordered-compartment-index-handles [search-param values]
+  (-supports-ordered-compartment-index-handles [search-param modifier values]
     "Returns true if `search-param` supports fetching ordered compartment index handles with `values`.")
   (-ordered-compartment-index-handles
-    [search-param batch-db compartment tid compiled-value]
-    [search-param batch-db compartment tid compiled-value start-id]
+    [search-param batch-db compartment tid modifier compiled-value]
+    [search-param batch-db compartment tid modifier compiled-value start-id]
     "Returns a reducible collection.")
   (-matcher [_ batch-db modifier compiled-values])
   (-single-version-id-matcher [_ batch-db tid modifier compiled-values])
