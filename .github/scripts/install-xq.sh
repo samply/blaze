@@ -1,4 +1,4 @@
 #!/bin/bash
 set -euo pipefail
 
-sudo apt-get -y install xq
+sudo apt-get -o Acquire::Retries=5 install -y xq

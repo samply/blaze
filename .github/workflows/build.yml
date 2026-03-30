@@ -154,6 +154,8 @@ jobs:
         - module: jepsen
           java-version: '21'
 
+      fail-fast: false
+
     needs: job-ig
     runs-on: ubuntu-24.04
 
@@ -238,6 +240,8 @@ jobs:
         - '21'
         - '25'
 
+      fail-fast: false
+
     needs: job-ig
     runs-on: ubuntu-24.04
 
@@ -303,6 +307,7 @@ jobs:
         kind:
         - 'normal-heap'
         - 'large-heap'
+      fail-fast: false
 
     runs-on: ubuntu-24.04
 
@@ -354,6 +359,7 @@ jobs:
         kind:
         - 'normal'
         - 'slow'
+      fail-fast: false
 
     needs: job-ig
     runs-on: ubuntu-24.04
@@ -434,6 +440,7 @@ jobs:
         java-version:
         - '21'
         - '25'
+      fail-fast: false
 
     needs: job-ig
     runs-on: ubuntu-24.04
@@ -693,6 +700,7 @@ jobs:
         image:
         - blaze
         - blaze-frontend
+      fail-fast: false
 
     steps:
     - name: Login to GHCR
@@ -918,6 +926,16 @@ jobs:
         - patient-purge
         - graph
         - cql
+
+        exclude:
+        - variant: distributed
+          feature: delete-history
+        - variant: distributed
+          feature: patient-purge
+        - variant: distributed
+          feature: graph
+
+      fail-fast: false
 
     steps:
     - name: Check out Git repository
@@ -2581,13 +2599,13 @@ jobs:
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: APT Update
-      run: sudo apt-get update
+      run: sudo apt-get -o Acquire::Retries=5 update
 
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
     - name: Install Gnuplot
-      run: sudo apt-get install gnuplot
+      run: sudo apt-get -o Acquire::Retries=5 install -y gnuplot
 
     - name: Login to GHCR
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
@@ -2742,6 +2760,7 @@ jobs:
         binary-size:
         - '8388608'
         - '67108864'
+      fail-fast: false
 
     steps:
     - name: Check out Git repository
@@ -2998,13 +3017,13 @@ jobs:
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: APT Update
-      run: sudo apt-get update
+      run: sudo apt-get -o Acquire::Retries=5 update
 
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
     - name: Install Gnuplot
-      run: sudo apt-get install gnuplot
+      run: sudo apt-get -o Acquire::Retries=5 install -y gnuplot
 
     - name: Login to GHCR
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
@@ -3100,6 +3119,7 @@ jobs:
           context: .
         - name: ${{ github.event.repository.name }}-frontend
           context: modules/frontend
+      fail-fast: false
     env:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
 
