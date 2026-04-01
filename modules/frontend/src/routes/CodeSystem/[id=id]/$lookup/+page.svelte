@@ -2,47 +2,49 @@
   import type { PageProps } from './$types';
 
   import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
   import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
   import BreadcrumbEntry from '$lib/breadcrumb/entry.svelte';
   import Form from '$lib/tailwind/form.svelte';
   import Section from '$lib/tailwind/form/section.svelte';
   import TextField from '$lib/tailwind/form/text-field.svelte';
-  import CheckBoxes from '$lib/tailwind/form/check-boxes.svelte';
-  import CheckBox from '$lib/tailwind/form/check-box.svelte';
   import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
-  import ResultList from './result-list.svelte';
+  import ResultList from '../../$lookup/result-list.svelte';
 
-  let { form }: PageProps = $props();
+  import { title } from '$lib/resource.js';
+
+  let { data, form, params }: PageProps = $props();
 </script>
 
 <svelte:head>
-  <title>$validate-code - ValueSet - Blaze</title>
+  <title>$lookup - {title(data.codeSystem)} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
   <Breadcrumb>
     <BreadcrumbEntryHome />
-    <BreadcrumbEntryType type="ValueSet" />
+    <BreadcrumbEntryType type="CodeSystem" />
+    <BreadcrumbEntryResource type="CodeSystem" {...params} resource={data.codeSystem} />
     <BreadcrumbEntry>
-      <span class="ml-4 text-sm font-medium text-gray-500 dark:text-gray-400">$validate-code</span>
+      <span class="ml-4 text-sm font-medium text-gray-500 dark:text-gray-400">$lookup</span>
     </BreadcrumbEntry>
   </Breadcrumb>
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+  <h2 class="text-base/7 font-semibold text-gray-900 dark:text-gray-100">
+    {title(data.codeSystem)}
+  </h2>
+  {#if data.codeSystem.description}
+    <p class="mt-1 max-w-2xl text-sm/6 text-gray-600">{data.codeSystem.description}</p>
+  {/if}
+
   <Form class="mt-4">
     <Section name="Parameters">
-      <TextField id="url" label="ValueSet URL" value={form?.url} />
-      <TextField id="valueSetVersion" label="ValueSet Version" value={form?.valueSetVersion} />
       <TextField id="code" label="Code" value={form?.code} />
-      <TextField id="system" label="System" value={form?.system} />
-      <TextField id="systemVersion" label="System Version" value={form?.systemVersion} />
       <TextField id="display" label="Display" value={form?.display} />
       <TextField id="displayLanguage" label="Display Language" value={form?.displayLanguage} />
-      <CheckBoxes name="Infer System">
-        <CheckBox id="inferSystem" label="Infer System" checked={form?.inferSystem ?? false} />
-      </CheckBoxes>
     </Section>
     {#snippet buttons()}
       <SubmitButton name="Submit" />

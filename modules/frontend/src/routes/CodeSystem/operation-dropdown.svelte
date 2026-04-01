@@ -6,5 +6,6 @@
 </script>
 
 <Dropdown name="Operations">
+  <DropdownItem name="$lookup" url={resolve('/CodeSystem/$lookup')} />
   <DropdownItem name="$validate-code" url={resolve('/CodeSystem/$validate-code')} />
 </Dropdown>
