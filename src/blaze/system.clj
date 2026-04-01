@@ -225,6 +225,8 @@
           (ce/bindings-and-settings
            env
            'base-url ["BASE_URL" ce/coerce-base-url "http://localhost:8080"]
+           'jvm-metrics-logger-warn-factor ["JVM_METRICS_LOGGER_WARN_FACTOR" ce/jvm-metrics-logger-warn-factor "5"]
+           'jvm-metrics-logger-warn-threshold ["JVM_METRICS_LOGGER_WARN_THRESHOLD" ce/jvm-metrics-logger-warn-threshold "80"]
            'db-scale-factor ["DB_SCALE_FACTOR" ce/coerce-db-scale-factor "1"]
            'db-block-size ["DB_BLOCK_SIZE" ce/coerce-db-block-size "16384"])]
 

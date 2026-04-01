@@ -111,6 +111,7 @@ services:
     image: "blaze:latest"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
+      LOG_LEVEL: "debug"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -131,6 +132,7 @@ services:
       ENABLE_OPERATION_PATIENT_PURGE: "${ENABLE_OPERATION_PATIENT_PURGE:-false}"
       ENABLE_OPERATION_GRAPH: "${ENABLE_OPERATION_GRAPH:-false}"
       ENABLE_OPERATION_CQL: "${ENABLE_OPERATION_CQL:-false}"
+      JVM_METRICS_LOGGER_INTERVAL: "PT1M"
     ports:
     - "8081:8081"
     volumes:
@@ -161,6 +163,7 @@ services:
     image: "blaze:latest"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
+      LOG_LEVEL: "debug"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -181,6 +184,7 @@ services:
       ENABLE_OPERATION_PATIENT_PURGE: "${ENABLE_OPERATION_PATIENT_PURGE:-false}"
       ENABLE_OPERATION_GRAPH: "${ENABLE_OPERATION_GRAPH:-false}"
       ENABLE_OPERATION_CQL: "${ENABLE_OPERATION_CQL:-false}"
+      JVM_METRICS_LOGGER_INTERVAL: "PT1M"
     ports:
     - "8082:8081"
     volumes:

@@ -24,7 +24,9 @@ Rigorous adherence to these patterns is required:
   * Define `m/pre-init-spec` for dependency validation.
 * **Specs:**
   * Every public function must have a spec.
-  * **Location:** Function specs must reside in a separate namespace with the suffix `-spec` (e.g., `blaze.db.node-spec` for `blaze.db.node`).
+  * **Location:** Specs must never be defined inline in the implementation namespace. There are two distinct spec namespace conventions:
+    * `s/def` (data/attribute specs) → dot-separated `*.spec` namespace (e.g., `blaze.db.node.spec` for `blaze.db.node`), in a `spec.clj` file nested under the namespace directory.
+    * `s/fdef` (function specs) → hyphen-separated `*-spec` namespace (e.g., `blaze.db.node-spec` for `blaze.db.node`), as a sibling file to the implementation.
   * **Classpath:** Public module-level specs go in `src`, but inner-module public function specs should be in `test` to keep the production classpath small.
 * **Java Interop:**
   * Avoid reflection.
@@ -41,6 +43,11 @@ Rigorous adherence to these patterns is required:
   * **Fixtures:** Use the standard test fixture in all test namespaces.
     * Require `[blaze.test-util :as tu]`.
     * Call `(test/use-fixtures :each tu/fixture)`.
+  * **Private Functions:** Do **not** call private functions (via `#'`) from tests. If a function needs to be tested, move it to an `impl` namespace where it becomes part of the public API of that namespace.
+
+## Documentation
+
+* **Environment Variables:** Every new environment variable introduced via `#blaze/cfg` in `resources/blaze.edn` must be documented in `docs/deployment/environment-variables.md`, following the existing format (heading, description, default value, since badge).
 
 ## Verification & Workflow
 
@@ -51,7 +58,7 @@ Before finishing a task, ensure the following commands pass:
 1.  **Format:** `make fmt`
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
 3.  **Test:** `make test` (Runs module and root tests)
-4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage)
+4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage — must be **≥ 95% forms**)
 
 After verification, when working on an issue:
 

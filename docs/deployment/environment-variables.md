@@ -358,6 +358,24 @@ one of trace, debug, info, warn or error
 
 **Default:** info
 
+#### `JVM_METRICS_LOGGER_INTERVAL` <Badge type="warning" text="Since 1.7"/>
+
+The interval at which JVM heap, non-heap, and GC metrics are logged at DEBUG level when heap usage is below the warn threshold. Must be an ISO-8601 duration string.
+
+**Default:** PT5M
+
+#### `JVM_METRICS_LOGGER_WARN_FACTOR` <Badge type="warning" text="Since 1.7"/>
+
+How many times more frequently metrics are logged at WARN level compared to the default interval when heap usage is at or above the warn threshold. Must be a positive integer.
+
+**Default:** 5
+
+#### `JVM_METRICS_LOGGER_WARN_THRESHOLD` <Badge type="warning" text="Since 1.7"/>
+
+The heap usage percentage (1–99) at or above which metrics are logged at WARN level and at the shorter warn interval.
+
+**Default:** 80
+
 #### `JAVA_TOOL_OPTIONS`
 
 | Name                      | Default | Since | Description                                                  |
