@@ -119,6 +119,7 @@ jobs:
         - job-re-index
         - job-scheduler
         - job-util
+        - jvm-metrics-logger
         - kv
         - luid
         - metrics
@@ -1570,6 +1571,18 @@ jobs:
 
     - name: Prometheus Metrics - Blaze 2
       run: curl -sf http://localhost:8082/metrics
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Check JVM Metrics Log
+      run: .github/scripts/check-jvm-metrics-log.sh .github/${{ matrix.variant }}-test/docker-compose.yml blaze
+      if: ${{ matrix.variant == 'standalone' }}
+
+    - name: Check JVM Metrics Log - Blaze 1
+      run: .github/scripts/check-jvm-metrics-log.sh .github/${{ matrix.variant }}-test/docker-compose.yml blaze-1
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Check JVM Metrics Log - Blaze 2
+      run: .github/scripts/check-jvm-metrics-log.sh .github/${{ matrix.variant }}-test/docker-compose.yml blaze-2
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Docker Stats

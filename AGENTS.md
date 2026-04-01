@@ -24,7 +24,9 @@ Rigorous adherence to these patterns is required:
   * Define `m/pre-init-spec` for dependency validation.
 * **Specs:**
   * Every public function must have a spec.
-  * **Location:** Function specs must reside in a separate namespace with the suffix `-spec` (e.g., `blaze.db.node-spec` for `blaze.db.node`). When modifying a public function's signature or return type, always update the corresponding spec in that `-spec` namespace.
+  * **Location:** Specs must never be defined inline in the implementation namespace. There are two distinct spec namespace conventions:
+    * `s/def` (data/attribute specs) → dot-separated `*.spec` namespace (e.g., `blaze.db.node.spec` for `blaze.db.node`), in a `spec.clj` file nested under the namespace directory.
+    * `s/fdef` (function specs) → hyphen-separated `*-spec` namespace (e.g., `blaze.db.node-spec` for `blaze.db.node`), as a sibling file to the implementation.
   * **Classpath:** Public module-level specs go in `src`, but inner-module public function specs should be in `test` to keep the production classpath small.
 * **Java Interop:**
   * Avoid reflection.
@@ -53,6 +55,11 @@ Rigorous adherence to these patterns is required:
   * **Async Testing:**
     * To assert that a `CompletableFuture` completes *exceptionally* with an anomaly, use `given-failed-future` from `blaze.module.test-util` — **not** the `(given (ba/try-anomaly (ac/join ...)))` pattern.
     * To obtain the value of a successfully-completed future inside a test, use `@future` (Clojure's `deref`).
+  * **Private Functions:** Do **not** call private functions (via `#'`) from tests. If a function needs to be tested, move it to an `impl` namespace where it becomes part of the public API of that namespace.
+
+## Documentation
+
+* **Environment Variables:** Every new environment variable introduced via `#blaze/cfg` in `resources/blaze.edn` must be documented in `docs/deployment/environment-variables.md`, following the existing format (heading, description, default value, since badge).
 
 ## Verification & Workflow
 
@@ -63,7 +70,7 @@ Before finishing a task, ensure the following commands pass:
 1.  **Format:** `make fmt`
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
 3.  **Test:** Run tests only for the modules you changed: `make -C modules/<module> test` (e.g. `make -C modules/db test`). Use `make test` only when changes span multiple modules or the root.
-4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage)
+4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage — must be **≥ 95% forms**)
 
 When adding a **new module** under `modules/`, also add it to the `module` matrix in `.github/workflows/build.yml` (the `test` job, sorted alphabetically) so CI picks it up.
 
