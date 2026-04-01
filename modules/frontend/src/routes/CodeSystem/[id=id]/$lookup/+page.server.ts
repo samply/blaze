@@ -4,48 +4,18 @@ import { resolve } from '$app/paths';
 import { fail } from '@sveltejs/kit';
 
 export const actions = {
-  default: async ({ request, fetch }) => {
+  default: async ({ request, fetch, params }) => {
     const data = await request.formData();
-    const url = data.get('url') as string;
-    const valueSetVersion = data.get('valueSetVersion') as string;
     const code = data.get('code') as string;
-    const system = data.get('system') as string;
-    const systemVersion = data.get('systemVersion') as string;
     const display = data.get('display') as string;
     const displayLanguage = data.get('displayLanguage') as string;
-    const inferSystem = Boolean(data.get('inferSystem'));
 
     const parameters: ParametersParameter[] = [
-      {
-        name: 'url',
-        valueUri: url
-      },
       {
         name: 'code',
         valueCode: code
       }
     ];
-
-    if (valueSetVersion !== '') {
-      parameters.push({
-        name: 'valueSetVersion',
-        valueString: valueSetVersion
-      });
-    }
-
-    if (system !== '') {
-      parameters.push({
-        name: 'system',
-        valueString: system
-      });
-    }
-
-    if (systemVersion !== '') {
-      parameters.push({
-        name: 'systemVersion',
-        valueString: systemVersion
-      });
-    }
 
     if (display !== '') {
       parameters.push({
@@ -61,14 +31,7 @@ export const actions = {
       });
     }
 
-    if (inferSystem) {
-      parameters.push({
-        name: 'inferSystem',
-        valueBoolean: true
-      });
-    }
-
-    const res = await fetch(resolve('/ValueSet/$validate-code'), {
+    const res = await fetch(resolve('/CodeSystem/[id=id]/$lookup', params), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({
@@ -77,16 +40,7 @@ export const actions = {
       })
     });
 
-    const result = {
-      url,
-      valueSetVersion,
-      code,
-      system,
-      systemVersion,
-      display,
-      displayLanguage,
-      inferSystem
-    };
+    const result = { code, display, displayLanguage };
 
     if (!res.ok) {
       const error: OperationOutcome = await res.json();
@@ -97,9 +51,6 @@ export const actions = {
       });
     }
 
-    return {
-      ...result,
-      result: (await res.json()) as Parameters
-    };
+    return { ...result, result: (await res.json()) as Parameters };
   }
 } satisfies Actions;
