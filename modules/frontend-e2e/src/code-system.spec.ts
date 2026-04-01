@@ -112,3 +112,89 @@ test.describe('$validate-code', () => {
     });
   });
 });
+
+test.describe('$lookup', () => {
+  test.describe('LOINC 718-7', () => {
+    test('type-level', async ({ page }) => {
+      await page.getByRole('button', { name: 'Operations' }).click();
+      await page.getByRole('menuitem', { name: '$lookup' }).click();
+
+      await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
+      await expect(breadcrumbItem(page, '$lookup')).toBeVisible();
+
+      await page.getByRole('heading', { name: 'Parameters' }).click();
+      await page.getByLabel('System', { exact: true }).fill('http://loinc.org');
+      await page.getByLabel('Code').fill('718-7');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await expect(page.getByRole('listitem').filter({ hasText: 'Name LOINC' })).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.78' })).toBeVisible();
+      await expect(
+        page.getByRole('listitem').filter({ hasText: 'Display Hemoglobin [Mass/volume] in Blood' })
+      ).toBeVisible();
+    });
+
+    test('instance-level', async ({ page }) => {
+      await page.goto('/fhir/CodeSystem?url=http://loinc.org');
+
+      await page.getByRole('link', { name: 'LOINC Code System v2.78' }).click();
+
+      await expect(breadcrumbItem(page, 'LOINC Code System v2.78')).toBeVisible();
+      await page.getByRole('button', { name: 'Operations' }).click();
+      await page.getByRole('menuitem', { name: '$lookup' }).click();
+
+      await page.getByRole('heading', { name: 'LOINC Code System v2.78' }).click();
+
+      await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
+      await expect(breadcrumbItem(page, 'LOINC Code System v2.78')).toBeVisible();
+      await expect(breadcrumbItem(page, '$lookup')).toBeVisible();
+
+      await page.getByRole('heading', { name: 'Parameters' }).click();
+      await page.getByLabel('Code').fill('718-7');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await expect(page.getByRole('listitem').filter({ hasText: 'Name LOINC' })).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.78' })).toBeVisible();
+      await expect(
+        page.getByRole('listitem').filter({ hasText: 'Display Hemoglobin [Mass/volume] in Blood' })
+      ).toBeVisible();
+    });
+  });
+
+  test.describe('SNOMED CT 119297000', () => {
+    test('type-level with designations', async ({ page }) => {
+      await page.getByRole('button', { name: 'Operations' }).click();
+      await page.getByRole('menuitem', { name: '$lookup' }).click();
+
+      await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
+      await expect(breadcrumbItem(page, '$lookup')).toBeVisible();
+
+      await page.getByRole('heading', { name: 'Parameters' }).click();
+      await page.getByLabel('System', { exact: true }).fill('http://snomed.info/sct');
+      await page.getByLabel('Code').fill('119297000');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await expect(
+        page.getByRole('listitem').filter({ hasText: 'Display Blood specimen' })
+      ).toBeVisible();
+
+      // designations
+      await expect(page.getByText('Blood specimen (specimen)', { exact: true })).toBeVisible();
+      await expect(page.getByText('Blood sample', { exact: true })).toBeVisible();
+    });
+  });
+
+  test.describe('unknown code', () => {
+    test('shows an error message', async ({ page }) => {
+      await page.getByRole('button', { name: 'Operations' }).click();
+      await page.getByRole('menuitem', { name: '$lookup' }).click();
+
+      await page.getByRole('heading', { name: 'Parameters' }).click();
+      await page.getByLabel('System', { exact: true }).fill('http://loinc.org');
+      await page.getByLabel('Code').fill('non-existing-code');
+      await page.getByRole('button', { name: 'Submit' }).click();
+
+      await expect(page.getByText('was not found')).toBeVisible();
+    });
+  });
+});

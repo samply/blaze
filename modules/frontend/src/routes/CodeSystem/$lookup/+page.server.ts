@@ -6,19 +6,16 @@ import { fail } from '@sveltejs/kit';
 export const actions = {
   default: async ({ request, fetch }) => {
     const data = await request.formData();
-    const url = data.get('url') as string;
-    const valueSetVersion = data.get('valueSetVersion') as string;
-    const code = data.get('code') as string;
     const system = data.get('system') as string;
-    const systemVersion = data.get('systemVersion') as string;
+    const version = data.get('version') as string;
+    const code = data.get('code') as string;
     const display = data.get('display') as string;
     const displayLanguage = data.get('displayLanguage') as string;
-    const inferSystem = Boolean(data.get('inferSystem'));
 
     const parameters: ParametersParameter[] = [
       {
-        name: 'url',
-        valueUri: url
+        name: 'system',
+        valueUri: system
       },
       {
         name: 'code',
@@ -26,24 +23,10 @@ export const actions = {
       }
     ];
 
-    if (valueSetVersion !== '') {
+    if (version !== '') {
       parameters.push({
-        name: 'valueSetVersion',
-        valueString: valueSetVersion
-      });
-    }
-
-    if (system !== '') {
-      parameters.push({
-        name: 'system',
-        valueString: system
-      });
-    }
-
-    if (systemVersion !== '') {
-      parameters.push({
-        name: 'systemVersion',
-        valueString: systemVersion
+        name: 'version',
+        valueString: version
       });
     }
 
@@ -61,14 +44,7 @@ export const actions = {
       });
     }
 
-    if (inferSystem) {
-      parameters.push({
-        name: 'inferSystem',
-        valueBoolean: true
-      });
-    }
-
-    const res = await fetch(resolve('/ValueSet/$validate-code'), {
+    const res = await fetch(resolve('/CodeSystem/$lookup'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({
@@ -77,16 +53,7 @@ export const actions = {
       })
     });
 
-    const result = {
-      url,
-      valueSetVersion,
-      code,
-      system,
-      systemVersion,
-      display,
-      displayLanguage,
-      inferSystem
-    };
+    const result = { system, version, code, display, displayLanguage };
 
     if (!res.ok) {
       const error: OperationOutcome = await res.json();

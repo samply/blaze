@@ -4,7 +4,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util :refer [parameter structure-definition-repo]]
+   [blaze.fhir.test-util :refer [parameter parameter-part structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.fhir.util-spec]
    [blaze.module.test-util :as mtu :refer [given-failed-future given-failed-system]]
@@ -657,7 +657,85 @@
                                                        :version #fhir/string "version-124939"
                                                        :code #fhir/code "code-115927"})
           ::anom/category := ::anom/not-found
-          ::anom/message := "Unknown code `code-115927` was not found in the provided code system.")))))
+          ::anom/message := "Unknown code `code-115927` was not found in the provided code system."))))
+
+  (testing "description in property part"
+    (testing "is filled from property defined in code system"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :name #fhir/string "name-134300"
+                 :url #fhir/uri "system-115910"
+                 :content #fhir/code "complete"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem/property
+                   :code #fhir/code "prop-code-091200"
+                   :uri #fhir/uri "prop-uri-091200"
+                   :description #fhir/string "prop-description-091200"}]
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-154735"
+                   :property
+                   [{:fhir/type :fhir.CodeSystem.concept/property
+                     :code #fhir/code "prop-code-091200"
+                     :value #fhir/string "prop-value-091200"}]}]}]]]
+
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "system-115910"
+                  "code" #fhir/code "code-154735")
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "name-134300"
+          [(parameter "property") count] := 1
+          [(parameter "property") 0 (parameter-part "code") 0 :value] := #fhir/code "prop-code-091200"
+          [(parameter "property") 0 (parameter-part "value") 0 :value] := #fhir/string "prop-value-091200"
+          [(parameter "property") 0 (parameter-part "description") 0 :value] := #fhir/string "prop-description-091200")))
+
+    (testing "is filled from property defined default concept-properties"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :name #fhir/string "name-134300"
+                 :url #fhir/uri "system-115910"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-154735"
+                   :property
+                   [{:fhir/type :fhir.CodeSystem.concept/property
+                     :code #fhir/code "inactive"
+                     :value #fhir/boolean true}]}]}]]]
+
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "system-115910"
+                  "code" #fhir/code "code-154735")
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "name-134300"
+          [(parameter "property") count] := 1
+          [(parameter "property") 0 (parameter-part "code") 0 :value] := #fhir/code "inactive"
+          [(parameter "property") 0 (parameter-part "value") 0 :value] := #fhir/boolean true
+          [(parameter "property") 0 (parameter-part "description") 0 :value] := #fhir/string "True if the concept is not considered active - e.g. not a valid concept any more. Property type is boolean, default value is false. Note that the status property may also be used to indicate that a concept is inactive")))
+
+    (testing "is not filled when property does not exist"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :name #fhir/string "name-134300"
+                 :url #fhir/uri "system-115910"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-154735"
+                   :property
+                   [{:fhir/type :fhir.CodeSystem.concept/property
+                     :code #fhir/code "prop-code-091200"
+                     :value #fhir/boolean true}]}]}]]]
+
+        (given @(code-system-lookup ts
+                  "system" #fhir/uri "system-115910"
+                  "code" #fhir/code "code-154735")
+          :fhir/type := :fhir/Parameters
+          [(parameter "name") 0 :value] := #fhir/string "name-134300"
+          [(parameter "property") count] := 1
+          [(parameter "property") 0 (parameter-part "code") 0 :value] := #fhir/code "prop-code-091200"
+          [(parameter "property") 0 (parameter-part "value") 0 :value] := #fhir/boolean true
+          [(parameter "property") 0 (parameter-part "description") count] := 0)))))
 
 (deftest code-system-lookup-bcp-13-test
   (with-system [{ts ::ts/local} bcp-13-config]

@@ -7,7 +7,7 @@
   import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
   import BreadcrumbEntry from '$lib/breadcrumb/entry.svelte';
   import CheckBoxes from '$lib/tailwind/form/check-boxes.svelte';
-  import ResultList from '../../result-list.svelte';
+  import ResultList from '../../$validate-code/result-list.svelte';
   import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
   import CheckBox from '$lib/tailwind/form/check-box.svelte';
   import Section from '$lib/tailwind/form/section.svelte';
