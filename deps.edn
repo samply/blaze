@@ -16,6 +16,9 @@
   blaze/interaction
   {:local/root "modules/interaction"}
 
+  blaze/jvm-metrics-logger
+  {:local/root "modules/jvm-metrics-logger"}
+
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
 

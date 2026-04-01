@@ -15,6 +15,25 @@
       (ba/incorrect (format "Invalid negative integer %d." i)))
     (ba/incorrect (format "Can't parse integer from `%s`." s))))
 
+(defn jvm-metrics-logger-warn-factor
+  "Coerces `s` to a JVM metrics logger warn factor which must be a positive
+  integer."
+  [s]
+  (when-ok [i (coerce-nat-int s)]
+    (if (pos? i)
+      i
+      (ba/incorrect (format "Invalid JVM metrics logger warn factor %d. Must be a positive integer." i)))))
+
+(defn jvm-metrics-logger-warn-threshold
+  "Coerces `s` to a JVM metrics logger threshold in the range from 1 (inclusive)
+  to 100 (exclusive)."
+  [s]
+  (when-ok [i (coerce-nat-int s)]
+    (let [start 1 end 100]
+      (if (and (<= start i) (< i end))
+        i
+        (ba/incorrect (format "Invalid JVM metrics logger threshold %d. Must be in the range from %d (inclusive) to %d (exclusive)." i start end))))))
+
 (def ^:private valid-db-scaling-factors
   (into #{} (map #(bit-shift-left 1 %)) (range 5)))
 

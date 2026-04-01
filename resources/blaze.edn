@@ -464,6 +464,12 @@
 
   :blaze/scheduler {}
 
+  :blaze/jvm-metrics-logger
+  {:scheduler #blaze/ref :blaze/scheduler
+   :interval #blaze/cfg ["JVM_METRICS_LOGGER_INTERVAL" java-time.api/duration? "PT5M"]
+   :warn-factor #blaze/var jvm-metrics-logger-warn-factor
+   :warn-threshold #blaze/var jvm-metrics-logger-warn-threshold}
+
   :blaze/clock {}
 
   :blaze/rng-fn {}
