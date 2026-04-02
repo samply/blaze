@@ -2,13 +2,19 @@ import { defineConfig } from "vitepress";
 
 const currentVersion = process.env.VITE_LATEST_RELEASE || "local";
 const currentYear = new Date().getFullYear();
+const base = process.env.DOCS_BASE || "";
 
 export default defineConfig({
   title: "Blaze",
   description: "Blaze FHIR Server Documentation",
-  head: [["link", { rel: "icon", href: "/favicon.svg" }]],
+  head: [
+    [
+      "link",
+      { rel: "icon", type: "image/svg+xml", href: base + "/favicon.svg" },
+    ],
+  ],
 
-  base: process.env.DOCS_BASE || "",
+  base: base,
   lastUpdated: true,
 
   themeConfig: {
