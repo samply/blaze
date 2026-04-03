@@ -72,7 +72,7 @@ services:
     ulimits:
       memlock: -1
     healthcheck:
-      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      test: ["CMD-SHELL", "cqlsh -e \"SELECT count(*) FROM system.peers\" 2>/dev/null | grep -q '(1 rows)'"]
       start_period: 45s
       interval: 5s
       timeout: 10s
@@ -88,7 +88,7 @@ services:
     ulimits:
       memlock: -1
     healthcheck:
-      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      test: ["CMD-SHELL", "cqlsh -e \"SELECT count(*) FROM system.peers\" 2>/dev/null | grep -q '(1 rows)'"]
       start_period: 45s
       interval: 5s
       timeout: 10s
