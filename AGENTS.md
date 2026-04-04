@@ -24,11 +24,16 @@ Rigorous adherence to these patterns is required:
   * Define `m/pre-init-spec` for dependency validation.
 * **Specs:**
   * Every public function must have a spec.
-  * **Location:** Function specs must reside in a separate namespace with the suffix `-spec` (e.g., `blaze.db.node-spec` for `blaze.db.node`).
+  * **Location:** Function specs must reside in a separate namespace with the suffix `-spec` (e.g., `blaze.db.node-spec` for `blaze.db.node`). When modifying a public function's signature or return type, always update the corresponding spec in that `-spec` namespace.
   * **Classpath:** Public module-level specs go in `src`, but inner-module public function specs should be in `test` to keep the production classpath small.
 * **Java Interop:**
   * Avoid reflection.
   * **Mandatory:** Add `(set! *warn-on-reflection* true)` to any namespace performing Java interop.
+* **Async Composition:**
+  * Prefer the `blaze.async.comp/do-sync` macro over threading chains of `blaze.async.comp/then-apply` where feasible.
+  * Always use `blaze.async.comp/then-apply`, `blaze.async.comp/then-compose` and similar in conjunction with the threading macro (`->`), never as a standalone call.
+* **Macros:**
+  * Macros must always be `:refer`ed directly so they can be used without a namespace alias prefix (e.g., `[blaze.async.comp :refer [do-sync]]`).
 * **Reuse:**
   * Avoid code duplication.
   * Use existing functions if possible.
@@ -41,6 +46,9 @@ Rigorous adherence to these patterns is required:
   * **Fixtures:** Use the standard test fixture in all test namespaces.
     * Require `[blaze.test-util :as tu]`.
     * Call `(test/use-fixtures :each tu/fixture)`.
+  * **Async Testing:**
+    * To assert that a `CompletableFuture` completes *exceptionally* with an anomaly, use `given-failed-future` from `blaze.module.test-util` — **not** the `(given (ba/try-anomaly (ac/join ...)))` pattern.
+    * To obtain the value of a successfully-completed future inside a test, use `@future` (Clojure's `deref`).
 
 ## Verification & Workflow
 
@@ -50,7 +58,7 @@ Before finishing a task, ensure the following commands pass:
 
 1.  **Format:** `make fmt`
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
-3.  **Test:** `make test` (Runs module and root tests)
+3.  **Test:** Run tests only for the modules you changed: `make -C modules/<module> test` (e.g. `make -C modules/db test`). Use `make test` only when changes span multiple modules or the root.
 4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage)
 
 After verification, when working on an issue:

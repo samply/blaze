@@ -7,6 +7,8 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -23,7 +25,9 @@
 
 (def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (def config-extra
   (assoc-in
@@ -42,7 +46,8 @@
     (given-failed-system {:blaze.db/search-param-registry {}}
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
 
   (testing "invalid structure-definition-repo"
     (given-failed-system (assoc-in config [:blaze.db/search-param-registry :structure-definition-repo] ::invalid)

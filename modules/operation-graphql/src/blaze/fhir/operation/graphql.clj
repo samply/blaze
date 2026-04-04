@@ -52,7 +52,7 @@
 (defn- type-query [db type args]
   (if (seq args)
     (d/type-query db type (clauses args))
-    (d/type-list db type)))
+    (ac/completed-future (d/type-list db type))))
 
 (defn- read-json [source]
   (j/read-value source j/keyword-keys-object-mapper))
@@ -66,7 +66,8 @@
 (defn- resolve-type-list [type {:keys [writing-context db]} args _]
   (log/trace (format "execute %sList query" type))
   (let [result (resolve/resolve-promise)]
-    (-> (d/pull-many db (vec (type-query db type args)))
+    (-> (type-query db type args)
+        (ac/then-compose #(d/pull-many db (vec %)))
         (ac/when-complete
          (fn [r e]
            (resolve/deliver! result (mapv (partial write-read-json writing-context) r) (some-> e to-error)))))

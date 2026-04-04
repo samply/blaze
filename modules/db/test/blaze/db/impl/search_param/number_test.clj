@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.number-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string-spec]
    [blaze.db.impl.codec :as codec]
@@ -17,11 +18,15 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -36,11 +41,13 @@
 (defn compile-number-value [search-param-registry value]
   (-> (probability-param search-param-registry)
       (search-param/compile-values nil [value])
-      (first)))
+      (ac/then-apply first)))
 
 (def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo
+    :terminology-service (ig/ref ::ts/not-available)}
+   ::ts/not-available {}})
 
 (deftest validate-modifier-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -59,45 +66,45 @@
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"
-      (given (compile-number-value search-param-registry "23.4")
+      (given @(compile-number-value search-param-registry "23.4")
         :op := :eq
         :lower-bound := (codec/number 23.35M)
         :upper-bound := (codec/number 23.45M))
 
-      (given (compile-number-value search-param-registry "0.1")
+      (given @(compile-number-value search-param-registry "0.1")
         :op := :eq
         :lower-bound := (codec/number 0.05M)
         :upper-bound := (codec/number 0.15M))
 
-      (given (compile-number-value search-param-registry "0")
+      (given @(compile-number-value search-param-registry "0")
         :op := :eq
         :lower-bound := (codec/number -0.5M)
         :upper-bound := (codec/number 0.5M))
 
-      (given (compile-number-value search-param-registry "0.0")
+      (given @(compile-number-value search-param-registry "0.0")
         :op := :eq
         :lower-bound := (codec/number -0.05M)
         :upper-bound := (codec/number 0.05M)))
 
     (testing "gt lt ge le"
       (doseq [op [:gt :lt :ge :le]]
-        (given (compile-number-value search-param-registry (str (name op) "23"))
+        (given @(compile-number-value search-param-registry (str (name op) "23"))
           :op := op
           :exact-value := (codec/number 23M))
 
-        (given (compile-number-value search-param-registry (str (name op) "0.1"))
+        (given @(compile-number-value search-param-registry (str (name op) "0.1"))
           :op := op
           :exact-value := (codec/number 0.1M))))
 
     (testing "invalid decimal value"
-      (given (search-param/compile-values
-              (probability-param search-param-registry) nil ["a"])
+      (given-failed-future (search-param/compile-values
+                            (probability-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid decimal value `a` in search parameter `probability`."))
 
     (testing "unsupported prefix"
-      (given (search-param/compile-values
-              (probability-param search-param-registry) nil ["ne23"])
+      (given-failed-future (search-param/compile-values
+                            (probability-param search-param-registry) nil ["ne23"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported prefix `ne` in search parameter `probability`."))))
 
@@ -116,9 +123,9 @@
 (deftest ordered-compartment-index-handles-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (let [search-param (probability-param search-param-registry)]
-      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil)))
-      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil))))))
+      (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
+      (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil nil))))))
 
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))

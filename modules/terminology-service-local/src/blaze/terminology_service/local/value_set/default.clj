@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.value-set.default
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.util :as fu]
    [blaze.terminology-service.local.value-set.core :as c]
@@ -20,10 +20,13 @@
 
 (defmethod c/find :default
   [{:keys [db]} url & [version]]
-  (do-sync [value-sets (d/pull-many db (vec (value-set-query db url version)))]
-    (or (first (fu/sort-by-priority value-sets))
-        (ba/not-found
-         (not-found-msg url version)
-         :fhir/issues
-         [{:fhir.issues/code "not-found"
-           :fhir.issues/details (issue/value-set-not-found-details url)}]))))
+  (-> (value-set-query db url version)
+      (ac/then-compose
+       (fn [handles]
+         (do-sync [value-sets (d/pull-many db (vec handles))]
+           (or (first (fu/sort-by-priority value-sets))
+               (ba/not-found
+                (not-found-msg url version)
+                :fhir/issues
+                [{:fhir.issues/code "not-found"
+                  :fhir.issues/details (issue/value-set-not-found-details url)}])))))))

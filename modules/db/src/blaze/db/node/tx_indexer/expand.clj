@@ -2,7 +2,8 @@
   "Expands non-terminal transaction commands into terminal transaction commands
   that are verified later."
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.impl.protocols :as p]
@@ -12,10 +13,13 @@
    [cognitect.anomalies :as anom]
    [prometheus.alpha :as prom]))
 
+(set! *warn-on-reflection* true)
+
 (defmulti expand
   "Expands `command` into possibly many commands.
 
-  Returns an anomaly on errors."
+  Returns a CompletableFuture that completes with the expanded commands or
+  completes exceptionally with an anomaly on errors."
   {:arglists '([db-before command])}
   (fn [_ {:keys [op]}] op))
 
@@ -24,9 +28,9 @@
           type (tx-u/clauses->query-params clauses) message))
 
 (defn- conditional-create-matches [db type clauses]
-  (if-ok [resource-handles (d/type-query db type clauses)]
-    (into [] (take 2) resource-handles)
-    #(ba/incorrect (failing-conditional-create-query-msg type clauses %))))
+  (-> (d/type-query db type clauses)
+      (ac/then-apply #(into [] (take 2) %))
+      (ac/exceptionally #(ba/incorrect (failing-conditional-create-query-msg type clauses %)))))
 
 (defn- format-handle [type {:keys [id t]}]
   (format "%s/%s/_history/%s" type id t))
@@ -44,11 +48,13 @@
 (defmethod expand "create"
   [db-before {:keys [type if-none-exist] :as command}]
   (with-open [_ (prom/timer tx-u/duration-seconds "expand-create")]
-    (when-ok [[h1 h2] (some->> if-none-exist (conditional-create-matches db-before type))]
-      (cond
-        h2 (multiple-existing-resources-anom type if-none-exist [h1 h2])
-        h1 [(assoc command :op "hold" :id (:id h1))]
-        :else [command]))))
+    (if if-none-exist
+      (do-sync [[h1 h2] (conditional-create-matches db-before type if-none-exist)]
+        (cond
+          h2 (multiple-existing-resources-anom type if-none-exist [h1 h2])
+          h1 [(assoc command :op "hold" :id (:id h1))]
+          :else [command]))
+      (ac/completed-future [command]))))
 
 (def ^:private ^:const ^long max-multiple-deletes 10000)
 
@@ -73,7 +79,7 @@
 
 (defn- conditional-delete-matches [db type clauses]
   (-> (d/type-query db type clauses)
-      (ba/exceptionally #(ba/incorrect (failing-conditional-delete-query-msg type clauses %)))))
+      (ac/exceptionally #(ba/incorrect (failing-conditional-delete-query-msg type clauses %)))))
 
 (defn- multiple-matches-msg
   ([type [h1 h2]]
@@ -94,18 +100,21 @@
 (defmethod expand "conditional-delete"
   [db-before {:keys [type clauses allow-multiple] :as command}]
   (with-open [_ (prom/timer tx-u/duration-seconds "expand-conditional-delete")]
-    (when-ok [matches (or (some->> clauses (conditional-delete-matches db-before type))
-                          (d/type-list db-before type))]
-      (if allow-multiple
-        (let [handles (into [] (take (inc max-multiple-deletes)) matches)]
-          (if (< max-multiple-deletes (count handles))
-            (too-many-multiple-matches-anom type clauses)
-            (mapv (fn [{:keys [id]}] (assoc command :op "delete" :id id)) handles)))
-        (let [[h1 h2] (into [] (take 2) matches)]
-          (cond
-            h2 (multiple-matches-anom type clauses [h1 h2])
-            h1 [(assoc command :op "delete" :id (:id h1))]
-            :else []))))))
+    (-> (if clauses
+          (conditional-delete-matches db-before type clauses)
+          (ac/completed-future (d/type-list db-before type)))
+        (ac/then-apply
+         (fn [matches]
+           (if allow-multiple
+             (let [handles (into [] (take (inc max-multiple-deletes)) matches)]
+               (if (< max-multiple-deletes (count handles))
+                 (too-many-multiple-matches-anom type clauses)
+                 (mapv (fn [{:keys [id]}] (assoc command :op "delete" :id id)) handles)))
+             (let [[h1 h2] (into [] (take 2) matches)]
+               (cond
+                 h2 (multiple-matches-anom type clauses [h1 h2])
+                 h1 [(assoc command :op "delete" :id (:id h1))]
+                 :else []))))))))
 
 (defn- purge-tx-cmds
   [{{:keys [search-param-registry]} :node :as batch-db} patient-handle check-refs]
@@ -128,24 +137,24 @@
 (defmethod expand "patient-purge"
   [db-before {:keys [id check-refs] :or {check-refs false}}]
   (with-open [_ (prom/timer tx-u/duration-seconds "expand-patient-purge")]
-    (when-let [handle (d/resource-handle db-before "Patient" id)]
-      (into
-       [{:op "purge" :type "Patient" :id id :check-refs check-refs}]
-       (purge-tx-cmds db-before handle check-refs)))))
+    (ac/completed-future
+     (when-let [handle (d/resource-handle db-before "Patient" id)]
+       (into
+        [{:op "purge" :type "Patient" :id id :check-refs check-refs}]
+        (purge-tx-cmds db-before handle check-refs))))))
 
 (defmethod expand :default
   [_ command]
-  [command])
+  (ac/completed-future [command]))
 
 (defn expand-tx-cmds
   "Expands all non-terminal `tx-cmds` into terminal transaction commands.
 
-  Returns an anomaly on errors."
+  Returns a CompletableFuture that completes with the expanded commands or
+  completes exceptionally with an anomaly on errors."
   [db-before tx-cmds]
-  (with-open [_ (prom/timer tx-u/duration-seconds "expand-tx-cmds")]
-    (transduce
-     (comp (map (partial expand db-before))
-           (halt-when ba/anomaly?)
-           cat)
-     conj
-     tx-cmds)))
+  (let [timer (prom/timer tx-u/duration-seconds "expand-tx-cmds")
+        futures (mapv (partial expand db-before) tx-cmds)]
+    (-> (ac/all-of futures)
+        (ac/then-apply (fn [_] (into [] (mapcat ac/join) futures)))
+        (ac/when-complete (fn [_ _] (.close timer))))))

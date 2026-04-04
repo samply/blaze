@@ -31,6 +31,9 @@
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-store-spec]
    [blaze.page-store.local]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [blaze.util-spec]
    [clojure.spec.alpha :as s]
@@ -189,7 +192,10 @@
      [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.admin/executor] {}
 
      :blaze.db/search-param-registry
-     {:structure-definition-repo structure-definition-repo}
+     {:structure-definition-repo structure-definition-repo
+      :terminology-service (ig/ref ::ts/not-available)}
+
+     ::ts/not-available {}
 
      [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
      {:structure-definition-repo structure-definition-repo}

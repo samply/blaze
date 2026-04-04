@@ -29,6 +29,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as ts]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.math.combinatorics :as combo]
    [clojure.spec.alpha :as s]
@@ -1746,18 +1747,20 @@
   (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/step-clock)))
 
 (defn- count-type-query [node-or-db type clauses]
-  (when-ok [query (d/compile-type-query node-or-db type clauses)]
-    @(d/count-query (ensure-db node-or-db) query)))
+  @(-> (d/compile-type-query node-or-db type clauses)
+       (ac/then-compose #(d/count-query (ensure-db node-or-db) %))))
 
 (defn- pull-type-query
   ([node-or-db type clauses]
    (with-open [db (d/new-batch-db (ensure-db node-or-db))]
-     (when-ok [handles (d/type-query db type clauses)]
-       @(d/pull-many node-or-db (vec handles)))))
+     (ba/try-anomaly
+      @(-> (d/type-query db type clauses)
+           (ac/then-compose #(d/pull-many node-or-db (vec %)))))))
   ([node-or-db type clauses start-id]
    (with-open [db (d/new-batch-db (ensure-db node-or-db))]
-     (when-ok [handles (d/type-query db type clauses start-id)]
-       @(d/pull-many node-or-db (vec handles))))))
+     (ba/try-anomaly
+      @(-> (d/type-query db type clauses start-id)
+           (ac/then-compose #(d/pull-many node-or-db (vec %))))))))
 
 (defmacro given-type-query
   "Combines `pull-type-query` with `count-type-query`. Assumes that the first
@@ -1769,11 +1772,11 @@
 
 (defn- pull-compartment-query
   ([node code id type clauses]
-   (when-ok [handles (d/compartment-query (d/db node) code id type clauses)]
-     @(d/pull-many node (vec handles))))
+   @(-> (d/compartment-query (d/db node) code id type clauses)
+        (ac/then-compose #(d/pull-many node (vec %)))))
   ([node code id type clauses start-id]
-   (when-ok [handles (d/compartment-query (d/db node) code id type clauses start-id)]
-     @(d/pull-many node (vec handles)))))
+   @(-> (d/compartment-query (d/db node) code id type clauses start-id)
+        (ac/then-compose #(d/pull-many node (vec %))))))
 
 (defn- pull-system-list
   ([node-or-db]
@@ -2277,23 +2280,23 @@
         (is (= ["0" "1"] (mapv :id coll)))))))
 
 (defn- explain-type-query [node-or-db type clauses]
-  (when-ok [query (d/compile-type-query node-or-db type clauses)]
+  (when-ok [query @(d/compile-type-query node-or-db type clauses)]
     (d/explain-query (ensure-db node-or-db) query)))
 
 (deftest type-query-test
   (with-system [{:blaze.db/keys [node]} config]
     (testing "a new node has no patients"
-      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]])))
-      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]] "0"))))
+      (is (coll/empty? @(d/type-query (d/db node) "Patient" [["gender" "male"]])))
+      (is (coll/empty? @(d/type-query (d/db node) "Patient" [["gender" "male"]] "0"))))
 
     (testing "sort clauses are only allowed at first position"
-      (given (d/type-query (d/db node) "Patient" [["gender" "male"]
-                                                  [:sort "_lastUpdated" :desc]])
+      (given-failed-future (d/type-query (d/db node) "Patient" [["gender" "male"]
+                                                                [:sort "_lastUpdated" :desc]])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Sort clauses are only allowed at first position."))
 
     (testing "unknown search-param in sort clause"
-      (given (d/type-query (d/db node) "Patient" [[:sort "foo" :desc]])
+      (given-failed-future (d/type-query (d/db node) "Patient" [[:sort "foo" :desc]])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Unknown search-param `foo` in sort clause.")))
 
@@ -2308,15 +2311,15 @@
           [0 :id] := "0"))
 
       (testing "an unknown search-param errors"
-        (given (d/type-query (d/db node) "Patient" [["foo" "bar"]
-                                                    ["active" "true"]])
+        (given-failed-future (d/type-query (d/db node) "Patient" [["foo" "bar"]
+                                                                  ["active" "true"]])
           ::anom/category := ::anom/not-found
           ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")
 
         (testing "with start id"
-          (given (d/type-query (d/db node) "Patient" [["foo" "bar"]
-                                                      ["active" "true"]]
-                               "0")
+          (given-failed-future (d/type-query (d/db node) "Patient" [["foo" "bar"]
+                                                                    ["active" "true"]]
+                                             "0")
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))))
 
@@ -2421,7 +2424,7 @@
           [0 :id] := "0")
 
         (testing "with matcher"
-          (let [matcher (d/compile-type-matcher node "Patient" [["phonetic" "Day"]])
+          (let [matcher @(d/compile-type-matcher node "Patient" [["phonetic" "Day"]])
                 db (d/db node)
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Patient"))
@@ -3466,7 +3469,7 @@
               [0 :id] := "id-2")))
 
         (testing "with matcher"
-          (let [matcher (d/compile-type-matcher node "RiskAssessment" [["probability" "ge0.5"]])
+          (let [matcher @(d/compile-type-matcher node "RiskAssessment" [["probability" "ge0.5"]])
                 db (d/db node)
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "RiskAssessment"))
@@ -3647,9 +3650,9 @@
                 clauses [(into ["_id"] ids)]
                 sorted-ids (sort ids)
                 start-id (rand-nth sorted-ids)]
-            (and (= (into [] (map :id) (d/type-query db "Patient" clauses))
+            (and (= (into [] (map :id) @(d/type-query db "Patient" clauses))
                     sorted-ids)
-                 (= (into [] (map :id) (d/type-query db "Patient" clauses start-id))
+                 (= (into [] (map :id) @(d/type-query db "Patient" clauses start-id))
                     (drop-while #(not= start-id %) sorted-ids)))))))))
 
 (deftest type-query-sort-test
@@ -3680,7 +3683,7 @@
               [0 :id] := "1"))))
 
       (testing "descending"
-        (given (d/type-query (d/db node) "Patient" [[:sort "_id" :desc]])
+        (given-failed-future (d/type-query (d/db node) "Patient" [[:sort "_id" :desc]])
           ::anom/category := ::anom/unsupported
           ::anom/message := "Unsupported sort direction `desc` for search param `_id`."))))
 
@@ -3816,7 +3819,7 @@
 
             (let [db (d/db node)
                   clauses [[:sort "_id" :asc]]]
-              (= (into [] (map :id) (d/type-query db "Patient" clauses))
+              (= (into [] (map :id) @(d/type-query db "Patient" clauses))
                  (sort ids)))))))))
 
 (deftest type-query-version-test
@@ -4111,37 +4114,37 @@
     (testing "errors"
       (testing "missing modifier"
         (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has" ""]])
+          (given-failed-future (d/type-query (d/db node) "Patient" [["_has" ""]])
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing modifier of _has search param.")))
 
       (testing "missing type"
         (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:" ""]])
+          (given-failed-future (d/type-query (d/db node) "Patient" [["_has:" ""]])
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing type in _has search param `_has:`.")))
 
       (testing "missing chaining search param"
         (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:foo" ""]])
+          (given-failed-future (d/type-query (d/db node) "Patient" [["_has:foo" ""]])
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing chaining search param in _has search param `_has:foo`.")))
 
       (testing "missing search param"
         (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:foo:bar" ""]])
+          (given-failed-future (d/type-query (d/db node) "Patient" [["_has:foo:bar" ""]])
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing search param in _has search param `_has:foo:bar`.")))
 
       (testing "main search param not found"
         (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
+          (given-failed-future (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
 
       (testing "chain search param not found"
         (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:Observation:foo:code" ""]])
+          (given-failed-future (d/type-query (d/db node) "Patient" [["_has:Observation:foo:code" ""]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found."))))))
 
@@ -4466,7 +4469,7 @@
 
       (testing "with prefix"
         (testing "not equal"
-          (given (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]])
+          (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]])
             ::anom/category := ::anom/unsupported
             ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
 
@@ -4580,17 +4583,17 @@
                 [1 :id] := "id-0"))))
 
         (testing "starts after"
-          (given (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]])
+          (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]])
             ::anom/category := ::anom/unsupported
             ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
 
         (testing "ends before"
-          (given (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]])
+          (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]])
             ::anom/category := ::anom/unsupported
             ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
 
         (testing "approximately"
-          (given (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]])
+          (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]])
             ::anom/category := ::anom/unsupported
             ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
 
@@ -4602,7 +4605,7 @@
             [1 :id] := "id-1")))
 
       (testing "with invalid decimal value"
-        (given (d/type-query (d/db node) "Observation" [["value-quantity" "a"]])
+        (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "a"]])
           ::anom/category := ::anom/incorrect
           ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`.")))
 
@@ -4627,10 +4630,10 @@
 
       (testing "with prefix"
         (testing "not equal"
-          (given (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
-                   (d/type-query (d/db node) "Observation" clauses))
-            ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
+          (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
+            (given-failed-future (d/type-query (d/db node) "Observation" clauses)
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`.")))
 
         (testing "greater than"
           (let [clauses [["status" "final"] ["value-quantity" "gt2.11|kg/m2"]]]
@@ -4675,22 +4678,22 @@
                 [1 :id] := "id-1"))))
 
         (testing "starts after"
-          (given (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
-                   (d/type-query (d/db node) "Observation" clauses))
-            ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
+          (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
+            (given-failed-future (d/type-query (d/db node) "Observation" clauses)
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`.")))
 
         (testing "ends before"
-          (given (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
-                   (d/type-query (d/db node) "Observation" clauses))
-            ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
+          (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
+            (given-failed-future (d/type-query (d/db node) "Observation" clauses)
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`.")))
 
         (testing "approximately"
-          (given (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
-                   (d/type-query (d/db node) "Observation" clauses))
-            ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
+          (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
+            (given-failed-future (d/type-query (d/db node) "Observation" clauses)
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`."))))
 
       (testing "with more than one value"
         (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
@@ -4772,7 +4775,7 @@
                :system #fhir/uri "http://unitsofmeasure.org"}}]]]
 
     (testing "missing second value part"
-      (given (d/type-query (d/db node) "Observation" [["code-value-quantity" "8480-6"]])
+      (given-failed-future (d/type-query (d/db node) "Observation" [["code-value-quantity" "8480-6"]])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Miss the second part is composite search value `8480-6`."))
 
@@ -4792,7 +4795,7 @@
         [0 :id] := "id-1"))
 
     (testing "with matcher"
-      (let [matcher (d/compile-type-matcher node "Observation" [["code-value-quantity" "8480-6$ge140"]])
+      (let [matcher @(d/compile-type-matcher node "Observation" [["code-value-quantity" "8480-6$ge140"]])
             db (d/db node)
             xform (d/matcher-transducer db matcher)]
         (given (into [] xform (d/type-list db "Observation"))
@@ -5030,7 +5033,7 @@
                   :display #fhir/string "Detected (qualifier value)"}]}}]]]
 
     (testing "missing second value part"
-      (given (d/type-query (d/db node) "Observation" [["code-value-concept" "http://loinc.org|94564-2"]])
+      (given-failed-future (d/type-query (d/db node) "Observation" [["code-value-concept" "http://loinc.org|94564-2"]])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Miss the second part is composite search value `http://loinc.org|94564-2`."))
 
@@ -5131,7 +5134,7 @@
             [1 :id] := "2"))))
 
     (testing "with matcher"
-      (let [matcher (d/compile-type-matcher node "Observation" [["code-value-concept" "94564-2$260373001"]])
+      (let [matcher @(d/compile-type-matcher node "Observation" [["code-value-concept" "94564-2$260373001"]])
             db (d/db node)
             xform (d/matcher-transducer db matcher)]
         (given (into [] xform (d/type-list db "Observation"))
@@ -5836,7 +5839,7 @@
           [:scan-clauses 0 :values] := ["Patient/0" "Patient/1" "Patient/2" "Patient/3"]
           :seek-clauses :? empty?)
 
-        (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+        (is (= (d/query-clauses @(d/compile-type-query node "Encounter" clauses))
                [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3"]]))
 
         (testing "it is possible to start with the second observation"
@@ -5904,7 +5907,7 @@
           [:seek-clauses 1 :code] := "date"
           [:seek-clauses 1 :values] := ["le2020-04-01"])
 
-        (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+        (is (= (d/query-clauses @(d/compile-type-query node "Encounter" clauses))
                [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3" "Patient/4"]
                 ["date" "ge2020-01-01"]
                 ["date" "le2020-04-01"]]))
@@ -5994,7 +5997,7 @@
             [:seek-clauses 1 :code] := "date"
             [:seek-clauses 1 :values] := ["le2020-04-01"])
 
-          (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+          (is (= (d/query-clauses @(d/compile-type-query node "Encounter" clauses))
                  [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3" "Patient/4"]
                   ["class" "http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
                   ["date" "ge2020-01-01"]
@@ -6083,7 +6086,7 @@
             [:seek-clauses 1 :code] := "date"
             [:seek-clauses 1 :values] := ["le2020-04-01"])
 
-          (is (= (d/query-clauses (d/compile-type-query node "Encounter" clauses))
+          (is (= (d/query-clauses @(d/compile-type-query node "Encounter" clauses))
                  [["subject" "Patient/0" "Patient/1" "Patient/2" "Patient/3" "Patient/4"]
                   ["class" "http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP"]
                   ["date" "ge2020-01-01"]
@@ -6883,7 +6886,7 @@
                                   :end #fhir/dateTime #system/date-time "2001-07"}}]]]
 
     (let [db (d/db node)
-          num-encounter #(count (d/type-query db "Encounter" %))]
+          num-encounter #(count @(d/type-query db "Encounter" %))]
       (are [year n] (= n (num-encounter [["date" (format "gt%d-01-01" year)]
                                          ["date" (format "lt%d-01-01" (inc year))]]))
         1999 2
@@ -6931,7 +6934,7 @@
         [tx-ops]
 
         (let [db (d/db node)
-              num-encounter #(count (d/type-query db "Encounter" %))]
+              num-encounter #(count @(d/type-query db "Encounter" %))]
           (= (num-encounter [["date" (str year)]])
              (num-encounter [["date" (format "sa%d-12-31" (dec year))]
                              ["date" (format "eb%d-01-01" (inc year))]])))))))
@@ -6946,7 +6949,7 @@
         [tx-ops]
 
         (let [db (d/db node)
-              num-encounter #(count (d/type-query db "Encounter" %))]
+              num-encounter #(count @(d/type-query db "Encounter" %))]
           (= (num-encounter [["date" (str "ap" year)]])
              (num-encounter [["date" (format "ge%d-01-01" year)]
                              ["date" (format "lt%d-01-01" (inc year))]])))))))
@@ -7670,7 +7673,7 @@
 
         (let [db (d/db node)]
           (is (every?
-               #(= 1 @(d/count-query db (d/compile-type-query node "Patient" [["identifier" (str %)]])))
+               #(= 1 @(d/count-query db @(d/compile-type-query node "Patient" [["identifier" (str %)]])))
                (range test-size))))))))
 
 (deftest type-query-identifier-test
@@ -7953,15 +7956,15 @@
       (testing "the patient can be found"
         (with-open-db [db node]
           (doseq [target [node db]]
-            (given (pull-query db (d/compile-type-query target "Patient" [["active" "true"]]))
+            (given (pull-query db @(d/compile-type-query target "Patient" [["active" "true"]]))
               count := 1
               [0 :fhir/type] := :fhir/Patient
               [0 :id] := "0"))))
 
       (testing "sort clause comes first"
         (doseq [target [node (d/db node)]]
-          (given (-> (d/compile-type-query target "Patient" [[:sort "_id" :asc]
-                                                             ["active" "true"]])
+          (given (-> @(d/compile-type-query target "Patient" [[:sort "_id" :asc]
+                                                              ["active" "true"]])
                      (d/query-clauses))
             count := 2
             [0] := [:sort "_id" :asc]
@@ -7978,7 +7981,7 @@
                             (into ["patient"] subjects)]
                            [(into ["patient"] subjects)
                             ["code" "system|code"]]]]
-            (is (patient-type-query? (d/compile-type-query target type clauses)))))
+            (is (patient-type-query? @(d/compile-type-query target type clauses)))))
 
         (testing "patient and category"
           (doseq [target [node (d/db node)]
@@ -7987,7 +7990,7 @@
 
             (let [clauses [["category" "system|code"]
                            (into ["patient"] subjects)]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "patient and class"
           (doseq [target [node (d/db node)]
@@ -7996,7 +7999,7 @@
 
             (let [clauses [["class" "system|code"]
                            (into ["patient"] subjects)]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "patient and modality"
           (doseq [target [node (d/db node)]
@@ -8005,7 +8008,7 @@
 
             (let [clauses [["modality" "system|code"]
                            (into ["patient"] subjects)]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "patient and type"
           (doseq [target [node (d/db node)]
@@ -8014,7 +8017,7 @@
 
             (let [clauses [["type" "system|code"]
                            (into ["patient"] subjects)]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "patient and status"
           (doseq [target [node (d/db node)]
@@ -8024,7 +8027,7 @@
 
             (let [clauses [["status" status]
                            (into ["patient"] subjects)]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "subject and code"
           (doseq [target [node (d/db node)]
@@ -8034,7 +8037,7 @@
 
             (let [clauses [["code" "system|code"]
                            ["subject" "Patient/0" "Patient/1"]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "subject and class"
           (doseq [target [node (d/db node)]
@@ -8042,7 +8045,7 @@
 
             (let [clauses [["class" "system|code"]
                            ["subject" "Patient/0" "Patient/1"]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "subject and category"
           (doseq [target [node (d/db node)]
@@ -8050,7 +8053,7 @@
 
             (let [clauses [["category" "system|code"]
                            ["subject" "Patient/0" "Patient/1"]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "subject and modality"
           (doseq [target [node (d/db node)]
@@ -8058,7 +8061,7 @@
 
             (let [clauses [["modality" "system|code"]
                            ["subject" "Patient/0" "Patient/1"]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "subject and type"
           (doseq [target [node (d/db node)]
@@ -8066,7 +8069,7 @@
 
             (let [clauses [["type" "system|code"]
                            ["subject" "Patient/0" "Patient/1"]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses))))))
 
         (testing "subject and status"
           (doseq [target [node (d/db node)]
@@ -8075,18 +8078,18 @@
 
             (let [clauses [["status" status]
                            ["subject" "Patient/0" "Patient/1"]]]
-              (is (patient-type-query? (d/compile-type-query target type clauses)))))))
+              (is (patient-type-query? @(d/compile-type-query target type clauses)))))))
 
       (testing "an unknown search-param errors"
         (doseq [target [node (d/db node)]]
-          (given (d/compile-type-query target "Patient" [["foo" "bar"]
-                                                         ["active" "true"]])
+          (given-failed-future (d/compile-type-query target "Patient" [["foo" "bar"]
+                                                                       ["active" "true"]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))
 
       (testing "invalid date"
         (doseq [target [node (d/db node)]]
-          (given (d/compile-type-query target "Patient" [["birthdate" "invalid"]])
+          (given-failed-future (d/compile-type-query target "Patient" [["birthdate" "invalid"]])
             ::anom/category := ::anom/incorrect
             ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
 
@@ -8098,7 +8101,7 @@
     (testing "the patient can be found"
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given (pull-query db (d/compile-type-query-lenient target "Patient" [["active" "true"]]))
+          (given (pull-query db @(d/compile-type-query-lenient target "Patient" [["active" "true"]]))
             count := 1
             [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0"))))
@@ -8106,7 +8109,7 @@
     (testing "an unknown search-param is ignored"
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given (pull-query db (d/compile-type-query-lenient target "Patient" [["foo" "bar"] ["active" "true"]]))
+          (given (pull-query db @(d/compile-type-query-lenient target "Patient" [["foo" "bar"] ["active" "true"]]))
             count := 1
             [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0")))
@@ -8115,7 +8118,7 @@
         (with-open-db [db node]
           (doseq [target [node db]]
             (let [clauses [["foo" "bar"]]
-                  query (d/compile-type-query-lenient target "Patient" clauses)]
+                  query @(d/compile-type-query-lenient target "Patient" clauses)]
               (testing "all patients are found"
                 (given (pull-query db query)
                   count := 2
@@ -8140,13 +8143,13 @@
                 (is (= 2 @(d/count-query db query)))))))))
 
     (testing "invalid date"
-      (given (d/compile-type-query-lenient node "Patient" [["birthdate" "invalid"]])
+      (given-failed-future (d/compile-type-query-lenient node "Patient" [["birthdate" "invalid"]])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))
 
     (testing "sort parameter"
-      (let [query (d/compile-type-query-lenient
-                   node "Patient" [[:sort "_lastUpdated" :asc]])]
+      (let [query @(d/compile-type-query-lenient
+                    node "Patient" [[:sort "_lastUpdated" :asc]])]
         (is (= [[:sort "_lastUpdated" :asc]] (d/query-clauses query)))))))
 
 (deftest ^:slow count-query-test
@@ -8182,7 +8185,7 @@
       (testing "one clause"
         (with-open-db [db node]
           (doseq [target [node db]]
-            (let [matcher (d/compile-type-matcher target "Patient" [["active" "true"]])
+            (let [matcher @(d/compile-type-matcher target "Patient" [["active" "true"]])
                   xform (d/matcher-transducer db matcher)]
               (given (into [] xform (d/type-list db "Patient"))
                 count := 2
@@ -8191,7 +8194,7 @@
                 [1 :fhir/type] := :fhir/Patient
                 [1 :id] := "2"))
 
-            (let [matcher (d/compile-type-matcher target "Patient" [["gender" "male"]])
+            (let [matcher @(d/compile-type-matcher target "Patient" [["gender" "male"]])
                   xform (d/matcher-transducer db matcher)]
               (given (into [] xform (d/type-list db "Patient"))
                 count := 2
@@ -8205,7 +8208,7 @@
           (doseq [target [node db]]
             (doseq [clauses [[["active" "true"] ["gender" "male"]]
                              [["gender" "male"] ["active" "true"]]]]
-              (let [matcher (d/compile-type-matcher target "Patient" clauses)
+              (let [matcher @(d/compile-type-matcher target "Patient" clauses)
                     xform (d/matcher-transducer db matcher)]
                 (given (into [] xform (d/type-list db "Patient"))
                   count := 1
@@ -8214,7 +8217,7 @@
 
             (doseq [clauses [[["active" "true"] ["gender" "female"]]
                              [["gender" "female"] ["active" "true"]]]]
-              (let [matcher (d/compile-type-matcher target "Patient" clauses)
+              (let [matcher @(d/compile-type-matcher target "Patient" clauses)
                     xform (d/matcher-transducer db matcher)]
                 (given (into [] xform (d/type-list db "Patient"))
                   count := 1
@@ -8222,8 +8225,7 @@
                   [0 :id] := "2"))))))
 
       (testing "clauses can be read back"
-        (given (-> (d/compile-type-matcher node "Patient" [["active" "true"] ["gender" "female"]])
-                   (d/matcher-clauses))
+        (given (d/matcher-clauses @(d/compile-type-matcher node "Patient" [["active" "true"] ["gender" "female"]]))
           count := 2
           [0] := ["active" "true"]
           [1] := ["gender" "female"]))
@@ -8231,14 +8233,14 @@
       (testing "an unknown search-param errors"
         (with-open-db [db node]
           (doseq [target [node db]]
-            (given (d/compile-type-matcher target "Patient" [["foo" "bar"]])
+            (given-failed-future (d/compile-type-matcher target "Patient" [["foo" "bar"]])
               ::anom/category := ::anom/not-found
               ::anom/message := "The search-param with code `foo` and type `Patient` was not found."))))
 
       (testing "invalid date"
         (with-open-db [db node]
           (doseq [target [node db]]
-            (given (d/compile-type-matcher target "Patient" [["birthdate" "invalid"]])
+            (given-failed-future (d/compile-type-matcher target "Patient" [["birthdate" "invalid"]])
               ::anom/category := ::anom/incorrect
               ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
 
@@ -8253,7 +8255,7 @@
         (doseq [target [node db]
                 [value id] [["foo" "0"]
                             ["bar" "1"]]]
-          (let [matcher (d/compile-type-matcher target "Patient" [["identifier" value]])
+          (let [matcher @(d/compile-type-matcher target "Patient" [["identifier" value]])
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Patient"))
               count := 1
@@ -8278,7 +8280,7 @@
                             ["sa2023" "0"]
                             ["eb2025" "1"]
                             ["ap2025" "0"]]]
-          (let [matcher (d/compile-type-matcher target "Patient" [["birthdate" value]])
+          (let [matcher @(d/compile-type-matcher target "Patient" [["birthdate" value]])
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Patient"))
               count := 1
@@ -8307,7 +8309,7 @@
                 [value id] [["23" "1"]
                             ["gt23" "0"]
                             ["lt42" "1"]]]
-          (let [matcher (d/compile-type-matcher target "Observation" [["value-quantity" value]])
+          (let [matcher @(d/compile-type-matcher target "Observation" [["value-quantity" value]])
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Observation"))
               count := 1
@@ -8327,7 +8329,7 @@
 
       (with-open-db [db node]
         (doseq [target [node db]]
-          (let [matcher (d/compile-type-matcher target "Observation" [["patient.gender" "male"]])
+          (let [matcher @(d/compile-type-matcher target "Observation" [["patient.gender" "male"]])
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Observation"))
               count := 1
@@ -8355,7 +8357,7 @@
                               [:Leipzig "51.3397|12.3731|150|km" "0"]
                               [:Paris "48.8566|2.3522|403|km" "1"]
                               [:Perth "-31.953512|115.857048|3014|km" "2"]]]
-          (let [matcher (d/compile-type-matcher target "Location" [["near" query]])
+          (let [matcher @(d/compile-type-matcher target "Location" [["near" query]])
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Location"))
               count := 1
@@ -8375,7 +8377,7 @@
                 :longitude (type/decimal {:extension [data-absent-reason-unknown]})}}]]]
 
       (with-open-db [db node]
-        (let [matcher (d/compile-type-matcher db "Location" [["near" "52.5201|13.4051|15|m"]])
+        (let [matcher @(d/compile-type-matcher db "Location" [["near" "52.5201|13.4051|15|m"]])
               xform (d/matcher-transducer db matcher)]
           (given (into [] xform (d/type-list db "Location"))
             count := 0))))))
@@ -8389,15 +8391,15 @@
     (with-open-db [db node]
       (doseq [target [node db]]
         (testing "tag only"
-          (let [matcher (d/compile-system-matcher target [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
+          (let [matcher @(d/compile-system-matcher target [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Patient"))
               count := 1
               [0 :id] := "0")))
 
         (testing "tag and id"
-          (let [matcher (d/compile-system-matcher target [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
-                                                           ["_id" "1"]]])
+          (let [matcher @(d/compile-system-matcher target [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
+                                                            ["_id" "1"]]])
                 xform (d/matcher-transducer db matcher)]
             (given (into [] xform (d/type-list db "Patient"))
               count := 2
@@ -8406,21 +8408,19 @@
 
     (testing "clauses can be read back"
       (testing "tag only"
-        (is (= (-> (d/compile-system-matcher node [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])
-                   (d/matcher-clauses))
+        (is (= (d/matcher-clauses @(d/compile-system-matcher node [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]]))
                [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])))
 
       (testing "tag and id"
-        (is (= (-> (d/compile-system-matcher node [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
-                                                    ["_id" "1"]]])
-                   (d/matcher-clauses))
+        (is (= (d/matcher-clauses @(d/compile-system-matcher node [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
+                                                                    ["_id" "1"]]]))
                [[["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]
                  ["_id" "1"]]]))))
 
     (testing "an unknown search-param errors"
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given (d/compile-system-matcher target [["foo" "bar"]])
+          (given-failed-future (d/compile-system-matcher target [["foo" "bar"]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Resource` was not found."))))))
 
@@ -8496,10 +8496,10 @@
   (testing "a new node has no resources"
     (with-system [{:blaze.db/keys [node]} config]
       (with-open-db [db node]
-        (is (coll/empty? (d/system-query db [["_id" "0"]])))
+        (is (coll/empty? @(d/system-query db [["_id" "0"]])))
 
         (testing "an unknown search-param errors"
-          (given (d/system-query db [["foo" "bar"]])
+          (given-failed-future (d/system-query db [["foo" "bar"]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Resource` was not found."))))))
 
@@ -8508,7 +8508,7 @@
 
     (testing "an unknown search-param errors"
       (doseq [target [node (d/db node)]]
-        (given (d/compile-system-query target [["foo" "bar"]])
+        (given-failed-future (d/compile-system-query target [["foo" "bar"]])
           ::anom/category := ::anom/not-found
           ::anom/message := "The search-param with code `foo` and type `Resource` was not found.")))))
 
@@ -8516,11 +8516,13 @@
 
 (defn- pull-compartment-type-list
   ([node code id type]
-   (when-ok [handles (d/compartment-type-list (d/db node) code id type)]
-     @(d/pull-many node (vec handles))))
+   (ba/try-anomaly
+    @(ac/then-compose (d/compartment-type-list (d/db node) code id type)
+                      #(d/pull-many node (vec %)))))
   ([node code id type start-id]
-   (when-ok [handles (d/compartment-type-list (d/db node) code id type start-id)]
-     @(d/pull-many node (vec handles)))))
+   (ba/try-anomaly
+    @(ac/then-compose (d/compartment-type-list (d/db node) code id type start-id)
+                      #(d/pull-many node (vec %))))))
 
 (deftest compartment-type-list-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
@@ -8591,14 +8593,15 @@
         ::anom/message := "Unsupported `Foo` compartment query of type `Condition`."))))
 
 (defn- explain-compartment-query [node code type clauses]
-  (when-ok [query (d/compile-compartment-query node code type clauses)]
-    (d/explain-query (d/db node) query)))
+  (ba/try-anomaly
+   (when-ok [query @(d/compile-compartment-query node code type clauses)]
+     (d/explain-query (d/db node) query))))
 
 (deftest compartment-query-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-system [{:blaze.db/keys [node]} config]
       (let [clauses [["code" "foo"]]]
-        (is (coll/empty? (d/compartment-query (d/db node) "Patient" "0" "Observation" clauses)))
+        (is (coll/empty? @(d/compartment-query (d/db node) "Patient" "0" "Observation" clauses)))
 
         (given (explain-compartment-query node "Patient" "Observation" clauses)
           :query-type := :type
@@ -8720,9 +8723,9 @@
                     :code #fhir/code "code"}]}}]]
        [[:delete "Observation" "0"]]]
 
-      (is (coll/empty? (d/compartment-query
-                        (d/db node) "Patient" "0" "Observation"
-                        [["code" "system|code"]])))))
+      (is (coll/empty? @(d/compartment-query
+                         (d/db node) "Patient" "0" "Observation"
+                         [["code" "system|code"]])))))
 
   (testing "finds resources after deleted ones"
     (let [observation
@@ -8851,21 +8854,21 @@
             [:seek-clauses 0 :code] := "value-quantity")))
 
       (testing "returns nothing because of non-matching second criteria"
-        (is (coll/empty? (d/compartment-query
-                          (d/db node) "Patient" "0" "Observation"
-                          [["code" "system-191514|code-191518"]
-                           ["value-quantity" "23"]]))))))
+        (is (coll/empty? @(d/compartment-query
+                           (d/db node) "Patient" "0" "Observation"
+                           [["code" "system-191514|code-191518"]
+                            ["value-quantity" "23"]]))))))
 
   (testing "returns an anomaly on unknown search param code"
     (with-system [{:blaze.db/keys [node]} config]
-      (given (d/compartment-query (d/db node) "Patient" "0" "Observation"
-                                  [["unknown" "foo"]])
+      (given-failed-future (d/compartment-query (d/db node) "Patient" "0" "Observation"
+                                                [["unknown" "foo"]])
         ::anom/category := ::anom/not-found)))
 
   (testing "Unknown compartment results in an error"
     (with-system [{:blaze.db/keys [node]} config]
-      (given (d/compartment-query (d/db node) "Foo" "bar" "Condition"
-                                  [["code" "baz"]])
+      (given-failed-future (d/compartment-query (d/db node) "Foo" "bar" "Condition"
+                                                [["code" "baz"]])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported `Foo` compartment query of type `Condition`.")))
 
@@ -8873,7 +8876,7 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "id-0"}]]]
 
-      (given (d/compartment-query (d/db node) "Patient" "id-0" "Foo" [["code" "baz"]])
+      (given-failed-future (d/compartment-query (d/db node) "Patient" "id-0" "Foo" [["code" "baz"]])
         ::anom/category := ::anom/not-found
         ::anom/message := "The search-param with code `code` and type `Foo` was not found.")))
 
@@ -9017,28 +9020,28 @@
     (with-open-db [db node]
       (doseq [target [node db]]
         (testing "with invalid compartment"
-          (given (d/compile-compartment-query target "Foo" "Observation")
+          (given-failed-future (d/compile-compartment-query target "Foo" "Observation")
             ::anom/category := ::anom/unsupported
             ::anom/message := "Unsupported `Foo` compartment query of type `Observation`."))
 
         (testing "with invalid sort clause"
-          (given (d/compile-compartment-query target "Foo" "Observation"
-                                              [[:sort "_id" :asc]])
+          (given-failed-future (d/compile-compartment-query target "Foo" "Observation"
+                                                            [[:sort "_id" :asc]])
             ::anom/category := ::anom/unsupported
             ::anom/message := "Sorting is unsupported in compartment queries."))
 
         (testing "without clauses"
-          (given (let [query (d/compile-compartment-query
-                              target "Patient" "Observation")]
+          (given (let [query @(d/compile-compartment-query
+                               target "Patient" "Observation")]
                    (pull-query db query "0"))
             count := 1
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"))
 
         (testing "with code clause"
-          (given (let [query (d/compile-compartment-query
-                              target "Patient" "Observation"
-                              [["code" "system-191514|code-191518"]])]
+          (given (let [query @(d/compile-compartment-query
+                               target "Patient" "Observation"
+                               [["code" "system-191514|code-191518"]])]
                    (pull-query db query "0"))
             count := 1
             [0 :fhir/type] := :fhir/Observation
@@ -9059,16 +9062,17 @@
     (with-open-db [db node]
       (doseq [target [node db]]
         (testing "with invalid sort clause"
-          (given (d/compile-compartment-query-lenient target "Foo" "Observation"
-                                                      [[:sort "_id" :asc]])
+          (given (ba/try-anomaly
+                  @(d/compile-compartment-query-lenient target "Foo" "Observation"
+                                                        [[:sort "_id" :asc]]))
             ::anom/category := ::anom/unsupported
             ::anom/message := "Sorting is unsupported in compartment queries."))
 
         (testing "with system|code"
           (let [clauses [["code" "system-191514|code-191518"]]
-                query (d/compile-compartment-query-lenient
-                       target "Patient" "Observation"
-                       clauses)]
+                query @(d/compile-compartment-query-lenient
+                        target "Patient" "Observation"
+                        clauses)]
             (given (pull-query db query "0")
               count := 1
               [0 :fhir/type] := :fhir/Observation
@@ -9085,9 +9089,9 @@
 
         (testing "with code only"
           (let [clauses [["code" "code-191518"]]
-                query (d/compile-compartment-query-lenient
-                       target "Patient" "Observation"
-                       clauses)]
+                query @(d/compile-compartment-query-lenient
+                        target "Patient" "Observation"
+                        clauses)]
             (given (pull-query db query "0")
               count := 1
               [0 :fhir/type] := :fhir/Observation
@@ -9105,9 +9109,9 @@
               :seek-clauses :? empty?)))
 
         (testing "an unknown search-param is ignored"
-          (let [query (d/compile-compartment-query-lenient
-                       target "Patient" "Observation"
-                       [["foo" "bar"]])]
+          (let [query @(d/compile-compartment-query-lenient
+                        target "Patient" "Observation"
+                        [["foo" "bar"]])]
             (given (pull-query db query "0")
               count := 1
               [0 :fhir/type] := :fhir/Observation
@@ -9122,6 +9126,131 @@
               [:scan-clauses 0 :code] := "subject"
               [:scan-clauses 1 :code] := "performer"
               :seek-clauses :? empty?)))))))
+
+(deftest query-token-in-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Condition :id "0"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                  :code #fhir/code "C71.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "1"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put {:fhir/type :fhir/Condition :id "2"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                  :code #fhir/code "C69.4"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "3"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                  :code #fhir/code "C73"}]}}]]]
+
+    (testing "one code"
+      (with-redefs [ts/expand-value-set
+                    (fn [_ params]
+                      (assert (= "url-160152" (:value (:value (first (:parameter params))))))
+                      (ac/completed-future
+                       {:fhir/type :fhir/ValueSet
+                        :expansion
+                        {:fhir/type :fhir.ValueSet/expansion
+                         :contains
+                         [{:fhir/type :fhir.ValueSet.expansion/contains
+                           :code #fhir/code "C69.4"
+                           :system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"}]}}))]
+        (let [clauses [["code:in" "url-160152"]]]
+          (testing "type query"
+            (given-type-query node "Condition" clauses
+              count := 1
+              [0 :id] := "2")
+
+            (given (explain-type-query node "Condition" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "code"
+              [:scan-clauses 0 :modifier] := "in"
+              [:seek-clauses count] := 0))
+
+          (testing "compartment query"
+            (given (pull-compartment-query node "Patient" "0" "Condition" clauses)
+              count := 1
+              [0 :id] := "2")
+
+            (given (explain-compartment-query node "Patient" "Condition" clauses)
+              :query-type := :compartment
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "code"
+              [:scan-clauses 0 :modifier] := "in"
+              [:scan-clauses 0 :values] := ["url-160152"]
+              [:seek-clauses count] := 0)))))
+
+    (testing "two codes"
+      (with-redefs [ts/expand-value-set
+                    (fn [_ params]
+                      (assert (= "url-170214" (:value (:value (first (:parameter params))))))
+                      (ac/completed-future
+                       {:fhir/type :fhir/ValueSet
+                        :expansion
+                        {:fhir/type :fhir.ValueSet/expansion
+                         :contains
+                         [{:fhir/type :fhir.ValueSet.expansion/contains
+                           :code #fhir/code "C69.4"
+                           :system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"}
+                          {:fhir/type :fhir.ValueSet.expansion/contains
+                           :code #fhir/code "C71.4"
+                           :system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"}]}}))]
+        (let [clauses [["code:in" "url-170214"]]]
+          (testing "type query"
+            (given-type-query node "Condition" clauses
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "2")
+
+            (given (explain-type-query node "Condition" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "code"
+              [:scan-clauses 0 :modifier] := "in"
+              [:seek-clauses count] := 0)
+
+            (testing "it is possible to start with the second condition"
+              (given (pull-type-query node "Condition" clauses "2")
+                count := 1
+                [0 :id] := "2")))
+
+          (testing "compartment query"
+            (given (pull-compartment-query node "Patient" "0" "Condition" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "2")
+
+            (given (explain-compartment-query node "Patient" "Condition" clauses)
+              :query-type := :compartment
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "code"
+              [:scan-clauses 0 :modifier] := "in"
+              [:scan-clauses 0 :values] := ["url-170214"]
+              [:seek-clauses count] := 0)))))
+
+    (testing "with ValueSet expansion errors"
+      (with-redefs [ts/expand-value-set (fn [_ _] (ac/completed-future (ba/fault "msg-125400")))]
+        (testing "type query"
+          (given (pull-type-query node "Condition" [["code:in" "utl-161924"]])
+            ::anom/category := ::anom/fault
+            ::anom/message := "Error while expanding the ValueSet `utl-161924`. Cause: msg-125400"))))))
 
 (deftest patient-compartment-last-change-t-test
   (testing "non-existing patient"
@@ -10357,7 +10486,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given (pull-query batch-db (d/compile-type-query batch-db "Patient" [["active" "true"]]))
+        (given (pull-query batch-db @(d/compile-type-query batch-db "Patient" [["active" "true"]]))
           count := 1
           [0 :id] := "0"))))
 
@@ -10366,7 +10495,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given (pull-query batch-db (d/compile-type-query-lenient batch-db "Patient" [["active" "true"]]))
+        (given (pull-query batch-db @(d/compile-type-query-lenient batch-db "Patient" [["active" "true"]]))
           count := 1
           [0 :id] := "0"))))
 
@@ -10391,9 +10520,9 @@
                     :code #fhir/code "code-191518"}]}}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given (let [query (d/compile-compartment-query
-                            batch-db "Patient" "Observation"
-                            [["code" "system-191514|code-191518"]])]
+        (given (let [query @(d/compile-compartment-query
+                             batch-db "Patient" "Observation"
+                             [["code" "system-191514|code-191518"]])]
                  (pull-query batch-db query "0"))
           count := 1
           [0 :fhir/type] := :fhir/Observation
@@ -10412,9 +10541,9 @@
                     :code #fhir/code "code-191518"}]}}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given (let [query (d/compile-compartment-query-lenient
-                            batch-db "Patient" "Observation"
-                            [["code" "system-191514|code-191518"]])]
+        (given (let [query @(d/compile-compartment-query-lenient
+                             batch-db "Patient" "Observation"
+                             [["code" "system-191514|code-191518"]])]
                  (pull-query batch-db query "0"))
           count := 1
           [0 :fhir/type] := :fhir/Observation
