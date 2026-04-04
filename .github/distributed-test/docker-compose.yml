@@ -67,12 +67,12 @@ services:
     volumes:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
-      CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "1G"
     ulimits:
       memlock: -1
     healthcheck:
-      test: ["CMD-SHELL", "cqlsh -e \"SELECT count(*) FROM system.peers\" 2>/dev/null | grep -q '(1 rows)'"]
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT count(*) FROM system.peers' 2>/dev/null | grep -q -E '^ *2 *$'"]
       start_period: 45s
       interval: 5s
       timeout: 10s
@@ -83,12 +83,28 @@ services:
     volumes:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
-      CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "1G"
     ulimits:
       memlock: -1
     healthcheck:
-      test: ["CMD-SHELL", "cqlsh -e \"SELECT count(*) FROM system.peers\" 2>/dev/null | grep -q '(1 rows)'"]
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT count(*) FROM system.peers' 2>/dev/null | grep -q -E '^ *2 *$'"]
+      start_period: 45s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  cassandra-3:
+    image: "cassandra:5.0.7@sha256:023b0b08e74dda61de726e45b87ce5dcebd1f68e0e899d9534906575cd9510cd"
+    volumes:
+    - "cassandra-3-data:/var/lib/cassandra"
+    environment:
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
+      MAX_HEAP_SIZE: "1G"
+    ulimits:
+      memlock: -1
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT count(*) FROM system.peers' 2>/dev/null | grep -q -E '^ *2 *$'"]
       start_period: 45s
       interval: 5s
       timeout: 10s
@@ -106,6 +122,8 @@ services:
         condition: service_healthy
       cassandra-2:
         condition: service_healthy
+      cassandra-3:
+        condition: service_healthy
 
   blaze-1:
     image: "blaze:latest"
@@ -120,8 +138,7 @@ services:
       DB_KAFKA_SSL_KEYSTORE_LOCATION: "/app/blaze.keystore.jks"
       DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
       DB_KAFKA_SSL_KEY_PASSWORD: "password"
-      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
-      DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
+      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "16"
       DB_BLOCK_CACHE_SIZE: "1024"
       DB_RESOURCE_INDEXER_THREADS: "4"
@@ -143,6 +160,8 @@ services:
       cassandra-1:
         condition: service_healthy
       cassandra-2:
+        condition: service_healthy
+      cassandra-3:
         condition: service_healthy
       kafka-topic-creator-main:
         condition: service_completed_successfully
@@ -170,8 +189,7 @@ services:
       DB_KAFKA_SSL_KEYSTORE_LOCATION: "/app/blaze.keystore.jks"
       DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
       DB_KAFKA_SSL_KEY_PASSWORD: "password"
-      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
-      DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
+      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "16"
       DB_BLOCK_CACHE_SIZE: "1024"
       DB_RESOURCE_INDEXER_THREADS: "4"
@@ -193,6 +211,8 @@ services:
       cassandra-1:
         condition: service_healthy
       cassandra-2:
+        condition: service_healthy
+      cassandra-3:
         condition: service_healthy
       kafka-topic-creator-main:
         condition: service_completed_successfully
@@ -223,5 +243,6 @@ volumes:
   kafka-data:
   cassandra-1-data:
   cassandra-2-data:
+  cassandra-3-data:
   blaze-1-data:
   blaze-2-data:
