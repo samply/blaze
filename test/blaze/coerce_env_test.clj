@@ -23,6 +23,40 @@
       [:settings "BASE_URL" :value] := "foo"
       [:settings "BASE_URL" :default-value] := "http://localhost:8080"))
 
+  (let [conf ["JVM_METRICS_LOGGER_WARN_FACTOR" ce/jvm-metrics-logger-warn-factor "5"]]
+    (given (ce/bindings-and-settings {} 'jvm-metrics-logger-warn-factor conf)
+      :bind-map := {'jvm-metrics-logger-warn-factor 5}
+      [:settings "JVM_METRICS_LOGGER_WARN_FACTOR" :value] := 5
+      [:settings "JVM_METRICS_LOGGER_WARN_FACTOR" :default-value] := "5")
+
+    (given (ce/bindings-and-settings {"JVM_METRICS_LOGGER_WARN_FACTOR" "10"} 'jvm-metrics-logger-warn-factor conf)
+      :bind-map := {'jvm-metrics-logger-warn-factor 10}
+      [:settings "JVM_METRICS_LOGGER_WARN_FACTOR" :value] := 10
+      [:settings "JVM_METRICS_LOGGER_WARN_FACTOR" :default-value] := "5")
+
+    (given (ce/bindings-and-settings {"JVM_METRICS_LOGGER_WARN_FACTOR" "0"} 'jvm-metrics-logger-warn-factor conf)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JVM metrics logger warn factor 0. Must be a positive integer."))
+
+  (let [conf ["JVM_METRICS_LOGGER_WARN_THRESHOLD" ce/jvm-metrics-logger-warn-threshold "80"]]
+    (given (ce/bindings-and-settings {} 'jvm-metrics-logger-warn-threshold conf)
+      :bind-map := {'jvm-metrics-logger-warn-threshold 80}
+      [:settings "JVM_METRICS_LOGGER_WARN_THRESHOLD" :value] := 80
+      [:settings "JVM_METRICS_LOGGER_WARN_THRESHOLD" :default-value] := "80")
+
+    (given (ce/bindings-and-settings {"JVM_METRICS_LOGGER_WARN_THRESHOLD" "1"} 'jvm-metrics-logger-warn-threshold conf)
+      :bind-map := {'jvm-metrics-logger-warn-threshold 1}
+      [:settings "JVM_METRICS_LOGGER_WARN_THRESHOLD" :value] := 1
+      [:settings "JVM_METRICS_LOGGER_WARN_THRESHOLD" :default-value] := "80")
+
+    (given (ce/bindings-and-settings {"JVM_METRICS_LOGGER_WARN_THRESHOLD" "0"} 'jvm-metrics-logger-warn-threshold conf)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JVM metrics logger threshold 0. Must be in the range from 1 (inclusive) to 100 (exclusive).")
+
+    (given (ce/bindings-and-settings {"JVM_METRICS_LOGGER_WARN_THRESHOLD" "100"} 'jvm-metrics-logger-warn-threshold conf)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JVM metrics logger threshold 100. Must be in the range from 1 (inclusive) to 100 (exclusive)."))
+
   (let [conf ["DB_SCALE_FACTOR" ce/coerce-db-scale-factor "1"]]
     (given (ce/bindings-and-settings {} 'db-scale-factor conf)
       :bind-map := {'db-scale-factor 1}

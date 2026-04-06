@@ -1,0 +1,28 @@
+{:deps
+ {blaze/module-base
+  {:local/root "../module-base"}
+
+  blaze/scheduler
+  {:local/root "../scheduler"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/module-test-util
+    {:local/root "../module-test-util"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.91.1392"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {lambdaisland/kaocha-cloverage
+    {:mvn/version "1.1.89"}}
+
+   :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}
