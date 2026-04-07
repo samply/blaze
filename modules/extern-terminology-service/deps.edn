@@ -11,6 +11,9 @@
   blaze/module-base
   {:local/root "../module-base"}
 
+  blaze/openid-client
+  {:local/root "../openid-client"}
+
   blaze/terminology-service
   {:local/root "../terminology-service"}}
 

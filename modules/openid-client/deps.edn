@@ -1,0 +1,45 @@
+{:deps
+ {blaze/http-client
+  {:local/root "../http-client"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  blaze/scheduler
+  {:local/root "../scheduler"}
+
+  cheshire/cheshire
+  {:mvn/version "6.2.0"}
+
+  ;; newer version for cheshire dependency
+  com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
+  {:mvn/version "2.21.2"}
+
+  ;; newer version for cheshire dependency
+  com.fasterxml.jackson.dataformat/jackson-dataformat-smile
+  {:mvn/version "2.21.2"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/module-test-util
+    {:local/root "../module-test-util"}
+
+    com.pgs-soft/HttpClientMock
+    {:mvn/version "1.0.0"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.91.1392"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {lambdaisland/kaocha-cloverage
+    {:mvn/version "1.1.89"}}
+
+   :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}

@@ -41,6 +41,10 @@ Rigorous adherence to these patterns is required:
   * **Fixtures:** Use the standard test fixture in all test namespaces.
     * Require `[blaze.test-util :as tu]`.
     * Call `(test/use-fixtures :each tu/fixture)`.
+  * **Assertions:** Use the `given` macro from `juxt.iota` for asserting map values (e.g. anomalies).
+    * Require `[juxt.iota :refer [given]]`.
+    * Example: `(given (my-fn ...) ::anom/category := ::anom/fault ::anom/message := "...")`
+    * Use `is` only for simple scalar equality checks that don't involve maps.
 
 ## Verification & Workflow
 
@@ -52,6 +56,8 @@ Before finishing a task, ensure the following commands pass:
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
 3.  **Test:** `make test` (Runs module and root tests)
 4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage)
+
+When adding a **new module** under `modules/`, also add it to the `module` matrix in `.github/workflows/build.yml` (the `test` job, sorted alphabetically) so CI picks it up.
 
 After verification, when working on an issue:
 
