@@ -14,6 +14,14 @@
   buddy/buddy-core
   {:mvn/version "1.12.0-430"}
 
+  ;; newer version for buddy-core dependency
+  cheshire/cheshire
+  {:mvn/version "6.2.0"}
+
+  ;; newer version for cheshire dependency
+  com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
+  {:mvn/version "2.21.2"}
+
   ;; newer version for cheshire dependency
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
   {:mvn/version "2.21.2"}
