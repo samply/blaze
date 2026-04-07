@@ -89,7 +89,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.10.12" :git/sha "97c5562"}}
+    {:git/tag "v0.10.13" :git/sha "ae52edf"}}
    :ns-default build}
 
   ;; For both toying at the terminal and/or use via any nREPL-aware IDE
