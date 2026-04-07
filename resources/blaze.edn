@@ -1520,6 +1520,28 @@
     :blaze.fhir.operation.evaluate-measure/handler
     {:terminology-service #blaze/ref :blaze.terminology-service/extern}}}
 
+  ;; OpenID Authentication for the Extern Terminology Service
+  ;;
+  ;; Will be enabled if EXTERN_TERMINOLOGY_SERVICE_OPENID_PROVIDER_URL is set.
+  ;;
+  {:key :extern-terminology-service-openid
+   :name "Extern Terminology Service OpenID Authentication"
+   :toggle "EXTERN_TERMINOLOGY_SERVICE_OPENID_PROVIDER_URL"
+   :config
+   {:blaze.terminology-service/extern
+    {:token-provider #blaze/ref :blaze.openid-client/token-provider}
+
+    [:blaze/http-client :blaze.extern-terminology-service/openid-http-client]
+    {:trust-store #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_OPENID_CLIENT_TRUST_STORE" string?]
+     :trust-store-pass #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_OPENID_CLIENT_TRUST_STORE_PASS" string?]}
+
+    :blaze.openid-client/token-provider
+    {:http-client #blaze/ref [:blaze/http-client :blaze.extern-terminology-service/openid-http-client]
+     :scheduler #blaze/ref :blaze/scheduler
+     :provider-url #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_OPENID_PROVIDER_URL" string?]
+     :client-id #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_OPENID_CLIENT_ID" string?]
+     :client-secret #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_OPENID_CLIENT_SECRET" string?]}}}
+
   {:key :graph
    :name "Operation $graph on Resource"
    :toggle "ENABLE_OPERATION_GRAPH"

@@ -189,6 +189,7 @@
     "-d" "modules/module-base"
     "-d" "modules/module-test-util"
     "-d" "modules/openid-auth"
+    "-d" "modules/openid-client"
     "-d" "modules/operation-code-system-lookup"
     "-d" "modules/operation-code-system-validate-code"
     "-d" "modules/operation-compact"

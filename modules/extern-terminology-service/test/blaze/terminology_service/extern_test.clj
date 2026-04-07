@@ -1,5 +1,6 @@
 (ns blaze.terminology-service.extern-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir-client-spec]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
@@ -9,6 +10,7 @@
    [blaze.http-client.spec]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
+   [blaze.openid-client.token-provider.protocol :as tp-protocol]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.extern :as extern]
@@ -35,13 +37,49 @@
 (defmethod ig/init-key ::http-client [_ _]
   (HttpClientMock.))
 
-(def config
+(defmethod ig/init-key ::token-provider [_ _]
+  (reify tp-protocol/TokenProvider
+    (-current-token [_] "my-token")))
+
+(defmethod ig/init-key ::token-provider-unavailable [_ _]
+  (reify tp-protocol/TokenProvider
+    (-current-token [_] (ba/unavailable "Token not available."))))
+
+(def ^:private config
   {::ts/extern
    {:base-uri "http://localhost:8080/fhir"
     :http-client (ig/ref ::http-client)
     :parsing-context (ig/ref :blaze.fhir/parsing-context)
     :writing-context (ig/ref :blaze.fhir/writing-context)}
    ::http-client {}
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}})
+
+(def ^:private config-with-token-provider
+  {::ts/extern
+   {:base-uri "http://localhost:8080/fhir"
+    :http-client (ig/ref ::http-client)
+    :token-provider (ig/ref ::token-provider)
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)
+    :writing-context (ig/ref :blaze.fhir/writing-context)}
+   ::http-client {}
+   ::token-provider {}
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo}
+   :blaze.fhir/writing-context
+   {:structure-definition-repo structure-definition-repo}})
+
+(def ^:private config-with-token-provider-unavailable
+  {::ts/extern
+   {:base-uri "http://localhost:8080/fhir"
+    :http-client (ig/ref ::http-client)
+    :token-provider (ig/ref ::token-provider-unavailable)
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)
+    :writing-context (ig/ref :blaze.fhir/writing-context)}
+   ::http-client {}
+   ::token-provider-unavailable {}
    :blaze.fhir/parsing-context
    {:structure-definition-repo structure-definition-repo}
    :blaze.fhir/writing-context
@@ -89,6 +127,13 @@
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid token-provider"
+    (given-failed-system (assoc-in config [::ts/extern :token-provider] ::invalid)
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.openid-client/token-provider]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest duration-seconds-collector-init-test
@@ -131,20 +176,66 @@
           [:fhir/issues count] := 1
           [:fhir/issues 0 :severity] := #fhir/code "error"
           [:fhir/issues 0 :code] := #fhir/code "not-found"
-          [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/CodeSystem/administrative-gender` was not found.")))))
+          [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/CodeSystem/administrative-gender` was not found."))))
+
+  (testing "success with token"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/CodeSystem/$validate-code")
+            (.withHeader "Authorization" "Bearer my-token")
+            (.withBody (params-matcher system params))
+            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
+            (.withHeader "content-type" "application/fhir+json"))
+
+        (given @(ts/code-system-validate-code ts params)
+          :fhir/type := :fhir/Parameters))))
+
+  (testing "token unavailable"
+    (with-system [{ts ::ts/extern} config-with-token-provider-unavailable]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
+
+        (given-failed-future (ts/code-system-validate-code ts params)
+          ::anom/category := ::anom/unavailable
+          ::anom/message := "Token not available.")))))
 
 (deftest expand-value-set-test
-  (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+  (testing "success"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
 
-    (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-      (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
-          (.withBody (params-matcher system params))
-          (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
-          (.withHeader "content-type" "application/fhir+json"))
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
+            (.withBody (params-matcher system params))
+            (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
+            (.withHeader "content-type" "application/fhir+json"))
 
-      (given @(ts/expand-value-set ts params)
-        :fhir/type := :fhir/ValueSet
-        :id := "0"))))
+        (given @(ts/expand-value-set ts params)
+          :fhir/type := :fhir/ValueSet
+          :id := "0"))))
+
+  (testing "success with token"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
+            (.withHeader "Authorization" "Bearer my-token")
+            (.withBody (params-matcher system params))
+            (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
+            (.withHeader "content-type" "application/fhir+json"))
+
+        (given @(ts/expand-value-set ts params)
+          :fhir/type := :fhir/ValueSet
+          :id := "0"))))
+
+  (testing "token unavailable"
+    (with-system [{ts ::ts/extern} config-with-token-provider-unavailable]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+
+        (given-failed-future (ts/expand-value-set ts params)
+          ::anom/category := ::anom/unavailable
+          ::anom/message := "Token not available.")))))
 
 (deftest value-set-validate-code-test
   (testing "success"
@@ -179,4 +270,26 @@
           [:fhir/issues count] := 1
           [:fhir/issues 0 :severity] := #fhir/code "error"
           [:fhir/issues 0 :code] := #fhir/code "not-found"
-          [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/ValueSet/administrative-gender` was not found.")))))
+          [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/ValueSet/administrative-gender` was not found."))))
+
+  (testing "success with token"
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$validate-code")
+            (.withHeader "Authorization" "Bearer my-token")
+            (.withBody (params-matcher system params))
+            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
+            (.withHeader "content-type" "application/fhir+json"))
+
+        (given @(ts/value-set-validate-code ts params)
+          :fhir/type := :fhir/Parameters))))
+
+  (testing "token unavailable"
+    (with-system [{ts ::ts/extern} config-with-token-provider-unavailable]
+
+      (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
+
+        (given-failed-future (ts/value-set-validate-code ts params)
+          ::anom/category := ::anom/unavailable
+          ::anom/message := "Token not available.")))))

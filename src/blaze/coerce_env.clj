@@ -40,7 +40,9 @@
       v)))
 
 (defn- secret? [env-var]
-  (str/includes? (str/lower-case env-var) "pass"))
+  (let [lower (str/lower-case env-var)]
+    (or (str/includes? lower "pass")
+        (str/includes? lower "secret"))))
 
 (defn setting [{:keys [env-var default]} value]
   (cond->
