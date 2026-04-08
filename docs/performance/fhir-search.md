@@ -159,7 +159,7 @@ The script `multiple-codes-search.sh` is used.
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
 | A5N46  | 1M      | 10    | 29.1 M |   287.30 |  0.301 | 101.2 k |
-| A5N46  | 1M      | 100   | 36.3 M |  1053.73 |  7.206 |  34.5 k |
+| A5N46  | 1M      | 100   | 36.3 M |  1114.07 |  0.559 |  32.6 k |
 
 ¹ resources per second
 
