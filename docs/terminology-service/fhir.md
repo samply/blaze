@@ -8,6 +8,7 @@ The following filters are supported.
 
 | Property | Operators           | Values     |
 |----------|---------------------|------------|
+| concept  | exists              | true/false |
 | concept  | is-a, descendent-of | code       |
 | parent   | exists              | true/false |
 | parent   | =                   | code       |

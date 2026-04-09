@@ -248,7 +248,10 @@
   (-ordered-index-handles
     [search-param batch-db tid modifier compiled-values]
     (if (= "in" modifier)
-      (p/-ordered-index-handles search-param batch-db tid nil (flatten compiled-values))
+      (let [all-compiled-values (flatten compiled-values)]
+        (if (empty? all-compiled-values)
+          []
+          (p/-ordered-index-handles search-param batch-db tid nil all-compiled-values)))
       (if (= 1 (count compiled-values))
         (p/-index-handles search-param batch-db tid modifier (first compiled-values))
         (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
@@ -279,7 +282,10 @@
 
   (-ordered-compartment-index-handles [search-param batch-db compartment tid modifier compiled-values]
     (if (= "in" modifier)
-      (p/-ordered-compartment-index-handles search-param batch-db compartment tid nil (flatten compiled-values))
+      (let [all-compiled-values (flatten compiled-values)]
+        (if (empty? all-compiled-values)
+          []
+          (p/-ordered-compartment-index-handles search-param batch-db compartment tid nil all-compiled-values)))
       (if (= 1 (count compiled-values))
         (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid (first compiled-values))
         (let [index-handles #(c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid %)]

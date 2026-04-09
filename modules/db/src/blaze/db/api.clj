@@ -78,7 +78,7 @@
   (p/-as-of db t))
 
 (defn since
-  "Returns the value of `db` since some point `t`, inclusive."
+  "Returns the value of `db` since some `instant`, inclusive."
   [db instant]
   (p/-since db instant))
 
@@ -366,7 +366,9 @@
 
 ;; ---- Common Matcher Functions ----------------------------------------------
 
-(defn matches? [db matcher resource-handle]
+(defn matches?
+  "Returns `true` if `resource-handle` matches `matcher` in `db`."
+  [db matcher resource-handle]
   (transduce
    (p/-matcher-transducer db matcher)
    (fn ([r] r) ([_ _] true))
@@ -567,6 +569,8 @@
 ;; ---- (Re) Index ------------------------------------------------------------
 
 (defn re-index-total
+  "Returns the total number of resources to re-index for the search param with
+  `search-param-url`, or an anomaly in case of errors."
   [db search-param-url]
   (p/-re-index-total db search-param-url))
 

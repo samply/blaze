@@ -187,8 +187,6 @@ The script `multiple-codes-search-vs.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/multiple-code-search-download-1M.png)
-
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
 | A5N46  | 1M      | 10    | 29.1 M |   286.60 | 14.831 | 101.4 k |

@@ -3847,7 +3847,40 @@
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri "system-182822"
             [:expansion :contains 0 :code] := #fhir/code "code-182832"
-            [:expansion :contains 0 :display] := #fhir/string "display-182717"))))))
+            [:expansion :contains 0 :display] := #fhir/string "display-182717")))))
+
+  (testing "concept property"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-182822"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-182832"
+                 :display #fhir/string "display-182717"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-151446"
+                 :display #fhir/string "display-151449"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri "value-set-182905"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "system-182822"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code "concept"
+                    :op #fhir/code "exists"
+                    :value #fhir/string "true"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri "value-set-182905")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 2
+        [:expansion :contains 0 :system] := #fhir/uri "system-182822"
+        [:expansion :contains (concept "code-182832") 0 :display] := #fhir/string "display-182717"
+        [:expansion :contains 1 :system] := #fhir/uri "system-182822"
+        [:expansion :contains (concept "code-151446") 0 :display] := #fhir/string "display-151449"))))
 
 (deftest expand-value-set-include-filter-equals-test
   (with-system-data [{ts ::ts/local} config]

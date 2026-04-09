@@ -1,0 +1,5 @@
+library: cql/condition-ten-frequent-vs.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation

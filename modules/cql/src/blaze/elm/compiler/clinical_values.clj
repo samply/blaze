@@ -12,7 +12,7 @@
    [blaze.elm.date-time :as date-time]
    [blaze.elm.quantity :refer [quantity]]
    [blaze.elm.ratio :refer [ratio]]
-   [blaze.elm.value-set :as value-set]))
+   [blaze.elm.value-set :as vs]))
 
 ;; 3.1. Code
 (defmethod core/compile* :elm.compiler.type/code
@@ -128,5 +128,5 @@
   [{:keys [library terminology-service] :as context} {:keys [name]}]
   ;; TODO: look into other libraries (:libraryName)
   (if-let [{:keys [id]} (find-value-set-def library name)]
-    (value-set/value-set terminology-service id)
+    (vs/value-set terminology-service id)
     (value-set-not-found-anom name context)))

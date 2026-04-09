@@ -46,11 +46,12 @@
 (test/use-fixtures :each fixture)
 
 (def ^:private config
-  (assoc api-stub/mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (deftest init-test
   (testing "nil config"
@@ -136,11 +137,12 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 (def ^:private config
-  (assoc api-stub/mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (defn- compile-exists-expr [node resource-type]
   (let [elm (elm/exists (elm/retrieve {:type resource-type}))]
