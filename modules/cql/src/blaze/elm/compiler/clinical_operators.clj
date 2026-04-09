@@ -10,7 +10,7 @@
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.concept :as concept]
    [blaze.elm.protocols :as p]
-   [blaze.elm.value-set :as value-set]))
+   [blaze.elm.value-set :as vs]))
 
 ;; 23.3. CalculateAge
 ;;
@@ -93,9 +93,9 @@
       (if-some [code (core/-eval code context resource scope)]
         (let [value-set (core/-eval value-set context resource scope)]
           (cond
-            (string? code) (value-set/contains-string? value-set code)
-            (code/code? code) (value-set/contains-code? value-set code)
-            (concept/concept? code) (value-set/contains-concept? value-set code)))
+            (string? code) (vs/contains-string? value-set code)
+            (code/code? code) (vs/contains-code? value-set code)
+            (concept/concept? code) (vs/contains-concept? value-set code)))
         false))
     (-form [_]
       (list 'in-value-set (core/-form code) (core/-form value-set)))))

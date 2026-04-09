@@ -364,6 +364,82 @@
                     "system-192253|code-192300"
                     "system-192253|code-140541"]]))))))
 
+      (testing "with value set reference"
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "http://system-115910"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-115927"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-140541"}]}]]
+           [[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-115927"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "2"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-140541"}]}
+                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library
+                 {:valueSets
+                  {:def
+                   [{:name "vs1"
+                     :id "http://fhir.org/VCL?v1=(http://system-115910)*"}]}}
+                 :terminology-service terminology-service}
+                elm #elm/retrieve
+                     {:type "Observation"
+                      :codes #elm/value-set-ref "vs1"
+                      :codeComparator "in"}
+                expr (c/compile context elm)
+                db (d/db node)
+                patient (ctu/resource db "Patient" "0")]
+
+            (testing "eval"
+              (given (expr/eval (eval-context db) expr patient)
+                count := 2
+                [0 :fhir/type] := :fhir/Observation
+                [0 :id] := "1"
+                [1 :fhir/type] := :fhir/Observation
+                [1 :id] := "2"))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (ctu/testing-constant-attach-cache expr)
+
+            (ctu/testing-constant-patient-count expr)
+
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
+
+            (testing "optimize"
+              (is (= expr (c/optimize expr db))))
+
+            (testing "form"
+              (has-form expr
+                '(retrieve
+                  "Observation"
+                  [["code:in"
+                    "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))
+
       (testing "unknown code property"
         (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
           (let [context
@@ -495,6 +571,82 @@
           (testing "form"
             (has-form expr
               '(retrieve "Medication" [["code" "system-225806|code-225809"]]))))))
+
+    (testing "with value set reference"
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "http://system-115910"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-115927"}
+                  {:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-140541"}]}]]
+         [[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :code
+                 #fhir/CodeableConcept
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri "http://system-115910"
+                      :code #fhir/code "code-115927"}]}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put {:fhir/type :fhir/Observation :id "2"
+                 :code
+                 #fhir/CodeableConcept
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri "http://system-115910"
+                      :code #fhir/code "code-140541"}]}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+        (let [context
+              {:node node
+               :eval-context "Unfiltered"
+               :library
+               {:valueSets
+                {:def
+                 [{:name "vs1"
+                   :id "http://fhir.org/VCL?v1=(http://system-115910)*"}]}}
+               :terminology-service terminology-service}
+              elm #elm/retrieve
+                   {:type "Observation"
+                    :codes #elm/value-set-ref "vs1"
+                    :codeComparator "in"}
+              expr (c/compile context elm)
+              db (d/db node)
+              patient (ctu/resource db "Patient" "0")]
+
+          (testing "eval"
+            (given (expr/eval (eval-context db) expr patient)
+              count := 2
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "1"
+              [1 :fhir/type] := :fhir/Observation
+              [1 :id] := "2"))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (ctu/testing-constant-attach-cache expr)
+
+          (ctu/testing-constant-patient-count expr)
+
+          (ctu/testing-constant-resolve-refs expr)
+
+          (ctu/testing-constant-resolve-params expr)
+
+          (testing "optimize"
+            (is (= expr (c/optimize expr db))))
+
+          (testing "form"
+            (has-form expr
+              '(retrieve
+                "Observation"
+                [["code:in"
+                  "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))
 
     (testing "unknown code property"
       (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -629,6 +781,72 @@
             (has-form expr
               '(retrieve (singleton-from (retrieve-resource)) "Observation"
                          [["code" "system-133620|code-133657"]]))))))
+
+    (testing "with pre-compiled database query"
+      (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri "http://system-133620"
+                 :content #fhir/code "complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-133657"}
+                  {:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code "code-140541"}]}]]
+         [[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :code
+                 #fhir/CodeableConcept
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri "http://system-133620"
+                      :code #fhir/code "code-133657"}]}
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+        (let [library (t/translate
+                       "library test
+                        using FHIR version '4.0.0'
+                        include FHIRHelpers version '4.0.0'
+
+                        valueset vs1: 'http://fhir.org/VCL?v1=(http://system-133620)*'
+
+                        context Patient
+
+                        define \"name-133730\":
+                          singleton from ([Patient])
+
+                        define InInitialPopulation:
+                          [\"name-133730\" -> Observation: vs1]
+                        ")
+              context (compile-context system)
+              {:keys [expression-defs]} (library/compile-library context library {})
+              db (d/db node)
+              patient (ctu/resource db "Patient" "0")
+              eval-context (assoc (eval-context db) :expression-defs expression-defs)
+              expr (:expression (get expression-defs "InInitialPopulation"))]
+
+          (testing "eval"
+            (given (expr/eval eval-context expr patient)
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "0"))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (ctu/testing-constant-attach-cache expr)
+
+          (ctu/testing-constant-patient-count expr)
+
+          (ctu/testing-constant-resolve-refs expr)
+
+          (ctu/testing-constant-resolve-params expr)
+
+          (ctu/testing-constant-optimize expr)
+
+          (testing "form"
+            (has-form expr
+              '(retrieve (singleton-from (retrieve-resource)) "Observation"
+                         [["code:in" "http://fhir.org/VCL?v1=(http://system-133620)*"]]))))))
 
     (testing "unknown code property"
       (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]

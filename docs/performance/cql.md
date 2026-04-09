@@ -317,6 +317,55 @@ define InInitialPopulation:
 cql/search.sh condition-ten-rare
 ```
 
+## Ten Code Search – ValueSet
+
+In this section, CQL queries for selecting patients which have conditions with one of 10 codes are analyzed. The same codes as in section Ten Code Search are used. However instead of multiple retrieve expressions, a single retrieve expression with a value set is used.
+
+### Data
+
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 1M      | LEA47  |    4 k |     0.45 |  0.005 | 2.227 M |
+| 1M      | LEA47  |  954 k |     2.53 |  0.007 | 394.9 k |
+
+### CQL Query Frequent
+
+```text
+library "condition-ten-frequent-vs"
+using FHIR version '4.0.0'
+include FHIRHelpers version '4.0.0'
+
+valueset vs: 'http://fhir.org/VCL?v1=(http://snomed.info/sct)(72892002;10509002;36955009;195662009;162864005;49727002;444814009;386661006;840539006;840544004)'
+
+context Patient
+
+define InInitialPopulation:
+  exists [Condition: vs]
+```
+
+```sh
+cql/search.sh condition-ten-frequent-vs
+```
+
+### CQL Query Rare
+
+```text
+library "condition-ten-rare-vs"
+using FHIR version '4.0.0'
+include FHIRHelpers version '4.0.0'
+
+valueset vs: 'http://fhir.org/VCL?v1=(http://snomed.info/sct)(62718007;234466008;288959006;47505003;698754002;157265008;15802004;14760008;36923009;45816000)'
+
+context Patient
+
+define InInitialPopulation:
+  exists [Condition: vs]
+```
+
+```sh
+cql/search.sh condition-ten-rare-vs
+```
+
 ## All Code Search
 
 ![](cql/all-code-search-1M.png)
@@ -335,10 +384,24 @@ cql/search.sh condition-ten-rare
 | 100k-fh | LEA58  |  100 k |     0.10 |  0.001 | 1.038 M |
 | 1M      | LEA25  |  995 k |     9.66 |  0.041 | 103.5 k |
 | 1M      | LEA36  |  995 k |     5.96 |  0.015 | 167.7 k |
-| 1M      | LEA47  |  995 k |     1.02 |  0.015 | 981.3 k |
+| 1M      | LEA47  |  995 k |     0.89 |  0.011 | 1.120 M |
 | 1M      | LEA58  |  995 k |     0.60 |  0.018 | 1.674 M |
 | 1M      | LEA79  |  995 k |     0.38 |  0.003 | 2.667 M |
 | 1M      | A5N46  |  995 k |     0.44 |  0.002 | 2.260 M |
+
+### CQL Query
+
+```sh
+cql/search.sh condition-all
+```
+
+## All Code Search – ValueSet
+
+### Data
+
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 1M      | LEA47  |  995 k |    37.31 |  0.387 |  26.8 k |
 
 ### CQL Query
 

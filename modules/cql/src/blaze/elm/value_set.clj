@@ -6,6 +6,71 @@
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service :as ts]))
 
+(defn- system-param [system]
+  {:fhir/type :fhir.Parameters/parameter
+   :name #fhir/string "system"
+   :value (type/uri system)})
+
+(defrecord ValueSetImpl [terminology-service url url-param infer-system-param]
+  core/Expression
+  (-static [_]
+    true)
+  (-attach-cache [expr _]
+    [(fn [] [expr])])
+  (-patient-count [_]
+    nil)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
+  (-optimize [expr _]
+    expr)
+  (-eval [this _ _ _]
+    this)
+  (-form [_]
+    (list 'value-set url))
+
+  p/ValueSet
+  (-url [_]
+    url)
+  (-contains-string [_ code]
+    (tu/extract-result
+     (ts/value-set-validate-code
+      terminology-service
+       {:fhir/type :fhir/Parameters
+        :parameter [url-param (tu/code-param code) infer-system-param]})
+     (fn [cause-msg]
+       (format
+        "Error while testing that the code `%s` is in ValueSet `%s`. Cause: %s"
+        code url cause-msg))))
+  (-contains-code [_ code]
+    (tu/extract-result
+     (ts/value-set-validate-code
+      terminology-service
+       {:fhir/type :fhir/Parameters
+        :parameter
+        [url-param (tu/code-param (:code code)) (system-param (:system code))]})
+     (fn [cause-msg]
+       (format
+        "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
+        code url cause-msg))))
+  (-contains-concept [_ concept]
+    (tu/extract-result
+     (ts/value-set-validate-code
+      terminology-service
+       {:fhir/type :fhir/Parameters
+        :parameter [url-param (tu/codeable-concept-param concept)]})
+     (fn [cause-msg]
+       (format
+        "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
+        concept url cause-msg)))))
+
+(defn value-set? [x]
+  (instance? ValueSetImpl x))
+
+(defn url [value-set]
+  (p/-url value-set))
+
 (defn contains-string? [value-set code]
   (p/-contains-string value-set code))
 
@@ -15,66 +80,11 @@
 (defn contains-concept? [value-set concept]
   (p/-contains-concept value-set concept))
 
-(defn- system-param [system]
-  {:fhir/type :fhir.Parameters/parameter
-   :name #fhir/string "system"
-   :value (type/uri system)})
-
 (defn value-set [terminology-service url]
-  (let [url-param {:fhir/type :fhir.Parameters/parameter
+  (->ValueSetImpl terminology-service url
+                  {:fhir/type :fhir.Parameters/parameter
                    :name #fhir/string "url"
                    :value (type/uri url)}
-        infer-system-param {:fhir/type :fhir.Parameters/parameter
-                            :name #fhir/string "inferSystem"
-                            :value #fhir/boolean true}]
-    (reify
-      core/Expression
-      (-static [_]
-        true)
-      (-attach-cache [expr _]
-        [(fn [] [expr])])
-      (-patient-count [_]
-        nil)
-      (-resolve-refs [expr _]
-        expr)
-      (-resolve-params [expr _]
-        expr)
-      (-optimize [expr _]
-        expr)
-      (-eval [this _ _ _]
-        this)
-      (-form [_]
-        (list 'value-set url))
-
-      p/ValueSet
-      (-contains-string [_ code]
-        (tu/extract-result
-         (ts/value-set-validate-code
-          terminology-service
-           {:fhir/type :fhir/Parameters
-            :parameter [url-param (tu/code-param code) infer-system-param]})
-         (fn [cause-msg]
-           (format
-            "Error while testing that the code `%s` is in ValueSet `%s`. Cause: %s"
-            code url cause-msg))))
-      (-contains-code [_ code]
-        (tu/extract-result
-         (ts/value-set-validate-code
-          terminology-service
-           {:fhir/type :fhir/Parameters
-            :parameter
-            [url-param (tu/code-param (:code code)) (system-param (:system code))]})
-         (fn [cause-msg]
-           (format
-            "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
-            code url cause-msg))))
-      (-contains-concept [_ concept]
-        (tu/extract-result
-         (ts/value-set-validate-code
-          terminology-service
-           {:fhir/type :fhir/Parameters
-            :parameter [url-param (tu/codeable-concept-param concept)]})
-         (fn [cause-msg]
-           (format
-            "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
-            concept url cause-msg)))))))
+                  {:fhir/type :fhir.Parameters/parameter
+                   :name #fhir/string "inferSystem"
+                   :value #fhir/boolean true}))

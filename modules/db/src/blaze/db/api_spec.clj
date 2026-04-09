@@ -2,6 +2,8 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.async.comp-spec]
+   [blaze.async.flow :as flow]
+   [blaze.async.flow-spec]
    [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
    [blaze.db.api :as d]
@@ -25,6 +27,10 @@
 (s/fdef d/transact
   :args (s/cat :node :blaze.db/node :tx-ops :blaze.db/tx-ops)
   :ret ac/completable-future?)
+
+(s/fdef d/changed-resources-publisher
+  :args (s/cat :node :blaze.db/node :type :fhir.resource/type)
+  :ret flow/publisher?)
 
 (s/fdef d/node
   :args (s/cat :db :blaze.db/db)
@@ -52,7 +58,7 @@
 
 (s/fdef d/as-of-t
   :args (s/cat :db :blaze.db/db)
-  :ret :blaze.db/t)
+  :ret (s/nilable :blaze.db/t))
 
 (s/fdef d/tx
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
@@ -175,6 +181,10 @@
 
 ;; ---- Common Query Functions ------------------------------------------------
 
+(s/fdef d/count-query
+  :args (s/cat :db :blaze.db/db :query :blaze.db/query)
+  :ret ac/completable-future?)
+
 (s/fdef d/execute-query
   :args (s/cat :db :blaze.db/db :query :blaze.db/query :args (s/* any?))
   :ret (cs/coll-of :blaze.db/resource-handle))
@@ -248,6 +258,10 @@
 (s/fdef d/total-num-of-system-changes
   :args (s/cat :db :blaze.db/db)
   :ret nat-int?)
+
+(s/fdef d/changes
+  :args (s/cat :db :blaze.db/db)
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/include
   :args (s/cat :db :blaze.db/db :resource-handle :blaze.db/resource-handle

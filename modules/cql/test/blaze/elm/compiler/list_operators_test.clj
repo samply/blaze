@@ -251,11 +251,12 @@
 ;;
 ;; If the argument is null, the result is false.
 (def ^:private exists-config
-  (assoc api-stub/mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}))
 
 (defmethod elm-spec/expression :elm.spec.type/exists-test [_]
   map?)

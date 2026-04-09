@@ -9157,6 +9157,41 @@
                  {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
                   :code #fhir/code "C73"}]}}]]]
 
+    (testing "no code"
+      (with-redefs [ts/expand-value-set
+                    (fn [_ params]
+                      (assert (= "url-150142" (:value (:value (first (:parameter params))))))
+                      (ac/completed-future
+                       {:fhir/type :fhir/ValueSet
+                        :expansion
+                        {:fhir/type :fhir.ValueSet/expansion
+                         :contains []}}))]
+        (let [clauses [["code:in" "url-150142"]]]
+          (testing "type query"
+            (given-type-query node "Condition" clauses
+              count := 0)
+
+            (given (explain-type-query node "Condition" clauses)
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "code"
+              [:scan-clauses 0 :modifier] := "in"
+              [:scan-clauses 0 :values] := ["url-150142"]
+              [:seek-clauses count] := 0))
+
+          (testing "compartment query"
+            (given (pull-compartment-query node "Patient" "0" "Condition" clauses)
+              count := 0)
+
+            (given (explain-compartment-query node "Patient" "Condition" clauses)
+              :query-type := :compartment
+              :scan-type := :ordered
+              [:scan-clauses count] := 1
+              [:scan-clauses 0 :code] := "code"
+              [:scan-clauses 0 :modifier] := "in"
+              [:scan-clauses 0 :values] := ["url-150142"]
+              [:seek-clauses count] := 0)))))
+
     (testing "one code"
       (with-redefs [ts/expand-value-set
                     (fn [_ params]

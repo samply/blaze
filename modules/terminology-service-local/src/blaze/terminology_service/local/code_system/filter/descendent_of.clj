@@ -13,11 +13,12 @@
     (graph/descendent-of graph value)))
 
 (defmethod core/filter-concepts :descendent-of
-  [{{url :value} :url :as code-system} {{property :value} :property {value :value} :value}]
-  (condp = property
-    "concept" (expand-filter code-system value)
-    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." property url))))
+  [{{url :value} :url :as code-system} {:keys [property value]}]
+  (if-let [property (:value property)]
+    (condp = property
+      "concept" (expand-filter code-system (:value value))
+      (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." property url)))
+    (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))))
 
 (defn- find-filter
   [{{url :value} :url :default/keys [graph]} value code]
@@ -26,8 +27,9 @@
     (graph/find-descendent-of graph value code)))
 
 (defmethod core/find-concept :descendent-of
-  [{{url :value} :url :as code-system} {{property :value} :property {value :value} :value} code]
-  (condp = property
-    "concept" (find-filter code-system value code)
-    nil (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))
-    (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." property url))))
+  [{{url :value} :url :as code-system} {:keys [property value]} code]
+  (if-let [property (:value property)]
+    (condp = property
+      "concept" (find-filter code-system (:value value) code)
+      (ba/unsupported (format "Unsupported descendent-of filter property `%s` in code system `%s`." property url)))
+    (ba/incorrect (format "Missing descendent-of filter property in code system `%s`." url))))
