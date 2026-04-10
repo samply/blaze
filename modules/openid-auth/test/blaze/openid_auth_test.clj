@@ -37,7 +37,7 @@
         (.doReturnJSON (slurp (io/resource "blaze/openid_auth/google.json"))))
     http-client))
 
-(def config-not-found
+(def ^:private config-not-found
   {::openid-auth/backend
    {:http-client (ig/ref ::http-client-not-found)
     :scheduler (ig/ref :blaze/scheduler)
@@ -45,13 +45,23 @@
    ::http-client-not-found {}
    :blaze/scheduler {}})
 
-(def config-success
+(def ^:private config-success
   {::openid-auth/backend
    {:http-client (ig/ref ::http-client-success)
     :scheduler (ig/ref :blaze/scheduler)
     :provider-url "http://localhost:8080"}
    ::http-client-success {}
    :blaze/scheduler {}})
+
+(def ^:private config-success-iss
+  (assoc-in config-success [::openid-auth/backend :issuer] "http://localhost:8080"))
+
+(def ^:private config-success-aud
+  (assoc-in config-success [::openid-auth/backend :audience] "client-172542"))
+
+(def ^:private config-success-iss-aud
+  (-> (assoc-in config-success [::openid-auth/backend :issuer] "http://localhost:8080")
+      (assoc-in [::openid-auth/backend :audience] "client-172542")))
 
 (deftest init-test
   (testing "nil config"
@@ -67,6 +77,13 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))))
+
+  (testing "missing scheduler and provider-url"
+    (given-failed-system {::openid-auth/backend {:http-client ::invalid}}
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))))
 
   (testing "invalid http-client"
     (given-failed-system (assoc-in config-success [::openid-auth/backend :http-client] ::invalid)
@@ -87,7 +104,37 @@
       :key := ::openid-auth/backend
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [::openid-auth/provider-url]
-      [:cause-data ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid issuer"
+    (given-failed-system (assoc-in config-success [::openid-auth/backend :issuer] ::invalid)
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::openid-auth/issuer]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid audience"
+    (given-failed-system (assoc-in config-success [::openid-auth/backend :audience] ::invalid)
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::openid-auth/audience]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "success with default config"
+    (with-system [{::openid-auth/keys [backend]} config-success]
+      (is (satisfies? p/IAuthentication backend))))
+
+  (testing "success with issuer"
+    (with-system [{::openid-auth/keys [backend]} config-success-iss]
+      (is (satisfies? p/IAuthentication backend))))
+
+  (testing "success with audience"
+    (with-system [{::openid-auth/keys [backend]} config-success-aud]
+      (is (satisfies? p/IAuthentication backend))))
+
+  (testing "success with issuer and audience"
+    (with-system [{::openid-auth/keys [backend]} config-success-iss-aud]
+      (is (satisfies? p/IAuthentication backend)))))
 
 (deftest backend-test
   (testing "public key not found"
@@ -100,4 +147,10 @@
     (with-system [{::openid-auth/keys [backend]} config-success]
       (is (satisfies? p/IAuthentication backend))
       (Thread/sleep 2000)
-      (is (nil? (p/-authenticate backend {} ""))))))
+      (is (nil? (p/-authenticate backend {} ""))))
+
+    (testing "including iss / auth"
+      (with-system [{::openid-auth/keys [backend]} config-success-iss-aud]
+        (is (satisfies? p/IAuthentication backend))
+        (Thread/sleep 2000)
+        (is (nil? (p/-authenticate backend {} "")))))))

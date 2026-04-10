@@ -61,16 +61,16 @@
 (defn- parse-header [{{:strs [authorization]} :headers}]
   (some->> authorization (re-find #"^Bearer (.+)$") (second)))
 
-(defn- unsign [token public-key]
+(defn- unsign [token-opts token public-key]
   (try
-    (jwt/unsign token public-key {:alg :rs256})
+    (jwt/unsign token public-key token-opts)
     (catch Exception e
       (let [{:keys [type]} (ex-data e)]
         (if (= :validation type)
           (log/trace "Token validation unsuccessful. Will try next public key.")
           (log/error "Error while unsigning:" (ex-message e)))))))
 
-(defrecord Backend [future public-keys-state]
+(defrecord Backend [future public-keys-state token-opts]
   p/IAuthentication
   (-parse [_ request]
     (parse-header request))
@@ -80,4 +80,4 @@
       (let [public-keys @public-keys-state]
         (if (empty? public-keys)
           (log/warn "Can't authenticate because no public key is available.")
-          (some (partial unsign token) public-keys))))))
+          (some (partial unsign token-opts token) public-keys))))))

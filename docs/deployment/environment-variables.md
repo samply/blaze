@@ -395,6 +395,14 @@ keytool -importcert -storetype PKCS12 -keystore "trust-store.p12" \
 
 The password for the PKCS #12 trust store.
 
+#### `OPENID_PROVIDER_ISSUER` <Badge type="warning" text="Since 1.7.0"/>
+
+Expected issuer (`iss`) claim for JWT validation. When set, tokens with a non-matching `iss` claim are rejected. When not set, issuer validation is skipped and a warning is logged at startup. Usually that should be `OPENID_PROVIDER_URL`.
+
+#### `OPENID_AUDIENCE` <Badge type="warning" text="Since 1.7.0"/>
+
+Expected audience (`aud`) claim for JWT validation. When set, tokens whose `aud` claim does not contain this value are rejected. When not set, audience validation is skipped and a warning is logged at startup. If you deploy Blaze with frontend, that should be identical to the `AUTH_CLIENT_ID`.
+
 #### `ENFORCE_REFERENTIAL_INTEGRITY` <Badge type="warning" text="Since 0.14"/>
 
 Enforce referential integrity on resource create, update and delete. It's enabled by default but can be disabled on proxy/middleware/secondary systems were a primary system ensures referential integrity.
