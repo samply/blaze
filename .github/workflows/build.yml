@@ -2751,11 +2751,29 @@ jobs:
     - name: Docker Logs Blaze
       run: docker compose -f .github/openid-auth-test/docker-compose.yml logs blaze
 
+    - name: Docker Logs Blaze Wrong Issuer
+      run: docker compose -f .github/openid-auth-test/docker-compose.yml logs blaze-wrong-iss
+
+    - name: Docker Logs Blaze Wrong Audience
+      run: docker compose -f .github/openid-auth-test/docker-compose.yml logs blaze-wrong-aud
+
+    - name: Docker Logs Blaze Correct Claims
+      run: docker compose -f .github/openid-auth-test/docker-compose.yml logs blaze-correct-claims
+
     - name: Unauthenticated Request
       run: test "MSG_AUTH_REQUIRED" = "$(curl -s http://localhost:8080/fhir | jq -r .issue[0].details.coding[0].code)"
 
     - name: Authenticated Request
       run: .github/scripts/authenticated-request.sh
+
+    - name: Token Rejected with Wrong Issuer
+      run: .github/scripts/rejected-request.sh 8081
+
+    - name: Token Rejected with Wrong Audience
+      run: .github/scripts/rejected-request.sh 8082
+
+    - name: Token Accepted with Correct Issuer and Audience
+      run: .github/scripts/authenticated-request.sh 8083
 
   custom-search-parameters-test:
     needs: build

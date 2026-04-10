@@ -100,7 +100,7 @@
 
 (deftest backend-test
   (testing "successful with one public key"
-    (let [backend (impl/->Backend nil (atom [::public-key]))]
+    (let [backend (impl/->Backend nil (atom [::public-key]) {:alg :rs256})]
       (with-redefs
        [jwt/unsign
         (fn [token key opts]
@@ -114,7 +114,7 @@
                 [backend]))))))
 
   (testing "successful at second public key"
-    (let [backend (impl/->Backend nil (atom [::public-key-0 ::public-key-1]))]
+    (let [backend (impl/->Backend nil (atom [::public-key-0 ::public-key-1]) {:alg :rs256})]
       (with-redefs
        [jwt/unsign
         (fn [token key opts]
@@ -129,20 +129,20 @@
                 [backend]))))))
 
   (testing "basic authorization header"
-    (let [backend (impl/->Backend nil (atom [::public-key]))]
+    (let [backend (impl/->Backend nil (atom [::public-key]) {:alg :rs256})]
       (is (nil? (middleware/authenticate-request
                  {:headers {"authorization" "Basic foo"}} [backend])))))
 
   (testing "no authorization header"
-    (let [backend (impl/->Backend nil (atom [::public-key]))]
+    (let [backend (impl/->Backend nil (atom [::public-key]) {:alg :rs256})]
       (is (nil? (middleware/authenticate-request {:headers {}} [backend])))))
 
   (testing "no headers"
-    (let [backend (impl/->Backend nil (atom [::public-key]))]
+    (let [backend (impl/->Backend nil (atom [::public-key]) {:alg :rs256})]
       (is (nil? (middleware/authenticate-request {} [backend])))))
 
   (testing "unsign error"
-    (let [backend (impl/->Backend nil (atom [::public-key]))]
+    (let [backend (impl/->Backend nil (atom [::public-key]) {:alg :rs256})]
       (with-redefs
        [jwt/unsign
         (fn [_ _ _]
@@ -152,7 +152,39 @@
                    [backend]))))))
 
   (testing "no public key"
-    (let [backend (impl/->Backend nil (atom nil))]
+    (let [backend (impl/->Backend nil (atom nil) {:alg :rs256})]
       (is (nil? (middleware/authenticate-request
                  {:headers {"authorization" "Bearer token-184940"}}
                  [backend]))))))
+
+(deftest backend-claims-test
+  (testing "passes iss and aud opts to jwt/unsign when configured"
+    (let [opts    {:alg :rs256 :iss "https://issuer.example" :aud "my-audience"}
+          backend (impl/->Backend nil (atom [::public-key]) opts)]
+      (with-redefs
+       [jwt/unsign
+        (fn [token key received-opts]
+          (is (= "token-184940" token))
+          (is (= ::public-key key))
+          (is (= opts received-opts))
+          ::unsigned-token)]
+        (is (= ::unsigned-token
+               (middleware/authenticate-request
+                {:headers {"authorization" "Bearer token-184940"}}
+                [backend]))))))
+
+  (testing "rejects token when iss does not match"
+    (let [backend (impl/->Backend nil (atom [::public-key]) {:alg :rs256 :iss "https://issuer.example"})]
+      (with-redefs
+       [jwt/unsign (fn [_ _ _] (throw (ex-info "Invalid issuer" {:type :validation})))]
+        (is (nil? (middleware/authenticate-request
+                   {:headers {"authorization" "Bearer token-184940"}}
+                   [backend]))))))
+
+  (testing "rejects token when aud does not match"
+    (let [backend (impl/->Backend nil (atom [::public-key]) {:alg :rs256 :aud "my-audience"})]
+      (with-redefs
+       [jwt/unsign (fn [_ _ _] (throw (ex-info "Invalid audience" {:type :validation})))]
+        (is (nil? (middleware/authenticate-request
+                   {:headers {"authorization" "Bearer token-184940"}}
+                   [backend])))))))

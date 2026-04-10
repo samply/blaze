@@ -32,5 +32,69 @@ services:
       keycloak:
         condition: service_healthy
 
+  blaze-wrong-iss:
+    image: "blaze:latest"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
+      OPENID_PROVIDER_ISSUER: "https://wrong-issuer.example"
+    ports:
+    - "8081:8080"
+    volumes:
+    - "blaze-wrong-iss-data:/app/data"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  blaze-wrong-aud:
+    image: "blaze:latest"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
+      OPENID_AUDIENCE: "wrong-audience"
+    ports:
+    - "8082:8080"
+    volumes:
+    - "blaze-wrong-aud-data:/app/data"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+  blaze-correct-claims:
+    image: "blaze:latest"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
+      OPENID_PROVIDER_ISSUER: "http://localhost:8090/realms/blaze"
+      OPENID_AUDIENCE: "account"
+    ports:
+    - "8083:8080"
+    volumes:
+    - "blaze-correct-claims-data:/app/data"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
 volumes:
   blaze-data:
+  blaze-wrong-iss-data:
+  blaze-wrong-aud-data:
+  blaze-correct-claims-data:

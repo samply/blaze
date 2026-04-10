@@ -1359,7 +1359,9 @@
    {:blaze.openid-auth/backend
     {:http-client #blaze/ref :blaze.openid-auth/http-client
      :scheduler #blaze/ref :blaze/scheduler
-     :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}
+     :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]
+     :issuer #blaze/cfg ["OPENID_PROVIDER_ISSUER" string?]
+     :audience #blaze/cfg ["OPENID_AUDIENCE" string?]}
 
     [:blaze/http-client :blaze.openid-auth/http-client]
     {:trust-store #blaze/cfg ["OPENID_CLIENT_TRUST_STORE" string?]

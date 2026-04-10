@@ -2,7 +2,14 @@
 
 Blaze comes with a build-in feature to authenticate requests against an [OpenID Connect][1] provider. In order to activate this feature, the environment variable `OPENID_PROVIDER_URL` has to be set to the base URL of your OpenID Connect provider.
 
-If this feature is activated, all FHIR Endpoints will require a valid [JWT][2] in the [Authorization][3] header as `Bearer` token. The tokens are validated using the first public key available in the OpenID Connect configuration fetched from `<OPENID_PROVIDER_URL>/.well-known/openid-configuration`. Currently only RSA 256 signed tokens are supported. 
+If this feature is activated, all FHIR Endpoints will require a valid [JWT][2] in the [Authorization][3] header as `Bearer` token. The tokens are validated using all public keys available in the OpenID Connect configuration fetched from `<OPENID_PROVIDER_URL>/.well-known/openid-configuration`. Currently only RSA 256 signed tokens are supported.
+
+To further restrict which tokens are accepted, two optional environment variables can be set:
+
+* `OPENID_PROVIDER_ISSUER` — the expected value of the `iss` (issuer) claim. Tokens with a different issuer are rejected.
+* `OPENID_AUDIENCE` — the expected value of the `aud` (audience) claim. Tokens that do not include this audience are rejected.
+
+It is strongly recommended to configure both variables in production to prevent tokens minted for other applications from being accepted by Blaze. If either variable is not set, the corresponding claim is not validated and a warning is logged at startup.
 
 ## Usage
 
