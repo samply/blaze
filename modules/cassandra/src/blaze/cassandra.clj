@@ -4,13 +4,12 @@
    [blaze.anomaly :as ba]
    [blaze.cassandra.session :as session]
    [blaze.util :refer [str]]
-   [clojure.string :as str]
-   [cognitect.anomalies :as anom])
+   [clojure.string :as str])
   (:import
    [com.datastax.oss.driver.api.core
     CqlSession DriverTimeoutException RequestThrottlingException]
    [com.datastax.oss.driver.api.core.cql
-    AsyncResultSet PreparedStatement Row Statement SimpleStatement]
+    AsyncResultSet PreparedStatement Row SimpleStatement Statement]
    [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException]))
 
 (set! *warn-on-reflection* true)
@@ -27,7 +26,7 @@
 (defn first-row [result-set]
   (if-let [^Row row (.one ^AsyncResultSet result-set)]
     (.array (.getByteBuffer row 0))
-    {::anom/category ::anom/not-found}))
+    (ba/not-found)))
 
 (defn session [config]
   (-> config session/session-builder session/build-session))

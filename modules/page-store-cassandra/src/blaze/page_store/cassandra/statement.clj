@@ -8,10 +8,11 @@
 (def get-statement
   "The get statement retrieves the content according to the `token`.
 
-  The consistency level is set to ONE because reads are retried if nothing was
-  found. Because rows are never updated, strong consistency isn't needed."
+  The consistency level is set to TWO because, together with the write
+  consistency of TWO and a replication factor of 3, it guarantees strong
+  consistency (2 + 2 = 4 > 3)."
   (-> (SimpleStatement/builder "select content from clauses where \"token\" = ?")
-      (.setConsistencyLevel ConsistencyLevel/ONE)
+      (.setConsistencyLevel ConsistencyLevel/TWO)
       (.build)))
 
 (defn put-statement
@@ -19,8 +20,8 @@
   `clauses` table.
 
   The consistency level can be set to ONE or TWO depending on durability
-  requirements. Strong consistency of QUORUM isn't needed, because rows are
-  never updated. Reads will retry until they see a token."
+  requirements. With TWO, together with the read consistency of TWO and a
+  replication factor of 3, strong consistency is guaranteed (2 + 2 = 4 > 3)."
   [consistency-level]
   (-> (SimpleStatement/builder "insert into clauses (\"token\", content) values (?, ?)")
       (.setConsistencyLevel (DefaultConsistencyLevel/valueOf consistency-level))
