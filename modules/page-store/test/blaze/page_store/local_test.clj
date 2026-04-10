@@ -31,7 +31,14 @@
 
 (def config
   {:blaze.page-store/local {}
-   :blaze.test/fixed-rng {}
+   :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
+
+(defmethod ig/init-key ::backing-store [_ config]
+  (ig/init-key :blaze.page-store/local config))
+
+(def config-with-backing-store
+  {:blaze.page-store/local {:backing-store (ig/ref ::backing-store)}
+   ::backing-store {}
    :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
 
 (def token "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7")
@@ -59,6 +66,9 @@
 
 (defn- invalidate-clause! [store clause]
   (.invalidate ^Cache (:cache store) (hash/hash-clause clause)))
+
+(defn- clear-cache! [store]
+  (.invalidateAll ^Cache (:cache store)))
 
 (deftest get-test
   (with-system [{store :blaze.page-store/local} config]
@@ -129,6 +139,43 @@
         ::anom/message := "Clauses should not be empty."))
 
     (testing "returns a token"
+      (is (= token @(page-store/put! store [["active" "true"]]))))))
+
+(deftest backing-store-get-test
+  (testing "on local cache miss falls through to backing store"
+    (with-system [{store :blaze.page-store/local} config-with-backing-store]
+      (let [token @(page-store/put! store [["active" "true"]])]
+        (clear-cache! store)
+
+        (is (= [["active" "true"]] @(page-store/get store token))))))
+
+  (testing "after cache miss populates local cache for subsequent get"
+    (with-system [{store :blaze.page-store/local
+                   backing-store ::backing-store}
+                  config-with-backing-store]
+      (let [token @(page-store/put! store [["active" "true"]])]
+        (clear-cache! store)
+        @(page-store/get store token)
+        (clear-cache! backing-store)
+
+        (is (= [["active" "true"]] @(page-store/get store token))))))
+
+  (testing "not-found when missing from both stores"
+    (with-system [{store :blaze.page-store/local} config-with-backing-store]
+      (given-failed-future (page-store/get store (str/join (repeat 64 "A")))
+        ::anom/category := ::anom/not-found
+        ::anom/message := (format "Clauses of token `%s` not found." (str/join (repeat 64 "A")))))))
+
+(deftest backing-store-put-test
+  (testing "writes through to backing store"
+    (with-system [{store :blaze.page-store/local
+                   backing-store ::backing-store}
+                  config-with-backing-store]
+      (let [token @(page-store/put! store [["active" "true"]])]
+        (is (= [["active" "true"]] @(page-store/get backing-store token))))))
+
+  (testing "returns the same token as without backing store"
+    (with-system [{store :blaze.page-store/local} config-with-backing-store]
       (is (= token @(page-store/put! store [["active" "true"]]))))))
 
 (deftest collector-init-test

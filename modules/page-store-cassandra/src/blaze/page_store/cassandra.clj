@@ -118,8 +118,6 @@
   (log/info "Close Cassandra page store")
   (.close ^AutoCloseable store))
 
-(derive ::page-store/cassandra :blaze/page-store)
-
 (reg-collector ::duration-seconds
   duration-seconds)
 

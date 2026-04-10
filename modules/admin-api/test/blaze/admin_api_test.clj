@@ -249,7 +249,7 @@
      {::search-util/link (ig/ref ::search-util/link)
       :clock (ig/ref :blaze.test/fixed-clock)
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-      :page-store (ig/ref :blaze/page-store)
+      :page-store (ig/ref :blaze.page-store/local)
       :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
       :context-path "/fhir"}
 
