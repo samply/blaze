@@ -165,13 +165,13 @@
   (let [idx (str/index-of value "|")]
     (and idx (< 0 idx (count value)))))
 
-(def ^:private known-uri-modifier
+(def ^:private fhir-uri-modifier
   #{"above" "below" "missing"})
 
-(def ^:private known-token-modifier
+(def ^:private fhir-token-modifier
   #{"above" "below" "code-text" "in" "missing" "not" "not-in" "text" "text-advanced"})
 
-(def ^:private known-reference-modifier
+(def ^:private fhir-reference-modifier
   #{"above" "below" "code-text" "contains" "identifier" "missing" "not-in" "text" "text-advanced"})
 
 (defn- url-param [url]
@@ -213,13 +213,13 @@
     (condp = type
       "uri"
       (when-not (#{"below"} modifier)
-        (some->> modifier (u/modifier-anom known-uri-modifier code)))
+        (some->> modifier (u/modifier-anom fhir-uri-modifier code)))
       "token"
       (when-not (#{"in"} modifier)
-        (some->> modifier (u/modifier-anom known-token-modifier code)))
+        (some->> modifier (u/modifier-anom fhir-token-modifier code)))
       ; else / "reference"
       (when-not ((into #{"identifier"} target) modifier)
-        (some->> modifier (u/modifier-anom (into known-reference-modifier target) code)))))
+        (some->> modifier (u/modifier-anom (into fhir-reference-modifier target) code)))))
 
   (-compile-value [_ modifier value]
     (cond

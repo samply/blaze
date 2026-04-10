@@ -3230,6 +3230,26 @@
           [:issue 0 :code] := #fhir/code "incomplete"
           [:issue 0 :diagnostics] := #fhir/string "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found.")))))
 
+(deftest handler-resource-content-load-failure-test
+  (with-redefs
+   [rc/multi-get
+    (fn [_ keys]
+      (ac/completed-future
+       (if (= :fhir/Patient (ffirst keys)) (ba/busy "msg-181758") {})))]
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [{:keys [status body]}
+            @(handler {})]
+
+        (is (= 500 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "incomplete"
+          [:issue 0 :diagnostics] := #fhir/string "msg-181758")))))
+
 (deftest handler-query-stats-test
   (with-handler [handler]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
