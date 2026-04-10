@@ -5,7 +5,7 @@
    [blaze.async.comp :as ac]
    [blaze.metrics.core :as metrics]
    [blaze.module :as m]
-   [blaze.page-store :as-alias page-store]
+   [blaze.page-store :as page-store]
    [blaze.page-store.local.hash :as hash]
    [blaze.page-store.local.spec]
    [blaze.page-store.protocols :as p]
@@ -61,31 +61,40 @@
     (.get cache hash (fn [_] hashes))
     (hash/encode hash)))
 
-(defrecord LocalPageStore [cache]
+(defrecord LocalPageStore [cache backing-store]
   p/PageStore
   (-get [_ token]
-    (ac/completed-future
-     (or (load cache token) (ba/not-found (not-found-msg token)))))
+    (if-some [clauses (load cache token)]
+      (ac/completed-future clauses)
+      (if backing-store
+        (-> (page-store/get backing-store token)
+            (ac/then-apply
+             (fn [clauses]
+               (store cache clauses)
+               clauses)))
+        (ac/completed-future (ba/not-found (not-found-msg token))))))
 
   (-put [_ clauses]
-    (ac/completed-future
-     (if (empty? clauses)
-       (ba/incorrect "Clauses should not be empty.")
-       (store cache clauses)))))
+    (if (empty? clauses)
+      (ac/completed-future (ba/incorrect "Clauses should not be empty."))
+      (let [token (store cache clauses)]
+        (if backing-store
+          (-> (page-store/put! backing-store clauses)
+              (ac/then-apply (fn [_] token)))
+          (ac/completed-future token))))))
 
 (defmethod m/pre-init-spec ::page-store/local [_]
-  (s/keys :opt-un [::expire-duration]))
+  (s/keys :opt-un [::expire-duration ::backing-store]))
 
 (defmethod ig/init-key ::page-store/local
-  [_ {:keys [expire-duration] :or {expire-duration (time/hours 1)}}]
+  [_ {:keys [expire-duration backing-store] :or {expire-duration (time/hours 1)}}]
   (log/info "Open local page store with an expire duration of"
             (str expire-duration))
   (->LocalPageStore
    (-> (Caffeine/newBuilder)
        (.expireAfterAccess expire-duration)
-       (.build))))
-
-(derive ::page-store/local :blaze/page-store)
+       (.build))
+   backing-store))
 
 (defmethod m/pre-init-spec :blaze.page-store.local/collector [_]
   (s/keys :req-un [:blaze/page-store]))
