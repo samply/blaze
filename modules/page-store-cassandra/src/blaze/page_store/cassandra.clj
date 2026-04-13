@@ -51,8 +51,17 @@
       (ac/then-apply-async #(read-content % token))
       (ac/exceptionally (partial map-execute-get-error token))))
 
-(defn- execute-get [session statement token]
-  (-> (ac/retry #(execute-get* session statement token)
+(defn- execute-get-with-escalation [session get-statement get-quorum-statement token]
+  (-> (execute-get* session get-statement token)
+      (ac/exceptionally-compose
+       (fn [e]
+         (if (ba/not-found? e)
+           (execute-get* session get-quorum-statement token)
+           (ac/completed-future e))))))
+
+(defn- execute-get [session get-statement get-quorum-statement token]
+  (-> (ac/retry #(execute-get-with-escalation session get-statement
+                                              get-quorum-statement token)
                 "page-store-cassandra-get" 5)
       (ac/exceptionally #(when-not (ba/not-found? %) %))))
 
@@ -75,11 +84,11 @@
   (ac/retry #(execute-put* session statement token clauses)
             "page-store-cassandra-put" 5))
 
-(defrecord CassandraPageStore [session get-statement put-statement]
+(defrecord CassandraPageStore [session get-statement get-quorum-statement put-statement]
   p/PageStore
   (-get [_ token]
     (log/trace "get" token)
-    (execute-get session get-statement token))
+    (execute-get session get-statement get-quorum-statement token))
 
   (-put [_ clauses]
     (let [token (token/generate clauses)]
@@ -111,6 +120,7 @@
     (->CassandraPageStore
      session
      (cass/prepare session statement/get-statement)
+     (cass/prepare session statement/get-quorum-statement)
      (cass/prepare session (statement/put-statement put-consistency-level)))))
 
 (defmethod ig/halt-key! ::page-store/cassandra

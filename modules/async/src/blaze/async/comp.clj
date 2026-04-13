@@ -295,7 +295,7 @@
       ~@body)))
 
 (defn- retryable? [{::anom/keys [category]}]
-  (#{::anom/not-found ::anom/busy} category))
+  (#{::anom/busy} category))
 
 (defn- retry* [future-fn action-name max-retries num-retry]
   (-> (future-fn)
@@ -317,8 +317,9 @@
   the function `f` with no arguments completes normally will complete with its
   result.
 
-  Otherwise retires by calling `f` again with no arguments. Wait's between
-  retries starting with 100 ms growing exponentially.
+  Otherwise retries by calling `f` again with no arguments if the anomaly is of
+  category `::anom/busy`. Waits between retries starting with 100 ms growing
+  exponentially.
 
   Please be aware that `num-retries` shouldn't be higher than the max stack
   depth. Otherwise, the CompletionStage would fail with a StackOverflowException."
