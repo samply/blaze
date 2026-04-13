@@ -62,13 +62,23 @@
       (ac/then-apply-async #(read-content parsing-context % key))
       (ac/exceptionally (partial map-execute-get-error hash))))
 
-(defn- execute-get [session parsing-context statement key]
-  (-> (ac/retry #(execute-get* session parsing-context statement key)
+(defn- execute-get-with-escalation
+  [session parsing-context get-statement get-quorum-statement key]
+  (-> (execute-get* session parsing-context get-statement key)
+      (ac/exceptionally-compose
+       (fn [e]
+         (if (ba/not-found? e)
+           (execute-get* session parsing-context get-quorum-statement key)
+           (ac/completed-future e))))))
+
+(defn- execute-get [session parsing-context get-statement get-quorum-statement key]
+  (-> (ac/retry #(execute-get-with-escalation session parsing-context
+                                              get-statement get-quorum-statement key)
                 "resource-store-cassandra-get" 5)
       (ac/exceptionally #(when-not (ba/not-found? %) %))))
 
-(defn- execute-multi-get [session parsing-context get-statement keys]
-  (mapv #(ac/->completable-future (execute-get session parsing-context get-statement %)) keys))
+(defn- execute-multi-get [session parsing-context get-statement get-quorum-statement keys]
+  (mapv #(ac/->completable-future (execute-get session parsing-context get-statement get-quorum-statement %)) keys))
 
 (defn- bind-put [writing-context statement hash resource]
   (let [content (bb/wrap (fhir-spec/write-cbor writing-context resource))]
@@ -104,15 +114,15 @@
       (persistent! map))))
 
 (deftype CassandraResourceStore [session parsing-context writing-context
-                                 get-statement put-statement]
+                                 get-statement get-quorum-statement put-statement]
   rs/ResourceStore
   (-get [_ [_ hash :as key]]
     (log/trace "get resource with hash:" hash)
-    (execute-get session parsing-context get-statement key))
+    (execute-get session parsing-context get-statement get-quorum-statement key))
 
   (-multi-get [_ keys]
     (log/trace "multi-get" (count keys) "resource(s)")
-    (let [futures (execute-multi-get session parsing-context get-statement keys)]
+    (let [futures (execute-multi-get session parsing-context get-statement get-quorum-statement keys)]
       (do-sync [_ (ac/all-of futures)]
         (zipmap-found keys (map ac/join futures)))))
 
@@ -148,6 +158,7 @@
      parsing-context
      writing-context
      (cass/prepare session statement/get-statement)
+     (cass/prepare session statement/get-quorum-statement)
      (cass/prepare session (statement/put-statement put-consistency-level)))))
 
 (defmethod ig/halt-key! ::rs/cassandra

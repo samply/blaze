@@ -46,6 +46,7 @@
   (hash/from-hex (str/join (repeat 64 s))))
 
 (def bound-get-statement (reify BoundStatement))
+(def bound-get-quorum-statement (reify BoundStatement))
 
 (defn row-with [idx bytes]
   (reify Row
@@ -122,6 +123,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -145,18 +148,48 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
                 (throw (Error.))))
-            (^CompletionStage executeAsync [_ ^Statement statement]
-              (assert (= bound-get-statement statement))
+            (^CompletionStage executeAsync [_ ^Statement _]
               (ac/completed-future (resultset-with nil)))
             (close [_]))]
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} config]
           (is (nil? @(rs/get store [:fhir/Patient hash :complete])))))))
+
+  (testing "success after not-found escalation to QUORUM"
+    (let [content {:fhir/type :fhir/Patient :id "0"}
+          hash (hash/generate content)
+          row (row-with 0 (write-cbor content))
+          session
+          (reify CqlSession
+            (^PreparedStatement prepare [_ ^SimpleStatement statement]
+              (cond
+                (= statement/get-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
+                (= (statement/put-statement "TWO") statement)
+                nil
+                :else
+                (throw (Error.))))
+            (^CompletionStage executeAsync [_ ^Statement statement]
+              (if (= bound-get-statement statement)
+                (ac/completed-future (resultset-with nil))
+                (ac/completed-future (resultset-with row))))
+            (close [_]))]
+
+      (with-redefs [cass/session (fn [_] session)]
+        (with-system [{store ::rs/cassandra} config]
+          (given @(mtu/assoc-thread-name (rs/get store [:fhir/Patient hash :complete]))
+            [meta :thread-name] :? mtu/common-pool-thread?
+            :fhir/type := :fhir/Patient
+            :id := "0")))))
 
   (testing "execute error"
     (let [hash (hash "0")
@@ -166,6 +199,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -189,6 +224,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -214,6 +251,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -241,6 +280,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -268,12 +309,13 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
                 (throw (Error.))))
-            (^CompletionStage executeAsync [_ ^Statement statement]
-              (assert (= bound-get-statement statement))
+            (^CompletionStage executeAsync [_ ^Statement _]
               (ac/completed-future (resultset-with nil)))
             (close [_]))]
 
@@ -294,6 +336,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -332,6 +376,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
                  [(str hash) encoded-resource]
@@ -357,6 +403,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
                  [(str hash) encoded-resource]
@@ -386,6 +434,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
                  [(str hash) encoded-resource]
@@ -415,6 +465,8 @@
               (cond
                 (= statement/get-statement statement)
                 (prepared-statement-with [(str hash)] bound-get-statement)
+                (= statement/get-quorum-statement statement)
+                (prepared-statement-with [(str hash)] bound-get-quorum-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
                  [(str hash) encoded-resource]
