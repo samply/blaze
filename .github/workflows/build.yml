@@ -177,14 +177,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -263,14 +263,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -329,14 +329,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -382,14 +382,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -463,14 +463,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -545,14 +545,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -629,14 +629,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -2191,7 +2191,7 @@ jobs:
         path: ~/.fhir
 
     - name: Cache FHIR Packages
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.fhir/packages
         key: fhir-packages-integration-test-validation
@@ -2282,7 +2282,7 @@ jobs:
         path: ~/.fhir
 
     - name: Cache FHIR Packages
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.fhir/packages
         key: fhir-packages-terminology-tests
@@ -2678,14 +2678,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -3108,14 +3108,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
