@@ -62,6 +62,16 @@ Rigorous adherence to these patterns is required:
 
 * **Environment Variables:** Every new environment variable introduced via `#blaze/cfg` in `resources/blaze.edn` must be documented in `docs/deployment/environment-variables.md`, following the existing format (heading, description, default value, since badge).
 
+## Release Notes
+
+When generating a `CHANGELOG.md` entry for a new version:
+
+1. **Fetch issues** from the GitHub milestone matching the version name: `gh issue list --milestone <version> --state all --limit 200 --json number,title,labels,state,url`
+2. **Fetch the milestone number** for the "full changelog" link: `gh api repos/samply/blaze/milestones --jq '.[] | select(.title == "<version>") | .number'`
+3. **Categorize** issues by their labels into sections — in this order if present: `Notes`, `Survey`, `Security`, `Enhancements`, `Performance`, `Bugfixes`, `Documentation`, `Maintenance`. Omit issues labeled `ci` and dependency updates.
+4. **Insert** the new entry at the top of `CHANGELOG.md`, directly below the `# Changelog` heading, following the format of existing entries.
+5. **End** the entry with: `The full changelog can be found [here](https://github.com/samply/blaze/milestone/<number>?closed=1).`
+
 ## Verification & Workflow
 
 When starting to work on an issue, you can use the GitHub CLI to fetch the issue details: `gh issue view <issue-number>`

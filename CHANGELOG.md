@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.7.0
+
+### Notes
+
+JWT validation now supports enforcing the `iss` (issuer) and `aud` (audience) claims. It is strongly recommended to set the `OPENID_PROVIDER_ISSUER` and `OPENID_AUDIENCE` environment variables to prevent tokens minted for other applications from being accepted by Blaze.
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Security
+
+* Fix JWT Validation to Enforce iss and aud Claims ([#3552](https://github.com/samply/blaze/issues/3552))
+
+### Enhancements
+
+* Implement CQL ValueSet Retrieve ([#3279](https://github.com/samply/blaze/issues/3279))
+* Implement the in Modifier for Token Search Params ([#1970](https://github.com/samply/blaze/issues/1970))
+* Implement $versions Operation ([#3594](https://github.com/samply/blaze/issues/3594))
+* Implement filter parameter on ValueSet/$expand ([#3570](https://github.com/samply/blaze/issues/3570))
+* Add OIDC Auth for External Terminology Service ([#3537](https://github.com/samply/blaze/issues/3537))
+* Periodically Log JVM Memory and GC Usage ([#3522](https://github.com/samply/blaze/issues/3522))
+
+### Performance
+
+* Add Write-Through Cache Support to Local Page Store ([#3548](https://github.com/samply/blaze/issues/3548))
+
+### Bugfixes
+
+* Fix Paging on Type Search with Non-existing Patient References ([#3601](https://github.com/samply/blaze/issues/3601))
+* Fix HTTP Status 500 when Searching Resources in a Transaction ([#3584](https://github.com/samply/blaze/issues/3584))
+* Escalate Cassandra Read Consistency from ONE to QUORUM on Not-Found Retry ([#3561](https://github.com/samply/blaze/issues/3561))
+
+### Documentation
+
+* Fix Missing Favicon in Docs ([#3524](https://github.com/samply/blaze/issues/3524))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/121?closed=1).
+
 ## v1.6.2
 
 ### Bugfixes
