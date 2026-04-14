@@ -9,9 +9,9 @@
 
 A FHIR® Server with internal, fast CQL Evaluation Engine
 
-## News
+## Survey
 
-Alexander Kiel will give a talk about Blaze at the [HL7® FHIR® DevDays 2025](https://www.devdays.com/program-2025) at Wed, June 4 11:15 - 11:35. 
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
 
 ## Goal
 
@@ -25,7 +25,7 @@ A demo installation can be found [here](https://blaze.life.uni-leipzig.de/fhir) 
 
 Blaze is stable and widely used in the [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) in Germany and in [Biobanks](https://www.bbmri-eric.eu) across Europe.
 
-Latest release: [v1.6.2][5]
+Latest release: [v1.7.0][5]
 
 ## Key Features
 
@@ -54,6 +54,10 @@ While Blaze is an open-source project, enterprise-grade commercial support and c
 
 If your organization requires specific features or enhancements, custom development can be commissioned. Issues in our tracker that are labeled with [`commercial`](https://github.com/samply/blaze/labels/commercial) indicate functionalities that are available to be implemented by KF Digital Health GmbH upon request.
 
+## Resources
+
+* Alexander Kiel gave a talk about Blaze at the [HL7® FHIR® DevDays 2025](https://www.devdays.com/program-2025).
+
 ## YourKit Profiler
 
 ![YourKit logo](https://www.yourkit.com/images/yklogo.png)
@@ -74,7 +78,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [2]: <https://samply.github.io/blaze/api/operation/measure-evaluate-measure.html>
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v1.6.2>
+[5]: <https://github.com/samply/blaze/releases/tag/v1.7.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
