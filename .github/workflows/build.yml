@@ -83,7 +83,7 @@ jobs:
       run: make validate
 
     - name: Upload Profiles
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources/*.json
@@ -227,7 +227,7 @@ jobs:
 
     - name: Upload Coverage Report
       if: ${{ matrix.java-version == '25' && matrix.module != 'db' && matrix.module != 'jepsen' }}
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: coverage-report-${{ matrix.module }}
         path: modules/${{ matrix.module }}/target/coverage/codecov.json
@@ -431,7 +431,7 @@ jobs:
       run: .github/scripts/fix-codecov-path.sh db
 
     - name: Upload Coverage Report
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: coverage-report-db-${{ matrix.kind }}
         path: modules/db/target/coverage/codecov.json
@@ -660,7 +660,7 @@ jobs:
       run: make build-frontend
 
     - name: Upload Frontend Build Directory
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: blaze-frontend-build-dir
         path: modules/frontend/build
@@ -2981,7 +2981,7 @@ jobs:
     - name: Run Playwright Tests
       run: make -C modules/frontend-e2e test
 
-    - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: playwright-report
         path: modules/frontend-e2e/playwright-report/
