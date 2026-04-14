@@ -1,5 +1,6 @@
 (ns blaze.openid-client.token-provider-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.http-client]
    [blaze.http-client.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
@@ -159,7 +160,8 @@
 (deftest current-token-test
   (testing "config not found"
     (with-system [{::oic/keys [token-provider]} config-config-not-found]
-      (Thread/sleep 100)
+      (while (ba/unavailable? (tp/current-token token-provider))
+        (Thread/sleep 10))
 
       (given (tp/current-token token-provider)
         ::anom/category := ::anom/fault
@@ -167,7 +169,8 @@
 
   (testing "config no token endpoint"
     (with-system [{::oic/keys [token-provider]} config-config-no-token-endpoint]
-      (Thread/sleep 100)
+      (while (ba/unavailable? (tp/current-token token-provider))
+        (Thread/sleep 10))
 
       (given (tp/current-token token-provider)
         ::anom/category := ::anom/fault
@@ -175,7 +178,8 @@
 
   (testing "token error"
     (with-system [{::oic/keys [token-provider]} config-token-error]
-      (Thread/sleep 100)
+      (while (ba/unavailable? (tp/current-token token-provider))
+        (Thread/sleep 10))
 
       (given (tp/current-token token-provider)
         ::anom/category := ::anom/fault
@@ -186,6 +190,7 @@
       (given (tp/current-token token-provider)
         ::anom/category := ::anom/unavailable)
 
-      (Thread/sleep 100)
+      (while (ba/unavailable? (tp/current-token token-provider))
+        (Thread/sleep 10))
 
       (is (= "my-token" (tp/current-token token-provider))))))
