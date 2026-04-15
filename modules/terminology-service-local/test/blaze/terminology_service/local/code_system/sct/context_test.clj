@@ -84,6 +84,35 @@
       (testing "concept from model component module"
         (is (true? (find-concept 11000274103 20231115 900000000000012004)))))))
 
+(deftest find-all-module-ids-test
+  (testing "module with no dependencies"
+    (is (= #{"900000000000207008"}
+           (context/find-all-module-ids {} 900000000000207008 20240101))))
+
+  (testing "module with one dependency"
+    (let [module-dependency-index {11000274103 (time-map
+                                                20231115 [[900000000000207008 20231001]])}]
+      (is (= #{"11000274103" "900000000000207008"}
+             (context/find-all-module-ids module-dependency-index
+                                          11000274103 20231115)))))
+
+  (testing "module with transitive dependencies"
+    (let [module-dependency-index {11000274103 (time-map
+                                                20231115 [[900000000000207008 20231001]])
+                                   900000000000207008 (time-map
+                                                       20020131 [[900000000000012004 20020131]])}]
+      (is (= #{"11000274103" "900000000000207008" "900000000000012004"}
+             (context/find-all-module-ids module-dependency-index
+                                          11000274103 20231115)))))
+
+  (testing "module with multiple dependencies"
+    (let [module-dependency-index {11000274103 (time-map
+                                                20231115 [[900000000000207008 20231001]
+                                                          [900000000000012004 20231001]])}]
+      (is (= #{"11000274103" "900000000000207008" "900000000000012004"}
+             (context/find-all-module-ids module-dependency-index
+                                          11000274103 20231115))))))
+
 (deftest build-parent-index-test
   (is (= (context/build-parent-index
           (.stream

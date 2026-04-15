@@ -53,7 +53,7 @@
   (nil? (.validate ^UcumService service code)))
 
 (defmethod c/expand-concept :ucum
-  [_ concepts _]
+  [_ value-set-concepts _]
   (into
    []
    (keep
@@ -61,7 +61,7 @@
       (when (valid? (:value code))
         {:system #fhir/uri-interned "http://unitsofmeasure.org"
          :code code})))
-   concepts))
+   value-set-concepts))
 
 (defmethod c/find-complete :ucum
   [{:keys [url version]} {{:keys [code]} :clause}]

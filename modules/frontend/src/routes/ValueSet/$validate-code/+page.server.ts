@@ -77,23 +77,7 @@ export const actions = {
       })
     });
 
-    if (!res.ok) {
-      const error: OperationOutcome = await res.json();
-      return fail(400, {
-        url,
-        valueSetVersion,
-        code,
-        system,
-        systemVersion,
-        display,
-        displayLanguage,
-        inferSystem,
-        incorrect: true,
-        msg: error.issue[0]?.diagnostics ?? error.issue[0]?.details?.text
-      });
-    }
-
-    return {
+    const result = {
       url,
       valueSetVersion,
       code,
@@ -101,7 +85,20 @@ export const actions = {
       systemVersion,
       display,
       displayLanguage,
-      inferSystem,
+      inferSystem
+    };
+
+    if (!res.ok) {
+      const error: OperationOutcome = await res.json();
+      return fail(400, {
+        ...result,
+        incorrect: true,
+        msg: error.issue[0]?.diagnostics ?? error.issue[0]?.details?.text
+      });
+    }
+
+    return {
+      ...result,
       result: (await res.json()) as Parameters
     };
   }

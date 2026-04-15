@@ -10,6 +10,7 @@
    [blaze.terminology-service.local.code-system.loinc.filter.equals]
    [blaze.terminology-service.local.code-system.loinc.filter.regex]
    [blaze.terminology-service.local.code-system.util :as cs-u]
+   [blaze.terminology-service.local.search-index :as search-index]
    [blaze.util :as u]
    [integrant.core :as ig]
    [taoensso.timbre :as log]))
@@ -25,45 +26,75 @@
     (ac/completed-future (assoc (first (:code-systems context)) :loinc/context context))
     (ac/completed-future (ba/not-found (code-system-not-found-msg version)))))
 
-(defmethod c/expand-complete :loinc
-  [_ _]
-  (ba/conflict
-   "Expanding all LOINC concepts is too costly."
-   :fhir/issue "too-costly"))
-
-(defn- concept-xf [{{:keys [concept-index]} :loinc/context}]
-  (keep
-   (fn [{:keys [code]}]
-     (concept-index (:value code)))))
-
-(defn- active-concept-xf [{{:keys [concept-index]} :loinc/context}]
-  (keep
-   (fn [{:keys [code]}]
-     (when-let [concept (concept-index (:value code))]
-       (when-not (-> concept :inactive :value)
-         concept)))))
-
 (defn- remove-properties [concept]
   (dissoc concept :loinc/properties))
 
+(defn- concept-xf [{{:keys [concept-index]} :loinc/context}]
+  (comp
+   (keep
+    (fn [{:keys [code]}]
+      (concept-index (:value code))))
+   (map remove-properties)))
+
+(defn- active-concept-xf [{{:keys [concept-index]} :loinc/context}]
+  (comp
+   (keep
+    (fn [{:keys [code]}]
+      (when-let [concept (concept-index (:value code))]
+        (when-not (-> concept :inactive :value)
+          concept))))
+   (map remove-properties)))
+
+(def ^:private active-xf
+  (comp (filter (comp not :value :inactive))
+        (map remove-properties)))
+
+(def ^:private xf
+  (map remove-properties))
+
+(defn- complete-text-filter
+  [{{:keys [concept-index search-index]} :loinc/context} filter]
+  (keep concept-index (search-index/search search-index filter 10000)))
+
+(defmethod c/expand-complete :loinc
+  [code-system {:keys [active-only filter]}]
+  (if filter
+    (into
+     []
+     (if active-only active-xf xf)
+     (complete-text-filter code-system filter))
+    (ba/conflict
+     "Expanding all LOINC concepts is too costly."
+     :fhir/issue "too-costly")))
+
+(defn- concept-text-filter
+  [{{:keys [search-index]} :loinc/context} filter value-set-concepts]
+  (let [lookup (persistent! (reduce #(assoc! %1 (:value (:code %2)) %2) (transient {}) value-set-concepts))
+        matched-codes (search-index/search search-index filter 10000 (keys lookup))]
+    (keep lookup matched-codes)))
+
 (defmethod c/expand-concept :loinc
-  [code-system concepts {:keys [active-only]}]
+  [code-system value-set-concepts {:keys [active-only filter]}]
   (into
    []
-   (comp
-    ((if active-only active-concept-xf concept-xf) code-system)
-    (map remove-properties))
-   concepts))
+   ((if active-only active-concept-xf concept-xf) code-system)
+   (cond->> value-set-concepts
+     filter (concept-text-filter code-system filter))))
+
+(defn- filter-text-filter
+  [{{:keys [concept-index search-index]} :loinc/context} filter found-concepts]
+  (let [found-codes (mapv (comp :value :code) found-concepts)
+        matched-codes (search-index/search search-index filter 10000 found-codes)]
+    (keep concept-index matched-codes)))
 
 (defmethod c/expand-filter :loinc
-  [code-system filter {:keys [active-only]}]
-  (when-ok [concepts (core/expand-filter code-system filter)]
+  [code-system filter {:keys [active-only] text-filter :filter}]
+  (when-ok [found-concepts (core/expand-filter code-system filter)]
     (into
      #{}
-     (comp
-      (if active-only (filter (comp not :value :inactive)) identity)
-      (map remove-properties))
-     concepts)))
+     (if active-only active-xf xf)
+     (cond->> found-concepts
+       text-filter (filter-text-filter code-system text-filter)))))
 
 (defmethod c/find-complete :loinc
   [{:keys [version] {:keys [concept-index]} :loinc/context} {{:keys [code]} :clause}]

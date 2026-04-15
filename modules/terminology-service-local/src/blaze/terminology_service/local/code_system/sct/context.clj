@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.terminology-service.local.code-system.sct.util :as sct-u]
+   [blaze.terminology-service.local.search-index :as search-index]
    [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
@@ -252,6 +253,19 @@
 (defn- find-concept* [concept-index module-id version concept-id]
   (when-let [versions (get-in concept-index [module-id concept-id])]
     (some-> (first (subseq versions >= version)) val)))
+
+(defn find-all-module-ids
+  "Returns a set of all module-id strings reachable from `module-id` in
+  `version`, including `module-id` itself."
+  [module-dependency-index module-id version]
+  (loop [to-visit [[module-id version]]
+         result #{(str module-id)}]
+    (if-let [[[mid ver] & more] (seq to-visit)]
+      (let [deps (find-dependencies module-dependency-index mid ver)
+            new-deps (remove (fn [[m]] (result (str m))) deps)]
+        (recur (into (vec more) new-deps)
+               (into result (map (fn [[m]] (str m))) deps)))
+      result)))
 
 (defn find-multi-module [module-dependency-index index f module-id version concept-id]
   (if-some [res (f index module-id version concept-id)]
@@ -541,6 +555,44 @@
 (defn- find-current-int-system [code-systems]
   (last (sort-by (comp :value :date) (filter has-core-version? code-systems))))
 
+(defn- active-terms
+  "Returns a set of active terms from a sorted-map of version entries."
+  [versions]
+  (into
+   #{}
+   (keep (fn [{active true}] active))
+   (vals versions)))
+
+(defn- fsn-entries
+  "Returns a sequence of `[code text module-id]` tuples from the
+  fully-specified-name-index."
+  [fully-specified-name-index]
+  (for [[module-id concepts] fully-specified-name-index
+        [concept-id versions] concepts
+        :let [terms (active-terms versions)]
+        :when (seq terms)
+        :let [module-id-str (str module-id)
+              code (str concept-id)]]
+    [code (str/join " " terms) module-id-str]))
+
+(defn- synonym-entries
+  "Returns a sequence of `[code text module-id]` tuples from the synonym-index."
+  [synonym-index]
+  (for [[module-id concepts] synonym-index
+        [concept-id versions] concepts
+        :let [synonyms (into [] (comp (mapcat (fn [{active true}] active))
+                                      (map (fn [[_id [_lang term]]] term)))
+                             (vals versions))]
+        :when (seq synonyms)
+        :let [module-id-str (str module-id)
+              code (str concept-id)]]
+    [code (str/join " " synonyms) module-id-str]))
+
+(defn- build-search-index [fully-specified-name-index synonym-index]
+  (search-index/build-with-modules
+   (concat (fsn-entries fully-specified-name-index)
+           (synonym-entries synonym-index))))
+
 (defn build [release-path]
   (when-ok [full-path (find-file release-path "Full")
             refset-path (find-file full-path "Refset")
@@ -564,4 +616,5 @@
      :child-index (stream-file build-child-index relationship-file)
      :fully-specified-name-index fully-specified-name-index
      :synonym-index synonym-index
-     :acceptability-index (stream-file build-acceptability-index language-file)}))
+     :acceptability-index (stream-file build-acceptability-index language-file)
+     :search-index (build-search-index fully-specified-name-index synonym-index)}))

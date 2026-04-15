@@ -267,7 +267,7 @@
    "valueSetVersion" {:action :copy}
    "context" {}
    "contextDirection" {}
-   "filter" {}
+   "filter" {:action :copy}
    "date" {}
    "offset" {:action :copy :coerce coerce-nat-long}
    "count" {:action :copy :coerce coerce-nat-long}

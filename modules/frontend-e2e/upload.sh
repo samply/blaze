@@ -16,5 +16,6 @@ blazectl --no-progress \
 echo "Upload KDS Fall Profile..."
 curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.fall/StructureDefinition-mii-pr-fall-kontakt-gesundheitseinrichtung.json" "$base/StructureDefinition"
 
-echo "Upload one Value Set..."
+echo "Upload two Value Sets..."
 curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.laborbefund/ValueSet-mii-vs-labor-laborbereich.json" "$base/ValueSet"
+curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.laborbefund/ValueSet-mii-vs-labor-interpretation-eigenschaften-snomedct.json" "$base/ValueSet"

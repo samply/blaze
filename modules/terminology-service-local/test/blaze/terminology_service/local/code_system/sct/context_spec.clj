@@ -42,6 +42,12 @@
                :module-id :sct/id :version :sct/time :concept-id :sct/id)
   :ret (s/coll-of :sct/id :kind set?))
 
+(s/fdef context/find-all-module-ids
+  :args (s/cat :module-dependency-index map?
+               :module-id :sct/id
+               :version :sct/time)
+  :ret (s/coll-of string? :kind set?))
+
 (s/fdef context/build
   :args (s/cat :path :blaze/dir)
   :ret (s/or :context :sct/context :anomaly ::anom/anomaly))

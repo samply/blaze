@@ -13,6 +13,7 @@
    [blaze.terminology-service.local.code-system.filter.is-a]
    [blaze.terminology-service.local.code-system.filter.regex]
    [blaze.terminology-service.local.graph :as graph]
+   [blaze.terminology-service.local.search-index :as search-index]
    [clojure.string :as str])
   (:import
    [com.github.benmanes.caffeine.cache Cache]))
@@ -37,10 +38,14 @@
     (format "The code system `%s|%s` was not found." url version)
     (format "The code system `%s` was not found." url)))
 
+(defn- build-graph-with-index [concepts]
+  (let [graph (graph/build-graph concepts)]
+    (assoc graph :search-index (search-index/build (:concepts graph)))))
+
 (defn- get-graph
   [cache {:keys [id] {version :versionId} :meta :as code-system}]
   (let [key [id (:value version)]]
-    (.get ^Cache cache key (fn [_] (graph/build-graph (:concept code-system))))))
+    (.get ^Cache cache key (fn [_] (build-graph-with-index (:concept code-system))))))
 
 (defmethod c/find :default
   [{:keys [db] ::cs/keys [required-content graph-cache]
@@ -58,7 +63,7 @@
 
 (defmethod c/enhance :default
   [_ {concepts :concept :as code-system}]
-  (assoc code-system :default/graph (graph/build-graph concepts)))
+  (assoc code-system :default/graph (build-graph-with-index concepts)))
 
 (defn- inactive? [{properties :property}]
   (some
@@ -104,13 +109,19 @@
      (when-not (inactive? concept)
        (create-contains params url concept)))))
 
+(defn- complete-text-filter
+  [{{:keys [concepts search-index]} :default/graph} filter]
+  (let [matched-codes (search-index/search search-index filter 10000)]
+    (keep concepts matched-codes)))
+
 (defmethod c/expand-complete :default
-  [{{:keys [concepts]} :default/graph :as code-system}
-   {:keys [active-only] :as params}]
+  [code-system {:keys [active-only filter] :as params}]
   (into
    []
    ((if active-only active-xf xf) params code-system)
-   (vals concepts)))
+   (if filter
+     (complete-text-filter code-system filter)
+     (vals (:concepts (:default/graph code-system))))))
 
 (defn- concept-xf [params {:keys [url] {:keys [concepts]} :default/graph}]
   (keep
@@ -127,20 +138,34 @@
          (cond-> (create-contains params url concept)
            display (assoc :display display)))))))
 
+(defn- concept-text-filter
+  [{{:keys [search-index]} :default/graph} filter value-set-concepts]
+  (let [lookup (persistent! (reduce #(assoc! %1 (:value (:code %2)) %2) (transient {}) value-set-concepts))
+        matched-codes (search-index/search search-index filter 10000 (keys lookup))]
+    (keep lookup matched-codes)))
+
 (defmethod c/expand-concept :default
-  [code-system value-set-concepts {:keys [active-only] :as params}]
+  [code-system value-set-concepts {:keys [active-only filter] :as params}]
   (into
    []
    ((if active-only concept-active-xf concept-xf) params code-system)
-   value-set-concepts))
+   (cond->> value-set-concepts
+     filter (concept-text-filter code-system filter))))
+
+(defn- filter-text-filter
+  [{{:keys [concepts search-index]} :default/graph} filter found-concepts]
+  (let [found-codes (mapv (comp :value :code) found-concepts)
+        matched-codes (search-index/search search-index filter 10000 found-codes)]
+    (keep concepts matched-codes)))
 
 (defmethod c/expand-filter :default
-  [code-system filter {:keys [active-only] :as params}]
-  (when-ok [concepts (filter/filter-concepts code-system filter)]
+  [code-system filter {:keys [active-only] text-filter :filter :as params}]
+  (when-ok [found-concepts (filter/filter-concepts code-system filter)]
     (into
      #{}
      ((if active-only active-xf xf) params code-system)
-     concepts)))
+     (cond->> found-concepts
+       text-filter (filter-text-filter code-system text-filter)))))
 
 (defmethod c/find-complete :default
   [{:keys [url version] {:keys [concepts]} :default/graph}

@@ -3007,6 +3007,15 @@ jobs:
     - name: Install Dependencies
       run: make -C modules/frontend-e2e install-playwright
 
+    - name: Download SNOMED CT Release
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: ${{ secrets.SCT_INT_20250701_DOWNLOAD_TOKEN }}
+        filename: SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip
+
+    - name: Unzip SNOMED CT Release
+      run: unzip ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip -d modules/frontend-e2e
+
     - name: Run Everything Else
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up --wait
 

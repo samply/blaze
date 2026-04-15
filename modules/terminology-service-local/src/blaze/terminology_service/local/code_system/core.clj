@@ -50,7 +50,7 @@
       nil)))
 
 (defmulti expand-concept
-  {:arglists '([code-system concepts params])}
+  {:arglists '([code-system value-set-concepts params])}
   (fn [{:keys [url]} _ _]
     (condp = (:value url)
       "http://loinc.org" :loinc

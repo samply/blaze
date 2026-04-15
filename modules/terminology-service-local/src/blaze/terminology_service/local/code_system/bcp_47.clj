@@ -70,7 +70,7 @@
   (locales (str/trim code)))
 
 (defmethod c/expand-concept :bcp-47
-  [_ concepts _]
+  [_ value-set-concepts _]
   (into
    []
    (keep
@@ -79,7 +79,7 @@
         {:system #fhir/uri-interned "urn:ietf:bcp:47"
          :code code
          :display display})))
-   concepts))
+   value-set-concepts))
 
 (defmethod c/find-complete :bcp-47
   [{:keys [url version]} {{:keys [code]} :clause}]

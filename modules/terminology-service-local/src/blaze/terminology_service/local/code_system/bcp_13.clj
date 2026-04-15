@@ -59,7 +59,7 @@
           (first parts)))))
 
 (defmethod c/expand-concept :bcp-13
-  [_ concepts _]
+  [_ value-set-concepts _]
   (into
    []
    (keep
@@ -67,7 +67,7 @@
       (when (valid? (:value code))
         {:system #fhir/uri-interned "urn:ietf:bcp:13"
          :code code})))
-   concepts))
+   value-set-concepts))
 
 (defmethod c/find-complete :bcp-13
   [{:keys [url version]} {{:keys [code]} :clause}]

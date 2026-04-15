@@ -1,5 +1,5 @@
 (ns blaze.terminology-service.local.value-set.expand
-  (:refer-clojure :exclude [str])
+  (:refer-clojure :exclude [filter str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -13,6 +13,8 @@
    [clojure.set :as set]
    [cognitect.anomalies :as anom]
    [java-time.api :as time]))
+
+(set! *warn-on-reflection* true)
 
 (defn- all-version-expansion-msg [url]
   (format "Expanding the code system `%s` in all versions is unsupported." url))
@@ -111,13 +113,20 @@
    :name #fhir/string "excludeNested"
    :value (type/boolean exclude-nested)})
 
+(defn- filter-parameter [filter-text]
+  {:fhir/type :fhir.ValueSet.expansion/parameter
+   :name #fhir/string "filter"
+   :value (type/string filter-text)})
+
 (defn- append-params
-  [parameters {:keys [count include-designations active-only exclude-nested]}]
+  [parameters {:keys [count include-designations active-only exclude-nested
+                      filter]}]
   (cond-> parameters
     count (conj (count-parameter count))
     (some? include-designations) (conj (include-designations-parameter include-designations))
     (some? active-only) (conj (active-only-parameter active-only))
-    (some? exclude-nested) (conj (exclude-nested-parameter exclude-nested))))
+    (some? exclude-nested) (conj (exclude-nested-parameter exclude-nested))
+    filter (conj (filter-parameter filter))))
 
 (defn- append-property [property]
   (cond-> {:fhir/type :fhir.ValueSet.expansion/property

@@ -14,6 +14,10 @@ expand_count() {
   curl -sfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1" | jq -r '.expansion.contains | length'
 }
 
+expand_filter() {
+  curl -sfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1&filter=$2" | jq -r '.expansion.contains[] | [.system, .code, .display] | @csv' | sort -d -t, -k 1,2
+}
+
 test_csv() {
   if [ "$2" = "$(cat "$script_dir/$1.csv")" ]; then
     echo "✅ the $1 matches"
@@ -46,3 +50,5 @@ test_csv "ATC-A10" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/
 test_csv "ATC-L03AA02" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/atc)concept<<L03AA02")"
 
 test_csv "SCT-119297000" "$(expand "http://fhir.org/VCL?v1=(http://snomed.info/sct)concept<<119297000")"
+
+test_csv "Abrechnungsart_leistung" "$(expand_filter "http://fhir.de/ValueSet/dkgev/Abrechnungsart" "leistung")"
