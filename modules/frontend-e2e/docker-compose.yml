@@ -49,6 +49,8 @@ services:
       ENABLE_ADMIN_API: "true"
       ENABLE_TERMINOLOGY_SERVICE: "true"
       ENABLE_TERMINOLOGY_LOINC: "true"
+      ENABLE_TERMINOLOGY_SNOMED_CT: "true"
+      SNOMED_CT_RELEASE_PATH: "/app/sct-release"
       OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"
       OPENID_CLIENT_TRUST_STORE: "/app/keycloak-trust-store.p12"
       OPENID_CLIENT_TRUST_STORE_PASS: "insecure"
@@ -56,6 +58,7 @@ services:
     - "keycloak.localhost:host-gateway"
     volumes:
     - "blaze-data:/app/data"
+    - "./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release"
     - "../ingress/keycloak-trust-store.p12:/app/keycloak-trust-store.p12:ro"
     healthcheck:
       test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
@@ -66,12 +69,18 @@ services:
 
   keycloak:
     image: "quay.io/keycloak/keycloak:26.4.2@sha256:3617b09bb4b7510a8d8d9b9fc5707399e2d70688dbcc2f8fb013a144829be1b9"
-    command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true"
+    command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true --health-enabled=true"
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     volumes:
     - "./keycloak/import:/opt/keycloak/data/import"
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost:9000\r\nConnection: close\r\n\r\n' >&3; grep -q '\"status\": \"UP\"' <&3" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   blaze-data:

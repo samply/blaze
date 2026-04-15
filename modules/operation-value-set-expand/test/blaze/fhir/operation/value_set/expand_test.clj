@@ -95,7 +95,7 @@
 
   (testing "unsupported parameters"
     (with-handler [handler]
-      (doseq [param ["context" "contextDirection" "filter" "date"
+      (doseq [param ["context" "contextDirection" "date"
                      "designation" "useSupplement" "excludeNotForUI"
                      "excludePostCoordinated"
                      "exclude-system" "check-system-version"
@@ -289,6 +289,18 @@
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri "system-115910"
             [:expansion :contains 0 :code] := #fhir/code "code-115927")))
+
+      (testing "and filter"
+        (let [{:keys [status body]}
+              @(handler {:query-params {"url" "value-set-154043"
+                                        "filter" "foo"}})]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/ValueSet
+            :compose := nil
+            [:expansion :contains count] := 0)))
 
       (testing "POST"
         (doseq [include-designations [nil true false]

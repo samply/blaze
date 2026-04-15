@@ -12,7 +12,13 @@
   let { class: cssClass, children, buttons }: Props = $props();
 </script>
 
-<form class={cssClass} method="POST" use:enhance>
+<form
+  class={cssClass}
+  method="POST"
+  use:enhance={() =>
+    async ({ update }) =>
+      update({ reset: false })}
+>
   <div class="space-y-12 sm:space-y-16">
     {@render children?.()}
   </div>

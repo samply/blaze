@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.spec.type :as type]
+   [blaze.terminology-service.local.search-index :as search-index]
    [blaze.util :refer [str]]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
@@ -227,11 +228,15 @@
        index
        (rest (csv/read-csv reader))))))
 
+(defn- build* []
+  (let [index {:code-systems [(code-system)]}]
+    (when-ok [index (read-parts index)
+              index (read-table index)]
+      (read-answer-lists index))))
+
 (defn build []
-  (when-ok [index {:code-systems [(code-system)]}
-            index (read-parts index)
-            index (read-table index)]
-    (read-answer-lists index)))
+  (when-ok [{:keys [concept-index] :as context} (build*)]
+    (assoc context :search-index (search-index/build concept-index))))
 
 (defn property-name-from-index [index]
   (condp = index

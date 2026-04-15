@@ -136,9 +136,9 @@
 
 (defn expand-concept
   "Returns a list of concepts as expansion of `code-system` according to the
-  given `concepts`."
-  [code-system concepts params]
-  (c/expand-concept code-system concepts params))
+  given `value-set-concepts` and `params`."
+  [code-system value-set-concepts params]
+  (c/expand-concept code-system value-set-concepts params))
 
 (defn expand-filter
   "Returns a set of concepts as expansion of `code-system` according to

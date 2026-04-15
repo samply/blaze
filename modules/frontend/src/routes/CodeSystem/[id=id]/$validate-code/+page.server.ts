@@ -40,17 +40,17 @@ export const actions = {
       })
     });
 
+    const result = { code, display, displayLanguage };
+
     if (!res.ok) {
       const error: OperationOutcome = await res.json();
       return fail(400, {
-        code,
-        display,
-        displayLanguage,
+        ...result,
         incorrect: true,
         msg: error.issue[0]?.diagnostics ?? error.issue[0]?.details?.text
       });
     }
 
-    return { code, display, displayLanguage, result: (await res.json()) as Parameters };
+    return { ...result, result: (await res.json()) as Parameters };
   }
 } satisfies Actions;

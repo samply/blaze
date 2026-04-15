@@ -20,7 +20,7 @@
    "valueSetVersion" {:action :copy :coerce #(type/string %2)}
    "context" {}
    "contextDirection" {}
-   "filter" {}
+   "filter" {:action :copy :coerce #(type/string %2)}
    "date" {}
    "offset" {:action :copy :coerce fu/coerce-integer}
    "count" {:action :copy :coerce fu/coerce-integer}

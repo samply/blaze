@@ -2602,6 +2602,47 @@
             [:expansion :contains 0 :code] := #fhir/code "code-115927"
             [:expansion :contains 0 #(contains? % :display)] := false))))
 
+    (testing "with three codes"
+      (testing "include only two codes"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "system-115910"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-115927"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-163444"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-115004"
+                     :display #fhir/string "115004"}]}]
+            [:put {:fhir/type :fhir/ValueSet :id "0"
+                   :url #fhir/uri "value-set-135750"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri "system-115910"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "code-163444"}
+                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "code-115004"}]}]}}]]]
+
+          (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 2
+            [:expansion :contains 0 :code] := #fhir/code "code-163444"
+            [:expansion :contains 1 :code] := #fhir/code "code-115004")
+
+          (testing "with filter"
+            (given @(expand-value-set ts
+                      "url" #fhir/uri "value-set-135750"
+                      "filter" #fhir/string "115004")
+              :fhir/type := :fhir/ValueSet
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :code] := #fhir/code "code-115004")))))
+
     (testing "with two hierarchical codes"
       (with-system-data [{ts ::ts/local} config]
         [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -3942,7 +3983,8 @@
                [{:fhir/type :fhir.CodeSystem/concept
                  :code #fhir/code "a"}
                 {:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "aa"}
+                 :code #fhir/code "aa"
+                 :display #fhir/string "Foo"}
                 {:fhir/type :fhir.CodeSystem/concept
                  :code #fhir/code "ab"}]}]
         [:put {:fhir/type :fhir/ValueSet :id "0"
@@ -3961,10 +4003,16 @@
       (given @(expand-value-set ts "url" #fhir/uri "value-set-175628")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 2
-        [:expansion :contains 0 :system] := #fhir/uri "system-182822"
-        [:expansion :contains 0 :code] := #fhir/code "a"
-        [:expansion :contains 1 :system] := #fhir/uri "system-182822"
-        [:expansion :contains 1 :code] := #fhir/code "aa")))
+        [:expansion :contains (concept "a") 0 :system] := #fhir/uri "system-182822"
+        [:expansion :contains (concept "aa") 0 :system] := #fhir/uri "system-182822")
+
+      (testing "with filter"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-175628"
+                  "filter" #fhir/string "Foo")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "aa"))))
 
   (testing "other property"
     (with-system-data [{ts ::ts/local} config]
@@ -4098,6 +4146,126 @@
       [:expansion :contains 0 :code] := #fhir/code "code-115927"
       [:expansion :contains 0 #(contains? % :display)] := false)))
 
+(deftest expand-value-set-filter-test
+  (testing "filter restricts concepts by display text"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "diabetes"
+                 :display #fhir/string "Diabetes mellitus"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "hypertension"
+                 :display #fhir/string "Essential hypertension"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "blood-pressure"
+                 :display #fhir/string "Blood pressure measurement"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri "value-set-135750"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "system-115910"}]}}]]]
+
+      (testing "single term prefix"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "filter" #fhir/string "diab")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 1
+          [:expansion (parameter "filter") 0 :value] := #fhir/string "diab"
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "diabetes"
+          [:expansion :contains 0 :display] := #fhir/string "Diabetes mellitus"))
+
+      (testing "multi-word prefix"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "filter" #fhir/string "blood meas")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "blood-pressure"))
+
+      (testing "no match"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "filter" #fhir/string "xyz")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 0
+          [:expansion :contains count] := 0))
+
+      (testing "case insensitive"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "filter" #fhir/string "DIABETES")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains 0 :code] := #fhir/code "diabetes"))))
+
+  (testing "filter with count parameter"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-a"
+                 :display #fhir/string "Test alpha"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-b"
+                 :display #fhir/string "Test beta"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri "value-set-135750"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "system-115910"}]}}]]]
+
+      (given @(expand-value-set ts
+                "url" #fhir/uri "value-set-135750"
+                "filter" #fhir/string "test"
+                "count" #fhir/integer 1)
+        :fhir/type := :fhir/ValueSet
+        [:expansion :total] := #fhir/integer 2
+        [:expansion :contains count] := 1)))
+
+  (testing "filter matches designation text"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-a"
+                 :display #fhir/string "Primary concept"
+                 :designation
+                 [{:fhir/type :fhir.CodeSystem.concept/designation
+                   :value #fhir/string "Alternative name"}]}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-b"
+                 :display #fhir/string "Other concept"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri "value-set-135750"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "system-115910"}]}}]]]
+
+      (testing "post-filter matches designation"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "filter" #fhir/string "alternative"
+                  "includeDesignations" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains 0 :code] := #fhir/code "code-a")))))
+
 (deftest expand-value-set-bcp-13-include-all-test
   (testing "including all of BCP-13 is not possible"
     (with-system-data [{ts ::ts/local} bcp-13-config]
@@ -4191,6 +4359,75 @@
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the value set `value-set-152015`. Expanding all LOINC concepts is too costly."
         :fhir/issue "too-costly"))))
+
+(deftest expand-value-set-loinc-include-all-filter-test
+  (testing "filter enables expanding all of LOINC"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri "value-set-152015"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "http://loinc.org"}]}}]]]
+
+      (testing "matching concept"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-152015"
+                  "filter" #fhir/string "leukocytes cerebral")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total :value] :? pos?
+          [:expansion :contains count] :? pos?
+          [:expansion :contains (concept "26465-5") 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"))
+
+      (testing "no match"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-152015"
+                  "filter" #fhir/string "xyznonexistent")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 0
+          [:expansion :contains count] := 0)))))
+
+(deftest expand-value-set-loinc-include-concept-filter-test
+  (testing "filter restricts concepts by display text"
+    (with-system [{ts ::ts/local} loinc-config]
+      (testing "matching one of two concepts"
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri "http://loinc.org"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "1009-0"}
+                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "26465-5"}]}]}}
+                  "filter" #fhir/string "leukocytes")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "26465-5"
+          [:expansion :contains 0 :display] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"))
+
+      (testing "no match"
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri "http://loinc.org"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "26465-5"}]}]}}
+                  "filter" #fhir/string "xyz")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 0
+          [:expansion :contains count] := 0)))))
 
 (deftest expand-value-set-loinc-include-concept-test
   (testing "include one concept"
@@ -4511,7 +4748,17 @@
           [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
           [:expansion :contains (concept "718-7") 0 :display] := #fhir/string "Hemoglobin [Mass/volume] in Blood"
           [:expansion :contains (concept "30299-2") 0 :system] := #fhir/uri "http://loinc.org"
-          [:expansion :contains (concept "30299-2") 0 :display] := #fhir/string "Amprenavir [Susceptibility]"))))
+          [:expansion :contains (concept "30299-2") 0 :display] := #fhir/string "Amprenavir [Susceptibility]")
+
+        (testing "with filter"
+          (given @(expand-value-set ts
+                    "url" (vcl-uri (format "(http://loinc.org)COMPONENT/\"%s\"" value))
+                    "filter" #fhir/string "Hemoglobin")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] :? #(< 10 % 100)
+            [:expansion :contains (concept "718-7") 0 :system] := #fhir/uri "http://loinc.org"
+            [:expansion :contains (concept "718-7") 0 :display] := #fhir/string "Hemoglobin [Mass/volume] in Blood"
+            [:expansion :contains (concept "30299-2") count] := 0)))))
 
   (testing "PROPERTY =~ Susc|CCnc"
     (with-system [{ts ::ts/local} loinc-config]
@@ -4681,6 +4928,75 @@
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the value set `system-182137`. Expanding all SNOMED CT concepts is too costly."
         :fhir/issue "too-costly"))))
+
+(deftest expand-value-set-sct-include-all-filter-test
+  (testing "filter enables expanding all of SNOMED CT"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri "system-182137"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "http://snomed.info/sct"}]}}]]]
+
+      (testing "matching concept"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "system-182137"
+                  "filter" #fhir/string "anticoagulant")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri "http://snomed.info/sct"
+          [:expansion :contains 0 :code] := #fhir/code "441510007"
+          [:expansion :contains 0 :display] := #fhir/string "Blood specimen with anticoagulant"))
+
+      (testing "no match"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "system-182137"
+                  "filter" #fhir/string "xyznonexistent")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 0
+          [:expansion :contains count] := 0)))
+
+    (testing "with older version before 57921000052103 was introduced"
+      (with-system [{ts ::ts/local} sct-config]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri "http://snomed.info/sct"
+                      :version #fhir/string "http://snomed.info/sct/900000000000207008/version/20220131"}]}}
+                  "filter" #fhir/string "Whole blood specimen edetic acid")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 0
+          [:expansion :contains count] := 0)))
+
+    (testing "Germany edition"
+      (with-system-data [{ts ::ts/local} sct-config]
+        [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri "system-182137"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri "http://snomed.info/sct"
+                    :version #fhir/string "http://snomed.info/sct/11000274103"}]}}]]]
+
+        (testing "matching concept"
+          (given @(expand-value-set ts
+                    "url" #fhir/uri "system-182137"
+                    "filter" #fhir/string "Trockenblutkarte"
+                    "displayLanguage" #fhir/code "de")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :total] := #fhir/integer 1
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri "http://snomed.info/sct"
+            [:expansion :contains 0 :code] := #fhir/code "440500007"
+            [:expansion :contains 0 :display] := #fhir/string "Trockenblutkarte"))))))
 
 (deftest expand-value-set-sct-include-concept-test
   (testing "include one concept"
@@ -4966,6 +5282,47 @@
             [:expansion :contains 0 :designation 4 :use :display] := #fhir/string "Synonym"
             [:expansion :contains 0 :designation 4 :value] := #fhir/string "Dried blood spot specimen"))))))
 
+(deftest expand-value-set-sct-include-concept-filter-test
+  (testing "filter restricts concepts by display text"
+    (with-system [{ts ::ts/local} sct-config]
+      (testing "matching one of two concepts"
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri "http://snomed.info/sct"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "860958002"}
+                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "441510007"}]}]}}
+                  "filter" #fhir/string "anticoagulant")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "441510007"
+          [:expansion :contains 0 :display] := #fhir/string "Blood specimen with anticoagulant"))
+
+      (testing "no match"
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri "http://snomed.info/sct"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code "441510007"}]}]}}
+                  "filter" #fhir/string "xyz")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 0
+          [:expansion :contains count] := 0)))))
+
 (deftest expand-value-set-sct-include-filter-is-a-test
   (testing "with a single is-a filter"
     (with-system-data [{ts ::ts/local} sct-config]
@@ -4996,6 +5353,16 @@
           [:expansion :contains (concept "57921000052103") 0 :system] := #fhir/uri "http://snomed.info/sct"
           [:expansion :contains (concept "57921000052103") 0 :display] := #fhir/string "Whole blood specimen with edetic acid"
           [:expansion :contains (concept "57921000052103") 0 #(contains? % :inactive)] := false
+          [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri "http://snomed.info/sct"
+          [:expansion :contains (concept "441510007") 0 :display] := #fhir/string "Blood specimen with anticoagulant"
+          [:expansion :contains (concept "441510007") 0 #(contains? % :inactive)] := false))
+
+      (testing "with filter"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-152706"
+                  "filter" #fhir/string "anticoagulant blood")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
           [:expansion :contains (concept "441510007") 0 :system] := #fhir/uri "http://snomed.info/sct"
           [:expansion :contains (concept "441510007") 0 :display] := #fhir/string "Blood specimen with anticoagulant"
           [:expansion :contains (concept "441510007") 0 #(contains? % :inactive)] := false))

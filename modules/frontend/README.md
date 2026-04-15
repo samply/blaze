@@ -7,7 +7,7 @@ First run `make clean build` to install all NPM dependencies and build the front
 Second, start Keycloak:
 
 ```sh
-docker compose up -d
+docker compose up --wait
 ```
 
 Third, run the frontend in dev mode:

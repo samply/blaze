@@ -2,31 +2,27 @@
   import type { PageProps } from './$types';
 
   import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
   import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
+  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
   import BreadcrumbEntry from '$lib/breadcrumb/entry.svelte';
-  import CheckBoxes from '$lib/tailwind/form/check-boxes.svelte';
-  import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
-  import CheckBox from '$lib/tailwind/form/check-box.svelte';
-  import Section from '$lib/tailwind/form/section.svelte';
   import Form from '$lib/tailwind/form.svelte';
+  import Section from '$lib/tailwind/form/section.svelte';
   import TextField from '$lib/tailwind/form/text-field.svelte';
+  import CheckBoxes from '$lib/tailwind/form/check-boxes.svelte';
+  import CheckBox from '$lib/tailwind/form/check-box.svelte';
+  import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
 
-  import { title } from '$lib/resource.js';
-
-  let { data, form, params }: PageProps = $props();
+  let { form }: PageProps = $props();
 </script>
 
 <svelte:head>
-  <title>$expand - {title(data.valueSet)} - Blaze</title>
+  <title>$expand - ValueSet - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
   <Breadcrumb>
     <BreadcrumbEntryHome />
     <BreadcrumbEntryType type="ValueSet" />
-    <BreadcrumbEntryResource type="ValueSet" {...params} resource={data.valueSet} />
     <BreadcrumbEntry>
       <span class="ml-4 text-sm font-medium text-gray-500 dark:text-gray-400">$expand</span>
     </BreadcrumbEntry>
@@ -34,15 +30,10 @@
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
-  <h2 class="text-base/7 font-semibold text-gray-900 dark:text-gray-100">
-    {title(data.valueSet)}
-  </h2>
-  {#if data.valueSet.description}
-    <p class="mt-1 max-w-2xl text-sm/6 text-gray-600">{data.valueSet.description}</p>
-  {/if}
-
   <Form class="mt-4">
     <Section name="Parameters">
+      <TextField id="url" label="ValueSet URL" value={form?.url} />
+      <TextField id="valueSetVersion" label="ValueSet Version" value={form?.valueSetVersion} />
       <TextField id="filter" label="Filter" value={form?.filter} />
       <TextField id="property" label="Property" value={form?.property} />
       <TextField id="displayLanguage" label="Display Language" value={form?.displayLanguage} />

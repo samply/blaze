@@ -1,11 +1,13 @@
 (ns blaze.terminology-service.local.code-system.loinc.context-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir.test-util]
    [blaze.path-spec]
    [blaze.terminology-service.local.code-system.loinc.context :as context]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest]]
+   [clojure.test :as test :refer [deftest testing]]
+   [cognitect.anomalies :as-alias anom]
    [juxt.iota :refer [given]]))
 
 (st/instrument)
@@ -92,4 +94,9 @@
 
     ;; Answer List Value Sets
     [:value-sets "LL4049-4" :title] := #fhir/string "Medication usage suggestion"
-    [:value-set-concepts "LL4049-4" 0 :code] := #fhir/code "LA26421-0"))
+    [:value-set-concepts "LL4049-4" 0 :code] := #fhir/code "LA26421-0")
+
+  (testing "missing part code"
+    (with-redefs [context/part-code (fn [_ _ _] (ba/not-found))]
+      (given (context/build)
+        ::anom/category := ::anom/not-found))))

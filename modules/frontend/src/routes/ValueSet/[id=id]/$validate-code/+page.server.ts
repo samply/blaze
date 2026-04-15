@@ -64,27 +64,26 @@ export const actions = {
       })
     });
 
+    const result = {
+      code,
+      system,
+      systemVersion,
+      display,
+      displayLanguage,
+      inferSystem
+    };
+
     if (!res.ok) {
       const error: OperationOutcome = await res.json();
       return fail(400, {
-        code,
-        system,
-        systemVersion,
-        display,
-        displayLanguage,
-        inferSystem,
+        ...result,
         incorrect: true,
         msg: error.issue[0]?.diagnostics ?? error.issue[0]?.details?.text
       });
     }
 
     return {
-      code,
-      system,
-      systemVersion,
-      display,
-      displayLanguage,
-      inferSystem,
+      ...result,
       result: (await res.json()) as Parameters
     };
   }

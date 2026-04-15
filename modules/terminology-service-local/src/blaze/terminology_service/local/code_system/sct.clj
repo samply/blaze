@@ -17,6 +17,7 @@
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]
    [blaze.terminology-service.local.code-system.sct.util :as sct-u]
    [blaze.terminology-service.local.code-system.util :as cs-u]
+   [blaze.terminology-service.local.search-index :as search-index]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -30,10 +31,91 @@
        (fu/sort-by-priority)
        (first)))
 
-(defn- assoc-context [{:keys [version] :as code-system} context]
+(defn- find-fully-specified-name
+  [{{:keys [module-dependency-index fully-specified-name-index]} :sct/context
+    :sct/keys [module-id version]}]
+  (partial context/find-fully-specified-name module-dependency-index
+           fully-specified-name-index module-id version))
+
+(defn- find-synonyms
+  [{{:keys [module-dependency-index synonym-index]} :sct/context
+    :sct/keys [module-id version]}]
+  (partial context/find-synonyms module-dependency-index synonym-index module-id
+           version))
+
+(defn- find-concept
+  [{{:keys [module-dependency-index concept-index]} :sct/context
+    :sct/keys [module-id version]}]
+  (partial context/find-concept module-dependency-index concept-index module-id
+           version))
+
+(defn- find-acceptability
+  [{{:keys [acceptability-index]} :sct/context :sct/keys [version]}]
+  (partial context/find-acceptability acceptability-index version))
+
+(defn- filter-preferred-xf [find-acceptability]
+  (keep
+   (fn [[id synonym]]
+     (when (identical? :preferred (find-acceptability id))
+       synonym))))
+
+(defn- filter-preferred [find-acceptability synonyms]
+  (into [] (filter-preferred-xf find-acceptability) synonyms))
+
+(defn- display
+  [find-synonyms find-acceptability find-fully-specified-name code
+   {:keys [display-language] :or {display-language "en"}}]
+  (or (second
+       (first (sort-by (fn [[language-code]] (not= display-language language-code))
+                       (filter-preferred find-acceptability (find-synonyms code)))))
+      (find-fully-specified-name code)))
+
+(defn- fully-specified-name-designation [term]
+  {:language #fhir/code "en"
+   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
+                     :code #fhir/code "900000000000003001"
+                     :display #fhir/string-interned "Fully specified name"}
+   :value (type/string term)})
+
+(defn- synonym-designation [[_id [language-code term]]]
+  {:language (type/code language-code)
+   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
+                     :code #fhir/code "900000000000013009"
+                     :display #fhir/string-interned "Synonym"}
+   :value (type/string term)})
+
+(defn- assoc-designations [concept find-fully-specified-name find-synonyms code]
+  (let [fsn (find-fully-specified-name code)
+        synonyms (find-synonyms code)]
+    (cond-> concept
+      (seq synonyms)
+      (assoc
+       :designation
+       (into (or (some-> fsn fully-specified-name-designation vector) [])
+             (map synonym-designation)
+             synonyms)))))
+
+(defn- build-concept
+  [code-system find-synonyms find-acceptability find-fully-specified-name code
+   {:keys [include-version include-designations] :as params}]
+  (let [display (display find-synonyms find-acceptability find-fully-specified-name code params)]
+    (cond->
+     {:system #fhir/uri-interned "http://snomed.info/sct"
+      :code (type/code (str code))}
+      display (assoc :display (type/string display))
+      include-version (assoc :version (:version code-system))
+      include-designations (assoc-designations find-fully-specified-name find-synonyms code))))
+
+(defn- assoc-context
+  [{:keys [version] :as code-system}
+   {:keys [module-dependency-index search-index] :as context}]
   (when-ok [[module-id version] (sct-u/module-version (:value version))]
-    (assoc code-system :sct/context context :sct/module-id module-id
-           :sct/version version)))
+    (let [module-ids (context/find-all-module-ids module-dependency-index
+                                                  module-id version)]
+      (assoc code-system :sct/context context
+             :sct/module-id module-id :sct/version version
+             :sct/search-index search-index
+             :sct/module-ids module-ids))))
 
 (defn- code-system-not-found-msg [version]
   (format "The code system `%s|%s` was not found." sct-u/url version))
@@ -58,120 +140,79 @@
   [{:sct/keys [context]} code-system]
   (assoc-context code-system context))
 
-(defmethod c/expand-complete :sct
-  [_ _]
-  (ba/conflict
-   "Expanding all SNOMED CT concepts is too costly."
-   :fhir/issue "too-costly"))
-
-(defn- find-fully-specified-name
-  [{{:keys [module-dependency-index fully-specified-name-index]} :sct/context
-    :sct/keys [module-id version]} code]
-  (context/find-fully-specified-name module-dependency-index
-                                     fully-specified-name-index
-                                     module-id version code))
-
-(defn- filter-preferred
-  [{{:keys [acceptability-index]} :sct/context
-    :sct/keys [version]} synonyms]
-  (into
-   []
-   (keep
-    (fn [[id synonym]]
-      (when (= :preferred (context/find-acceptability acceptability-index version id))
-        synonym)))
-   synonyms))
-
-(defn- display
-  [code-system find-synonyms code
-   {:keys [display-language] :or {display-language "en"}}]
-  (or (second
-       (first (sort-by (fn [[language-code]] (not= display-language language-code))
-                       (filter-preferred code-system (find-synonyms code)))))
-      (find-fully-specified-name code-system code)))
-
-(defn- fully-specified-name-designation [term]
-  {:language #fhir/code "en"
-   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
-                     :code #fhir/code "900000000000003001"
-                     :display #fhir/string-interned "Fully specified name"}
-   :value (type/string term)})
-
-(defn- synonym-designation [[_id [language-code term]]]
-  {:language (type/code language-code)
-   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
-                     :code #fhir/code "900000000000013009"
-                     :display #fhir/string-interned "Synonym"}
-   :value (type/string term)})
-
-(defn- assoc-designations [concept code-system find-synonyms code]
-  (let [fsn (find-fully-specified-name code-system code)
-        synonyms (find-synonyms code)]
-    (cond-> concept
-      (seq synonyms) (assoc :designation (into (or (some-> fsn fully-specified-name-designation vector) []) (map synonym-designation) synonyms)))))
-
-(defn- build-concept
-  [code-system find-synonyms code
-   {:keys [include-version include-designations] :as params}]
-  (cond->
-   {:system #fhir/uri-interned "http://snomed.info/sct"
-    :code (type/code (str code))
-    :display (type/string (display code-system find-synonyms code params))}
-    include-version (assoc :version (:version code-system))
-    include-designations (assoc-designations code-system find-synonyms code)))
-
-(defn- concept-xf
-  [{{:keys [module-dependency-index concept-index synonym-index]} :sct/context
-    :sct/keys [module-id version] :as code-system} params]
-  (let [find-concept (partial context/find-concept module-dependency-index
-                              concept-index module-id version)
-        find-synonyms (partial context/find-synonyms module-dependency-index
-                               synonym-index module-id version)]
+(defn- concept-xf [code-system params]
+  (let [find-concept (find-concept code-system)
+        find-synonyms (find-synonyms code-system)
+        find-acceptability (find-acceptability code-system)
+        find-fully-specified-name (find-fully-specified-name code-system)]
     (keep
      (fn [code]
        (when-some [active (find-concept code)]
-         (cond-> (build-concept code-system find-synonyms code params)
+         (cond-> (build-concept code-system find-synonyms find-acceptability
+                                find-fully-specified-name code params)
            (false? active)
            (assoc :inactive #fhir/boolean true)))))))
 
-(defn- active-concept-xf
-  [{{:keys [module-dependency-index concept-index synonym-index]} :sct/context
-    :sct/keys [module-id version] :as code-system} params]
-  (let [find-concept (partial context/find-concept module-dependency-index
-                              concept-index module-id version)
-        find-synonyms (partial context/find-synonyms module-dependency-index
-                               synonym-index module-id version)]
+(defn- active-concept-xf [code-system params]
+  (let [find-concept (find-concept code-system)
+        find-synonyms (find-synonyms code-system)
+        find-acceptability (find-acceptability code-system)
+        find-fully-specified-name (find-fully-specified-name code-system)]
     (keep
      (fn [code]
        (when (find-concept code)
-         (build-concept code-system find-synonyms code params))))))
+         (build-concept code-system find-synonyms find-acceptability
+                        find-fully-specified-name code params))))))
+
+(defn- complete-text-filter
+  [{:sct/keys [search-index module-ids]} filter]
+  (search-index/search search-index filter 10000 nil module-ids))
+
+(defmethod c/expand-complete :sct
+  [code-system {:keys [active-only filter] :as params}]
+  (if filter
+    (into
+     []
+     (comp (map parse-sctid)
+           ((if active-only active-concept-xf concept-xf) code-system params))
+     (complete-text-filter code-system filter))
+    (ba/conflict
+     "Expanding all SNOMED CT concepts is too costly."
+     :fhir/issue "too-costly")))
+
+(defn- filter-text-filter
+  [{:sct/keys [search-index module-ids]} filter found-codes]
+  (mapv parse-sctid (search-index/search search-index filter 10000 (mapv str found-codes) module-ids)))
 
 (defmethod c/expand-concept :sct
-  [code-system concepts {:keys [active-only] :as params}]
-  (into
-   []
-   (comp
-    (keep (comp parse-sctid :value :code))
-    ((if active-only active-concept-xf concept-xf) code-system params))
-   concepts))
+  [code-system value-set-concepts {:keys [active-only] text-filter :filter :as params}]
+  (let [codes (into [] (keep (comp parse-sctid :value :code)) value-set-concepts)]
+    (into
+     []
+     ((if active-only active-concept-xf concept-xf) code-system params)
+     (cond->> codes
+       text-filter (filter-text-filter code-system text-filter)))))
 
 (defmethod c/expand-filter :sct
-  [code-system filter {:keys [active-only] :as params}]
-  (when-ok [codes (filter/expand-filter code-system filter)]
+  [code-system filter {:keys [active-only] text-filter :filter :as params}]
+  (when-ok [found-codes (filter/expand-filter code-system filter)]
     (into
      #{}
      ((if active-only active-concept-xf concept-xf) code-system params)
-     codes)))
+     (cond->> found-codes
+       text-filter (filter-text-filter code-system text-filter)))))
 
 (defmethod c/find-complete :sct
-  [{{:keys [module-dependency-index concept-index synonym-index]} :sct/context
+  [{{:keys [module-dependency-index concept-index]} :sct/context
     :sct/keys [module-id version] :as code-system} {{:keys [code]} :clause :as params}]
   (when-let [code (parse-sctid code)]
     (when-some [active (context/find-concept module-dependency-index concept-index
                                              module-id version code)]
-      (let [find-synonyms (partial context/find-synonyms module-dependency-index
-                                   synonym-index module-id version)]
-        (cond-> (build-concept code-system find-synonyms code
+      (let [find-synonyms (find-synonyms code-system)
+            find-acceptability (find-acceptability code-system)
+            find-fully-specified-name (find-fully-specified-name code-system)]
+        (cond-> (build-concept code-system find-synonyms find-acceptability
+                               find-fully-specified-name code
                                (assoc params :include-version true
                                       :include-designations true))
           (not active) (assoc :inactive #fhir/boolean true))))))
@@ -181,11 +222,11 @@
   (when-let [code (parse-sctid code)]
     (when-ok [found (filter/satisfies-filter code-system filter code)]
       (when found
-        (let [{{:keys [module-dependency-index synonym-index]}
-               :sct/context :sct/keys [module-id version]} code-system
-              find-synonyms (partial context/find-synonyms module-dependency-index
-                                     synonym-index module-id version)]
-          (build-concept code-system find-synonyms code
+        (let [find-synonyms (find-synonyms code-system)
+              find-acceptability (find-acceptability code-system)
+              find-fully-specified-name (find-fully-specified-name code-system)]
+          (build-concept code-system find-synonyms find-acceptability
+                         find-fully-specified-name code
                          {:include-version true :include-designations true}))))))
 
 (defmethod m/pre-init-spec ::cs/sct [_]
