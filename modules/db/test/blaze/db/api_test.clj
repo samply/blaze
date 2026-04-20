@@ -10542,6 +10542,16 @@
         (is (= 1 (count (d/system-list batch-db))))
         (is (= 1 (d/system-total batch-db))))))
 
+  (testing "new-batch-db"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-open [batch-db-1 (d/new-batch-db (d/db node))
+                  batch-db-2 (d/new-batch-db batch-db-1)]
+
+        (testing "a new batch-db is created"
+          (is (not= batch-db-1 batch-db-2))))))
+
   (testing "compile-compartment-query"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]

@@ -64,6 +64,8 @@
   (or (sr/get-by-url search-param-registry url)
       (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
+(declare new-batch-db)
+
 (defrecord BatchDb [node kv-store snapshot basis-t t since-t]
   p/Db
   (-node [_]
@@ -219,6 +221,11 @@
     (if-ok [search-param (sp-get-by-url db search-param-url)]
       (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param start-type start-id))
       ac/completed-future))
+
+  ;; ---- Batch DB ------------------------------------------------------------
+
+  (-new-batch-db [_]
+    (new-batch-db node basis-t t since-t))
 
   ;; ---- Transaction ---------------------------------------------------------
 
