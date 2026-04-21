@@ -34,7 +34,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cljfmt: 0.16.3
 
@@ -49,7 +49,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         clj-kondo: '2026.01.19'
 
@@ -169,7 +169,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -255,7 +255,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -321,7 +321,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -374,7 +374,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -455,7 +455,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -537,7 +537,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -621,7 +621,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -2670,7 +2670,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
@@ -3100,7 +3100,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@f556541eb28a9303896cee0679ba9f60b898300f # 13.5
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
       with:
         cli: '1.12.4.1629'
 
