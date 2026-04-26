@@ -47,7 +47,7 @@
   {:local/root "../terminology-service"}
 
   commons-codec/commons-codec
-  {:mvn/version "1.21.0"}}
+  {:mvn/version "1.22.0"}}
 
  :deps/prep-lib
  {:alias :build
