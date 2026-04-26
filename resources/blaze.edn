@@ -112,7 +112,14 @@
      :affects-state false
      :resource-types ["Resource"]
      :system-handler #blaze/ref :blaze.fhir.operation/totals
-     :documentation "Retrieves the total counts of resources available by resource type."}]
+     :documentation "Retrieves the total counts of resources available by resource type."}
+   #:blaze.rest-api.operation
+    {:code "versions"
+     :def-uri "http://hl7.org/fhir/OperationDefinition/CapabilityStatement-versions"
+     :affects-state false
+     :resource-types ["Resource"]
+     :system-handler #blaze/ref :blaze.fhir.operation/versions
+     :documentation "Returns the list of supported FHIR versions and the default version."}]
 
   ;;
   ;; FHIR Interactions
@@ -278,6 +285,11 @@
   ;;
   :blaze.fhir.operation/totals
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+
+  ;;
+  ;; FHIR Operation Versions
+  ;;
+  :blaze.fhir.operation/versions {}
 
   ;;
   ;; Admin API
