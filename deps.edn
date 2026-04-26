@@ -55,6 +55,9 @@
   blaze.operation/value-set-expand
   {:local/root "modules/operation-value-set-expand"}
 
+  blaze.operation/versions
+  {:local/root "modules/operation-versions"}
+
   blaze.operation/value-set-validate-code
   {:local/root "modules/operation-value-set-validate-code"}
 
@@ -204,6 +207,7 @@
     "-d" "modules/operation-totals"
     "-d" "modules/operation-value-set-expand"
     "-d" "modules/operation-value-set-validate-code"
+    "-d" "modules/operation-versions"
     "-d" "modules/page-id-cipher"
     "-d" "modules/page-store"
     "-d" "modules/page-store-cassandra"
