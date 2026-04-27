@@ -141,11 +141,11 @@
     {:keys [page-id]} :params :as context}]
   (do-sync [query (compile-query context db)]
     (with-open [batch-db (d/new-batch-db db)]
-      (let [handles (if query
-                      (execute-query batch-db query page-id)
-                      (type-list batch-db (:type context) page-id))]
-        (when-ok [page (build-page* batch-db include-defs page-size handles)]
-          (assoc page :query query))))))
+      (when-ok [handles (if query
+                          (execute-query batch-db query page-id)
+                          (type-list batch-db (:type context) page-id))
+                page (build-page* batch-db include-defs page-size handles)]
+        (assoc page :query query)))))
 
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:

@@ -909,3 +909,99 @@
     (let [elm {:type "Retrieve" :dataType "{foo}Bar"}]
       (given (ba/try-anomaly (c/compile {} elm))
         ::anom/category := ::anom/unsupported))))
+
+(deftest retrieve-execute-query-anomaly-test
+  (testing "an anomaly returned by d/execute-query is propagated as a thrown anomaly"
+    (testing "compartment-query-expr -eval (Patient context with codes)"
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [context
+              {:node node
+               :eval-context "Patient"
+               :library
+               {:codeSystems
+                {:def
+                 [{:name "sys-def-141923"
+                   :id "system-141926"}]}}
+               :terminology-service terminology-service}
+              elm #elm/retrieve
+                   {:type "Observation"
+                    :codes #elm/list [#elm/code ["sys-def-141923"
+                                                 "code-141929"]]}
+              expr (c/compile context elm)
+              db (d/db node)
+              patient (ctu/resource db "Patient" "0")]
+
+          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141940"))]
+            (given (ba/try-anomaly (expr/eval (eval-context db) expr patient))
+              ::anom/category := ::anom/fault
+              ::anom/message := "msg-141940")))))
+
+    (testing "context-expr -eval (Patient context, Encounter data-type, no codes)"
+      (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [context
+              {:node node
+               :eval-context "Patient"
+               :library {}}
+              elm #elm/retrieve {:type "Encounter"}
+              expr (c/compile context elm)
+              db (d/db node)
+              patient (ctu/resource db "Patient" "0")]
+
+          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142211"))]
+            (given (ba/try-anomaly (expr/eval (eval-context db) expr patient))
+              ::anom/category := ::anom/fault
+              ::anom/message := "msg-142211")))))
+
+    (testing "type-query-expr -eval (Unfiltered context with codes)"
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [context
+              {:node node
+               :eval-context "Unfiltered"
+               :library
+               {:codeSystems
+                {:def
+                 [{:name "sys-def-142425"
+                   :id "system-142427"}]}}
+               :terminology-service terminology-service}
+              elm #elm/retrieve
+                   {:type "Observation"
+                    :codes #elm/list [#elm/code ["sys-def-142425"
+                                                 "code-142430"]]}
+              expr (c/compile context elm)
+              db (d/db node)]
+
+          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142447"))]
+            (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+              ::anom/category := ::anom/fault
+              ::anom/message := "msg-142447")))))
+
+    (testing "compartment-query-expr -optimize (Patient context with codes)"
+      (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [context
+              {:node node
+               :eval-context "Patient"
+               :library
+               {:codeSystems
+                {:def
+                 [{:name "sys-def-142624"
+                   :id "system-142626"}]}}
+               :terminology-service terminology-service}
+              elm #elm/retrieve
+                   {:type "Observation"
+                    :codes #elm/list [#elm/code ["sys-def-142624"
+                                                 "code-142628"]]}
+              expr (c/compile context elm)
+              db (d/db node)]
+
+          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142647"))]
+            (given (ba/try-anomaly (c/optimize expr db))
+              ::anom/category := ::anom/fault
+              ::anom/message := "msg-142647")))))))

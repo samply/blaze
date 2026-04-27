@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok throw-anom]]
+   [blaze.anomaly :as ba :refer [throw-anom throw-when]]
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -46,12 +46,12 @@
       (-optimize [expr db]
        ;; if there is no resource, regardless of the individual patient,
        ;; available, just return an empty list for further optimizations
-        (if (coll/empty? (d/execute-query db type-query))
+        (if (coll/empty? (throw-when (d/execute-query db type-query)))
           []
           expr))
       (-eval [_ {:keys [db]} {:keys [id]} _]
         (prom/inc! retrieve-total)
-        (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
+        (coll/eduction (cr/resource-mapper db) (throw-when (d/execute-query db compartment-query id))))
       (-form [_]
         `(~'retrieve ~data-type ~(d/query-clauses compartment-query))))))
 
@@ -82,7 +82,7 @@
       (reify-expr core/Expression
         (-eval [_ {:keys [db]} {:keys [id]} _]
           (prom/inc! retrieve-total)
-          (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
+          (coll/eduction (cr/resource-mapper db) (throw-when (d/execute-query db compartment-query id))))
         (-form [_]
           `(~'retrieve ~data-type))))))
 
@@ -126,7 +126,7 @@
         (when (string? id)
           (coll/eduction
            (cr/resource-mapper db)
-           (d/execute-query db query id)))))
+           (throw-when (d/execute-query db query id))))))
     (-form [_]
       (list 'retrieve (core/-form related-context-expr) data-type (d/query-clauses query)))))
 
@@ -153,7 +153,7 @@
     (reify-expr core/Expression
       (-eval [_ {:keys [db]} _ _]
         (prom/inc! retrieve-total)
-        (coll/eduction (cr/resource-mapper db) (d/execute-query db query)))
+        (coll/eduction (cr/resource-mapper db) (throw-when (d/execute-query db query))))
       (-form [_]
         `(~'retrieve ~data-type ~(d/query-clauses query))))))
 

@@ -35,6 +35,22 @@
       (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
                           (bs/size start-value) start-value)))))
 
+(defn target-ids
+  "Returns a reducible collection of resource ids as byte string that are
+  referenced by `resource-handle` via a search-param with `c-hash` having a type
+  with `target-tid`.
+
+  Example: a patient that is referenced by an observation via the subject search
+  param."
+  {:arglists
+   '([batch-db resource-handle c-hash target-tid])}
+  [{:keys [snapshot]} {:keys [tid id hash]} c-hash target-tid]
+  (coll/eduction
+   u/reference-id-mapper
+   (let [start-value (codec/tid-byte-string target-tid)]
+     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
+                         (bs/size start-value) start-value))))
+
 (defn single-version-id-targets
   "Returns a reducible collection of single-version-ids that are referenced by
   `single-version-id` via a search-param with `c-hash` having a type with

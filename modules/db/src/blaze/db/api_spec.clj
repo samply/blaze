@@ -187,7 +187,8 @@
 
 (s/fdef d/execute-query
   :args (s/cat :db :blaze.db/db :query :blaze.db/query :args (s/* any?))
-  :ret (cs/coll-of :blaze.db/resource-handle))
+  :ret (s/or :handles (cs/coll-of :blaze.db/resource-handle)
+             :anomaly ::anom/anomaly))
 
 (s/fdef d/explain-query
   :args (s/cat :db :blaze.db/db :query :blaze.db/query)
