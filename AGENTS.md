@@ -41,6 +41,7 @@ Rigorous adherence to these patterns is required:
   * Use existing functions if possible.
   * Create a function if code is used more than two times.
 * **Testing:**
+  * **Test-Driven Development (mandatory):** Never change production code without first writing a failing test that captures the new behaviour. Write the test, see it fail, then make it pass. This applies to bug fixes (regression test first), new features, and contract changes (e.g. allowing an anomaly return value).
   * **Spec Instrumentation:** Always enable spec instrumentation in tests to catch spec violations early.
     * Require `[clojure.spec.test.alpha :as st]`.
     * Call `(st/instrument)` at the top level of the test namespace.

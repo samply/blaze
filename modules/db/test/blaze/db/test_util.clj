@@ -108,6 +108,9 @@
 
    :blaze/scheduler {}})
 
+(def non-referential-integrity-config
+  (assoc-in config [:blaze.db/node :enforce-referential-integrity] false))
+
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
   `binding-form` and finally halted.

@@ -110,6 +110,16 @@
    (rao/resource-handle-xf batch-db)
    (remove rh/deleted?)))
 
+(def reference-id-mapper
+  "Returns a transducer that filters all upstream byte-string values for
+  reference tid-id values, returning the ids of the referenced resources as
+  byte string."
+  (comp
+   ;; there has to be at least some bytes for the id
+   (filter #(< codec/tid-size (bs/size %)))
+   (map bs/as-read-only-byte-buffer)
+   (map (fn [buf] (bb/get-int! buf) (bs/from-byte-buffer! buf)))))
+
 (defn invalid-decimal-value-msg [code value]
   (format "Invalid decimal value `%s` in search parameter `%s`." value code))
 

@@ -20,7 +20,7 @@
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
-   [blaze.db.test-util :refer [config with-system-data]]
+   [blaze.db.test-util :refer [config non-referential-integrity-config with-system-data]]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
@@ -641,7 +641,7 @@
                 :num-changes := 2)))))))
 
   (testing "patient with an observation referencing it without enforcing referential integrity"
-    (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
+    (with-system-data [{:blaze.db/keys [node]} non-referential-integrity-config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]
         [:create {:fhir/type :fhir/Observation :id "0"
                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -1590,7 +1590,7 @@
   (testing "not enforcing referential integrity"
     (testing "creating an Observation where the subject doesn't exist"
       (testing "create"
-        (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
+        (with-system-data [{:blaze.db/keys [node]} non-referential-integrity-config]
           [[[:create
              {:fhir/type :fhir/Observation :id "0"
               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -3956,7 +3956,7 @@
               [1 :id] := "4"))))))
 
   (testing "doesn't return the deleted patient"
-    (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
+    (with-system-data [{:blaze.db/keys [node]} non-referential-integrity-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
         [:put {:fhir/type :fhir/Patient :id "2"}]
@@ -5595,7 +5595,48 @@
               [1 :id] := "1")
 
             (testing "count query"
-              (is (= 2 (count-type-query node "Procedure" clauses))))))))))
+              (is (= 2 (count-type-query node "Procedure" clauses)))))))))
+
+  (testing "procedure with non-resolving patient reference"
+    (with-system-data [{:blaze.db/keys [node]} non-referential-integrity-config]
+      [[[:put {:fhir/type :fhir/Procedure :id "0"
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "http://snomed.info/sct"
+                    :code #fhir/code "243141005"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Procedure :id "1"
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "http://snomed.info/sct"
+                    :code #fhir/code "243141005"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+
+      (let [clauses [["code" "http://snomed.info/sct|243141005"]
+                     ["patient" "Patient/0" "Patient/1"]]]
+        (testing "patient-type query optimazation is used"
+          (given (explain-type-query node "Procedure" clauses)
+            :query-type := :compartment))
+
+        (testing "all procedures are found"
+          (given (pull-type-query node "Procedure" clauses)
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1"))
+
+        (testing "it is possible to start with the second procedure"
+          (given (pull-type-query node "Procedure" clauses "1")
+            count := 1
+            [0 :id] := "1")))
+
+      (testing "_include of the non-existing patient returns nothing"
+        (let [db (d/db node)
+              procedure (d/resource-handle db "Procedure" "0")]
+          (is (coll/empty? (d/include db procedure "patient"))))))))
 
 (deftest type-query-observation-date-subject-test
   (with-system-data [{:blaze.db/keys [node]} config]
