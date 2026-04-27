@@ -232,7 +232,7 @@ services:
       start_period: 30s
 
   ingress:
-    image: "haproxy:3.3@sha256:686e3fdeee32531066a42569a6d8d0c024bcd1c1720b9e34da00ab80de4a56e4"
+    image: "haproxy:3.3@sha256:011a9e9706551ee3eebdc4272546c440f19b1d8d135d7e72d7aac501b3c1ac11"
     ports:
     - "8080:8080"
     volumes:
