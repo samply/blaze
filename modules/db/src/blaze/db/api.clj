@@ -341,7 +341,9 @@
   You may optimize the query before running it, especially if plan to run it
   multiple times with different arguments.
 
-  Returns a reducible collection of all matching resource handles.
+  Returns a reducible collection of all matching resource handles or an
+  anomaly in case of errors (for example, when a paging argument can't be
+  resolved).
 
   See:
    * compile-type-query

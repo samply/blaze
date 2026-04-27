@@ -71,7 +71,9 @@
     ["/Encounter" {:name :Encounter/type}]
     ["/Encounter/__page/{page-id}" {:name :Encounter/page}]
     ["/Practitioner" {:name :Practitioner/type}]
-    ["/PractitionerRole" {:name :PractitionerRole/type}]]
+    ["/PractitionerRole" {:name :PractitionerRole/type}]
+    ["/Procedure" {:name :Procedure/type}]
+    ["/Procedure/__page/{page-id}" {:name :Procedure/page}]]
    {:syntax :bracket
     :path context-path}))
 
@@ -119,6 +121,9 @@
    :blaze.page-store/local {}
    :blaze.test/fixed-rng {}
    :blaze.test/page-id-cipher {}))
+
+(def ^:private non-referential-integrity-config
+  (assoc-in config [:blaze.db/node :enforce-referential-integrity] false))
 
 (deftest init-test
   (testing "nil config"
@@ -212,6 +217,19 @@
                                   (wrap-job-scheduler job-scheduler#)
                                   wrap-error)
              ~(or node-binding '_) node#
+             ~(or page-id-cipher-binding '_) page-id-cipher#]
+         ~@body))))
+
+(defmacro with-handler-non-ref [[handler-binding & [page-id-cipher-binding]] & more]
+  (let [[txs body] (api-stub/extract-txs-body more)]
+    `(with-system-data [{node# :blaze.db/node
+                         page-id-cipher# :blaze.test/page-id-cipher
+                         job-scheduler# :blaze/job-scheduler
+                         handler# :blaze.interaction/search-type} non-referential-integrity-config]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# page-id-cipher#)
+                                  (wrap-job-scheduler job-scheduler#)
+                                  wrap-error)
              ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
 
@@ -3249,6 +3267,112 @@
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "incomplete"
           [:issue 0 :diagnostics] := #fhir/string "msg-181758")))))
+
+(deftest handler-execute-query-anomaly-test
+  (testing "an anomaly returned by d/execute-query is propagated as an error response"
+    (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141022"))]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler {:params {"_id" "0"}})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :diagnostics] := #fhir/string "msg-141022"))))))
+
+(deftest handler-procedure-non-resolving-patient-reference-test
+  (testing "procedure with non-resolving patient reference"
+    (with-handler-non-ref [handler page-id-cipher]
+      [[[:put {:fhir/type :fhir/Procedure :id "0"
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "http://snomed.info/sct"
+                    :code #fhir/code "243141005"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Procedure :id "1"
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "http://snomed.info/sct"
+                    :code #fhir/code "243141005"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+
+      (testing "all procedures are found"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (match-of "Procedure")
+                 :params {"code" "http://snomed.info/sct|243141005"
+                          "patient" "Patient/0,Patient/1"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Procedure
+              :id := "0"))
+
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Procedure
+              :id := "1"))))
+
+      (testing "second page"
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match (page-match-of "Procedure")
+                 :path-params (page-path-params page-id-cipher
+                                                {"code" "http://snomed.info/sct|243141005"
+                                                 "patient" "Patient/0,Patient/1"
+                                                 "__t" "1" "__page-id" "1"})})]
+
+          (is (= 200 status))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Procedure
+              :id := "1"))))
+
+      (testing "_include of the non-existing patient yields no included entries"
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match (match-of "Procedure")
+                 :params {"code" "http://snomed.info/sct|243141005"
+                          "patient" "Patient/0,Patient/1"
+                          "_include" "Procedure:patient"}})]
+
+          (is (= 200 status))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "the bundle contains only the two matched procedures"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "no entry has search mode include"
+            (is (every? #(= #fhir/code "match" (-> % :search :mode))
+                        (:entry body)))))))))
 
 (deftest handler-query-stats-test
   (with-handler [handler]

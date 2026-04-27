@@ -20,5 +20,6 @@
   blaze.interaction.search-compartment-test/with-handler clojure.core/fn
   blaze.interaction.search-system-test/with-handler clojure.core/fn
   blaze.interaction.search-type-test/with-handler clojure.core/fn
+  blaze.interaction.search-type-test/with-handler-non-ref clojure.core/fn
   blaze.interaction.transaction-test/with-handler clojure.core/fn
   blaze.interaction.update-test/with-handler clojure.core/fn}}

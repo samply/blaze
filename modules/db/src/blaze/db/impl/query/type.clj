@@ -27,6 +27,7 @@
 
 (def ^:private ^:const ^long patient-compartment-hash (codec/c-hash "Patient"))
 (def ^:private ^:const ^long patient-code-hash (codec/c-hash "patient"))
+(def ^:private ^:const ^long patient-tid (codec/tid "Patient"))
 
 (defn- resource-handle-not-found-msg [{:keys [t since-t]} tid id]
   (format "Resource handle `%s/%s` not found in database with t=%d and since-t=%d."
@@ -45,14 +46,13 @@
   (format "Patient resource handle referenced from `%s/%s` not found in database with t=%d and since-t=%d."
           (name (:fhir/type resource-handle)) (:id resource-handle) t since-t))
 
-(defn- first-referenced-patient [batch-db resource-handle]
-  (or (coll/first (spc/targets batch-db resource-handle patient-code-hash))
+(defn- first-referenced-patient-id [batch-db resource-handle]
+  (or (coll/first (spc/target-ids batch-db resource-handle patient-code-hash patient-tid))
       (ba/fault (first-referenced-patient-not-found-msg batch-db resource-handle))))
 
 (defn- start-patient-id [batch-db tid start-id]
-  (when-ok [start-handle (non-deleted-resource-handle batch-db tid start-id)
-            start-patient-handle (first-referenced-patient batch-db start-handle)]
-    (codec/id-byte-string (:id start-patient-handle))))
+  (when-ok [start-handle (non-deleted-resource-handle batch-db tid start-id)]
+    (first-referenced-patient-id batch-db start-handle)))
 
 ;; A type query over resources with `tid` and patients with `patient-ids`.
 (defrecord PatientTypeQuery [tid patient-ids compartment-clause scan-clauses

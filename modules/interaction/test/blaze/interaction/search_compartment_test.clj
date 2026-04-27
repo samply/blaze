@@ -3,7 +3,9 @@
 
   https://www.hl7.org/fhir/http.html#vsearch"
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-cache :as rc]
    [blaze.fhir.test-util :refer [link-url]]
@@ -722,3 +724,107 @@
                 [:issue 0 :severity] := #fhir/code "error"
                 [:issue 0 :code] := #fhir/code "incomplete"
                 [:issue 0 :diagnostics] := #fhir/string "The resource content of `Observation/0` with hash `07F3F62AAE35B3BEF8F1AAA7B4BA3DE6055541BF073A65DFF32B512A460D6D1E` was not found."))))))))
+
+(deftest handler-execute-query-anomaly-test
+  (testing "an anomaly returned by d/execute-query is propagated as an error response"
+    (testing "without clauses"
+      (testing "normal result"
+        (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141655"))]
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler {:path-params {:id "0" :type "Observation"}})]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :diagnostics] := #fhir/string "msg-141655")))))
+
+      (testing "summary result"
+        (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141802"))]
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler {:path-params {:id "0" :type "Observation"}
+                             :params {"_summary" "count"}})]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :diagnostics] := #fhir/string "msg-141802"))))))
+
+    (testing "with clauses and strict handling"
+      (testing "normal result"
+        (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-095512"))]
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler {:path-params {:id "0" :type "Observation"}
+                             :headers {"prefer" "handling=strict"}
+                             :params {"status" "final"}})]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :diagnostics] := #fhir/string "msg-095512")))))
+
+      (testing "summary result"
+        (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-095548"))]
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler {:path-params {:id "0" :type "Observation"}
+                             :headers {"prefer" "handling=strict"}
+                             :params {"status" "final" "_summary" "count"}})]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :diagnostics] := #fhir/string "msg-095548"))))))
+
+    (testing "with clauses and lenient handling"
+      (testing "normal result"
+        (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-100015"))]
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler {:path-params {:id "0" :type "Observation"}
+                             :headers {"prefer" "handling=lenient"}
+                             :params {"status" "final"}})]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :diagnostics] := #fhir/string "msg-100015")))))
+
+      (testing "summary result"
+        (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-100043"))]
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler {:path-params {:id "0" :type "Observation"}
+                             :headers {"prefer" "handling=lenient"}
+                             :params {"status" "final" "_summary" "count"}})]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :diagnostics] := #fhir/string "msg-100043"))))))))

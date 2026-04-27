@@ -1,7 +1,7 @@
 (ns blaze.interaction.search-compartment
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
@@ -29,19 +29,22 @@
     (empty? clauses)
     (do-sync [query (d/compile-compartment-query db code type)]
       (with-open [batch-db (d/new-batch-db db)]
-        {:handles (vec (d/execute-query batch-db query id))}))
+        (when-ok [handles (d/execute-query batch-db query id)]
+          {:handles (vec handles)})))
 
     (identical? :blaze.preference.handling/strict handling)
     (do-sync [query (d/compile-compartment-query db code type clauses)]
       (with-open [batch-db (d/new-batch-db db)]
-        {:handles (vec (d/execute-query batch-db query id))
-         :clauses clauses}))
+        (when-ok [handles (d/execute-query batch-db query id)]
+          {:handles (vec handles)
+           :clauses clauses})))
 
     :else
     (do-sync [query (d/compile-compartment-query-lenient db code type clauses)]
       (with-open [batch-db (d/new-batch-db db)]
-        {:handles (vec (d/execute-query batch-db query id))
-         :clauses (d/query-clauses query)}))))
+        (when-ok [handles (d/execute-query batch-db query id)]
+          {:handles (vec handles)
+           :clauses (d/query-clauses query)})))))
 
 (defn- entries-xf [{{:keys [page-offset page-size]} :params :as context}]
   (comp
