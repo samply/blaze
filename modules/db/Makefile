@@ -15,13 +15,13 @@ test-slow: prep
 	clojure -M:test:kaocha --profile :ci --focus-meta :slow
 
 test-coverage: prep
-	clojure -M:test:coverage --skip-meta :slow
+	clojure -M:test:kaocha:coverage --skip-meta :slow
 
 test-coverage-slow: prep
-	clojure -M:test:coverage --focus-meta :slow
+	clojure -M:test:kaocha:coverage --focus-meta :slow
 
 test-coverage-all: prep
-	clojure -M:test:coverage
+	clojure -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree

@@ -18,7 +18,7 @@ test-mem-size-large-heap: prep
 	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx32g -M:test:kaocha --profile :ci --focus-meta :mem-size
 
 test-coverage: prep
-	clojure -M:test:coverage --skip-meta :mem-size
+	clojure -M:test:kaocha:coverage --skip-meta :mem-size
 
 deps-tree:
 	clojure -X:deps tree

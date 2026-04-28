@@ -98,6 +98,12 @@
     {:git/tag "v0.10.13" :git/sha "ae52edf"}}
    :ns-default build}
 
+  :deps-prep
+  {:deps
+   {org.clojure/tools.deps
+    {:mvn/version "0.29.1598"}}
+   :ns-default deps-prep}
+
   ;; For both toying at the terminal and/or use via any nREPL-aware IDE
   ;; Automatically loads Emacs' middleware.
   :emacs-repl

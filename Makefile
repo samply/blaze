@@ -15,7 +15,7 @@ lint-shell:
 	./scripts/lint-shell.sh
 
 lint-root: lint-workflows lint-shell
-	clj-kondo --lint dev src test deps.edn
+	clj-kondo --lint dev src test deps.edn build.clj deps_prep.clj
 
 lint: $(MODULES) lint-root
 
@@ -65,6 +65,9 @@ deps-tree:
 deps-list:
 	clojure -X:deps list
 
+deps-prep:
+	clojure -T:deps-prep run
+
 emacs-repl: prep
 	clj -M:test:emacs-repl
 
@@ -81,4 +84,4 @@ cloc-test: $(MODULES) cloc-test-root
 .PHONY: $(MODULES) lint-root lint-shell lint build-job-ig prep \
     test-root test test-coverage clean-root clean build-frontend \
     build-frontend-image build-ingress uberjar build-all \
-	outdated deps-tree deps-list emacs-repl cloc-prod cloc-test
+	outdated deps-tree deps-list deps-prep emacs-repl cloc-prod cloc-test
