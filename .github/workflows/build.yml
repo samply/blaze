@@ -88,6 +88,41 @@ jobs:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources/*.json
 
+  prep-deps:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+      with:
+        distribution: 'temurin'
+        java-version: '25'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@02f5a82b79a547523e664fe8a7a32ea14884d7b2 # 13.6.0
+      with:
+        cli: '1.12.4.1629'
+
+    - name: Check out Git repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      with:
+        path: ~/.m2/repository
+        key: maven-${{ hashFiles('**/deps.edn') }}
+        restore-keys: maven
+
+    - name: Cache Clojure GitLibs
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      with:
+        path: ~/.gitlibs
+        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        restore-keys: gitlibs
+
+    - name: Prepare Dependencies
+      run: make deps-prep
+
   test:
     strategy:
       matrix:
@@ -159,7 +194,7 @@ jobs:
 
       fail-fast: false
 
-    needs: job-ig
+    needs: [ job-ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -245,7 +280,7 @@ jobs:
 
       fail-fast: false
 
-    needs: job-ig
+    needs: [ job-ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -312,6 +347,7 @@ jobs:
         - 'large-heap'
       fail-fast: false
 
+    needs: prep-deps
     runs-on: ubuntu-24.04
 
     steps:
@@ -364,7 +400,7 @@ jobs:
         - 'slow'
       fail-fast: false
 
-    needs: job-ig
+    needs: [ job-ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -445,7 +481,7 @@ jobs:
         - '25'
       fail-fast: false
 
-    needs: job-ig
+    needs: [ job-ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -464,14 +500,14 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ~/.gitlibs
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
@@ -523,7 +559,7 @@ jobs:
         fail_ci_if_error: true
 
   build:
-    needs: job-ig
+    needs: [ job-ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     permissions:
@@ -608,6 +644,7 @@ jobs:
         tags: ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }}
 
   build-frontend:
+    needs: prep-deps
     runs-on: ubuntu-24.04
 
     permissions:

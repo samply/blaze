@@ -22,7 +22,7 @@ test: cql-test prep
 	clojure -M:test:kaocha --profile :ci
 
 test-coverage: cql-test prep
-	clojure -M:test:coverage
+	clojure -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree
