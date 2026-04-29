@@ -7502,10 +7502,72 @@
           ::anom/category := ::anom/incorrect
           ::anom/message := "The search parameter with code `class` in the chain `class.code` must be of type reference but has type `token`."))
 
-      (testing "chain of length 3"
-        (given (pull-type-query node "Encounter" [["diagnosis.patient.name" "foo"]])
-          ::anom/category := ::anom/unsupported
-          ::anom/message := "Search parameter chains longer than 2 are currently not supported. Please file an issue."))))
+      (testing "chain with non-reference intermediate segment"
+        (given (pull-type-query node "Encounter" [["diagnosis:Condition.code.system" "foo"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "The search parameter with code `code` in the chain `diagnosis:Condition.code.system` must be of type reference but has type `token`.")
+
+        (given (pull-type-query node "Condition" [["encounter.type.system" "foo"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "The search parameter with code `type` in the chain `encounter.type.system` must be of type reference but has type `token`."))
+
+      (testing "chain with ambiguous intermediate segment"
+        (given (pull-type-query node "Encounter" [["diagnosis:Condition.subject.name" "foo"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Ambiguous target types `Group, Patient` in the chain `diagnosis:Condition.subject.name`. Please use a modifier to constrain the type."))))
+
+  (testing "Encounter -> Condition -> Patient (3-hop chain)"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :name [#fhir/HumanName{:family #fhir/string "Foo"}]}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :name [#fhir/HumanName{:family #fhir/string "Bar"}]}]
+        [:put {:fhir/type :fhir/Condition :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Condition :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put {:fhir/type :fhir/Encounter :id "0"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition
+                 #fhir/Reference{:reference #fhir/string "Condition/0"}}]}]
+        [:put {:fhir/type :fhir/Encounter :id "1"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition
+                 #fhir/Reference{:reference #fhir/string "Condition/1"}}]}]]]
+
+      (testing "finds Encounter via 3-hop chain"
+        (given (pull-type-query node "Encounter" [["diagnosis:Condition.patient.family" "Foo"]])
+          count := 1
+          [0 :fhir/type] := :fhir/Encounter
+          [0 :id] := "0"))
+
+      (testing "no match for non-existing leaf value"
+        (given (pull-type-query node "Encounter" [["diagnosis:Condition.patient.family" "non-existing"]])
+          count := 0))
+
+      (testing "second name finds the other Encounter"
+        (given (pull-type-query node "Encounter" [["diagnosis:Condition.patient.family" "Bar"]])
+          count := 1
+          [0 :id] := "1"))))
+
+  (testing "Encounter -> Condition -> Patient (3-hop chain) with modifier on intermediate"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :name [#fhir/HumanName{:family #fhir/string "Foo"}]}]
+        [:put {:fhir/type :fhir/Condition :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Encounter :id "0"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition
+                 #fhir/Reference{:reference #fhir/string "Condition/0"}}]}]]]
+
+      (testing "subject:Patient disambiguates the ambiguous reference"
+        (given (pull-type-query node "Encounter" [["diagnosis:Condition.subject:Patient.family" "Foo"]])
+          count := 1
+          [0 :id] := "0"))))
 
   (testing "Observation"
     (testing "one Patient"
