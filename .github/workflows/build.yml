@@ -1251,6 +1251,15 @@ jobs:
     - name: Download female Patient Resources having inpatient Encounters in 2010
       run: .github/scripts/download-resources-query.sh Patient "gender=female&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 11
 
+    - name: Download Observation Resources of the Patient with Family Name Balistreri607
+      run: .github/scripts/download-resources-query.sh Observation "subject:Patient.family=Balistreri607" 630
+
+    - name: Download Observation Resources of the Patient with Family Name Balistreri607 via Encounter
+      run: .github/scripts/download-resources-query.sh Observation "encounter:Encounter.subject:Patient.family=Balistreri607" 630
+
+    - name: Download Procedure Resources of the Patient with Family Name Balistreri607 via Condition
+      run: .github/scripts/download-resources-query.sh Procedure "reason-reference:Condition.subject:Patient.family=Balistreri607" 23
+
     - name: Download Observations using _elements=subject
       run: .github/scripts/download-observations-elements.sh
 

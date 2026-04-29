@@ -311,35 +311,35 @@
   (format "Ambiguous target types `%s` in the chain `%s`. Please use a modifier to constrain the type."
           types s))
 
+(defn- parse-chain
+  "Recursively parses a chained search parameter `segments` (already split by
+  `.`) starting at `type`. Returns a tuple `[search-param modifier]` or an
+  anomaly. `s` is the original chain string used for error messages."
+  [index type segments s]
+  (let [[code modifier] (str/split (first segments) #":" 2)]
+    (if (= 1 (count segments))
+      (when-ok [search-param (resolve-search-param index type code)]
+        (cond-> [search-param] modifier (conj modifier)))
+      (when-ok [{:keys [type target] :as ref-search-param} (resolve-search-param index type code)]
+        (cond
+          (not= "reference" type)
+          (ba/incorrect (reference-type-msg code s type))
+
+          (= 1 (count target))
+          (when-ok [[search-param modifier] (parse-chain index (first target) (rest segments) s)]
+            (spc/chained-search-param search-param ref-search-param (first target)
+                                      s modifier))
+
+          modifier
+          (when-ok [[search-param modifier-2] (parse-chain index modifier (rest segments) s)]
+            (spc/chained-search-param search-param ref-search-param modifier
+                                      s modifier-2))
+
+          :else
+          (ba/incorrect (ambiguous-target-type-msg (str/join ", " target) s)))))))
+
 (defn- parse-search-param* [index [type s]]
-  (let [chain (str/split s #"\.")]
-    (case (count chain)
-      1
-      (let [[code :as ret] (str/split (first chain) #":" 2)]
-        (when-ok [search-param (resolve-search-param index type code)]
-          (assoc ret 0 search-param)))
-
-      2
-      (let [[[ref-code ref-modifier] [code modifier]] (mapv #(str/split % #":" 2) chain)]
-        (when-ok [{:keys [type target] :as ref-search-param} (resolve-search-param index type ref-code)]
-          (cond
-            (not= "reference" type)
-            (ba/incorrect (reference-type-msg ref-code s type))
-
-            (= 1 (count target))
-            (when-ok [search-param (resolve-search-param index (first target) code)]
-              (spc/chained-search-param search-param ref-search-param (first target)
-                                        s modifier))
-
-            ref-modifier
-            (when-ok [search-param (resolve-search-param index ref-modifier code)]
-              (spc/chained-search-param search-param ref-search-param ref-modifier
-                                        s modifier))
-
-            :else
-            (ba/incorrect (ambiguous-target-type-msg (str/join ", " target) s)))))
-
-      (ba/unsupported "Search parameter chains longer than 2 are currently not supported. Please file an issue."))))
+  (parse-chain index type (str/split s #"\.") s))
 
 (defn- patient-compartment-search-param-codes*
   [index compartment-resource-index-by-type type]

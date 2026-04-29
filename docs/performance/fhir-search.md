@@ -252,6 +252,30 @@ If only a subset of a resource's information is needed, the `_elements` search p
 
 ¹ resources per second
 
+## Forward Chaining Search
+
+This section evaluates the performance of FHIR search queries with one forward chaining search parameter.
+
+### Script
+
+The script `forward-chaining-search.sh` is used.
+
+### Counting
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |   13 k |     0.81 |  0.004 |  16.0 k |
+
+¹ resources per second
+
+### Downloading Resources
+
+| System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
+|--------|---------|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |   13 k |     8.15 |  0.029 |   1.6 k |
+
+¹ resources per second
+
 ## Token and Forward Chaining Search
 
 This section evaluates the performance of FHIR search queries with one badly discriminating token search parameter and one well discriminating forward chaining search parameter.
