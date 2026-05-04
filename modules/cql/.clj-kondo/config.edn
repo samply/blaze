@@ -14,8 +14,11 @@
   blaze.elm.compiler.macros/defnaryop clojure.core/defn
   blaze.elm.compiler.macros/defaggop clojure.core/defn
   blaze.elm.compiler.macros/defbinopp clojure.core/defn
-  blaze.elm.compiler.macros/defunopp clojure.core/defn
-  blaze.elm.compiler.macros/reify-expr clojure.core/reify}
+  blaze.elm.compiler.macros/defunopp clojure.core/defn}
+
+ :hooks
+ {:analyze-call
+  {blaze.elm.compiler.macros/reify-expr hooks.reify-expr/reify-expr}}
 
  :linters
  {;; because of macros in modules/cql/src/blaze/elm/compiler.clj
