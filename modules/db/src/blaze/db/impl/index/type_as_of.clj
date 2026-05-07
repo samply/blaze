@@ -5,6 +5,7 @@
    [blaze.byte-string :as bs]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.util :as u :refer [read-t!]]
    [blaze.db.impl.iterators :as i]))
 
 (set! *warn-on-reflection* true)
@@ -14,27 +15,28 @@
   (+ codec/tid-size codec/t-size))
 
 (defn- decoder
-  "Returns a function which decodes an resource handle out of a key and a value
-  byte buffer from the TypeAsOf index if not purged at `base-t`.
+  "Returns a transducer which decodes resource handles out of key and value byte
+  buffers from the TypeAsOf index. Skips entries purged at `base-t` and
+  terminates the reduction once `since-t` is reached, because the index is
+  ordered by descending `t` within a `tid` prefix.
 
-  Closes over a shared byte array for id decoding, because the String
-  constructor creates a copy of the id bytes anyway. Can only be used from one
-  thread.
+  Can only be used from one thread.
 
   Both buffers are changed during decoding and have to be reset accordingly
   after decoding."
   [tid base-t since-t]
-  (let [ib (byte-array codec/max-id-size)]
-    (fn [[kb vb]]
-      (bb/set-position! kb codec/tid-size)
-      (let [resource-t (codec/descending-long (bb/get-long! kb))]
-        (when (< (long since-t) resource-t)
-          (rh/resource-handle!
-           tid
-           (let [id-size (bb/remaining kb)]
-             (bb/copy-into-byte-array! kb ib 0 id-size)
-             (codec/id ib 0 id-size))
-           resource-t base-t vb))))))
+  (let [read-id! (u/id-reader)]
+    (fn [rf]
+      (fn
+        ([result] (rf result))
+        ([result [kb vb]]
+         (bb/set-position! kb codec/tid-size)
+         (let [resource-t (read-t! kb)]
+           (if (< (long since-t) resource-t)
+             (let [handle (rh/resource-handle! tid (read-id! kb) resource-t
+                                               base-t vb)]
+               (cond-> result handle (rf handle)))
+             (reduced result))))))))
 
 (defn encode-key
   "Encodes the key of the TypeAsOf index from `tid`, `t` and `id`."
@@ -61,5 +63,5 @@
   [snapshot t since-t tid start-t start-id]
   (i/prefix-entries
    snapshot :type-as-of-index
-   (keep (decoder tid t since-t))
+   (decoder tid t since-t)
    codec/tid-size (start-key tid start-t start-id)))

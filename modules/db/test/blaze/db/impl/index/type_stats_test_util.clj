@@ -1,14 +1,15 @@
 (ns blaze.db.impl.index.type-stats-test-util
   (:require
    [blaze.byte-buffer :as bb]
-   [blaze.db.impl.codec :as codec]))
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.util :refer [read-t!]]))
 
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn decode-key [byte-array]
   (let [buf (bb/wrap byte-array)]
     {:type (codec/tid->type (bb/get-int! buf))
-     :t (codec/descending-long (bb/get-long! buf))}))
+     :t (read-t! buf)}))
 
 (defn decode-val [byte-array]
   (let [buf (bb/wrap byte-array)]
