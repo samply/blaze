@@ -2850,6 +2850,10 @@
   (testing "references"
     (is (empty? (type/references #fhir/Address{}))))
 
+  (testing "rejects null elements in line"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/address {:line [nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Address{} "#fhir/Address{}"
@@ -3068,6 +3072,12 @@
   (testing "references"
     (is (empty? (type/references #fhir/CodeableConcept{}))))
 
+  (testing "rejects null elements in coding"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/codeable-concept {:coding [nil]})))
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/codeable-concept {:coding [#fhir/Coding{} nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/CodeableConcept{} "#fhir/CodeableConcept{}"
@@ -3155,6 +3165,10 @@
       #fhir/ContactDetail{} 24
       #fhir/ContactDetail{:id "foo"} 88))
 
+  (testing "rejects null elements in telecom"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/contact-detail {:telecom [nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/ContactDetail{} "#fhir/ContactDetail{}"
@@ -3214,6 +3228,10 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/Contributor{} 24
       #fhir/Contributor{:id "foo"} 88))
+
+  (testing "rejects null elements in contact"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/contributor {:contact [nil]}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3284,6 +3302,10 @@
       #fhir/DataRequirement{} 48
       #fhir/DataRequirement{:id "id-151412"} 120))
 
+  (testing "rejects null elements in profile"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/data-requirement {:profile [nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/DataRequirement{} "#fhir/DataRequirement{}"
@@ -3319,6 +3341,10 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir.DataRequirement/codeFilter{} 32
       #fhir.DataRequirement/codeFilter{:id "id-151412"} 104))
+
+  (testing "rejects null elements in code"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/data-requirement-code-filter {:code [nil]}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3512,6 +3538,10 @@
       #fhir/Dosage{} 72
       #fhir/Dosage{:id "foo"} 136))
 
+  (testing "rejects null elements in additionalInstruction"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/dosage {:additionalInstruction [nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Dosage{} "#fhir/Dosage{}"
@@ -3694,6 +3724,10 @@
   (testing "references"
     (is (empty? (type/references #fhir/HumanName{}))))
 
+  (testing "rejects null elements in given"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/human-name {:given [nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/HumanName{} "#fhir/HumanName{}"
@@ -3850,6 +3884,10 @@
        {:extension
         [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/2"}}]}
       [["Patient" "2"]]))
+
+  (testing "rejects null elements in profile"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/meta {:profile [nil]}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4442,6 +4480,10 @@
       #fhir/Signature{} 40
       #fhir/Signature{:id "id-151412"} 112))
 
+  (testing "rejects null elements in type"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/signature {:type [nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Signature{} "#fhir/Signature{}"
@@ -4469,6 +4511,10 @@
       #fhir/Timing{} 32
       #fhir/Timing{:id "foo"} 96))
 
+  (testing "rejects null elements in event"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/timing {:event [nil]}))))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Timing{} "#fhir/Timing{}"
@@ -4495,6 +4541,10 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir.Timing/repeat{} 72
       #fhir.Timing/repeat{:id "foo"} 136))
+
+  (testing "rejects null elements in dayOfWeek"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/timing-repeat {:dayOfWeek [nil]}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4525,6 +4575,10 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/TriggerDefinition{} 32
       #fhir/TriggerDefinition{:id "foo"} 96))
+
+  (testing "rejects null elements in data"
+    (is (thrown-with-msg? IllegalArgumentException #"null element"
+                          (type/trigger-definition {:data [nil]}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
