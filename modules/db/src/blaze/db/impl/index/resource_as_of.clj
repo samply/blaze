@@ -5,6 +5,7 @@
    [blaze.byte-string :as bs]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.util :refer [read-t!]]
    [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv]
    [blaze.fhir.hash :as hash])
@@ -106,14 +107,14 @@
   `since-t`."
   [tid ib base-t since-t]
   (fn [kb vb]
-    (let [resource-t (codec/descending-long (bb/get-long! kb))]
+    (let [resource-t (read-t! kb)]
       (when (and (< (long since-t) resource-t) (<= resource-t (long base-t)))
         (new-entry! tid ib vb resource-t base-t)))))
 
 (defn- system-entry-creator
   [tid-box ib base-t since-t]
   (fn [kb vb]
-    (let [resource-t (codec/descending-long (bb/get-long! kb))]
+    (let [resource-t (read-t! kb)]
       (when (and (< (long since-t) resource-t) (<= resource-t (long base-t)))
         (new-entry! @tid-box ib vb resource-t base-t)))))
 
@@ -290,16 +291,24 @@
               (start-key start-tid start-id t))))
 
 (defn- decoder
-  "Returns a function which decodes a resource handle out of a key and a value
-  byte buffers from the ResourceAsOf index if not purged at `t`.
+  "Returns a transducer which decodes resource handles out of key and value byte
+  buffers from the ResourceAsOf index. Skips entries purged at `base-t` and
+  terminates the reduction once `since-t` is reached, because the index is
+  ordered by descending `t` within an iteration prefix.
 
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
   [tid id tid-id-size base-t since-t]
-  (fn [[kb vb]]
-    (let [resource-t (codec/descending-long (bb/get-long! kb tid-id-size))]
-      (when (< (long since-t) resource-t)
-        (rh/resource-handle! tid id resource-t base-t vb)))))
+  (fn [rf]
+    (fn
+      ([result] (rf result))
+      ([result [kb vb]]
+       (let [resource-t (read-t! kb tid-id-size)]
+         (if (< (long since-t) resource-t)
+           (if-let [handle (rh/resource-handle! tid id resource-t base-t vb)]
+             (rf result handle)
+             result)
+           (reduced result)))))))
 
 (defn instance-history
   "Returns a reducible collection of all historic resource handles of the
@@ -309,7 +318,7 @@
   (let [tid-id-size (+ codec/tid-size (bs/size id))]
     (i/prefix-entries
      snapshot :resource-as-of-index
-     (keep (decoder tid (codec/id-string id) tid-id-size t since-t))
+     (decoder tid (codec/id-string id) tid-id-size t since-t)
      (inc tid-id-size) (start-key tid id start-t))))
 
 (defn- resource-handle* [iter target-buf key-buf value-buf tid id base-t since-t]
@@ -342,7 +351,7 @@
           (bb/clear! value-buf)
           (kv/value! iter value-buf)
           ;; build resource handle
-          (let [resource-t (codec/descending-long (bb/get-long! key-buf tid-id-size))]
+          (let [resource-t (read-t! key-buf tid-id-size)]
             (when (< (long since-t) resource-t)
               (rh/resource-handle!
                tid
