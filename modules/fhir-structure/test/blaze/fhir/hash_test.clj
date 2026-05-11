@@ -1,6 +1,7 @@
 (ns blaze.fhir.hash-test
   (:require
    [blaze.byte-buffer :as bb]
+   [blaze.byte-string-builder :as bsb]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.structure-definition-repo]
@@ -35,14 +36,6 @@
   (is (= "C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
          (str (hash/generate {:fhir/type :fhir/Patient :id "0"})))))
 
-(deftest byte-buffer-test
-  (satisfies-prop 10000
-    (prop/for-all [hash (s/gen :blaze.resource/hash)]
-      (let [bb (bb/allocate hash/size)]
-        (hash/into-byte-buffer! bb hash)
-        (bb/flip! bb)
-        (= hash (hash/from-byte-buffer! bb))))))
-
 (deftest byte-array-test
   (satisfies-prop 10000
     (prop/for-all [hash (s/gen :blaze.resource/hash)]
@@ -58,6 +51,13 @@
       (= (hash/prefix hash)
          (apply hash/prefix [hash])))))
 
+(deftest into-byte-string-builder-test
+  (satisfies-prop 10000
+    (prop/for-all [hash (s/gen :blaze.resource/hash)]
+      (let [builder (bsb/allocate hash/size)]
+        (hash/into-byte-string-builder! builder hash)
+        (= hash (hash/from-byte-buffer! (bb/wrap (bsb/to-bytes builder))))))))
+
 (deftest prefix-into-byte-buffer-test
   (satisfies-prop 10000
     (prop/for-all [hash (s/gen :blaze.resource/hash)]
@@ -65,6 +65,13 @@
         (hash/prefix-into-byte-buffer! bb hash)
         (bb/flip! bb)
         (= (hash/prefix hash) (apply hash/prefix-from-byte-buffer! [bb]))))))
+
+(deftest prefix-into-byte-string-builder-test
+  (satisfies-prop 10000
+    (prop/for-all [hash (s/gen :blaze.resource/hash)]
+      (let [builder (bsb/allocate hash/prefix-size)]
+        (hash/prefix-into-byte-string-builder! builder hash)
+        (= (hash/prefix hash) (hash/prefix-from-byte-buffer! (bb/wrap (bsb/to-bytes builder))))))))
 
 (deftest prefix-from-hex
   (satisfies-prop 10000

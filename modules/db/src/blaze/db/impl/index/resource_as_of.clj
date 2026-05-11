@@ -3,6 +3,7 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.util :refer [read-t!]]
@@ -152,16 +153,16 @@
                (search-entry! kb vb)
                result))))))))
 
-(defn- encode-key-buf [tid id t]
-  (-> (bb/allocate (unchecked-add-int except-id-key-size (bs/size id)))
-      (bb/put-int! tid)
-      (bb/put-byte-string! id)
-      (bb/put-long! (codec/descending-long t))))
+(defn- encode-key-builder [tid id t]
+  (-> (bsb/allocate (unchecked-add-int except-id-key-size (bs/size id)))
+      (bsb/put-int! tid)
+      (bsb/put-byte-string! id)
+      (bsb/put-long! (codec/descending-long t))))
 
 (defn encode-key
   "Encodes the key of the ResourceAsOf index from `tid`, `id` and `t`."
   [tid id t]
-  (bb/array (encode-key-buf tid id t)))
+  (bsb/to-bytes (encode-key-builder tid id t)))
 
 (defn- starts-with-tid? [^long tid]
   (fn [[kb]] (= tid (bb/get-int! kb))))
@@ -181,9 +182,7 @@
   ([tid]
    (-> (Ints/toByteArray tid) bs/from-byte-array))
   ([tid start-id t]
-   (-> (encode-key-buf tid start-id t)
-       bb/flip!
-       bs/from-byte-buffer!)))
+   (bsb/build (encode-key-builder tid start-id t))))
 
 (defn type-list
   "Returns a reducible collection of all resource handles of type with `tid`
@@ -421,10 +420,9 @@
             result)))))))
 
 (defn- encode-seek-key [tid]
-  (-> (bb/allocate codec/tid-size)
-      (bb/put-int! tid)
-      bb/flip!
-      (bs/from-byte-buffer!)))
+  (-> (bsb/allocate codec/tid-size)
+      (bsb/put-int! tid)
+      bsb/build))
 
 (defn estimated-scan-size
   "Returns a relative estimation for the amount of work to do while scanning the

@@ -2,6 +2,7 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.fhir.spec.type.system])
   (:import
    [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
@@ -295,19 +296,17 @@
 (defn tid-id
   "Returns a byte string with `tid` followed by `id`."
   [tid id]
-  (-> (bb/allocate (unchecked-add-int tid-size (bs/size id)))
-      (bb/put-int! tid)
-      (bb/put-byte-string! id)
-      bb/flip!
-      bs/from-byte-buffer!))
+  (-> (bsb/allocate (unchecked-add-int tid-size (bs/size id)))
+      (bsb/put-int! tid)
+      (bsb/put-byte-string! id)
+      bsb/build))
 
 (defn tid-byte-string
   "Returns a byte string with `tid`."
   [tid]
-  (-> (bb/allocate tid-size)
-      (bb/put-int! tid)
-      bb/flip!
-      bs/from-byte-buffer!))
+  (-> (bsb/allocate tid-size)
+      (bsb/put-int! tid)
+      bsb/build))
 
 (defn string
   "Returns a lexicographically sortable byte string of the `string` value."
@@ -345,67 +344,58 @@
           val (- (abs (.longValue val)) (bit-and 1 mask))]
       (condp > val
         (bit-shift-left 1 3)
-        (-> (bb/allocate 1)
-            (bb/put-byte! (bit-xor (bit-or val (bit-shift-left 0x10 3)) mask))
-            bb/flip!
-            bs/from-byte-buffer!)
+        (-> (bsb/allocate 1)
+            (bsb/put-byte! (bit-xor (bit-or val (bit-shift-left 0x10 3)) mask))
+            bsb/build)
 
         (bit-shift-left 1 11)
-        (-> (bb/allocate 2)
-            (bb/put-short! (bit-xor (bit-or val (bit-shift-left 0x11 11)) mask))
-            bb/flip!
-            bs/from-byte-buffer!)
+        (-> (bsb/allocate 2)
+            (bsb/put-short! (bit-xor (bit-or val (bit-shift-left 0x11 11)) mask))
+            bsb/build)
 
         (bit-shift-left 1 19)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x12 19)) mask)]
-          (-> (bb/allocate 3)
-              (bb/put-byte! (bit-shift-right masked 16))
-              (bb/put-short! masked)
-              bb/flip!
-              bs/from-byte-buffer!))
+          (-> (bsb/allocate 3)
+              (bsb/put-byte! (bit-shift-right masked 16))
+              (bsb/put-short! masked)
+              bsb/build))
 
         (bit-shift-left 1 27)
-        (-> (bb/allocate 4)
-            (bb/put-int! (bit-xor (bit-or val (bit-shift-left 0x13 27)) mask))
-            bb/flip!
-            bs/from-byte-buffer!)
+        (-> (bsb/allocate 4)
+            (bsb/put-int! (bit-xor (bit-or val (bit-shift-left 0x13 27)) mask))
+            bsb/build)
 
         (bit-shift-left 1 35)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x14 35)) mask)]
-          (-> (bb/allocate 5)
-              (bb/put-byte! (bit-shift-right masked 32))
-              (bb/put-int! masked)
-              bb/flip!
-              bs/from-byte-buffer!))
+          (-> (bsb/allocate 5)
+              (bsb/put-byte! (bit-shift-right masked 32))
+              (bsb/put-int! masked)
+              bsb/build))
 
         (bit-shift-left 1 43)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x15 43)) mask)]
-          (-> (bb/allocate 6)
-              (bb/put-short! (bit-shift-right masked 32))
-              (bb/put-int! masked)
-              bb/flip!
-              bs/from-byte-buffer!))
+          (-> (bsb/allocate 6)
+              (bsb/put-short! (bit-shift-right masked 32))
+              (bsb/put-int! masked)
+              bsb/build))
 
         (bit-shift-left 1 51)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x16 51)) mask)]
-          (-> (bb/allocate 7)
-              (bb/put-byte! (bit-shift-right masked 48))
-              (bb/put-short! (bit-shift-right masked 32))
-              (bb/put-int! masked)
-              bb/flip!
-              bs/from-byte-buffer!))
+          (-> (bsb/allocate 7)
+              (bsb/put-byte! (bit-shift-right masked 48))
+              (bsb/put-short! (bit-shift-right masked 32))
+              (bsb/put-int! masked)
+              bsb/build))
 
         (bit-shift-left 1 59)
-        (-> (bb/allocate 8)
-            (bb/put-long! (bit-xor (bit-or val (bit-shift-left 0x17 59)) mask))
-            bb/flip!
-            bs/from-byte-buffer!)
+        (-> (bsb/allocate 8)
+            (bsb/put-long! (bit-xor (bit-or val (bit-shift-left 0x17 59)) mask))
+            bsb/build)
 
-        (-> (bb/allocate 9)
-            (bb/put-byte! (bit-xor (bit-shift-left 0x18 3) mask))
-            (bb/put-long! (bit-xor val mask))
-            bb/flip!
-            bs/from-byte-buffer!)))))
+        (-> (bsb/allocate 9)
+            (bsb/put-byte! (bit-xor (bit-shift-left 0x18 3) mask))
+            (bsb/put-long! (bit-xor val mask))
+            bsb/build)))))
 
 (defn decode-number [byte-string]
   (let [bb (bs/as-read-only-byte-buffer byte-string)

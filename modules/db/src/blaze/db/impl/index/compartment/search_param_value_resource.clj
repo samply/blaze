@@ -1,8 +1,8 @@
 (ns blaze.db.impl.index.compartment.search-param-value-resource
   "Functions for accessing the CompartmentSearchParamValueResource index."
   (:require
-   [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.coll.core :as coll]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
@@ -20,25 +20,23 @@
 
 (defn- encode-seek-key
   ([co-c-hash co-res-id sp-c-hash tid value]
-   (-> (bb/allocate (key-size co-res-id value))
-       (bb/put-int! co-c-hash)
-       (bb/put-null-terminated-byte-string! co-res-id)
-       (bb/put-int! sp-c-hash)
-       (bb/put-int! tid)
-       (bb/put-byte-string! value)
-       bb/flip!
-       bs/from-byte-buffer!))
+   (-> (bsb/allocate (key-size co-res-id value))
+       (bsb/put-int! co-c-hash)
+       (bsb/put-null-terminated-byte-string! co-res-id)
+       (bsb/put-int! sp-c-hash)
+       (bsb/put-int! tid)
+       (bsb/put-byte-string! value)
+       bsb/build))
   ([co-c-hash co-res-id sp-c-hash tid value prefix-length id]
-   (-> (bb/allocate (+ (long prefix-length) 2 (bs/size id)))
-       (bb/put-int! co-c-hash)
-       (bb/put-null-terminated-byte-string! co-res-id)
-       (bb/put-int! sp-c-hash)
-       (bb/put-int! tid)
-       (bb/put-null-terminated-byte-string! value)
-       (bb/put-byte-string! id)
-       (bb/put-byte! (bs/size id))
-       bb/flip!
-       bs/from-byte-buffer!)))
+   (-> (bsb/allocate (+ (long prefix-length) 2 (bs/size id)))
+       (bsb/put-int! co-c-hash)
+       (bsb/put-null-terminated-byte-string! co-res-id)
+       (bsb/put-int! sp-c-hash)
+       (bsb/put-int! tid)
+       (bsb/put-null-terminated-byte-string! value)
+       (bsb/put-byte-string! id)
+       (bsb/put-byte! (bs/size id))
+       bsb/build)))
 
 (defn- index-handles* [snapshot prefix-length start-key]
   (coll/eduction
@@ -66,17 +64,17 @@
   [compartment sp-c-hash tid value id hash]
   (let [co-c-hash (coll/nth compartment 0)
         co-res-id (coll/nth compartment 1)]
-    (-> (bb/allocate (+ (key-size co-res-id value)
-                        (bs/size id) 2 hash/prefix-size))
-        (bb/put-int! co-c-hash)
-        (bb/put-null-terminated-byte-string! co-res-id)
-        (bb/put-int! sp-c-hash)
-        (bb/put-int! tid)
-        (bb/put-null-terminated-byte-string! value)
-        (bb/put-byte-string! id)
-        (bb/put-byte! (bs/size id))
-        (hash/prefix-into-byte-buffer! hash)
-        bb/array)))
+    (-> (bsb/allocate (+ (key-size co-res-id value)
+                         (bs/size id) 2 hash/prefix-size))
+        (bsb/put-int! co-c-hash)
+        (bsb/put-null-terminated-byte-string! co-res-id)
+        (bsb/put-int! sp-c-hash)
+        (bsb/put-int! tid)
+        (bsb/put-null-terminated-byte-string! value)
+        (bsb/put-byte-string! id)
+        (bsb/put-byte! (bs/size id))
+        (hash/prefix-into-byte-string-builder! hash)
+        bsb/to-bytes)))
 
 (defn index-entry
   "Returns an entry of the CompartmentSearchParamValueResource index build from

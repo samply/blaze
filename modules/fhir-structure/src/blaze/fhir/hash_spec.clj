@@ -5,7 +5,9 @@
    [blaze.fhir.hash.spec]
    [blaze.fhir.spec]
    [blaze.fhir.spec.type-spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s])
+  (:import
+   [blaze ByteString$Builder]))
 
 (s/fdef hash/hash?
   :args (s/cat :x any?)
@@ -19,13 +21,19 @@
   :args (s/cat :s string?)
   :ret :blaze.resource/hash)
 
-(s/fdef hash/into-byte-buffer!
-  :args (s/cat :byte-buffer bb/byte-buffer? :hash :blaze.resource/hash)
-  :ret bb/byte-buffer?)
+(s/fdef hash/into-byte-string-builder!
+  :args (s/cat :builder #(instance? ByteString$Builder %)
+               :hash :blaze.resource/hash)
+  :ret #(instance? ByteString$Builder %))
 
 (s/fdef hash/prefix-into-byte-buffer!
   :args (s/cat :byte-buffer bb/byte-buffer? :hash :blaze.resource/hash)
   :ret bb/byte-buffer?)
+
+(s/fdef hash/prefix-into-byte-string-builder!
+  :args (s/cat :builder #(instance? ByteString$Builder %)
+               :hash :blaze.resource/hash)
+  :ret #(instance? ByteString$Builder %))
 
 (s/fdef hash/to-byte-array
   :args (s/cat :hash :blaze.resource/hash)
