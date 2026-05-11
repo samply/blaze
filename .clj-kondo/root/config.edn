@@ -61,6 +61,7 @@
    {blaze.anomaly ba
     blaze.async.comp ac
     blaze.byte-string bs
+    blaze.byte-string-builder bsb
     blaze.coll.spec cs
     blaze.db.api d
     blaze.db.kv kv

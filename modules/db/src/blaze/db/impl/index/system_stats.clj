@@ -16,6 +16,7 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.iterators :as i])
   (:import
@@ -40,10 +41,10 @@
                 (bs/from-byte-array (encode-key t))))
 
 (defn- encode-value [{:keys [total num-changes]}]
-  (-> (bb/allocate value-size)
-      (bb/put-long! total)
-      (bb/put-long! num-changes)
-      bb/array))
+  (-> (bsb/allocate value-size)
+      (bsb/put-long! total)
+      (bsb/put-long! num-changes)
+      bsb/to-bytes))
 
 (defn index-entry
   "Returns an entry of the SystemStats index build from `t` and `value`.

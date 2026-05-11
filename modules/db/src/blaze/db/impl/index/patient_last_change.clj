@@ -3,8 +3,10 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.util :refer [read-t!]]
    [blaze.db.kv :as kv])
   (:import
    [java.nio.charset StandardCharsets]))
@@ -13,10 +15,10 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn- encode-key [patient-id t]
-  (-> (bb/allocate (unchecked-add-int (bs/size patient-id) codec/t-size))
-      (bb/put-byte-string! patient-id)
-      (bb/put-long! (codec/descending-long ^long t))
-      bb/array))
+  (-> (bsb/allocate (unchecked-add-int (bs/size patient-id) codec/t-size))
+      (bsb/put-byte-string! patient-id)
+      (bsb/put-long! (codec/descending-long ^long t))
+      bsb/to-bytes))
 
 (defn index-entry [patient-id t]
   [:patient-last-change-index (encode-key patient-id t) bytes/empty])
@@ -31,8 +33,7 @@
           patient-id-size (bs/size patient-id)]
       (when (and (< patient-id-size (bb/remaining bb))
                  (= patient-id (bs/from-byte-buffer! bb patient-id-size)))
-        (-> (bb/get-long! bb)
-            (codec/descending-long))))))
+        (read-t! bb)))))
 
 (def ^:private state-key
   (.getBytes "patient-last-change-state" StandardCharsets/ISO_8859_1))
@@ -40,10 +41,10 @@
 (defn- encode-state [{:keys [type t]}]
   (if (identical? :current type)
     (byte-array [0])
-    (-> (bb/allocate (inc Long/BYTES))
-        (bb/put-byte! 1)
-        (bb/put-long! t)
-        bb/array)))
+    (-> (bsb/allocate (inc Long/BYTES))
+        (bsb/put-byte! 1)
+        (bsb/put-long! t)
+        bsb/to-bytes)))
 
 (defn- decode-state [bytes]
   (let [buf (bb/wrap bytes)]

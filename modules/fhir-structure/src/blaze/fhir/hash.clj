@@ -1,7 +1,9 @@
 (ns blaze.fhir.hash
   (:require
-   [blaze.byte-buffer :as bb])
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string-builder :as bsb])
   (:import
+   [blaze ByteString$Builder]
    [blaze.fhir Hash]
    [blaze.fhir.spec.type Base]
    [com.fasterxml.jackson.core JsonGenerator]
@@ -28,18 +30,24 @@
 (defn from-hex [s]
   (Hash/fromHex s))
 
-(defn into-byte-buffer! [byte-buffer hash]
-  (.copyTo ^Hash hash byte-buffer)
-  byte-buffer)
+(defn into-byte-string-builder! [builder hash]
+  (.copyTo ^Hash hash ^ByteString$Builder builder)
+  builder)
 
 (defn prefix-into-byte-buffer!
   [byte-buffer hash]
   (bb/put-int! byte-buffer (.prefix ^Hash hash)))
 
-(defn to-byte-array [hash]
-  (-> (bb/allocate size)
-      (into-byte-buffer! hash)
-      (bb/array)))
+(defn prefix-into-byte-string-builder!
+  [builder hash]
+  (bsb/put-int! builder (.prefix ^Hash hash)))
+
+(defn to-byte-array
+  "Returns a copy of `hash` as byte array."
+  [hash]
+  (-> (bsb/allocate size)
+      (into-byte-string-builder! hash)
+      bsb/to-bytes))
 
 (defn prefix
   "Returns the first 4 bytes of `hash`."

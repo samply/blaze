@@ -5,7 +5,7 @@
    * TypeAsOf
    * SystemAsOf"
   (:require
-   [blaze.byte-buffer :as bb]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.system-as-of :as sao]
    [blaze.db.impl.index.type-as-of :as tao]
@@ -23,16 +23,16 @@
 
 (defn- encode-value
   ([hash num-changes op]
-   (-> (bb/allocate rao/min-value-size)
-       (hash/into-byte-buffer! hash)
-       (bb/put-long! (state num-changes op))
-       bb/array))
+   (-> (bsb/allocate rao/min-value-size)
+       (hash/into-byte-string-builder! hash)
+       (bsb/put-long! (state num-changes op))
+       bsb/to-bytes))
   ([hash num-changes op purged-at]
-   (-> (bb/allocate rao/max-value-size)
-       (hash/into-byte-buffer! hash)
-       (bb/put-long! (state num-changes op))
-       (bb/put-long! purged-at)
-       bb/array)))
+   (-> (bsb/allocate rao/max-value-size)
+       (hash/into-byte-string-builder! hash)
+       (bsb/put-long! (state num-changes op))
+       (bsb/put-long! purged-at)
+       bsb/to-bytes)))
 
 (defn index-entries
   ([tid id t hash num-changes op]

@@ -1,7 +1,7 @@
 (ns blaze.db.impl.codec.date
   (:require
-   [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.codec :refer [number]]
    [blaze.fhir.spec.type.system :as system]))
 
@@ -18,12 +18,11 @@
   (number (system/date-time-upper-bound date-time)))
 
 (defn- encode-range* [lower-bound upper-bound]
-  (-> (bb/allocate (+ 2 (bs/size lower-bound) (bs/size upper-bound)))
-      (bb/put-null-terminated-byte-string! lower-bound)
-      (bb/put-byte-string! upper-bound)
-      (bb/put-byte! (bs/size lower-bound))
-      bb/flip!
-      bs/from-byte-buffer!))
+  (-> (bsb/allocate (+ 2 (bs/size lower-bound) (bs/size upper-bound)))
+      (bsb/put-null-terminated-byte-string! lower-bound)
+      (bsb/put-byte-string! upper-bound)
+      (bsb/put-byte! (bs/size lower-bound))
+      bsb/build))
 
 (defn encode-range
   "Encodes the implicit range of `date-time` or the explicit range from `start`

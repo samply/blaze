@@ -3,6 +3,7 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.single-version-id :as svi]
@@ -39,22 +40,23 @@
       (bb/put-int! hash-prefix)
       (bb/put-int! c-hash)))
 
-(defn- encode-key-buf-1 [size tid id hash c-hash]
-  (-> (bb/allocate size)
-      (encode-key-buf-1! tid id hash c-hash)))
-
-(defn- encode-key-buf
-  ([tid id hash c-hash]
-   (encode-key-buf-1 (key-size id) tid id hash c-hash))
-  ([tid id hash c-hash value]
-   (-> (encode-key-buf-1 (+ (key-size id) (bs/size value)) tid id hash c-hash)
-       (bb/put-byte-string! value))))
+(defn- encode-key-builder-1! [builder tid id hash c-hash]
+  (-> builder
+      (bsb/put-int! tid)
+      (bsb/put-null-terminated-byte-string! id)
+      (hash/prefix-into-byte-string-builder! hash)
+      (bsb/put-int! c-hash)))
 
 (defn- encode-key
   ([tid id hash c-hash]
-   (-> (encode-key-buf tid id hash c-hash) bb/flip! bs/from-byte-buffer!))
+   (-> (bsb/allocate (key-size id))
+       (encode-key-builder-1! tid id hash c-hash)
+       bsb/build))
   ([tid id hash c-hash value]
-   (-> (encode-key-buf tid id hash c-hash value) bb/flip! bs/from-byte-buffer!)))
+   (-> (bsb/allocate (+ (key-size id) (bs/size value)))
+       (encode-key-builder-1! tid id hash c-hash)
+       (bsb/put-byte-string! value)
+       bsb/build)))
 
 (defn next-value
   "Returns the decoded value of the key that is at or past the key encoded from
@@ -191,20 +193,15 @@
    (prefix-keys* snapshot (+ (key-size id) (long prefix-length))
                  (encode-key tid id hash c-hash start-value))))
 
-(defn- hash-prefix-encode-key-buf-1 [size tid id hash-prefix c-hash]
-  (-> (bb/allocate size)
-      (hash-prefix-encode-key-buf-1! tid id hash-prefix c-hash)))
-
-(defn- hash-prefix-encode-key-buf
-  [tid id hash-prefix c-hash value]
-  (-> (hash-prefix-encode-key-buf-1 (+ (key-size id) (bs/size value)) tid id hash-prefix c-hash)
-      (bb/put-byte-string! value)))
-
 (defn- hash-prefix-encode-key
   [tid id hash-prefix c-hash value]
-  (-> (hash-prefix-encode-key-buf tid id hash-prefix c-hash value)
-      bb/flip!
-      bs/from-byte-buffer!))
+  (-> (bsb/allocate (+ (key-size id) (bs/size value)))
+      (bsb/put-int! tid)
+      (bsb/put-null-terminated-byte-string! id)
+      (bsb/put-int! hash-prefix)
+      (bsb/put-int! c-hash)
+      (bsb/put-byte-string! value)
+      bsb/build))
 
 (defn hash-prefix-prefix-keys
   "Returns a reducible collection of decoded values from keys starting at
@@ -217,5 +214,8 @@
 
 (defn index-entry [tid id hash c-hash value]
   [:resource-value-index
-   (bb/array (encode-key-buf tid id hash c-hash value))
+   (-> (bsb/allocate (+ (key-size id) (bs/size value)))
+       (encode-key-builder-1! tid id hash c-hash)
+       (bsb/put-byte-string! value)
+       bsb/to-bytes)
    bytes/empty])

@@ -1,5 +1,6 @@
 package blaze.fhir;
 
+import blaze.ByteString;
 import com.google.common.io.BaseEncoding;
 
 import java.nio.ByteBuffer;
@@ -35,6 +36,13 @@ public final class Hash {
     }
 
     public void copyTo(ByteBuffer target) {
+        target.putLong(l0);
+        target.putLong(l1);
+        target.putLong(l2);
+        target.putLong(l3);
+    }
+
+    public void copyTo(ByteString.Builder target) {
         target.putLong(l0);
         target.putLong(l1);
         target.putLong(l2);

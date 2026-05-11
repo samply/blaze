@@ -1,11 +1,10 @@
 (ns blaze.byte-string-test
   (:require
-   [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.byte-string-spec]
    [blaze.test-util :as tu :refer [ba bb bytes=]]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]]))
+   [clojure.test :as test :refer [are deftest testing]]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -47,28 +46,6 @@
       (bb 0x01) 1 #blaze/byte-string"01"
       (bb 0x01 0x02) 1 #blaze/byte-string"01"
       (bb 0x01 0x02) 2 #blaze/byte-string"0102")))
-
-(deftest from-byte-buffer-null-terminated-test
-  (testing "empty byte buffer"
-    (is (nil? (bs/from-byte-buffer-null-terminated! (bb)))))
-
-  (testing "one non-null byte"
-    (is (nil? (bs/from-byte-buffer-null-terminated! (bb 0x01)))))
-
-  (testing "one null byte"
-    (let [bb (bb 0x00)]
-      (is (= #blaze/byte-string"" (bs/from-byte-buffer-null-terminated! bb)))
-      (is (zero? (bb/remaining bb)))))
-
-  (testing "one non-null byte followed by one null byte"
-    (let [bb (bb 0x01 0x00)]
-      (is (= #blaze/byte-string"01" (bs/from-byte-buffer-null-terminated! bb)))
-      (is (zero? (bb/remaining bb)))))
-
-  (testing "one non-null byte followed by one null byte and one non-null byte"
-    (let [bb (bb 0x01 0x00 0x01)]
-      (is (= #blaze/byte-string"01" (bs/from-byte-buffer-null-terminated! bb)))
-      (is (= 1 (bb/remaining bb))))))
 
 (deftest from-hex-test
   (are [s bs] (= bs (bs/from-hex s))

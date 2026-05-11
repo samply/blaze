@@ -1,7 +1,6 @@
 (ns blaze.byte-string
   (:refer-clojure :exclude [< <= > concat empty nth subs])
   (:require
-   [blaze.byte-buffer :as bb]
    [clojure.string :as str])
   (:import
    [blaze ByteString]
@@ -60,17 +59,6 @@
    (ByteString/copyFrom ^ByteBuffer byte-buffer))
   ([byte-buffer size]
    (ByteString/copyFrom ^ByteBuffer byte-buffer (int size))))
-
-(defn from-byte-buffer-null-terminated!
-  "Returns the bytes from `byte-buffer` up to (exclusive) a null byte (0x00) as
-  byte string ot nil if `byte-buffer` doesn't include a null byte.
-
-  Increments the position of `byte-buffer` up to including the null byte."
-  [byte-buffer]
-  (when-let [size (bb/size-up-to-null byte-buffer)]
-    (let [bs (from-byte-buffer! byte-buffer size)]
-      (bb/get-byte! byte-buffer)
-      bs)))
 
 (defn from-hex [s]
   (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))

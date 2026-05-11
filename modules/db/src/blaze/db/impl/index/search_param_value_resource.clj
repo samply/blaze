@@ -2,8 +2,8 @@
   "Functions for accessing the SearchParamValueResource index."
   (:refer-clojure :exclude [keys])
   (:require
-   [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.coll.core :as coll]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
@@ -43,35 +43,31 @@
 
 (defn encode-seek-key
   ([c-hash tid]
-   (-> (bb/allocate base-key-size)
-       (bb/put-int! c-hash)
-       (bb/put-int! tid)
-       bb/flip!
-       bs/from-byte-buffer!))
+   (-> (bsb/allocate base-key-size)
+       (bsb/put-int! c-hash)
+       (bsb/put-int! tid)
+       bsb/build))
   ([c-hash tid value]
-   (-> (bb/allocate (key-size value))
-       (bb/put-int! c-hash)
-       (bb/put-int! tid)
-       (bb/put-byte-string! value)
-       bb/flip!
-       bs/from-byte-buffer!))
+   (-> (bsb/allocate (key-size value))
+       (bsb/put-int! c-hash)
+       (bsb/put-int! tid)
+       (bsb/put-byte-string! value)
+       bsb/build))
   ([c-hash tid value id]
-   (-> (bb/allocate (key-size value id))
-       (bb/put-int! c-hash)
-       (bb/put-int! tid)
-       (bb/put-null-terminated-byte-string! value)
-       (bb/put-byte-string! id)
-       (bb/put-byte! (bs/size id))
-       bb/flip!
-       bs/from-byte-buffer!)))
+   (-> (bsb/allocate (key-size value id))
+       (bsb/put-int! c-hash)
+       (bsb/put-int! tid)
+       (bsb/put-null-terminated-byte-string! value)
+       (bsb/put-byte-string! id)
+       (bsb/put-byte! (bs/size id))
+       bsb/build)))
 
 (defn- encode-seek-key-full-value [c-hash tid value]
-  (-> (bb/allocate (inc (key-size value)))
-      (bb/put-int! c-hash)
-      (bb/put-int! tid)
-      (bb/put-null-terminated-byte-string! value)
-      bb/flip!
-      bs/from-byte-buffer!))
+  (-> (bsb/allocate (inc (key-size value)))
+      (bsb/put-int! c-hash)
+      (bsb/put-int! tid)
+      (bsb/put-null-terminated-byte-string! value)
+      bsb/build))
 
 (def ^:private max-hash-prefix
   #blaze/byte-string"FFFFFFFF")
@@ -240,14 +236,14 @@
     (encode-seek-key c-hash tid start-value))))
 
 (defn encode-key [c-hash tid value id hash]
-  (-> (bb/allocate (unchecked-add-int (key-size value id) hash/prefix-size))
-      (bb/put-int! c-hash)
-      (bb/put-int! tid)
-      (bb/put-null-terminated-byte-string! value)
-      (bb/put-byte-string! id)
-      (bb/put-byte! (bs/size id))
-      (hash/prefix-into-byte-buffer! hash)
-      bb/array))
+  (-> (bsb/allocate (unchecked-add-int (key-size value id) hash/prefix-size))
+      (bsb/put-int! c-hash)
+      (bsb/put-int! tid)
+      (bsb/put-null-terminated-byte-string! value)
+      (bsb/put-byte-string! id)
+      (bsb/put-byte! (bs/size id))
+      (hash/prefix-into-byte-string-builder! hash)
+      bsb/to-bytes))
 
 (defn index-entry
   "Returns an entry of the SearchParamValueResource index build from `c-hash`,

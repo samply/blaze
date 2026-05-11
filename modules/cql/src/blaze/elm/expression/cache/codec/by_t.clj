@@ -1,6 +1,7 @@
 (ns blaze.elm.expression.cache.codec.by-t
   (:require
    [blaze.byte-buffer :as bb]
+   [blaze.byte-string-builder :as bsb]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
    [blaze.elm.expression.cache.codec.form :as form])
   (:import
@@ -10,19 +11,19 @@
 (set! *warn-on-reflection* true)
 
 (defn- encode-key [{::bloom-filter/keys [t hash]}]
-  (-> (bb/allocate (+ Long/BYTES 32))
-      (bb/put-long! t)
-      (bb/put-byte-array! (.asBytes ^HashCode hash))
-      bb/array))
+  (-> (bsb/allocate (+ Long/BYTES 32))
+      (bsb/put-long! t)
+      (bsb/put-byte-array! (.asBytes ^HashCode hash))
+      bsb/to-bytes))
 
 (defn- encode-value [{::bloom-filter/keys [expr-form patient-count mem-size]}]
   (let [form (.getBytes ^String expr-form StandardCharsets/UTF_8)]
-    (-> (bb/allocate (+ Integer/BYTES (alength form) Long/BYTES Long/BYTES))
-        (bb/put-int! (alength form))
-        (bb/put-byte-array! form)
-        (bb/put-long! patient-count)
-        (bb/put-long! mem-size)
-        bb/array)))
+    (-> (bsb/allocate (+ Integer/BYTES (alength form) Long/BYTES Long/BYTES))
+        (bsb/put-int! (alength form))
+        (bsb/put-byte-array! form)
+        (bsb/put-long! patient-count)
+        (bsb/put-long! mem-size)
+        bsb/to-bytes)))
 
 (defn put-entry [bloom-filter]
   [:put :cql-bloom-filter-by-t (encode-key bloom-filter)

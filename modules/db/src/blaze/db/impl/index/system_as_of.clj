@@ -3,6 +3,7 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.util :as u :refer [read-t!]]
@@ -42,17 +43,17 @@
 (defn encode-key
   "Encodes the key of the SystemAsOf index from `t`, `tid` and `id`."
   [t tid id]
-  (-> (bb/allocate (unchecked-add-int t-tid-size (bs/size id)))
-      (bb/put-long! (codec/descending-long ^long t))
-      (bb/put-int! tid)
-      (bb/put-byte-string! id)
-      bb/array))
+  (-> (bsb/allocate (unchecked-add-int t-tid-size (bs/size id)))
+      (bsb/put-long! (codec/descending-long ^long t))
+      (bsb/put-int! tid)
+      (bsb/put-byte-string! id)
+      bsb/to-bytes))
 
 (defn- encode-t-tid [start-t start-tid]
-  (-> (bb/allocate t-tid-size)
-      (bb/put-long! (codec/descending-long ^long start-t))
-      (bb/put-int! start-tid)
-      bb/array))
+  (-> (bsb/allocate t-tid-size)
+      (bsb/put-long! (codec/descending-long ^long start-t))
+      (bsb/put-int! start-tid)
+      bsb/to-bytes))
 
 (defn- start-key [start-t start-tid start-id]
   (cond

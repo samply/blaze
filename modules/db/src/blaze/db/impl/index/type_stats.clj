@@ -17,6 +17,7 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.iterators :as i]))
 
@@ -27,10 +28,10 @@
 (def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
 
 (defn- encode-key [tid t]
-  (-> (bb/allocate key-size)
-      (bb/put-int! tid)
-      (bb/put-long! (codec/descending-long ^long t))
-      bb/array))
+  (-> (bsb/allocate key-size)
+      (bsb/put-int! tid)
+      (bsb/put-long! (codec/descending-long ^long t))
+      bsb/to-bytes))
 
 (defn- decode-value! [buf]
   {:total (bb/get-long! buf)
@@ -44,10 +45,10 @@
                 (bs/from-byte-array (encode-key tid t))))
 
 (defn- encode-value [{:keys [total num-changes]}]
-  (-> (bb/allocate value-size)
-      (bb/put-long! total)
-      (bb/put-long! num-changes)
-      bb/array))
+  (-> (bsb/allocate value-size)
+      (bsb/put-long! total)
+      (bsb/put-long! num-changes)
+      bsb/to-bytes))
 
 (defn index-entry
   "Returns an entry of the TypeStats index build from `tid`, `t` and `value`.
