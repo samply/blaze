@@ -60,7 +60,9 @@ There are two main categories of indices in Blaze:
 
 The `ResourceAsOf` index is the primary index for looking up resources. It maps a resource's identifier (`type`, `id`) and a logical timestamp `t` to the `content-hash` of that resource version. It also stores the number of changes (`num-changes`) to the resource, the operation (`op`) that created this version, and an optional `purged-at` timestamp.
 
-This index is used to access the version of a resource at a particular point in time `t`. To find the most current version of a resource for a given `t`, the database queries the index for the greatest `t` less than or equal to the database's `t`.
+The key is encoded as a 4-byte type id (`tid`, a hash of the resource type name), the variable-length logical `id`, and the 8-byte `t`. The `t` is encoded in descending order so that, for a given `(tid, id)` prefix, scanning the index in ascending byte order yields the newest version first. The value packs the 32-byte content hash together with an 8-byte state long that encodes `num-changes` in the upper bits and the operation (`create`, `update`, `delete`) in the lower bits, optionally followed by an 8-byte `purged-at`.
+
+This index is used to access the version of a resource at a particular point in time `t`. To find the most current version of a resource for a given `t`, the database seeks to `(tid, id, t)` and reads the first entry whose stored `t` is less than or equal to the database's `t` — which, due to the descending encoding, is the first key encountered at or after the seek position.
 
 Index entries with a `purged-at` timestamp at or before the current `t` of a database are not considered part of that database.
 
@@ -102,9 +104,11 @@ Similarly, the `SystemAsOf` index uses the key order `t`, `type`, and `id` to pr
 
 The `PatientLastChange` index tracks all changes to resources within a patient's compartment in reverse chronological order. This allows for efficient detection of the last change in a patient's compartment, which is used by the CQL cache to invalidate cached results.
 
+The key is composed of the raw patient `id` bytes followed by an 8-byte `t` encoded in descending order, so that for a given patient a forward seek lands on the most recent change at or before a given `t`.
+
 #### TxSuccess
 
-The `TxSuccess` index maps the logical timestamp `t` to the real-world `java.time.Instant` of a successful transaction.
+The `TxSuccess` index maps the logical timestamp `t` to the real-world `java.time.Instant` of a successful transaction. The underlying column family is configured with a reverse comparator so that an ascending scan visits the most recent transaction first — useful for finding the latest `t` on startup.
 
 > [!NOTE] 
 > Blaze is not bitemporal like XTDB. The time recorded in the history of resources is the transaction time, not a business time. This means that the history reflects the sequence of transactions as they happened and cannot be altered.
@@ -115,7 +119,7 @@ The `TxError` index stores information about failed transactions, including the 
 
 #### TByInstant
 
-The `TByInstant` index is the reverse of `TxSuccess`, mapping a real-world `java.time.Instant` to a logical timestamp `t`. This is used to support the `_since` parameter in history queries.
+The `TByInstant` index is the reverse of `TxSuccess`, mapping a real-world `java.time.Instant` to a logical timestamp `t`. This is used to support the `_since` parameter in history queries. Like `TxSuccess`, the column family uses a reverse comparator so that scans return the most recent instant first.
 
 #### TypeStats
 
@@ -135,7 +139,6 @@ These indices are independent of `t` and are used to find resources based on the
 | ResourceSearchParamValue            | type, id, hash-prefix, search-param, value                     | -     |
 | CompartmentSearchParamValueResource | comp-code, comp-id, search-param, type, value, id, hash-prefix | -     |
 | CompartmentResourceType             | comp-code, comp-id, type, id                                   | -     |
-| SearchParam                         | code, type                                                     | id    |
 | ActiveSearchParams                  | id                                                             | -     |
 
 #### SearchParamValueResource
@@ -177,7 +180,7 @@ We start by scanning through the index starting at the lower bound of `q` and en
 | search-param | type        | value                  | id | hash-prefix |
 |--------------|-------------|------------------------|----|-------------|
 | date         | Observation | 2025-01-01, 2025-01-31 | 1  | 6744ed32    |
-| date         | Observation | 2025-02-01, 2025-02-31 | 2  | b7e3e5f8    |
+| date         | Observation | 2025-02-01, 2025-02-28 | 2  | b7e3e5f8    |
 | date         | Observation | 2025-03-01, 2025-03-31 | 1  | ba9c9b24    |
 
 Search for `2025` results in the index handles `[1, [6744ed32]]`, `[2, [b7e3e5f8]]` and `[1, [ba9c9b24]]`. Note that the index handles are not distinct and not ordered.
@@ -260,7 +263,7 @@ This index is used to find all resources of a specific type that belong to a giv
 
 #### ActiveSearchParams
 
-This index is currently not used.
+This column family is reserved for tracking the set of active search parameters but is currently not used. The set of available search parameters is built in memory at startup by the search parameter registry from the bundled FHIR `SearchParameter` resources, not from this index.
 
 ## Transaction Handling
 
