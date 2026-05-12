@@ -86,10 +86,10 @@
   {:mvn/version "0.4.0"}
 
   org.slf4j/slf4j-nop
-  {:mvn/version "2.0.17"}
+  {:mvn/version "2.0.18"}
 
   org.slf4j/slf4j-jdk-platform-logging
-  {:mvn/version "2.0.17"}}
+  {:mvn/version "2.0.18"}}
 
  :aliases
  {:build
