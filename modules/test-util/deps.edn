@@ -9,4 +9,4 @@
   {:mvn/version "1.1.3"}
 
   org.slf4j/slf4j-nop
-  {:mvn/version "2.0.17"}}}
+  {:mvn/version "2.0.18"}}}
