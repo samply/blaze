@@ -9,7 +9,7 @@
   import Section from '$lib/tailwind/form/section.svelte';
   import TextField from '$lib/tailwind/form/text-field.svelte';
   import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
-  import ResultList from '../result-list.svelte';
+  import ResultList from './result-list.svelte';
 
   let { form }: PageProps = $props();
 </script>

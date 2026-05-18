@@ -118,7 +118,7 @@ export const actions = {
       return fail(400, {
         ...result,
         incorrect: true,
-        msg: error.issue[0]?.diagnostics ?? error.issue[0]?.details?.text
+        msg: error.issue?.[0]?.diagnostics ?? error.issue?.[0]?.details?.text
       });
     }
 

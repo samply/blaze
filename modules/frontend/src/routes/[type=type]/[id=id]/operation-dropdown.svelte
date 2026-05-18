@@ -12,6 +12,7 @@
 {#if ['CodeSystem', 'ValueSet', 'Patient'].includes(params.type)}
   <Dropdown name="Operations">
     {#if params.type === 'CodeSystem'}
+      <DropdownItem name="$lookup" url={resolve('/CodeSystem/[id=id]/$lookup', params)} />
       <DropdownItem
         name="$validate-code"
         url={resolve('/CodeSystem/[id=id]/$validate-code', params)}
