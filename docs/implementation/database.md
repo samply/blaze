@@ -58,13 +58,13 @@ There are two main categories of indices in Blaze:
 
 #### ResourceAsOf
 
-The `ResourceAsOf` index is the primary index for looking up resources. It maps a resource's identifier (`type`, `id`) and a logical timestamp `t` to the `content-hash` of that resource version. It also stores the number of changes (`num-changes`) to the resource, the operation (`op`) that created this version, and an optional `purged-at` timestamp.
+The `ResourceAsOf` index is the primary index for looking up resources. It maps a resource's identifier (`type`, `id`) and a logical timestamp `t` to the `content-hash` of that resource version. It also stores the number of changes (`num-changes`) to the resource, the operation (`op`) that created this version, and an optional `purged-at` logical timestamp.
 
 The key is encoded as a 4-byte type id (`tid`, a hash of the resource type name), the variable-length logical `id`, and the 8-byte `t`. The `t` is encoded in descending order so that, for a given `(tid, id)` prefix, scanning the index in ascending byte order yields the newest version first. The value packs the 32-byte content hash together with an 8-byte state long that encodes `num-changes` in the upper bits and the operation (`create`, `update`, `delete`) in the lower bits, optionally followed by an 8-byte `purged-at`.
 
 This index is used to access the version of a resource at a particular point in time `t`. To find the most current version of a resource for a given `t`, the database seeks to `(tid, id, t)` and reads the first entry whose stored `t` is less than or equal to the database's `t` — which, due to the descending encoding, is the first key encountered at or after the seek position.
 
-Index entries with a `purged-at` timestamp at or before the current `t` of a database are not considered part of that database.
+Index entries with a `purged-at` logical timestamp at or before the current `t` of a database are not considered part of that database.
 
 ##### Example
 
@@ -271,6 +271,18 @@ This column family is reserved for tracking the set of active search parameters 
 2.  This node submits the transaction commands to a central transaction log.
 3.  All nodes (including the submitting node) receive the transaction commands from the log and apply them to their local state.
 
+### Apply-Time Mechanics
+
+A transaction is applied to the local index in three layers, ordered so that the visibility-gating row (`TxSuccess`) is the last thing written:
+
+1.  **Search-parameter indexing — parallel, one WriteBatch per resource.** The resource indexer (`modules/db/src/blaze/db/node/resource_indexer.clj`) fans out across an executor pool: each resource in the transaction is indexed independently and its `SearchParamValueResource`, `ResourceSearchParamValue`, `CompartmentSearchParamValueResource`, and `CompartmentResourceType` entries are written as a per-resource `WriteBatch`. These batches commit in parallel and out of order with respect to each other.
+2.  **Transaction index entries — one WriteBatch.** Once the tx-indexer (`modules/db/src/blaze/db/node/tx_indexer.clj`) has verified the transaction against `db-before`, the resulting entries for `ResourceAsOf`, `TypeAsOf`, `SystemAsOf`, `PatientLastChange`, `TypeStats`, and `SystemStats` are written in a single `WriteBatch`. This batch is written *before* the search-param futures are joined.
+3.  **Transaction success marker — one WriteBatch.** After the search-param futures complete, `TxSuccess` and `TByInstant` are written in a final `WriteBatch`. The head of `TxSuccess` is the authoritative current `t` of the local database value; rows in earlier-written CFs with a higher `t` are not yet visible to readers.
+
+If the tx-indexer rejects the transaction (e.g. referential integrity, version mismatch), a `TxError` entry is written instead and steps 2 and 3 are skipped. The parallel search-param batches kicked off in step 1 are *not* cancelled — any that have already committed leave entries behind. These entries are inert: they carry a `hash-prefix` tied to a content hash that no `ResourceAsOf` row references, and reads always start from `ResourceAsOf`. They are never reached by queries and are not garbage-collected.
+
+A crash between the step 2 batch and the step 3 batch produces a similar situation at the transaction level: `ResourceAsOf` (and the other AsOf indices) carry rows at some `t > head(TxSuccess)`. Startup uses `head(TxSuccess)` as the current `t`, so those rows are invisible until — and unless — the same transaction is re-applied from the log and the step 3 batch lands.
+
 ### Transaction Commands
 
 Blaze supports several transaction commands:
@@ -365,7 +377,7 @@ The `delete-history` command is used to delete the history of a resource.
 
 * get all instance history entries
 * add the `t` of the transaction as `purged-at?` to the value of each of the history entries not only in the ResourceAsOf index, but also in the TypeAsOf and SystemAsOf index
-* remove the number of history entries purged from the number of changes of `type` and thw whole system
+* remove the number of history entries purged from the number of changes of `type` and the whole system
 
 ### Patient Purge
 
