@@ -379,6 +379,14 @@
     :code #fhir/code "read-only"})
 
 (deftest transact-put-test
+  (testing "on empty database"
+    (with-system [{:blaze.db/keys [node]} config]
+      (let [db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])]
+        (testing "the patient is upserted"
+          (given (d/resource-handle db "Patient" "0")
+            :op := :put
+            :num-changes := 1)))))
+
   (testing "one Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
@@ -554,7 +562,8 @@
       (let [db @(d/transact node [[:delete "Patient" "0"]])]
         (testing "the patient is deleted"
           (given (d/resource-handle db "Patient" "0")
-            :op := :delete)))
+            :op := :delete
+            :num-changes := 1)))
 
       (testing "doing a second delete"
         (let [db @(d/transact node [[:delete "Patient" "0"]])]
