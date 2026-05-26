@@ -65,7 +65,7 @@
     org.commonmark/commonmark-ext-gfm-tables]}
 
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
-  {:mvn/version "8.8.1"
+  {:mvn/version "8.10.0"
    :exclusions
    [com.google.code.findbugs/jsr305
     commons-net/commons-net
