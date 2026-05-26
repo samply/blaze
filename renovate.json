@@ -29,13 +29,13 @@
     {
       "groupName": "hapi-fhir",
       "matchPackageNames": [
-        "ca.uhn.hapi.fhir/hapi-fhir*"
+        "ca.uhn.hapi.fhir:hapi-fhir*"
       ]
     },
     {
       "groupName": "hl7-fhir",
       "matchPackageNames": [
-        "ca.uhn.hapi.fhir/org.hl7.fhir*"
+        "ca.uhn.hapi.fhir:org.hl7.fhir*"
       ]
     },
     {
