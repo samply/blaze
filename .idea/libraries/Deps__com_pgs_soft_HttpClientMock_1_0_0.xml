@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.pgs-soft/HttpClientMock:1.0.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/pgs-soft/HttpClientMock/1.0.0/HttpClientMock-1.0.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

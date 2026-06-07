@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: buddy/buddy-auth:3.0.323">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/buddy/buddy-auth/3.0.323/buddy-auth-3.0.323.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

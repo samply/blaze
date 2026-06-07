@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.eclipse.jetty.websocket/jetty-websocket-core-server:12.1.8">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/eclipse/jetty/websocket/jetty-websocket-core-server/12.1.8/jetty-websocket-core-server-12.1.8.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

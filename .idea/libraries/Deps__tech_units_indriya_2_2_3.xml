@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: tech.units/indriya:2.2.3">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/tech/units/indriya/2.2.3/indriya-2.2.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

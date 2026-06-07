@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.eclipse.jgit:7.4.0.202509020913-r">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/eclipse/jgit/org.eclipse.jgit/7.4.0.202509020913-r/org.eclipse.jgit-7.4.0.202509020913-r.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

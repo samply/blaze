@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clj-commons/primitive-math:1.0.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clj-commons/primitive-math/1.0.1/primitive-math-1.0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

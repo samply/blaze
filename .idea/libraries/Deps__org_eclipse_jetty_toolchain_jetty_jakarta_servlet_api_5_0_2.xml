@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.eclipse.jetty.toolchain/jetty-jakarta-servlet-api:5.0.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/eclipse/jetty/toolchain/jetty-jakarta-servlet-api/5.0.2/jetty-jakarta-servlet-api-5.0.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

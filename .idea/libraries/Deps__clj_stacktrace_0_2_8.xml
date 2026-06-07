@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: clj-stacktrace:0.2.8">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clj-stacktrace/clj-stacktrace/0.2.8/clj-stacktrace-0.2.8.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

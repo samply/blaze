@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.github.jnr/jnr-ffi:2.2.11">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/jnr/jnr-ffi/2.2.11/jnr-ffi-2.2.11.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

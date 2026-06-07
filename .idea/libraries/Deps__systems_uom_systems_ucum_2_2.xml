@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: systems.uom/systems-ucum:2.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/systems/uom/systems-ucum/2.2/systems-ucum-2.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

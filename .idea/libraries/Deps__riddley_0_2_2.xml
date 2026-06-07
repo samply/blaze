@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: riddley:0.2.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/riddley/riddley/0.2.2/riddley-0.2.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

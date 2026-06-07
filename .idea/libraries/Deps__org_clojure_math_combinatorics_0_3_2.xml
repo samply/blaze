@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clojure/math.combinatorics:0.3.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojure/math.combinatorics/0.3.2/math.combinatorics-0.3.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

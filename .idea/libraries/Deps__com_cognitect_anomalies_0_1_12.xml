@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.cognitect/anomalies:0.1.12">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/cognitect/anomalies/0.1.12/anomalies-0.1.12.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

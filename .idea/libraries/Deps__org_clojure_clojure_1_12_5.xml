@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clojure/clojure:1.12.5">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojure/clojure/1.12.5/clojure-1.12.5.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

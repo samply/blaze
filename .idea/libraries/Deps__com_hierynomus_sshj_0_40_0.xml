@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.hierynomus/sshj:0.40.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/hierynomus/sshj/0.40.0/sshj-0.40.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

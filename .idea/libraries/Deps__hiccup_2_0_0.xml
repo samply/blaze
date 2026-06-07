@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: hiccup:2.0.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/hiccup/hiccup/2.0.0/hiccup-2.0.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

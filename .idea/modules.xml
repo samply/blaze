@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/modules/admin-api/admin-api.iml" filepath="$PROJECT_DIR$/modules/admin-api/admin-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/anomaly/anomaly.iml" filepath="$PROJECT_DIR$/modules/anomaly/anomaly.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/async/async.iml" filepath="$PROJECT_DIR$/modules/async/async.iml" />
+      <module fileurl="file://$PROJECT_DIR$/blaze.iml" filepath="$PROJECT_DIR$/blaze.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/byte-buffer/byte-buffer.iml" filepath="$PROJECT_DIR$/modules/byte-buffer/byte-buffer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/byte-string/byte-string.iml" filepath="$PROJECT_DIR$/modules/byte-string/byte-string.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/cache-collector/cache-collector.iml" filepath="$PROJECT_DIR$/modules/cache-collector/cache-collector.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/cassandra/cassandra.iml" filepath="$PROJECT_DIR$/modules/cassandra/cassandra.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/coll/coll.iml" filepath="$PROJECT_DIR$/modules/coll/coll.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/cql/cql.iml" filepath="$PROJECT_DIR$/modules/cql/cql.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/db/db.iml" filepath="$PROJECT_DIR$/modules/db/db.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/db-protocols/db-protocols.iml" filepath="$PROJECT_DIR$/modules/db-protocols/db-protocols.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/db-resource-store/db-resource-store.iml" filepath="$PROJECT_DIR$/modules/db-resource-store/db-resource-store.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/db-resource-store-cassandra/db-resource-store-cassandra.iml" filepath="$PROJECT_DIR$/modules/db-resource-store-cassandra/db-resource-store-cassandra.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/db-stub/db-stub.iml" filepath="$PROJECT_DIR$/modules/db-stub/db-stub.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/db-tx-log/db-tx-log.iml" filepath="$PROJECT_DIR$/modules/db-tx-log/db-tx-log.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/db-tx-log-kafka/db-tx-log-kafka.iml" filepath="$PROJECT_DIR$/modules/db-tx-log-kafka/db-tx-log-kafka.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/executor/executor.iml" filepath="$PROJECT_DIR$/modules/executor/executor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/extern-terminology-service/extern-terminology-service.iml" filepath="$PROJECT_DIR$/modules/extern-terminology-service/extern-terminology-service.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/fhir-client/fhir-client.iml" filepath="$PROJECT_DIR$/modules/fhir-client/fhir-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/fhir-path/fhir-path.iml" filepath="$PROJECT_DIR$/modules/fhir-path/fhir-path.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/fhir-structure/fhir-structure.iml" filepath="$PROJECT_DIR$/modules/fhir-structure/fhir-structure.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/fhir-test-util/fhir-test-util.iml" filepath="$PROJECT_DIR$/modules/fhir-test-util/fhir-test-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/frontend/frontend.iml" filepath="$PROJECT_DIR$/modules/frontend/frontend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/frontend-e2e/frontend-e2e.iml" filepath="$PROJECT_DIR$/modules/frontend-e2e/frontend-e2e.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/http-client/http-client.iml" filepath="$PROJECT_DIR$/modules/http-client/http-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/interaction/interaction.iml" filepath="$PROJECT_DIR$/modules/interaction/interaction.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/jepsen/jepsen.iml" filepath="$PROJECT_DIR$/modules/jepsen/jepsen.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/job-async-interaction/job-async-interaction.iml" filepath="$PROJECT_DIR$/modules/job-async-interaction/job-async-interaction.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/job-compact/job-compact.iml" filepath="$PROJECT_DIR$/modules/job-compact/job-compact.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/job-re-index/job-re-index.iml" filepath="$PROJECT_DIR$/modules/job-re-index/job-re-index.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/job-scheduler/job-scheduler.iml" filepath="$PROJECT_DIR$/modules/job-scheduler/job-scheduler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/job-test-util/job-test-util.iml" filepath="$PROJECT_DIR$/modules/job-test-util/job-test-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/job-util/job-util.iml" filepath="$PROJECT_DIR$/modules/job-util/job-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/jvm-metrics-logger/jvm-metrics-logger.iml" filepath="$PROJECT_DIR$/modules/jvm-metrics-logger/jvm-metrics-logger.iml" />
+      <module fileurl="file://$PROJECT_DIR$/docs/cql-queries/kaplan-meier/kaplan-meier.iml" filepath="$PROJECT_DIR$/docs/cql-queries/kaplan-meier/kaplan-meier.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/kv/kv.iml" filepath="$PROJECT_DIR$/modules/kv/kv.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/luid/luid.iml" filepath="$PROJECT_DIR$/modules/luid/luid.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/metrics/metrics.iml" filepath="$PROJECT_DIR$/modules/metrics/metrics.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/module-base/module-base.iml" filepath="$PROJECT_DIR$/modules/module-base/module-base.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/module-test-util/module-test-util.iml" filepath="$PROJECT_DIR$/modules/module-test-util/module-test-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/openid-auth/openid-auth.iml" filepath="$PROJECT_DIR$/modules/openid-auth/openid-auth.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/openid-client/openid-client.iml" filepath="$PROJECT_DIR$/modules/openid-client/openid-client.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-code-system-lookup/operation-code-system-lookup.iml" filepath="$PROJECT_DIR$/modules/operation-code-system-lookup/operation-code-system-lookup.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-code-system-validate-code/operation-code-system-validate-code.iml" filepath="$PROJECT_DIR$/modules/operation-code-system-validate-code/operation-code-system-validate-code.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-compact/operation-compact.iml" filepath="$PROJECT_DIR$/modules/operation-compact/operation-compact.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-cql/operation-cql.iml" filepath="$PROJECT_DIR$/modules/operation-cql/operation-cql.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-graph/operation-graph.iml" filepath="$PROJECT_DIR$/modules/operation-graph/operation-graph.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-graphql/operation-graphql.iml" filepath="$PROJECT_DIR$/modules/operation-graphql/operation-graphql.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-measure-evaluate-measure/operation-measure-evaluate-measure.iml" filepath="$PROJECT_DIR$/modules/operation-measure-evaluate-measure/operation-measure-evaluate-measure.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-patient-everything/operation-patient-everything.iml" filepath="$PROJECT_DIR$/modules/operation-patient-everything/operation-patient-everything.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-patient-purge/operation-patient-purge.iml" filepath="$PROJECT_DIR$/modules/operation-patient-purge/operation-patient-purge.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-totals/operation-totals.iml" filepath="$PROJECT_DIR$/modules/operation-totals/operation-totals.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-value-set-expand/operation-value-set-expand.iml" filepath="$PROJECT_DIR$/modules/operation-value-set-expand/operation-value-set-expand.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-value-set-validate-code/operation-value-set-validate-code.iml" filepath="$PROJECT_DIR$/modules/operation-value-set-validate-code/operation-value-set-validate-code.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/operation-versions/operation-versions.iml" filepath="$PROJECT_DIR$/modules/operation-versions/operation-versions.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/page-id-cipher/page-id-cipher.iml" filepath="$PROJECT_DIR$/modules/page-id-cipher/page-id-cipher.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/page-store/page-store.iml" filepath="$PROJECT_DIR$/modules/page-store/page-store.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/page-store-cassandra/page-store-cassandra.iml" filepath="$PROJECT_DIR$/modules/page-store-cassandra/page-store-cassandra.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/rest-api/rest-api.iml" filepath="$PROJECT_DIR$/modules/rest-api/rest-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/rest-util/rest-util.iml" filepath="$PROJECT_DIR$/modules/rest-util/rest-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/rocksdb/rocksdb.iml" filepath="$PROJECT_DIR$/modules/rocksdb/rocksdb.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/scheduler/scheduler.iml" filepath="$PROJECT_DIR$/modules/scheduler/scheduler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/server/server.iml" filepath="$PROJECT_DIR$/modules/server/server.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/spec/spec.iml" filepath="$PROJECT_DIR$/modules/spec/spec.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/terminology-service/terminology-service.iml" filepath="$PROJECT_DIR$/modules/terminology-service/terminology-service.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/terminology-service-local/terminology-service-local.iml" filepath="$PROJECT_DIR$/modules/terminology-service-local/terminology-service-local.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/test-util/test-util.iml" filepath="$PROJECT_DIR$/modules/test-util/test-util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/thread-pool-executor-collector/thread-pool-executor-collector.iml" filepath="$PROJECT_DIR$/modules/thread-pool-executor-collector/thread-pool-executor-collector.iml" />
+      <module fileurl="file://$PROJECT_DIR$/modules/util/util.iml" filepath="$PROJECT_DIR$/modules/util/util.iml" />
+    </modules>
+  </component>
+</project>

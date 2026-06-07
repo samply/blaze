@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: net.sourceforge.plantuml/plantuml-mit:1.2026.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/net/sourceforge/plantuml/plantuml-mit/1.2026.1/plantuml-mit-1.2026.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: http-kit:2.8.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/http-kit/http-kit/2.8.1/http-kit-2.8.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

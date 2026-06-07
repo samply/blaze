@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.commons/commons-lang3:3.18.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/commons/commons-lang3/3.18.0/commons-lang3-3.18.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

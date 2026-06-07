@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: ring:1.15.3">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/ring/ring/1.15.3/ring-1.15.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

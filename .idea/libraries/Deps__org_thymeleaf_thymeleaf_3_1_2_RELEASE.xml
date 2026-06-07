@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.thymeleaf/thymeleaf:3.1.2.RELEASE">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/thymeleaf/thymeleaf/3.1.2.RELEASE/thymeleaf-3.1.2.RELEASE.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

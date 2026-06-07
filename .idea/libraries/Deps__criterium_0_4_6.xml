@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: criterium:0.4.6">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/criterium/criterium/0.4.6/criterium-0.4.6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

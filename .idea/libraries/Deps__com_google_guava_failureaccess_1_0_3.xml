@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.google.guava/failureaccess:1.0.3">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/google/guava/failureaccess/1.0.3/failureaccess-1.0.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

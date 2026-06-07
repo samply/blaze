@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.commons/commons-text:1.15.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/commons/commons-text/1.15.0/commons-text-1.15.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

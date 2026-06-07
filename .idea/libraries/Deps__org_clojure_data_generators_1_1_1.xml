@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clojure/data.generators:1.1.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojure/data.generators/1.1.1/data.generators-1.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
