@@ -91,6 +91,6 @@ After verification, when working on an issue:
 
 1. Create a feature branch using the GitHub CLI: `gh issue develop <issue-number> --checkout`
 2. Commit the changes: `git add .` and `git commit`
-   * The commit title should be the issue title.
+   * The commit title should be the issue title. Both use the imperative mood, are written in title case, and fit within about 50 characters (e.g. `Fix Error Combining Composite Token-Token Params`).
    * The commit body should just contain: `Closes: #<issue-number>`
 3. There should be exactly one commit per issue. Multiple changes have to be ammended to the first commit.
