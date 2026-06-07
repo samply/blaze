@@ -6,7 +6,7 @@
   {:local/root "../util"}
 
   org.apache.cassandra/java-driver-core
-  {:mvn/version "4.19.2"}
+  {:mvn/version "4.19.3"}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
