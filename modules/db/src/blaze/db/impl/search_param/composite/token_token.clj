@@ -64,6 +64,10 @@
   (-matcher [_ batch-db _ compiled-values]
     (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash compiled-values))
 
+  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+    (r-sp-v/single-version-id-value-prefix-filter
+     (:snapshot batch-db) tid c-hash compiled-values))
+
   (-postprocess-matches [_ _ _ _])
 
   (-index-values [_ resolver resource]
