@@ -15,7 +15,7 @@
     <orderEntry type="library" name="Deps: org.bouncycastle/bcprov-jdk15on:1.70" level="project" />
     <orderEntry type="library" name="Deps: io.jepsen/history:0.1.7" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/clojure:1.12.3" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.woodstox/woodstox-core:7.1.1" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.woodstox/woodstox-core:7.2.0" level="project" />
     <orderEntry type="library" name="Deps: joda-time:2.10" level="project" />
     <orderEntry type="library" name="Deps: spootnik/unilog:0.7.32" level="project" />
     <orderEntry type="library" name="Deps: org.clojars.akiel/iota:0.1" level="project" />
@@ -30,7 +30,7 @@
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.logging:1.3.1" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/core.specs.alpha:0.4.74" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-databind:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-databind:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: io.lacuna/bifurcan:0.2.0-alpha7" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/spec.alpha:0.5.238" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.cli:1.3.250" level="project" />
@@ -48,7 +48,7 @@
     <orderEntry type="library" name="Deps: com.jcraft/jsch.agentproxy.sshagent:0.0.9" level="project" />
     <orderEntry type="library" name="Deps: hato:1.0.0" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect/anomalies:0.1.12" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-cbor:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-cbor:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: org.clj-commons/dirigiste:1.0.1" level="project" />
     <orderEntry type="library" name="Deps: ch.qos.logback/logback-core:1.5.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/data.generators:1.1.1" level="project" />
@@ -63,10 +63,10 @@
     <orderEntry type="library" name="Deps: com.hierynomus/sshj:0.40.0" level="project" />
     <orderEntry type="library" name="Deps: fipp:0.6.29" level="project" />
     <orderEntry type="library" name="Deps: rhizome:0.2.9" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-core:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-core:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: org.apache.commons/commons-fileupload2-core:2.0.0-M4" level="project" />
     <orderEntry type="library" name="Deps: clj-time:0.15.2" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-xml:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-xml:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: org.ring-clojure/ring-jakarta-servlet:1.15.3" level="project" />
     <orderEntry type="library" name="Deps: org.slf4j/jul-to-slf4j:2.0.12" level="project" />
     <orderEntry type="library" name="Deps: prom-metrics:45bc73" level="project" />
@@ -83,7 +83,7 @@
     <orderEntry type="library" name="Deps: clj-tuple:0.2.2" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/truss:2.2.0" level="project" />
     <orderEntry type="library" name="Deps: com.jcraft/jsch.agentproxy.pageant:0.0.9" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-annotations:2.21" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-annotations:2.22" level="project" />
     <orderEntry type="library" name="Deps: hiccup:2.0.0" level="project" />
     <orderEntry type="library" name="Deps: byte-streams:0.2.5-alpha2" level="project" />
     <orderEntry type="library" name="Deps: riddley:0.2.2" level="project" />
@@ -115,7 +115,7 @@
     <orderEntry type="library" name="Deps: org.clojure/math.combinatorics:0.3.2" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9/jetty-ee9-security:12.1.0" level="project" />
     <orderEntry type="library" name="Deps: net.java.dev.jna/jna:4.1.0" level="project" />
-    <orderEntry type="library" name="Deps: org.codehaus.woodstox/stax2-api:4.2.2" level="project" />
+    <orderEntry type="library" name="Deps: org.codehaus.woodstox/stax2-api:4.3.0" level="project" />
     <orderEntry type="library" name="Deps: com.jcraft/jsch.agentproxy.connector-factory:0.0.9" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-io:12.1.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.reader:1.6.0" level="project" />
