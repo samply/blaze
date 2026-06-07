@@ -21,7 +21,7 @@
     <orderEntry type="library" name="Deps: com.cognitect/transit-java:1.0.371" level="project" />
     <orderEntry type="library" name="Deps: info.cqframework/model-jackson:2.11.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/clojure:1.12.3" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.woodstox/woodstox-core:7.1.1" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.woodstox/woodstox-core:7.2.0" level="project" />
     <orderEntry type="library" name="Deps: com.ibm.icu/icu4j:78.1" level="project" />
     <orderEntry type="library" name="Deps: org.clojars.akiel/iota:0.1" level="project" />
     <orderEntry type="library" name="Deps: commons-codec:1.22.0" level="project" />
@@ -34,8 +34,8 @@
     <orderEntry type="library" name="Deps: org.clojure/core.specs.alpha:0.4.74" level="project" />
     <orderEntry type="library" name="Deps: net.sf.saxon/Saxon-HE:11.6" level="project" />
     <orderEntry type="library" name="Deps: metosin/muuntaja:0.6.11" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.module/jackson-module-jaxb-annotations:2.21.3" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-databind:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.module/jackson-module-jaxb-annotations:2.22.0" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-databind:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/spec.alpha:0.5.238" level="project" />
     <orderEntry type="library" name="Deps: org.antlr/antlr4-runtime:4.10.1" level="project" />
     <orderEntry type="library" name="Deps: io.opentelemetry/opentelemetry-api:1.60.1" level="project" />
@@ -45,7 +45,7 @@
     <orderEntry type="library" name="Deps: jakarta.xml.bind/jakarta.xml.bind-api:2.3.3" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_tracer_otel:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect/anomalies:0.1.12" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-cbor:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-cbor:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: org.apache.lucene/lucene-analysis-common:10.4.0" level="project" />
     <orderEntry type="library" name="Deps: com.googlecode.json-simple/json-simple:1.1.1" level="project" />
     <orderEntry type="library" name="Deps: com.googlecode.javaewah/JavaEWAH:1.2.3" level="project" />
@@ -55,8 +55,8 @@
     <orderEntry type="library" name="Deps: tech.uom.lib/uom-lib-common:2.2" level="project" />
     <orderEntry type="library" name="Deps: com.nimbusds/nimbus-jose-jwt:10.0.2" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jgit:7.4.0.202509020913-r" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-core:2.21.3" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-xml:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-core:2.22.0" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-xml:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: prom-metrics:45bc73" level="project" />
     <orderEntry type="library" name="Deps: ca.uhn.hapi.fhir/hapi-fhir-base:8.10.0" level="project" />
     <orderEntry type="library" name="Deps: org.apache.lucene/lucene-core:10.4.0" level="project" />
@@ -64,7 +64,7 @@
     <orderEntry type="library" name="Deps: integrant:1.0.1" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/truss:2.2.0" level="project" />
     <orderEntry type="library" name="Deps: io.opentelemetry/opentelemetry-context:1.60.1" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-annotations:2.21" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-annotations:2.22" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_hotspot:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: org.xmlresolver/xmlresolver$data:5.2.1" level="project" />
     <orderEntry type="library" name="Deps: org.apache.commons/commons-text:1.15.0" level="project" />
@@ -87,7 +87,7 @@
     <orderEntry type="library" name="Deps: ring/ring-codec:1.3.0" level="project" />
     <orderEntry type="library" name="Deps: info.cqframework/model:2.11.0" level="project" />
     <orderEntry type="library" name="Deps: org.apache.httpcomponents.client5/httpclient5:5.1.3" level="project" />
-    <orderEntry type="library" name="Deps: org.codehaus.woodstox/stax2-api:4.2.2" level="project" />
+    <orderEntry type="library" name="Deps: org.codehaus.woodstox/stax2-api:4.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.reader:1.6.0" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_common:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: systems.uom/systems-quantity:2.2" level="project" />

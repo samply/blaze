@@ -13,26 +13,26 @@
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Deps: org.clojure/clojure:1.12.3" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.woodstox/woodstox-core:7.1.1" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.woodstox/woodstox-core:7.2.0" level="project" />
     <orderEntry type="library" name="Deps: commons-codec:1.22.0" level="project" />
     <orderEntry type="library" name="Deps: weavejester/dependency:1.0.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/alpha.spec:5c8661" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/core.specs.alpha:0.4.74" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-databind:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-databind:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/spec.alpha:0.5.238" level="project" />
     <orderEntry type="library" name="Deps: org.antlr/antlr4-runtime:4.10.1" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/encore:3.153.1" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_tracer_otel:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect/anomalies:0.1.12" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-cbor:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-cbor:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_tracer_common:0.16.0" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-core:2.21.3" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-xml:2.21.3" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-core:2.22.0" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-xml:2.22.0" level="project" />
     <orderEntry type="library" name="Deps: prom-metrics:45bc73" level="project" />
     <orderEntry type="library" name="Deps: integrant:1.0.1" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/truss:2.2.0" level="project" />
-    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-annotations:2.21" level="project" />
+    <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-annotations:2.22" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_hotspot:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: com.google.guava/failureaccess:1.0.3" level="project" />
     <orderEntry type="library" name="Deps: com.google.guava/guava:33.6.0-jre" level="project" />
@@ -40,7 +40,7 @@
     <orderEntry type="library" name="Deps: clojure.java-time:1.4.3" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/timbre:6.8.0" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_tracer_otel_agent:0.16.0" level="project" />
-    <orderEntry type="library" name="Deps: org.codehaus.woodstox/stax2-api:4.2.2" level="project" />
+    <orderEntry type="library" name="Deps: org.codehaus.woodstox/stax2-api:4.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.reader:1.6.0" level="project" />
     <orderEntry type="library" name="Deps: io.prometheus/simpleclient_common:0.16.0" level="project" />
     <orderEntry type="library" name="Deps: org.slf4j/slf4j-api:1.7.36" level="project" />
