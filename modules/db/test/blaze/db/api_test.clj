@@ -5151,6 +5151,53 @@
           [0 :id] := "0"
           [1 :id] := "2")))))
 
+(deftest type-query-observation-code-value-concept-combined-test
+  (testing "combining a more selective token clause with a composite
+  token-token clause (#3642)"
+    ;; All Observations share the same code-value-concept, but only one has
+    ;; status `preliminary`. The composite clause therefore has a more than 10x
+    ;; larger estimated scan size than the status clause and is promoted to an
+    ;; other-clause that is filtered via -single-version-id-matcher.
+    (let [code #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "http://loinc.org"
+                    :code #fhir/code "94564-2"}]}
+          value #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri "http://snomed.info/sct"
+                     :code #fhir/code "260373001"}]}]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [(into [[:put {:fhir/type :fhir/Observation :id "prelim"
+                       :status #fhir/code "preliminary"
+                       :code code :value value}]]
+               (map (fn [i]
+                      [:put {:fhir/type :fhir/Observation :id (str i)
+                             :status #fhir/code "final"
+                             :code code :value value}]))
+               (range 11))]
+
+        (testing "the composite token-token clause is planned as a seek clause"
+          ;; Guards that the data actually triggers the
+          ;; -single-version-id-matcher branch. If this fails (e.g. after a
+          ;; change to the scan-factor), the query below no longer exercises
+          ;; that branch.
+          (given (explain-type-query node "Observation"
+                                     [["status" "preliminary"]
+                                      ["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]])
+            :scan-type := :ordered
+            [:scan-clauses count] := 1
+            [:scan-clauses 0 :code] := "status"
+            [:seek-clauses count] := 1
+            [:seek-clauses 0 :code] := "code-value-concept"))
+
+        (given-type-query node "Observation"
+                          [["status" "preliminary"]
+                           ["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]
+          count := 1
+          [0 :id] := "prelim")))))
+
 (deftest type-query-observation-code-subject-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
