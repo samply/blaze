@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clojure/data.codec:0.2.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojure/data.codec/0.2.1/data.codec-0.2.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clojars.pallix/analemma:1.0.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojars/pallix/analemma/1.0.0/analemma-1.0.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

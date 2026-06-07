@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ClojureProjectResolveSettings">
+    <item key="blaze.db.kv.rocksdb-test/with-system-data" resolves-as="clojure.core/with-open" />
+    <item key="blaze.fhir.operation.totals-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.db.kv.mem-test/with-system-data" resolves-as="clojure.core/let" />
+    <item key="blaze.interaction.transaction-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="manifold.deferred/let-flow'" resolves-as="clojure.core/let" />
+    <item key="blaze.job.re-index-test/with-system-data" resolves-as="clojure.core/with-open" />
+    <item key="blaze.db.impl.index.tx-error-test/with-system-data" resolves-as="clojure.core/let" />
+    <item key="blaze.fhir.test-util/with-system" resolves-as="clojure.core/let" />
+    <item key="clojure.test.check.properties/for-all" resolves-as="clojure.core/let" />
+    <item key="blaze.elm.compiler.macros/defunop" resolves-as="clojure.core/defn" />
+    <item key="blaze.fhir.spec.type.macros/defprimitivetype" resolves-as="clojure.core/deftype" />
+    <item key="blaze.db.resource-store.kv-test/with-system" resolves-as="clojure.core/let" />
+    <item key="blaze.anomaly/when-ok" resolves-as="clojure.core/when-let" />
+    <item key="blaze.fhir.operation.graphql-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.fhir.spec.type.macros/def-complex-type" resolves-as="clojure.core/defrecord" />
+    <item key="blaze.interaction.history.system-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.fhir.spec.type.macros/defextended" resolves-as="clojure.core/defrecord" />
+    <item key="blaze.elm.compiler.macros/defbinop" resolves-as="clojure.core/defn" />
+    <item key="blaze.db.impl.index.tx-success-test/with-system-data" resolves-as="clojure.core/let" />
+    <item key="blaze.interaction.history.type-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.db.experiments.util/with-system" resolves-as="clojure.core/with-open" />
+    <item key="blaze.db.impl.index.t-by-instant-test/with-system-data" resolves-as="clojure.core/let" />
+    <item key="blaze.fhir.spec.generators/def-resource-gen" resolves-as="clojure.core/def" />
+    <item key="blaze.interaction.history.instance-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.fhir.spec.type.macros/defcomplextype" resolves-as="clojure.core/defrecord" />
+    <item key="blaze.rest-api.capabilities-handler-test/with-handler" resolves-as="clojure.core/let" />
+    <item key="blaze.interaction.search-type-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.interaction.delete-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.elm.compiler.macros/defbinopp" resolves-as="clojure.core/defn" />
+    <item key="blaze.fhir.spec.type.macros/def-extended-primitive-type" resolves-as="cljs.core/defrecord" />
+    <item key="blaze.anomaly/if-ok" resolves-as="clojure.core/let" />
+    <item key="blaze.interaction.create-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.operation.patient.everything-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.anomaly/if-failed" resolves-as="clojure.core/if-let" />
+    <item key="blaze.rest-api.metadata-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.fhir.spec.type.macros/def-primitive-type" resolves-as="clojure.core/deftype" />
+    <item key="fts.test-util/with-system" resolves-as="clojure.core/let" />
+    <item key="blaze.interaction.transaction/do-sync" resolves-as="clojure.core/let" />
+    <item key="blaze.interaction.read-test/with-vread-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.elm.compiler.macros/defunopp" resolves-as="clojure.core/defn" />
+    <item key="blaze.db.impl.db/with-open-coll" resolves-as="clojure.core/let" />
+    <item key="blaze.db.impl.macros/with-open-coll" resolves-as="clojure.core/with-open" />
+    <item key="blaze.test-util/with-system" resolves-as="clojure.core/let" />
+    <item key="blaze.db.api-stub/with-system-data" resolves-as="clojure.core/let" />
+    <item key="blaze.module.test-util/with-system" resolves-as="clojure.core/let" />
+    <item key="blaze.async.comp/async" resolves-as="clojure.core/let" />
+    <item key="prometheus.alpha/defhistogram" resolves-as="clojure.core/def" />
+    <item key="blaze.async.comp/do-async" resolves-as="clojure.core/let" />
+    <item key="blaze.anomaly/if-ok'" resolves-as="clojure.core/if-let" />
+    <item key="blaze.rest-api.metadata-handler-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.interaction.transaction/async" resolves-as="clojure.core/let" />
+    <item key="blaze.db.api-stub/node-system-with" resolves-as="clojure.core/let" />
+    <item key="blaze.admin-api-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.async.comp/do-sync" resolves-as="clojure.core/let" />
+    <item key="blaze.rest-api.batch-handler-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.rest-api.async-status-handler-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.interaction.search-system-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.elm.compiler.macros/defnaryop" resolves-as="clojure.core/defn" />
+    <item key="blaze.interaction.read-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.elm.compiler.macros/defternop" resolves-as="clojure.core/defn" />
+    <item key="blaze.interaction.search-compartment-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.db.impl.iterators-test/with-system-data" resolves-as="clojure.core/let" />
+    <item key="blaze.fhir.operation.evaluate-measure-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.interaction.update-test/with-handler" resolves-as="clojure.core/fn" />
+    <item key="blaze.db.api-test-perf/with-system-data" resolves-as="clojure.core/with-open" />
+    <item key="blaze.db.test-util/with-system-data" resolves-as="clojure.core/with-open" />
+    <item key="blaze.elm.compiler.macros/defaggop" resolves-as="clojure.core/defn" />
+    <item key="prometheus.alpha/defcounter" resolves-as="clojure.core/def" />
+    <currentScheme>IDE</currentScheme>
+  </component>
+</project>

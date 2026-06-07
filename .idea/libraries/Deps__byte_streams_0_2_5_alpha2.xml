@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: byte-streams:0.2.5-alpha2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/byte-streams/byte-streams/0.2.5-alpha2/byte-streams-0.2.5-alpha2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

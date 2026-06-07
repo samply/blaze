@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: javax.measure/unit-api:2.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/javax/measure/unit-api/2.2/unit-api-2.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

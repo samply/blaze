@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.xmlresolver/xmlresolver$data:5.2.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/xmlresolver/xmlresolver/5.2.1/xmlresolver-5.2.1-data.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

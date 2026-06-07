@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clj-commons/pretty:3.6.3">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clj-commons/pretty/3.6.3/pretty-3.6.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

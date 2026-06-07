@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.cassandra/java-driver-guava-shaded:4.19.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/cassandra/java-driver-guava-shaded/4.19.2/java-driver-guava-shaded-4.19.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

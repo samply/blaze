@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clojars.akiel/iota:0.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojars/akiel/iota/0.1/iota-0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

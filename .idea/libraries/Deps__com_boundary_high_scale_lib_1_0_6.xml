@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.boundary/high-scale-lib:1.0.6">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/boundary/high-scale-lib/1.0.6/high-scale-lib-1.0.6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

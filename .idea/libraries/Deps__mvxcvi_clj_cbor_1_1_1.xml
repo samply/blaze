@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: mvxcvi/clj-cbor:1.1.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/mvxcvi/clj-cbor/1.1.1/clj-cbor-1.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

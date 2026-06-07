@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: instaparse:1.4.8">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/instaparse/instaparse/1.4.8/instaparse-1.4.8.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

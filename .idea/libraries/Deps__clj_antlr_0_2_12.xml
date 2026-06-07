@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: clj-antlr:0.2.12">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clj-antlr/clj-antlr/0.2.12/clj-antlr-0.2.12.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: dom-top:1.0.10">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/dom-top/dom-top/1.0.10/dom-top-1.0.10.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

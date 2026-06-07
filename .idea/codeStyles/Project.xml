@@ -1,0 +1,125 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <option name="SOFT_MARGINS" value="80" />
+    <ClojureCodeStyleSettings>
+      <option name="alignMapValues" value="false" />
+      <option name="oneSpaceLists" value="true" />
+      <option name="nsImportsUse" value="VECTOR" />
+      <option name="indentCustomisations">
+        <map>
+          <entry key="blaze.anomaly/try-all" value="-1" />
+          <entry key="blaze.anomaly/try-one" value="-1" />
+          <entry key="blaze.async.comp-test/given-failed-future" value="-1" />
+          <entry key="blaze.async.comp/async" value="0" />
+          <entry key="blaze.cql-translator-test/given-translation" value="-1" />
+          <entry key="blaze.db.api-test/given-type-query" value="-1" />
+          <entry key="blaze.db.impl.codec-test/satisfies-prop" value="-1" />
+          <entry key="blaze.db.resource-store.kv-test/given-thrown" value="-1" />
+          <entry key="blaze.elm.compiler.logical-operators-test/testing-optimize" value="1" />
+          <entry key="blaze.elm.compiler.test-util/has-form" value="-1" />
+          <entry key="blaze.elm.compiler.test-util/satisfies-prop" value="-1" />
+          <entry key="blaze.elm.compiler.test-util/testing-optimize" value="1" />
+          <entry key="blaze.fhir.operation.evaluate-measure-test/given-thrown" value="-1" />
+          <entry key="blaze.fhir.operation.graphql-test/with-handler" value="-1" />
+          <entry key="blaze.fhir.spec-test/mem-size-test" value="-1" />
+          <entry key="blaze.fhir.spec-test/size-test" value="-1" />
+          <entry key="blaze.fhir.spec-test/testing-all-fhir-versions" value="-1" />
+          <entry key="blaze.fhir.spec.resource-test/given-parse-json" value="-1" />
+          <entry key="blaze.fhir.spec.resource/cond-next-token" value="-1" />
+          <entry key="blaze.fhir.spec.type/def-extend-protocol-primitive" value="-1" />
+          <entry key="blaze.fhir.test-util/given-failed-future" value="1" />
+          <entry key="blaze.interaction.create-test/with-handler" value="1" />
+          <entry key="blaze.interaction.create-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.delete-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.history.instance-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.history.system-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.history.type-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.read-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.search-compartment-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.search-system-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.search-type-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.test-util/given-thrown" value="-1" />
+          <entry key="blaze.interaction.transaction-test/with-handler-data" value="-1" />
+          <entry key="blaze.interaction.update-test/with-handler-data" value="-1" />
+          <entry key="blaze.metrics.core/collector" value="-1" />
+          <entry key="blaze.module.test-util/given-failed-future" value="-1" />
+          <entry key="blaze.module.test-util/given-failed-system" value="-1" />
+          <entry key="blaze.module/reg-collector" value="-1" />
+          <entry key="blaze.terminology-service.extern-test/expand-value-set" value="-1" />
+          <entry key="blaze.terminology-service.local-test/code-system-lookup" value="-1" />
+          <entry key="blaze.terminology-service.local-test/code-system-validate-code" value="-1" />
+          <entry key="blaze.terminology-service.local-test/expand-value-set" value="-1" />
+          <entry key="blaze.terminology-service.local-test/value-set-validate-code" value="-1" />
+          <entry key="blaze.test-util/given-failed-future" value="-1" />
+          <entry key="blaze.test-util/given-thrown" value="-1" />
+          <entry key="blaze.test-util/satisfies-prop" value="-1" />
+          <entry key="clojure.core/assoc" value="1000" />
+          <entry key="clojure.core/comment" value="-1" />
+          <entry key="clojure.core/cond-&gt;" value="1" />
+          <entry key="clojure.core/cond-&gt;&gt;" value="1" />
+          <entry key="clojure.core/defmulti" value="-1" />
+          <entry key="clojure.core/defonce" value="-1" />
+          <entry key="clojure.core/deftype*" value="3" />
+          <entry key="clojure.core/with-meta" value="-1" />
+          <entry key="clojure.spec.alpha/fdef" value="-1" />
+          <entry key="clojure.test/are" value="-1" />
+          <entry key="com.rpl.proxy-plus/proxy+" value="-1" />
+          <entry key="juxt.iota/given" value="-1" />
+          <entry key="taoensso.timbre/with-level" value="-1" />
+          <entry key="taoensso.timbre/with-min-level" value="-1" />
+        </map>
+      </option>
+    </ClojureCodeStyleSettings>
+    <HTMLCodeStyleSettings>
+      <option name="HTML_SPACE_INSIDE_EMPTY_TAG" value="true" />
+    </HTMLCodeStyleSettings>
+    <JSCodeStyleSettings version="0">
+      <option name="FORCE_SEMICOLON_STYLE" value="true" />
+      <option name="SPACE_BEFORE_FUNCTION_LEFT_PARENTH" value="false" />
+      <option name="USE_DOUBLE_QUOTES" value="false" />
+      <option name="FORCE_QUOTE_STYlE" value="true" />
+      <option name="ENFORCE_TRAILING_COMMA" value="Remove" />
+      <option name="SPACES_WITHIN_OBJECT_LITERAL_BRACES" value="true" />
+      <option name="SPACES_WITHIN_IMPORTS" value="true" />
+    </JSCodeStyleSettings>
+    <TypeScriptCodeStyleSettings version="0">
+      <option name="FORCE_SEMICOLON_STYLE" value="true" />
+      <option name="SPACE_BEFORE_FUNCTION_LEFT_PARENTH" value="false" />
+      <option name="USE_DOUBLE_QUOTES" value="false" />
+      <option name="FORCE_QUOTE_STYlE" value="true" />
+      <option name="ENFORCE_TRAILING_COMMA" value="Remove" />
+      <option name="SPACES_WITHIN_OBJECT_LITERAL_BRACES" value="true" />
+      <option name="SPACES_WITHIN_IMPORTS" value="true" />
+    </TypeScriptCodeStyleSettings>
+    <yaml>
+      <option name="INDENT_SEQUENCE_VALUE" value="false" />
+    </yaml>
+    <codeStyleSettings language="HTML">
+      <option name="SOFT_MARGINS" value="100" />
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+        <option name="USE_TAB_CHARACTER" value="true" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="JavaScript">
+      <option name="SOFT_MARGINS" value="100" />
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+        <option name="USE_TAB_CHARACTER" value="true" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="TypeScript">
+      <option name="SOFT_MARGINS" value="100" />
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+        <option name="USE_TAB_CHARACTER" value="true" />
+      </indentOptions>
+    </codeStyleSettings>
+  </code_scheme>
+</component>

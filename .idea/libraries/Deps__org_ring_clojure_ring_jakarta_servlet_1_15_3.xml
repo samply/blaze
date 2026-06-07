@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.ring-clojure/ring-jakarta-servlet:1.15.3">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/ring-clojure/ring-jakarta-servlet/1.15.3/ring-jakarta-servlet-1.15.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

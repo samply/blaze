@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.github.ben-manes.caffeine/caffeine:3.2.4">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/ben-manes/caffeine/caffeine/3.2.4/caffeine-3.2.4.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

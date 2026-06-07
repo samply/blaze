@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: hato:1.0.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/hato/hato/1.0.0/hato-1.0.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

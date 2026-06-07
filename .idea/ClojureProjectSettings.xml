@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ClojureProjectSettings">
+    <option name="replScopeMapping">
+      <list>
+        <SerialisedReplScopeSetting>
+          <option name="replName" value="&lt;&lt;choose&gt;&gt;" />
+          <option name="serialisedScope" value="module:terminology-service" />
+        </SerialisedReplScopeSetting>
+      </list>
+    </option>
+  </component>
+</project>

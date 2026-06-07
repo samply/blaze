@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DepsProjectSettings">
+    <option name="enabledAliases">
+      <set>
+        <option value="profiling" />
+        <option value="test" />
+        <option value="test-perf" />
+      </set>
+    </option>
+    <option name="toolAliases">
+      <set>
+        <option value="build" />
+      </set>
+    </option>
+  </component>
+  <component name="DepsProjectsManager">
+    <option name="dirTypeMappings">
+      <set>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/dev" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/admin-api/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/anomaly/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/async/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/byte-buffer/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/byte-string/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/cache-collector/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/cassandra/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/coll/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/cql/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-resource-store-cassandra/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-resource-store/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-tx-log-kafka/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-tx-log/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/executor/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/extern-terminology-service/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/fhir-client/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/fhir-path/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/fhir-structure/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/http-client/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/http-client/test-resources" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/interaction/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/jepsen/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-async-interaction/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-compact/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-prune/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-re-index/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-scheduler/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-util/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/kv/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/luid/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/metrics/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-base/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/openid-auth/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/openid-auth/test-resources" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/openid-client/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-code-system-lookup/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-code-system-validate-code/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-compact/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-cql/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-graph/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-graphql/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-measure-evaluate-measure/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-patient-everything/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-patient-purge/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-totals/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-validate/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-value-set-expand/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-value-set-validate-code/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/page-id-ciper/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/page-id-cipher/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/page-store-cassandra/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/page-store/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/rest-api/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/rest-util/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/rocksdb/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/scheduler/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/server/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/terminology-service-local/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/terminology-service-local/test-resources" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/terminology-service/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/terminology-service/test-resources" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/thread-pool-executor-collector/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/util/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+      </set>
+    </option>
+    <option name="projectFiles">
+      <set>
+        <option value="file://$PROJECT_DIR$/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/admin-api/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/anomaly/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/async/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/byte-buffer/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/byte-string/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/cache-collector/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/cassandra/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/coll/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/cql/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/db-protocols/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/db-resource-store-cassandra/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/db-resource-store/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/db-stub/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/db-tx-log-kafka/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/db-tx-log/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/db/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/executor/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/extern-terminology-service/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/fhir-client/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/fhir-path/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/fhir-structure/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/fhir-test-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/http-client/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/interaction/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/jepsen/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/job-async-interaction/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/job-compact/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/job-re-index/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/job-scheduler/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/job-test-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/job-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/kv/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/luid/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/metrics/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/module-base/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/module-test-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/openid-auth/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-code-system-validate-code/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-compact/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-graph/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-graphql/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-measure-evaluate-measure/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-patient-everything/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-patient-purge/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-totals/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-value-set-expand/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-value-set-validate-code/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/page-id-ciper/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/page-id-cipher/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/page-store-cassandra/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/page-store/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/rest-api/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/rest-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/rocksdb/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/scheduler/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/server/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/spec/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/terminology-service-local/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/terminology-service/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/test-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/thread-pool-executor-collector/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/util/deps.edn" />
+      </set>
+    </option>
+  </component>
+</project>

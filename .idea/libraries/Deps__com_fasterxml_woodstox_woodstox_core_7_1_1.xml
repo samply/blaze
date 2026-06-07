@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Deps: com.fasterxml.woodstox/woodstox-core:7.1.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/woodstox/woodstox-core/7.1.1/woodstox-core-7.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/woodstox/woodstox-core/7.1.1/woodstox-core-7.1.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

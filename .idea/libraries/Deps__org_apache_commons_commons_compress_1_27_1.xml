@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.commons/commons-compress:1.27.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/commons/commons-compress/1.27.1/commons-compress-1.27.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

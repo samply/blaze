@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: buddy/buddy-core:1.12.0-430">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/buddy/buddy-core/1.12.0-430/buddy-core-1.12.0-430.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

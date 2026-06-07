@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: clj-ssh:0.5.14">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clj-ssh/clj-ssh/0.5.14/clj-ssh-0.5.14.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

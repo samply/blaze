@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="BuildSystem">
+    <option name="buildSystemId" value="CLOJURE_DEPS" />
+    <option name="displayName" value="server" />
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/target/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/test" isTestSource="true" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="Deps: org.clojure/clojure:1.12.3" level="project" />
+    <orderEntry type="library" name="Deps: org.clojars.akiel/iota:0.1" level="project" />
+    <orderEntry type="library" name="Deps: weavejester/dependency:1.0.0" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-api:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-xml:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: io.prometheus/simpleclient:0.16.0" level="project" />
+    <orderEntry type="library" name="Deps: org.clojure/core.specs.alpha:0.4.74" level="project" />
+    <orderEntry type="library" name="Deps: org.clojure/spec.alpha:0.5.238" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.toolchain/jetty-jakarta-servlet-api:5.0.2" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-http:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-util:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/encore:3.153.1" level="project" />
+    <orderEntry type="library" name="Deps: io.prometheus/simpleclient_tracer_otel:0.16.0" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-common:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: hato:1.0.0" level="project" />
+    <orderEntry type="library" name="Deps: com.cognitect/anomalies:0.1.12" level="project" />
+    <orderEntry type="library" name="Deps: ring/ring-jetty-adapter:1.15.4" level="project" />
+    <orderEntry type="library" name="Deps: io.prometheus/simpleclient_tracer_common:0.16.0" level="project" />
+    <orderEntry type="library" name="Deps: commons-io:2.21.0" level="project" />
+    <orderEntry type="library" name="Deps: prom-metrics:45bc73" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9/jetty-ee9-servlet:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-unixdomain-server:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-security:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9/jetty-ee9-nested:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: integrant:1.0.1" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/truss:2.2.0" level="project" />
+    <orderEntry type="library" name="Deps: com.google.guava/failureaccess:1.0.3" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-session:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: com.google.guava/guava:33.6.0-jre" level="project" />
+    <orderEntry type="library" name="Deps: clojure.java-time:1.4.3" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-servlet:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee/jetty-ee-webapp:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/timbre:6.8.0" level="project" />
+    <orderEntry type="library" name="Deps: io.prometheus/simpleclient_tracer_otel_agent:0.16.0" level="project" />
+    <orderEntry type="library" name="Deps: org.slf4j/slf4j-nop:2.0.18" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.websocket/jetty-websocket-core-server:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: ring/ring-codec:1.3.0" level="project" />
+    <orderEntry type="library" name="Deps: org.ring-clojure/ring-websocket-protocols:1.15.4" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9/jetty-ee9-security:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-io:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.clojure/tools.reader:1.6.0" level="project" />
+    <orderEntry type="library" name="Deps: org.ring-clojure/ring-core-protocols:1.15.4" level="project" />
+    <orderEntry type="library" name="Deps: io.prometheus/simpleclient_common:0.16.0" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.ee9/jetty-ee9-webapp:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty.websocket/jetty-websocket-core-common:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: org.slf4j/slf4j-api:2.0.18" level="project" />
+    <orderEntry type="library" name="Deps: org.clojure/test.check:1.1.3" level="project" />
+    <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-server:12.1.8" level="project" />
+    <orderEntry type="library" name="Deps: ring/ring-core:1.15.4" level="project" />
+    <orderEntry type="library" name="Deps: org.clj-commons/pretty:3.8.0" level="project" />
+    <orderEntry type="module" module-name="executor" />
+    <orderEntry type="module" module-name="async" />
+    <orderEntry type="module" module-name="module-base" />
+    <orderEntry type="module" module-name="test-util" />
+    <orderEntry type="module" module-name="util" />
+    <orderEntry type="module" module-name="module-test-util" />
+    <orderEntry type="module" module-name="luid" />
+    <orderEntry type="module" module-name="anomaly" />
+    <orderEntry type="module" module-name="spec" />
+  </component>
+</module>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: clout:2.2.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clout/clout/2.2.1/clout-2.2.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

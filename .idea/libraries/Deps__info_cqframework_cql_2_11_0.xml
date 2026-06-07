@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: info.cqframework/cql:2.11.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/info/cqframework/cql/2.11.0/cql-2.11.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
