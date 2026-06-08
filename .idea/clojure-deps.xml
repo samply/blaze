@@ -138,6 +138,10 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/jvm-metrics-logger/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/kv/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
@@ -215,6 +219,10 @@
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-value-set-validate-code/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-versions/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
@@ -317,14 +325,18 @@
         <option value="file://$PROJECT_DIR$/modules/job-scheduler/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/job-test-util/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/job-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/jvm-metrics-logger/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/kv/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/luid/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/metrics/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/module-base/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/module-test-util/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/openid-auth/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/openid-client/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-code-system-lookup/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-code-system-validate-code/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-compact/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-cql/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-graph/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-graphql/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-measure-evaluate-measure/deps.edn" />
@@ -333,6 +345,7 @@
         <option value="file://$PROJECT_DIR$/modules/operation-totals/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-value-set-expand/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-value-set-validate-code/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-versions/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/page-id-ciper/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/page-id-cipher/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/page-store-cassandra/deps.edn" />

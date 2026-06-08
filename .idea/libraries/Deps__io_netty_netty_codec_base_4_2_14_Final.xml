@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: io.netty/netty-codec-base:4.2.14.Final">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-codec-base/4.2.14.Final/netty-codec-base-4.2.14.Final.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

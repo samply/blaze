@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.cassandra/java-driver-core:4.19.3">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/cassandra/java-driver-core/4.19.3/java-driver-core-4.19.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
