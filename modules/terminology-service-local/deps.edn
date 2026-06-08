@@ -25,7 +25,31 @@
   {:mvn/version "8.10.0"}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.r5
-  {:mvn/version "6.8.1"}
+  {:mvn/version "6.9.4.2"
+   :exclusions
+   [com.nimbusds/nimbus-jose-jwt
+    commons-beanutils/commons-beanutils
+    commons-net/commons-net
+    info.cqframework/cql
+    info.cqframework/qdm
+    info.cqframework/quick
+    info.cqframework/cql-to-elm
+    info.cqframework/elm
+    info.cqframework/model
+    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
+    net.sf.saxon/Saxon-HE
+    net.sourceforge.plantuml/plantuml-mit
+    org.ogce/xpp3
+    ognl/ognl
+    org.attoparser/attoparser
+    org.unbescape/unbescape
+    org.xerial/sqlite-jdbc
+    org.apache.commons/commons-collections4
+    org.apache.httpcomponents/httpclient
+    com.google.errorprone/error_prone_annotations
+    org.apache.santuario/xmlsec
+    org.commonmark/commonmark
+    org.commonmark/commonmark-ext-gfm-tables]}
 
   ring/ring-codec
   {:mvn/version "1.3.0"}

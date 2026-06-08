@@ -4,6 +4,8 @@
       <root url="jar://$MAVEN_REPOSITORY$/ca/uhn/hapi/fhir/hapi-fhir-validation/8.10.0/hapi-fhir-validation-8.10.0.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ideaLibSources/hapi-fhir-validation-8.10.0-sources.jar!/" />
+    </SOURCES>
   </library>
 </component>
