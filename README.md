@@ -56,6 +56,7 @@ If your organization requires specific features or enhancements, custom developm
 
 ## Resources
 
+* Paper: [Blaze: A High-Performance Open Source FHIR Server with Embedded CQL Evaluation Engine](https://doi.org/10.3233/SHTI260455) — Kiel et al., *Stud Health Technol Inform* 336 (MIE 2026), 1481–1485. Also on [IOS Press](https://ebooks.iospress.nl/volumearticle/78749) and [PubMed](https://pubmed.ncbi.nlm.nih.gov/42175127/).
 * Alexander Kiel gave a talk about Blaze at the [HL7® FHIR® DevDays 2025](https://www.devdays.com/program-2025).
 
 ## YourKit Profiler
