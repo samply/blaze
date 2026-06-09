@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: io.lacuna/bifurcan:0.2.0-alpha7">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/io/lacuna/bifurcan/0.2.0-alpha7/bifurcan-0.2.0-alpha7.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

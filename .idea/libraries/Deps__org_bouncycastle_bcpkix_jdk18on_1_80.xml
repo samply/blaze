@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.bouncycastle/bcpkix-jdk18on:1.80">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/bouncycastle/bcpkix-jdk18on/1.80/bcpkix-jdk18on-1.80.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

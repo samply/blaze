@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.jcraft/jsch:0.1.53">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/jcraft/jsch/0.1.53/jsch-0.1.53.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: si.uom/si-units:2.2.2">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/si/uom/si-units/2.2.2/si-units-2.2.2.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

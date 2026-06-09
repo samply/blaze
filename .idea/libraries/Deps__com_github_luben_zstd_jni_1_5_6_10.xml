@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.github.luben/zstd-jni:1.5.6-10">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/github/luben/zstd-jni/1.5.6-10/zstd-jni-1.5.6-10.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

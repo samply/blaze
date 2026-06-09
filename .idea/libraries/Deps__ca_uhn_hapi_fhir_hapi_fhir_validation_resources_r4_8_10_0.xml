@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4:8.10.0">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/ca/uhn/hapi/fhir/hapi-fhir-validation-resources-r4/8.10.0/hapi-fhir-validation-resources-r4-8.10.0.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

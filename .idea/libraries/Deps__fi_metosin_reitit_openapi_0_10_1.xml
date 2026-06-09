@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: fi.metosin/reitit-openapi:0.10.1">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/fi/metosin/reitit-openapi/0.10.1/reitit-openapi-0.10.1.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
