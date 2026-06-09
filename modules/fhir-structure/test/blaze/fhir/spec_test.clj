@@ -94,6 +94,11 @@
    :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}))
 
+(defn- write-xml-as-string [x]
+  (let [out (ByteArrayOutputStream.)]
+    (fhir-spec/write-xml writing-context out x)
+    (String. (.toByteArray out) StandardCharsets/UTF_8)))
+
 (deftest write-xml-test
   (let [out (ByteArrayOutputStream.)
         patient {:fhir/type :fhir/Patient :id "0"}]
@@ -125,6 +130,55 @@
                      [::xhtml/p "FHIR is cool."]]]]))]
     (is (nil? (fhir-spec/write-xml writing-context out patient)))
     (is (= patient (read-xml (.toByteArray out))))))
+
+(deftest write-xml-bundle-entry-test
+  (testing "search entry"
+    (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                "<Bundle xmlns=\"http://hl7.org/fhir\">"
+                "<entry>"
+                "<fullUrl value=\"http://example.com/fhir/Patient/0\"/>"
+                "<resource><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient></resource>"
+                "<search/>"
+                "</entry>"
+                "</Bundle>")
+           (write-xml-as-string
+            {:fhir/type :fhir/Bundle
+             :entry [{:fhir/type :fhir.Bundle/entry
+                      :fullUrl #fhir/uri "http://example.com/fhir/Patient/0"
+                      :resource {:fhir/type :fhir/Patient :id "0"}
+                      :search #fhir.Bundle.entry/search{}}]}))))
+
+  (testing "search mode and score"
+    (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                "<Bundle xmlns=\"http://hl7.org/fhir\">"
+                "<entry>"
+                "<search>"
+                "<mode value=\"match\"/>"
+                "<score value=\"1.1\"/>"
+                "</search>"
+                "</entry>"
+                "</Bundle>")
+           (write-xml-as-string
+            {:fhir/type :fhir/Bundle
+             :entry [{:fhir/type :fhir.Bundle/entry
+                      :search #fhir.Bundle.entry/search{:mode #fhir/code "match"
+                                                        :score #fhir/decimal 1.1M}}]}))))
+
+  (testing "search with extensions falls back to the general writer"
+    (let [bundle {:fhir/type :fhir/Bundle
+                  :entry [{:fhir/type :fhir.Bundle/entry
+                           :search #fhir.Bundle.entry/search
+                                    {:extension [#fhir/Extension
+                                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]}}]}]
+      (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                  "<Bundle xmlns=\"http://hl7.org/fhir\">"
+                  "<entry>"
+                  "<search>"
+                  "<extension><url value=\"http://example.com/fhir/StructureDefinition/foo\"/></extension>"
+                  "</search>"
+                  "</entry>"
+                  "</Bundle>")
+             (write-xml-as-string bundle))))))
 
 (defn- write-json [x]
   (fhir-spec/write-json-as-bytes writing-context x))

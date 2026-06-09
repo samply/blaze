@@ -17,7 +17,7 @@
   (:import
    [blaze ReducibleArray]
    [blaze.fhir XmlUtil]
-   [blaze.fhir.spec.type Base Complex FieldName Primitive Xhtml]
+   [blaze.fhir.spec.type Base BundleEntrySearch Complex FieldName Primitive Xhtml]
    [clojure.data.xml.node Element]
    [clojure.lang IPersistentMap Indexed]
    [com.fasterxml.jackson.core JsonGenerator SerializableString]
@@ -281,6 +281,45 @@
   (write-value! xml-handlers writer nil value)
   (write-end-tag writer "resource"))
 
+(defn- write-bundle-entry-search! [xml-handlers ^Writer writer ^BundleEntrySearch search]
+  (when (and (nil? (.id search)) (empty? (.extension search)))
+    (.write writer "<search")
+    (if (or (.mode search) (.score search))
+      (do
+        (.write writer ">")
+        (when-some [mode (.mode search)]
+          (write-primitive-field! xml-handlers writer "<mode" "</mode>" "<mode value=\"" mode))
+        (when-some [score (.score search)]
+          (write-primitive-field! xml-handlers writer "<score" "</score>" "<score value=\"" score))
+        (.write writer "</search>"))
+      (.write writer "/>"))
+    true))
+
+(defn- write-search-bundle-entry! [xml-handlers ^Writer writer value]
+  (let [m ^IPersistentMap value
+        full-url (.valAt m :fullUrl)
+        resource (.valAt m :resource)
+        search (.valAt m :search)]
+    (when (and (nil? (.valAt m :id))
+               (nil? (.valAt m :extension))
+               (nil? (.valAt m :modifierExtension))
+               (nil? (.valAt m :link))
+               (nil? (.valAt m :request))
+               (nil? (.valAt m :response))
+               (or (nil? search) (instance? BundleEntrySearch search))
+               (or full-url resource search))
+      (.write writer "<entry>")
+      (when full-url
+        (write-primitive-field! xml-handlers writer "<fullUrl" "</fullUrl>" "<fullUrl value=\"" full-url))
+      (when resource
+        (write-resource-wrapper! xml-handlers writer resource))
+      (if search
+        (when-not (write-bundle-entry-search! xml-handlers writer search)
+          (write-value! xml-handlers writer "search" search))
+        nil)
+      (.write writer "</entry>")
+      true)))
+
 (defn- fhir-type [value]
   (when (instance? IPersistentMap value)
     (.valAt ^IPersistentMap value Base/FHIR_TYPE_KEY)))
@@ -402,13 +441,18 @@
 
 (defn- create-xml-type-handler [kind type element-definitions]
   (let [property-handlers (create-xml-property-handlers type element-definitions)]
-    (case kind
-      :resource
-      (fn resource-xml-handler [xml-handlers ^Writer writer value]
-        (write-resource! xml-handlers writer type property-handlers value))
-      :complex-type
-      (fn complex-xml-handler [xml-handlers ^Writer writer tag value]
-        (write-complex! xml-handlers writer tag nil property-handlers value)))))
+    (if (= "Bundle.entry" type)
+      (fn bundle-entry-xml-handler [xml-handlers ^Writer writer tag value]
+        (if (and (= "entry" tag) (write-search-bundle-entry! xml-handlers writer value))
+          nil
+          (write-complex! xml-handlers writer tag nil property-handlers value)))
+      (case kind
+        :resource
+        (fn resource-xml-handler [xml-handlers ^Writer writer value]
+          (write-resource! xml-handlers writer type property-handlers value))
+        :complex-type
+        (fn complex-xml-handler [xml-handlers ^Writer writer tag value]
+          (write-complex! xml-handlers writer tag nil property-handlers value))))))
 
 (defn- create-xml-type-handlers
   "Creates a map of keyword type names to XML type-handlers."
