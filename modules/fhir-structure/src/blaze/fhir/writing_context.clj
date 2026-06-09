@@ -18,7 +18,7 @@
    [blaze ReducibleArray]
    [blaze.fhir XmlUtil]
    [blaze.fhir.spec.type Base BundleEntrySearch CodeableConcept Coding Complex FieldName
-    Period Primitive Xhtml XmlDirectWriter]
+    Identifier Meta Period Primitive Xhtml XmlDirectWriter]
    [clojure.data.xml.node Element]
    [clojure.lang IPersistentMap Indexed]
    [com.fasterxml.jackson.core JsonGenerator SerializableString]
@@ -408,6 +408,14 @@
     (when-not (XmlDirectWriter/writePeriod writer (.-tag property-handler) ^Period value)
       (write-value! xml-handlers writer (.-tag property-handler) value))
 
+    (identical? :fhir/Identifier (.-type property-handler))
+    (when-not (XmlDirectWriter/writeIdentifier writer (.-tag property-handler) ^Identifier value)
+      (write-value! xml-handlers writer (.-tag property-handler) value))
+
+    (identical? :fhir/Meta (.-type property-handler))
+    (when-not (XmlDirectWriter/writeMeta writer (.-tag property-handler) ^Meta value)
+      (write-value! xml-handlers writer (.-tag property-handler) value))
+
     :else
     (write-value! xml-handlers writer (.-tag property-handler) value)))
 
@@ -499,6 +507,18 @@
 
     (and tag (instance? Period value))
     (when-not (XmlDirectWriter/writePeriod writer tag value)
+      (if-some [handler (xml-handlers (fhir-type value))]
+        (handler xml-handlers writer tag value)
+        (throw (IllegalArgumentException. (format "Value `%s` is no supported FHIR XML type." value)))))
+
+    (and tag (instance? Identifier value))
+    (when-not (XmlDirectWriter/writeIdentifier writer tag value)
+      (if-some [handler (xml-handlers (fhir-type value))]
+        (handler xml-handlers writer tag value)
+        (throw (IllegalArgumentException. (format "Value `%s` is no supported FHIR XML type." value)))))
+
+    (and tag (instance? Meta value))
+    (when-not (XmlDirectWriter/writeMeta writer tag value)
       (if-some [handler (xml-handlers (fhir-type value))]
         (handler xml-handlers writer tag value)
         (throw (IllegalArgumentException. (format "Value `%s` is no supported FHIR XML type." value)))))

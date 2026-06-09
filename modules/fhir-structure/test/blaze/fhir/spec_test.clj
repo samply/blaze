@@ -38,7 +38,8 @@
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [com.google.common.hash Hashing]
    [java.io ByteArrayInputStream ByteArrayOutputStream StringWriter]
-   [java.nio.charset StandardCharsets]))
+   [java.nio.charset StandardCharsets]
+   [java.time LocalDateTime]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
@@ -276,13 +277,15 @@
                     [#fhir/Coding
                       {:system #fhir/uri "http://loinc.org"
                        :code #fhir/code "718-7"
-                       :display #fhir/string "Hemoglobin [Mass/volume] & friends"}]
+                       :display #fhir/string "Hemoglobin [Mass/volume] & friends"
+                       :userSelected #fhir/boolean true}]
                     :text #fhir/string "Hemoglobin <blood>"})))
       (is (= (str "<code>"
                   "<coding>"
                   "<system value=\"http://loinc.org\"/>"
                   "<code value=\"718-7\"/>"
                   "<display value=\"Hemoglobin [Mass/volume] &amp; friends\"/>"
+                  "<userSelected value=\"true\"/>"
                   "</coding>"
                   "<text value=\"Hemoglobin &lt;blood&gt;\"/>"
                   "</code>")
@@ -325,12 +328,112 @@
                   "</period>")
              (str writer)))))
 
+  (testing "Period with fractional seconds and UTC"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writePeriod
+                  writer
+                  "period"
+                  #fhir/Period
+                   {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00.12Z"})))
+      (is (= (str "<period>"
+                  "<start value=\"2019-01-01T00:00:00.12Z\"/>"
+                  "</period>")
+             (str writer)))))
+
+  (testing "Period with year outside the direct writer range falls back"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writePeriod
+                  writer
+                  "period"
+                  (type/period
+                   {:start (type/dateTime (LocalDateTime/of 10000 1 1 0 0))}))))
+      (is (= (str "<period>"
+                  "<start value=\"+10000-01-01T00:00:00\"/>"
+                  "</period>")
+             (str writer)))))
+
   (testing "extended Period falls back before writing"
     (let [writer (StringWriter.)]
       (is (false? (XmlDirectWriter/writePeriod
                    writer
                    "period"
                    #fhir/Period
+                    {:extension [#fhir/Extension
+                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]})))
+      (is (= "" (str writer))))))
+
+(deftest write-xml-identifier-direct-test
+  (testing "simple Identifier"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writeIdentifier
+                  writer
+                  "identifier"
+                  #fhir/Identifier
+                   {:use #fhir/code "usual"
+                    :type #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                              {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v2-0203"
+                               :code #fhir/code "MR"}]}
+                    :system #fhir/uri "http://example.com/mrn"
+                    :value #fhir/string "123 & 456"
+                    :period #fhir/Period
+                             {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"}})))
+      (is (= (str "<identifier>"
+                  "<use value=\"usual\"/>"
+                  "<type><coding>"
+                  "<system value=\"http://terminology.hl7.org/CodeSystem/v2-0203\"/>"
+                  "<code value=\"MR\"/>"
+                  "</coding></type>"
+                  "<system value=\"http://example.com/mrn\"/>"
+                  "<value value=\"123 &amp; 456\"/>"
+                  "<period><start value=\"2019-01-01T00:00:00+01:00\"/></period>"
+                  "</identifier>")
+             (str writer)))))
+
+  (testing "extended Identifier falls back before writing"
+    (let [writer (StringWriter.)]
+      (is (false? (XmlDirectWriter/writeIdentifier
+                   writer
+                   "identifier"
+                   #fhir/Identifier
+                    {:extension [#fhir/Extension
+                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]})))
+      (is (= "" (str writer))))))
+
+(deftest write-xml-meta-direct-test
+  (testing "simple Meta"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writeMeta
+                  writer
+                  "meta"
+                  #fhir/Meta
+                   {:versionId #fhir/id "42"
+                    :lastUpdated #fhir/instant #system/date-time "2026-06-08T08:00:00Z"
+                    :source #fhir/uri "http://example.com/source"
+                    :profile [#fhir/canonical "http://example.com/profile"]
+                    :security
+                    [#fhir/Coding
+                      {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActReason"
+                       :code #fhir/code "HTEST"}]})))
+      (is (= (str "<meta>"
+                  "<versionId value=\"42\"/>"
+                  "<lastUpdated value=\"2026-06-08T08:00:00Z\"/>"
+                  "<source value=\"http://example.com/source\"/>"
+                  "<profile value=\"http://example.com/profile\"/>"
+                  "<security>"
+                  "<system value=\"http://terminology.hl7.org/CodeSystem/v3-ActReason\"/>"
+                  "<code value=\"HTEST\"/>"
+                  "</security>"
+                  "</meta>")
+             (str writer)))))
+
+  (testing "extended Meta falls back before writing"
+    (let [writer (StringWriter.)]
+      (is (false? (XmlDirectWriter/writeMeta
+                   writer
+                   "meta"
+                   #fhir/Meta
                     {:extension [#fhir/Extension
                                   {:url "http://example.com/fhir/StructureDefinition/foo"}]})))
       (is (= "" (str writer))))))

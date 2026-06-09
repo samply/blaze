@@ -93,59 +93,44 @@ public final class XmlUtf8Writer extends Writer {
     public void writeEscaped(String str) throws IOException {
         ensureOpen();
         int len = str.length();
-        int start = 0;
         for (int i = 0; i < len; i++) {
             char c = str.charAt(i);
-            switch (c) {
-                case '&' -> {
-                    if (start < i) writeAscii(str, start, i);
-                    writeAscii("&amp;", 0, 5);
-                    start = i + 1;
-                }
-                case '<' -> {
-                    if (start < i) writeAscii(str, start, i);
-                    writeAscii("&lt;", 0, 4);
-                    start = i + 1;
-                }
-                case '>' -> {
-                    if (start < i) writeAscii(str, start, i);
-                    writeAscii("&gt;", 0, 4);
-                    start = i + 1;
-                }
-                case '"' -> {
-                    if (start < i) writeAscii(str, start, i);
-                    writeAscii("&quot;", 0, 6);
-                    start = i + 1;
-                }
-                default -> {
-                    if (c >= 0x80) {
-                        if (start < i) writeAscii(str, start, i);
-                        if (Character.isHighSurrogate(c)) {
-                            int j = i + 1;
-                            if (j < len && Character.isLowSurrogate(str.charAt(j))) {
-                                writeCodePoint(Character.toCodePoint(c, str.charAt(j)));
-                                i = j;
-                                start = j + 1;
-                            } else {
-                                writeByte('?');
-                                start = j;
+            if (c < 0x80) {
+                if (c >= 0x20) {
+                    switch (c) {
+                        case '&' -> writeAscii("&amp;", 0, 5);
+                        case '<' -> writeAscii("&lt;", 0, 4);
+                        case '>' -> writeAscii("&gt;", 0, 4);
+                        case '"' -> writeAscii("&quot;", 0, 6);
+                        default -> {
+                            if (pos == buffer.length) {
+                                flushBuffer();
                             }
-                        } else if (Character.isLowSurrogate(c) || !validXmlChar(c)) {
-                            writeByte('?');
-                            start = i + 1;
-                        } else {
-                            writeCodePoint(c);
-                            start = i + 1;
+                            buffer[pos++] = (byte) c;
                         }
-                    } else if (!validXmlChar(c)) {
-                        if (start < i) writeAscii(str, start, i);
-                        writeByte('?');
-                        start = i + 1;
                     }
+                } else if (c == 0x09 || c == 0x0A || c == 0x0D) {
+                    if (pos == buffer.length) {
+                        flushBuffer();
+                    }
+                    buffer[pos++] = (byte) c;
+                } else {
+                    writeByte('?');
                 }
+            } else if (Character.isHighSurrogate(c)) {
+                int j = i + 1;
+                if (j < len && Character.isLowSurrogate(str.charAt(j))) {
+                    writeCodePoint(Character.toCodePoint(c, str.charAt(j)));
+                    i = j;
+                } else {
+                    writeByte('?');
+                }
+            } else if (Character.isLowSurrogate(c) || !validXmlChar(c)) {
+                writeByte('?');
+            } else {
+                writeCodePoint(c);
             }
         }
-        if (start < len) writeAscii(str, start, len);
     }
 
     @Override
@@ -161,12 +146,10 @@ public final class XmlUtf8Writer extends Writer {
         for (int i = off; i < end; i++) {
             char c = cbuf[i];
             if (c < 0x80) {
-                int start = i++;
-                while (i < end && cbuf[i] < 0x80) {
-                    i++;
+                if (pos == buffer.length) {
+                    flushBuffer();
                 }
-                writeAscii(cbuf, start, i);
-                i--;
+                buffer[pos++] = (byte) c;
             } else if (Character.isHighSurrogate(c)) {
                 int j = i + 1;
                 if (j < end && Character.isLowSurrogate(cbuf[j])) {
@@ -190,12 +173,10 @@ public final class XmlUtf8Writer extends Writer {
         for (int i = off; i < end; i++) {
             char c = str.charAt(i);
             if (c < 0x80) {
-                int start = i++;
-                while (i < end && str.charAt(i) < 0x80) {
-                    i++;
+                if (pos == buffer.length) {
+                    flushBuffer();
                 }
-                writeAscii(str, start, i);
-                i--;
+                buffer[pos++] = (byte) c;
             } else if (Character.isHighSurrogate(c)) {
                 int j = i + 1;
                 if (j < end && Character.isLowSurrogate(str.charAt(j))) {
