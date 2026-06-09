@@ -17,7 +17,8 @@
   (:import
    [blaze ReducibleArray]
    [blaze.fhir XmlUtil]
-   [blaze.fhir.spec.type Base BundleEntrySearch Complex FieldName Primitive Xhtml]
+   [blaze.fhir.spec.type Base BundleEntrySearch CodeableConcept Coding Complex FieldName
+    Period Primitive Xhtml XmlDirectWriter]
    [clojure.data.xml.node Element]
    [clojure.lang IPersistentMap Indexed]
    [com.fasterxml.jackson.core JsonGenerator SerializableString]
@@ -395,6 +396,18 @@
     (string? value)
     (write-system-string-field! writer (.-value-start-tag property-handler) value)
 
+    (identical? :fhir/CodeableConcept (.-type property-handler))
+    (when-not (XmlDirectWriter/writeCodeableConcept writer (.-tag property-handler) ^CodeableConcept value)
+      (write-value! xml-handlers writer (.-tag property-handler) value))
+
+    (identical? :fhir/Coding (.-type property-handler))
+    (when-not (XmlDirectWriter/writeCoding writer (.-tag property-handler) ^Coding value)
+      (write-value! xml-handlers writer (.-tag property-handler) value))
+
+    (identical? :fhir/Period (.-type property-handler))
+    (when-not (XmlDirectWriter/writePeriod writer (.-tag property-handler) ^Period value)
+      (write-value! xml-handlers writer (.-tag property-handler) value))
+
     :else
     (write-value! xml-handlers writer (.-tag property-handler) value)))
 
@@ -471,6 +484,24 @@
 
     (string? value)
     (write-system-string! writer tag value)
+
+    (and tag (instance? CodeableConcept value))
+    (when-not (XmlDirectWriter/writeCodeableConcept writer tag value)
+      (if-some [handler (xml-handlers (fhir-type value))]
+        (handler xml-handlers writer tag value)
+        (throw (IllegalArgumentException. (format "Value `%s` is no supported FHIR XML type." value)))))
+
+    (and tag (instance? Coding value))
+    (when-not (XmlDirectWriter/writeCoding writer tag value)
+      (if-some [handler (xml-handlers (fhir-type value))]
+        (handler xml-handlers writer tag value)
+        (throw (IllegalArgumentException. (format "Value `%s` is no supported FHIR XML type." value)))))
+
+    (and tag (instance? Period value))
+    (when-not (XmlDirectWriter/writePeriod writer tag value)
+      (if-some [handler (xml-handlers (fhir-type value))]
+        (handler xml-handlers writer tag value)
+        (throw (IllegalArgumentException. (format "Value `%s` is no supported FHIR XML type." value)))))
 
     :else
     (if-some [handler (xml-handlers (fhir-type value))]
