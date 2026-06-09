@@ -16,8 +16,10 @@
    [taoensso.timbre :as log])
   (:import
    [blaze ReducibleArray]
+   [blaze.fhir XmlUtil]
    [blaze.fhir.spec.type Base Complex FieldName Primitive Xhtml]
    [clojure.data.xml.node Element]
+   [clojure.lang IPersistentMap Indexed]
    [com.fasterxml.jackson.core JsonGenerator SerializableString]
    [java.io Writer]))
 
@@ -169,61 +171,8 @@
    {}
    (res/separate-element-definitions type more)))
 
-(defn- valid-xml-char? [^long c]
-  (or (== 0x09 c) (== 0x0A c) (== 0x0D c)
-      (and (<= 0x20 c) (<= c 0xD7FF))
-      (and (<= 0xE000 c) (<= c 0xFFFD))))
-
 (defn- write-xml-str [^Writer writer s]
-  (let [^String s (str s)
-        len (.length s)]
-    (loop [i 0
-           start 0]
-      (if (< i len)
-        (let [c (.charAt s i)]
-          (case c
-            \& (do
-                 (when (< start i)
-                   (.write writer s start (- i start)))
-                 (.write writer "&amp;")
-                 (recur (inc i) (inc i)))
-            \< (do
-                 (when (< start i)
-                   (.write writer s start (- i start)))
-                 (.write writer "&lt;")
-                 (recur (inc i) (inc i)))
-            \> (do
-                 (when (< start i)
-                   (.write writer s start (- i start)))
-                 (.write writer "&gt;")
-                 (recur (inc i) (inc i)))
-            \" (do
-                 (when (< start i)
-                   (.write writer s start (- i start)))
-                 (.write writer "&quot;")
-                 (recur (inc i) (inc i)))
-            (cond
-              (Character/isHighSurrogate c)
-              (let [i' (inc i)]
-                (if (and (< i' len) (Character/isLowSurrogate (.charAt s i')))
-                  (recur (inc i') start)
-                  (do
-                    (when (< start i)
-                      (.write writer s start (- i start)))
-                    (.write writer "?")
-                    (recur i' i'))))
-
-              (or (Character/isLowSurrogate c) (not (valid-xml-char? (int c))))
-              (do
-                (when (< start i)
-                  (.write writer s start (- i start)))
-                (.write writer "?")
-                (recur (inc i) (inc i)))
-
-              :else
-              (recur (inc i) start))))
-        (when (< start len)
-          (.write writer s start (- len start)))))))
+  (XmlUtil/writeEscaped writer (str s)))
 
 (defn- write-xml-attr [^Writer writer k v]
   (.write writer " ")
@@ -235,7 +184,15 @@
 (defn- write-start-tag [^Writer writer tag attrs]
   (.write writer "<")
   (.write writer ^String tag)
-  (run! (fn [[k v]] (write-xml-attr writer k v)) attrs))
+  (when attrs
+    (run! (fn [[k v]] (write-xml-attr writer k v)) attrs)))
+
+(defn- write-resource-start-tag [^Writer writer tag]
+  (.write writer "<")
+  (.write writer ^String tag)
+  (.write writer " xmlns=\"")
+  (.write writer fhir-namespace)
+  (.write writer "\""))
 
 (declare write-element-tree!)
 
@@ -284,9 +241,39 @@
           (write-end-tag writer tag))
         (.write writer "/>")))))
 
+(defn- write-primitive-field!
+  [xml-handlers ^Writer writer ^String start-tag ^String end-tag ^String value-start-tag ^Primitive value]
+  (if (instance? Xhtml value)
+    (write-element-tree! writer (type/xhtml-to-xml value))
+    (let [id (.id value)
+          string-value (.valueAsString value)
+          extensions (.extension value)]
+      (if (and (nil? id) string-value (empty? extensions))
+        (do
+          (.write writer value-start-tag)
+          (write-xml-str writer string-value)
+          (.write writer "\"/>"))
+        (do
+          (.write writer start-tag)
+          (when id
+            (write-xml-attr writer :id id))
+          (when string-value
+            (write-xml-attr writer :value string-value))
+          (if (seq extensions)
+            (do
+              (.write writer ">")
+              (run! #(write-value! xml-handlers writer "extension" %) extensions)
+              (.write writer end-tag))
+            (.write writer "/>")))))))
+
 (defn- write-system-string! [^Writer writer tag value]
   (write-start-tag writer tag {:value value})
   (.write writer "/>"))
+
+(defn- write-system-string-field! [^Writer writer ^String value-start-tag value]
+  (.write writer value-start-tag)
+  (write-xml-str writer value)
+  (.write writer "\"/>"))
 
 (defn- write-resource-wrapper! [xml-handlers ^Writer writer value]
   (write-start-tag writer "resource" nil)
@@ -294,10 +281,15 @@
   (write-value! xml-handlers writer nil value)
   (write-end-tag writer "resource"))
 
-(defn- xml-type-tag [base-tag value]
-  (str base-tag (su/capital (name (:fhir/type value)))))
+(defn- fhir-type [value]
+  (when (instance? IPersistentMap value)
+    (.valAt ^IPersistentMap value Base/FHIR_TYPE_KEY)))
 
-(deftype XmlPropertyHandler [key tag polymorphic type resource-wrapper])
+(defn- xml-type-tag [base-tag value]
+  (str base-tag (su/capital (name (fhir-type value)))))
+
+(deftype XmlPropertyHandler
+         [key tag polymorphic-tags type resource-wrapper start-tag end-tag value-start-tag])
 
 (defn- xml-type-keyword [path code]
   (cond
@@ -321,12 +313,22 @@
     (XmlPropertyHandler.
      (keyword base-tag)
      base-tag
-     polymorphic
+     (when polymorphic
+       (into
+        {}
+        (map
+         (fn [{:keys [code]}]
+           [(xml-type-keyword path code)
+            (str base-tag (su/capital code))]))
+        element-types))
      (if content-reference
        (fhir-type-keyword (subs content-reference 1))
        (when (= 1 (count element-types))
          (xml-type-keyword path first-type-code)))
-     (= "Resource" first-type-code))))
+     (= "Resource" first-type-code)
+     (str "<" base-tag)
+     (str "</" base-tag ">")
+     (str "<" base-tag " value=\""))))
 
 (defn- create-xml-property-handlers [type element-definitions]
   (ReducibleArray. (map (partial xml-property-handler-definition type) element-definitions)))
@@ -336,31 +338,66 @@
     (.-resource-wrapper property-handler)
     (write-resource-wrapper! xml-handlers writer value)
 
-    (.-polymorphic property-handler)
-    (write-value! xml-handlers writer (xml-type-tag (.-tag property-handler) value) value)
+    (.-polymorphic-tags property-handler)
+    (write-value!
+     xml-handlers writer
+     (or ((.-polymorphic-tags property-handler) (fhir-type value))
+         (xml-type-tag (.-tag property-handler) value))
+     value)
+
+    (instance? Primitive value)
+    (write-primitive-field!
+     xml-handlers writer
+     (.-start-tag property-handler)
+     (.-end-tag property-handler)
+     (.-value-start-tag property-handler)
+     value)
+
+    (string? value)
+    (write-system-string-field! writer (.-value-start-tag property-handler) value)
 
     :else
     (write-value! xml-handlers writer (.-tag property-handler) value)))
 
+(defn- write-xml-field-values! [xml-handlers writer ^XmlPropertyHandler property-handler value]
+  (if (instance? Indexed value)
+    (let [len (count value)]
+      (loop [i 0]
+        (when (< i len)
+          (write-xml-field-1! xml-handlers writer property-handler (nth value i))
+          (recur (inc i)))))
+    (run! #(write-xml-field-1! xml-handlers writer property-handler %) value)))
+
 (defn- write-xml-field! [xml-handlers writer ^XmlPropertyHandler property-handler value]
   (if (sequential? value)
-    (run! #(write-xml-field-1! xml-handlers writer property-handler %) value)
+    (write-xml-field-values! xml-handlers writer property-handler value)
     (write-xml-field-1! xml-handlers writer property-handler value)))
 
-(defn- write-xml-fields! [xml-handlers writer property-handlers m]
-  (run!
-   (fn [property-handler]
-     (when-some [value (get m (.-key ^XmlPropertyHandler property-handler))]
-       (write-xml-field! xml-handlers writer property-handler value)))
-   property-handlers))
+(defn- write-xml-fields! [xml-handlers ^Writer writer property-handlers m]
+  (let [property-handlers (.array ^ReducibleArray property-handlers)
+        len (alength property-handlers)]
+    (loop [i 0 wrote? false]
+      (if (< i len)
+        (let [property-handler (aget property-handlers i)]
+          (if-some [value (.valAt ^IPersistentMap m (.-key ^XmlPropertyHandler property-handler))]
+            (do
+              (when-not wrote?
+                (.write writer ">"))
+              (write-xml-field! xml-handlers writer property-handler value)
+              (recur (inc i) true))
+            (recur (inc i) wrote?)))
+        wrote?))))
 
 (defn- write-complex! [xml-handlers ^Writer writer tag attrs property-handlers value]
   (write-start-tag writer tag attrs)
-  (if (seq value)
-    (do
-      (.write writer ">")
-      (write-xml-fields! xml-handlers writer property-handlers value)
-      (write-end-tag writer tag))
+  (if (write-xml-fields! xml-handlers writer property-handlers value)
+    (write-end-tag writer tag)
+    (.write writer "/>")))
+
+(defn- write-resource! [xml-handlers ^Writer writer tag property-handlers value]
+  (write-resource-start-tag writer tag)
+  (if (write-xml-fields! xml-handlers writer property-handlers value)
+    (write-end-tag writer tag)
     (.write writer "/>")))
 
 (defn- create-xml-type-handler [kind type element-definitions]
@@ -368,7 +405,7 @@
     (case kind
       :resource
       (fn resource-xml-handler [xml-handlers ^Writer writer value]
-        (write-complex! xml-handlers writer type {:xmlns fhir-namespace} property-handlers value))
+        (write-resource! xml-handlers writer type property-handlers value))
       :complex-type
       (fn complex-xml-handler [xml-handlers ^Writer writer tag value]
         (write-complex! xml-handlers writer tag nil property-handlers value)))))
@@ -392,7 +429,7 @@
     (write-system-string! writer tag value)
 
     :else
-    (if-some [handler (xml-handlers (:fhir/type value))]
+    (if-some [handler (xml-handlers (fhir-type value))]
       (if tag
         (handler xml-handlers writer tag value)
         (handler xml-handlers writer value))
