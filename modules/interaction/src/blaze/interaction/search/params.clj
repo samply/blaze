@@ -77,6 +77,7 @@
           :page-size (fhir-util/page-size query-params)
           :page-type (fhir-util/page-type query-params)
           :page-id (fhir-util/page-id query-params)
+          :page-id-stack (fhir-util/page-id-stack query-params)
           :page-offset (fhir-util/page-offset query-params)}
           token (assoc :token token)
           total (assoc :total total))))))

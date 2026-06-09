@@ -37,6 +37,10 @@
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.resource/id))
 
+(s/fdef fhir-util/page-id-stack
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :ret (s/coll-of string? :kind vector?))
+
 (s/fdef fhir-util/summary
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret #{:complete :summary})

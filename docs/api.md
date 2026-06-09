@@ -127,7 +127,7 @@ curl -svXDELETE "http://localhost:8080/fhir/__async-status/DD7MLX6H7OGJN7SD"
 
 ## Paging Sessions
 
-Interactions and operations that return a large list of resources support paging via Bundle resources. The various Bundle resources are interlinked via the next link. The process of retrieving a part of or all Bundle resources (pages) of a large response forms a paging session. Paging sessions have the following properties: 
+Interactions and operations that return a large list of resources support paging via Bundle resources. The various Bundle resources are interlinked via the next link. Type-level searches additionally provide a previous link for backwards navigation. The process of retrieving a part of or all Bundle resources (pages) of a large response forms a paging session. Paging sessions have the following properties: 
 
 ### Stable
 
@@ -155,6 +155,10 @@ The variable part of paging URLs is encrypted to ensure confidentiality and inte
   <dt>Future Improvements</dt>
   <dd>Implementing external key encryption is feasible but would require additional infrastructure. If you believe that key encryption is necessary, please open an issue for further discussion.</dd>
 </dl>
+
+### Backwards Navigation
+
+Type-level search results additionally contain a previous link, allowing clients to page backwards through a result set. Because paging sessions keep no server-side state (see Fast), the previous link encodes the chain of preceding page positions. To keep paging URLs bounded in size, this chain is limited to the most recent 30 pages. When paging back further than that, the previous link is omitted; use the first link to jump to the start of the result set instead.
 
 ## Absolute URLs
 

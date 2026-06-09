@@ -1479,6 +1479,12 @@ jobs:
     - name: Link Header Encoding
       run: .github/scripts/link-header-encoding.sh
 
+    - name: Observation Page Navigation (Link Header)
+      run: .github/scripts/observation-page-navigation-link-header.sh
+
+    - name: Observation Page Navigation (Bundle)
+      run: .github/scripts/observation-page-navigation-bundle.sh
+
     - name: Paging uses a Stable Snapshot of the Database (Patient)
       run: .github/scripts/follow-patient-next-link-after-write.sh
 

@@ -900,8 +900,11 @@
           (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                  (link-url body "first"))))
 
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))
+
         (testing "has a next link"
-          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1" "__page-id" "1"})
+          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1" "__page-id" "1" "__page-id-stack" [""]})
                  (link-url body "next"))))
 
         (testing "the bundle contains one entry"
@@ -911,7 +914,7 @@
       (let [{:keys [body]}
             @(handler
               {::reitit/match patient-page-match
-               :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"})})]
+               :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1" "__page-id-stack" [""]})})]
 
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))
@@ -922,6 +925,10 @@
         (testing "has a first link"
           (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                  (link-url body "first"))))
+
+        (testing "has a previous link"
+          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
+                 (link-url body "previous"))))
 
         (testing "has no next link"
           (is (nil? (link-url body "next"))))
@@ -947,8 +954,11 @@
             (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
           (testing "has a next link"
-            (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1" "__page-id" "1"})
+            (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1" "__page-id" "1" "__page-id-stack" [""]})
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -961,7 +971,7 @@
         (let [{:keys [body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"})})]
+                 :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1" "__page-id-stack" [""]})})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -972,6 +982,10 @@
           (testing "has a first link"
             (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                    (link-url body "first"))))
+
+          (testing "has a previous link"
+            (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
+                   (link-url body "previous"))))
 
           (testing "has no next link"
             (is (nil? (link-url body "next"))))
@@ -1021,8 +1035,11 @@
             (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
           (testing "has a next link with search params"
-            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2"})
+            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -1044,8 +1061,11 @@
               (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_total" "accurate" "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
+            (testing "has no previous link"
+              (is (nil? (link-url body "previous"))))
+
             (testing "has a next link with search params"
-              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2"})
+              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -1065,6 +1085,9 @@
 
           (testing "has no first link"
             (is (nil? (link-url body "first"))))
+
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
 
           (testing "has no next link"
             (is (nil? (link-url body "next"))))
@@ -1091,8 +1114,11 @@
             (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
           (testing "has a next link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -1115,8 +1141,11 @@
               (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_total" "accurate" "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
+            (testing "has no previous link"
+              (is (nil? (link-url body "previous"))))
+
             (testing "has a next link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2"})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -1138,6 +1167,9 @@
           (testing "has no first link"
             (is (nil? (link-url body "first"))))
 
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
           (testing "has no next link"
             (is (nil? (link-url body "next"))))
 
@@ -1148,7 +1180,7 @@
       (let [{:keys [body]}
             @(handler
               {::reitit/match patient-page-match
-               :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})})]
+               :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
 
         (testing "there is no total count because we have clauses and we have
                     more hits than page-size"
@@ -1160,6 +1192,10 @@
         (testing "has a first link with token"
           (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
                  (link-url body "first"))))
+
+        (testing "has a previous link with token"
+          (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
+                 (link-url body "previous"))))
 
         (testing "has no next link"
           (is (nil? (link-url body "next"))))
@@ -1180,8 +1216,11 @@
               @(handler
                 {:params {"active" "true" "_count" "1"}})]
 
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
           (testing "has a next link with search params"
-            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2"})
+            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -1191,17 +1230,40 @@
         (let [{:keys [body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :path-params (page-path-params page-id-cipher {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"})})]
+                 :path-params (page-path-params page-id-cipher {"active" "true" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
 
           (testing "has no self link"
             (is (nil? (link-url body "self"))))
 
+          (testing "has a previous link with search params"
+            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1"})
+                   (link-url body "previous"))))
+
           (testing "has a next link with search params"
-            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "3"})
+            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body))))))))
+            (is (= 1 (count (:entry body))))))
+
+        (testing "following the next link"
+          (let [{:keys [body]}
+                @(handler
+                  {::reitit/match patient-page-match
+                   :path-params (page-path-params page-id-cipher {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})})]
+
+            (testing "has no self link"
+              (is (nil? (link-url body "self"))))
+
+            (testing "has a previous link with search params"
+              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
+                     (link-url body "previous"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))))))
 
     (testing "on /_search request"
       (testing "search for active patients with _count=1"
@@ -1214,22 +1276,45 @@
             (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
-          (testing "has a first link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
+          (testing "has a next link with token"
+            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                    (link-url body "next"))))))
 
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2"})})]
+                 :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
 
           (testing "has no self link"
             (is (nil? (link-url body "self"))))
 
+          (testing "has a previous link with token"
+            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
+                   (link-url body "previous"))))
+
           (testing "has a next link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "3"})
-                   (link-url body "next")))))))))
+            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})
+                   (link-url body "next")))))
+
+        (testing "following the next link"
+          (let [{:keys [body]}
+                @(handler
+                  {::reitit/match patient-page-match
+                   :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})})]
+
+            (testing "has no self link"
+              (is (nil? (link-url body "self"))))
+
+            (testing "has a previous link with token"
+              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
+                     (link-url body "previous"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))))))))
 
 (deftest handler-id-search-test
   (with-handler [handler]
@@ -1303,8 +1388,11 @@
             (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1"})
                    (link-url body "first"))))
 
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
           (testing "has a next link"
-            (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1" "__page-id" "3"})
+            (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1" "__page-id" "3" "__page-id-stack" [""]})
                    (link-url body "next"))))
 
           (testing "the bundle contains two entries"
@@ -1332,7 +1420,7 @@
           (let [{{[first-entry second-entry] :entry :as body} :body}
                 @(handler
                   {::reitit/match patient-page-match
-                   :path-params (page-path-params page-id-cipher {"_id" ["0,2,3,4"] "_count" "2" "__t" "1" "__page-id" "3"})})]
+                   :path-params (page-path-params page-id-cipher {"_id" ["0,2,3,4"] "_count" "2" "__t" "1" "__page-id" "3" "__page-id-stack" [""]})})]
 
             (testing "there is no total count because we have clauses and we
                         have more hits than page-size"
@@ -1344,6 +1432,10 @@
             (testing "has a first link"
               (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1"})
                      (link-url body "first"))))
+
+            (testing "has a previous link"
+              (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1"})
+                     (link-url body "previous"))))
 
             (testing "has no next link"
               (is (nil? (link-url body "next"))))
@@ -1576,7 +1668,10 @@
 
           (testing "has a first link"
             (is (= (page-url page-id-cipher "Patient" {"_sort" "_id" "_count" "50" "__t" "3"})
-                   (link-url body "first")))))))
+                   (link-url body "first"))))
+
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous")))))))
 
     (testing "descending"
       (doseq [handling ["strict" "lenient"]]
@@ -1632,7 +1727,10 @@
 
           (testing "has a first link"
             (is (= (page-url page-id-cipher "Patient" {"_sort" "_lastUpdated" "_count" "50" "__t" "3"})
-                   (link-url body "first")))))))
+                   (link-url body "first"))))
+
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous")))))))
 
     (testing "descending"
       (doseq [handling ["strict" "lenient"]]
@@ -1667,7 +1765,10 @@
 
           (testing "has a first link"
             (is (= (page-url page-id-cipher "Patient" {"_sort" "-_lastUpdated" "_count" "50" "__t" "3"})
-                   (link-url body "first")))))))))
+                   (link-url body "first"))))
+
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous")))))))))
 
 (deftest handler-profile-search-test
   (with-handler [handler]
@@ -2268,13 +2369,16 @@
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))
 
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))
+
         (testing "has a next link with search params"
           (is (= (page-url page-id-cipher "Observation"
                            {"combo-code-value-quantity"
                             ["http://loinc.org|8480-6$ge140|mm[Hg]"
                              "http://loinc.org|8462-4$ge90|mm[Hg]"]
                             "_count" "1" "__t" "2"
-                            "__page-id" "id-123130"})
+                            "__page-id" "id-123130" "__page-id-stack" [""]})
                  (link-url body "next"))))))))
 
 (deftest handler-duplicate-or-search-parameters-have-no-effect-#293-test
@@ -2558,6 +2662,9 @@
                             "_count" "50" "__t" "1"})
                  (link-url body "first"))))
 
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))
+
         (testing "the bundle contains two entries"
           (is (= 2 (count (:entry body)))))
 
@@ -2722,11 +2829,14 @@
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
 
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
+
           (testing "has a next link"
             (is (= (page-url page-id-cipher "Observation"
                              {"_include" ["Observation:subject"]
                               "_count" "1" "__t" "1"
-                              "__page-id" "3"})
+                              "__page-id" "3" "__page-id-stack" [""]})
                    (link-url body "next"))))
 
           (testing "the bundle contains two entries"
@@ -2771,6 +2881,9 @@
                                  {"_include" ["Observation:subject"]
                                   "_count" "2" "__t" "1"})
                        (link-url body "first"))))
+
+              (testing "has no previous link"
+                (is (nil? (link-url body "previous"))))
 
               (testing "the bundle contains two entries"
                 (is (= 2 (count (:entry body)))))
@@ -2976,11 +3089,14 @@
           (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_count=50")
                  (link-url body "self"))))
 
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))
+
         (testing "has a next link"
           (is (= (page-url page-id-cipher "Patient"
                            {"_revinclude" ["Observation:subject"]
                             "_count" "50" "__t" "3"
-                            "__page-id" "1"})
+                            "__page-id" "1" "__page-id-stack" [""]})
                  (link-url body "next"))))
 
         (testing "second page"
@@ -2990,7 +3106,7 @@
                    :path-params
                    (page-path-params
                     page-id-cipher
-                    {"_revinclude" "Observation:subject" "_count" "50" "__t" "3" "__page-id" "1"})})]
+                    {"_revinclude" "Observation:subject" "_count" "50" "__t" "3" "__page-id" "1" "__page-id-stack" [""]})})]
 
             (is (= 200 status))
 
@@ -3016,7 +3132,13 @@
               (is (= (page-url page-id-cipher "Patient"
                                {"_revinclude" ["Observation:subject"]
                                 "_count" "50" "__t" "3"})
-                     (link-url body "first")))))))))
+                     (link-url body "first"))))
+
+            (testing "has a previous link"
+              (is (= (page-url page-id-cipher "Patient"
+                               {"_revinclude" ["Observation:subject"]
+                                "_count" "50" "__t" "3"})
+                     (link-url body "previous")))))))))
 
   (testing "non-iterative include doesn't work iterative"
     (with-handler [handler]
@@ -3093,6 +3215,9 @@
                                                      "_count" "50" "__t" "1"})
                  (link-url body "first"))))
 
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))
+
         (testing "the bundle contains two entries"
           (is (= 2 (count (:entry body)))))
 
@@ -3141,6 +3266,9 @@
             (is (= (page-url page-id-cipher "Patient" {"_revinclude" ["Observation:subject" "Condition:subject"]
                                                        "_count" "50" "__t" "1"})
                    (link-url body "first"))))
+
+          (testing "has no previous link"
+            (is (nil? (link-url body "previous"))))
 
           (testing "the bundle contains two entries"
             (is (= 3 (count (:entry body)))))
@@ -3205,11 +3333,14 @@
       (testing "the total count is 2"
         (is (= #fhir/unsignedInt 2 (:total body))))
 
+      (testing "has no previous link"
+        (is (nil? (link-url body "previous"))))
+
       (testing "has a next link"
         (is (= (page-url page-id-cipher "Observation"
                          {"_elements" "subject"
                           "_count" "1" "__t" "1"
-                          "__page-id" "1"})
+                          "__page-id" "1" "__page-id-stack" [""]})
                (link-url body "next"))))
 
       (testing "the bundle contains one entry"
@@ -3677,3 +3808,120 @@
             (given (:resource second-entry)
               :fhir/type := :fhir/Observation
               :id := "0")))))))
+
+(deftest handler-previous-paging-test
+  (with-handler [handler _ page-id-cipher]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Patient :id "2"}]]]
+
+    (testing "the first page has no previous link"
+      (let [{:keys [body]} @(handler {:params {"_count" "1"}})]
+        (is (= (str base-url context-path "/Patient/0")
+               (-> body :entry first :fullUrl :value)))
+        (is (nil? (link-url body "previous")))))
+
+    (testing "the second page (following the next link)"
+      (let [{:keys [body]}
+            @(handler
+              {::reitit/match patient-page-match
+               :path-params (page-path-params
+                             page-id-cipher
+                             {"_count" "1" "__t" "1" "__page-id" "1"
+                              "__page-id-stack" [""]})})]
+
+        (testing "contains the second patient"
+          (is (= (str base-url context-path "/Patient/1")
+                 (-> body :entry first :fullUrl :value))))
+
+        (testing "has a previous link pointing to the first page"
+          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
+                 (link-url body "previous"))))
+
+        (testing "has a next link carrying the page id stack"
+          (is (= (page-url page-id-cipher "Patient"
+                           {"_count" "1" "__t" "1" "__page-id" "2"
+                            "__page-id-stack" ["" "1"]})
+                 (link-url body "next"))))))
+
+    (testing "the third (last) page"
+      (let [{:keys [body]}
+            @(handler
+              {::reitit/match patient-page-match
+               :path-params (page-path-params
+                             page-id-cipher
+                             {"_count" "1" "__t" "1" "__page-id" "2"
+                              "__page-id-stack" ["" "1"]})})]
+
+        (testing "contains the third patient"
+          (is (= (str base-url context-path "/Patient/2")
+                 (-> body :entry first :fullUrl :value))))
+
+        (testing "has no next link"
+          (is (nil? (link-url body "next"))))
+
+        (testing "has a previous link pointing to the second page"
+          (is (= (page-url page-id-cipher "Patient"
+                           {"_count" "1" "__t" "1" "__page-id" "1"
+                            "__page-id-stack" [""]})
+                 (link-url body "previous"))))))
+
+    (testing "following the previous link returns to the page before"
+      (let [{:keys [body]}
+            @(handler
+              {::reitit/match patient-page-match
+               :path-params (page-path-params
+                             page-id-cipher
+                             {"_count" "1" "__t" "1" "__page-id" "1"
+                              "__page-id-stack" [""]})})]
+
+        (testing "contains the second patient again"
+          (is (= (str base-url context-path "/Patient/1")
+                 (-> body :entry first :fullUrl :value))))
+
+        (testing "has a previous link to the first page"
+          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
+                 (link-url body "previous"))))))
+
+    (testing "the first page reached via a previous link has no previous link"
+      (let [{:keys [body]}
+            @(handler
+              {::reitit/match patient-page-match
+               :path-params (page-path-params
+                             page-id-cipher
+                             {"_count" "1" "__t" "1"})})]
+
+        (testing "contains the first patient"
+          (is (= (str base-url context-path "/Patient/0")
+                 (-> body :entry first :fullUrl :value))))
+
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))
+
+        (testing "has a next link"
+          (is (= (page-url page-id-cipher "Patient"
+                           {"_count" "1" "__t" "1" "__page-id" "1"
+                            "__page-id-stack" [""]})
+                 (link-url body "next"))))))))
+
+(deftest handler-previous-paging-cap-test
+  (testing "the page id stack is capped to the newest 30 entries"
+    (with-handler [handler _ page-id-cipher]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]]]
+
+      (let [stack (mapv #(str "p" %) (range 30))
+            {:keys [body]}
+            @(handler
+              {::reitit/match patient-page-match
+               :path-params (page-path-params
+                             page-id-cipher
+                             (assoc {"_count" "1" "__t" "1" "__page-id" "1"}
+                                    "__page-id-stack" stack))})]
+
+        (testing "the next link drops the oldest entry and appends the current one"
+          (is (= (page-url page-id-cipher "Patient"
+                           {"_count" "1" "__t" "1" "__page-id" "2"
+                            "__page-id-stack" (conj (vec (rest stack)) "1")})
+                 (link-url body "next"))))))))

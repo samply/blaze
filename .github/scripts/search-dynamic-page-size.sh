@@ -19,7 +19,7 @@ page_size="$2"
 match_count="$3"
 result="$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?$query&_count=$page_size&_revinclude=Observation:subject")"
 
-patient_count="$(echo "$result" | jq -r '[ .entry[] | select(.search.mode == "match") | .resource] | length')"
+patient_count="$(echo "$result" | jq -r '[ .entry[] | select(.search.mode == "match") | .resource ] | length')"
 # $page_size Patients would be too costly. Blaze returns only $match_count
 test "number of patients in the bundle" "$patient_count" "$match_count"
 
