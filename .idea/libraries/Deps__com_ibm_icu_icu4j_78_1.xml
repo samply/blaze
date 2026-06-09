@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.ibm.icu/icu4j:78.1">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/ibm/icu/icu4j/78.1/icu4j-78.1.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

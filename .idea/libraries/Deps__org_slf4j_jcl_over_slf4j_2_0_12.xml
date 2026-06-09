@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.slf4j/jcl-over-slf4j:2.0.12">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/jcl-over-slf4j/2.0.12/jcl-over-slf4j-2.0.12.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

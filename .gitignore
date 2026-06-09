@@ -4,3 +4,6 @@ classes
 .cache
 .nrepl-port
 validator_cli.jar
+
+# Cursive-generated module files (derived from deps.edn, regenerated on sync)
+*.iml

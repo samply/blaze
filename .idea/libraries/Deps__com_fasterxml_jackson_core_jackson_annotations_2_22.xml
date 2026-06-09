@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.fasterxml.jackson.core/jackson-annotations:2.22">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/fasterxml/jackson/core/jackson-annotations/2.22/jackson-annotations-2.22.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

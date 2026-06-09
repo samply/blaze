@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.fhir/ucum:1.0.10">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/fhir/ucum/1.0.10/ucum-1.0.10.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

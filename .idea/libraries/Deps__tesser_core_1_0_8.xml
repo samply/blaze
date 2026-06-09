@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: tesser.core:1.0.8">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/tesser/core/tesser.core/1.0.8/tesser.core-1.0.8.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

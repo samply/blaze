@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: ca.uhn.hapi.fhir/org.hl7.fhir.model:6.9.4.2">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/ca/uhn/hapi/fhir/org.hl7.fhir.model/6.9.4.2/org.hl7.fhir.model-6.9.4.2.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

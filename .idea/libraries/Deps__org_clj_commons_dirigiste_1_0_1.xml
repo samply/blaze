@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.clj-commons/dirigiste:1.0.1">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/clj-commons/dirigiste/1.0.1/dirigiste-1.0.1.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

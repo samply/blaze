@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.jvnet.jaxb2_commons/jaxb2-basics-runtime:0.13.1">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/jvnet/jaxb2_commons/jaxb2-basics-runtime/0.13.1/jaxb2-basics-runtime-0.13.1.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

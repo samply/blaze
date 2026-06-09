@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: io.jepsen/history:0.1.7">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/io/jepsen/history/0.1.7/history-0.1.7.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

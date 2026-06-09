@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.apache.lucene/lucene-core:10.4.0">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/apache/lucene/lucene-core/10.4.0/lucene-core-10.4.0.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

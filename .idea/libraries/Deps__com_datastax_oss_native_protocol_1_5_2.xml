@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.datastax.oss/native-protocol:1.5.2">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/datastax/oss/native-protocol/1.5.2/native-protocol-1.5.2.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

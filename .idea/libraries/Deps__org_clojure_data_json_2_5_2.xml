@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.clojure/data.json:2.5.2">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/clojure/data.json/2.5.2/data.json-2.5.2.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

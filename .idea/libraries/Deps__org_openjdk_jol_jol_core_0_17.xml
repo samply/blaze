@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.openjdk.jol/jol-core:0.17">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/openjdk/jol/jol-core/0.17/jol-core-0.17.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

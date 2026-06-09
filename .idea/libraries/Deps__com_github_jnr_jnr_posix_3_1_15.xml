@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.github.jnr/jnr-posix:3.1.15">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/github/jnr/jnr-posix/3.1.15/jnr-posix-3.1.15.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

@@ -7,3 +7,6 @@
 # Editor-based HTTP Client requests
 /httpRequests/
 /dictionaries/
+# Cursive-generated, derived from deps.edn — regenerated on sync
+/libraries/
+/modules.xml
