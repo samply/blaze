@@ -13,9 +13,10 @@
    [clojure.walk :as walk]
    [cognitect.anomalies :as anom])
   (:import
+   [blaze.fhir XmlUtf8Writer]
    [blaze.fhir.spec.type Primitive]
    [clojure.data.xml.node Element]
-   [java.io BufferedWriter ByteArrayOutputStream OutputStream OutputStreamWriter Writer]
+   [java.io ByteArrayOutputStream OutputStream Writer]
    [java.nio.charset StandardCharsets]
    [java.util.regex Pattern]))
 
@@ -162,9 +163,7 @@
 (defn write-xml
   "Writes `value` to output stream `out` closing it if done."
   [context out value]
-  (with-open [writer (BufferedWriter.
-                      (OutputStreamWriter. ^OutputStream out StandardCharsets/UTF_8)
-                      65536)]
+  (with-open [writer (XmlUtf8Writer. ^OutputStream out 65536)]
     (.write writer "<?xml version='1.0' encoding='UTF-8'?>")
     (if-some [xml-handlers (:xml-handlers (meta context))]
       (if-some [handler (xml-handlers (:fhir/type value))]

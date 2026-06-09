@@ -15,6 +15,10 @@ public final class XmlUtil {
     }
 
     public static void writeEscaped(Writer writer, String s) throws IOException {
+        if (writer instanceof XmlUtf8Writer xmlWriter) {
+            xmlWriter.writeEscaped(s);
+            return;
+        }
         int len = s.length();
         int start = 0;
         for (int i = 0; i < len; i++) {

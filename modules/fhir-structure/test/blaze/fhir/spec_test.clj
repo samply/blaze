@@ -32,6 +32,7 @@
    [jsonista.core :as j]
    [juxt.iota :refer [given]])
   (:import
+   [blaze.fhir XmlUtf8Writer]
    [blaze.fhir.spec.type Base XmlDirectWriter]
    [blaze.fhir.spec.type.system DateTime Times]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
@@ -98,6 +99,22 @@
   (let [out (ByteArrayOutputStream.)]
     (fhir-spec/write-xml writing-context out x)
     (String. (.toByteArray out) StandardCharsets/UTF_8)))
+
+(deftest xml-utf8-writer-test
+  (testing "UTF-8 encoding"
+    (let [out (ByteArrayOutputStream.)]
+      (with-open [writer (XmlUtf8Writer. out 16)]
+        (.write writer "Aä")
+        (.write writer "😀")
+        (.write writer (char-array [\B \C]) 0 2))
+      (is (= "Aä😀BC" (String. (.toByteArray out) StandardCharsets/UTF_8)))))
+
+  (testing "escaping"
+    (let [out (ByteArrayOutputStream.)]
+      (with-open [writer (XmlUtf8Writer. out 16)]
+        (.writeEscaped writer "A&B <C> \"D\" ä 😀 \u001E"))
+      (is (= "A&amp;B &lt;C&gt; &quot;D&quot; ä 😀 ?"
+             (String. (.toByteArray out) StandardCharsets/UTF_8))))))
 
 (deftest write-xml-test
   (let [out (ByteArrayOutputStream.)
