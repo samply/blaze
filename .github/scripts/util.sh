@@ -70,3 +70,8 @@ transact() {
 transact_return_representation() {
   curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d @- "$1"
 }
+
+# Returns the Link header (RFC 8288) of a GET request to the URL $1.
+link_header() {
+  curl -sfH 'Accept: application/fhir+json' -o /dev/null -D - "$1" | grep -i '^link:' | tr -d '\r'
+}

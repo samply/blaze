@@ -80,6 +80,20 @@
   [{v "__page-id"}]
   (some #(when (s/valid? :blaze.resource/id %) %) (u/to-seq v)))
 
+(defn page-id-stack
+  "Returns the value of the `__page-id-stack` query param as a vector of the
+  start-id's of the ancestor pages, oldest first.
+
+  An empty string represents the first page (which has no start-id). The param is
+  only set internally inside encrypted page id's. Returns an empty vector if
+  absent or if any entry is neither an empty string nor a valid FHIR id."
+  {:arglists '([query-params])}
+  [{v "__page-id-stack"}]
+  (let [stack (vec (u/to-seq v))]
+    (if (every? #(or (= "" %) (s/valid? :blaze.resource/id %)) stack)
+      stack
+      [])))
+
 (defn summary
   "Returns either :complete or :summary based on the `_summary` query param."
   {:arglists '([query-params])}

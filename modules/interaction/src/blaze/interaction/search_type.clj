@@ -191,13 +191,41 @@
   [{::search-util/keys [link] :keys [first-link-url-fn]} token clauses]
   (link "first" (first-link-url-fn token clauses)))
 
-(defn- next-link-offset [next-handle]
-  {"__page-id" (:id next-handle)})
+(def ^:private ^:const max-page-id-stack-size
+  "Upper bound on the number of ancestor page start-id's carried in the
+  `__page-id-stack` of a paging link. Keeps the encrypted page id (and thus the
+  paging URL) small enough; beyond it, the previous link is no longer offered
+  and the always present first link is used instead."
+  30)
+
+(defn- push-page-id [page-id-stack page-id]
+  (let [stack (conj page-id-stack page-id)
+        overflow (- (count stack) max-page-id-stack-size)]
+    (cond-> stack (pos? overflow) (subvec overflow))))
+
+(defn- next-link-offset [{:keys [page-id page-id-stack]} next-handle]
+  {"__page-id" (:id next-handle)
+   ;; an empty string represents the first page, which has no start-id
+   "__page-id-stack" (push-page-id page-id-stack (or page-id ""))})
 
 (defn- next-link
-  [{::search-util/keys [link] :keys [next-link-url-fn]} token clauses next-handle]
-  (->> (next-link-url-fn token clauses (next-link-offset next-handle))
+  [{::search-util/keys [link] :keys [params page-link-url-fn]} token clauses
+   next-handle]
+  (->> (page-link-url-fn token clauses (next-link-offset params next-handle))
        (link "next")))
+
+(defn- prev-link-offset [{:keys [page-id-stack]}]
+  (let [prev-page-id (peek page-id-stack)
+        prev-page-id-stack (pop page-id-stack)]
+    (cond-> {}
+      ;; an empty string represents the first page, which has no start-id
+      (not= "" prev-page-id) (assoc "__page-id" prev-page-id)
+      (seq prev-page-id-stack) (assoc "__page-id-stack" prev-page-id-stack))))
+
+(defn- prev-link
+  [{::search-util/keys [link] :keys [params page-link-url-fn]} token clauses]
+  (->> (page-link-url-fn token clauses (prev-link-offset params))
+       (link "previous")))
 
 (defn- zero-bundle
   "Generate a special bundle if the search results in zero matches to avoid
@@ -228,16 +256,22 @@
     (ac/completed-future token)
     (gen-token-fn clauses)))
 
+(defn- page-bundle
+  [{{:keys [page-id-stack]} :params :as context} token clauses
+   {:keys [next-handle] :as page-data}]
+  (cond-> (normal-bundle context token page-data)
+    (seq page-id-stack)
+    (update :link conj (prev-link context token clauses))
+    next-handle
+    (update :link conj (next-link context token clauses next-handle))))
+
 (defn- search-normal [context]
   (-> (page-data context)
       (ac/then-compose
-       (fn [{:keys [next-handle entries clauses] :as page-data}]
+       (fn [{:keys [entries clauses] :as page-data}]
          (if (seq entries)
            (do-sync [token (gen-token! context clauses)]
-             (if next-handle
-               (-> (normal-bundle context token page-data)
-                   (update :link conj (next-link context token clauses next-handle)))
-               (normal-bundle context token page-data)))
+             (page-bundle context token clauses page-data))
            (ac/completed-future (zero-bundle context clauses)))))
       (ac/then-apply ring/response)))
 
@@ -307,9 +341,9 @@
     (nav/token-url base-url page-id-cipher (page-match request) params token clauses
                    (d/t db) nil)))
 
-(defn- next-link-url-fn
+(defn- page-link-url-fn
   "Returns a function of `token`, `clauses` and `offset` that returns the URL
-  of the next link."
+  of a paging link (next or previous)."
   [{:blaze/keys [base-url db] :as request} page-id-cipher params]
   (fn [token clauses offset]
     (nav/token-url base-url page-id-cipher (page-match request) params token
@@ -337,7 +371,7 @@
               :self-link-url-fn (self-link-url-fn request params)
               :gen-token-fn (gen-token-fn context request)
               :first-link-url-fn (first-link-url-fn request page-id-cipher params)
-              :next-link-url-fn (next-link-url-fn request page-id-cipher params))
+              :page-link-url-fn (page-link-url-fn request page-id-cipher params))
         handling
         (assoc :blaze.preference/handling handling)
         respond-async

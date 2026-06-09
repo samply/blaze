@@ -125,6 +125,25 @@
       ["<invalid>" "a"] "a"
       ["A" "b"] "A")))
 
+(deftest page-id-stack-test
+  (testing "no query param"
+    (is (= [] (fhir-util/page-id-stack {}))))
+
+  (testing "single id"
+    (is (= ["0"] (fhir-util/page-id-stack {"__page-id-stack" "0"}))))
+
+  (testing "vector of ids"
+    (is (= ["0" "1"] (fhir-util/page-id-stack {"__page-id-stack" ["0" "1"]}))))
+
+  (testing "an empty string represents the first page"
+    (is (= [""] (fhir-util/page-id-stack {"__page-id-stack" [""]})))
+    (is (= ["" "1"] (fhir-util/page-id-stack {"__page-id-stack" ["" "1"]}))))
+
+  (testing "an invalid entry yields an empty stack"
+    (are [v] (= [] (fhir-util/page-id-stack {"__page-id-stack" v}))
+      "<invalid>"
+      ["0" "<invalid>"])))
+
 (def comma-with-spaces-gen
   (let [spaces #(apply str (repeat % " "))]
     (gen/let [pre (gen/choose 0 5)
