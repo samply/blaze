@@ -36,6 +36,7 @@
    [blaze.fhir.spec.type.system DateTime Times]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [com.google.common.hash Hashing]
+   [java.io ByteArrayInputStream ByteArrayOutputStream]
    [java.nio.charset StandardCharsets]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -58,6 +59,10 @@
 
 (defn- read-cbor [source]
   (j/read-value source cbor-object-mapper))
+
+(defn- read-xml [source]
+  (with-open [in (ByteArrayInputStream. source)]
+    (fhir-spec/conform-xml (xml/parse in))))
 
 (def ^:private parsing-context
   (ig/init-key
@@ -88,6 +93,38 @@
   (ig/init-key
    :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}))
+
+(deftest write-xml-test
+  (let [out (ByteArrayOutputStream.)
+        patient {:fhir/type :fhir/Patient :id "0"}]
+    (is (nil? (fhir-spec/write-xml writing-context out patient)))
+    (is (= patient (read-xml (.toByteArray out))))))
+
+(deftest write-xml-escaping-test
+  (let [out (ByteArrayOutputStream.)
+        patient {:fhir/type :fhir/Patient
+                 :id "0"
+                 :name [{:fhir/type :fhir/HumanName
+                         :family #fhir/string "A&B <C> \"D\"\u001E"}]}]
+    (is (nil? (fhir-spec/write-xml writing-context out patient)))
+    (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                "<Patient xmlns=\"http://hl7.org/fhir\">"
+                "<id value=\"0\"/>"
+                "<name><family value=\"A&amp;B &lt;C&gt; &quot;D&quot;?\"/></name>"
+                "</Patient>")
+           (String. (.toByteArray out) StandardCharsets/UTF_8)))))
+
+(deftest write-xml-xhtml-test
+  (let [out (ByteArrayOutputStream.)
+        patient (fhir-spec/conform-xml
+                 (prxml/sexp-as-element
+                  [::f/Patient {:xmlns "http://hl7.org/fhir"}
+                   [::f/id {:value "0"}]
+                   [::f/text
+                    [::xhtml/div {:xmlns "http://www.w3.org/1999/xhtml"}
+                     [::xhtml/p "FHIR is cool."]]]]))]
+    (is (nil? (fhir-spec/write-xml writing-context out patient)))
+    (is (= patient (read-xml (.toByteArray out))))))
 
 (defn- write-json [x]
   (fhir-spec/write-json-as-bytes writing-context x))
