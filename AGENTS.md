@@ -69,8 +69,9 @@ When generating a `CHANGELOG.md` entry for a new version:
 1. **Fetch issues** from the GitHub milestone matching the version name: `gh issue list --milestone <version> --state all --limit 200 --json number,title,labels,state,url`
 2. **Fetch the milestone number** for the "full changelog" link: `gh api repos/samply/blaze/milestones --jq '.[] | select(.title == "<version>") | .number'`
 3. **Categorize** issues by their labels into sections — in this order if present: `Notes`, `Survey`, `Security`, `Enhancements`, `Performance`, `Bugfixes`, `Documentation`, `Maintenance`. Omit issues labeled `ci` and dependency updates.
-4. **Insert** the new entry at the top of `CHANGELOG.md`, directly below the `# Changelog` heading, following the format of existing entries.
-5. **End** the entry with: `The full changelog can be found [here](https://github.com/samply/blaze/milestone/<number>?closed=1).`
+4. **Use issue titles verbatim** (1:1) as the changelog entry text. Do **not** rewrite, title-case, shorten, or normalize them to the imperative mood — even when an issue title does not follow the usual title conventions. Fixing the issue title is out of scope at release time.
+5. **Insert** the new entry at the top of `CHANGELOG.md`, directly below the `# Changelog` heading, following the format of existing entries.
+6. **End** the entry with: `The full changelog can be found [here](https://github.com/samply/blaze/milestone/<number>?closed=1).`
 
 ## Verification & Workflow
 

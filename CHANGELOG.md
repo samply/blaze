@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.8.0
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Enhancements
+
+* Implement FHIR Search Chaining longer than one Hop ([#3606](https://github.com/samply/blaze/issues/3606))
+* Implement Previous Page Links ([#3636](https://github.com/samply/blaze/issues/3636))
+* Add CodeSystem $lookup operation to Frontend UI ([#3521](https://github.com/samply/blaze/issues/3521))
+
+### Performance
+
+* Replace ByteBuffer with ByteString.Builder for Index Key Encoding ([#3630](https://github.com/samply/blaze/issues/3630))
+
+### Bugfixes
+
+* Fix Error Combining Composite Token-Token Params ([#3642](https://github.com/samply/blaze/issues/3642))
+* History Index Access Scans Whole Index When since-t Is Set ([#3625](https://github.com/samply/blaze/issues/3625))
+* Reject null elements in repeating elements of FHIR complex types ([#3620](https://github.com/samply/blaze/issues/3620))
+* Implement missing -optimize method on Interval record ([#3613](https://github.com/samply/blaze/issues/3613))
+
+### Documentation
+
+* Document Commit and Issue Title Conventions ([#3679](https://github.com/samply/blaze/issues/3679))
+* Document apply-time WriteBatch structure in v1 database docs ([#3648](https://github.com/samply/blaze/issues/3648))
+* Correct and expand database index documentation ([#3632](https://github.com/samply/blaze/issues/3632))
+* Fix Section Level of Search Type – Query Plan ([#3622](https://github.com/samply/blaze/issues/3622))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/124?closed=1).
+
 ## v1.7.0
 
 ### Notes
