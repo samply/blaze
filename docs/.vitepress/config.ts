@@ -130,6 +130,10 @@ export default defineConfig({
                 collapsed: true,
                 items: [
                   {
+                    text: "$lookup",
+                    link: "/api/operation/code-system-lookup",
+                  },
+                  {
                     text: "$validate-code",
                     link: "/api/operation/code-system-validate-code",
                   },
