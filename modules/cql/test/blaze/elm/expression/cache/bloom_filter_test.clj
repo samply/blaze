@@ -5,15 +5,17 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.test-util :as ctu]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
+   [blaze.elm.expression.cache.bloom-filter-spec]
    [blaze.elm.expression.cache.codec-spec]
    [blaze.elm.expression.cache.codec.by-t-spec]
    [blaze.elm.expression.cache.codec.form-spec]
    [blaze.elm.literal]
+   [blaze.elm.resource :as cr]
    [blaze.fhir.test-util]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -29,6 +31,60 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
+
+(deftest might-contain-test
+  (testing "Bloom filter created on the same database state"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (let [elm #elm/exists #elm/retrieve{:type "Observation"}
+            expr (c/compile {:node node :eval-context "Patient"} elm)
+            db (d/db node)
+            bloom-filter (bloom-filter/create node expr)]
+
+        (testing "Patient 0 with an Observation is in the Bloom filter"
+          (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
+            (is (true? (bloom-filter/might-contain? bloom-filter resource)))))
+
+        (testing "Patient 1 without an Observation is definitely not in the Bloom filter"
+          (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "1"))]
+            (is (false? (bloom-filter/might-contain? bloom-filter resource))))))))
+
+  (testing "Bloom filter older than the last change in the patient's compartment"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [elm #elm/exists #elm/retrieve{:type "Observation"}
+            expr (c/compile {:node node :eval-context "Patient"} elm)
+            bloom-filter (bloom-filter/create node expr)]
+
+        @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
+                                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
+
+        (testing "the Bloom filter can't be trusted for Patient 0 anymore"
+          (let [db (d/db node)
+                resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
+            (is (true? (bloom-filter/might-contain? bloom-filter resource))))))))
+
+  (testing "Bloom filter newer than the database of the resource"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+      (let [elm #elm/exists #elm/retrieve{:type "Observation"}
+            expr (c/compile {:node node :eval-context "Patient"} elm)
+            db (d/db node)]
+
+        @(d/transact node [[:delete "Observation" "0"]])
+
+        (testing "the Bloom filter created after the deletion doesn't contain Patient 0, but it can't be trusted for the older database"
+          (let [bloom-filter (bloom-filter/create node expr)
+                resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
+            (is (true? (bloom-filter/might-contain? bloom-filter resource)))))))))
 
 (deftest create-test
   (testing "with empty database"

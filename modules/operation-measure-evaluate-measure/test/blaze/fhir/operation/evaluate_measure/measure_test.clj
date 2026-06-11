@@ -868,7 +868,50 @@
 
           (given (into [] (ec/list-by-t cache))
             count := 1
-            [0 ::bloom-filter/expr-form] := "(exists (eduction-query (matcher [[\"medication\" \"Medication/0\"]]) (retrieve \"MedicationStatement\")))"))))))
+            [0 ::bloom-filter/expr-form] := "(exists (eduction-query (matcher [[\"medication\" \"Medication/0\"]]) (retrieve \"MedicationStatement\")))")))))
+
+  (testing "Bloom filter newer than the database isn't attached"
+    (with-system-data
+      [{:blaze.db/keys [node]
+        ::expr/keys [cache]
+        :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
+      [(into [] (mapcat patient-condition-tx-ops) (range 2000))
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+               :content [(library-content library-exists-condition)]}]]]
+
+      (let [db (d/db node)
+            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                     ::expr/cache cache :executor executor
+                     :terminology-service local
+                     :blaze/base-url "" ::reitit/router router}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical "0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]}]}
+            params {:period [#system/date "2000" #system/date "2100"]
+                    :report-type "population"}]
+
+        @(d/transact node [[:delete "Condition" "0"]])
+
+        (testing "create the Bloom filter on the newer database state"
+          @(measure/evaluate-measure (assoc context :db (d/db node)) measure params)
+          (Thread/sleep 1000)
+
+          (given (into [] (ec/list-by-t cache))
+            count := 1
+            [0 ::bloom-filter/t] := 3))
+
+        (testing "evaluating on the older database doesn't attach the newer Bloom filter"
+          (given (:resource @(measure/evaluate-measure context measure params))
+            :fhir/type := :fhir/MeasureReport
+            [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
+            [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+            [:group 0 :population 0 :count] := #fhir/integer 1000))))))
 
 (defmacro testing-query [name count]
   `(testing ~name

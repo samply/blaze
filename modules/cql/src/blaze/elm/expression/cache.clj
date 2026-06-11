@@ -58,6 +58,30 @@
   [cache expression]
   (p/-get cache expression))
 
+(defn with-max-t
+  "Returns a view of `cache` whose Bloom filter lookup only returns Bloom
+  filters that aren't newer than `max-t`. All other operations are unaffected
+  by `max-t` and delegate to `cache` unchanged.
+
+  Used to attach Bloom filters to expressions that will be evaluated on a
+  database with t = `max-t`, because newer Bloom filters can't be used to draw
+  conclusions about older database states and so would never avoid an
+  expression evaluation."
+  [cache max-t]
+  (reify p/Cache
+    (-get [_ expression]
+      (when-let [bloom-filter (p/-get cache expression)]
+        (when (<= (::bloom-filter/t bloom-filter) max-t)
+          bloom-filter)))
+    (-get-disk [_ hash]
+      (p/-get-disk cache hash))
+    (-delete-disk [_ hash]
+      (p/-delete-disk cache hash))
+    (-list-by-t [_]
+      (p/-list-by-t cache))
+    (-total [_]
+      (p/-total cache))))
+
 (defn get-disk
   "Returns the Bloom filter with `hash` from `cache` or an anomaly if the Bloom
   filter was not found."

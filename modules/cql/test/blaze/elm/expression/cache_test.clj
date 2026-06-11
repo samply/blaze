@@ -166,6 +166,50 @@
         ::bloom-filter/patient-count := 0
         ::bloom-filter/mem-size := 11981))))
 
+(deftest with-max-t-test
+  (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+    (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+
+    (testing "the Bloom filter is returned if it isn't newer than max-t"
+      (doseq [max-t [1 2]]
+        (given (ec/get (ec/with-max-t cache max-t) (compile-exists-expr node "Observation"))
+          ::bloom-filter/t := 1)))
+
+    (testing "the Bloom filter is not returned if it is newer than max-t"
+      (is (nil? (ec/get (ec/with-max-t cache 0) (compile-exists-expr node "Observation")))))
+
+    (testing "all other operations are unaffected by max-t"
+      (let [view (ec/with-max-t cache 0)
+            hash (HashCode/fromString "78c3f9b9e187480870ce815ad6d324713dfa2cbd12968c5b14727fef7377b985")]
+
+        (testing "get-disk"
+          (given (ec/get-disk view hash)
+            ::bloom-filter/t := 1
+            ::bloom-filter/expr-form := "(exists (retrieve \"Observation\"))"
+            ::bloom-filter/patient-count := 0)
+
+          (testing "of an unknown hash"
+            (is (ba/not-found? (ec/get-disk view (HashCode/fromString "d4fc6cde1636852f9e362a68ca7be027a66bf7cb38ebff9c256c3eb2179c2639"))))))
+
+        (testing "list-by-t"
+          (given (into [] (ec/list-by-t view))
+            count := 1
+            [0 ::bloom-filter/t] := 1
+            [0 ::bloom-filter/expr-form] := "(exists (retrieve \"Observation\"))"))
+
+        (testing "total"
+          (is (= 1 (ec/total view))))
+
+        (testing "delete-disk!"
+          (ec/delete-disk! view hash)
+
+          (is (ba/not-found? (ec/get-disk view hash)))
+
+          (testing "of an already deleted hash"
+            (is (ba/not-found? (ec/delete-disk! view hash)))))))))
+
 (deftest get-disk-test
   (testing "an empty database contains no Bloom filter"
     (with-system [{::expr/keys [cache]} config]

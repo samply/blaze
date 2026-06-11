@@ -16,6 +16,10 @@
   :args (s/cat :cache ::expr/cache :expression core/expr?)
   :ret (s/nilable ::ec/bloom-filter))
 
+(s/fdef ec/with-max-t
+  :args (s/cat :cache ::expr/cache :max-t :blaze.db/t)
+  :ret ::expr/cache)
+
 (s/fdef ec/get-disk
   :args (s/cat :cache ::expr/cache :hash ::bloom-filter/hash)
   :ret (s/or :result ::ec/bloom-filter :anomaly ::anom/anomaly))
