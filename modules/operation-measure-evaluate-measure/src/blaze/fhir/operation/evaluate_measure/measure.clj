@@ -9,6 +9,7 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache :as ec]
    [blaze.elm.resource :as cr]
    [blaze.fhir.operation.evaluate-measure.measure.group :as group]
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
@@ -463,7 +464,7 @@
                      (-> (remove-unused-defs expression-defs measure)
                          (library/resolve-params parameter-default-values)
                          (optimize)))
-              cache (attach-cache cache)
+              cache (attach-cache (ec/with-max-t cache (d/t db)))
               subject-handle
               (assoc :subject-handle (cr/mk-resource db subject-handle)))))))))
 

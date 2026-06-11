@@ -31,10 +31,18 @@
 
 (defn might-contain?
   "Returns true if `resource` might have been put in `bloom-filter` or false if
-  this is definitely not the case."
+  this is definitely not the case.
+
+  A Bloom filter created on a database state newer than the database of
+  `resource` can't be used to draw conclusions about that older database state,
+  so it is treated as if it might contain `resource`. Such newer Bloom filters
+  are normally already filtered out at attach time via
+  `blaze.elm.expression.cache/with-max-t`; this check is the semantic backstop
+  that keeps results correct for any caller."
   {:arglists '([bloom-filter resource])}
   [^BloomFilterContainer bloom-filter ^Resource resource]
   (or (< (.-t bloom-filter) (.-lastChangeT resource))
+      (< (d/t (.-db resource)) (.-t bloom-filter))
       (.mightContain ^BloomFilter (.-filter bloom-filter) (:id resource))))
 
 (defn merge [bloom-filter-a bloom-filter-b]
