@@ -33,7 +33,7 @@
   becoming available.
 
   When called without `t`, returns a CompletionStage that will complete with the
-  database value guaranteed to include all transactions that were complete at
+  database value guaranteed to include all transactions that were submitted at
   the time sync was called. Communicates with the transaction log."
   ([node]
    (np/-sync node))
