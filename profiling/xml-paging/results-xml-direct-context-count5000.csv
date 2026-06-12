@@ -1,0 +1,7 @@
+timestamp,format,type,query,run,pages,entries,bytes,seconds
+2026-06-02T21:05:41Z,json,Encounter,_count=5000,1,12,58271,68198845,2.618
+2026-06-02T21:05:43Z,xml,Encounter,_count=5000,1,12,58271,84615914,3.633
+2026-06-02T21:05:44Z,json,Encounter,_count=5000,2,12,58271,68198845,2.520
+2026-06-02T21:05:46Z,json,Encounter,_count=5000,3,12,58271,68198845,2.497
+2026-06-02T21:05:47Z,xml,Encounter,_count=5000,2,12,58271,84615914,3.648
+2026-06-02T21:05:50Z,xml,Encounter,_count=5000,3,12,58271,84615914,3.589
