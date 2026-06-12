@@ -515,8 +515,8 @@
     (fn sync-distributed [^Node node]
       (-> (tx-log/last-t (.-tx_log node))
           (ac/then-compose #(np/-sync node %))))
-    (fn sync-standalone [^Node node]
-      (ac/completed-future (db/db node (:t @(.-state node)))))))
+    (fn sync-standalone [node]
+      (ac/completed-future (np/-db node)))))
 
 (defn- initial-plc-index-entries [{:keys [state] :as node}]
   (into
