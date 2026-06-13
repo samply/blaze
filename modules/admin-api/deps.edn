@@ -88,7 +88,7 @@
    [io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.validation
-  {:mvn/version "6.9.4.2"
+  {:mvn/version "6.9.10"
    :exclusions
    [com.nimbusds/nimbus-jose-jwt
     commons-beanutils/commons-beanutils
