@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make fmt)",
+      "Bash(make lint)",
+      "Bash(make test)",
+      "Bash(make test-coverage)"
+    ]
+  }
+}
