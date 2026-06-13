@@ -7,3 +7,7 @@ validator_cli.jar
 
 # Cursive-generated module files (derived from deps.edn, regenerated on sync)
 *.iml
+
+# Claude Code (track shared settings, ignore local/machine-specific files)
+.claude/settings.local.json
+.claude/worktrees/
