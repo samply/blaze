@@ -44,4 +44,9 @@
       (kv/put! kv-store [(t-by-instant/index-entry (.plusMillis Instant/EPOCH 1) 1)])
 
       (with-open [snapshot (kv/new-snapshot kv-store)]
-        (is (nil? (t-by-instant/t-by-instant snapshot Instant/EPOCH)))))))
+        (is (nil? (t-by-instant/t-by-instant snapshot Instant/EPOCH))))))
+
+  (testing "fails for an instant before the epoch"
+    (is (thrown-with-msg?
+         AssertionError #"doesn't support instants before the epoch"
+         (t-by-instant/index-entry (.minusMillis Instant/EPOCH 1) 1)))))

@@ -3798,11 +3798,11 @@
               [1 :id] := "0"))))))
 
   (testing "sorting works together with token search"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]
-        [:put {:fhir/type :fhir/Patient :id "1" :active #fhir/boolean false}]
-        [:put {:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]
-        [:put {:fhir/type :fhir/Patient :id "3" :active #fhir/boolean true}]]
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
+       [[:put {:fhir/type :fhir/Patient :id "1" :active #fhir/boolean false}]]
+       [[:put {:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]]
+       [[:put {:fhir/type :fhir/Patient :id "3" :active #fhir/boolean true}]]
        [[:delete "Patient" "3"]]]
 
       (let [clauses [[:sort "_lastUpdated" :asc] ["active" "true"]]]
@@ -7295,39 +7295,184 @@
 
 (deftest type-query-last-updated-test
   (testing "sorting returns every resource only once"
-    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+    (testing "with real update"
+      (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :active #fhir/boolean true}]])
 
-      (let [clauses [[:sort "_lastUpdated" :desc]]]
-        (given-type-query node "Patient" clauses
+        (testing "ascending"
+          (let [clauses [[:sort "_lastUpdated" :asc]]]
+            (given-type-query node "Patient" clauses
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "0")
+
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" clauses "0")
+                count := 1
+                [0 :id] := "0"))))
+
+        (testing "descending"
+          (let [clauses [[:sort "_lastUpdated" :desc]]]
+            (given-type-query node "Patient" clauses
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
+
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" clauses "1")
+                count := 1
+                [0 :id] := "1"))))))
+
+    (testing "with no-op update"
+      (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+        (testing "ascending"
+          (let [clauses [[:sort "_lastUpdated" :asc]]]
+            (given-type-query node "Patient" clauses
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
+
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" clauses "1")
+                count := 1
+                [0 :id] := "1"))))
+
+        (testing "descending"
+          (let [clauses [[:sort "_lastUpdated" :desc]]]
+            (given-type-query node "Patient" clauses
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "0")
+
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" clauses "0")
+                count := 1
+                [0 :id] := "0")))))))
+
+  (testing "inequality searches do return every resource only once"
+    (testing "with real update"
+      (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :active #fhir/boolean true}]])
+
+        (given-type-query node "Patient" [["_lastUpdated" "ge1970-01-01"]]
           count := 2
           [0 :id] := "0"
           [1 :id] := "1")
 
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" clauses "1")
-            count := 1
-            [0 :id] := "1")))))
+        (given-type-query node "Patient" [["_lastUpdated" "lt1970-01-02"]]
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1")))
 
-  (testing "inequality searches do return every resource only once"
+    (testing "with no-op update"
+      (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+        (given-type-query node "Patient" [["_lastUpdated" "ge1970-01-01"]]
+          count := 2
+          [0 :id] := "1"
+          [1 :id] := "0")
+
+        (given-type-query node "Patient" [["_lastUpdated" "lt1970-01-02"]]
+          count := 2
+          [0 :id] := "1"
+          [1 :id] := "0"))))
+
+  (testing "inequality search"
     (with-system-data [{:blaze.db/keys [node]} step-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]
+       [[:put {:fhir/type :fhir/Patient :id "2"}]]
+       [[:put {:fhir/type :fhir/Patient :id "3"}]]]
+
+      (testing "eq"
+        (doseq [id ["0" "1" "2" "3"]]
+          (given-type-query node "Patient" [["_lastUpdated" (format "1970-01-01T00:00:0%sZ" id)]]
+            count := 1
+            [0 :id] := id)))
+
+      (testing "ge"
+        (given-type-query node "Patient" [["_lastUpdated" "ge1970-01-01T00:00:01Z"]]
+          count := 3
+          [0 :id] := "3"
+          [1 :id] := "2"
+          [2 :id] := "1")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [["_lastUpdated" "ge1970-01-01T00:00:01Z"]] "2")
+            count := 2
+            [0 :id] := "2"
+            [1 :id] := "1")))
+
+      (testing "gt"
+        (given-type-query node "Patient" [["_lastUpdated" "gt1970-01-01T00:00:01Z"]]
+          count := 2
+          [0 :id] := "3"
+          [1 :id] := "2")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [["_lastUpdated" "gt1970-01-01T00:00:01Z"]] "2")
+            count := 1
+            [0 :id] := "2")))
+
+      (testing "le"
+        (given-type-query node "Patient" [["_lastUpdated" "le1970-01-01T00:00:02Z"]]
+          count := 3
+          [0 :id] := "2"
+          [1 :id] := "1"
+          [2 :id] := "0")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [["_lastUpdated" "le1970-01-01T00:00:02Z"]] "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "0")))
+
+      (testing "lt"
+        (given-type-query node "Patient" [["_lastUpdated" "lt1970-01-01T00:00:02Z"]]
+          count := 2
+          [0 :id] := "1"
+          [1 :id] := "0")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [["_lastUpdated" "lt1970-01-01T00:00:02Z"]] "0")
+            count := 1
+            [0 :id] := "0")))))
+
+  (testing "a no-op update doesn't make a resource match at the no-op timestamp"
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-      (given-type-query node "Patient" [["_lastUpdated" "ge1970-01-01"]]
-        count := 2
-        [0 :id] := "0"
-        [1 :id] := "1")
+      (testing "the no-op update keeps version 1 and lastUpdated 1970-01-01T00:00:00Z"
+        (given-type-query node "Patient" [["_lastUpdated" "eq1970-01-01T00:00:00Z"]]
+          count := 1
+          [0 :id] := "0"
+          [0 :meta :versionId] := #fhir/id "1"
+          [0 :meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
-      (given-type-query node "Patient" [["_lastUpdated" "lt1970-01-02"]]
-        count := 2
-        [0 :id] := "0"
-        [1 :id] := "1")))
+      (testing "searching at the no-op update timestamp returns nothing"
+        (doseq [value ["eq1970-01-01T00:00:01Z" "ge1970-01-01T00:00:01Z"
+                       "gt1970-01-01T00:00:00Z" "sa1970-01-01T00:00:01Z"]]
+          (given-type-query node "Patient" [["_lastUpdated" value]]
+            count := 0)))))
 
   (testing "updating back to the original state is no problem"
     (with-system-data [{:blaze.db/keys [node]} step-clock-config]
@@ -7375,9 +7520,39 @@
 
       (doseq [value ["eq1970-01-01" "ne1969-12-31" "gt1969-12-31" "lt1970-01-02" "ge1970-01-01"
                      "le1970-01-01" "sa1969-12-31" "eb1970-01-02" "ap1970-01-01"]]
-        (given-type-query node "Patient" [["active" "true"] ["_lastUpdated" value]]
-          count := 1
-          [0 :id] := "0")))))
+        (testing "as a matcher clause"
+          (given-type-query node "Patient" [["active" "true"] ["_lastUpdated" value]]
+            count := 1
+            [0 :id] := "0"))
+
+        (testing "as the sole scan clause"
+          (given-type-query node "Patient" [["_lastUpdated" value]]
+            count := 1
+            [0 :id] := "0")))))
+
+  (testing "a search whose range lies entirely before the oldest possible instant returns nothing"
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (doseq [value ["le1850" "lt1850" "eb1850"]]
+        (given-type-query node "Patient" [["_lastUpdated" value]]
+          count := 0))))
+
+  (testing "starting with a non-matching id doesn't fail"
+    (with-system-data [{:blaze.db/keys [node]} step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "inequality search"
+        (given (pull-type-query node "Patient" [["_lastUpdated" "ge1970-01-01"]] "1")
+          count := 0))
+
+      (testing "ascending sort"
+        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :asc]] "1")
+          count := 0))
+
+      (testing "descending sort"
+        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :desc]] "1")
+          count := 0)))))
 
 (deftest type-query-forward-chaining-test
   (testing "Encounter"
