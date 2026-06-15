@@ -73,3 +73,8 @@
   :args (s/cat :snapshot :blaze.db.kv/snapshot :column-family simple-keyword?
                :xform fn? :prefix-length nat-int? :start-key byte-string?)
   :ret (cs/coll-of some?))
+
+(s/fdef i/prefix-entries-prev
+  :args (s/cat :snapshot :blaze.db.kv/snapshot :column-family simple-keyword?
+               :xform fn? :prefix-length nat-int? :start-key byte-string?)
+  :ret (cs/coll-of some?))

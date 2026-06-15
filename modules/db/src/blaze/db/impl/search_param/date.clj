@@ -6,8 +6,11 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.codec.date :as codec-date]
+   [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+   [blaze.db.impl.index.t-by-instant :as t-by-instant]
+   [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
@@ -507,6 +510,93 @@
         (<= param-lb v-ub param-ub)
         (and (< v-lb param-lb) (< param-ub v-ub)))))
 
+(defn- last-updated-window-lower-seconds
+  "Returns the lower bound in seconds since epoch of the window of possible
+  `_lastUpdated` values matching `compiled-value` or nil if the window has no
+  lower bound."
+  [{:keys [op] lb :lower-bound-dt ub :upper-bound-dt}]
+  (case op
+    (:eq :ge :ap) lb
+    (:gt :sa) ub
+    nil))
+
+(defn- last-updated-window-upper-seconds
+  "Returns the upper bound in seconds since epoch of the window of possible
+  `_lastUpdated` values matching `compiled-value` or nil if the window has no
+  upper bound."
+  [{:keys [op] lb :lower-bound-dt ub :upper-bound-dt}]
+  (case op
+    (:eq :le :ap) ub
+    (:lt :eb) lb
+    nil))
+
+(defn- last-updated-since-t
+  "Returns the exclusive lower `t` bound of all transactions with an instant
+  possibly matching `compiled-value`, never smaller than the `since-t` of
+  `batch-db`."
+  {:arglists '([batch-db compiled-value])}
+  [{:keys [snapshot since-t]} compiled-value]
+  (if-let [dt (last-updated-window-lower-seconds compiled-value)]
+    (let [instant (.minusMillis (Instant/ofEpochSecond dt) 1)]
+      (if (neg? (inst-ms instant))
+        since-t
+        (max (long since-t)
+             (long (or (t-by-instant/t-by-instant snapshot instant) 0)))))
+    since-t))
+
+(defn- last-updated-start-t
+  "Returns the inclusive upper `t` bound of all transactions with an instant
+  possibly matching `compiled-value` or nil if there is none."
+  {:arglists '([batch-db compiled-value])}
+  [{:keys [snapshot t]} compiled-value]
+  (if-let [dt (last-updated-window-upper-seconds compiled-value)]
+    (let [instant (.plusMillis (Instant/ofEpochSecond dt) 999)]
+      (when-not (neg? (inst-ms instant))
+        (when-let [start-t (t-by-instant/t-by-instant snapshot instant)]
+          (min (long t) (long start-t)))))
+    t))
+
+(defn- last-updated-index-handles
+  "Returns a reducible collection of index handles of all current resource
+  versions created within the window of transactions possibly matching
+  `compiled-value`, in order of descending `t`, optionally starting at
+  `start-id`."
+  ([batch-db tid compiled-value]
+   (if-let [start-t (last-updated-start-t batch-db compiled-value)]
+     (coll/eduction
+      (map ih/from-resource-handle)
+      (tao/type-list-desc batch-db tid
+                          (last-updated-since-t batch-db compiled-value)
+                          start-t nil))
+     []))
+  ([batch-db tid compiled-value start-id]
+   (if-let [start-t (:t (p/-resource-handle batch-db tid start-id))]
+     (coll/eduction
+      (map ih/from-resource-handle)
+      (tao/type-list-desc batch-db tid
+                          (last-updated-since-t batch-db compiled-value)
+                          start-t start-id))
+     [])))
+
+(defn- last-updated-sorted-index-handles
+  "Returns a reducible collection of index handles of all current resource
+  versions of type `tid`, ordered by `_lastUpdated` according to `direction`,
+  optionally starting at `start-id`."
+  ([{:keys [t since-t] :as batch-db} tid direction]
+   (coll/eduction
+    (map ih/from-resource-handle)
+    (if (= :asc direction)
+      (tao/type-list-asc batch-db tid)
+      (tao/type-list-desc batch-db tid since-t t nil))))
+  ([{:keys [since-t] :as batch-db} tid direction start-id]
+   (if-let [start-t (:t (p/-resource-handle batch-db tid start-id))]
+     (coll/eduction
+      (map ih/from-resource-handle)
+      (if (= :asc direction)
+        (tao/type-list-asc batch-db tid start-t start-id)
+        (tao/type-list-desc batch-db tid since-t start-t start-id)))
+     [])))
+
 (defn- last-updated-matcher [batch-db compiled-values]
   (filter
    (fn [resource-handle]
@@ -560,22 +650,16 @@
     (ba/unsupported))
 
   (-index-handles [_ batch-db tid _ compiled-value]
-    (index-handles batch-db c-hash tid compiled-value))
+    (last-updated-index-handles batch-db tid compiled-value))
 
   (-index-handles [_ batch-db tid _ compiled-value start-id]
-    (index-handles batch-db c-hash tid compiled-value start-id))
+    (last-updated-index-handles batch-db tid compiled-value start-id))
 
   (-sorted-index-handles [_ batch-db tid direction]
-    (coll/eduction
-     (comp drop-value
-           u/by-id-grouper)
-     (if (= :asc direction)
-       (all-keys batch-db c-hash tid)
-       (all-keys-prev batch-db c-hash tid))))
+    (last-updated-sorted-index-handles batch-db tid direction))
 
-  (-sorted-index-handles [search-param batch-db tid direction _start-id]
-   ;; starting with a particilar id isn't possible
-    (p/-sorted-index-handles search-param batch-db tid direction))
+  (-sorted-index-handles [_ batch-db tid direction start-id]
+    (last-updated-sorted-index-handles batch-db tid direction start-id))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)
@@ -592,8 +676,13 @@
   (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
     (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
-  (-postprocess-matches [_ _ _ _])
+  (-postprocess-matches [_ batch-db _ compiled-values]
+    (last-updated-matcher batch-db compiled-values))
 
+  ;; The _lastUpdated search parameter is queried over the TypeAsOf index, so
+  ;; these date index entries are no longer read. They are still written so a
+  ;; downgrade to an older Blaze version – which queries _lastUpdated over the
+  ;; date indexes – keeps working.
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
       (coll/eduction (p/-index-value-compiler search-param) values)))

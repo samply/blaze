@@ -370,3 +370,13 @@
   [snapshot column-family xform prefix-length start-key]
   (coll snapshot column-family (entries-prefix-xf prefix-length start-key xform)
         start-key))
+
+(defn prefix-entries-prev
+  "Like `prefix-entries` but iterates in reverse, starting with `start-key` and
+  ending when `prefix-length` bytes of `start-key` no longer match.
+
+  The transducer `xform` will receive a tuple of key byte buffer and value
+  byte buffer and has to emit an immutable value."
+  [snapshot column-family xform prefix-length start-key]
+  (coll-prev snapshot column-family
+             (entries-prefix-xf prefix-length start-key xform) start-key))
