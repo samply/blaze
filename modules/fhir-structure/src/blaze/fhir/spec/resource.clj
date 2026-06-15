@@ -1,8 +1,15 @@
 (ns blaze.fhir.spec.resource
-  "JSON Parsing.
+  "Streaming reader and writer for FHIR resources and complex types.
 
-  Use `create-type-handlers` to create a map of type-handlers that has to be
-  given to `parse-json` in order to parse JSON from a source.
+  Reads and writes Blaze's internal FHIR data model from/to both JSON and CBOR,
+  on top of Jackson's streaming `JsonParser` / `JsonGenerator` (the CBOR backend
+  implements the same streaming interfaces). Parsing produces values directly
+  from the token stream without an intermediate tree, so a resource is built in
+  a single pass.
+
+  Use `create-type-handlers` to build a map of type-handlers from a
+  StructureDefinition snapshot, then pass it to `parse-json` / `parse-cbor`
+  (read) or `write-json` / `write-cbor` (write).
 
   A locator is a list of path segments already parsed in order to report the
   location of an error. Path segments are either strings of field names or
@@ -17,6 +24,18 @@
   A property-handler in this namespace is a function taking a map of all type
   handlers, a parser, a locator and a partially constructed FHIR value and
   returns either the FHIR value with data added or an anomaly in case of errors.
+
+  Summary variant: when `create-type-handlers` is called with
+  `:include-summary-only true`, it builds a second, summary-only handler for
+  every type (keyed under the `summary` namespace, e.g. `:summary/Patient`). A
+  summary handler only has property-handlers for elements marked `isSummary` in
+  the StructureDefinition; every other property has no handler and is skipped in
+  place by `skip-value!` (Jackson's `.skipChildren`), so non-summary subtrees are
+  walked past in the token stream but never materialized into FHIR values.
+  Because every backbone element gets its own summary handler too, a non-summary
+  child of a summary element (e.g. `Observation.component.referenceRange`) is
+  skipped as well. `parse-cbor` selects this variant via its `variant` argument;
+  the resulting resource is tagged with the SUBSETTED meta tag.
 
   This namespace uses some advanced optimizations like mutable ArrayLists.
   Please change with care."
@@ -354,11 +373,16 @@
   "Takes `element-definition` and returns possibly multiple
   property-handler definitions, one for each polymorphic type.
 
+  When `summary-only` is true, only elements marked `isSummary` produce a
+  definition; non-summary elements return nil so that no property-handler is
+  created for them and their value is skipped while parsing (see `skip-value!`).
+
   An element handler definition contains:
    * field-name - the name of the JSON property
    * key - the key of the internal representation
    * type - a keyword of the FHIR element type
-   * cardinality - :single or :many"
+   * cardinality - :single or :many
+   * summary - whether the element is marked `isSummary`"
   {:arglists '([parent-type summary-only element-definition])}
   [parent-type summary-only
    {:keys [path max] content-reference :contentReference element-types :type
@@ -999,7 +1023,15 @@
   (let [msg (format "Incorrect resource type `%s`. Expected type is `%s`." type expected-type)]
     (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
 
-(defn- skip-value! [parser locator]
+(defn- skip-value!
+  "Reads and discards the value of the current property without materializing it.
+
+  Advances the parser past the next value token: for an object or array the
+  whole subtree is skipped via Jackson's `.skipChildren`; a scalar token is
+  simply consumed. Used both for unknown properties (when
+  `fail-on-unknown-property` is false) and for non-summary properties when
+  parsing the summary variant, where no property-handler exists for the field."
+  [parser locator]
   (cond-next-token parser locator
     JsonToken/START_OBJECT
     (.skipChildren ^JsonParser parser)
@@ -1022,7 +1054,12 @@
   
   A type-handler reads a JSON object. It expects that the `START_OBJECT` token
   is already read and will try to read a `FIELD_NAME` or `END_OBJECT` token. It
-  either returns a value of `type` or an anomaly in case of errors."
+  either returns a value of `type` or an anomaly in case of errors.
+
+  With `:summary-only true` in `opts`, only property-handlers for `isSummary`
+  elements are created; any other property encountered while parsing has no
+  handler and is skipped via `skip-value!` without being materialized, and the
+  returned value carries the SUBSETTED meta tag."
   [kind type element-definitions {:keys [fail-on-unknown-property summary-only] :as opts}]
   (when-ok [property-handlers (create-property-handlers type opts element-definitions)]
     (let [capacity (int (* 2 (count element-definitions)))
@@ -1070,7 +1107,12 @@
 (defn create-type-handlers
   "Creates a map of keyword type names to type-handlers from the snapshot
   `element-definitions` of a StructureDefinition resource.
-  
+
+  With `:include-summary-only true` in `opts`, each type additionally gets a
+  summary-only handler keyed under the `summary` namespace (e.g. both `:Patient`
+  and `:summary/Patient`), so callers can parse either the full or the summary
+  projection of a resource (see `parse-cbor`).
+
   Returns an anomaly in case of errors."
   {:arglists '([kind element-definitions opts])}
   [kind [{parent-type :path} & more] {:keys [include-summary-only] :as opts}]
@@ -1199,7 +1241,12 @@
     (ObjectMapper.)))
 
 (defn parse-cbor
-  "Parses a complex value of `type` from `source`.
+  "Parses a complex value of `type` and `variant` from CBOR `source`.
+
+  `variant` is `:summary` to parse only the summary elements (using the
+  `summary`-namespaced handler built with `:include-summary-only`; non-summary
+  elements are skipped in the token stream without being materialized) or any
+  other value (e.g. `:complete`) to parse the full value.
 
   Returns an anomaly in case of errors."
   [type-handlers type variant source]
