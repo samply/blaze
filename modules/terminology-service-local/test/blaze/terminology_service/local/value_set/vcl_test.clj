@@ -30,10 +30,10 @@
       [:compose :include 0 :filter 0 :value] := #fhir/string "true")
 
     (testing "with version"
-      (given (vcl/parse-expr "(http://loinc.org|2.78)*")
+      (given (vcl/parse-expr "(http://loinc.org|2.82)*")
         :fhir/type := :fhir/ValueSet
         [:compose :include count] := 1
-        [:compose :include 0 :system] := #fhir/uri "http://loinc.org|2.78"
+        [:compose :include 0 :system] := #fhir/uri "http://loinc.org|2.82"
         [:compose :include 0 :filter count] := 1
         [:compose :include 0 :filter 0 :property] := #fhir/code "concept"
         [:compose :include 0 :filter 0 :op] := #fhir/code "exists"

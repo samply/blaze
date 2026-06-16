@@ -33,11 +33,11 @@ test('Search for LOINC', async ({ page }) => {
 
   await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
 
-  await expect(page.getByRole('link', { name: 'LOINC Code System v2.78' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'LOINC Code System v2.82' })).toBeVisible();
   await expect(
     page.getByRole('listitem').filter({ hasText: 'Url http://loinc.org' })
   ).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.78' })).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.82' })).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'Name LOINC' })).toBeVisible();
   await expect(
     page.getByRole('listitem').filter({ hasText: 'Title LOINC Code System' })
@@ -49,11 +49,11 @@ test('Search for LOINC', async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole('listitem').filter({ hasText: 'Content not-present' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'LOINC Code System v2.78' }).click();
+  await page.getByRole('link', { name: 'LOINC Code System v2.82' }).click();
 
   await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
-  await expect(breadcrumbItem(page, 'LOINC Code System v2.78')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'LOINC Code System v2.78' })).toBeVisible();
+  await expect(breadcrumbItem(page, 'LOINC Code System v2.82')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'LOINC Code System v2.82' })).toBeVisible();
 });
 
 test.describe('$validate-code', () => {
@@ -78,22 +78,22 @@ test.describe('$validate-code', () => {
       await expect(
         page.getByRole('listitem').filter({ hasText: 'System http://loinc.org' })
       ).toBeVisible();
-      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.78' })).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.82' })).toBeVisible();
     });
 
     test('instance-level', async ({ page }) => {
       await page.goto('/fhir/CodeSystem?url=http://loinc.org');
 
-      await page.getByRole('link', { name: 'LOINC Code System v2.78' }).click();
+      await page.getByRole('link', { name: 'LOINC Code System v2.82' }).click();
 
-      await expect(breadcrumbItem(page, 'LOINC Code System v2.78')).toBeVisible();
+      await expect(breadcrumbItem(page, 'LOINC Code System v2.82')).toBeVisible();
       await page.getByRole('button', { name: 'Operations' }).click();
       await page.getByRole('menuitem', { name: '$validate-code' }).click();
 
-      await page.getByRole('heading', { name: 'LOINC Code System v2.78' }).click();
+      await page.getByRole('heading', { name: 'LOINC Code System v2.82' }).click();
 
       await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
-      await expect(breadcrumbItem(page, 'LOINC Code System v2.78')).toBeVisible();
+      await expect(breadcrumbItem(page, 'LOINC Code System v2.82')).toBeVisible();
       await expect(breadcrumbItem(page, '$validate-code')).toBeVisible();
 
       await page.getByRole('heading', { name: 'Parameters' }).click();
@@ -108,7 +108,7 @@ test.describe('$validate-code', () => {
       await expect(
         page.getByRole('listitem').filter({ hasText: 'System http://loinc.org' })
       ).toBeVisible();
-      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.78' })).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.82' })).toBeVisible();
     });
   });
 });
@@ -128,7 +128,7 @@ test.describe('$lookup', () => {
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await expect(page.getByRole('listitem').filter({ hasText: 'Name LOINC' })).toBeVisible();
-      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.78' })).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.82' })).toBeVisible();
       await expect(
         page.getByRole('listitem').filter({ hasText: 'Display Hemoglobin [Mass/volume] in Blood' })
       ).toBeVisible();
@@ -137,16 +137,16 @@ test.describe('$lookup', () => {
     test('instance-level', async ({ page }) => {
       await page.goto('/fhir/CodeSystem?url=http://loinc.org');
 
-      await page.getByRole('link', { name: 'LOINC Code System v2.78' }).click();
+      await page.getByRole('link', { name: 'LOINC Code System v2.82' }).click();
 
-      await expect(breadcrumbItem(page, 'LOINC Code System v2.78')).toBeVisible();
+      await expect(breadcrumbItem(page, 'LOINC Code System v2.82')).toBeVisible();
       await page.getByRole('button', { name: 'Operations' }).click();
       await page.getByRole('menuitem', { name: '$lookup' }).click();
 
-      await page.getByRole('heading', { name: 'LOINC Code System v2.78' }).click();
+      await page.getByRole('heading', { name: 'LOINC Code System v2.82' }).click();
 
       await expect(breadcrumbItem(page, 'CodeSystem')).toBeVisible();
-      await expect(breadcrumbItem(page, 'LOINC Code System v2.78')).toBeVisible();
+      await expect(breadcrumbItem(page, 'LOINC Code System v2.82')).toBeVisible();
       await expect(breadcrumbItem(page, '$lookup')).toBeVisible();
 
       await page.getByRole('heading', { name: 'Parameters' }).click();
@@ -154,7 +154,7 @@ test.describe('$lookup', () => {
       await page.getByRole('button', { name: 'Submit' }).click();
 
       await expect(page.getByRole('listitem').filter({ hasText: 'Name LOINC' })).toBeVisible();
-      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.78' })).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ hasText: 'Version 2.82' })).toBeVisible();
       await expect(
         page.getByRole('listitem').filter({ hasText: 'Display Hemoglobin [Mass/volume] in Blood' })
       ).toBeVisible();

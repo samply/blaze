@@ -3,7 +3,7 @@
 > [!NOTE]
 > LOINC data is build into the Blaze image. Because LOINC support needs additional memory, it has to be enabled by setting the environment variable `ENABLE_TERMINOLOGY_LOINC` to `true`.
 
-Blaze supports the [LOINC](https://loinc.org) terminology in version 2.78.
+Blaze supports the [LOINC](https://loinc.org) terminology in version 2.82.
 
 ## Copyright
 

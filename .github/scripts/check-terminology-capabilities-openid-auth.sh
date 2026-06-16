@@ -22,5 +22,5 @@ test "URL" "$(echo "$terminology_capabilities" | jq -r .implementation.url)" "ht
 
 test "BCP-13 version" "$(echo "$terminology_capabilities" | jq -r '.codeSystem[] | select(.uri == "urn:ietf:bcp:13").version[0].code' )" "1.0.0"
 test "BCP-47 version" "$(echo "$terminology_capabilities" | jq -r '.codeSystem[] | select(.uri == "urn:ietf:bcp:47").version[0].code' )" "1.0.0"
-test "LOINC version" "$(echo "$terminology_capabilities" | jq -r '.codeSystem[] | select(.uri == "http://loinc.org").version[0].code' )" "2.78"
+test "LOINC version" "$(echo "$terminology_capabilities" | jq -r '.codeSystem[] | select(.uri == "http://loinc.org").version[0].code' )" "2.82"
 test "UCUM version" "$(echo "$terminology_capabilities" | jq -r '.codeSystem[] | select(.uri == "http://unitsofmeasure.org").version[0].code' )" "2013.10.21"

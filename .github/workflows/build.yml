@@ -244,11 +244,11 @@ jobs:
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
-        token: S8Bej7LPjbGACdo
-        filename: Loinc_2.78.zip
+        token: F9JSkDk7eCskzLE
+        filename: Loinc_2.82.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.78.zip modules/terminology-service-local/Loinc_2.78.zip
+      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
 
     - name: Test
       run: make -C modules/${{ matrix.module }} test
@@ -330,11 +330,11 @@ jobs:
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
-        token: S8Bej7LPjbGACdo
-        filename: Loinc_2.78.zip
+        token: F9JSkDk7eCskzLE
+        filename: Loinc_2.82.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.78.zip modules/terminology-service-local/Loinc_2.78.zip
+      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
 
     - name: Test
       run: make -C modules/${{ matrix.module }} test-slow
@@ -450,11 +450,11 @@ jobs:
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
-        token: S8Bej7LPjbGACdo
-        filename: Loinc_2.78.zip
+        token: F9JSkDk7eCskzLE
+        filename: Loinc_2.82.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.78.zip modules/terminology-service-local/Loinc_2.78.zip
+      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
 
     - name: Test Coverage
       if: ${{ matrix.kind == 'normal' }}
@@ -531,11 +531,11 @@ jobs:
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
-        token: S8Bej7LPjbGACdo
-        filename: Loinc_2.78.zip
+        token: F9JSkDk7eCskzLE
+        filename: Loinc_2.82.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.78.zip modules/terminology-service-local/Loinc_2.78.zip
+      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
 
     - name: Test
       run: make test-root
@@ -616,11 +616,11 @@ jobs:
     - name: Download LOINC ZIP
       uses: ./.github/actions/speicherwolke-download
       with:
-        token: S8Bej7LPjbGACdo
-        filename: Loinc_2.78.zip
+        token: F9JSkDk7eCskzLE
+        filename: Loinc_2.82.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.78.zip modules/terminology-service-local/Loinc_2.78.zip
+      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
 
     - name: Build Uberjar
       run: make uberjar
