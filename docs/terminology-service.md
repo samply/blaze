@@ -23,7 +23,7 @@ Currently the external code systems shown in the following table are supported.
 |---------------------------------------------------------|-----------------------|-----------------------------------|
 | [BCP-13](terminology-service/bcp-13.md) (Media Types)   | 1.0.0                 | enabled by default                |
 | [BCP-47](terminology-service/bcp-47.md) (Language Tags) | 1.0.0                 | enabled by default                |
-| [LOINC](terminology-service/loinc.md)                   | 2.78                  | has to be enabled                 |
+| [LOINC](terminology-service/loinc.md)                   | 2.82                  | has to be enabled                 |
 | [SNOMED CT](terminology-service/snomed-ct.md)           | all versions provided | release files have to be provided |
 | [UCUM](terminology-service/ucum.md)                     | 2013.10.21            | enabled by default                |
 

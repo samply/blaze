@@ -13,9 +13,9 @@
 
 (def ^:const ^String url "http://loinc.org")
 (def ^:const ^String value-set-prefix "http://loinc.org/vs/")
-(def ^:const ^String version "2.78")
+(def ^:const ^String version "2.82")
 (def ^:const copyright #fhir/markdown "This material contains content from LOINC (http://loinc.org). LOINC is copyright Regenstrief Institute, Inc. and the Logical Observation Identifiers Names and Codes (LOINC) Committee and is available at no cost under the license at http://loinc.org/license. LOINC® is a registered United States trademark of Regenstrief Institute, Inc.")
-(def ^:const ^String resources "blaze/terminology_service/local/code_system/loinc/")
+(def ^:const ^String resources (str "blaze/terminology_service/local/code_system/loinc/Loinc_" version "/"))
 (def ^:const ^String table (str resources "LoincTable/Loinc.csv"))
 (def ^:const ^String answer-lists (str resources "AccessoryFiles/AnswerFile/AnswerList.csv"))
 (def ^:const ^String parts (str resources "AccessoryFiles/PartFile/Part.csv"))

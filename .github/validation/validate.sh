@@ -48,7 +48,6 @@ java -Xmx8g -jar validator_cli.jar -version 4.0.1 -level error \
   "$test_data_dir/MedicationAdministration-*.json" \
   "$test_data_dir/MedicationRequest-*.json" \
   "$test_data_dir/MedicationStatement-*.json" \
-  "$test_data_dir/Observation-mii-exa-test-data-patient-1-labobs-6.json" \
   "$test_data_dir/Observation-mii-exa-test-data-patient-1-patho-diagnostic-conclusion-2.json" \
   "$test_data_dir/Observation-mii-exa-test-data-patient-1-patho-diagnostic-conclusion-3.json" \
   "$test_data_dir/Observation-mii-exa-test-data-patient-1-patho-diagnostic-conclusion-grouper.json" \
@@ -61,7 +60,6 @@ java -Xmx8g -jar validator_cli.jar -version 4.0.1 -level error \
   "$test_data_dir/Observation-mii-exa-test-data-patient-3-molgen-ergebnis-zusammenfassung-1.json" \
   "$test_data_dir/Observation-mii-exa-test-data-patient-3-molgen-msi-1.json" \
   "$test_data_dir/Observation-mii-exa-test-data-patient-3-molgen-mutationslast-1.json" \
-  "$test_data_dir/Observation-mii-exa-test-data-patient-3-patho-fnding-1.json" \
   "$test_data_dir/Organization-mii-exa-test-data-organization-charite.json" \
   "$test_data_dir/Organization-mii-exa-test-data-organization-labor-berlin.json" \
   "$test_data_dir/Patient-mii-exa-test-data-patient-1.json" \

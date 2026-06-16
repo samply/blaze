@@ -794,7 +794,7 @@
                   "code" (type/code code))
           :fhir/type := :fhir/Parameters
           [(parameter "name") 0 :value] := #fhir/string "LOINC"
-          [(parameter "version") 0 :value] := #fhir/string "2.78"
+          [(parameter "version") 0 :value] := #fhir/string "2.82"
           [(parameter "display") 0 :value] := (type/string display)))
 
       (testing "with version"
@@ -804,10 +804,10 @@
           (given @(code-system-lookup ts
                     "system" #fhir/uri "http://loinc.org"
                     "code" (type/code code)
-                    "version" #fhir/string "2.78")
+                    "version" #fhir/string "2.82")
             :fhir/type := :fhir/Parameters
             [(parameter "name") 0 :value] := #fhir/string "LOINC"
-            [(parameter "version") 0 :value] := #fhir/string "2.78"
+            [(parameter "version") 0 :value] := #fhir/string "2.82"
             [(parameter "display") 0 :value] := (type/string display))))
 
       (testing "inactive"
@@ -816,7 +816,7 @@
                   "code" #fhir/code "1009-0")
           :fhir/type := :fhir/Parameters
           [(parameter "name") 0 :value] := #fhir/string "LOINC"
-          [(parameter "version") 0 :value] := #fhir/string "2.78")))
+          [(parameter "version") 0 :value] := #fhir/string "2.82")))
 
     (testing "non-existing code"
       (doseq [code ["non-existing" "0815" "718-8"]]
@@ -1584,7 +1584,7 @@
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := (type/code code)
           [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-          [(parameter "version") 0 :value] := #fhir/string "2.78"
+          [(parameter "version") 0 :value] := #fhir/string "2.82"
           [(parameter "display") 0 :value] := (type/string display)))
 
       (testing "with version"
@@ -1594,12 +1594,12 @@
           (given @(code-system-validate-code ts
                     "url" #fhir/uri "http://loinc.org"
                     "code" (type/code code)
-                    "version" #fhir/string "2.78")
+                    "version" #fhir/string "2.82")
             :fhir/type := :fhir/Parameters
             [(parameter "result") 0 :value] := #fhir/boolean true
             [(parameter "code") 0 :value] := (type/code code)
             [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-            [(parameter "version") 0 :value] := #fhir/string "2.78"
+            [(parameter "version") 0 :value] := #fhir/string "2.82"
             [(parameter "display") 0 :value] := (type/string display))))
 
       (testing "wrong display"
@@ -1612,7 +1612,7 @@
           [(parameter "message") 0 :value] := #fhir/string "Invalid display `wrong` for code `http://loinc.org#718-7`. A valid display is `Hemoglobin [Mass/volume] in Blood`."
           [(parameter "code") 0 :value] := #fhir/code "718-7"
           [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-          [(parameter "version") 0 :value] := #fhir/string "2.78"
+          [(parameter "version") 0 :value] := #fhir/string "2.82"
           [(parameter "display") 0 :value] := #fhir/string "Hemoglobin [Mass/volume] in Blood"
           [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
           [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "invalid"
@@ -1628,7 +1628,7 @@
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code "1009-0"
           [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-          [(parameter "version") 0 :value] := #fhir/string "2.78"
+          [(parameter "version") 0 :value] := #fhir/string "2.82"
           [(parameter "display") 0 :value] := #fhir/string "Deprecated Direct antiglobulin test.poly specific reagent [Presence] on Red Blood Cells"
           [(parameter "inactive") 0 :value] := #fhir/boolean true)))
 
@@ -1639,10 +1639,10 @@
                   "code" (type/code code))
           :fhir/type := :fhir/Parameters
           [(parameter "result") 0 :value] := #fhir/boolean false
-          [(parameter "message") 0 :value] := (type/string (format "Unknown code `%s` was not found in the code system `http://loinc.org|2.78`." code))
+          [(parameter "message") 0 :value] := (type/string (format "Unknown code `%s` was not found in the code system `http://loinc.org|2.82`." code))
           [(parameter "code") 0 :value] := (type/code code)
           [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-          [(parameter "version") 0 :value] := #fhir/string "2.78")))
+          [(parameter "version") 0 :value] := #fhir/string "2.82")))
 
     (testing "non-existing system version"
       (given-failed-future
@@ -7651,7 +7651,7 @@
       [(parameter "code") 0 :value] := #fhir/code "26465-5"
       [(parameter "display") 0 :value] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"
       [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-      [(parameter "version") 0 :value] := #fhir/string "2.78"))
+      [(parameter "version") 0 :value] := #fhir/string "2.82"))
 
   (testing "with supplement"
     (with-system-data [{ts ::ts/local} loinc-config]
@@ -7687,7 +7687,7 @@
           [(parameter "code") 0 :value] := #fhir/code "26465-5"
           [(parameter "display") 0 :value] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"
           [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-          [(parameter "version") 0 :value] := #fhir/string "2.78"))
+          [(parameter "version") 0 :value] := #fhir/string "2.82"))
 
       (testing "with displayLanguage"
         (given @(value-set-validate-code ts
@@ -7701,7 +7701,7 @@
           [(parameter "code") 0 :value] := #fhir/code "26465-5"
           [(parameter "display") 0 :value] := #fhir/string "designation-104319"
           [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-          [(parameter "version") 0 :value] := #fhir/string "2.78")))))
+          [(parameter "version") 0 :value] := #fhir/string "2.82")))))
 
 (deftest value-set-validate-code-loinc-include-concept-test
   (testing "non-matching concept"
@@ -7754,7 +7754,7 @@
         [(parameter "code") 0 :value] := #fhir/code "26465-5"
         [(parameter "display") 0 :value] := #fhir/string "Leukocytes [#/volume] in Cerebral spinal fluid"
         [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-        [(parameter "version") 0 :value] := #fhir/string "2.78")))
+        [(parameter "version") 0 :value] := #fhir/string "2.82")))
 
   (testing "inactive concept"
     (with-system [{ts ::ts/local} loinc-config]
@@ -7777,7 +7777,7 @@
         [(parameter "display") 0 :value] := #fhir/string "Deprecated Direct antiglobulin test.poly specific reagent [Presence] on Red Blood Cells"
         [(parameter "inactive") 0 :value] := #fhir/boolean true
         [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-        [(parameter "version") 0 :value] := #fhir/string "2.78")
+        [(parameter "version") 0 :value] := #fhir/string "2.82")
 
       (testing "with active only"
         (with-system [{ts ::ts/local} loinc-config]
@@ -7802,7 +7802,7 @@
             [(parameter "display") 0 :value] := #fhir/string "Deprecated Direct antiglobulin test.poly specific reagent [Presence] on Red Blood Cells"
             [(parameter "inactive") 0 :value] := #fhir/boolean true
             [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-            [(parameter "version") 0 :value] := #fhir/string "2.78"
+            [(parameter "version") 0 :value] := #fhir/string "2.82"
             [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code "error"
             [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code "code-invalid"
             [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
@@ -8437,7 +8437,7 @@
         [(parameter "code") 0 :value] := #fhir/code "LA26422-8"
         [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
         [(parameter "display") 0 :value] := #fhir/string "Decrease dose"
-        [(parameter "version") 0 :value] := #fhir/string "2.78")))
+        [(parameter "version") 0 :value] := #fhir/string "2.82")))
 
   (testing "unknown"
     (with-system [{ts ::ts/local} loinc-config]
