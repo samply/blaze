@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.9.0
+
+### Performance
+
+* Optimize _lastUpdated Search Parameter ([#3624](https://github.com/samply/blaze/issues/3624))
+
+### Bugfixes
+
+* Fix Wrong _lastUpdated Search Results After No-op Updates ([#3710](https://github.com/samply/blaze/issues/3710))
+* Fix Use of Bloom Filters Newer Than the Database ([#3698](https://github.com/samply/blaze/issues/3698))
+
+### Maintenance
+
+* Update LOINC to Version 2.82 ([#3711](https://github.com/samply/blaze/issues/3711))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/125?closed=1).
+
 ## v1.8.0
 
 ### Survey
