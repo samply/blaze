@@ -11,6 +11,9 @@ prep:
 test: prep
 	clojure -M:test:kaocha --profile :ci
 
+test-focus: prep
+	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+
 test-coverage: prep
 	clojure -M:test:kaocha:coverage
 
@@ -29,4 +32,4 @@ validator_cli.jar:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep test test-coverage deps-list cloc-prod cloc-test clean
+.PHONY: fmt lint prep test test-focus test-coverage deps-list cloc-prod cloc-test clean
