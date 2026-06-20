@@ -11,6 +11,9 @@ prep:
 test: prep
 	clojure -M:test:kaocha --profile :ci --skip-meta :mem-size
 
+test-focus: prep
+	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+
 test-mem-size-normal-heap: prep
 	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx4g -M:test:kaocha --profile :ci --focus-meta :mem-size
 
@@ -35,4 +38,4 @@ cloc-test:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean
+.PHONY: fmt lint prep test test-focus test-coverage deps-tree deps-list cloc-prod cloc-test clean

@@ -84,6 +84,7 @@ Before finishing a task, ensure the following commands pass:
 1.  **Format:** `make fmt`
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
 3.  **Test:** Run tests only for the modules you changed: `make -C modules/<module> test` (e.g. `make -C modules/db test`). Use `make test` only when changes span multiple modules or the root.
+    * To run a single test or a single namespace, use the `test-focus` target with a `FOCUS` variable holding a kaocha test id — either a whole namespace or a `namespace/var`: `make -C modules/<module> test-focus FOCUS=blaze.db.api-test` or `make -C modules/db test-focus FOCUS=blaze.db.api-test/pull-fn-test`.
 4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage — must be **≥ 95% forms**)
 
 When adding a **new module** under `modules/`, also add it to the `module` matrix in `.github/workflows/build.yml` (the `test` job, sorted alphabetically) so CI picks it up.

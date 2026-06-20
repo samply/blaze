@@ -31,6 +31,9 @@ test-root: prep
 
 test: $(MODULES) test-root
 
+test-focus: prep
+	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+
 test-coverage: $(MODULES)
 
 clean-root:
@@ -82,6 +85,6 @@ cloc-test-root:
 cloc-test: $(MODULES) cloc-test-root
 
 .PHONY: $(MODULES) lint-root lint-shell lint build-job-ig prep \
-    test-root test test-coverage clean-root clean build-frontend \
+    test-root test test-focus test-coverage clean-root clean build-frontend \
     build-frontend-image build-ingress uberjar build-all \
 	outdated deps-tree deps-list deps-prep emacs-repl cloc-prod cloc-test
