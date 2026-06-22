@@ -39,7 +39,9 @@
 
   (testing "invalid expression"
     (doseq [type ["date" "number" "quantity" "reference" "string" "token" "uri"]]
-      (given (sc/search-param {:code-expression? (constantly false)} {:type type :expression ""})
+      (given (sc/search-param {:code-expression? (constantly false)
+                               :canonical-expression? (constantly false)}
+                              {:type type :expression ""})
         ::anom/category := ::anom/fault
         ::anom/message := "Error while parsing token `<EOF>` in expression ``"))))
 

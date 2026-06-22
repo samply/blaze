@@ -362,6 +362,7 @@
   (let [entries (read-bundle-entries extra-bundle-file)
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")
         context {:code-expression? (sdr/code-expressions structure-definition-repo)
+                 :canonical-expression? (sdr/canonical-expressions structure-definition-repo)
                  :terminology-service terminology-service}]
     (if-ok [{url-index :index} (build-url-index context entries)]
       (let [index (build-index url-index entries)

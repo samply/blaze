@@ -30,21 +30,34 @@
   [repo]
   (p/-resources repo))
 
+(defn- single-type-paths
+  [type-code elements]
+  (keep
+   (fn [{:keys [path type]}]
+     (when (and (= 1 (count type))
+                (= type-code (:code (first type))))
+       path))
+   elements))
+
 (defn code-expressions
   "Returns a set of FHIRPath expressions that evaluate to a primitive code type
   on R4 resources."
   [repo]
   (into
    #{}
-   (mapcat
-    (fn [{:keys [snapshot]}]
-      (keep
-       (fn [{:keys [path type]}]
-         (when (and (= 1 (count type))
-                    (= "code" (:code (first type))))
-           path))
-       (:element snapshot))))
+   (mapcat (comp (partial single-type-paths "code") :element :snapshot))
    (resources repo)))
+
+(defn- complex-type-canonical-sub-paths
+  [repo]
+  (into
+   {}
+   (keep
+    (fn [{:keys [id snapshot]}]
+      (let [canonical-paths (single-type-paths "canonical" (:element snapshot))]
+        (when (seq canonical-paths)
+          [id (mapv (fn [p] (subs p (inc (count id)))) canonical-paths)]))))
+   (complex-types repo)))
 
 (defn- register-all!
   "Register specs for all FHIR data types and resources.
@@ -71,6 +84,32 @@
   (log/trace (format "Read FHIR bundle `%s`." resource-name))
   (with-open [rdr (io/reader (io/resource resource-name))]
     (j/read-value rdr object-mapper)))
+
+(defn- abstract-base-resources
+  []
+  (filter (comp #{"Resource" "DomainResource"} :id)
+          (map :resource
+               (:entry (read-bundle "blaze/fhir/4.0.1/profiles-resources.json")))))
+
+(defn canonical-expressions
+  "Returns a set of FHIRPath expressions that evaluate to a primitive canonical type
+  on R4 resources, including nested paths through complex types."
+  [repo]
+  (let [complex-canonical (complex-type-canonical-sub-paths repo)
+        all-resources (concat (resources repo) (abstract-base-resources))]
+    (into
+     #{}
+     (mapcat
+      (fn [{:keys [snapshot]}]
+        (mapcat
+         (fn [{:keys [path type]}]
+           (if (and (= 1 (count type))
+                    (= "canonical" (:code (first type))))
+             [path]
+             (when-let [sub-paths (get complex-canonical (:code (first type)))]
+               (map #(str path "." %) sub-paths))))
+         (:element snapshot))))
+     all-resources)))
 
 (def ^:private repo
   (reify p/StructureDefinitionRepo

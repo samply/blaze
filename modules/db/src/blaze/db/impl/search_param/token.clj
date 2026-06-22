@@ -207,12 +207,12 @@
   (format "Error while expanding the ValueSet `%s`. Cause: %s" url cause-msg))
 
 (defrecord SearchParamToken [compile-value-set-cache name url type base code
-                             target c-hash expression code-expression?]
+                             target c-hash expression code-expression? canonical-expression?]
   p/SearchParam
   (-validate-modifier [_ modifier]
     (condp = type
       "uri"
-      (when-not (#{"below"} modifier)
+      (when-not (and canonical-expression? (#{"below"} modifier))
         (some->> modifier (u/modifier-anom fhir-uri-modifier code)))
       "token"
       (when-not (#{"in"} modifier)
@@ -510,7 +510,7 @@
                                           (codec/c-hash code) expression)
             (->SearchParamToken (compile-value-set-cache terminology-service)
                                 name url type base code target
-                                (codec/c-hash code) expression code-expression?))))
+                                (codec/c-hash code) expression code-expression? false))))
       (ba/unsupported (u/missing-expression-msg url)))))
 
 (defmethod sc/search-param "reference"
@@ -519,14 +519,16 @@
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParamToken (compile-value-set-cache terminology-service)
                           name url type base code target
-                          (codec/c-hash code) expression false))
+                          (codec/c-hash code) expression false false))
     (ba/unsupported (u/missing-expression-msg url))))
 
 (defmethod sc/search-param "uri"
-  [{:keys [terminology-service]} {:keys [name url type base code target expression]}]
+  [{:keys [terminology-service canonical-expression?]}
+   {:keys [name url type base code target expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken (compile-value-set-cache terminology-service)
-                          name url type base code target
-                          (codec/c-hash code) expression false))
+    (let [canonical-expression? (canonical-expression? expression)]
+      (when-ok [expression (fhir-path/compile expression)]
+        (->SearchParamToken (compile-value-set-cache terminology-service)
+                            name url type base code target
+                            (codec/c-hash code) expression false canonical-expression?)))
     (ba/unsupported (u/missing-expression-msg url))))

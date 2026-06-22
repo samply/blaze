@@ -799,6 +799,12 @@
 (defn profile-param [search-param-registry]
   (sr/get search-param-registry "_profile" "Observation"))
 
+(defn- uri-url-param [search-param-registry]
+  (sr/get search-param-registry "url" "CapabilityStatement"))
+
+(defn- url-param [search-param-registry]
+  (sr/get search-param-registry "url" "Subscription"))
+
 (deftest validate-modifier-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "_id"
@@ -835,7 +841,17 @@
           ::anom/message := "Unsupported modifier `missing` on search parameter `_profile`."))
 
       (testing "implemented modifier"
-        (is (nil? (search-param/validate-modifier (profile-param search-param-registry) "below")))))
+        (is (nil? (search-param/validate-modifier (profile-param search-param-registry) "below"))))
+
+      (testing "modifier below not implemented on uri type"
+        (given (search-param/validate-modifier (uri-url-param search-param-registry) "below")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `below` on search parameter `url`."))
+
+      (testing "modifier below not implemented on url type"
+        (given (search-param/validate-modifier (url-param search-param-registry) "below")
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported modifier `below` on search parameter `url`.")))
 
     (testing "token"
       (testing "unknown modifier"
