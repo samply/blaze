@@ -13,8 +13,22 @@ search() {
 echo "For implemented modifier"
 response="$(search lenient "Observation" "subject:Patient=foo")"
 test "response type" "$(echo "$response" | jq -r .resourceType)" "Bundle"
-response="$(search lenient "Observation" "_profile:below=http://example.com/fhir/StructureDefinition/f6f12c69-9431-492d-a3a5-469d36f5e104")"
+response="$(search lenient "Observation" "_profile:below=http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab&_summary=count")"
 test "response type" "$(echo "$response" | jq -r .resourceType)" "Bundle"
+test "count" "$(echo "$response" | jq -r .total)" "27218"
+
+echo
+echo "below modifier on non-canonical uri"
+echo "# In strict mode"
+response="$(search strict "Procedure" 'instantiates-uri:below=http://example.com')"
+test "response type" "$(echo "$response" | jq -r .resourceType)" "OperationOutcome"
+test "issue code" "$(echo "$response" | jq -r '.issue[0].code')" "not-supported"
+test "diagnostics" "$(echo "$response" | jq -r '.issue[0].diagnostics')" "Unsupported modifier \`below\` on search parameter \`instantiates-uri\`."
+
+echo "# In lenient mode"
+response="$(search lenient "Procedure" 'instantiates-uri:below=http://example.com')"
+test "response type" "$(echo "$response" | jq -r .resourceType)" "Bundle"
+test "param is ignored" "$(echo "$response" | jq -r '.link[] | select(.relation == "self") | .url | contains("instantiates-uri") | not')" "true"
 
 echo
 echo "# In strict mode"
@@ -33,12 +47,12 @@ echo "# In lenient mode"
 echo "with modifier not implemented"
 response="$(search lenient "Patient" 'name:exact=foo')"
 test "response type" "$(echo "$response" | jq -r .resourceType)" "Bundle"
-test "param is ignored" "$(echo "$response" | jq -r '.link[0].url | contains("name") | not')" "true"
+test "param is ignored" "$(echo "$response" | jq -r '.link[] | select(.relation == "self") | .url | contains("name") | not')" "true"
 
 echo "with unknown modifier"
 response="$(search lenient "Patient" 'name:unknown=foo')"
 test "response type" "$(echo "$response" | jq -r .resourceType)" "Bundle"
-test "param is ignored" "$(echo "$response" | jq -r '.link[0].url | contains("name") | not')" "true"
+test "param is ignored" "$(echo "$response" | jq -r '.link[] | select(.relation == "self") | .url | contains("name") | not')" "true"
 
 echo "token in modifier without terminology service"
 response="$(search strict "Condition" 'code:in=http://fhir.org/VCL?v1=(http://snomed.info/sct)concept<<73211009')"
