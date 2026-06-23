@@ -5,7 +5,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
 [![Code Coverage](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
 [![Latest Release](https://img.shields.io/github/v/release/samply/blaze?color=1874a7)][5]
-[![Docs](https://img.shields.io/badge/Docs-blue.svg)](https://samply.github.io/blaze)
+[![Docs](https://img.shields.io/badge/Docs-blue.svg)](https://blaze-server.org)
 
 A FHIR® Server with internal, fast CQL Evaluation Engine
 
@@ -38,7 +38,7 @@ Latest release: [v1.9.0][5]
 
 ## Documentation
 
-Documentation can be found [here](https://samply.github.io/blaze).
+Documentation can be found [here](https://blaze-server.org).
 
 ## Quick Start
 
@@ -75,8 +75,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-[1]: <https://samply.github.io/blaze/api.html>
-[2]: <https://samply.github.io/blaze/api/operation/measure-evaluate-measure.html>
+[1]: <https://blaze-server.org/api.html>
+[2]: <https://blaze-server.org/api/operation/measure-evaluate-measure.html>
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
 [5]: <https://github.com/samply/blaze/releases/tag/v1.9.0>
@@ -86,10 +86,10 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [9]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [10]: <https://github.com/facebook/rocksdb/wiki/RocksDB-Basics#multi-threaded-compactions>
 [12]: <https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=6&format=ALL>
-[13]: <https://samply.github.io/blaze/api/operation/patient-everything.html>
-[14]: <https://samply.github.io/blaze/api/operation/code-system-validate-code.html>
-[15]: <https://samply.github.io/blaze/api/operation/value-set-expand.html>
-[16]: <https://samply.github.io/blaze/terminology-service.html>
-[17]: <https://samply.github.io/blaze/cql-queries.html>
-[18]: <https://samply.github.io/blaze/deployment/distributed-backend.html>
-[19]: <https://samply.github.io/blaze/frontend.html>
+[13]: <https://blaze-server.org/api/operation/patient-everything.html>
+[14]: <https://blaze-server.org/api/operation/code-system-validate-code.html>
+[15]: <https://blaze-server.org/api/operation/value-set-expand.html>
+[16]: <https://blaze-server.org/terminology-service.html>
+[17]: <https://blaze-server.org/cql-queries.html>
+[18]: <https://blaze-server.org/deployment/distributed-backend.html>
+[19]: <https://blaze-server.org/frontend.html>

@@ -132,7 +132,7 @@ The full changelog can be found [here](https://github.com/samply/blaze/milestone
 
 ### Notes
 
-The sizing of the resource cache is changed from count-based to size-based. The env var `DB_RESOURCE_CACHE_SIZE` is replaced by the env var `DB_RESOURCE_CACHE_SIZE_RATIO`. It's default is `0.25` so that 25 % of the Java Heap memory is used for the resource cache. That default should be safe for most deployments. It can be increased but not over `0.8` or 80 %. Please only increase the ratio if [Monitoring](https://samply.github.io/blaze/monitoring.html) is available.
+The sizing of the resource cache is changed from count-based to size-based. The env var `DB_RESOURCE_CACHE_SIZE` is replaced by the env var `DB_RESOURCE_CACHE_SIZE_RATIO`. It's default is `0.25` so that 25 % of the Java Heap memory is used for the resource cache. That default should be safe for most deployments. It can be increased but not over `0.8` or 80 %. Please only increase the ratio if [Monitoring](https://blaze-server.org/monitoring.html) is available.
 
 Health checks are now officially supported via `wget`. In case you use `curl` for health checks, please replace it with `wget`. The `curl` command will be removed from the images in release v1.6.
 
@@ -170,7 +170,7 @@ The full changelog can be found [here](https://github.com/samply/blaze/milestone
 
 ### Notes
 
-Review the new `DB_SCALE_FACTOR` configuration option. If your Blaze server stores more than 50,000 patients or 50 million resources, increase this factor following the [Production Configuration Guide](https://samply.github.io/blaze/production-configuration.html). Increasing the scale factor from 1 to 4 yielded approximately 1.5× faster transactions in our measurements. Additionally, this reduces the number of database files, which helps avoid `ulimit` issues.  
+Review the new `DB_SCALE_FACTOR` configuration option. If your Blaze server stores more than 50,000 patients or 50 million resources, increase this factor following the [Production Configuration Guide](https://blaze-server.org/production-configuration.html). Increasing the scale factor from 1 to 4 yielded approximately 1.5× faster transactions in our measurements. Additionally, this reduces the number of database files, which helps avoid `ulimit` issues.  
 
 ### Enhancements
 
@@ -298,7 +298,7 @@ The full changelog can be found [here](https://github.com/samply/blaze/milestone
 
 The version 1.0.0 is fully compatible with development versions starting with zero like all versions since v0.11.0. An upgrade to v1.0.0 with an existing database is no problem at all. The timing to go to v1.0.0 was overdue because Blaze is stable for at least two years now and is widely used in production. In conclusion, this version is not special except for it's actual number.  
 
-One important aspect of a version 1.0.0 was added: Docker Image Signing. Docker images can now be verified to be build on GitHub on a certain tag like v1.0.0. The documentation to run the verification locally can be found [here](https://samply.github.io/blaze/deployment.html).
+One important aspect of a version 1.0.0 was added: Docker Image Signing. Docker images can now be verified to be build on GitHub on a certain tag like v1.0.0. The documentation to run the verification locally can be found [here](https://blaze-server.org/deployment.html).
 
 ### Enhancements
 
@@ -321,7 +321,7 @@ The full changelog can be found [here](https://github.com/samply/blaze/milestone
 
 ### Notes
 
-This is mostly a bug-fix release with some [Terminology Service](https://samply.github.io/blaze/terminology-service.html) enhancements. 
+This is mostly a bug-fix release with some [Terminology Service](https://blaze-server.org/terminology-service.html) enhancements. 
 
 ### Enhancements
 
@@ -370,7 +370,7 @@ The full changelog can be found [here](https://github.com/samply/blaze/milestone
 
 ### Documentation
 
-The generated documentation (https://samply.github.io/blaze/) was improved considerably and is now preferred over using direct Markdown files from the repository. 
+The generated documentation (https://blaze-server.org/) was improved considerably and is now preferred over using direct Markdown files from the repository. 
 
 ## UI
 
