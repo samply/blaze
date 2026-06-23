@@ -25,7 +25,7 @@ export default defineConfig({
     siteTitle: false,
 
     editLink: {
-      pattern: "https://github.com/samply/blaze/edit/master/docs/:path",
+      pattern: "https://github.com/samply/blaze/edit/main/docs/:path",
       text: "Edit this page on GitHub",
     },
 
@@ -52,11 +52,11 @@ export default defineConfig({
         items: [
           {
             text: "Changelog",
-            link: "https://github.com/samply/blaze/blob/master/CHANGELOG.md",
+            link: "https://github.com/samply/blaze/blob/main/CHANGELOG.md",
           },
           {
             text: "Development",
-            link: "https://github.com/samply/blaze/blob/master/DEVELOPMENT.md",
+            link: "https://github.com/samply/blaze/blob/main/DEVELOPMENT.md",
           },
         ],
       },
