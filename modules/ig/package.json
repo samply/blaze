@@ -1,4 +1,5 @@
 {
+  "name": "blaze",
   "dependencies": {
     "fsh-sushi": "3.19.0"
   }

@@ -19,8 +19,8 @@ lint-root: lint-workflows lint-shell
 
 lint: $(MODULES) lint-root
 
-build-job-ig:
-	$(MAKE) -C job-ig build
+build-ig:
+	$(MAKE) -C modules/ig build
 
 prep:
 	$(MAKE) -C modules/module-base prep
@@ -40,7 +40,6 @@ clean-root:
 	rm -rf .clj-kondo/.cache .cpcache target
 
 clean: $(MODULES) clean-root
-	$(MAKE) -C job-ig clean
 
 build-frontend:
 	$(MAKE) -C modules/frontend build
@@ -84,7 +83,7 @@ cloc-test-root:
 
 cloc-test: $(MODULES) cloc-test-root
 
-.PHONY: $(MODULES) lint-root lint-shell lint build-job-ig prep \
+.PHONY: $(MODULES) lint-root lint-shell lint build-ig prep \
     test-root test test-focus test-coverage clean-root clean build-frontend \
     build-frontend-image build-ingress uberjar build-all \
 	outdated deps-tree deps-list deps-prep emacs-repl cloc-prod cloc-test

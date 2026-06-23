@@ -8,7 +8,7 @@ In the root project dir, run:
 
 ```sh
 make clean
-make build-job-ig
+make build-ig
 make build-all
 ```
 

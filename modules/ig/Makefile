@@ -13,8 +13,11 @@ validator_cli.jar:
 validate: validator_cli.jar
 	java -jar validator_cli.jar -version 4.0.1 -level error -tx n/a -ig fsh-generated/resources fsh-generated/resources/Task-*.json fsh-generated/resources/Bundle-*.json
 
+# Build and validate the IG. Invoked by the root module fan-out (e.g. `make test`).
+test: build validate
+
 clean:
 	rm -rf fsh-generated
 	rm -f validator_cli.jar
 
-.PHONY: install update build validate clean
+.PHONY: install update build validate fmt lint test test-coverage cloc-prod cloc-test clean

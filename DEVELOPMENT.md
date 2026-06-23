@@ -74,7 +74,7 @@ Blaze is written in Clojure, a modern LISP for the JVM.
 1. Install SUSHI:
 
    ```sh
-   make build-job-ig
+   make build-ig
    ```
 
 2. Create the uberjar in the `target` directory:
