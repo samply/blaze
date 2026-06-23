@@ -15,7 +15,7 @@ version <y>.
 Either use an older version of Blaze which is compatible with index store
 version <x> or do a database migration described here:
 
-  https://github.com/samply/blaze/tree/master/docs/database/migration.md
+  https://blaze-server.org/database/migration
 ```
 
 you need to do a migration of the index store.
