@@ -6,5 +6,5 @@
                 "CodeSystem-ReIndexJobParameter"
                 "CodeSystem-ReIndexJobOutput"]]
     (b/copy-file
-     {:src (str "../../job-ig/fsh-generated/resources/" file ".json")
+     {:src (str "../ig/fsh-generated/resources/" file ".json")
       :target (str "target/generated-resources/blaze/job/re_index/" file ".json")})))

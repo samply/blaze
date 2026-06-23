@@ -62,7 +62,7 @@ jobs:
     - name: Lint
       run: make lint
 
-  job-ig:
+  ig:
     runs-on: ubuntu-24.04
 
     steps:
@@ -75,18 +75,18 @@ jobs:
         node-version-file: .nvmrc
 
     - name: Build
-      working-directory: job-ig
+      working-directory: modules/ig
       run: make build
 
     - name: Validate
-      working-directory: job-ig
+      working-directory: modules/ig
       run: make validate
 
     - name: Upload Profiles
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
-        name: job-ig-profiles
-        path: job-ig/fsh-generated/resources/*.json
+        name: ig-profiles
+        path: modules/ig/fsh-generated/resources/*.json
 
   prep-deps:
     runs-on: ubuntu-24.04
@@ -194,7 +194,7 @@ jobs:
 
       fail-fast: false
 
-    needs: [ job-ig, prep-deps ]
+    needs: [ ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -226,11 +226,11 @@ jobs:
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
-    - name: Download Job IG Profiles
+    - name: Download Blaze IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
-        name: job-ig-profiles
-        path: job-ig/fsh-generated/resources
+        name: ig-profiles
+        path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -280,7 +280,7 @@ jobs:
 
       fail-fast: false
 
-    needs: [ job-ig, prep-deps ]
+    needs: [ ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -312,11 +312,11 @@ jobs:
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
-    - name: Download Job IG Profiles
+    - name: Download Blaze IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
-        name: job-ig-profiles
-        path: job-ig/fsh-generated/resources
+        name: ig-profiles
+        path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -400,7 +400,7 @@ jobs:
         - 'slow'
       fail-fast: false
 
-    needs: [ job-ig, prep-deps ]
+    needs: [ ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -432,11 +432,11 @@ jobs:
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
-    - name: Download Job IG Profiles
+    - name: Download Blaze IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
-        name: job-ig-profiles
-        path: job-ig/fsh-generated/resources
+        name: ig-profiles
+        path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -481,7 +481,7 @@ jobs:
         - '25'
       fail-fast: false
 
-    needs: [ job-ig, prep-deps ]
+    needs: [ ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     steps:
@@ -513,11 +513,11 @@ jobs:
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
-    - name: Download Job IG Profiles
+    - name: Download Blaze IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
-        name: job-ig-profiles
-        path: job-ig/fsh-generated/resources
+        name: ig-profiles
+        path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download
@@ -562,7 +562,7 @@ jobs:
         fail_ci_if_error: true
 
   build:
-    needs: [ job-ig, prep-deps ]
+    needs: [ ig, prep-deps ]
     runs-on: ubuntu-24.04
 
     permissions:
@@ -598,11 +598,11 @@ jobs:
         key: gitlibs-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
-    - name: Download Job IG Profiles
+    - name: Download Blaze IG Profiles
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
-        name: job-ig-profiles
-        path: job-ig/fsh-generated/resources
+        name: ig-profiles
+        path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
       uses: ./.github/actions/speicherwolke-download

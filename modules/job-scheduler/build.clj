@@ -6,5 +6,5 @@
                 "CodeSystem-JobType"
                 "CodeSystem-JobOutput"]]
     (b/copy-file
-     {:src (str "../../job-ig/fsh-generated/resources/" file ".json")
+     {:src (str "../ig/fsh-generated/resources/" file ".json")
       :target (str "target/generated-resources/blaze/job_scheduler/" file ".json")})))

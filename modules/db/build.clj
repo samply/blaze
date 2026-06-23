@@ -16,7 +16,7 @@
                 "ValueSet-ColumnFamily"
                 "ValueSet-Database"]]
     (b/copy-file
-     {:src (str "../../job-ig/fsh-generated/resources/" file ".json")
+     {:src (str "../ig/fsh-generated/resources/" file ".json")
       :target (str "target/generated-resources/blaze/db/" file ".json")})))
 
 (defn all [_]
