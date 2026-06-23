@@ -1275,6 +1275,12 @@ jobs:
     - name: Search Observation _profile
       run: .github/scripts/search-observation-profile.sh
 
+    - name: Search Observation _profile Version
+      run: .github/scripts/search-observation-profile-version.sh
+
+    - name: Search Modifier
+      run: .github/scripts/search-modifier.sh
+
     - name: Search Compartment
       run: .github/scripts/search-compartment.sh
 
@@ -1457,6 +1463,9 @@ jobs:
 
     - name: Transaction with Invalid (Null) Resource
       run: .github/scripts/transaction-null-resource.sh
+
+    - name: Conditional Create
+      run: .github/scripts/conditional-create.sh
 
     - name: Health
       run: curl -f http://localhost:8080/health
