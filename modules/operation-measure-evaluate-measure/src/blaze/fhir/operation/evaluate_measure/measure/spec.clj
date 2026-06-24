@@ -9,6 +9,9 @@
 (s/def ::measure/report-type
   #{"subject" "subject-list" "population"})
 
+(s/def ::measure/parameters
+  :fhir/Parameters)
+
 (s/def ::measure/subject-ref
   (s/or :id :blaze.resource/id
         :local-ref :blaze.fhir/literal-ref-tuple))

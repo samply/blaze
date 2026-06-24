@@ -1,0 +1,121 @@
+(ns blaze.fhir.operation.evaluate-measure.measure.parameters-test
+  (:require
+   [blaze.fhir.operation.evaluate-measure.measure.parameters :as parameters]
+   [blaze.fhir.operation.evaluate-measure.measure.parameters-spec]
+   [blaze.fhir.util :as fu]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
+
+(st/instrument)
+(log/set-min-level! :trace)
+
+(test/use-fixtures :each tu/fixture)
+
+(deftest effective-parameters-test
+  (testing "without supplied parameters the defaults are returned"
+    (testing "nil parameters"
+      (is (= {"A" 1} (parameters/effective-parameters {"A" 1} nil))))
+
+    (testing "empty parameters"
+      (is (= {"A" 1} (parameters/effective-parameters
+                      {"A" 1} {:fhir/type :fhir/Parameters})))))
+
+  (testing "supplied parameters override defaults by name"
+    (is (= {"Gender" "female"}
+           (parameters/effective-parameters
+            {"Gender" "male"}
+            (fu/parameters "Gender" #fhir/string "female")))))
+
+  (testing "library defaults still apply for parameters not supplied"
+    (is (= {"A" 1 "B" "y"}
+           (parameters/effective-parameters
+            {"A" 1 "B" "x"}
+            (fu/parameters "B" #fhir/string "y")))))
+
+  (testing "primitive types"
+    (testing "boolean"
+      (is (= {"P" true}
+             (parameters/effective-parameters
+              {"P" nil} (fu/parameters "P" #fhir/boolean true)))))
+
+    (testing "integer"
+      (let [value (-> (parameters/effective-parameters
+                       {"P" nil} (fu/parameters "P" #fhir/integer 42))
+                      (get "P"))]
+        (is (= 42 value))
+        (is (instance? Long value))))
+
+    (testing "decimal"
+      (is (= {"P" 3.14M}
+             (parameters/effective-parameters
+              {"P" nil} (fu/parameters "P" #fhir/decimal 3.14M)))))
+
+    (testing "string"
+      (is (= {"P" "foo"}
+             (parameters/effective-parameters
+              {"P" nil} (fu/parameters "P" #fhir/string "foo")))))
+
+    (testing "code"
+      (is (= {"P" "bar"}
+             (parameters/effective-parameters
+              {"P" nil} (fu/parameters "P" #fhir/code "bar")))))
+
+    (testing "date"
+      (is (= {"P" #system/date "2020"}
+             (parameters/effective-parameters
+              {"P" nil} (fu/parameters "P" #fhir/date #system/date "2020")))))
+
+    (testing "dateTime"
+      (is (= {"P" #system/date-time "2020"}
+             (parameters/effective-parameters
+              {"P" nil}
+              (fu/parameters "P" #fhir/dateTime #system/date-time "2020"))))))
+
+  (testing "a repeated parameter becomes a List"
+    (is (= {"Codes" ["a" "b"]}
+           (parameters/effective-parameters
+            {"Codes" nil}
+            (fu/parameters "Codes" [#fhir/code "a" #fhir/code "b"])))))
+
+  (testing "a parameter with parts becomes a Tuple"
+    (is (= {"Range" {:low 1 :high 10}}
+           (parameters/effective-parameters
+            {"Range" nil}
+            {:fhir/type :fhir/Parameters
+             :parameter
+             [(fu/parameter "Range" ["low" #fhir/integer 1
+                                     "high" #fhir/integer 10])]}))))
+
+  (testing "an unsupported type results in an anomaly"
+    (given (parameters/effective-parameters
+            {"Q" nil}
+            (fu/parameters "Q" #fhir/Quantity{:value #fhir/decimal 1M}))
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported type `Quantity` of parameter `Q`."
+      :fhir/issue := "not-supported"
+      :fhir.issue/expression := "Q"))
+
+  (testing "a resource-valued parameter results in an anomaly"
+    (given (parameters/effective-parameters
+            {"R" nil}
+            {:fhir/type :fhir/Parameters
+             :parameter
+             [{:fhir/type :fhir.Parameters/parameter
+               :name #fhir/string "R"
+               :resource {:fhir/type :fhir/Patient :id "0"}}]})
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported type `Patient` of parameter `R`."
+      :fhir/issue := "not-supported"
+      :fhir.issue/expression := "R"))
+
+  (testing "an unknown parameter results in an anomaly"
+    (given (parameters/effective-parameters
+            {} (fu/parameters "Unknown" #fhir/string "x"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Unknown parameter `Unknown`."
+      :fhir/issue := "value"
+      :fhir.issue/expression := "Unknown")))

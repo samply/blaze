@@ -38,7 +38,8 @@
    [::period
     ::measure/report-type]
    :opt-un
-   [::measure/subject-ref]))
+   [::measure/subject-ref
+    ::measure/parameters]))
 
 (s/fdef measure/evaluate-measure
   :args (s/cat :context ::context :measure :fhir/Resource :params ::params)

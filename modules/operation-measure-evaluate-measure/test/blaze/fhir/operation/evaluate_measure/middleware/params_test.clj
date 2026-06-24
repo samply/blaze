@@ -225,6 +225,32 @@
           (given params
             :report-type := "subject")))))
 
+  (testing "parameters"
+    (testing "are read from the nested Parameters resource (only POST)"
+      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+            @(handler
+              {:request-method :post
+               :body
+               (fu/parameters
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015"
+                "parameters" (fu/parameters "Gender" #fhir/string "female"))})]
+
+        (given params
+          [:parameters :fhir/type] := :fhir/Parameters
+          [:parameters :parameter 0 :name :value] := "Gender"
+          [:parameters :parameter 0 :value :value] := "female")))
+
+    (testing "are absent for GET requests"
+      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+            @(handler
+              {:request-method :get
+               :params
+               {"periodStart" "2014"
+                "periodEnd" "2015"}})]
+
+        (is (not (contains? params :parameters))))))
+
   (testing "subject"
     (testing "local ref"
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}

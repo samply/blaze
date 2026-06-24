@@ -45,6 +45,16 @@
     (some #(when (= name (-> % :name :value)) (-> % :value :value))
           (:parameter body))))
 
+(defn- get-resource-param
+  "Returns the `parameter.resource` of the parameter with `name` from the
+  `Parameters` resource `body` or nil.
+
+  Resource-typed inputs like `parameters` can only be supplied via POST with a
+  `Parameters` body."
+  [body name]
+  (when (identical? :fhir/Parameters (:fhir/type body))
+    (some #(when (= name (-> % :name :value)) (:resource %)) (:parameter body))))
+
 (defn- get-param-value* [{:keys [params body]} name coercer]
   (or (some->> (get params name) (coercer name))
       (get-param-value-from-resource body name)))
@@ -121,7 +131,7 @@
 (def ^:private no-subject-list-on-get-msg
   "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")
 
-(defn- params-request [{:keys [request-method] :as request}]
+(defn- params-request [{:keys [request-method body] :as request}]
   (when-ok [period-start (get-required-param-value
                           request "periodStart" coerce-date validate-date)
             period-end (get-required-param-value
@@ -133,15 +143,18 @@
             subject-ref (coerce-subject-ref-param request)]
     (if (and (= :get request-method) (= "subject-list" report-type))
       (ba/unsupported no-subject-list-on-get-msg)
-      (assoc request
-             :blaze.fhir.operation.evaluate-measure/params
-             (cond-> {:period [period-start period-end]
-                      :report-type (or report-type
-                                       (if subject-ref "subject" "population"))}
-               measure
-               (assoc :measure measure)
-               subject-ref
-               (assoc :subject-ref subject-ref))))))
+      (let [parameters (get-resource-param body "parameters")]
+        (assoc request
+               :blaze.fhir.operation.evaluate-measure/params
+               (cond-> {:period [period-start period-end]
+                        :report-type (or report-type
+                                         (if subject-ref "subject" "population"))}
+                 measure
+                 (assoc :measure measure)
+                 subject-ref
+                 (assoc :subject-ref subject-ref)
+                 parameters
+                 (assoc :parameters parameters)))))))
 
 (defn wrap-coerce-params [handler]
   (fn [request]

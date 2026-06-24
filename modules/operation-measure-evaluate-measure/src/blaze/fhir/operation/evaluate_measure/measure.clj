@@ -12,6 +12,7 @@
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.resource :as cr]
    [blaze.fhir.operation.evaluate-measure.measure.group :as group]
+   [blaze.fhir.operation.evaluate-measure.measure.parameters :as cql-params]
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
@@ -433,13 +434,15 @@
     ::expr/keys [cache]
     :or {timeout (time/hours 1)}
     :as context} measure
-   {:keys [report-type subject-ref]}]
+   {:keys [report-type subject-ref] in-parameters :parameters}]
   (let [subject-type (subject-type measure)
         now (time/offset-date-time clock)
         timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
               (compile-primary-library db terminology-service measure {})]
-      (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
+      (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))
+                parameters (cql-params/effective-parameters
+                            parameter-default-values in-parameters)]
         (let [optimize (partial library/optimize db)
               context
               (cond->
@@ -450,7 +453,7 @@
                 ;; if a cancelled? function is available we don't use timeout
                 :interrupted? (if cancelled? cancelled? timeout-eclipsed?)
                 :expression-defs expression-defs
-                :parameters parameter-default-values
+                :parameters parameters
                 :subject-type subject-type
                 :report-type report-type
                 ::luid/generator (m/luid-generator context))
@@ -462,7 +465,7 @@
                      context
                      :expression-defs
                      (-> (remove-unused-defs expression-defs measure)
-                         (library/resolve-params parameter-default-values)
+                         (library/resolve-params parameters)
                          (optimize)))
               cache (attach-cache (ec/with-max-t cache (d/t db)))
               subject-handle
