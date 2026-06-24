@@ -384,6 +384,18 @@ The heap usage percentage (1–99) at or above which metrics are logged at WARN 
 | -&NoBreak;Dhttp.proxyHost | -       | v0.11 | The hostname of the proxy server for outbound HTTP requests. |
 | -&NoBreak;Dhttp.proxyPort | 80      | v0.11 | The port of the proxy server.                                |
 
+#### `USE_SYSTEM_CA_CERTS`
+
+This feature is inherited from the [eclipse-temurin][7] base image. When set to `true`, the backend will process CA certificates placed in the `/certificates` directory inside the container. Certificates should be in PEM format with a `.crt` file extension. They will be added to both the JVM truststore and the system CA store, and used for all HTTP clients.
+
+Example usage with Docker:
+
+```sh
+docker run -v $(pwd)/certs:/certificates/ -e USE_SYSTEM_CA_CERTS=true samply/blaze
+```
+
+Alternatively, you can use the `OPENID_CLIENT_TRUST_STORE` or `EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE` environment variables to specify custom trust stores for specific services.
+
 #### `FHIR_OPERATION_EVALUATE_MEASURE_THREADS` <Badge type="warning" text="Since 0.8"/>
 
 The number threads used for [$evaluate-measure](../api/operation/measure-evaluate-measure.md) executions. The default is the number of available processors (CPUs). For measures that do not load lots of resources from disk the default is the right choice. However, if some of the measures load lots of resources directly from disk, it can be beneficial to set the number of threads to 2x or 4x the number of available processors. Be sure to increase `DB_RESOURCE_STORE_KV_THREADS` accordingly to be able to use the increased I/O capabilities.
@@ -580,3 +592,4 @@ The password for the PKCS #12 trust store.
 [4]: <https://openid.net/connect/>
 [5]: <../authentication.md>
 [6]: <http://tx.fhir.org/r4>
+[7]: https://hub.docker.com/_/eclipse-temurin#can-i-add-my-internal-ca-certificates-to-the-truststore
