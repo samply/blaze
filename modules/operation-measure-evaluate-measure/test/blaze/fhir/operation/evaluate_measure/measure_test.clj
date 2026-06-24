@@ -16,6 +16,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.util :as fu]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
@@ -184,6 +185,18 @@
 
   define Gender:
     Patient.gender" in-initial-population))
+
+(def library-gender-parameter
+  "library Retrieve
+  using FHIR version '4.0.0'
+  include FHIRHelpers version '4.0.0'
+
+  parameter Gender String default 'male'
+
+  context Patient
+
+  define InInitialPopulation:
+    Patient.gender = Gender")
 
 (def library-encounter
   "library Retrieve
@@ -1284,6 +1297,63 @@
     (given (evaluate "q58-overly-large-nonparsable-query")
       ::anom/category := ::anom/fault
       ::anom/message := "Error while parsing the ELM representation of a CQL library: Could not convert library to JSON using JAXB serializer.")))
+
+(deftest evaluate-measure-parameters-test
+  (with-system-data
+    [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+      ::ts/keys [local]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+      [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
+      [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
+      [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+             :content [(library-content library-gender-parameter)]}]]]
+
+    (let [db (d/db node)
+          context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                   :blaze/base-url "" ::reitit/router router
+                   :executor executor :terminology-service local}
+          measure {:fhir/type :fhir/Measure :id "0"
+                   :library [#fhir/canonical "0"]
+                   :group
+                   [{:fhir/type :fhir.Measure/group
+                     :population
+                     [{:fhir/type :fhir.Measure.group/population
+                       :code (population-concept "initial-population")
+                       :criteria (cql-expression "InInitialPopulation")}]}]}
+          params {:period [#system/date "2000" #system/date "2020"]
+                  :report-type "population"}]
+
+      (testing "without supplied parameters the library default `male` is used"
+        (given (first-population @(measure/evaluate-measure context measure params))
+          :count := #fhir/integer 1))
+
+      (testing "a supplied `Gender` parameter overrides the library default"
+        (let [params (assoc params :parameters
+                            (fu/parameters "Gender" #fhir/string "female"))]
+          (given (first-population @(measure/evaluate-measure context measure params))
+            :count := #fhir/integer 2)))
+
+      (testing "a supplied `Gender` parameter not matching any patient"
+        (let [params (assoc params :parameters
+                            (fu/parameters "Gender" #fhir/string "other"))]
+          (given (first-population @(measure/evaluate-measure context measure params))
+            :count := #fhir/integer 0)))
+
+      (testing "an unknown parameter results in an anomaly"
+        (let [params (assoc params :parameters
+                            (fu/parameters "Unknown" #fhir/string "x"))]
+          (given-failed-future (measure/evaluate-measure context measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Unknown parameter `Unknown`."
+            :measure-id := "0")))
+
+      (testing "an unsupported parameter type results in an anomaly"
+        (let [params (assoc params :parameters
+                            (fu/parameters "Gender" #fhir/Quantity{:value #fhir/decimal 1M}))]
+          (given-failed-future (measure/evaluate-measure context measure params)
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported type `Quantity` of parameter `Gender`."
+            :measure-id := "0"))))))
 
 (comment
   (log/set-min-level! :debug)

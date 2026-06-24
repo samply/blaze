@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params-test
   (:require
    [blaze.async.comp :as ac]
+   [blaze.fhir.operation.evaluate-measure :as-alias evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.middleware.params :as params]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.util :as fu]
@@ -95,7 +96,7 @@
 
   (testing "valid period"
     (testing "with params"
-      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+      (let [{::evaluate-measure/keys [params]}
             @(handler {:params {"periodStart" "2020"
                                 "periodEnd" "2021"}})]
 
@@ -104,7 +105,7 @@
           [:period 1] := #system/date"2021")))
 
     (testing "with resource"
-      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+      (let [{::evaluate-measure/keys [params]}
             @(handler
               {:body
                (fu/parameters
@@ -145,7 +146,7 @@
                  "periodStart" #fhir/date #system/date "2014"
                  "periodEnd" #fhir/date #system/date "2015"
                  "measure" #fhir/string "measure-202606")}]]
-        (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+        (let [{::evaluate-measure/keys [params]}
               @(handler request)]
 
           (given params
@@ -189,7 +190,7 @@
           :diagnostics := #fhir/string "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")))
 
     (testing "subject-list on POST request"
-      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+      (let [{::evaluate-measure/keys [params]}
             @(handler
               {:request-method :post
                :body
@@ -203,7 +204,7 @@
 
     (testing "default"
       (testing "is population for normal requests"
-        (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+        (let [{::evaluate-measure/keys [params]}
               @(handler
                 {:request-method :get
                  :params
@@ -214,7 +215,7 @@
             :report-type := "population")))
 
       (testing "is subject for subject requests"
-        (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+        (let [{::evaluate-measure/keys [params]}
               @(handler
                 {:request-method :get
                  :params
@@ -225,9 +226,35 @@
           (given params
             :report-type := "subject")))))
 
+  (testing "parameters"
+    (testing "are read from the nested Parameters resource (only POST)"
+      (let [{::evaluate-measure/keys [params]}
+            @(handler
+              {:request-method :post
+               :body
+               (fu/parameters
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015"
+                "parameters" (fu/parameters "Gender" #fhir/string "female"))})]
+
+        (given params
+          [:parameters :fhir/type] := :fhir/Parameters
+          [:parameters :parameter 0 :name :value] := "Gender"
+          [:parameters :parameter 0 :value :value] := "female")))
+
+    (testing "are absent for GET requests"
+      (let [{::evaluate-measure/keys [params]}
+            @(handler
+              {:request-method :get
+               :params
+               {"periodStart" "2014"
+                "periodEnd" "2015"}})]
+
+        (is (not (contains? params :parameters))))))
+
   (testing "subject"
     (testing "local ref"
-      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+      (let [{::evaluate-measure/keys [params]}
             @(handler
               {:request-method :get
                :params
@@ -239,7 +266,7 @@
           :subject-ref := ["Foo" "173216"])))
 
     (testing "id only"
-      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+      (let [{::evaluate-measure/keys [params]}
             @(handler
               {:request-method :get
                :params

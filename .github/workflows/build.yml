@@ -950,6 +950,15 @@ jobs:
     - name: Evaluate CQL Query 46 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
+    - name: Evaluate CQL Query 68 - Parameter male
+      run: .github/scripts/evaluate-measure-param.sh q68-gender-parameter Gender male 56
+
+    - name: Evaluate CQL Query 68 - Parameter female
+      run: .github/scripts/evaluate-measure-param.sh q68-gender-parameter Gender female 64
+
+    - name: Evaluate CQL Query 68 - Parameter other
+      run: .github/scripts/evaluate-measure-param.sh q68-gender-parameter Gender other 0
+
   integration-test:
     needs: build
     runs-on: ${{ matrix.variant == 'distributed' && 'ubicloud-standard-8-ubuntu-2404' || 'ubuntu-24.04' }}
@@ -1421,6 +1430,15 @@ jobs:
 
     - name: Evaluate CQL Query 46 - Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
+
+    - name: Evaluate CQL Query 68 - Parameter male
+      run: .github/scripts/evaluate-measure-param.sh q68-gender-parameter Gender male 56
+
+    - name: Evaluate CQL Query 68 - Parameter female
+      run: .github/scripts/evaluate-measure-param.sh q68-gender-parameter Gender female 64
+
+    - name: Evaluate CQL Query 68 - Parameter other
+      run: .github/scripts/evaluate-measure-param.sh q68-gender-parameter Gender other 0
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https

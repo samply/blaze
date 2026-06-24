@@ -33,10 +33,36 @@
     (sequential? value) (mapcat #(parameter** name %) value)
     :else (parameter** name value)))
 
-(defn parameter [name value]
+(defn parameter
+  "Builds a single FHIR `Parameters.parameter` entry from `name` and `value`.
+
+  The shape of `value` determines which field it populates:
+
+  * a FHIR datatype value (anything satisfying `Base`, like `#fhir/string \"x\"`
+    or `#fhir/Quantity{...}`) populates `parameter.value[x]`,
+  * a non-datatype map (a resource) populates `parameter.resource`,
+  * a sequential value populates `parameter.part`, where the sequence is read as
+    the name/value pairs of the parts (recursively following the same rules)."
+  [name value]
   (first (parameter** name value)))
 
-(defn parameters [& nvs]
+(defn parameters
+  "Builds a FHIR `Parameters` resource from alternating `name`/`value` pairs.
+
+  Each value is mapped to a `parameter` entry by the same rules as `parameter`,
+  with one addition: a sequential value denotes repetition. It produces one
+  `parameter` entry per element, all sharing the same `name`, and each element
+  is mapped by the same rules. Hence:
+
+  * `(parameters \"x\" #fhir/string\"a\")` yields a single value parameter,
+  * `(parameters \"x\" [#fhir/string\"a\" #fhir/string\"b\"])` yields the
+    parameter `x` repeated twice,
+  * `(parameters \"x\" [[\"a\" #fhir/integer 1 \"b\" #fhir/integer 2]])` yields
+    a single parameter `x` with the parts `a` and `b`, because the one
+    repetition element is itself sequential.
+
+  A `nil` value is skipped."
+  [& nvs]
   {:fhir/type :fhir/Parameters
    :parameter (into [] (mapcat parameter*) (partition 2 nvs))})
 
