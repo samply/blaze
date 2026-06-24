@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.codec :as codec]
@@ -11,6 +12,8 @@
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry :as sr]
+   [blaze.db.search-param-registry-spec]
+   [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -18,7 +21,7 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -39,11 +42,50 @@
 
   (testing "invalid expression"
     (doseq [type ["date" "number" "quantity" "reference" "string" "token" "uri"]]
-      (given (sc/search-param {:code-expression? (constantly false)
-                               :canonical-expression? (constantly false)}
+      (given (sc/search-param {:expression-type (constantly nil)}
                               {:type type :expression ""})
         ::anom/category := ::anom/fault
-        ::anom/message := "Error while parsing token `<EOF>` in expression ``"))))
+        ::anom/message := "Error while parsing token `<EOF>` in expression ``")))
+
+  (testing "expression-type returns nil when union-paths returns anomaly"
+    (is (nil? (sr/expression-type {} "Patient."))))
+
+  (testing "expression-type returns kind for valid expression"
+    (is (= :canonical-url (sr/expression-type {"ValueSet.url" :canonical-url} "ValueSet.url"))))
+
+  (testing "expression-type args spec rejects a non-keyword value in the expression-types map"
+    (given-thrown (sr/expression-type {"ValueSet.url" "not-a-keyword"} "ValueSet.url")
+      :clojure.spec.alpha/failure := :instrument))
+
+  (testing "uri canonical-url expression-type with bad expression returns compile anomaly"
+    (given (sc/search-param {:expression-type (constantly :canonical-url)
+                             :terminology-service nil}
+                            {:type "uri" :name "url" :base ["ValueSet"] :code "url"
+                             :expression "Patient."})
+      ::anom/category := ::anom/fault))
+
+  (testing "uri canonical-url expression-type with union-paths anomaly in derived version-expression"
+    (with-redefs [fhir-path/union-paths (fn [_] (ba/fault "union-paths-boom-165230"))]
+      (given (sc/search-param {:expression-type (constantly :canonical-url)
+                               :terminology-service nil}
+                              {:type "uri" :name "url" :base ["ValueSet"] :code "url"
+                               :expression "ValueSet.url"})
+        ::anom/category := ::anom/fault
+        ::anom/message := "union-paths-boom-165230")))
+
+  (testing "uri canonical-url expression-type with version-expression compile failure"
+    (let [real-compile fhir-path/compile]
+      (with-redefs [fhir-path/compile
+                    (fn [expr]
+                      (if (= expr "ValueSet.version")
+                        (ba/fault "version-expression-compile-boom-165402")
+                        (real-compile expr)))]
+        (given (sc/search-param {:expression-type (constantly :canonical-url)
+                                 :terminology-service nil}
+                                {:type "uri" :name "url" :base ["ValueSet"] :code "url"
+                                 :expression "ValueSet.url"})
+          ::anom/category := ::anom/fault
+          ::anom/message := "version-expression-compile-boom-165402")))))
 
 (defn birthdate [search-param-registry]
   (sr/get search-param-registry "birthdate" "Patient"))

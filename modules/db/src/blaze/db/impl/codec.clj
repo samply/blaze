@@ -282,7 +282,9 @@
     "series"
     "status"
     "subject"
+    "system:below"
     "url"
+    "url:below"
     "value-quantity"
     "variant-start"
     "version"]))

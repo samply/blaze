@@ -445,7 +445,7 @@
   (-single-version-id-matcher [_ batch-db tid _ compiled-values]
     (single-version-id-matcher batch-db tid c-hash compiled-values))
 
-  (-postprocess-matches [_ _ _ _])
+  (-postprocess-matches [_ _ _ _ _])
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -676,7 +676,7 @@
   (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
     (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
-  (-postprocess-matches [_ batch-db _ compiled-values]
+  (-postprocess-matches [_ batch-db _ _ compiled-values]
     (last-updated-matcher batch-db compiled-values))
 
   ;; The _lastUpdated search parameter is queried over the TypeAsOf index, so
