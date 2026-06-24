@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.db.api :as d]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.util :as handler-util]
@@ -97,10 +98,8 @@
   (type/unsignedInt
    (if (< total (bit-shift-left 1 31))
      total
-     {:extension
-      [(type/extension
-        {:url "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
-         :value (type/string (str total))})]})))
+     {:extension (canonical/extensions "StructureDefinition/grand-total"
+                                       (type/string (str total)))})))
 
 (defn build-bundle [context total query-params]
   {:fhir/type :fhir/Bundle

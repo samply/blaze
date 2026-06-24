@@ -12,6 +12,7 @@
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
    [blaze.elm.expression.spec]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.parsing-context.spec]
    [blaze.fhir.response.create :as create-response]
    [blaze.fhir.spec :as fhir-spec]
@@ -21,6 +22,7 @@
    [blaze.interaction.util :as iu]
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler.spec]
+   [blaze.job.canonical :as jc]
    [blaze.job.re-index]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.output :as fhir-output]
@@ -42,6 +44,7 @@
   (:import
    [ca.uhn.fhir.context FhirContext]
    [ca.uhn.fhir.context.support DefaultProfileValidationSupport]
+   [ca.uhn.fhir.parser IParser]
    [ca.uhn.fhir.validation FhirValidator]
    [com.google.common.base CaseFormat]
    [java.io File]
@@ -188,9 +191,9 @@
    :wrap link-headers/wrap-link-headers})
 
 (def ^:private allowed-profiles
-  #{"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
-    "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
-    "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
+  (into #{}
+        (mapcat #(canonical/urls (str "StructureDefinition/" %)))
+        ["AsyncInteractionJob" "CompactJob" "ReIndexJob"]))
 
 (defn- check-profile [resource]
   (if (some allowed-profiles (map :value (-> resource :meta :profile)))
@@ -455,17 +458,24 @@
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
-(defn- load-profile [context name]
-  (log/debug "Load profile" name)
-  (let [parser (.newJsonParser ^FhirContext context)
-        classloader (.getContextClassLoader (Thread/currentThread))]
+(defn- read-profile [name]
+  (let [classloader (.getContextClassLoader (Thread/currentThread))]
     (with-open [source (.getResourceAsStream classloader name)]
-      (.parseResource parser source))))
+      (slurp source))))
 
 (defn- profile-validation-support [context]
-  (let [s (PrePopulatedValidationSupport. context)]
+  (let [s (PrePopulatedValidationSupport. context)
+        parser ^IParser (.newJsonParser ^FhirContext context)]
     (run!
-     #(.addResource s (load-profile context %))
+     (fn [name]
+       (log/debug "Load profile" name)
+       (.addResource s (.parseResource parser ^String (read-profile name))))
+     ;; The current (IG 1.10.0) profiles, copied from the IG into each module,
+     ;; plus the frozen legacy (IG 0.1.0) profiles bundled with this module —
+     ;; so Tasks submitted with either the current or the legacy canonical
+     ;; validate against a matching profile edition. The 0.1.0 editions are
+     ;; frozen rather than derived from the current ones, so they keep matching
+     ;; legacy submissions once the IG diverges from 0.1.0.
      ["blaze/db/CodeSystem-ColumnFamily.json"
       "blaze/db/CodeSystem-Database.json"
       "blaze/db/ValueSet-ColumnFamily.json"
@@ -483,7 +493,25 @@
       "blaze/job/compact/StructureDefinition-CompactJob.json"
       "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
       "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"])
+      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-ColumnFamily.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-Database.json"
+      "blaze/admin-api/v0_1_0/ValueSet-ColumnFamily.json"
+      "blaze/admin-api/v0_1_0/ValueSet-Database.json"
+      "blaze/admin-api/v0_1_0/StructureDefinition-Job.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-JobType.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-JobOutput.json"
+      "blaze/admin-api/v0_1_0/StructureDefinition-AsyncInteractionJob.json"
+      "blaze/admin-api/v0_1_0/StructureDefinition-AsyncInteractionRequestBundle.json"
+      "blaze/admin-api/v0_1_0/StructureDefinition-AsyncInteractionResponseBundle.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-AsyncInteractionJobOutput.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-AsyncInteractionJobParameter.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-CompactJobOutput.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-CompactJobParameter.json"
+      "blaze/admin-api/v0_1_0/StructureDefinition-CompactJob.json"
+      "blaze/admin-api/v0_1_0/StructureDefinition-ReIndexJob.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-ReIndexJobOutput.json"
+      "blaze/admin-api/v0_1_0/CodeSystem-ReIndexJobParameter.json"])
     s))
 
 (defn- create-validator* []
@@ -508,7 +536,7 @@
 
 (defn- create-job-handler [job-scheduler]
   (fn [{:keys [body] :as request}]
-    (do-sync [job (js/create-job job-scheduler (iu/strip-meta body))]
+    (do-sync [job (js/create-job job-scheduler (jc/canonicalize (iu/strip-meta body)))]
       (let [{:blaze.db/keys [tx]} (meta job)]
         (-> (ring/response job)
             (ring/status 201)

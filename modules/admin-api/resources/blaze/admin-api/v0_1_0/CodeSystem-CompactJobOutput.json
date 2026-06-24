@@ -1,0 +1,16 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "CompactJobOutput",
+  "id": "CompactJobOutput",
+  "title": "Compact Job Output",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobOutput",
+  "concept": [
+    {
+      "code": "processing-duration",
+      "display": "Processing Duration"
+    }
+  ],
+  "count": 1
+}

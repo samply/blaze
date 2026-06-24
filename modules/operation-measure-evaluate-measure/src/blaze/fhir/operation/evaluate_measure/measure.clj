@@ -11,6 +11,7 @@
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.resource :as cr]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.operation.evaluate-measure.measure.group :as group]
    [blaze.fhir.operation.evaluate-measure.measure.parameters :as cql-params]
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
@@ -332,28 +333,28 @@
 (defn- subject-type [{{codings :coding} :subject}]
   (or (get-first-code codings "http://hl7.org/fhir/resource-types") "Patient"))
 
-(defn- eval-duration [duration]
-  (type/extension
-   {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
-    :value
-    (type/quantity
-     {:code #fhir/code "s"
-      :system #fhir/uri-interned "http://unitsofmeasure.org"
-      :unit #fhir/string "s"
-      :value (type/decimal (bigdec duration))})}))
+(defn- eval-duration
+  "Returns both the current and legacy eval-duration extensions."
+  [duration]
+  (canonical/extensions
+   "StructureDefinition/eval-duration"
+   (type/quantity
+    {:code #fhir/code "s"
+     :system #fhir/uri-interned "http://unitsofmeasure.org"
+     :unit #fhir/string "s"
+     :value (type/decimal (bigdec duration))})))
 
 (defn- bloom-filter-ratio
-  "Creates an extension with a number of available Bloom filters over the total
-  number of requested Bloom filters."
+  "Returns both the current and legacy extensions with a number of available
+  Bloom filters over the total number of requested Bloom filters."
   [bloom-filters]
-  (type/extension
-   {:url "https://samply.github.io/blaze/fhir/StructureDefinition/bloom-filter-ratio"
-    :value
-    (type/ratio
-     {:numerator
-      (type/quantity {:value (type/decimal (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters))))})
-      :denominator
-      (type/quantity {:value (type/decimal (bigdec (count bloom-filters)))})})}))
+  (canonical/extensions
+   "StructureDefinition/bloom-filter-ratio"
+   (type/ratio
+    {:numerator
+     (type/quantity {:value (type/decimal (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters))))})
+     :denominator
+     (type/quantity {:value (type/decimal (bigdec (count bloom-filters)))})})))
 
 (defn- local-ref [handle]
   (str (name (:fhir/type handle)) "/" (:id handle)))
@@ -364,8 +365,7 @@
   (cond->
    {:fhir/type :fhir/MeasureReport
     :extension
-    [(eval-duration duration)
-     (bloom-filter-ratio bloom-filters)]
+    (into (eval-duration duration) (bloom-filter-ratio bloom-filters))
     :status #fhir/code "complete"
     :type
     (case report-type

@@ -5,6 +5,7 @@
    [blaze.anomaly :as ba :refer [when-ok if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.kv :as kv]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.compact.spec]
@@ -17,11 +18,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private parameter-system
-  "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter")
+(def ^:private parameter-system (canonical/url "CodeSystem/CompactJobParameter"))
 
-(def ^:private output-system
-  "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobOutput")
+(def ^:private output-system (canonical/url "CodeSystem/CompactJobOutput"))
 
 (def ^:private task-output
   (partial job-util/task-output output-system))
@@ -37,31 +36,19 @@
   "Creates a compact job resource."
   [authored-on database column-family]
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
+   :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/CompactJob"))})
    :status #fhir/code "ready"
    :intent #fhir/code "order"
-   :code
-   #fhir/CodeableConcept
-    {:coding
-     [#fhir/Coding
-       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-        :code #fhir/code "compact"
-        :display #fhir/string-interned "Compact a Database Column Family"}]}
+   :code (job-util/type-codeable-concept "compact" "Compact a Database Column Family")
    :authoredOn (type/dateTime authored-on)
    :input
    [{:fhir/type :fhir.Task/input
      :type (type/codeable-concept
-            {:coding
-             [(type/coding
-               {:system (type/uri-interned parameter-system)
-                :code #fhir/code "database"})]})
+            {:coding (canonical/codings "CodeSystem/CompactJobParameter" "database")})
      :value (type/code database)}
     {:fhir/type :fhir.Task/input
      :type (type/codeable-concept
-            {:coding
-             [(type/coding
-               {:system (type/uri-interned parameter-system)
-                :code #fhir/code "column-family"})]})
+            {:coding (canonical/codings "CodeSystem/CompactJobParameter" "column-family")})
      :value (type/code column-family)}]})
 
 (defn- start-job [job]

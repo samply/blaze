@@ -6,6 +6,7 @@
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure-spec]
    [blaze.fhir.operation.evaluate-measure.measure.group-spec]
@@ -764,11 +765,18 @@
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 
-(def ^:private ^:const bloom-filter-ratio-url
-  "https://samply.github.io/blaze/fhir/StructureDefinition/bloom-filter-ratio")
+(defn- extension-finder
+  "Returns a function selecting the extension with the given `url` from a
+  collection of extensions (for use as a `given` path segment)."
+  [url]
+  (fn [extensions]
+    (some #(when (= url (:url %)) %) extensions)))
 
-(defn- bloom-filter-ratio [extensions]
-  (some #(when (= bloom-filter-ratio-url (:url %)) %) extensions))
+(def ^:private bloom-filter-ratio
+  (extension-finder (canonical/url "StructureDefinition/bloom-filter-ratio")))
+
+(def ^:private legacy-bloom-filter-ratio
+  (extension-finder (canonical/old-url "StructureDefinition/bloom-filter-ratio")))
 
 (defn- patient-condition-tx-ops [id]
   (cond-> [[:put {:fhir/type :fhir/Patient :id (str id)}]]
@@ -814,8 +822,14 @@
                         :report-type "population"}]
             (given (:resource @(measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
+              ;; current bloom-filter-ratio extension
+              [:extension bloom-filter-ratio :url] := "https://blaze-server.org/fhir/StructureDefinition/bloom-filter-ratio"
               [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
               [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+              ;; legacy bloom-filter-ratio extension
+              [:extension legacy-bloom-filter-ratio :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/bloom-filter-ratio"
+              [:extension legacy-bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
+              [:extension legacy-bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
               [:group 0 :population 0 :count] := #fhir/integer 1000)))
 
         (Thread/sleep 1000)

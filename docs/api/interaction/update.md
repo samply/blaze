@@ -10,7 +10,7 @@ Blaze keeps track over the history of all updates of each resource. However if t
 
 ## Read-Only Resources
 
-Some resources like base FHIR StructureDefinition resources are read-only and can't be updated. That resources contain a tag with the system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl` and code `read-only`.
+Some resources like base FHIR StructureDefinition resources are read-only and can't be updated. That resources contain two tags with code `read-only` — one with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` and one with the legacy system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl`. Blaze emits both so that downgrading to an older Blaze version, which enforces read-only via the legacy tag, keeps these resources protected; the legacy tag will be removed in the next major version (v2).
 
 ## Conditional Update
 

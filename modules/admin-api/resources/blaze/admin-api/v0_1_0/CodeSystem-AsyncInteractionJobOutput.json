@@ -1,0 +1,20 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "AsyncInteractionJobOutput",
+  "id": "AsyncInteractionJobOutput",
+  "title": "Async Interaction Job Output",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobOutput",
+  "concept": [
+    {
+      "code": "bundle",
+      "display": "Bundle"
+    },
+    {
+      "code": "processing-duration",
+      "display": "Processing Duration"
+    }
+  ],
+  "count": 2
+}

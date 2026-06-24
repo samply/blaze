@@ -1,0 +1,28 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "ReIndexJobOutput",
+  "id": "ReIndexJobOutput",
+  "title": "(Re)Index Job Output",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput",
+  "concept": [
+    {
+      "code": "total-resources",
+      "display": "Total Resources"
+    },
+    {
+      "code": "resources-processed",
+      "display": "Resources Processed"
+    },
+    {
+      "code": "processing-duration",
+      "display": "Processing Duration"
+    },
+    {
+      "code": "next-resource",
+      "display": "Next Resource"
+    }
+  ],
+  "count": 4
+}

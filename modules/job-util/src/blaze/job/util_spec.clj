@@ -7,6 +7,10 @@
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
+(s/fdef job-util/type-codeable-concept
+  :args (s/cat :code string? :display string?)
+  :ret :fhir/CodeableConcept)
+
 (s/fdef job-util/job-number
   :args (s/cat :job :fhir/Task)
   :ret string?)

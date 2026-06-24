@@ -1,0 +1,24 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "Database",
+  "id": "Database",
+  "title": "Database",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/Database",
+  "concept": [
+    {
+      "code": "index",
+      "display": "Index"
+    },
+    {
+      "code": "transaction",
+      "display": "Transaction"
+    },
+    {
+      "code": "resource",
+      "display": "Resource"
+    }
+  ],
+  "count": 3
+}

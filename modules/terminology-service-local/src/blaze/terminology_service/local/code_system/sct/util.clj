@@ -3,7 +3,8 @@
    [blaze.anomaly :as ba]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
-   [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]])
+   [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]
+   [blaze.terminology-service.local.code-system.util :as cs-u])
   (:import
    [java.time LocalDate]
    [java.time.format DateTimeFormatter]))
@@ -26,12 +27,7 @@
 (defn create-code-system [module-id version title]
   (cond->
    {:fhir/type :fhir/CodeSystem
-    :meta
-    #fhir/Meta
-     {:tag
-      [#fhir/Coding
-        {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-         :code #fhir/code "read-only"}]}
+    :meta cs-u/read-only-meta
     :url (type/uri-interned url)
     :version (type/string (version-url module-id version))
     :status #fhir/code "active"

@@ -88,6 +88,8 @@
           [:entry 0 :fhir/type] := :fhir.Bundle/entry
           [:entry 0 :request :method] := #fhir/code "POST"
           [:entry 0 :request :url] := #fhir/uri "Measure/$evaluate-measure"
-          [:entry 0 :request :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
+          [:entry 0 :request :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/return-preference"
           [:entry 0 :request :extension 0 :value] := #fhir/code "representation"
+          [:entry 0 :request :extension 1 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
+          [:entry 0 :request :extension 1 :value] := #fhir/code "representation"
           [:entry 0 :resource] := {:fhir/type :fhir/Parameters})))))

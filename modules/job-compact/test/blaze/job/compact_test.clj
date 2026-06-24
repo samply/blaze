@@ -12,6 +12,7 @@
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
@@ -203,8 +204,29 @@
                 :code #fhir/code "database"}]}
      :value #fhir/code "index"}]))
 
+(deftest job-emits-both-canonicals-test
+  (let [job (job-compact/job (time/offset-date-time) "index" "resource-as-of-index")]
+    (testing "meta.profile carries both canonicals, current first"
+      (given (:profile (:meta job))
+        [0] := #fhir/canonical "https://blaze-server.org/fhir/StructureDefinition/CompactJob"
+        [1] := #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"))
+
+    (testing "code carries both JobType systems with display, current first"
+      (given (:coding (:code job))
+        [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/JobType"
+        [0 :code] := #fhir/code "compact"
+        [0 :display] := #fhir/string "Compact a Database Column Family"
+        [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+        [1 :code] := #fhir/code "compact"
+        [1 :display] := #fhir/string "Compact a Database Column Family"))
+
+    (testing "the database input type carries both parameter systems"
+      (given (:coding (:type (first (:input job))))
+        [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/CompactJobParameter"
+        [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"))))
+
 (defn- output-value [job code]
-  (job-util/output-value job "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobOutput" code))
+  (job-util/output-value job (canonical/url "CodeSystem/CompactJobOutput") code))
 
 (defn- processing-duration [job]
   (output-value job "processing-duration"))

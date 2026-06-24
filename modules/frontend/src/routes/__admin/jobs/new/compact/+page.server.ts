@@ -1,5 +1,6 @@
 import type { Actions } from './$types';
 import { resolve } from '$app/paths';
+import { url } from '$lib/canonical';
 import type { OperationOutcome, Task } from 'fhir/r4';
 import { fail, redirect } from '@sveltejs/kit';
 
@@ -15,7 +16,7 @@ export const actions = {
       body: JSON.stringify({
         resourceType: 'Task',
         meta: {
-          profile: ['https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob']
+          profile: [url('StructureDefinition/CompactJob')]
         },
         intent: 'order',
         status: 'ready',
@@ -23,7 +24,7 @@ export const actions = {
           coding: [
             {
               code: 'compact',
-              system: 'https://samply.github.io/blaze/fhir/CodeSystem/JobType',
+              system: url('CodeSystem/JobType'),
               display: 'Compact a Database Column Family'
             }
           ]
@@ -35,7 +36,7 @@ export const actions = {
               coding: [
                 {
                   code: 'database',
-                  system: 'https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter'
+                  system: url('CodeSystem/CompactJobParameter')
                 }
               ]
             },
@@ -46,7 +47,7 @@ export const actions = {
               coding: [
                 {
                   code: 'column-family',
-                  system: 'https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter'
+                  system: url('CodeSystem/CompactJobParameter')
                 }
               ]
             },

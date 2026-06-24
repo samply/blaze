@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.spec.type :as type]
+   [blaze.terminology-service.local.code-system.util :as cs-u]
    [blaze.terminology-service.local.search-index :as search-index]
    [blaze.util :refer [str]]
    [clojure.data.csv :as csv]
@@ -22,12 +23,7 @@
 
 (defn- code-system []
   {:fhir/type :fhir/CodeSystem
-   :meta
-   #fhir/Meta
-    {:tag
-     [#fhir/Coding
-       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code "read-only"}]}
+   :meta cs-u/read-only-meta
    :url (type/uri-interned url)
    :version (type/string version)
    :name #fhir/string "LOINC"

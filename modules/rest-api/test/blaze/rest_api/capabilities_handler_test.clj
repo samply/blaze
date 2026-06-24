@@ -449,7 +449,7 @@
           :operations
           [#:blaze.rest-api.operation
             {:code "totals"
-             :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+             :def-uri "https://blaze-server.org/fhir/OperationDefinition/totals"
              :affects-state false
              :resource-types ["Resource"]
              :system-handler (fn [_])}
@@ -470,14 +470,14 @@
       [:rest 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest/operation
       [:rest 0 :operation 0 :name] := #fhir/string "totals"
       [:rest 0 :operation 0 :definition] :=
-      #fhir/canonical "https://samply.github.io/blaze/fhir/OperationDefinition/totals")))
+      #fhir/canonical "https://blaze-server.org/fhir/OperationDefinition/totals")))
 
 (def ^:private one-system-operation-documentation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
           :operations
           [#:blaze.rest-api.operation
             {:code "totals"
-             :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+             :def-uri "https://blaze-server.org/fhir/OperationDefinition/totals"
              :affects-state false
              :resource-types ["Resource"]
              :system-handler (fn [_])
@@ -498,7 +498,7 @@
       [:rest 0 :operation count] := 1
       [:rest 0 :operation 0 :name] := #fhir/string "totals"
       [:rest 0 :operation 0 :definition] :=
-      #fhir/canonical "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+      #fhir/canonical "https://blaze-server.org/fhir/OperationDefinition/totals"
       [:rest 0 :operation 0 :documentation] := #fhir/markdown "documentation-141700")))
 
 (def ^:private terminology-service-config

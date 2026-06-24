@@ -1,0 +1,20 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "JobOutput",
+  "id": "JobOutput",
+  "title": "Job Output",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput",
+  "concept": [
+    {
+      "code": "error-category",
+      "display": "Error Category"
+    },
+    {
+      "code": "error",
+      "display": "Error"
+    }
+  ],
+  "count": 2
+}

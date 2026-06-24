@@ -1,3 +1,4 @@
+import { url } from '$lib/canonical';
 import { input, output, type Job, toJob as toBaseJob } from '$lib/jobs';
 import type { Task } from 'fhir/r4';
 
@@ -8,8 +9,8 @@ export interface ReIndexJob extends Job {
   processingDuration?: number;
 }
 
-const parameterUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter';
-const outputUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput';
+const parameterUrl = url('CodeSystem/ReIndexJobParameter');
+const outputUrl = url('CodeSystem/ReIndexJobOutput');
 
 export function extractSearchParamUrl(job: Task): string | undefined {
   return input(job, parameterUrl, 'search-param-url')?.valueCanonical;

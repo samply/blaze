@@ -6,6 +6,7 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
@@ -263,11 +264,11 @@
        (ac/or-timeout! timeout TimeUnit/MILLISECONDS)
        (ac/exceptionally #(cond-> % (ba/busy? %) (assoc ::anom/message (timeout-t-msg t timeout)))))))
 
-(def ^:private ^:const return-preference-url
-  "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference")
+(def ^:private return-preference-url
+  (canonical/url "StructureDefinition/return-preference"))
 
 (def ^:private return-preference-pred
-  #(when (= return-preference-url (:url %))
+  #(when (canonical/matches? return-preference-url (:url %))
      (keyword "blaze.preference" (-> % :value :value))))
 
 (defn- find-return-preference [{extensions :extension}]

@@ -4,7 +4,9 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
+   [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.job.util-spec]
    [blaze.module.test-util :as mtu :refer [given-failed-future]]
@@ -20,62 +22,92 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(defn- codeable-concept [system code]
-  (type/codeable-concept
-   {:coding
-    [(type/coding {:system (type/uri system) :code (type/code code)})]}))
-
 (deftest job-number-test
-  (is (= (job-util/job-number
-          {:fhir/type :fhir/Task
-           :identifier
-           [#fhir/Identifier{:system #fhir/uri "https://samply.github.io/blaze/fhir/sid/JobNumber"
-                             :value #fhir/string "174731"}]})
-         "174731")))
+  (doseq [system (canonical/urls "sid/JobNumber")]
+    (is (= "174731"
+           (job-util/job-number
+            {:fhir/type :fhir/Task
+             :identifier
+             [(type/identifier {:system (type/uri system)
+                                :value #fhir/string "174731"})]})))))
 
 (deftest code-value-test
-  (is (= "bar" (job-util/code-value "foo" (codeable-concept "foo" "bar"))))
-  (is (nil? (job-util/code-value "foo" (codeable-concept "bar" "baz")))))
+  (testing "matches by system value"
+    (is (= "bar" (job-util/code-value "foo" (jtu/concept "foo" "bar"))))
+    (is (nil? (job-util/code-value "foo" (jtu/concept "bar" "baz")))))
+
+  (testing "accepts the legacy system when given the current canonical"
+    (doseq [system (canonical/urls "CodeSystem/JobType")]
+      (is (= "x" (job-util/code-value
+                  (canonical/url "CodeSystem/JobType")
+                  (jtu/concept system "x")))))))
+
+(deftest type-codeable-concept-test
+  (testing "carries both JobType systems with code and display, current first"
+    (given (:coding (job-util/type-codeable-concept "compact" "Compact a Database Column Family"))
+      [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/JobType"
+      [0 :code] := #fhir/code "compact"
+      [0 :display] := #fhir/string "Compact a Database Column Family"
+      [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+      [1 :code] := #fhir/code "compact"
+      [1 :display] := #fhir/string "Compact a Database Column Family")))
 
 (deftest job-type-test
-  (is (= (job-util/job-type
-          {:fhir/type :fhir/Task
-           :code #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                     {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-                      :code #fhir/code "type-140532"}]}})
-         :type-140532)))
+  (doseq [system (canonical/urls "CodeSystem/JobType")]
+    (is (= :type-140532
+           (job-util/job-type
+            {:fhir/type :fhir/Task
+             :code (jtu/concept system "type-140532")})))))
 
 (deftest status-reason-test
-  (is (= (job-util/status-reason
-          {:fhir/type :fhir/Task
-           :statusReason #fhir/CodeableConcept
-                          {:coding
-                           [#fhir/Coding
-                             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"
-                              :code #fhir/code "reason-175220"}]}})
-         "reason-175220")))
+  (doseq [system (canonical/urls "CodeSystem/JobStatusReason")]
+    (is (= "reason-175220"
+           (job-util/status-reason
+            {:fhir/type :fhir/Task
+             :statusReason (jtu/concept system "reason-175220")})))))
 
 (deftest cancelled-sub-status-test
-  (is (= (job-util/cancelled-sub-status
-          {:fhir/type :fhir/Task
-           :businessStatus #fhir/CodeableConcept
-                            {:coding
-                             [#fhir/Coding
-                               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus"
-                                :code #fhir/code "sub-status-161316"}]}})
-         "sub-status-161316")))
+  (doseq [system (canonical/urls "CodeSystem/JobCancelledSubStatus")]
+    (is (= "sub-status-161316"
+           (job-util/cancelled-sub-status
+            {:fhir/type :fhir/Task
+             :businessStatus (jtu/concept system "sub-status-161316")})))))
+
+(deftest status-reason-emits-both-codings-test
+  (testing "the predefined status reasons carry both systems, current first"
+    (given (:coding job-util/started-status-reason)
+      [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/JobStatusReason"
+      [0 :code] := #fhir/code "started"
+      [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"
+      [1 :code] := #fhir/code "started")))
+
+(deftest cancelled-sub-status-emits-both-codings-test
+  (testing "the predefined sub statuses carry both systems, current first"
+    (given (:coding job-util/cancellation-requested-sub-status)
+      [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/JobCancelledSubStatus"
+      [0 :code] := #fhir/code "requested"
+      [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus"
+      [1 :code] := #fhir/code "requested")))
+
+(deftest task-output-emits-both-codings-test
+  (testing "a Blaze output system yields both codings, current first"
+    (given (:coding (:type (job-util/task-output
+                            (canonical/url "CodeSystem/JobOutput") "error"
+                            #fhir/string "msg")))
+      [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/JobOutput"
+      [0 :code] := #fhir/code "error"
+      [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput"
+      [1 :code] := #fhir/code "error")))
 
 (deftest input-value-test
   (is (= (job-util/input-value
           {:fhir/type :fhir/Task
            :input
            [{:fhir/type :fhir.Task/input
-             :type (codeable-concept "foo" "other")
+             :type (jtu/concept "foo" "other")
              :value #fhir/string "other"}
             {:fhir/type :fhir.Task/input
-             :type (codeable-concept "foo" "bar")
+             :type (jtu/concept "foo" "bar")
              :value #fhir/code "baz"}]}
           "foo" "bar")
          #fhir/code "baz")))

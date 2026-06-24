@@ -1,0 +1,15 @@
+{
+  "resourceType": "ValueSet",
+  "status": "active",
+  "name": "ColumnFamily",
+  "id": "ColumnFamily",
+  "title": "Column Family Value Set",
+  "url": "https://samply.github.io/blaze/fhir/ValueSet/ColumnFamily",
+  "compose": {
+    "include": [
+      {
+        "system": "https://samply.github.io/blaze/fhir/CodeSystem/ColumnFamily"
+      }
+    ]
+  }
+}

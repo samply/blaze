@@ -23,7 +23,7 @@ Usage: #definition
 Instance: JobSearchParameterBundle
 InstanceOf: Bundle
 * type = #collection
-* entry[0].fullUrl = "https://samply.github.io/blaze/fhir/SearchParameter/TaskInput"
+* entry[0].fullUrl = "https://blaze-server.org/fhir/SearchParameter/TaskInput"
 * entry[0].resource = TaskInput
-* entry[1].fullUrl = "https://samply.github.io/blaze/fhir/SearchParameter/TaskOutput"
+* entry[1].fullUrl = "https://blaze-server.org/fhir/SearchParameter/TaskOutput"
 * entry[1].resource = TaskOutput

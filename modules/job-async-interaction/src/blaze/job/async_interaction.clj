@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util.spec]
@@ -20,37 +21,27 @@
 
 (set! *warn-on-reflection* true)
 
-(def output-uri
-  "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobOutput")
+(def output-uri (canonical/url "CodeSystem/AsyncInteractionJobOutput"))
 
 (defn job
   "Creates a async interaction job resource."
   [authored-on bundle-id t]
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"]}
+   :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/AsyncInteractionJob"))})
    :status #fhir/code "ready"
    :intent #fhir/code "order"
-   :code #fhir/CodeableConcept
-          {:coding
-           [#fhir/Coding
-             {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-              :code #fhir/code "async-interaction"
-              :display #fhir/string-interned "Asynchronous Interaction Request"}]}
+   :code (job-util/type-codeable-concept "async-interaction" "Asynchronous Interaction Request")
    :authoredOn (type/dateTime authored-on)
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))
     {:fhir/type :fhir.Task/input
      :type (type/codeable-concept
-            {:coding
-             [(type/coding
-               {:system (type/uri-interned u/parameter-uri)
-                :code #fhir/code "t"})]})
+            {:coding (canonical/codings "CodeSystem/AsyncInteractionJobParameter" "t")})
      :value (type/unsignedInt t)}]})
 
-(defn- return-preference-extension [return-preference]
-  (type/extension
-   {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
-    :value (type/code (name return-preference))}))
+(defn- return-preference-extensions [return-preference]
+  (canonical/extensions "StructureDefinition/return-preference"
+                        (type/code (name return-preference))))
 
 (defn request-bundle
   ([id method url]
@@ -68,7 +59,7 @@
          :method (type/code method)
          :url (type/uri url)}
          return-preference
-         (assoc :extension [(return-preference-extension return-preference)]))}
+         (assoc :extension (return-preference-extensions return-preference)))}
        resource
        (assoc :resource resource))]}))
 

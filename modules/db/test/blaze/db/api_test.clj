@@ -375,6 +375,11 @@
 
 (def ^:private read-only-tag
   #fhir/Coding
+   {:system #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AccessControl"
+    :code #fhir/code "read-only"})
+
+(def ^:private read-only-tag-legacy
+  #fhir/Coding
    {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
     :code #fhir/code "read-only"})
 
@@ -546,15 +551,18 @@
         [meta :blaze.db/op] := :put)))
 
   (testing "read-only resources can't be updated"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :meta (type/meta {:tag [read-only-tag]})}]]]
+    (doseq [tag [read-only-tag read-only-tag-legacy]
+            meta [(type/meta {:tag [tag]}) nil]]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"
+                    :meta (type/meta {:tag [tag]})}]]]
 
-      (given-failed-future (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                                    :meta (type/meta {:tag [read-only-tag]})
-                                                    :gender #fhir/code "female"}]])
-        ::anom/category := ::anom/conflict
-        ::anom/message := "Can't update the read-only resource `Patient/0`."))))
+        (let [patient (cond-> {:fhir/type :fhir/Patient :id "0"
+                               :gender #fhir/code "female"}
+                        meta (assoc :meta meta))]
+          (given-failed-future (d/transact node [[:put patient]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Can't update the read-only resource `Patient/0`."))))))
 
 (deftest transact-delete-test
   (testing "on empty database"
@@ -663,13 +671,14 @@
           :num-changes := 1))))
 
   (testing "read-only resources are not deletable"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :meta (type/meta {:tag [read-only-tag]})}]]]
+    (doseq [tag [read-only-tag read-only-tag-legacy]]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"
+                    :meta (type/meta {:tag [tag]})}]]]
 
-      (given-failed-future (d/transact node [[:delete "Patient" "0"]])
-        ::anom/category := ::anom/conflict
-        ::anom/message := "Can't delete the read-only resource `Patient/0`."))))
+        (given-failed-future (d/transact node [[:delete "Patient" "0"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Can't delete the read-only resource `Patient/0`.")))))
 
 (defmacro forv
   "Like for but returns a vector instead of a sequence."
@@ -8719,7 +8728,7 @@
 (deftest compile-system-matcher-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "0"
-             :meta (type/meta {:tag [read-only-tag]})}]
+             :meta (type/meta {:tag [read-only-tag-legacy]})}]
       [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
     (with-open-db [db node]

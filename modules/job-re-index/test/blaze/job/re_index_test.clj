@@ -15,7 +15,9 @@
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
@@ -269,16 +271,16 @@
 (def job-missing-search-param
   job)
 
-(def job-unknown-search-param
+(defn- unknown-search-param-job [param-system]
   (assoc
    job
    :input
    [{:fhir/type :fhir.Task/input
-     :type #fhir/CodeableConcept
+     :type (type/codeable-concept
             {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
-                :code #fhir/code "search-param-url"}]}
+             [(type/coding
+               {:system (type/uri param-system)
+                :code #fhir/code "search-param-url"})]})
      :value #fhir/canonical "unknown"}]))
 
 (defn- output-value [job code]
@@ -410,16 +412,19 @@
           job-util/error-msg := "Missing search parameter URL."))))
 
   (testing "unknown search param URL"
-    (with-system [{:blaze/keys [job-scheduler] :as system} config]
+    (doseq [[desc param-system] [["current" (canonical/url "CodeSystem/ReIndexJobParameter")]
+                                 ["legacy" (canonical/old-url "CodeSystem/ReIndexJobParameter")]]]
+      (testing (str desc " parameter system")
+        (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-      @(js/create-job job-scheduler job-unknown-search-param)
+          @(js/create-job job-scheduler (unknown-search-param-job param-system))
 
-      (testing "the job has failed"
-        (given @(jtu/pull-job system :failed)
-          :fhir/type := :fhir/Task
-          job-util/job-number := "1"
-          jtu/combined-status := :failed
-          job-util/error-msg := "Search parameter with URL `unknown` not found."))))
+          (testing "the job has failed"
+            (given @(jtu/pull-job system :failed)
+              :fhir/type := :fhir/Task
+              job-util/job-number := "1"
+              jtu/combined-status := :failed
+              job-util/error-msg := "Search parameter with URL `unknown` not found."))))))
 
   (testing "failing indexing at first re-index call"
     (with-redefs

@@ -1,0 +1,28 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "JobType",
+  "id": "JobType",
+  "title": "Job Type",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/JobType",
+  "concept": [
+    {
+      "code": "async-interaction",
+      "display": "Asynchronous Interaction Request"
+    },
+    {
+      "code": "async-bulk-data",
+      "display": "Asynchronous Bulk Data Request"
+    },
+    {
+      "code": "compact",
+      "display": "Compact a Database Column Family"
+    },
+    {
+      "code": "re-index",
+      "display": "(Re)Index a Search Parameter"
+    }
+  ],
+  "count": 4
+}

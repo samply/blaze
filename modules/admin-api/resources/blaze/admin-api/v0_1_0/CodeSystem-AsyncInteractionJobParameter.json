@@ -1,0 +1,20 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "AsyncInteractionJobParameter",
+  "id": "AsyncInteractionJobParameter",
+  "title": "Async Interaction Job Parameter",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter",
+  "concept": [
+    {
+      "code": "bundle",
+      "display": "Bundle"
+    },
+    {
+      "code": "t",
+      "display": "Database Point in Time"
+    }
+  ],
+  "count": 2
+}

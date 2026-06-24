@@ -76,13 +76,23 @@
         ::anom/message := "The request bundle with id `180302` of job with id `180340` was deleted.")))
 
   (testing "success"
-    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]]
+    (doseq [[desc input]
+            [["current"
+              (u/request-bundle-input "Bundle/180302")]
+             ["legacy"
+              {:fhir/type :fhir.Task/input
+               :type #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
+                          :code #fhir/code "bundle"}]}
+               :value #fhir/Reference{:reference #fhir/string "Bundle/180302"}}]]]
+      (testing (str desc " parameter system")
+        (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]]
 
-      (let [task {:fhir/type :fhir/Task :id "180340"
-                  :input [(u/request-bundle-input "Bundle/180302")]}]
-
-        (given @(mtu/assoc-thread-name (u/pull-request-bundle node task))
-          [meta :thread-name] :? mtu/common-pool-thread?
-          :fhir/type := :fhir/Bundle
-          :id := "180302")))))
+          (let [task {:fhir/type :fhir/Task :id "180340" :input [input]}]
+            (given @(mtu/assoc-thread-name (u/pull-request-bundle node task))
+              [meta :thread-name] :? mtu/common-pool-thread?
+              :fhir/type := :fhir/Bundle
+              :id := "180302")))))))
