@@ -153,6 +153,18 @@
     (codec/c-hash (str code ":" modifier))
     c-hash))
 
+(defn- canonical-url-modifier
+  "Maps the `below` modifier to `nil` for `:canonical-url` search params
+  (e.g. `ValueSet.url`), since those below-queries probe the plain unversioned
+  index and never had dedicated below index entries. Leaves the modifier
+  unchanged for any other `expression-type`, in particular `:canonical`
+  (combined `url|version` string params like `depends-on`), whose below index
+  entries do exist and still use the `below` c-hash."
+  [expression-type modifier]
+  (if (and (= :canonical-url expression-type) (= "below" modifier))
+    nil
+    modifier))
+
 (defn index-handles
   "Returns a reducible collection of index handles that have `value` starting at
   `start-id` (optional)."
@@ -206,13 +218,66 @@
 (defn- expand-value-set-msg [url cause-msg]
   (format "Error while expanding the ValueSet `%s`. Cause: %s" url cause-msg))
 
+(defn- version-prefix-match?
+  "Returns true if the `wanted` version matches the `stored` version either
+  exactly or as a dotted version prefix.
+
+  Implements the FHIR R4 `:below` version-prefix rule (§3.1.1.4.13): a search
+  version like `1` or `1.2` matches stored versions `1.0.0`, `1.2.3` etc., while
+  `1.2.3` matches only `1.2.3`. The trailing `.` guard prevents `1` from
+  matching `10.0`."
+  [wanted stored]
+  (or (= wanted stored) (str/starts-with? stored (str wanted "."))))
+
+(def ^:private noop-resolver
+  (reify fhir-path/Resolver (-resolve [_ _])))
+
+(defn- parse-canonical-value
+  "Splits a raw canonical search `value` into an `[url version]` pair, with
+  `version` nil when `value` carries no `|version` suffix."
+  [value]
+  (if-let [idx (str/index-of value "|")]
+    [(subs value 0 idx) (subs value (inc idx))]
+    [value nil]))
+
+(defn- version-matches?
+  "Tests a `stored` version against a `wanted` version, using exact equality
+  for the `nil` (default) modifier and dotted version-prefix matching (FHIR
+  R4 §3.1.1.4.13) for the `below` modifier."
+  [modifier wanted stored]
+  (if (= "below" modifier)
+    (version-prefix-match? wanted stored)
+    (= wanted stored)))
+
+(defn- matches-canonical-value?
+  "Returns true if the resource behind `resource-handle` has a stored
+  `.url`/`.version` pair (per `expression`/`version-expression`) matching one
+  of the `wanted` `[url version]` pairs, honoring `modifier`.
+
+  A `nil` version in a wanted pair matches any stored version. A non-nil
+  wanted version only matches if the resource has a stored version, tested
+  via `version-matches?`.
+
+  Pulls the resource via `batch-db`. Used to post-filter the candidates of a
+  versioned canonical url search, since versions are not held in the index."
+  [batch-db expression version-expression modifier wanted resource-handle]
+  (let [resource @(d/pull batch-db resource-handle)
+        urls (keep :value (fhir-path/eval noop-resolver expression resource))
+        stored-versions (delay (keep :value (fhir-path/eval noop-resolver version-expression resource)))]
+    (some
+     (fn [[wanted-url wanted-version]]
+       (and (some #(= wanted-url %) urls)
+            (or (nil? wanted-version)
+                (some #(version-matches? modifier wanted-version %) @stored-versions))))
+     wanted)))
+
 (defrecord SearchParamToken [compile-value-set-cache name url type base code
-                             target c-hash expression code-expression? canonical-expression?]
+                             target c-hash expression expression-type version-expression]
   p/SearchParam
   (-validate-modifier [_ modifier]
     (condp = type
       "uri"
-      (when-not (and canonical-expression? (#{"below"} modifier))
+      (when-not (and (#{:canonical :canonical-url} expression-type) (#{"below"} modifier))
         (some->> modifier (u/modifier-anom fhir-uri-modifier code)))
       "token"
       (when-not (#{"in"} modifier)
@@ -235,11 +300,14 @@
           (ac/exceptionally
            (fn [anom]
              (ba/fault (expand-value-set-msg value (::anom/message anom))))))
+      (= :canonical-url expression-type)
+      (ac/completed-future
+       (codec/v-hash (if-let [idx (str/index-of value "|")] (subs value 0 idx) value)))
       :else
       (ac/completed-future (codec/v-hash value))))
 
   (-estimated-scan-size [_ batch-db tid modifier compiled-value]
-    (let [c-hash (c-hash-w-modifier c-hash code modifier)]
+    (let [c-hash (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))]
       (sp-vr/estimated-scan-size (:kv-store batch-db) c-hash tid compiled-value)))
 
   (-supports-ordered-index-handles [_ _ _ _ _]
@@ -267,18 +335,18 @@
           (u/union-index-handles (map index-handles compiled-values))))))
 
   (-index-handles [_ batch-db tid modifier compiled-value]
-    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+    (index-handles batch-db (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier)) tid
                    compiled-value))
 
   (-index-handles [_ batch-db tid modifier compiled-value start-id]
-    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+    (index-handles batch-db (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier)) tid
                    compiled-value start-id))
 
   (-supports-ordered-compartment-index-handles [_ modifier values]
    ;; the CompartmentSearchParamValueResource index only contains values with
    ;; or values of type :fhir/code
    ;; with in-modifier, a ValueSet expansion contains always systems
-    (or code-expression? (every? has-system? values) (= "in" modifier)))
+    (or (= :code expression-type) (every? has-system? values) (= "in" modifier)))
 
   (-ordered-compartment-index-handles [search-param batch-db compartment tid modifier compiled-values]
     (if (= "in" modifier)
@@ -301,15 +369,19 @@
 
   (-matcher [_ batch-db modifier compiled-values]
     (r-sp-v/value-prefix-filter
-     (:snapshot batch-db) (c-hash-w-modifier c-hash code modifier)
+     (:snapshot batch-db) (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
      compiled-values))
 
   (-single-version-id-matcher [_ batch-db tid modifier compiled-values]
     (r-sp-v/single-version-id-value-prefix-filter
-     (:snapshot batch-db) tid (c-hash-w-modifier c-hash code modifier)
+     (:snapshot batch-db) tid (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
      compiled-values))
 
-  (-postprocess-matches [_ _ _ _])
+  (-postprocess-matches [_ batch-db modifier values _]
+    (when (and (= :canonical-url expression-type) (some #(str/includes? % "|") values))
+      (let [wanted (into #{} (map parse-canonical-value) values)]
+        (filter (partial matches-canonical-value? batch-db expression
+                         version-expression modifier wanted)))))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -324,14 +396,11 @@
        values)))
 
   (-index-values [search-param resolver resource]
-    (when-ok [values (fhir-path/eval resolver expression resource)]
-      (coll/eduction (p/-index-value-compiler search-param) values)))
+    (when-ok [url-values (fhir-path/eval resolver expression resource)]
+      (coll/eduction (p/-index-value-compiler search-param) url-values)))
 
   (-index-value-compiler [_]
     (mapcat (partial index-entries url))))
-
-(def ^:private noop-resolver
-  (reify fhir-path/Resolver (-resolve [_ _])))
 
 (defn- identifier-values [{{:keys [value]} :value {system :value} :system}]
   (cond-> []
@@ -405,7 +474,7 @@
      (:snapshot batch-db) tid (c-hash-w-modifier c-hash code modifier)
      compiled-values))
 
-  (-postprocess-matches [_ batch-db values _]
+  (-postprocess-matches [_ batch-db _ values _]
     (filter (partial matches-identifier-values? batch-db expression (set values))))
 
   (-compartment-ids [_ _ _])
@@ -483,7 +552,7 @@
           pred (comp ids :id)]
       (filter pred)))
 
-  (-postprocess-matches [_ _ _ _])
+  (-postprocess-matches [_ _ _ _ _])
 
   (-index-values [_ _ _]))
 
@@ -498,19 +567,19 @@
     expression))
 
 (defmethod sc/search-param "token"
-  [{:keys [terminology-service code-expression?]}
+  [{:keys [terminology-service expression-type]}
    {:keys [name url type base code target expression]}]
   (if (= "_id" code)
     (->SearchParamId "_id" "id" "_id")
     (if expression
-      (let [code-expression? (code-expression? expression)]
+      (let [expr-type (expression-type expression)]
         (when-ok [expression (fhir-path/compile (fix-expr url expression))]
           (if (= "identifier" code)
             (->SearchParamTokenIdentifier name url type base code target
                                           (codec/c-hash code) expression)
             (->SearchParamToken (compile-value-set-cache terminology-service)
                                 name url type base code target
-                                (codec/c-hash code) expression code-expression? false))))
+                                (codec/c-hash code) expression expr-type nil))))
       (ba/unsupported (u/missing-expression-msg url)))))
 
 (defmethod sc/search-param "reference"
@@ -519,16 +588,38 @@
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParamToken (compile-value-set-cache terminology-service)
                           name url type base code target
-                          (codec/c-hash code) expression false false))
+                          (codec/c-hash code) expression nil nil))
     (ba/unsupported (u/missing-expression-msg url))))
 
+(defn- url->version-expression
+  "Derives a FHIRPath version expression from a canonical-URL expression by
+  replacing the trailing `.url` of each union branch with `.version`.
+
+  Uses the FHIRPath parser to split the expression at the top-level `|` union
+  operator, so a `|` inside a string literal is left alone. The replacement
+  is anchored to the `.url` suffix of each branch so that a `.url` substring
+  elsewhere in a path is never touched.
+
+  Example: \"CapabilityStatement.url | ValueSet.url\"
+        -> \"CapabilityStatement.version | ValueSet.version\""
+  [expression]
+  (when-ok [branches (fhir-path/union-paths expression)]
+    (->> branches
+         (map #(str/replace % #"\.url$" ".version"))
+         (str/join " | "))))
+
 (defmethod sc/search-param "uri"
-  [{:keys [terminology-service canonical-expression?]}
+  [{:keys [terminology-service expression-type]}
    {:keys [name url type base code target expression]}]
   (if expression
-    (let [canonical-expression? (canonical-expression? expression)]
-      (when-ok [expression (fhir-path/compile expression)]
+    (let [expr-type (expression-type expression)]
+      (when-ok [compiled-expression (fhir-path/compile expression)
+                version-expression (when (= :canonical-url expr-type)
+                                     (url->version-expression expression))
+                compiled-version-expression (when (some? version-expression)
+                                              (fhir-path/compile version-expression))]
         (->SearchParamToken (compile-value-set-cache terminology-service)
                             name url type base code target
-                            (codec/c-hash code) expression false canonical-expression?)))
+                            (codec/c-hash code) compiled-expression expr-type
+                            compiled-version-expression)))
     (ba/unsupported (u/missing-expression-msg url))))

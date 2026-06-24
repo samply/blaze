@@ -182,7 +182,7 @@
   (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
     (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
-  (-postprocess-matches [_ batch-db _ compiled-values]
+  (-postprocess-matches [_ batch-db _ _ compiled-values]
     (postprocess-matches-xf batch-db compiled-values))
 
   (-index-values [_ _ _]

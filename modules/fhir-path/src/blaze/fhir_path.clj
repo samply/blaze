@@ -1,7 +1,7 @@
 (ns blaze.fhir-path
   (:refer-clojure :exclude [compile eval resolve str])
   (:require
-   [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.anomaly :as ba :refer [throw-anom when-ok]]
    [blaze.coll.core :as coll]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type.system :as system]
@@ -570,20 +570,48 @@
     (when-let [^TerminalNode node (.getChild ctx 0)]
       (.getText (.getSymbol node)))))
 
-(defn compile
-  "Compiles the FHIRPath `expr`.
-
-  Returns either a compiled FHIRPath expression or an anomaly in case of errors."
-  [expr]
+(defn- parser
+  "Creates an ANTLR FHIRPath parser for `expr` with error listeners removed."
+  ^fhirpathParser [^String expr]
   (let [r (StringReader. expr)
         s (CharStreams/fromReader r)
         l (fhirpathLexer. s)
         t (CommonTokenStream. l)
         p (fhirpathParser. t)]
-    ;; if not removed, it will print errors on console
     (.removeErrorListeners l)
     (.removeErrorListeners p)
-    (-> (ba/try-anomaly (-compile (.expression p)))
-        (ba/exceptionally
-         #(-> (update % ::anom/message str (format " in expression `%s`" expr))
-              (assoc :expression expr))))))
+    p))
+
+(defn compile
+  "Compiles the FHIRPath `expr`.
+
+  Returns either a compiled FHIRPath expression or an anomaly in case of errors."
+  [expr]
+  (-> (ba/try-anomaly (-compile (.expression (parser expr))))
+      (ba/exceptionally
+       #(-> (update % ::anom/message str (format " in expression `%s`" expr))
+            (assoc :expression expr)))))
+
+(defn- parse
+  "Parses the FHIRPath `expr` and returns its root expression context.
+
+  Callers have to detect parse errors themselves, e.g. by compiling `expr`
+  first."
+  [expr]
+  (.expression (parser expr)))
+
+(defn union-paths
+  "Splits `expr` at the top-level FHIRPath union operator `|` and returns the
+  textual source of each branch with surrounding whitespace trimmed.
+
+  A non-union expression is returned as a single-element vector. Returns an
+  anomaly if `expr` does not parse as FHIRPath."
+  [expr]
+  (when-ok [_ (compile expr)]
+    (let [root (parse expr)]
+      (letfn [(path [^fhirpathParser$ExpressionContext ctx]
+                (if (instance? fhirpathParser$UnionExpressionContext ctx)
+                  (let [[e1 e2] (.expression ^fhirpathParser$UnionExpressionContext ctx)]
+                    (into (path e1) (path e2)))
+                  [(str/trim (.getText ctx))]))]
+        (path root)))))

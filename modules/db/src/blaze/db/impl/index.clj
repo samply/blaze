@@ -197,8 +197,8 @@
      (let [f #(ordered-index-handles* batch-db tid % start-id)]
        (u/intersection-index-handles (map f conjunction))))))
 
-(defn- postprocess-matches** [batch-db [search-param _ values compiled-values]]
-  (p/-postprocess-matches search-param batch-db values compiled-values))
+(defn- postprocess-matches** [batch-db [search-param modifier values compiled-values]]
+  (p/-postprocess-matches search-param batch-db modifier values compiled-values))
 
 (defn- postprocess-matches* [batch-db disjunction]
   (transduce (keep (partial postprocess-matches** batch-db)) comp disjunction))

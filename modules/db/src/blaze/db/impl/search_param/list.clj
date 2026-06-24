@@ -90,7 +90,7 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-postprocess-matches [_ _ _ _])
+  (-postprocess-matches [_ _ _ _ _])
 
   (-index-values [_ _ _]
     []))
