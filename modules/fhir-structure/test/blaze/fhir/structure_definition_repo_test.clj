@@ -35,3 +35,20 @@
     (testing "does not include non-canonical paths"
       (is (not (contains? exprs "CapabilityStatement.url")))
       (is (not (contains? exprs "Subscription.channel.endpoint"))))))
+
+(deftest canonical-url-expressions-test
+  (testing "canonical-url-expressions"
+    (let [exprs (sdr/canonical-url-expressions structure-definition-repo)]
+      (is (set? exprs))
+      (testing "includes metadata-resource .url paths"
+        (is (contains? exprs "CapabilityStatement.url"))
+        (is (contains? exprs "ValueSet.url"))
+        (is (contains? exprs "StructureDefinition.url"))
+        (is (contains? exprs "MessageDefinition.url")))
+      (testing "excludes non-canonical .url paths"
+        (is (not (contains? exprs "Device.url")))
+        (is (not (contains? exprs "DeviceDefinition.url")))
+        (is (not (contains? exprs "Contract.url"))))
+      (testing "excludes non-.url uri paths"
+        (is (not (contains? exprs "AuditEvent.agent.policy")))
+        (is (not (contains? exprs "Resource.meta.profile")))))))

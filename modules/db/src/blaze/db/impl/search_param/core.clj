@@ -10,7 +10,8 @@
   in the registry. Other namespaces can provide their own implementations here.
 
   The `context` contains a :code-expression? function, a :canonical-expression?
-  function, a :terminology-service and an :index.
+  function, a :canonical-url-expression? function, a :terminology-service and
+  an :index.
 
   The conversion can return an anomaly."
   {:arglists '([context definition])}
