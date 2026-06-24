@@ -154,6 +154,39 @@ the result should be the following [MeasureReport][6]:
 
 Under `group[0].population[0].count` the result of the query can be found.
 
+## Evaluation with Parameters
+
+A CQL library can declare parameters that are used in its expressions, optionally with a default value:
+
+```text
+library Retrieve
+using FHIR version '4.0.0'
+include FHIRHelpers version '4.0.0'
+
+parameter "Gender" String default 'male'
+
+context Patient
+
+define InInitialPopulation:
+  Patient.gender = "Gender"
+```
+
+By default the library default (`'male'`) is used. Blaze supports the `parameters` input that was added to `$evaluate-measure` in FHIR R5, which lets a client override these parameters per request. Because `parameters` is a `Parameters` resource nested in `parameter.resource`, it can **only** be supplied via `POST` with a `Parameters` body:
+
+```sh
+curl -sd '{"resourceType": "Parameters", "parameter": [{"name": "periodStart", "valueDate": "2000"}, {"name": "periodEnd", "valueDate": "2030"}, {"name": "measure", "valueString": "urn:uuid:49f4c7de-3320-4208-8e60-ecc0d8824e08"}, {"name": "parameters", "resource": {"resourceType": "Parameters", "parameter": [{"name": "Gender", "valueString": "female"}]}}]}' -H "Content-Type: application/fhir+json" 'http://localhost:8080/fhir/Measure/$evaluate-measure'
+```
+
+The following rules apply:
+
+* a supplied parameter overrides the matching CQL library parameter by name; parameters not supplied fall back to the library default
+* a parameter that appears more than once becomes a CQL `List`
+* a parameter with `parameter.part` becomes a CQL `Tuple`
+* supplying a value for a name the library doesn't declare returns an error
+* the measurement period of the resulting `MeasureReport` is always derived from `periodStart`/`periodEnd`; a supplied `Measurement Period` parameter only affects the CQL evaluation
+
+Currently the common primitive types (`boolean`, `integer`, `decimal`, `string`, `code`, `date` and `dateTime`) together with the `List`/`Tuple` rules are supported. Unsupported types return an error.
+
 ## Evaluation of the Measure Resource including Generation of Patient Lists
 
 By default, the evaluation results in a MeasureReport of type `summary`. Such a MeasureReport contains only the number of resources of each population. However, if you also need the resources itself, you can have a MeasureReport of type `subject-list` generated. This works as follows:
