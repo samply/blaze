@@ -44,6 +44,32 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(deftest job-emits-both-canonicals-test
+  (let [job (job-async/job (time/offset-date-time) "bundle-id" 42)]
+    (testing "meta.profile carries both canonicals, current first"
+      (given (:profile (:meta job))
+        [0] := #fhir/canonical "https://blaze-server.org/fhir/StructureDefinition/AsyncInteractionJob"
+        [1] := #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"))
+
+    (testing "code carries both JobType systems with display, current first"
+      (given (:coding (:code job))
+        [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/JobType"
+        [0 :code] := #fhir/code "async-interaction"
+        [0 :display] := #fhir/string "Asynchronous Interaction Request"
+        [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+        [0 :code] := #fhir/code "async-interaction"
+        [0 :display] := #fhir/string "Asynchronous Interaction Request"))
+
+    (testing "the bundle input type carries both parameter systems"
+      (given (:coding (:type (first (:input job))))
+        [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AsyncInteractionJobParameter"
+        [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"))
+
+    (testing "the t input type carries both parameter systems"
+      (given (:coding (:type (second (:input job))))
+        [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AsyncInteractionJobParameter"
+        [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"))))
+
 (def config
   {:blaze/job-scheduler
    {:node (ig/ref :blaze.db.admin/node)

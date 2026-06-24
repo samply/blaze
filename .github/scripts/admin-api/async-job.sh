@@ -20,7 +20,10 @@ job_id=$(echo "$headers" | grep -i content-location | tr -d '\r' | cut -d '/' -f
 sleep 1
 job=$(curl -sfH 'Accept: application/fhir+json' "$base/__admin/Task/$job_id")
 
-test "profile URL" "$(echo "$job" | jq -r '.meta.profile[]')" "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
+# the job carries both the current and the legacy (IG 0.1.0) canonical, current first
+test "profile count" "$(echo "$job" | jq -r '.meta.profile | length')" "2"
+test "current profile URL" "$(echo "$job" | jq -r '.meta.profile[0]')" "https://blaze-server.org/fhir/StructureDefinition/AsyncInteractionJob"
+test "legacy profile URL" "$(echo "$job" | jq -r '.meta.profile[1]')" "https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
 test "status" "$(echo "$job" | jq -r '.status')" "completed"
 
 authored_on_iso=$(echo "$job" | jq -r '.authoredOn')

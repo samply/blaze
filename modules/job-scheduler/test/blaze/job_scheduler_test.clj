@@ -343,7 +343,14 @@
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
           jtu/combined-status := :ready
-          job-util/job-type := :test))
+          job-util/job-type := :test
+          ;; both JobNumber identifiers, current first
+          [:identifier 0 :use] := #fhir/code "official"
+          [:identifier 0 :system] := #fhir/uri "https://blaze-server.org/fhir/sid/JobNumber"
+          [:identifier 0 :value] := #fhir/string "1"
+          [:identifier 1 :use] := #fhir/code "official"
+          [:identifier 1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/sid/JobNumber"
+          [:identifier 1 :value] := #fhir/string "1"))
 
       (testing "the job is in-progress"
         (given @(jtu/pull-job system job-id :in-progress/started)

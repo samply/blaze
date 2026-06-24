@@ -15,6 +15,7 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -730,54 +731,71 @@
         :status := 404
         [:body "msg"] := "The column family `foo` in database `index` was not found."))))
 
-(def re-index-job
+(defn- re-index-job [base]
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"]}
+   :meta (type/meta {:profile [(type/canonical (str base "/StructureDefinition/ReIndexJob"))]})
    :status #fhir/code "draft"
    :intent #fhir/code "order"
-   :code #fhir/CodeableConcept
+   :code (type/codeable-concept
           {:coding
-           [#fhir/Coding
-             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+           [(type/coding
+             {:system (type/uri (str base "/CodeSystem/JobType"))
               :code #fhir/code "re-index"
-              :display #fhir/string "(Re)Index a Search Parameter"}]}
+              :display #fhir/string "(Re)Index a Search Parameter"})]})
    :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
-     :type #fhir/CodeableConcept
+     :type (type/codeable-concept
             {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
-                :code #fhir/code "search-param-url"}]}
+             [(type/coding
+               {:system (type/uri (str base "/CodeSystem/ReIndexJobParameter"))
+                :code #fhir/code "search-param-url"})]})
      :value #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-profile"}]})
 
-(def compact-job
+(defn- compact-job [base]
   {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
+   :meta (type/meta {:profile [(type/canonical (str base "/StructureDefinition/CompactJob"))]})
    :status #fhir/code "draft"
    :intent #fhir/code "order"
-   :code #fhir/CodeableConcept
+   :code (type/codeable-concept
           {:coding
-           [#fhir/Coding
-             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+           [(type/coding
+             {:system (type/uri (str base "/CodeSystem/JobType"))
               :code #fhir/code "compact"
-              :display #fhir/string "Compact a Database Column Family"}]}
+              :display #fhir/string "Compact a Database Column Family"})]})
    :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
-     :type #fhir/CodeableConcept
+     :type (type/codeable-concept
             {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
-                :code #fhir/code "database"}]}
+             [(type/coding
+               {:system (type/uri (str base "/CodeSystem/CompactJobParameter"))
+                :code #fhir/code "database"})]})
      :value #fhir/code "index"}
     {:fhir/type :fhir.Task/input
-     :type #fhir/CodeableConcept
+     :type (type/codeable-concept
             {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
-                :code #fhir/code "column-family"}]}
+             [(type/coding
+               {:system (type/uri (str base "/CodeSystem/CompactJobParameter"))
+                :code #fhir/code "column-family"})]})
      :value #fhir/code "search-param-value-index"}]})
+
+;; a re-index job carrying both canonicals in every sliced element, as a fully
+;; migrated client (or Blaze's own normalization) produces it
+(def re-index-job-both
+  (-> (re-index-job canonical/base)
+      (assoc-in [:meta :profile]
+                (mapv #(type/canonical (str % "/StructureDefinition/ReIndexJob"))
+                      [canonical/base canonical/old-base]))
+      (assoc-in [:code :coding]
+                (mapv #(type/coding {:system (type/uri (str % "/CodeSystem/JobType"))
+                                     :code #fhir/code "re-index"
+                                     :display #fhir/string "(Re)Index a Search Parameter"})
+                      [canonical/base canonical/old-base]))
+      (assoc-in [:input 0 :type :coding]
+                (mapv #(type/coding {:system (type/uri (str % "/CodeSystem/ReIndexJobParameter"))
+                                     :code #fhir/code "search-param-url"})
+                      [canonical/base canonical/old-base]))))
 
 (deftest create-job-test
   (testing "no profile"
@@ -821,142 +839,163 @@
           ["issue" 0 "code"] := "value"
           ["issue" 0 "details" "text"] := "No allowed profile found."))))
 
-  (testing "missing code"
+  (testing "a job carrying both canonicals validates against both profiles"
     (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
-      (let [{:keys [status body]}
+      (let [{:keys [status]}
             @(handler
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (json-writer (dissoc re-index-job :code))})]
+               :body (json-writer re-index-job-both)})]
 
-        (is (= 400 status))
+        (is (= 201 status)))))
 
-        (given body
-          "resourceType" := "OperationOutcome"
-          ["issue" 0 "severity"] := "error"
-          ["issue" 0 "code"] := "processing"
-          ["issue" 0 "diagnostics"] := "Task.code: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
+  (doseq [base [canonical/base canonical/old-base]]
+    (testing base
+      (testing "missing code"
+        (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+          (let [{:keys [status body]}
+                @(handler
+                  {:request-method :post
+                   :uri "/fhir/__admin/Task"
+                   :headers {"content-type" "application/fhir+json"}
+                   :body (json-writer (dissoc (re-index-job base) :code))})]
 
-  (testing "missing authoredOn"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
-      (let [{:keys [status body]}
-            @(handler
-              {:request-method :post
-               :uri "/fhir/__admin/Task"
-               :headers {"content-type" "application/fhir+json"}
-               :body (json-writer (dissoc re-index-job :authoredOn))})]
+            (is (= 400 status))
 
-        (is (= 400 status))
+            (given body
+              "resourceType" := "OperationOutcome"
+              ["issue" 0 "severity"] := "error"
+              ["issue" 0 "code"] := "processing"
+              ["issue" 0 "diagnostics"] := (str "Task.code: minimum required = 1, but only found 0 (from " base "/StructureDefinition/ReIndexJob)")))))
 
-        (given body
-          "resourceType" := "OperationOutcome"
-          ["issue" 0 "severity"] := "error"
-          ["issue" 0 "code"] := "processing"
-          ["issue" 0 "diagnostics"] := "Task.authoredOn: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
+      (testing "missing authoredOn"
+        (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+          (let [{:keys [status body]}
+                @(handler
+                  {:request-method :post
+                   :uri "/fhir/__admin/Task"
+                   :headers {"content-type" "application/fhir+json"}
+                   :body (json-writer (dissoc (re-index-job base) :authoredOn))})]
 
-  (testing "wrong code"
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
-      (let [{:keys [status body]}
-            @(handler
-              {:request-method :post
-               :uri "/fhir/__admin/Task"
-               :headers {"content-type" "application/fhir+json"}
-               :body (json-writer (update-in re-index-job [:code :coding 0] merge {:code #fhir/code "compact" :display #fhir/string "Compact a Database Column Family"}))})]
+            (is (= 400 status))
 
-        (is (= 400 status))
+            (given body
+              "resourceType" := "OperationOutcome"
+              ["issue" 0 "severity"] := "error"
+              ["issue" 0 "code"] := "processing"
+              ["issue" 0 "diagnostics"] := (str "Task.authoredOn: minimum required = 1, but only found 0 (from " base "/StructureDefinition/ReIndexJob)")))))
 
-        (given body
-          "resourceType" := "OperationOutcome"
-          ["issue" 0 "severity"] := "error"
-          ["issue" 0 "code"] := "processing"
-          ["issue" 0 "diagnostics"] := "The pattern [system https://samply.github.io/blaze/fhir/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but is fixed to 're-index' in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob#Task], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact a Database Column Family' but is fixed to '(Re)Index a Search Parameter' in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob#Task]]"))))
+      (testing "wrong code"
+        (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+          (let [{:keys [status body]}
+                @(handler
+                  {:request-method :post
+                   :uri "/fhir/__admin/Task"
+                   :headers {"content-type" "application/fhir+json"}
+                   :body (json-writer (update-in (re-index-job base) [:code :coding 0] merge {:code #fhir/code "compact" :display #fhir/string "Compact a Database Column Family"}))})]
 
-  (testing "re-index job"
-    (testing "non-absolute search-param-url"
-      (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
-        (let [{:keys [status body]}
-              @(handler
-                {:request-method :post
-                 :uri "/fhir/__admin/Task"
-                 :headers {"content-type" "application/fhir+json"}
-                 :body (json-writer (assoc-in re-index-job [:input 0 :value] #fhir/canonical "foo"))})]
+            (is (= 400 status))
 
-          (is (= 400 status))
+            (given body
+              "resourceType" := "OperationOutcome"
+              ["issue" 0 "severity"] := "error"
+              ["issue" 0 "code"] := "processing"
+              ["issue" 0 "diagnostics"] := (str "The pattern [system " base "/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile " base "/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but is fixed to 're-index' in the profile " base "/StructureDefinition/ReIndexJob#Task], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact a Database Column Family' but is fixed to '(Re)Index a Search Parameter' in the profile " base "/StructureDefinition/ReIndexJob#Task]]")))))
 
-          (given body
-            "resourceType" := "OperationOutcome"
-            ["issue" 0 "severity"] := "error"
-            ["issue" 0 "code"] := "processing"
-            ["issue" 0 "diagnostics"] := "Canonical URLs must be absolute URLs if they are not fragment references (foo)"))))
+      (testing "re-index job"
+        (testing "non-absolute search-param-url"
+          (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+            (let [{:keys [status body]}
+                  @(handler
+                    {:request-method :post
+                     :uri "/fhir/__admin/Task"
+                     :headers {"content-type" "application/fhir+json"}
+                     :body (json-writer (assoc-in (re-index-job base) [:input 0 :value] #fhir/canonical "foo"))})]
 
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
-      (let [{:keys [status headers body]}
-            @(handler
-              {:request-method :post
-               :uri "/fhir/__admin/Task"
-               :headers {"content-type" "application/fhir+json"}
-               :body (json-writer re-index-job)})]
+              (is (= 400 status))
 
-        (is (= 201 status))
+              (given body
+                "resourceType" := "OperationOutcome"
+                ["issue" 0 "severity"] := "error"
+                ["issue" 0 "code"] := "processing"
+                ["issue" 0 "diagnostics"] := "Canonical URLs must be absolute URLs if they are not fragment references (foo)"))))
 
-        (testing "Location header"
-          (is (= "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history/2"
-                 (get headers "Location"))))
+        (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+          (let [{:keys [status headers body]}
+                @(handler
+                  {:request-method :post
+                   :uri "/fhir/__admin/Task"
+                   :headers {"content-type" "application/fhir+json"}
+                   :body (json-writer (re-index-job base))})]
 
-        (given body
-          "resourceType" := "Task"
-          "id" := "AAAAAAAAAAAAAAAA"
-          ["meta" "versionId"] := "2"
-          ["meta" "lastUpdated"] := (str Instant/EPOCH)
-          ["identifier" 0 "system"] := "https://samply.github.io/blaze/fhir/sid/JobNumber"
-          ["identifier" 0 "value"] := "1"
-          "status" := "draft"))))
+            (is (= 201 status))
 
-  (testing "compact job"
-    (testing "unknown database code"
-      (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
-        (let [{:keys [status body]}
-              @(handler
-                {:request-method :post
-                 :uri "/fhir/__admin/Task"
-                 :headers {"content-type" "application/fhir+json"}
-                 :body (json-writer (assoc-in compact-job [:input 0 :value] #fhir/code "foo"))})]
+            (testing "Location header"
+              (is (= "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history/2"
+                     (get headers "Location"))))
 
-          (is (= 400 status))
+            (given body
+              "resourceType" := "Task"
+              "id" := "AAAAAAAAAAAAAAAA"
+              ["meta" "versionId"] := "2"
+              ["meta" "lastUpdated"] := (str Instant/EPOCH)
+              ["meta" "profile" 0] := "https://blaze-server.org/fhir/StructureDefinition/ReIndexJob"
+              ["meta" "profile" 1] := "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
+              ["identifier" 0 "system"] := "https://blaze-server.org/fhir/sid/JobNumber"
+              ["identifier" 0 "value"] := "1"
+              ["identifier" 1 "system"] := "https://samply.github.io/blaze/fhir/sid/JobNumber"
+              ["identifier" 1 "value"] := "1"
+              "status" := "draft"))))
 
-          (given body
-            "resourceType" := "OperationOutcome"
-            ["issue" 0 "severity"] := "error"
-            ["issue" 0 "code"] := "processing"
-            ["issue" 0 "diagnostics"] := "Unknown code 'https://samply.github.io/blaze/fhir/CodeSystem/Database#foo'"
-            ["issue" 1 "severity"] := "error"
-            ["issue" 1 "code"] := "processing"
-            ["issue" 1 "diagnostics"] :# ".*foo.*"
-            ["issue" 1 "diagnostics"] :# ".*Database Value Set.*"))))
+      (testing "compact job"
+        (testing "unknown database code"
+          (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+            (let [{:keys [status body]}
+                  @(handler
+                    {:request-method :post
+                     :uri "/fhir/__admin/Task"
+                     :headers {"content-type" "application/fhir+json"}
+                     :body (json-writer (assoc-in (compact-job base) [:input 0 :value] #fhir/code "foo"))})]
 
-    (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
-      (let [{:keys [status headers body]}
-            @(handler
-              {:request-method :post
-               :uri "/fhir/__admin/Task"
-               :headers {"content-type" "application/fhir+json"}
-               :body (json-writer compact-job)})]
+              (is (= 400 status))
 
-        (is (= 201 status))
+              (given body
+                "resourceType" := "OperationOutcome"
+                ["issue" 0 "severity"] := "error"
+                ["issue" 0 "code"] := "processing"
+                ["issue" 0 "diagnostics"] := (str "Unknown code '" base "/CodeSystem/Database#foo'")
+                ["issue" 1 "severity"] := "error"
+                ["issue" 1 "code"] := "processing"
+                ["issue" 1 "diagnostics"] :# ".*foo.*"
+                ["issue" 1 "diagnostics"] :# ".*Database Value Set.*"))))
 
-        (testing "Location header"
-          (is (= "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history/2"
-                 (get headers "Location"))))
+        (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+          (let [{:keys [status headers body]}
+                @(handler
+                  {:request-method :post
+                   :uri "/fhir/__admin/Task"
+                   :headers {"content-type" "application/fhir+json"}
+                   :body (json-writer (compact-job base))})]
 
-        (given body
-          "resourceType" := "Task"
-          "id" := "AAAAAAAAAAAAAAAA"
-          ["meta" "versionId"] := "2"
-          ["meta" "lastUpdated"] := (str Instant/EPOCH)
-          ["identifier" 0 "system"] := "https://samply.github.io/blaze/fhir/sid/JobNumber"
-          ["identifier" 0 "value"] := "1"
-          "status" := "draft")))))
+            (is (= 201 status))
+
+            (testing "Location header"
+              (is (= "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history/2"
+                     (get headers "Location"))))
+
+            (given body
+              "resourceType" := "Task"
+              "id" := "AAAAAAAAAAAAAAAA"
+              ["meta" "versionId"] := "2"
+              ["meta" "lastUpdated"] := (str Instant/EPOCH)
+              ["meta" "profile" 0] := "https://blaze-server.org/fhir/StructureDefinition/CompactJob"
+              ["meta" "profile" 1] := "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
+              ["identifier" 0 "system"] := "https://blaze-server.org/fhir/sid/JobNumber"
+              ["identifier" 0 "value"] := "1"
+              ["identifier" 1 "system"] := "https://samply.github.io/blaze/fhir/sid/JobNumber"
+              ["identifier" 1 "value"] := "1"
+              "status" := "draft")))))))
 
 (deftest read-job-test
   (testing "existing job"
@@ -965,7 +1004,7 @@
         {:request-method :post
          :uri "/fhir/__admin/Task"
          :headers {"content-type" "application/fhir+json"}
-         :body (json-writer re-index-job)})
+         :body (json-writer (re-index-job canonical/base))})
 
       (let [{:keys [status body]}
             @(handler
@@ -974,11 +1013,19 @@
 
         (is (= 200 status))
 
+        ;; the submitted single-canonical job is stored carrying both canonicals
+        ;; everywhere the profiles slice on, so it conforms to both profiles
         (given body
           "resourceType" := "Task"
           "id" := "AAAAAAAAAAAAAAAA"
           ["meta" "versionId"] := "2"
           ["meta" "lastUpdated"] := (str Instant/EPOCH)
+          ["meta" "profile" 0] := "https://blaze-server.org/fhir/StructureDefinition/ReIndexJob"
+          ["meta" "profile" 1] := "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
+          ["code" "coding" 0 "system"] := "https://blaze-server.org/fhir/CodeSystem/JobType"
+          ["code" "coding" 1 "system"] := "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+          ["input" 0 "type" "coding" 0 "system"] := "https://blaze-server.org/fhir/CodeSystem/ReIndexJobParameter"
+          ["input" 0 "type" "coding" 1 "system"] := "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
           "status" := "draft"))))
 
   (testing "non-existing job"
@@ -1003,7 +1050,7 @@
         {:request-method :post
          :uri "/fhir/__admin/Task"
          :headers {"content-type" "application/fhir+json"}
-         :body (json-writer re-index-job)})
+         :body (json-writer (re-index-job canonical/base))})
 
       (let [{:keys [status body]}
             @(handler
@@ -1040,7 +1087,7 @@
       {:request-method :post
        :uri "/fhir/__admin/Task"
        :headers {"content-type" "application/fhir+json"}
-       :body (json-writer re-index-job)})
+       :body (json-writer (re-index-job canonical/base))})
 
     (let [{:keys [status] {[first-entry] "entry" :as body} :body}
           @(handler
@@ -1078,7 +1125,7 @@
    [js/pause-job
     (fn [_job-scheduler _id]
       (ac/completed-future
-       (with-meta (assoc re-index-job :status #fhir/code "on-hold")
+       (with-meta (assoc (re-index-job canonical/base) :status #fhir/code "on-hold")
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]
@@ -1104,7 +1151,7 @@
    [js/resume-job
     (fn [_job-scheduler _id]
       (ac/completed-future
-       (with-meta (assoc re-index-job :status #fhir/code "in-progress")
+       (with-meta (assoc (re-index-job canonical/base) :status #fhir/code "in-progress")
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]
@@ -1130,7 +1177,7 @@
    [js/cancel-job
     (fn [_job-scheduler _id]
       (ac/completed-future
-       (with-meta (assoc re-index-job :status #fhir/code "cancelled")
+       (with-meta (assoc (re-index-job canonical/base) :status #fhir/code "cancelled")
          {:blaze.db/tx
           {:blaze.db.tx/instant Instant/EPOCH
            :blaze.db/t 1}})))]

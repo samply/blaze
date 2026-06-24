@@ -3,22 +3,19 @@
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.job.util :as job-util]))
 
 (set! *warn-on-reflection* true)
 
-(def parameter-uri
-  "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter")
+(def parameter-uri (canonical/url "CodeSystem/AsyncInteractionJobParameter"))
 
 (defn request-bundle-input [reference]
   {:fhir/type :fhir.Task/input
    :type (type/codeable-concept
-          {:coding
-           [(type/coding
-             {:system (type/uri-interned parameter-uri)
-              :code #fhir/code "bundle"})]})
+          {:coding (canonical/codings "CodeSystem/AsyncInteractionJobParameter" "bundle")})
    :value (type/reference {:reference (type/string reference)})})
 
 (defn processing-duration [start]

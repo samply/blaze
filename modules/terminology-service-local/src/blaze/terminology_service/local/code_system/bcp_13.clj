@@ -16,12 +16,7 @@
 
 (def ^:private code-system
   {:fhir/type :fhir/CodeSystem
-   :meta
-   #fhir/Meta
-    {:tag
-     [#fhir/Coding
-       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code "read-only"}]}
+   :meta cs-u/read-only-meta
    :url #fhir/uri-interned "urn:ietf:bcp:13"
    :version #fhir/string "1.0.0"
    :name #fhir/string "BCP-13"

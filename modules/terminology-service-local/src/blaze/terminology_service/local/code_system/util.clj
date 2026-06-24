@@ -2,8 +2,15 @@
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
+   [blaze.fhir.canonical :as canonical]
+   [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]
    [blaze.module :as m]))
+
+(def read-only-meta
+  "Meta tagging a Blaze-managed CodeSystem read-only, carrying both the current
+  and legacy AccessControl system."
+  (type/meta {:tag (canonical/codings "CodeSystem/AccessControl" "read-only")}))
 
 (defn code-systems [db url]
   (-> (d/type-query db "CodeSystem" [["url" url]])

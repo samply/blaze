@@ -21,12 +21,7 @@
 
 (def ^:private code-system
   {:fhir/type :fhir/CodeSystem
-   :meta
-   #fhir/Meta
-    {:tag
-     [#fhir/Coding
-       {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-        :code #fhir/code "read-only"}]}
+   :meta cs-u/read-only-meta
    :url #fhir/uri-interned "http://unitsofmeasure.org"
    :version #fhir/string "2013.10.21"
    :name #fhir/string "UCUM"

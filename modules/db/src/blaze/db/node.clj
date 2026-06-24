@@ -37,6 +37,7 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
@@ -536,7 +537,7 @@
   (ac/join
    (compile-system-matcher
     search-param-registry
-    [["_tag" "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl|read-only"]])))
+    [(into ["_tag"] (map #(str % "|read-only")) (canonical/urls "CodeSystem/AccessControl"))])))
 
 (defmethod m/pre-init-spec :blaze.db/node [_]
   (s/keys

@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.re-index.spec]
@@ -18,11 +19,9 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private parameter-system
-  "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter")
+(def ^:private parameter-system (canonical/url "CodeSystem/ReIndexJobParameter"))
 
-(def ^:private output-system
-  "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput")
+(def ^:private output-system (canonical/url "CodeSystem/ReIndexJobOutput"))
 
 (def ^:private task-output
   (partial job-util/task-output output-system))

@@ -1,3 +1,4 @@
+import { url } from '$lib/canonical';
 import { input, output, type Job, toJob as toBaseJob } from '$lib/jobs';
 import type { Task } from 'fhir/r4';
 
@@ -7,8 +8,8 @@ export interface CompactJob extends Job {
   processingDuration?: number;
 }
 
-const parameterUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter';
-const outputUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/CompactJobOutput';
+const parameterUrl = url('CodeSystem/CompactJobParameter');
+const outputUrl = url('CodeSystem/CompactJobOutput');
 
 export function extractDatabase(job: Task): string | undefined {
   return input(job, parameterUrl, 'database')?.valueCode;

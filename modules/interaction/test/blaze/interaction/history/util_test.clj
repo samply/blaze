@@ -158,13 +158,17 @@
         (with-system [{::keys [context]} config]
           (given (history-util/build-bundle context overflowed-int {})
             [:total :value] := nil
-            [:total :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
-            [:total :extension 0 :value] := (type/string (str overflowed-int))))))
+            [:total :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/grand-total"
+            [:total :extension 0 :value] := (type/string (str overflowed-int))
+            [:total :extension 1 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
+            [:total :extension 1 :value] := (type/string (str overflowed-int))))))
 
     (testing "values of a trillion are possible"
       (let [trillion-int 1000000000000]
         (with-system [{::keys [context]} config]
           (given (history-util/build-bundle context trillion-int {})
             [:total :value] := nil
-            [:total :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
-            [:total :extension 0 :value] := (type/string (str trillion-int))))))))
+            [:total :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/grand-total"
+            [:total :extension 0 :value] := (type/string (str trillion-int))
+            [:total :extension 1 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/grand-total"
+            [:total :extension 1 :value] := (type/string (str trillion-int))))))))

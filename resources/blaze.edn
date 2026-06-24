@@ -108,7 +108,7 @@
      :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}
    #:blaze.rest-api.operation
     {:code "totals"
-     :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+     :def-uri "https://blaze-server.org/fhir/OperationDefinition/totals"
      :affects-state false
      :resource-types ["Resource"]
      :system-handler #blaze/ref :blaze.fhir.operation/totals
@@ -1357,7 +1357,7 @@
     :blaze.rest-api/operations
     [#:blaze.rest-api.operation
       {:code "compact"
-       :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/compact"
+       :def-uri "https://blaze-server.org/fhir/OperationDefinition/compact"
        :affects-state true
        :system-handler #blaze/ref :blaze.fhir.operation/compact
        :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]

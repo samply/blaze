@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler :as-alias js]
    [cognitect.anomalies :as anom])
@@ -11,54 +12,55 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const job-number-url
-  "https://samply.github.io/blaze/fhir/sid/JobNumber")
+(def job-number-url (canonical/url "sid/JobNumber"))
 
-(def ^:const type-url
-  "https://samply.github.io/blaze/fhir/CodeSystem/JobType")
+(def type-url (canonical/url "CodeSystem/JobType"))
 
-(def ^:const status-reason-url
-  "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason")
+(def status-reason-url (canonical/url "CodeSystem/JobStatusReason"))
 
-(def ^:const cancelled-sub-status-url
-  "https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus")
+(def cancelled-sub-status-url (canonical/url "CodeSystem/JobCancelledSubStatus"))
 
-(def ^:private output-system
-  "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput")
+(def ^:private output-system (canonical/url "CodeSystem/JobOutput"))
+
+(defn type-codeable-concept
+  "Returns the `Task.code` CodeableConcept for the job `code` with `display`,
+  carrying both the current and legacy JobType system (current first)."
+  [code display]
+  (type/codeable-concept
+   {:coding
+    (mapv
+     #(type/coding {:system (type/uri-interned %)
+                    :code (type/code code)
+                    :display (type/string-interned display)})
+     (canonical/urls "CodeSystem/JobType"))}))
 
 (defn- mk-status-reason [reason]
   (type/codeable-concept
-   {:coding
-    [(type/coding
-      {:system (type/uri-interned status-reason-url)
-       :code (type/code reason)})]}))
+   {:coding (canonical/codings "CodeSystem/JobStatusReason" reason)}))
 
-(defn- mk-sub-status [system-url code]
+(defn- mk-sub-status [path code]
   (type/codeable-concept
-   {:coding
-    [(type/coding
-      {:system (type/uri-interned system-url)
-       :code (type/code code)})]}))
+   {:coding (canonical/codings path code)}))
 
 (def orderly-shut-down-status-reason (mk-status-reason "orderly-shutdown"))
 (def paused-status-reason (mk-status-reason "paused"))
 (def resumed-status-reason (mk-status-reason "resumed"))
 (def incremented-status-reason (mk-status-reason "incremented"))
 (def started-status-reason (mk-status-reason "started"))
-(def cancellation-requested-sub-status (mk-sub-status cancelled-sub-status-url "requested"))
-(def cancellation-finished-sub-status (mk-sub-status cancelled-sub-status-url "finished"))
+(def cancellation-requested-sub-status (mk-sub-status "CodeSystem/JobCancelledSubStatus" "requested"))
+(def cancellation-finished-sub-status (mk-sub-status "CodeSystem/JobCancelledSubStatus" "finished"))
 
 (defn job-number
   {:arglists '([job])}
   [{:keys [identifier]}]
-  (some #(when (= job-number-url (-> % :system :value)) (-> % :value :value)) identifier))
+  (some #(when (canonical/matches? job-number-url (-> % :system :value)) (-> % :value :value)) identifier))
 
 (defn code-value
-  "Returns the value of the code of the coding with `system` or nil if not
-  found."
+  "Returns the value of the code of the coding with `system` (or its legacy
+  canonical) or nil if not found."
   {:arglists '([system codeable-concept])}
   [system {:keys [coding]}]
-  (some #(when (= system (-> % :system :value)) (-> % :code :value)) coding))
+  (some #(when (canonical/matches? system (-> % :system :value)) (-> % :code :value)) coding))
 
 (defn job-type
   "Returns the type of `job` as keyword."
@@ -128,10 +130,7 @@
 (defn task-output [system code value]
   {:fhir/type :fhir.Task/output
    :type (type/codeable-concept
-          {:coding
-           [(type/coding
-             {:system (type/uri-interned system)
-              :code (type/code code)})]})
+          {:coding (canonical/system-codings system code)})
    :value value})
 
 (defn- remove-output* [system code]

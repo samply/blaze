@@ -1,8 +1,3 @@
-Alias: $JT = https://samply.github.io/blaze/fhir/CodeSystem/JobType
-Alias: $JSR = https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason
-Alias: $JCS = https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus
-Alias: $JO = https://samply.github.io/blaze/fhir/CodeSystem/JobOutput
-
 CodeSystem: JobType
 Id: JobType
 Title: "Job Type"
@@ -65,19 +60,19 @@ Parent: Task
 * identifier ^slicing.rules = #open
 * identifier contains jobNumber 0..1
 * identifier[jobNumber] ^short = "Job Number"
-* identifier[jobNumber].system = "https://samply.github.io/blaze/fhir/sid/JobNumber"
+* identifier[jobNumber].system = "https://blaze-server.org/fhir/sid/JobNumber"
 * statusReason.coding ^slicing.discriminator.type = #pattern
 * statusReason.coding ^slicing.discriminator.path = "system"
 * statusReason.coding ^slicing.rules = #open
 * statusReason.coding contains jobStatusReason 0..1
 * statusReason.coding[jobStatusReason] ^short = "Job Status Reason"
-* statusReason.coding[jobStatusReason].system = "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"
+* statusReason.coding[jobStatusReason].system = "https://blaze-server.org/fhir/CodeSystem/JobStatusReason"
 * businessStatus.coding ^slicing.discriminator.type = #pattern
 * businessStatus.coding ^slicing.discriminator.path = "system"
 * businessStatus.coding ^slicing.rules = #open
 * businessStatus.coding contains jobCancelledSubStatus 0..1
 * businessStatus.coding[jobCancelledSubStatus] ^short = "Job Cancelled Sub Status"
-* businessStatus.coding[jobCancelledSubStatus].system = "https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus"
+* businessStatus.coding[jobCancelledSubStatus].system = "https://blaze-server.org/fhir/CodeSystem/JobCancelledSubStatus"
 * code 1..1
 * authoredOn 1..1
 * output ^slicing.discriminator.type = #pattern
@@ -86,26 +81,26 @@ Parent: Task
 * output contains errorCategory 0..1
 * output[errorCategory] ^short = "Error Category"
 * output[errorCategory] ^definition = "Error category."
-* output[errorCategory].type = $JO#error-category
+* output[errorCategory].type = JobOutput#error-category
 * output[errorCategory].value[x] only code
 * output[errorCategory].valueCode from ErrorCategory
 * output contains error 0..1
 * output[error] ^short = "Error"
 * output[error] ^definition = "Error message."
-* output[error].type = $JO#error
+* output[error].type = JobOutput#error
 * output[error].value[x] only string
 
 Invariant: status-reason-in-progress
 Description: "Assigns possible reasons to the 'in-progress' status."
 Severity: #error
-Expression: "status = 'in-progress' implies statusReason.coding.where(system = 'https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason' and (code = 'started' or code = 'incremented' or code = 'resumed'))"
+Expression: "status = 'in-progress' implies statusReason.coding.where(system = 'https://blaze-server.org/fhir/CodeSystem/JobStatusReason' and (code = 'started' or code = 'incremented' or code = 'resumed'))"
 
 Invariant: status-reason-on-hold
 Description: "Assigns possible reasons to the 'on-hold' status."
 Severity: #error
-Expression: "status = 'on-hold' implies statusReason.coding.where(system = 'https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason' and (code = 'paused' or code = 'orderly-shutdown'))"
+Expression: "status = 'on-hold' implies statusReason.coding.where(system = 'https://blaze-server.org/fhir/CodeSystem/JobStatusReason' and (code = 'paused' or code = 'orderly-shutdown'))"
 
 Invariant: sub-status-cancelled
 Description: "Assigns possible reasons to the 'on-hold' status."
 Severity: #error
-Expression: "status = 'cancelled' implies businessStatus.coding.where(system = 'https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus' and (code = 'requested' or code = 'finished'))"
+Expression: "status = 'cancelled' implies businessStatus.coding.where(system = 'https://blaze-server.org/fhir/CodeSystem/JobCancelledSubStatus' and (code = 'requested' or code = 'finished'))"

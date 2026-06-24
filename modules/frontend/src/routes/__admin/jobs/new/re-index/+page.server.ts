@@ -1,6 +1,7 @@
 import type { Actions } from './$types';
 import type { OperationOutcome, Task } from 'fhir/r4';
 import { resolve } from '$app/paths';
+import { url } from '$lib/canonical';
 import { fail, redirect } from '@sveltejs/kit';
 
 export const actions = {
@@ -14,7 +15,7 @@ export const actions = {
       body: JSON.stringify({
         resourceType: 'Task',
         meta: {
-          profile: ['https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob']
+          profile: [url('StructureDefinition/ReIndexJob')]
         },
         intent: 'order',
         status: 'ready',
@@ -22,7 +23,7 @@ export const actions = {
           coding: [
             {
               code: 're-index',
-              system: 'https://samply.github.io/blaze/fhir/CodeSystem/JobType',
+              system: url('CodeSystem/JobType'),
               display: '(Re)Index a Search Parameter'
             }
           ]
@@ -34,7 +35,7 @@ export const actions = {
               coding: [
                 {
                   code: 'search-param-url',
-                  system: 'https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter'
+                  system: url('CodeSystem/ReIndexJobParameter')
                 }
               ]
             },

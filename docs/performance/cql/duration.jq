@@ -1,1 +1,1 @@
-.extension[] | select(.url == "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration") | .valueQuantity.value
+.extension[] | select(.url == "https://blaze-server.org/fhir/StructureDefinition/eval-duration") | .valueQuantity.value

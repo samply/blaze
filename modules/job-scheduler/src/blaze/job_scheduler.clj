@@ -6,6 +6,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.spec]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.util :as job-util]
@@ -138,15 +139,19 @@
 (def ^:private inc-fhir-integer
   (comp type/integer inc :value))
 
-(defn- job-number-identifier [job-number]
-  (type/identifier
-   {:use #fhir/code "official"
-    :system (type/uri-interned job-util/job-number-url)
-    :value (type/string (str job-number))}))
+(defn- job-number-identifiers [job-number]
+  (let [value (type/string (str job-number))]
+    (mapv
+     (fn [system]
+       (type/identifier
+        {:use #fhir/code "official"
+         :system (type/uri-interned system)
+         :value value}))
+     (canonical/urls "sid/JobNumber"))))
 
 (defn- prepare-job [job id job-number]
   (-> (assoc job :id id)
-      (update :identifier (fnil conj []) (job-number-identifier job-number))))
+      (update :identifier (fnil into []) (job-number-identifiers job-number))))
 
 (defn create-job
   "Returns a CompletableFuture that will complete with `job` created or will

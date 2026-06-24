@@ -1,0 +1,63 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "active",
+  "content": "complete",
+  "name": "ColumnFamily",
+  "id": "ColumnFamily",
+  "title": "Column Family",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/ColumnFamily",
+  "concept": [
+    {
+      "code": "default"
+    },
+    {
+      "code": "search-param-value-index"
+    },
+    {
+      "code": "resource-value-index"
+    },
+    {
+      "code": "compartment-search-param-value-index"
+    },
+    {
+      "code": "compartment-resource-type-index"
+    },
+    {
+      "code": "active-search-params"
+    },
+    {
+      "code": "tx-success-index"
+    },
+    {
+      "code": "tx-error-index"
+    },
+    {
+      "code": "t-by-instant-index"
+    },
+    {
+      "code": "resource-as-of-index"
+    },
+    {
+      "code": "type-as-of-index"
+    },
+    {
+      "code": "system-as-of-index"
+    },
+    {
+      "code": "patient-last-change-index"
+    },
+    {
+      "code": "type-stats-index"
+    },
+    {
+      "code": "system-stats-index"
+    },
+    {
+      "code": "cql-bloom-filter"
+    },
+    {
+      "code": "cql-bloom-filter-by-t"
+    }
+  ],
+  "count": 17
+}

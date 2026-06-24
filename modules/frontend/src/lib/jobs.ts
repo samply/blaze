@@ -1,10 +1,16 @@
-import { coding } from '$lib/fhir';
-import type { Task, TaskInput, TaskOutput } from 'fhir/r4';
+import { url, matches } from '$lib/canonical';
+import type { CodeableConcept, Coding, Task, TaskInput, TaskOutput } from 'fhir/r4';
 
-const numberUrl = 'https://samply.github.io/blaze/fhir/sid/JobNumber';
-const typeUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/JobType';
-const statusReasonUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason';
-const outputUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/JobOutput';
+const numberUrl = url('sid/JobNumber');
+const typeUrl = url('CodeSystem/JobType');
+const statusReasonUrl = url('CodeSystem/JobStatusReason');
+const outputUrl = url('CodeSystem/JobOutput');
+
+// Like `coding` from `$lib/fhir`, but accepts both the current and the legacy
+// form of a Blaze canonical so jobs stored with either system are read.
+function jobCoding(concept: CodeableConcept, canonicalUrl: string): Coding | undefined {
+  return concept.coding?.filter((c) => matches(canonicalUrl, c.system))[0];
+}
 
 export interface Job {
   id: string;
@@ -18,7 +24,7 @@ export interface Job {
 }
 
 export function number(job: Task): number | undefined {
-  const numberIdentifier = job.identifier?.filter((c) => c.system == numberUrl)[0];
+  const numberIdentifier = job.identifier?.filter((c) => matches(numberUrl, c.system))[0];
   const value = numberIdentifier?.value;
   const num = value !== undefined ? parseInt(value) : undefined;
   return Number.isNaN(num) ? undefined : num;
@@ -26,23 +32,23 @@ export function number(job: Task): number | undefined {
 
 export function statusReason(job: Task): string | undefined {
   const statusReasonCoding = job.statusReason
-    ? coding(job.statusReason, statusReasonUrl)
+    ? jobCoding(job.statusReason, statusReasonUrl)
     : undefined;
   return statusReasonCoding?.code;
 }
 
 export function input(job: Task, system: string, code: string): TaskInput | undefined {
-  return job.input?.filter((i) => coding(i.type, system)?.code == code)[0];
+  return job.input?.filter((i) => jobCoding(i.type, system)?.code == code)[0];
 }
 
 export function output(job: Task, system: string, code: string): TaskOutput | undefined {
-  return job.output?.filter((i) => coding(i.type, system)?.code == code)[0];
+  return job.output?.filter((i) => jobCoding(i.type, system)?.code == code)[0];
 }
 
 export function toJob(job: Task): Job | undefined {
   const lastUpdated = job.meta?.lastUpdated;
   const n = number(job);
-  const type = job.code ? coding(job.code, typeUrl) : undefined;
+  const type = job.code ? jobCoding(job.code, typeUrl) : undefined;
 
   return job.id === undefined ||
     lastUpdated === undefined ||

@@ -4,6 +4,7 @@
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.luid :as luid]
@@ -12,10 +13,8 @@
    [jsonista.core :as j]
    [taoensso.timbre :as log]))
 
-(def ^:private read-only-tag
-  #fhir/Coding
-   {:system #fhir/uri-interned "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-    :code #fhir/code "read-only"})
+(def ^:private read-only-tags
+  (canonical/codings "CodeSystem/AccessControl" "read-only"))
 
 (defn- structure-definitions [db]
   (d/pull-many db (vec (d/type-list db "StructureDefinition"))))
@@ -48,7 +47,7 @@
        (fhir-spec/parse-json parsing-context "StructureDefinition")))
 
 (defn- append-read-only-tag [resource]
-  (update-in resource [:meta :tag] (fnil conj []) read-only-tag))
+  (update-in resource [:meta :tag] (fnil into []) read-only-tags))
 
 (defn- resources-and-types [parsing-context structure-definition-repo]
   (let [f (comp append-read-only-tag (partial conform parsing-context))]

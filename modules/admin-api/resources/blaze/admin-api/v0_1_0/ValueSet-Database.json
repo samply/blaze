@@ -1,0 +1,15 @@
+{
+  "resourceType": "ValueSet",
+  "status": "active",
+  "name": "Database",
+  "id": "Database",
+  "title": "Database Value Set",
+  "url": "https://samply.github.io/blaze/fhir/ValueSet/Database",
+  "compose": {
+    "include": [
+      {
+        "system": "https://samply.github.io/blaze/fhir/CodeSystem/Database"
+      }
+    ]
+  }
+}
