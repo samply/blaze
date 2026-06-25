@@ -55,10 +55,10 @@
   {:mvn/version "1.3.0"}
 
   org.apache.lucene/lucene-core
-  {:mvn/version "10.4.0"}
+  {:mvn/version "10.5.0"}
 
   org.apache.lucene/lucene-analysis-common
-  {:mvn/version "10.4.0"}}
+  {:mvn/version "10.5.0"}}
 
  :deps/prep-lib
  {:alias :build
