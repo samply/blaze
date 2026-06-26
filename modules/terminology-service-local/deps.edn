@@ -25,7 +25,7 @@
   {:mvn/version "8.10.0"}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.r5
-  {:mvn/version "6.9.4.2"
+  {:mvn/version "6.9.11"
    :exclusions
    [com.nimbusds/nimbus-jose-jwt
     commons-beanutils/commons-beanutils
