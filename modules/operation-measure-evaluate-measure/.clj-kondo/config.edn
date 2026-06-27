@@ -7,4 +7,5 @@
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.fhir.operation.evaluate-measure-test/with-handler clojure.core/fn}}
+ {blaze.fhir.operation.evaluate-measure-test/with-handler clojure.core/fn
+  blaze.fhir.operation.evaluate-measure-test/with-no-persistence-handler clojure.core/fn}}

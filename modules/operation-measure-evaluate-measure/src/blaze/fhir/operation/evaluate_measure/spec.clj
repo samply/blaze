@@ -14,6 +14,9 @@
 (s/def ::evaluate-measure/timeout
   time/duration?)
 
+(s/def ::evaluate-measure/report-persistence
+  boolean?)
+
 (s/def :blaze.fhir.operation.evaluate-measure.timeout/millis
   nat-int?)
 

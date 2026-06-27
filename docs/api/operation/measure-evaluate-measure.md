@@ -18,7 +18,7 @@ POST [base]/Measure/[id]/$evaluate-measure
 | measure     | 0..1        | string (reference) | The measure to evaluate. Only required — and only used — when the operation is invoked on the `Measure` type rather than on a `Measure` instance.                                                              |
 | reportType  | 0..1        | code               | The type of measure report: `subject`, `subject-list` or `population`. Defaults to `subject` if a `subject` is supplied, otherwise `population`. The value `subject-list` is only supported via `POST`.        |
 | subject     | 0..1        | string (reference) | The subject the measure is calculated for, either a reference like `Patient/123` or a bare resource id. If omitted, the measure is calculated over all subjects.                                               |
-| parameters  | 0..1        | Parameters         | Input parameters that are made available by name to the CQL evaluation, overriding the default values declared in the measure's library. Only supported via `POST`. See [Parameters Input](#parameters-input). |
+| parameters  | 0..1        | Parameters         | Input parameters that are made available by name to the CQL evaluation, overriding the default values declared in the measure's library. Only supported via `POST`. See [Parameters Input](#parameters-input). <Badge type="warning" text="Since 1.10.0"/> |
 
 Blaze doesn't support the `practitioner` and `lastReceivedOn` input parameters defined by the R4 operation.
 
@@ -32,7 +32,25 @@ Blaze doesn't support the `practitioner` and `lastReceivedOn` input parameters d
 * a detailed documentation how to use the \$evaluate-measure API can be found [here](../../cql-queries/api.md)
 * a documentation how to use \$evaluate-measure via blazectl can be found [here](../../cql-queries/blazectl.md)
 
-## Parameters Input
+## Persistence
+
+When invoked with `POST`, the `$evaluate-measure` operation persists the generated `MeasureReport` by default and returns `201 Created` with a `Location` header pointing at the stored resource. When invoked with `GET`, the report is returned inline with `200 OK` and nothing is persisted.
+
+Persistence of the `MeasureReport` on `POST` can be disabled with the [`FHIR_OPERATION_EVALUATE_MEASURE_REPORT_PERSISTENCE`](../../deployment/environment-variables.md) environment variable. This is an operator-level decision: Blaze has no authorization, so every persisted `MeasureReport` is readable by every authenticated client. Because the `parameters` input is only available via `POST`, clients that want to pass parameters are forced onto `POST` and would otherwise get their report persisted as a side effect.
+
+With persistence disabled (`FHIR_OPERATION_EVALUATE_MEASURE_REPORT_PERSISTENCE=false`), `POST` behaves as follows:
+
+| reportType            | persisted        | returned                 | status |
+|-----------------------|------------------|--------------------------|--------|
+| `population`          | nothing          | `MeasureReport` inline   | `200`  |
+| `subject`             | nothing          | `MeasureReport` inline   | `200`  |
+| `subject-list`        | `List` resources | `MeasureReport` inline   | `200`  |
+
+For `reportType=subject-list` the `List` resources holding the subject ids are still persisted, because the `MeasureReport.group.population.subjectResults` references point at them and they have to be retrievable. The `MeasureReport` itself is never persisted when the option is off.
+
+A `Prefer: return=minimal` header is honored only on the persisting `POST` path, where it relies on the persisted resource and the `Location` header. With persistence disabled there is no persisted resource to reference, so the preference is ignored and the `MeasureReport` is always returned in the body.
+
+## Parameters Input <Badge type="warning" text="Since 1.10.0"/>
 
 The `parameters` input was added to the operation in FHIR R5. Although Blaze is an R4 server, it supports this [forward-compatible input][4]. It allows a client to pass values into the CQL evaluation, overriding the default values declared in the measure's library by name. This way a single measure can be evaluated with different inputs (e.g. thresholds, codes, date boundaries) without editing and re-publishing the library.
 
