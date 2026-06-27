@@ -42,8 +42,35 @@
       return-preference
       (assoc :blaze.preference/return return-preference))))
 
+(defn- persist-response
+  "Persists the `MeasureReport` (together with any other `:tx-ops`) and returns a
+  `201 Created` response referencing the persisted resource."
+  [{:keys [node] :as context} request result]
+  (let [id (m/luid context)]
+    (-> (d/transact node (tx-ops result id))
+        (ac/then-compose
+         (fn [db-after]
+           (response/build-response
+            (response-context request db-after)
+            nil
+            nil
+            (d/resource-handle db-after "MeasureReport" id)))))))
+
+(defn- inline-response
+  "Returns the `MeasureReport` inline with a `200 OK` response without persisting
+  it.
+
+  Any `:tx-ops` (e.g. the `List` resources of a `subject-list` report, which are
+  referenced from the report) are still transacted so that the references in the
+  inline report resolve."
+  [{:keys [node]} {:keys [resource tx-ops]}]
+  (if (seq tx-ops)
+    (do-sync [_ (d/transact node tx-ops)]
+      (ring/response resource))
+    (ac/completed-future (ring/response resource))))
+
 (defn- handle
-  [{:keys [node] :as context}
+  [{:keys [report-persistence] :as context}
    {:blaze/keys [base-url cancelled?]
     ::reitit/keys [router]
     :keys [request-method headers]
@@ -60,20 +87,9 @@
       (-> (measure/evaluate-measure context measure params)
           (ac/then-compose
            (fn process-result [result]
-             (cond
-               (= :get request-method)
-               (ac/completed-future (ring/response (:resource result)))
-
-               (= :post request-method)
-               (let [id (m/luid context)]
-                 (-> (d/transact node (tx-ops result id))
-                     (ac/then-compose
-                      (fn [db-after]
-                        (response/build-response
-                         (response-context request db-after)
-                         nil
-                         nil
-                         (d/resource-handle db-after "MeasureReport" id)))))))))))))
+             (if (and (= :post request-method) report-persistence)
+               (persist-response context request result)
+               (inline-response context result))))))))
 
 (defn- measure-with-id-not-found-msg [id]
   (format "The Measure resource with id `%s` was not found." id))
@@ -129,14 +145,18 @@
   (s/keys :req-un [:blaze.db/node :blaze/terminology-service ::executor
                    :blaze/clock :blaze/rng-fn]
           :opt [::expr/cache]
-          :opt-un [::timeout :blaze/context-path]))
+          :opt-un [::timeout :blaze/context-path ::report-persistence]))
 
-(defmethod ig/init-key ::handler [_ {:keys [timeout] :as context}]
+(defmethod ig/init-key ::handler
+  [_ {:keys [timeout report-persistence] :or {report-persistence true}
+      :as context}]
   (log/info
    (cond-> "Init FHIR $evaluate-measure operation handler"
      timeout
-     (str " with a timeout of " timeout)))
-  (wrap-coerce-params (handler context)))
+     (str " with a timeout of " timeout)
+     (not report-persistence)
+     (str " with MeasureReport persistence disabled")))
+  (wrap-coerce-params (handler (assoc context :report-persistence report-persistence))))
 
 (defmethod m/pre-init-spec ::timeout [_]
   (s/keys :req-un [:blaze.fhir.operation.evaluate-measure.timeout/millis]))

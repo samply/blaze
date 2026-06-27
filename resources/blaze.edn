@@ -245,6 +245,7 @@
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :timeout #blaze/ref :blaze.fhir.operation.evaluate-measure/timeout
+   :report-persistence #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_REPORT_PERSISTENCE" boolean? true]
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
   :blaze.fhir.operation.evaluate-measure/timeout

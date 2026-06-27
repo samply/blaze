@@ -408,6 +408,12 @@ Timeout in milliseconds for synchronous [$evaluate-measure](../api/operation/mea
 
 **Default:** 3600000 (1h)
 
+#### `FHIR_OPERATION_EVALUATE_MEASURE_REPORT_PERSISTENCE` <Badge type="warning" text="Since 1.10.0"/>
+
+Controls whether a `POST` [$evaluate-measure](../api/operation/measure-evaluate-measure.md) request persists the generated [MeasureReport](https://hl7.org/fhir/R4/measurereport.html). With the default value `true`, the report is stored and the operation returns `201 Created` with a `Location` header (the historic behaviour). Set it to `false` to return the report inline with `200 OK` without persisting it. This is useful because the `parameters` input is only available via `POST`, so clients that only want to pass parameters no longer have their reports persisted as a side effect. For `reportType=subject-list` the referenced `List` resources are still persisted even when this option is `false`, because the report references them. Because Blaze has no authorization, every persisted `MeasureReport` is readable by every authenticated client; disabling persistence avoids storing reports a client never asked to store.
+
+**Default:** `true`
+
 #### `OPENID_PROVIDER_URL` <Badge type="warning" text="Since 0.11"/>
 
 [OpenID Connect][4] provider URL to enable [authentication][5]

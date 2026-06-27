@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
@@ -90,6 +91,9 @@
     :executor (ig/ref :blaze.test/executor)}
    :blaze.test/executor {}))
 
+(def ^:private config-no-persistence
+  (assoc-in config [::evaluate-measure/handler :report-persistence] false))
+
 (deftest init-test
   (testing "nil config"
     (given-failed-system {::evaluate-measure/handler nil}
@@ -142,6 +146,13 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid report-persistence"
+    (given-failed-system (assoc-in config [::evaluate-measure/handler :report-persistence] ::invalid)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::evaluate-measure/report-persistence]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
   (testing "init"
     (with-system [{::evaluate-measure/keys [handler]} config]
       (is (fn? handler)))
@@ -149,6 +160,10 @@
     (testing "with timeout"
       (with-system [{::evaluate-measure/keys [handler]}
                     (assoc-in config [::evaluate-measure/handler :timeout] (time/seconds 1))]
+        (is (fn? handler))))
+
+    (testing "with MeasureReport persistence disabled"
+      (with-system [{::evaluate-measure/keys [handler]} config-no-persistence]
         (is (fn? handler))))))
 
 (deftest timeout-init-test
@@ -221,15 +236,18 @@
   (fn [request]
     (handler (assoc request :blaze/job-scheduler job-scheduler))))
 
+(defn- wrap-handler [handler node job-scheduler]
+  (-> handler wrap-defaults (wrap-db node 100)
+      (wrap-job-scheduler job-scheduler)
+      wrap-error))
+
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          job-scheduler# :blaze/job-scheduler
                          handler# ::evaluate-measure/handler} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
-                                  (wrap-job-scheduler job-scheduler#)
-                                  wrap-error)]
+       (let [~handler-binding (wrap-handler handler# node# job-scheduler#)]
          ~@body))))
 
 (deftest handler-instance-test
@@ -413,6 +431,159 @@
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "incomplete"
             [:issue 0 :diagnostics] := #fhir/string "The resource content of `Measure/0` with hash `D0CCBAF739DAC930C5A0844A48CDE18F0004D4549CEF7E1FF0DEB9A0611D9451` was not found."))))))
+
+(defmacro with-no-persistence-handler [[handler-binding node-binding] & more]
+  (let [[txs body] (api-stub/extract-txs-body more)]
+    `(with-system-data [{~node-binding :blaze.db/node
+                         job-scheduler# :blaze/job-scheduler
+                         handler# ::evaluate-measure/handler} config-no-persistence]
+       ~txs
+       (let [~handler-binding (wrap-handler handler# ~node-binding job-scheduler#)]
+         ~@body))))
+
+(deftest handler-report-persistence-disabled-test
+  (testing "population report"
+    (with-no-persistence-handler [handler node]
+      [[[:put {:fhir/type :fhir/Measure :id "0"
+               :url #fhir/uri "url-181501"
+               :library [#fhir/canonical "library-url-094115"]}]
+        [:put {:fhir/type :fhir/Library :id "0"
+               :url #fhir/uri "library-url-094115"
+               :content [cql-attachment]}]]]
+
+      (let [{:keys [status headers body]}
+            @(handler
+              {:request-method :post
+               :path-params {:id "0"}
+               :body
+               (fu/parameters
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015")})]
+
+        (testing "the report is returned inline"
+          (is (= 200 status))
+
+          (testing "without a Location header"
+            (is (nil? (get headers "Location"))))
+
+          (given body
+            :fhir/type := :fhir/MeasureReport
+            :status := #fhir/code "complete"
+            :type := #fhir/code "summary"
+            :measure := #fhir/canonical "url-181501"
+            [:period :start] := #fhir/dateTime #system/date-time "2014"
+            [:period :end] := #fhir/dateTime #system/date-time "2015"))
+
+        (testing "the MeasureReport isn't persisted"
+          (is (zero? (d/type-total (d/db node) "MeasureReport")))))))
+
+  (testing "the return preference is ignored"
+    (with-no-persistence-handler [handler node]
+      [[[:put {:fhir/type :fhir/Measure :id "0"
+               :url #fhir/uri "url-181501"
+               :library [#fhir/canonical "library-url-094115"]}]
+        [:put {:fhir/type :fhir/Library :id "0"
+               :url #fhir/uri "library-url-094115"
+               :content [cql-attachment]}]]]
+
+      (let [{:keys [status body]}
+            @(handler
+              {:request-method :post
+               :path-params {:id "0"}
+               :headers {"prefer" "return=minimal"}
+               :body
+               (fu/parameters
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015")})]
+
+        (testing "the MeasureReport is still returned in the body"
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/MeasureReport
+            :status := #fhir/code "complete"))
+
+        (testing "the MeasureReport isn't persisted"
+          (is (zero? (d/type-total (d/db node) "MeasureReport")))))))
+
+  (testing "subject-list report"
+    (with-no-persistence-handler [handler node]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Measure :id "0"
+               :url #fhir/uri "url-181501"
+               :library [#fhir/canonical "library-url-094115"]
+               :group
+               [{:fhir/type :fhir.Measure/group
+                 :population
+                 [{:fhir/type :fhir.Measure.group/population
+                   :code (population-concept "initial-population")
+                   :criteria (cql-expression "InInitialPopulation")}]}]}]
+        [:put {:fhir/type :fhir/Library :id "0"
+               :url #fhir/uri "library-url-094115"
+               :content [cql-attachment]}]]]
+
+      (let [{:keys [status headers body]}
+            @(handler
+              {:request-method :post
+               :path-params {:id "0"}
+               :body
+               (fu/parameters
+                "reportType" #fhir/code "subject-list"
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015")})]
+
+        (testing "the report is returned inline"
+          (is (= 200 status))
+
+          (testing "without a Location header"
+            (is (nil? (get headers "Location"))))
+
+          (given body
+            :fhir/type := :fhir/MeasureReport
+            :type := #fhir/code "subject-list"
+            [:group 0 :population 0 :count] := #fhir/integer 3
+            [:group 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAA"))
+
+        (testing "the MeasureReport isn't persisted"
+          (is (zero? (d/type-total (d/db node) "MeasureReport"))))
+
+        (testing "the referenced List is persisted"
+          (let [db (d/db node)]
+            (is (= 1 (d/type-total db "List")))
+
+            (testing "and its subjectResults reference resolves"
+              (given @(d/pull db (d/resource-handle db "List" "AAAAAAAAAAAAAAAA"))
+                :fhir/type := :fhir/List
+                [:entry 0 :item :reference] := #fhir/string "Patient/0"
+                [:entry 1 :item :reference] := #fhir/string "Patient/1"
+                [:entry 2 :item :reference] := #fhir/string "Patient/2")))))))
+
+  (testing "GET request returns the report inline (unchanged)"
+    (with-no-persistence-handler [handler node]
+      [[[:put {:fhir/type :fhir/Measure :id "0"
+               :url #fhir/uri "url-181501"
+               :library [#fhir/canonical "library-url-094115"]}]
+        [:put {:fhir/type :fhir/Library :id "0"
+               :url #fhir/uri "library-url-094115"
+               :content [cql-attachment]}]]]
+
+      (let [{:keys [status body]}
+            @(handler
+              {:request-method :get
+               :path-params {:id "0"}
+               :params {"periodStart" "2014"
+                        "periodEnd" "2015"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :fhir/type := :fhir/MeasureReport
+          :type := #fhir/code "summary")
+
+        (testing "nothing is persisted"
+          (is (zero? (d/type-total (d/db node) "MeasureReport"))))))))
 
 (deftest handler-type-test
   (testing "Returns Success"
