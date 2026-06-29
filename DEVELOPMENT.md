@@ -38,9 +38,7 @@ git config --global core.excludesfile ~/.gitignore
 
 ### Java/JVM
 
-As per Clojure's [Java compatibility](https://clojure.org/releases/downloads#_java_compatibility) guide, Clojure is compiled to Java 8 compatible bytecode, so installing Java 8 is also fine. However, the [current stable release version](https://clojure.org/releases/downloads#stable) (which is 1.12.0, as of this writing) supports LTS Java versions 8, 11, 17 & 21, so theoretically, you could install any of these versions of the open-source JDKs, such as [OpenJDK](https://openjdk.org/) or [Eclipse Temurin](https://adoptium.net/).
-
-Since we use certain Java 17 features directly, we need at least Java 17. We also test with Java versions 17 and 21 in CI. So those are the only two Java versions a developer should use, i.e. **Java 17 or 21**.
+Blaze needs at least Java 21. We test with Java versions 21 and 25 in CI. So those are the only two Java versions a developer should use, i.e. **Java 21 or 25**.
 
 ### IDE
 
