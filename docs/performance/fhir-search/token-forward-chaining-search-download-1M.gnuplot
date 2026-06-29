@@ -1,6 +1,6 @@
 # Set the terminal to PNG and specify the output file
 set terminal pngcairo enhanced font 'Helvetica Neue,12'
-set output 'multiple-search-param-search-download-1M.png'
+set output 'token-forward-chaining-search-download-1M.png'
 
 # Set the data separator and skip the header
 set datafile separator "|"
@@ -11,19 +11,17 @@ set boxwidth 0.8
 set key left top reverse
 
 # Define x-axis and y-axis labels
-set title "Multiple Search Param Search - Download - Dataset 1M"
+set title "Token and Forward Chaining Search - Download - Dataset 1M"
 set xlabel 'System'
 set ylabel 'Resources/s'
 set format y "%.0f k"
-set yrange [0:110]
+set yrange [0:30]
 
 # Define grid
 set grid ytics
 
-# Define line styles and colors for each code
+# Define line styles and colors
 set style line 1 lc rgb '#4DA8DA'
-set style line 2 lc rgb '#2E75B6'
 
 # Plot the data
-plot 'multiple-search-param-search-download-1M.txt' using 4:xtic(2) every 2 ls 1 title 'laboratory', \
-     'multiple-search-param-search-download-1M.txt' using 4:xtic(2) every 2::1 ls 2 title 'vital-signs'
+plot 'token-forward-chaining-search-download-1M.txt' using 4:xtic(2) ls 1 title '32 k hits'

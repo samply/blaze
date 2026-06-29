@@ -69,10 +69,17 @@ cql/search.sh condition-ten-rare false
 cql/search.sh condition-ten-rare false
 cql/search.sh condition-ten-rare false
 
-#restart "$compose_file"
-#cql/search.sh condition-50-rare
-#cql/search.sh condition-50-rare
-#cql/search.sh condition-50-rare
+restart "$compose_file"
+cql/search.sh condition-ten-frequent-vs
+cql/search.sh condition-ten-frequent-vs false
+cql/search.sh condition-ten-frequent-vs false
+cql/search.sh condition-ten-frequent-vs false
+
+restart "$compose_file"
+cql/search.sh condition-ten-rare-vs
+cql/search.sh condition-ten-rare-vs false
+cql/search.sh condition-ten-rare-vs false
+cql/search.sh condition-ten-rare-vs false
 
 restart "$compose_file"
 cql/search.sh condition-all

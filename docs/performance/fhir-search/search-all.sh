@@ -9,7 +9,7 @@ echo "Simple Code Search:"
 "$script_dir/simple-code-search.sh" "$compose_file"
 
 echo "Multiple Code Search:"
-"$script_dir/multiple-code-search.sh" "$compose_file"
+"$script_dir/multiple-codes-search.sh" "$compose_file"
 
 echo "Multiple Search Parameter Search:"
 "$script_dir/observation-final-category-multiple-codes-search.sh" "$compose_file"

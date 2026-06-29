@@ -154,7 +154,7 @@ The script `multiple-codes-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/multiple-code-search-download-1M.png)
+![](fhir-search/multiple-codes-search-download-1M.png)
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
@@ -186,6 +186,8 @@ The script `multiple-codes-search-vs.sh` is used.
 ¹ resources per second
 
 ### Downloading Resources
+
+![](fhir-search/multiple-codes-search-vs-download-1M.png)
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
@@ -293,6 +295,8 @@ The script `token-forward-chaining-search.sh` is used.
 ¹ resources per second
 
 ### Downloading Resources
+
+![](fhir-search/token-forward-chaining-search-download-1M.png)
 
 | System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------:|---------:|-------:|--------:|
@@ -496,6 +500,8 @@ The script `code-patient-search.sh` is used.
 
 ### Downloading Resources
 
+![](fhir-search/code-patient-search-download-1M.png)
+
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      | 8310-5  |    943 |     0.07 |  0.000 |  13.5 k |
@@ -564,6 +570,8 @@ The script `multiple-codes-patient-search.sh` is used.
 
 ### Downloading Resources
 
+![](fhir-search/multiple-codes-patient-search-download-1M.png)
+
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|------:|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      |    10 |  121 k |     2.44 |  0.054 |  49.7 k |
@@ -603,6 +611,8 @@ The script `code-date-patient-search.sh` is used.
 ¹ resources per second
 
 ### Downloading Resources
+
+![](fhir-search/code-date-patient-search-download-1M.png)
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
@@ -658,6 +668,8 @@ The script `simple-date-search.sh` is used.
 ¹ resources per second
 
 ### Downloading Resources
+
+![](fhir-search/simple-date-search-download-1M.png)
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|------|-------:|---------:|-------:|--------:|
@@ -721,6 +733,8 @@ The script `patient-date-search.sh` is used.
 ¹ resources per second
 
 ### Downloading Resources
+
+![](fhir-search/patient-date-search-download-1M.png)
 
 | System | Dataset | Date         | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|--------------|-------:|---------:|-------:|--------:|
