@@ -71,6 +71,18 @@
       "matchStrings": [
         "# renovate: datasource=github-release-attachments depName=(?<depName>\\S+?)(?: (?:lookupName|packageName)=(?<packageName>\\S+?))?(?: versioning=(?<versioning>\\S+?))?(?: extractVersion=(?<extractVersion>\\S+?))?\\s+\\w+?_VERSION\\s*:\\s*[\"']?(?<currentValue>.+?)[\"']?\\s+(\\w+?_CHECKSUM\\s*:\\s*[\"']?(?<currentDigest>\\w+)[\"']?)?"
       ]
+    },
+    {
+      "description": [
+        "Keep the toolchain versions pinned in the Claude Code SessionStart hook up to date."
+      ],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)\\.claude/hooks/session-start\\.sh$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+?)(?: versioning=(?<versioning>\\S+?))?(?: extractVersion=(?<extractVersion>\\S+?))?\\s+\\w+_VERSION=\"(?<currentValue>.+?)\""
+      ]
     }
   ],
   "ignorePaths": [
