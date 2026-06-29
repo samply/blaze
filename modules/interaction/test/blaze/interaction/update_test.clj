@@ -5,6 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+   [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
@@ -20,6 +21,7 @@
    [blaze.interaction.update]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
+   [blaze.validator.protocols :as p]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -139,7 +141,7 @@
               [:issue 0 :code] := #fhir/code "invariant"
               [:issue 0 :details :coding 0 :system] := operation-outcome
               [:issue 0 :details :coding 0 :code] := #fhir/code "MSG_RESOURCE_TYPE_MISMATCH"
-              [:issue 0 :diagnostics] := #fhir/string "Invalid update interaction of a Observation at a Patient endpoint.")))))
+              [:issue 0 :diagnostics] := #fhir/string "Resource type `Observation` doesn't match the endpoint type `Patient`.")))))
 
     (testing "missing id"
       (with-handler [handler]
@@ -682,3 +684,57 @@
 
               (testing "Returns 200"
                 (is (= 200 status))))))))))
+
+(defmethod ig/init-key ::tag-validator [_ _]
+  (reify p/Validator
+    (-validate [_ resource]
+      (ac/completed-future
+       (assoc resource :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code "invalid"}]})))))
+
+(defmethod ig/init-key ::reject-validator [_ _]
+  (reify p/Validator
+    (-validate [_ _]
+      (ac/completed-future
+       (ba/incorrect "External validation of the resource failed." :fhir/issue "invalid")))))
+
+(def ^:private tag-validator-config
+  (-> config
+      (assoc-in [:blaze.interaction/update :validator] (ig/ref ::tag-validator))
+      (assoc ::tag-validator {})))
+
+(def ^:private reject-validator-config
+  (-> config
+      (assoc-in [:blaze.interaction/update :validator] (ig/ref ::reject-validator))
+      (assoc ::reject-validator {})))
+
+(deftest validator-test
+  (testing "an invalid resource is tagged and persisted"
+    (with-handler [handler] tag-validator-config
+      (let [{:keys [status body]}
+            @(handler
+              {:path-params {:id "0"}
+               ::reitit/match patient-match
+               :headers {"prefer" "return=representation"}
+               :body {:fhir/type :fhir/Patient :id "0"}})]
+
+        (is (= 201 status))
+
+        (given body
+          :fhir/type := :fhir/Patient
+          [:meta :tag 0 :code] := #fhir/code "invalid"))))
+
+  (testing "an invalid resource is rejected"
+    (with-handler [handler] reject-validator-config
+      (let [{:keys [status body]}
+            @(handler
+              {:path-params {:id "0"}
+               ::reitit/match patient-match
+               :body {:fhir/type :fhir/Patient :id "0"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "External validation of the resource failed.")))))

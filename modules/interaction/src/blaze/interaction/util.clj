@@ -99,3 +99,13 @@
     (-> (ring/response resource)
         (ring/header "Last-Modified" (fhir-util/last-modified tx))
         (ring/header "ETag" (fhir-util/etag tx)))))
+
+(defn- resource-type-mismatch-msg [type body]
+  (format "Resource type `%s` doesn't match the endpoint type `%s`."
+          (-> body :fhir/type name) type))
+
+(defn resource-type-mismatch-anom [type body]
+  (ba/incorrect
+   (resource-type-mismatch-msg type body)
+   :fhir/issue "invariant"
+   :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"))

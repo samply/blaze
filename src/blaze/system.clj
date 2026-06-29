@@ -228,7 +228,8 @@
            'jvm-metrics-logger-warn-factor ["JVM_METRICS_LOGGER_WARN_FACTOR" ce/jvm-metrics-logger-warn-factor "5"]
            'jvm-metrics-logger-warn-threshold ["JVM_METRICS_LOGGER_WARN_THRESHOLD" ce/jvm-metrics-logger-warn-threshold "80"]
            'db-scale-factor ["DB_SCALE_FACTOR" ce/coerce-db-scale-factor "1"]
-           'db-block-size ["DB_BLOCK_SIZE" ce/coerce-db-block-size "16384"])]
+           'db-block-size ["DB_BLOCK_SIZE" ce/coerce-db-block-size "16384"]
+           'validator-failure-mode ["VALIDATOR_FAILURE_MODE" ce/coerce-validator-failure-mode "tag-outcome"])]
 
     (let [config (-> (read-blaze-edn)
                      (merge-storage env)

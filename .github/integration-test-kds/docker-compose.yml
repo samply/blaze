@@ -4,6 +4,8 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       EXTERN_TERMINOLOGY_SERVICE_URL: "http://terminology-server:8080/fhir"
+      EXTERN_VALIDATOR_URL: "http://fhir-validator:8080"
+      LOG_LEVEL: debug
     ports:
     - "8080:8080"
     volumes:
@@ -14,6 +16,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    depends_on:
+      fhir-validator:
+        condition: service_started
 
   terminology-server:
     image: "blaze:latest"
@@ -23,6 +28,7 @@ services:
       ENABLE_TERMINOLOGY_LOINC: "true"
       ENABLE_TERMINOLOGY_SNOMED_CT: "true"
       SNOMED_CT_RELEASE_PATH: "/app/sct-release"
+      LOG_LEVEL: debug
     ports:
     - "8082:8080"
     volumes:
@@ -36,10 +42,13 @@ services:
       start_period: 30s
 
   fhir-validator:
-    image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.3@sha256:72133f7c554743012be02edaa0ef183a22b46ee413b02f425b8c5302b7d92c1f"
+    image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.7@sha256:c237b8b36a641cc57a59be2d2a29035ca4f39e0b6c71b26ab4e88e7f7c4fd6a1"
     environment:
       JAVA_OPTS: "-Xmx2g"
       TX_SERVER: "http://terminology-server:8080/fhir"
+      # the package hl7.fhir.us.cqfmeasures#5.0.0 is needed for the
+      # Measure/Library resources created during quality report evaluation
+      IG_PARAMS: "-ig hl7.fhir.us.cqfmeasures#5.0.0"
     ports:
     - "8084:8080"
     volumes:
