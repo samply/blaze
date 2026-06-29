@@ -40,6 +40,7 @@ Rigorous adherence to these patterns is required:
   * Avoid code duplication.
   * Use existing functions if possible.
   * Create a function if code is used more than two times.
+* **No no-op nil calls:** Don't deliberately call a function with a `nil` argument just so it does nothing and returns its input unchanged (e.g. a nil-tolerant pass-through wrapper for an optional dependency). This is an antipattern — it hides the optionality at the call site. Make the call conditional instead (e.g. with `cond->`), so the absence of the dependency is visible where it matters.
 * **Testing:**
   * **Test-Driven Development (mandatory):** Never change production code without first writing a failing test that captures the new behaviour. Write the test, see it fail, then make it pass. This applies to bug fixes (regression test first), new features, and contract changes (e.g. allowing an anomaly return value).
   * **Spec Instrumentation:** Always enable spec instrumentation in tests to catch spec violations early.
@@ -78,6 +79,8 @@ When generating a `CHANGELOG.md` entry for a new version:
 When starting to work on an issue, you can use the GitHub CLI to fetch the issue details: `gh issue view <issue-number>`
 
 When **creating** an issue, classify it via GitHub's native issue **type** (e.g. `Bug`, `Feature`), not via a `bug`/`feature` label. The `gh issue create` flag for this is `--type` (e.g. `gh issue create --type Bug ...`). Only labels that aren't covered by a type (e.g. `module:db`) should be passed via `--label`.
+
+Always run `make build-job-ig` first on a freshly created git worktree. Some modules (e.g. `job-async-interaction` and anything depending on it, like `interaction`) need the generated `job-ig` resources, which are absent in a new worktree and would otherwise make prep fail.
 
 Before finishing a task, ensure the following commands pass:
 

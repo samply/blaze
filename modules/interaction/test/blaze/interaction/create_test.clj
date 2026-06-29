@@ -19,6 +19,7 @@
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]
    [blaze.util.clauses-spec]
+   [blaze.validator.protocols :as p]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -87,6 +88,13 @@
       :key := :blaze.interaction/create
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid validator"
+    (given-failed-system (assoc-in config [:blaze.interaction/create :validator] ::invalid)
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/validator]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn wrap-defaults [handler]
@@ -460,3 +468,56 @@
           :id := "AAAAAAAAAAAAAAAA"
           [:meta :versionId] := #fhir/id "1"
           [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
+
+(defmethod ig/init-key ::tag-validator [_ _]
+  (reify p/Validator
+    (-validate [_ resource]
+      (ac/completed-future
+       (assoc resource :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code "invalid"}]})))))
+
+(defmethod ig/init-key ::reject-validator [_ _]
+  (reify p/Validator
+    (-validate [_ _]
+      (ac/completed-future
+       (ba/incorrect "External validation of the resource failed." :fhir/issue "invalid")))))
+
+(defmacro with-validator-handler [[handler-binding] validator-key & more]
+  (let [[txs body] (api-stub/extract-txs-body more)]
+    `(with-system-data [{handler# :blaze.interaction/create}
+                        (-> config
+                            (assoc-in [:blaze.interaction/create :validator]
+                                      (ig/ref ~validator-key))
+                            (assoc ~validator-key {}))]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
+         ~@body))))
+
+(deftest validator-test
+  (testing "an invalid resource is tagged and persisted"
+    (with-validator-handler [handler] ::tag-validator
+      (let [{:keys [status body]}
+            @(handler
+              {::reitit/match patient-match
+               :headers {"prefer" "return=representation"}
+               :body {:fhir/type :fhir/Patient}})]
+
+        (is (= 201 status))
+
+        (given body
+          :fhir/type := :fhir/Patient
+          [:meta :tag 0 :code] := #fhir/code "invalid"))))
+
+  (testing "an invalid resource is rejected"
+    (with-validator-handler [handler] ::reject-validator
+      (let [{:keys [status body]}
+            @(handler
+              {::reitit/match patient-match
+               :body {:fhir/type :fhir/Patient}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "External validation of the resource failed.")))))

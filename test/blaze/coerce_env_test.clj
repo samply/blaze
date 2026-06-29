@@ -80,4 +80,32 @@
 
     (given (ce/bindings-and-settings {"DB_BLOCK_SIZE" "10000"} 'db-block-size conf)
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid DB block size 10000. Must be one of 4096, 8192, 16384, 32768, 65536, 131072.")))
+      ::anom/message := "Invalid DB block size 10000. Must be one of 4096, 8192, 16384, 32768, 65536, 131072."))
+
+  (let [conf ["VALIDATOR_FAILURE_MODE" ce/coerce-validator-failure-mode "tag-outcome"]]
+    (given (ce/bindings-and-settings {} 'validator-failure-mode conf)
+      :bind-map := {'validator-failure-mode :tag-outcome}
+      [:settings "VALIDATOR_FAILURE_MODE" :value] := :tag-outcome
+      [:settings "VALIDATOR_FAILURE_MODE" :default-value] := "tag-outcome")
+
+    (doseq [mode ["tag-only" "tag-only " "Tag-only" "TAG-ONLY" "TAG_ONLY"]]
+      (given (ce/bindings-and-settings {"VALIDATOR_FAILURE_MODE" mode} 'validator-failure-mode conf)
+        :bind-map := {'validator-failure-mode :tag-only}
+        [:settings "VALIDATOR_FAILURE_MODE" :value] := :tag-only
+        [:settings "VALIDATOR_FAILURE_MODE" :default-value] := "tag-outcome"))
+
+    (doseq [mode ["tag-outcome" "tag-outcome " "Tag-outcome" "TAG-OUTCOME" "TAG_OUTCOME"]]
+      (given (ce/bindings-and-settings {"VALIDATOR_FAILURE_MODE" mode} 'validator-failure-mode conf)
+        :bind-map := {'validator-failure-mode :tag-outcome}
+        [:settings "VALIDATOR_FAILURE_MODE" :value] := :tag-outcome
+        [:settings "VALIDATOR_FAILURE_MODE" :default-value] := "tag-outcome"))
+
+    (doseq [mode ["reject" "reject " "Reject" "REJECT"]]
+      (given (ce/bindings-and-settings {"VALIDATOR_FAILURE_MODE" mode} 'validator-failure-mode conf)
+        :bind-map := {'validator-failure-mode :reject}
+        [:settings "VALIDATOR_FAILURE_MODE" :value] := :reject
+        [:settings "VALIDATOR_FAILURE_MODE" :default-value] := "tag-outcome"))
+
+    (given (ce/bindings-and-settings {"VALIDATOR_FAILURE_MODE" "foo"} 'validator-failure-mode conf)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid validator failure mode `foo`. Must be one of tag-only, tag-outcome or reject.")))

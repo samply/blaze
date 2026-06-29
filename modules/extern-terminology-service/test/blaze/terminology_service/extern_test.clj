@@ -143,15 +143,34 @@
 (defn- params-matcher [{:blaze.fhir/keys [writing-context]} params]
   (Matchers/is (fhir-spec/write-json-as-string writing-context params)))
 
+(defn- stub-post
+  "Stubs `http-client` to expect a POST to `url` with `params` as request body
+  and to respond with `status` (default 200) and `body` written as FHIR JSON.
+  With a non-nil `:token` it also expects an `Authorization` bearer header."
+  [^HttpClientMock http-client system url params
+   {:keys [status token body] :or {status 200}}]
+  (-> (cond-> (.onPost http-client ^String url)
+        token (.withHeader "Authorization" (str "Bearer " token)))
+      (.withBody (params-matcher system params))
+      (.doReturn (int status) (j/write-value-as-string body))
+      (.withHeader "content-type" "application/fhir+json")))
+
+(defn- stub-code-system-validate-code [http-client system params opts]
+  (stub-post http-client system "http://localhost:8080/fhir/CodeSystem/$validate-code" params opts))
+
+(defn- stub-expand-value-set [http-client system params opts]
+  (stub-post http-client system "http://localhost:8080/fhir/ValueSet/$expand" params opts))
+
+(defn- stub-value-set-validate-code [http-client system params opts]
+  (stub-post http-client system "http://localhost:8080/fhir/ValueSet/$validate-code" params opts))
+
 (deftest code-system-validate-code-test
   (testing "success"
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/CodeSystem/$validate-code")
-            (.withBody (params-matcher system params))
-            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-code-system-validate-code http-client system params
+                                        {:body {:resourceType "Parameters"}})
 
         (given @(ts/code-system-validate-code ts params)
           :fhir/type := :fhir/Parameters))))
@@ -160,15 +179,14 @@
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/CodeSystem/$validate-code")
-            (.withBody (params-matcher system params))
-            (.doReturn 400 (j/write-value-as-string
-                            {:resourceType "OperationOutcome"
-                             :issue
-                             [{:severity "error"
-                               :code "not-found"
-                               :diagnostics "The value set `http://hl7.org/fhir/CodeSystem/administrative-gender` was not found."}]}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-code-system-validate-code
+         http-client system params
+         {:status 400
+          :body {:resourceType "OperationOutcome"
+                 :issue
+                 [{:severity "error"
+                   :code "not-found"
+                   :diagnostics "The value set `http://hl7.org/fhir/CodeSystem/administrative-gender` was not found."}]}})
 
         (given-failed-future (ts/code-system-validate-code ts params)
           ::anom/category := ::anom/incorrect
@@ -182,11 +200,9 @@
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/CodeSystem/$validate-code")
-            (.withHeader "Authorization" "Bearer my-token")
-            (.withBody (params-matcher system params))
-            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-code-system-validate-code http-client system params
+                                        {:token "my-token"
+                                         :body {:resourceType "Parameters"}})
 
         (given @(ts/code-system-validate-code ts params)
           :fhir/type := :fhir/Parameters))))
@@ -205,10 +221,8 @@
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
-            (.withBody (params-matcher system params))
-            (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-expand-value-set http-client system params
+                               {:body {:resourceType "ValueSet" :id "0"}})
 
         (given @(ts/expand-value-set ts params)
           :fhir/type := :fhir/ValueSet
@@ -218,11 +232,9 @@
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
-            (.withHeader "Authorization" "Bearer my-token")
-            (.withBody (params-matcher system params))
-            (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-expand-value-set http-client system params
+                               {:token "my-token"
+                                :body {:resourceType "ValueSet" :id "0"}})
 
         (given @(ts/expand-value-set ts params)
           :fhir/type := :fhir/ValueSet
@@ -242,10 +254,8 @@
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$validate-code")
-            (.withBody (params-matcher system params))
-            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-value-set-validate-code http-client system params
+                                      {:body {:resourceType "Parameters"}})
 
         (given @(ts/value-set-validate-code ts params)
           :fhir/type := :fhir/Parameters))))
@@ -254,15 +264,14 @@
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$validate-code")
-            (.withBody (params-matcher system params))
-            (.doReturn 400 (j/write-value-as-string
-                            {:resourceType "OperationOutcome"
-                             :issue
-                             [{:severity "error"
-                               :code "not-found"
-                               :diagnostics "The value set `http://hl7.org/fhir/ValueSet/administrative-gender` was not found."}]}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-value-set-validate-code
+         http-client system params
+         {:status 400
+          :body {:resourceType "OperationOutcome"
+                 :issue
+                 [{:severity "error"
+                   :code "not-found"
+                   :diagnostics "The value set `http://hl7.org/fhir/ValueSet/administrative-gender` was not found."}]}})
 
         (given-failed-future (ts/value-set-validate-code ts params)
           ::anom/category := ::anom/incorrect
@@ -276,11 +285,9 @@
     (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$validate-code")
-            (.withHeader "Authorization" "Bearer my-token")
-            (.withBody (params-matcher system params))
-            (.doReturn (j/write-value-as-string {:resourceType "Parameters"}))
-            (.withHeader "content-type" "application/fhir+json"))
+        (stub-value-set-validate-code http-client system params
+                                      {:token "my-token"
+                                       :body {:resourceType "Parameters"}})
 
         (given @(ts/value-set-validate-code ts params)
           :fhir/type := :fhir/Parameters))))
