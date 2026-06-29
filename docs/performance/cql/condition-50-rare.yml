@@ -1,5 +1,0 @@
-library: cql/condition-50-rare.cql
-group:
-- type: Patient
-  population:
-  - expression: InInitialPopulation
