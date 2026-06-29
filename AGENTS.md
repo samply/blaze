@@ -89,9 +89,11 @@ Before finishing a task, ensure the following commands pass:
 
 When adding a **new module** under `modules/`, also add it to the `module` matrix in `.github/workflows/build.yml` (the `test` job, sorted alphabetically) so CI picks it up.
 
+**Every change requires a GitHub issue.** If no issue exists for the work, create one first (see above) before writing any code. All work must be tracked by an issue.
+
 After verification, when working on an issue:
 
-1. Create a feature branch using the GitHub CLI: `gh issue develop <issue-number> --checkout`
+1. Create a feature branch using the GitHub CLI: `gh issue develop <issue-number> --checkout`. **Always use the branch generated for the issue by this command — never create or push to an ad-hoc branch.**
 2. Commit the changes: `git add .` and `git commit`
    * The commit title should be the issue title. Both use the imperative mood, are written in title case, and fit within about 50 characters (e.g. `Fix Error Combining Composite Token-Token Params`).
    * The commit body should just contain: `Closes: #<issue-number>`
