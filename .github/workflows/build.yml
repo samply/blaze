@@ -155,6 +155,7 @@ jobs:
         - db-tx-log-kafka
         - executor
         - extern-terminology-service
+        - extern-validator
         - fhir-client
         - fhir-path
         - fhir-structure
@@ -195,6 +196,7 @@ jobs:
         - terminology-service
         - terminology-service-local
         - thread-pool-executor-collector
+        - validator
 
         java-version:
         - '21'

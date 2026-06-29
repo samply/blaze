@@ -1581,6 +1581,36 @@
      :client-id #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_OPENID_CLIENT_ID" string?]
      :client-secret #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_OPENID_CLIENT_SECRET" string?]}}}
 
+  ;; External Validator
+  ;;
+  ;; Will be enabled if EXTERN_VALIDATOR_URL is set. Forwards incoming resources
+  ;; to an external FHIR validator before persistence. Depending on
+  ;; VALIDATOR_FAILURE_MODE invalid resources are tagged or rejected.
+  ;;
+  {:key :extern-validator
+   :name "Extern Validator"
+   :toggle "EXTERN_VALIDATOR_URL"
+   :config
+   {:blaze.validator/extern
+    {:base-uri #blaze/cfg ["EXTERN_VALIDATOR_URL" string?]
+     :failure-mode #blaze/var validator-failure-mode
+     :http-client #blaze/ref :blaze.validator.extern/http-client
+     :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
+     :writing-context #blaze/ref :blaze.fhir/writing-context}
+
+    [:blaze/http-client :blaze.validator.extern/http-client]
+    {:trust-store #blaze/cfg ["EXTERN_VALIDATOR_CLIENT_TRUST_STORE" string?]
+     :trust-store-pass #blaze/cfg ["EXTERN_VALIDATOR_CLIENT_TRUST_STORE_PASS" string?]}
+
+    :blaze.interaction/create
+    {:validator #blaze/ref :blaze.validator/extern}
+
+    :blaze.interaction/update
+    {:validator #blaze/ref :blaze.validator/extern}
+
+    :blaze.interaction/transaction
+    {:validator #blaze/ref :blaze.validator/extern}}}
+
   {:key :graph
    :name "Operation $graph on Resource"
    :toggle "ENABLE_OPERATION_GRAPH"
