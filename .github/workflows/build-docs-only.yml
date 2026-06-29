@@ -1,0 +1,25 @@
+name: Build Docs-Only
+
+# Companion to build.yml. The Build workflow ignores documentation-only pull
+# requests via paths-ignore, so it never reports its status checks for them.
+# This workflow runs on exactly those pull requests and reports the required
+# "pre-push-image" status check as successful, keeping documentation-only pull
+# requests mergeable. All real building and testing still happens via build.yml
+# on any pull request that touches non-documentation files and in the merge
+# queue.
+on:
+  pull_request:
+    branches:
+    - main
+    paths:
+    - 'docs/**'
+    - '**/*.md'
+
+permissions: read-all
+
+jobs:
+  pre-push-image:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: No Build Required
+      run: echo "Only documentation changed - skipping build."
