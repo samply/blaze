@@ -3905,13 +3905,13 @@
                  (link-url body "next"))))))))
 
 (deftest handler-previous-paging-cap-test
-  (testing "the page id stack is capped to the newest 30 entries"
+  (testing "the page id stack is capped to the newest 10 entries"
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
         [:put {:fhir/type :fhir/Patient :id "2"}]]]
 
-      (let [stack (mapv #(str "p" %) (range 30))
+      (let [stack (mapv #(str "p" %) (range 10))
             {:keys [body]}
             @(handler
               {::reitit/match patient-page-match

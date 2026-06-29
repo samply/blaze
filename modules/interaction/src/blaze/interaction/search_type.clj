@@ -196,7 +196,7 @@
   `__page-id-stack` of a paging link. Keeps the encrypted page id (and thus the
   paging URL) small enough; beyond it, the previous link is no longer offered
   and the always present first link is used instead."
-  30)
+  10)
 
 (defn- push-page-id [page-id-stack page-id]
   (let [stack (conj page-id-stack page-id)
