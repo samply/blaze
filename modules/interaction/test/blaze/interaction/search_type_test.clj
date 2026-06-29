@@ -19,12 +19,13 @@
    [blaze.interaction.search.util-spec]
    [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
    [blaze.job-scheduler-spec]
+   [blaze.metrics.spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
    [blaze.module-spec]
-   [blaze.module.test-util :refer [given-failed-system]]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-id-cipher.spec]
    [blaze.page-store-spec]
    [blaze.page-store.local]
@@ -43,6 +44,7 @@
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
+(tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
@@ -183,6 +185,11 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/context-path]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(deftest search-duration-seconds-collector-init-test
+  (with-system [{collector :blaze.interaction.search-type/search-duration-seconds}
+                {:blaze.interaction.search-type/search-duration-seconds nil}]
+    (is (s/valid? :blaze.metrics/collector collector))))
 
 (defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
@@ -3364,7 +3371,7 @@
         (is (nil? (:value resource)))))))
 
 (deftest handler-missing-resource-contents-test
-  (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]
+  (with-redefs [rc/get (fn [_ _] (ac/completed-future nil))]
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
@@ -3381,10 +3388,10 @@
 
 (deftest handler-resource-content-load-failure-test
   (with-redefs
-   [rc/multi-get
-    (fn [_ keys]
+   [rc/get
+    (fn [_ key]
       (ac/completed-future
-       (if (= :fhir/Patient (ffirst keys)) (ba/busy "msg-181758") {})))]
+       (when (= :fhir/Patient (first key)) (ba/busy "msg-181758"))))]
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 

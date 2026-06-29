@@ -26,7 +26,10 @@
 
    :extra-deps
    {blaze/db-stub
-    {:local/root "../db-stub"}}}
+    {:local/root "../db-stub"}
+
+    blaze/metrics
+    {:local/root "../metrics"}}}
 
   :kaocha
   {:extra-deps

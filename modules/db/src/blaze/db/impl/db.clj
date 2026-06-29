@@ -235,7 +235,10 @@
     (p/-pull-content node resource-handle variant))
 
   (-pull-many [_ resource-handles opts]
-    (p/-pull-many node resource-handles opts)))
+    (p/-pull-many node resource-handles opts))
+
+  (-pull-fn [_ opts]
+    (p/-pull-fn node opts)))
 
 (defmethod print-method Db [^Db db ^Writer w]
   (.write w (format "Db[t=%d]" (.t db))))

@@ -35,7 +35,9 @@
 
 (def ^:private ^:const ^long max-size 10000)
 
-(def ^:private too-costly-msg
+(defn- too-costly-msg []
+  ;; format at call time so the grouping separator follows the current default
+  ;; locale (tests pin it via tu/set-default-locale-english!)
   (format "Inclusion(s) would return more than %,d resources which is too costly to output. Please either lower the page size or use $graphql or $graph operations." max-size))
 
 (defn add-includes
@@ -44,6 +46,6 @@
   (loop [handles (includes db include-defs :direct resource-handles)]
     (let [new-handles (set/union handles (includes db include-defs :iterate handles))]
       (condp < (count new-handles)
-        max-size (ba/conflict too-costly-msg :fhir/issue "too-costly")
+        max-size (ba/conflict (too-costly-msg) :fhir/issue "too-costly")
         (count handles) (recur new-handles)
         handles))))

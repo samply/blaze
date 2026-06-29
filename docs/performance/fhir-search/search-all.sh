@@ -8,8 +8,11 @@ compose_file="$1"
 echo "Simple Code Search:"
 "$script_dir/simple-code-search.sh" "$compose_file"
 
-echo "Multiple Code Search:"
+echo "Multiple Codes Search:"
 "$script_dir/multiple-codes-search.sh" "$compose_file"
+
+echo "Multiple Codes Search – ValueSet:"
+"$script_dir/multiple-codes-search-vs.sh" "$compose_file"
 
 echo "Multiple Search Parameter Search:"
 "$script_dir/observation-final-category-multiple-codes-search.sh" "$compose_file"

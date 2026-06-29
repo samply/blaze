@@ -161,6 +161,48 @@
 (defn- cache-size [cache]
   (.size (.asMap ^AsyncCache (.cache ^DefaultResourceCache cache))))
 
+(deftest get-skip-cache-insertion-test
+  (testing "returns an existing patient from the store"
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+        @(rs/put! store {patient-0-hash patient-0})
+
+        (is (= patient-0
+               @(st/with-instrument-disabled
+                  (rc/get-skip-cache-insertion
+                   cache [:fhir/Patient patient-0-hash :complete])))))))
+
+  (testing "returns an already cached patient"
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+      @(rs/put! store {patient-0-hash patient-0})
+      @(rc/get cache [:fhir/Patient patient-0-hash :complete])
+
+      (is (contains-key? cache [:fhir/Patient patient-0-hash :complete]))
+
+      (is (= patient-0
+             @(st/with-instrument-disabled
+                (rc/get-skip-cache-insertion
+                 cache [:fhir/Patient patient-0-hash :complete]))))))
+
+  (testing "doesn't insert the patient into the cache"
+    (doseq [config [config one-config]]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
+        @(rs/put! store {patient-0-hash patient-0})
+
+        (is (= patient-0
+               @(st/with-instrument-disabled
+                  (rc/get-skip-cache-insertion
+                   cache [:fhir/Patient patient-0-hash :complete]))))
+
+        (is (not (contains-key? cache [:fhir/Patient patient-0-hash :complete]))))))
+
+  (testing "returns nil for a not-found patient"
+    (doseq [config [config zero-config one-config]]
+      (with-system [{cache :blaze.db/resource-cache} config]
+        (is (nil? @(st/with-instrument-disabled
+                     (rc/get-skip-cache-insertion
+                      cache [:fhir/Patient patient-0-hash :complete]))))))))
+
 (deftest multi-get-skip-cache-insertion-test
   (testing "just returns two existing patients"
     (doseq [config [config zero-config one-config]]

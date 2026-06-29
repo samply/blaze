@@ -49,6 +49,7 @@ Rigorous adherence to these patterns is required:
   * **Fixtures:** Use the standard test fixture in all test namespaces.
     * Require `[blaze.test-util :as tu]`.
     * Call `(test/use-fixtures :each tu/fixture)`.
+  * **Locale:** When a test asserts on locale-sensitive formatting (e.g. the thousands separator in `10,000`), call `(tu/set-default-locale-english!)` at the top level of the test namespace. Do **not** make the production code locale-independent for this — set the locale in the test instead. For this to work the production code must build such strings at call time, not in a top-level `def` (a `def` is evaluated at namespace load, before the test sets the locale).
   * **Assertions:** Use the `given` macro from `juxt.iota` for asserting map values (e.g. anomalies).
     * Require `[juxt.iota :refer [given]]`.
     * Example: `(given (my-fn ...) ::anom/category := ::anom/fault ::anom/message := "...")`
@@ -86,6 +87,7 @@ Before finishing a task, ensure the following commands pass:
 3.  **Test:** Run tests only for the modules you changed: `make -C modules/<module> test` (e.g. `make -C modules/db test`). Use `make test` only when changes span multiple modules or the root.
     * To run a single test or a single namespace, use the `test-focus` target with a `FOCUS` variable holding a kaocha test id — either a whole namespace or a `namespace/var`: `make -C modules/<module> test-focus FOCUS=blaze.db.api-test` or `make -C modules/db test-focus FOCUS=blaze.db.api-test/pull-fn-test`.
 4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage — must be **≥ 95% forms**)
+    * Reflection warnings printed during `make test-coverage` are **normal**: cloverage instruments the code in a way that disables type hints, so reflection warnings appear there even for correctly hinted code. Do not try to fix them based on the coverage run — only reflection warnings from `make lint`/normal compilation matter.
 
 When adding a **new module** under `modules/`, also add it to the `module` matrix in `.github/workflows/build.yml` (the `test` job, sorted alphabetically) so CI picks it up.
 

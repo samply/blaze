@@ -179,6 +179,8 @@
    :page-id-cipher #blaze/ref :blaze/page-id-cipher
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
+  :blaze.interaction.search-type/search-duration-seconds {}
+
   :blaze.interaction/search-compartment
   {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
    :clock #blaze/ref :blaze/clock

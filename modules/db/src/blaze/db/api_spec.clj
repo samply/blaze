@@ -302,8 +302,13 @@
 (s/fdef d/pull-many
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :resource-handles (s/coll-of :blaze.db/resource-handle)
-               :opts (s/? (s/keys :opt-un [:blaze.resource/variant :blaze.resource/elements])))
+               :opts (s/? :blaze.db/pull-opts))
   :ret ac/completable-future?)
+
+(s/fdef d/pull-fn
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :opts (s/? :blaze.db/pull-opts))
+  :ret fn?)
 
 (s/fdef d/re-index-total
   :args (s/cat :db :blaze.db/db :search-param-url string?)

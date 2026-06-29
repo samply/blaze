@@ -43,6 +43,9 @@
 (s/def :blaze.db/resource-handle
   rh/resource-handle?)
 
+(s/def :blaze.db/pull-opts
+  (s/keys :opt-un [:blaze.resource/variant :blaze.resource/elements]))
+
 (s/def :blaze.db/query
   #(satisfies? p/Query %))
 

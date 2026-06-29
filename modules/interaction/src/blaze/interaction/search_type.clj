@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.anomaly :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
@@ -16,7 +16,7 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util.spec]
    [blaze.job.async-interaction.request :as req]
-   [blaze.module :as m]
+   [blaze.module :as m :refer [reg-collector]]
    [blaze.page-id-cipher.spec]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
@@ -24,9 +24,30 @@
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
+   [prometheus.alpha :as prom]
    [reitit.core :as reitit]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
+
+(prom/defhistogram search-duration-seconds
+  "Latencies in seconds of the individual phases of building a single type
+  search page.
+
+  The `phase` label distinguishes the phases:
+
+   * `compile-query` - compiles the query
+   * `scan` - the single-threaded scan that materializes the page of resource
+     handles, already triggering the match pulls
+   * `pull-matches` - fetches the resource contents of the matches; overlaps the
+     `scan` phase because the pulls are triggered during the scan
+   * `pull-includes` - fetches the resource contents of the includes
+
+  Comparing `scan` with `pull-matches` shows how much the match pulls overlap the
+  scan."
+  {:namespace "fhir_interaction"
+   :subsystem "search_type"}
+  (take 16 (iterate #(* 2 %) 0.0001))
+  "phase")
 
 (defn- type-list [db type page-id]
   (if page-id
@@ -49,23 +70,50 @@
    db]
   (if (empty? clauses)
     (ac/completed-future nil)
-    (compile-type-query db type clauses handling)))
+    (let [timer (prom/timer search-duration-seconds "compile-query")]
+      (do-sync [query (compile-type-query db type clauses handling)]
+        (prom/observe-duration! timer)
+        query))))
 
-(defn- build-page** [page-size handles]
-  (let [handles (into [] (take (inc page-size)) handles)]
-    (if (< page-size (count handles))
-      {:matches (pop handles)
-       :next-match (peek handles)}
-      {:matches handles})))
+(defn- build-page**
+  "Materializes one page worth of resource handles while already pulling the
+  resource content of the matches.
 
-(defn- build-page* [db include-defs page-size handles]
-  (let [{:keys [matches] :as res} (build-page** page-size handles)]
+  Pulls are triggered during the scan via `pull` (a function of a resource
+  handle returning a CompletableFuture), so the resource I/O overlaps with the
+  single-threaded scan. The next-match handle, which only seeds the next page's
+  paging link, is not pulled."
+  [pull page-size handles]
+  ;; start the pull timer before reducing the handles, because the pulls are
+  ;; triggered during the reduction and run concurrently with the rest of the
+  ;; scan; it is observed once all match futures complete
+  (let [pull-timer (prom/timer search-duration-seconds "pull-matches")
+        {:keys [matches match-futures next-match]}
+        (reduce
+         (fn [{:keys [matches] :as acc} handle]
+           (if (< (count matches) page-size)
+             (assoc acc
+                    :matches (conj! matches handle)
+                    :match-futures (conj! (:match-futures acc) (pull handle)))
+             ;; the first handle past the page is the next-match: it only seeds
+             ;; the next page's paging link, so it is not pulled and ends the
+             ;; reduction
+             (reduced (assoc acc :next-match handle))))
+         {:matches (transient []) :match-futures (transient [])}
+         handles)]
+    (cond-> {:matches (persistent! matches)
+             :match-futures (persistent! match-futures)
+             :pull-timer pull-timer}
+      next-match (assoc :next-match next-match))))
+
+(defn- build-page* [batch-db pull include-defs page-size handles]
+  (let [{:keys [matches] :as res} (build-page** pull page-size handles)]
     (if (:direct include-defs)
-      (if-ok [includes (include/add-includes db include-defs matches)]
+      (if-ok [includes (include/add-includes batch-db include-defs matches)]
         (assoc res :includes includes)
         #(if (and (-> % :fhir/issue #{"too-costly"})
                   (> page-size 1))
-           (build-page* db include-defs (quot page-size 2) handles)
+           (build-page* batch-db pull include-defs (quot page-size 2) handles)
            %))
       res)))
 
@@ -136,52 +184,76 @@
   (wrap-cache-handling {} params))
 
 (defn- build-page
+  "Compiles the query and scans one page worth of resource handles, already
+  pulling the match resources concurrently during the scan (see `build-page**`).
+
+  Returns a CompletableFuture that will complete with the page map containing
+  :matches, :match-futures, :next-match, optional :includes, :pull-timer and the
+  used :query, or will complete exceptionally with an anomaly in case of errors."
   [{:blaze/keys [db]
-    {:keys [include-defs page-size]} :params
-    {:keys [page-id]} :params :as context}]
+    {:keys [include-defs page-size page-id] :as params} :params :as context}]
   (do-sync [query (compile-query context db)]
-    (with-open [batch-db (d/new-batch-db db)]
-      (when-ok [handles (if query
-                          (execute-query batch-db query page-id)
-                          (type-list batch-db (:type context) page-id))
-                page (build-page* batch-db include-defs page-size handles)]
-        (assoc page :query query)))))
+    (let [pull (d/pull-fn db (match-pull-opts params))]
+      (with-open [_ (prom/timer search-duration-seconds "scan")
+                  batch-db (d/new-batch-db db)]
+        (when-ok [handles (if query
+                            (execute-query batch-db query page-id)
+                            (type-list batch-db (:type context) page-id))
+                  page (build-page* batch-db pull include-defs page-size handles)]
+          (assoc page :query query))))))
+
+(defn- pull-matches
+  "Awaits the `match-futures` already pulled during the scan and returns a
+  CompletableFuture of all match resources in order.
+
+  Observes `pull-timer` (started in `build-page**` before the scan reduction)
+  once all pulls complete, so the `pull-matches` metric captures the full pull
+  duration that overlaps the scan.
+
+  Completes exceptionally with an anomaly if any of the `match-futures` does."
+  [pull-timer match-futures]
+  (do-sync [_ (ac/all-of match-futures)]
+    (prom/observe-duration! pull-timer)
+    (mapv ac/join match-futures)))
+
+(defn- pull-includes [db includes opts]
+  (let [pull-timer (prom/timer search-duration-seconds "pull-includes")]
+    (do-sync [resources (d/pull-many db includes opts)]
+      (prom/observe-duration! pull-timer)
+      resources)))
 
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
 
   :entries - the bundle entries of the page
-  :num-matches - the number of search matches (excluding includes)
   :next-handle - the resource handle of the first resource of the next page
-  :clauses - the actually used clauses
+  :total - the total number of matching resources, or nil if not reported
+  :clauses - the actually used clauses (only present if there is a query)
 
   or will complete exceptionally with an anomaly in case of errors."
   {:arglists '([context])}
   [{:blaze/keys [db] :keys [type params] :as context}]
   (-> (build-page context)
       (ac/then-compose
-       (fn [result]
-         (if (ba/anomaly? result)
-           (ac/completed-future result)
-           (let [{:keys [matches includes next-match query]} result
-                 total-future (total-future db type query params matches next-match)
-                 match-future (d/pull-many db matches (match-pull-opts params))
-                 include-future (if (seq includes)
-                                  (d/pull-many db includes (include-pull-opts params))
-                                  (ac/completed-future nil))]
-             (-> (ac/all-of [total-future match-future include-future])
-                 (ac/exceptionally
-                  #(assoc %
-                          ::anom/category ::anom/fault
-                          :fhir/issue "incomplete"))
-                 (ac/then-apply
-                  (fn [_]
-                    (cond->
-                     {:entries (entries context query match-future include-future)
-                      :next-handle next-match
-                      :total (ac/join total-future)}
-                      query
-                      (assoc :clauses (d/query-clauses query))))))))))))
+       (fn [{:keys [matches match-futures includes next-match query pull-timer]}]
+         (let [total-future (total-future db type query params matches next-match)
+               match-future (pull-matches pull-timer match-futures)
+               include-future (if (seq includes)
+                                (pull-includes db includes (include-pull-opts params))
+                                (ac/completed-future nil))]
+           (-> (ac/all-of [total-future match-future include-future])
+               (ac/exceptionally
+                #(assoc %
+                        ::anom/category ::anom/fault
+                        :fhir/issue "incomplete"))
+               (ac/then-apply
+                (fn [_]
+                  (cond->
+                   {:entries (entries context query match-future include-future)
+                    :next-handle next-match
+                    :total (ac/join total-future)}
+                    query
+                    (assoc :clauses (d/query-clauses query)))))))))))
 
 (defn- self-link
   [{::search-util/keys [link] :keys [self-link-url-fn]} clauses]
@@ -388,3 +460,6 @@
   (fn [request]
     (-> (search-context context request)
         (ac/then-compose search))))
+
+(reg-collector ::search-duration-seconds
+  search-duration-seconds)

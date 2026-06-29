@@ -12,6 +12,10 @@
   :args (s/cat :store :blaze.db/resource-cache :key ::rs/key)
   :ret ac/completable-future?)
 
+(s/fdef rc/get-skip-cache-insertion
+  :args (s/cat :store :blaze.db/resource-cache :key ::rs/key)
+  :ret ac/completable-future?)
+
 (s/fdef rc/multi-get
   :args (s/cat :store :blaze.db/resource-cache :keys (s/coll-of ::rs/key))
   :ret ac/completable-future?)
