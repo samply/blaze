@@ -24,6 +24,9 @@ env:
   BLAZECTL_VERSION: v1.4.0
   BLAZECTL_CHECKSUM: ed411d59b4856667c7817235caacdd0933c59858a342f91982141e6ce2c0e663
 
+  # renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
+  CLOJURE_CLI_VERSION: 1.12.4.1629
+
   # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
   VALIDATOR_VERSION: 6.9.11
   VALIDATOR_CHECKSUM: 5b87e3f8d28c3ec22d1db710d2570a00eb0c763ac9cdca61152f971b8db2fabc
@@ -35,8 +38,11 @@ jobs:
     steps:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      env:
+        # renovate: datasource=github-releases depName=weavejester/cljfmt
+        CLJFMT_VERSION: 0.16.3
       with:
-        cljfmt: 0.16.3
+        cljfmt: ${{ env.CLJFMT_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -50,8 +56,11 @@ jobs:
     steps:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      env:
+        # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
+        CLJ_KONDO_VERSION: 2026.01.19
       with:
-        clj-kondo: '2026.01.19'
+        clj-kondo: ${{ env.CLJ_KONDO_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -104,7 +113,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -210,7 +219,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -296,7 +305,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -363,7 +372,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -416,7 +425,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -497,7 +506,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -582,7 +591,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -667,7 +676,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -2807,7 +2816,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -3249,7 +3258,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
       with:
-        cli: '1.12.4.1629'
+        cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
