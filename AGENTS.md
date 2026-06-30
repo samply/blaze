@@ -40,6 +40,7 @@ Rigorous adherence to these patterns is required:
   * Avoid code duplication.
   * Use existing functions if possible.
   * Create a function if code is used more than two times.
+* **No no-op nil calls:** Don't deliberately call a function with a `nil` argument just so it does nothing and returns its input unchanged (e.g. a nil-tolerant pass-through wrapper for an optional dependency). This is an antipattern — it hides the optionality at the call site. Make the call conditional instead (e.g. with `cond->`), so the absence of the dependency is visible where it matters.
 * **Testing:**
   * **Test-Driven Development (mandatory):** Never change production code without first writing a failing test that captures the new behaviour. Write the test, see it fail, then make it pass. This applies to bug fixes (regression test first), new features, and contract changes (e.g. allowing an anomaly return value).
   * **Spec Instrumentation:** Always enable spec instrumentation in tests to catch spec violations early.
@@ -80,6 +81,8 @@ When starting to work on an issue, you can use the GitHub CLI to fetch the issue
 
 When **creating** an issue, classify it via GitHub's native issue **type** (e.g. `Bug`, `Feature`), not via a `bug`/`feature` label. The `gh issue create` flag for this is `--type` (e.g. `gh issue create --type Bug ...`). Only labels that aren't covered by a type (e.g. `module:db`) should be passed via `--label`.
 
+Always run `make build-ig` first on a freshly created git worktree. Some modules (e.g. `job-async-interaction` and anything depending on it, like `interaction`) need the generated IG resources, which are absent in a new worktree and would otherwise make prep fail.
+
 Before finishing a task, ensure the following commands pass:
 
 1.  **Format:** `make fmt`
@@ -95,9 +98,8 @@ When adding a **new module** under `modules/`, also add it to the `module` matri
 
 After verification, when working on an issue:
 
-1. Create a feature branch using the GitHub CLI: `gh issue develop <issue-number> --checkout`. **Always use the branch generated for the issue by this command — never create or push to an ad-hoc branch.**
-2. Commit the changes: `git add .` and `git commit`
+1. Commit the changes: `git add .` and `git commit`
    * The commit title should be the issue title. Both use the imperative mood, are written in title case, and fit within about 50 characters (e.g. `Fix Error Combining Composite Token-Token Params`).
    * The commit body should just contain: `Closes: #<issue-number>`
-   * Do **not** add a `Co-Authored-By` trailer (or any other AI/tool attribution). The changes are authored by the human committer who uses AI merely as a tool.
-3. There should be exactly one commit per issue. Multiple changes have to be ammended to the first commit.
+   * Do **not** add a `Co-Authored-By` trailer (or any other AI/tool attribution). The changes are authored by the human, who appears as the commit's author and uses AI merely as a tool; the AI assistant may appear only as the commit's committer.
+2. There should be exactly one commit per issue. Multiple changes have to be ammended to the first commit.
