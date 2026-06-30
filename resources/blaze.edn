@@ -78,7 +78,7 @@
      {:handler #blaze/ref :blaze.interaction.history/type}
     :create
     #:blaze.rest-api.interaction
-     {:handler #blaze/ref :blaze.interaction.main/create}
+     {:handler #blaze/ref :blaze.interaction/create}
     :search-type
     #:blaze.rest-api.interaction
      {:handler #blaze/ref :blaze.interaction/search-type}}}
@@ -147,7 +147,7 @@
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
-  [:blaze.interaction/create :blaze.interaction.main/create]
+  :blaze.interaction/create
   {:node #blaze/ref :blaze.db.main/node
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
