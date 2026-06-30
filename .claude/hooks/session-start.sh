@@ -30,7 +30,7 @@ CLJ_KONDO_VERSION="2026.01.19"
 CLJFMT_VERSION="0.16.3"
 # Pinned to match .github/scripts/install-actionlint.sh.
 # renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
-ACTIONLINT_VERSION="1.7.7"
+ACTIONLINT_VERSION="1.7.12"
 
 BIN_DIR="/usr/local/bin"
 

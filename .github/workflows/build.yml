@@ -59,7 +59,7 @@ jobs:
     - name: Install Actionlint
       env:
         # renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
-        ACTIONLINT_VERSION: 1.7.7
+        ACTIONLINT_VERSION: 1.7.12
       run: .github/scripts/install-actionlint.sh
 
     - name: Lint
