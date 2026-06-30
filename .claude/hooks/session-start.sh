@@ -25,7 +25,7 @@ JAVA_INSTALL_DIR="/opt/java"
 # renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
 CLOJURE_CLI_VERSION="1.12.5.1654"
 # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
-CLJ_KONDO_VERSION="2026.01.19"
+CLJ_KONDO_VERSION="2026.05.25"
 # renovate: datasource=github-releases depName=weavejester/cljfmt
 CLJFMT_VERSION="0.16.4"
 # Pinned to match .github/scripts/install-actionlint.sh.
