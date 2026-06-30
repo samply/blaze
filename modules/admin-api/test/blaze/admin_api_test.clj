@@ -20,7 +20,6 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
-   [blaze.interaction.create]
    [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
@@ -229,11 +228,6 @@
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
      :blaze/job-scheduler
-     {:node (ig/ref :blaze.db.admin/node)
-      :clock (ig/ref :blaze.test/fixed-clock)
-      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-
-     :blaze.interaction/create
      {:node (ig/ref :blaze.db.admin/node)
       :clock (ig/ref :blaze.test/fixed-clock)
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
