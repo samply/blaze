@@ -208,17 +208,25 @@
   (ba/not-found (resource-content-not-found-msg resource-handle)
                 :blaze.db/resource-handle resource-handle))
 
-(defn- to-resource [tx-cache resources resource-handle variant]
-  (if-let [resource (if (rh/deleted? resource-handle)
-                      (deleted-resource resource-handle)
-                      (get resources (node-util/rs-key resource-handle variant)))]
+(defn- enhance-or-not-found
+  "Returns the enhanced `resource` content of `resource-handle` or a not-found
+  anomaly if `resource` is nil."
+  [tx-cache resource-handle resource]
+  (if resource
     (enhance-resource tx-cache resource-handle resource)
     (resource-content-not-found-anom resource-handle)))
 
-(defn- get-resource [resource-cache resource-handle variant]
+(defn- to-resource [tx-cache resources resource-handle variant]
+  (enhance-or-not-found
+   tx-cache resource-handle
+   (if (rh/deleted? resource-handle)
+     (deleted-resource resource-handle)
+     (get resources (node-util/rs-key resource-handle variant)))))
+
+(defn- get-resource [resource-cache get resource-handle variant]
   (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
-    (rc/get resource-cache (node-util/rs-key resource-handle variant))))
+    (get resource-cache (node-util/rs-key resource-handle variant))))
 
 (defn- single-clause-with-code-fn? [codes]
   (fn [clauses]
@@ -307,13 +315,14 @@
                     (do-sync [clauses (compartment-clauses search-param-registry code type)]
                       (qc/->CompartmentSeekQuery code clauses (codec/tid type) other-clauses))))))))))))
 
-(def ^:private add-subsetted-xf
-  (map #(update % :meta update :tag conj-vec fu/subsetted)))
+(defn- subset-resource-fn [elements]
+  (let [keys (conj (seq elements) :fhir/type :id :meta)]
+    (fn [resource]
+      (-> (select-keys resource keys)
+          (update :meta update :tag conj-vec fu/subsetted)))))
 
 (defn- subset-xf [elements]
-  (let [keys (conj (seq elements) :fhir/type :id :meta)]
-    (comp (map #(select-keys % keys))
-          add-subsetted-xf)))
+  (map (subset-resource-fn elements)))
 
 (defn- changed-handles [node type t]
   (with-open [db (batch-db/new-batch-db node t t 0)]
@@ -411,12 +420,11 @@
 
   p/Pull
   (-pull [_ resource-handle variant]
-    (do-sync [resource (get-resource resource-cache resource-handle variant)]
-      (or (some->> resource (enhance-resource tx-cache resource-handle))
-          (resource-content-not-found-anom resource-handle))))
+    (do-sync [resource (get-resource resource-cache rc/get resource-handle variant)]
+      (enhance-or-not-found tx-cache resource-handle resource)))
 
   (-pull-content [_ resource-handle variant]
-    (do-sync [resource (get-resource resource-cache resource-handle variant)]
+    (do-sync [resource (get-resource resource-cache rc/get resource-handle variant)]
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
@@ -434,6 +442,17 @@
                        (halt-when ba/anomaly?))
            elements (comp (subset-xf elements)))
          resource-handles))))
+
+  (-pull-fn [_ opts]
+    (let [{:keys [variant elements skip-cache-insertion?] :or {variant :complete}} opts
+          get (if skip-cache-insertion?
+                rc/get-skip-cache-insertion
+                rc/get)
+          subset (some-> elements subset-resource-fn)]
+      (fn [resource-handle]
+        (do-sync [resource (get-resource resource-cache get resource-handle variant)]
+          (cond-> (enhance-or-not-found tx-cache resource-handle resource)
+            (and subset resource) subset)))))
 
   Runnable
   (run [node]

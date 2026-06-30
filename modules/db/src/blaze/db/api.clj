@@ -568,6 +568,25 @@
   ([node-or-db resource-handles opts]
    (p/-pull-many node-or-db resource-handles opts)))
 
+(defn pull-fn
+  "Returns a function that takes a single resource handle and returns a
+  CompletableFuture of its resource.
+
+  The same options as `pull-many` are available. They are processed once, so the
+  returned function can be applied to many resource handles cheaply. This allows
+  pulling resources individually, for example streaming them as their handles
+  become available, without the batching overhead of `pull-many`.
+
+  The returned future completes exceptionally with an anomaly if the resource
+  content was not found.
+
+  See: `pull-many`"
+  {:arglists '([node-or-db opts?])}
+  ([node-or-db]
+   (p/-pull-fn node-or-db {}))
+  ([node-or-db opts]
+   (p/-pull-fn node-or-db opts)))
+
 ;; ---- (Re) Index ------------------------------------------------------------
 
 (defn re-index-total

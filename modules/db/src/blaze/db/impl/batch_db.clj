@@ -272,6 +272,9 @@
   (-pull-many [_ resource-handles opts]
     (p/-pull-many node resource-handles opts))
 
+  (-pull-fn [_ opts]
+    (p/-pull-fn node opts))
+
   AutoCloseable
   (close [_]
     (.close ^AutoCloseable snapshot)))

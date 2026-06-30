@@ -63,6 +63,7 @@ gen simple-code-search-download-1M.txt        "Simple Code Search"              
 gen multiple-codes-search-download-1M.txt      "Multiple Codes Search"              1 3 7
 gen multiple-codes-search-vs-download-1M.txt   "Multiple Codes Search – ValueSet"   1 3 7
 gen multiple-search-param-search-download-1M.txt "Multiple Search Parameter Search" 1 3 8
+gen code-value-search-download-1M.txt          "Code and Value Search"             1 4 8
 gen code-patient-search-download-1M.txt        "Code and Patient Search"           1 3 7
 gen multiple-codes-patient-search-download-1M.txt "Multiple Codes and Patient Search" 1 3 7 "10,100"
 gen code-date-patient-search-download-1M.txt    "Code, Date, and Patient Search"    1 3 7

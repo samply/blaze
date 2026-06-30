@@ -34,6 +34,17 @@
   [cache key]
   (p/-get cache key))
 
+(defn get-skip-cache-insertion
+  "Returns a CompletableFuture that will complete with the resource content of
+  the resource with `key` or will complete with nil if it was not found.
+
+  The key is a tuple of `type`, `hash` and `variant`.
+
+  Will not insert the resource content into the cache but will return cached
+  resource content."
+  [cache key]
+  (p/-get-skip-cache-insertion cache key))
+
 (defn multi-get
   "Returns a CompletableFuture that will complete with a map from `key` to the
   resource content of all found `keys`.
@@ -70,6 +81,12 @@
   p/ResourceCache
   (-get [_ key]
     (.get cache key))
+
+  (-get-skip-cache-insertion [_ key]
+    (or (.getIfPresent cache key)
+        ;; use the protocol method directly because the key will not satisfy
+        ;; the spec of the rs/get function
+        (rs/-get resource-store key)))
 
   (-multi-get [_ keys]
     (.getAll cache keys))
@@ -121,6 +138,9 @@
       (reify
         p/ResourceCache
         (-get [_ key]
+          (rs/get resource-store key))
+
+        (-get-skip-cache-insertion [_ key]
           (rs/get resource-store key))
 
         (-multi-get [_ keys]

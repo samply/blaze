@@ -9933,6 +9933,114 @@
             ::anom/message := (format "The resource content of `Patient/1` with hash `%s` was not found."
                                       (:hash non-existing-rh))))))))
 
+(deftest pull-fn-test
+  (testing "success"
+    (doseq [skip-cache-insertion [true false nil]]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (with-open-db [db node]
+          (let [resource-handle (d/resource-handle db "Patient" "0")]
+            (doseq [target [node db]]
+              (let [pull (d/pull-fn
+                          target
+                          (cond-> {}
+                            (some? skip-cache-insertion)
+                            (assoc :skip-cache-insertion? skip-cache-insertion)))]
+                (given @(mtu/assoc-thread-name (pull resource-handle))
+                  [meta :thread-name] :? mtu/common-pool-thread?
+                  :fhir/type := :fhir/Patient
+                  :id := "0"
+                  [:meta :versionId] := #fhir/id "1"
+                  [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
+
+  (testing "summary"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-115910"
+               :version #fhir/string "version-170327"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-115927"}]}]]]
+
+      (let [db (d/db node)
+            resource-handle (d/resource-handle db "CodeSystem" "0")]
+        (doseq [target [node db]]
+          (let [pull (d/pull-fn target {:variant :summary})]
+            (given @(pull resource-handle)
+              :fhir/type := :fhir/CodeSystem
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"
+              [:meta :tag 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+              [:meta :tag 0 :code] := #fhir/code "SUBSETTED"
+              :url := #fhir/uri "system-115910"
+              :version := #fhir/string "version-170327"
+              :content := #fhir/code "complete"
+              :concept := nil))))))
+
+  (testing "pull only certain elements"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "system-191514"
+                    :code #fhir/code "code-191518"}]}}]]]
+
+      (with-open-db [db node]
+        (let [resource-handle (d/resource-handle db "Observation" "0")]
+          (doseq [target [node db]]
+            (let [pull (d/pull-fn target {:elements [:subject]})]
+              (given @(pull resource-handle)
+                :fhir/type := :fhir/Observation
+                :id := "0"
+                [:meta :tag 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                [:meta :tag 0 :code] := #fhir/code "SUBSETTED"
+                :code := nil
+                [:subject :reference] := #fhir/string "Patient/0")))))))
+
+  (testing "deleted resource"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
+
+      (let [db (d/db node)
+            resource-handle (d/resource-handle db "Patient" "0")]
+        (doseq [target [node db]]
+          (let [pull (d/pull-fn target)]
+            (given @(pull resource-handle)
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id "2"
+              [meta :blaze.db/op] := :delete))))))
+
+  (testing "resource content not-found"
+    (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-config)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [db (d/db node)
+            resource-handle (d/resource-handle db "Patient" "0")]
+        (doseq [target [node db]]
+          (let [pull (d/pull-fn target)]
+            (given-failed-future (pull resource-handle)
+              ::anom/category := ::anom/not-found
+              ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                        (:hash resource-handle)))))))))
+
+(deftest pull-opts-spec-test
+  (testing "valid"
+    (are [opts] (s/valid? :blaze.db/pull-opts opts)
+      {}
+      {:variant :summary}
+      {:elements [:subject]}))
+
+  (testing "invalid"
+    (is (not (s/valid? :blaze.db/pull-opts "not-a-map")))))
+
 ;; ---- Instance-Level History Functions --------------------------------------
 
 (deftest instance-history-test

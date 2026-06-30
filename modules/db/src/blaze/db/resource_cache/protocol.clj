@@ -3,6 +3,8 @@
 (defprotocol ResourceCache
   (-get [cache key])
 
+  (-get-skip-cache-insertion [cache key])
+
   (-multi-get [cache key])
 
   (-multi-get-skip-cache-insertion [cache key]))
