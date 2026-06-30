@@ -23,7 +23,7 @@ JAVA_INSTALL_DIR="/opt/java"
 
 # Versions pinned to match CI (.github/workflows/build.yml).
 # renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
-CLOJURE_CLI_VERSION="1.12.4.1629"
+CLOJURE_CLI_VERSION="1.12.5.1654"
 # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
 CLJ_KONDO_VERSION="2026.01.19"
 # renovate: datasource=github-releases depName=weavejester/cljfmt
