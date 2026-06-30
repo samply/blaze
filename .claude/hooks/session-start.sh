@@ -2,10 +2,10 @@
 # SessionStart hook: install the Java + Clojure toolchain for Claude Code on the web.
 #
 # Blaze is a Clojure project built with tools.deps. The base remote image ships
-# Java 21 and GNU Make, but not Java 25, the Clojure CLI, clj-kondo, or cljfmt,
-# which the Makefile targets (make fmt / make lint / make test) depend on. This
-# installs them, pinning the Clojure tool versions used by CI
-# (.github/workflows/build.yml).
+# Java 21 and GNU Make, but not Java 25, the Clojure CLI, clj-kondo, cljfmt, or
+# actionlint, which the Makefile targets (make fmt / make lint / make test)
+# depend on. This installs them, pinning the tool versions used by CI
+# (.github/workflows/build.yml and .github/scripts/install-actionlint.sh).
 #
 # Synchronous and idempotent: each tool is only fetched if it is missing.
 
@@ -17,13 +17,20 @@ if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
 fi
 
 # Java feature version to install (Eclipse Temurin, latest GA patch of this line).
+# renovate: datasource=docker depName=eclipse-temurin versioning=docker
 JAVA_VERSION="25"
 JAVA_INSTALL_DIR="/opt/java"
 
 # Versions pinned to match CI (.github/workflows/build.yml).
+# renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
 CLOJURE_CLI_VERSION="1.12.4.1629"
+# renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
 CLJ_KONDO_VERSION="2026.01.19"
+# renovate: datasource=github-releases depName=weavejester/cljfmt
 CLJFMT_VERSION="0.16.3"
+# Pinned to match .github/scripts/install-actionlint.sh.
+# renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
+ACTIONLINT_VERSION="1.7.7"
 
 BIN_DIR="/usr/local/bin"
 
@@ -99,6 +106,19 @@ if ! command -v cljfmt >/dev/null 2>&1; then
   rm -rf "${tmp}"
 else
   echo "cljfmt already installed: $(cljfmt --version 2>&1)"
+fi
+
+# actionlint (used by `make lint` via the lint-workflows target).
+if ! command -v actionlint >/dev/null 2>&1; then
+  echo "Installing actionlint ${ACTIONLINT_VERSION}..."
+  tmp="$(mktemp -d)"
+  curl -sL -o "${tmp}/actionlint.tar.gz" \
+    "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+  tar -xzf "${tmp}/actionlint.tar.gz" -C "${tmp}"
+  install -m 0755 "${tmp}/actionlint" "${BIN_DIR}/actionlint"
+  rm -rf "${tmp}"
+else
+  echo "actionlint already installed: $(actionlint --version 2>&1 | head -1)"
 fi
 
 echo "Java + Clojure toolchain ready (JAVA_HOME=${JAVA_HOME})."

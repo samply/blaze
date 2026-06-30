@@ -1,0 +1,54 @@
+name: Renovate
+
+on:
+  pull_request:
+    branches:
+    - main
+    paths:
+    - renovate.json
+    - .claude/hooks/session-start.sh
+    - .github/workflows/renovate.yml
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  # renovate: datasource=npm depName=renovate
+  RENOVATE_VERSION: 43.247.1
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+    - name: Setup Node
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      with:
+        node-version-file: .nvmrc
+
+    - name: Validate Renovate Config
+      run: npx --yes --package "renovate@${RENOVATE_VERSION}" -- renovate-config-validator --strict
+
+    # Full dry run: resolves every datasource (including the custom manager for
+    # .claude/hooks/session-start.sh) and logs the updates Renovate would create,
+    # without opening any branches or pull requests. Renovate clones the repo
+    # itself rather than using the checked-out tree, so analyse this branch (not
+    # the default branch) and read its config so the dry run reflects the PR.
+    - name: Renovate Dry Run
+      env:
+        RENOVATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RENOVATE_DRY_RUN: full
+        RENOVATE_REPOSITORIES: ${{ github.repository }}
+        RENOVATE_BASE_BRANCHES: ${{ github.head_ref || github.ref_name }}
+        RENOVATE_USE_BASE_BRANCH_CONFIG: merge
+        # info (the default) logs the updates Renovate would create; debug floods
+        # the log with per-dependency lookup detail.
+        LOG_LEVEL: info
+      run: npx --yes --package "renovate@${RENOVATE_VERSION}" -- renovate
