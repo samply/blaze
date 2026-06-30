@@ -57,6 +57,9 @@ jobs:
       uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
     - name: Install Actionlint
+      env:
+        # renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
+        ACTIONLINT_VERSION: 1.7.7
       run: .github/scripts/install-actionlint.sh
 
     - name: Lint
