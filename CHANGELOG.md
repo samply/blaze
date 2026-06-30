@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.10.0
+
+### Enhancements
+
+* Add `parameters` Input to $evaluate-measure ([#3745](https://github.com/samply/blaze/issues/3745))
+* Add Option to Disable MeasureReport Persistence ([#3755](https://github.com/samply/blaze/issues/3755))
+
+### Performance
+
+* Pull Match Resources During the Type Search Scan ([#3720](https://github.com/samply/blaze/issues/3720))
+
+### Bugfixes
+
+* Constrain Paging Link Header Size ([#3759](https://github.com/samply/blaze/issues/3759))
+* Report Modifier below as Unsupported for Type Non-Canonicals ([#3635](https://github.com/samply/blaze/issues/3635))
+
+### Documentation
+
+* Improve FHIR Search Performance Documentation ([#3766](https://github.com/samply/blaze/issues/3766))
+* Document CA Certificate Injection ([#3575](https://github.com/samply/blaze/issues/3575))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/127?closed=1).
+
 ## v1.9.0
 
 ### Performance
