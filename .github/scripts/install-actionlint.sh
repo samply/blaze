@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
-version="1.7.7"
+url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+curl -sSfL "$url" > actionlint.tar.gz
 
-curl -sLO "https://github.com/rhysd/actionlint/releases/download/v${version}/actionlint_${version}_linux_amd64.tar.gz"
-tar xzf "actionlint_${version}_linux_amd64.tar.gz"
-rm "actionlint_${version}_linux_amd64.tar.gz"
-sudo mv ./actionlint /usr/local/bin/actionlint
+tar -xzf actionlint.tar.gz
+mkdir -p ~/.local/bin/
+mv ./actionlint ~/.local/bin/actionlint
