@@ -196,9 +196,7 @@ jobs:
         - terminology-service-local
         - thread-pool-executor-collector
 
-        java-version:
-        - '21'
-        - '25'
+        java-version: ${{ github.event_name == 'schedule' && fromJSON('["21", "25"]') || fromJSON('["25"]') }}
 
         exclude:
         - module: jepsen
@@ -286,9 +284,7 @@ jobs:
         module:
         - db
 
-        java-version:
-        - '21'
-        - '25'
+        java-version: ${{ github.event_name == 'schedule' && fromJSON('["21", "25"]') || fromJSON('["25"]') }}
 
       fail-fast: false
 
@@ -488,9 +484,7 @@ jobs:
   test-root:
     strategy:
       matrix:
-        java-version:
-        - '21'
-        - '25'
+        java-version: ${{ github.event_name == 'schedule' && fromJSON('["21", "25"]') || fromJSON('["25"]') }}
       fail-fast: false
 
     needs: [ ig, prep-deps ]
