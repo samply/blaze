@@ -419,7 +419,7 @@
           [meta :blaze.db/op] := :put
           [:birthDate :extension 0 :url] := "foo"
           [:birthDate :extension 0 :value] := #fhir/code "bar"
-          [:birthDate :value] := #system/date"2022"))))
+          [:birthDate :value] := #system/date "2022"))))
 
   (testing "one Patient with one Observation"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4736,6 +4736,70 @@
         count := 2
         [0 :id] := "id-0"
         [1 :id] := "id-1"))))
+
+(deftest type-query-value-set-url-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/ValueSet :id "id-0"
+             :url #fhir/uri "http://example.com/vs-091902"
+             :version #fhir/string "1.0.0"
+             :status #fhir/code "active"}]
+      [:put {:fhir/type :fhir/ValueSet :id "id-1"
+             :url #fhir/uri "http://example.com/vs-091902"
+             :version #fhir/string "2.4.1"
+             :status #fhir/code "active"}]
+      [:put {:fhir/type :fhir/ValueSet :id "id-2"
+             :url #fhir/uri "http://example.com/vs-091902"
+             :version #fhir/string "2.7.3"
+             :status #fhir/code "active"}]
+      [:put {:fhir/type :fhir/ValueSet :id "id-3"
+             :url #fhir/uri "http://example.com/vs-other"
+             :version #fhir/string "1.0.0"
+             :status #fhir/code "active"}]]]
+
+    (testing "url"
+      (testing "exact match without version finds all versions"
+        (given-type-query node "ValueSet" [["url" "http://example.com/vs-091902"]]
+          count := 3
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"
+          [2 :id] := "id-2"))
+
+      (testing "exact match with version finds only matching version"
+        (given-type-query node "ValueSet" [["url" "http://example.com/vs-091902|1.0.0"]]
+          count := 1
+          [0 :id] := "id-0"))
+
+      (testing "exact match with wrong version finds nothing"
+        (given-type-query node "ValueSet" [["url" "http://example.com/vs-091902|9.9.9"]]
+          count := 0))
+
+      (testing "below with URL only matches all versions"
+        (given-type-query node "ValueSet" [["url:below" "http://example.com/vs-091902"]]
+          count := 3
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"
+          [2 :id] := "id-2"))
+
+      (testing "below with URL and major version 1"
+        (given-type-query node "ValueSet" [["url:below" "http://example.com/vs-091902|1"]]
+          count := 1
+          [0 :id] := "id-0"))
+
+      (testing "below with URL and major version 2"
+        (given-type-query node "ValueSet" [["url:below" "http://example.com/vs-091902|2"]]
+          count := 2
+          [0 :id] := "id-1"
+          [1 :id] := "id-2"))
+
+      (testing "below with URL and minor version 2.4"
+        (given-type-query node "ValueSet" [["url:below" "http://example.com/vs-091902|2.4"]]
+          count := 1
+          [0 :id] := "id-1"))
+
+      (testing "below with URL and patch version 2.4.1"
+        (given-type-query node "ValueSet" [["url:below" "http://example.com/vs-091902|2.4.1"]]
+          count := 1
+          [0 :id] := "id-1")))))
 
 (deftest type-query-observation-code-value-quantity-test
   (with-system-data [{:blaze.db/keys [node]} config]

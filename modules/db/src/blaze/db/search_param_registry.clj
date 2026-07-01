@@ -361,8 +361,16 @@
      (str " including extra search parameters from file: " extra-bundle-file)))
   (let [entries (read-bundle-entries extra-bundle-file)
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")
+        canonical-url-set (sdr/canonical-url-expressions structure-definition-repo)
+        ;; An expression may be a `|`-separated union of paths (e.g. the
+        ;; `depends-on` or `conformance-url` search parameters).
+        ;; `canonical-url-expression?` uses `every?`: version-aware `.url`
+        ;; indexing only applies when all branches are
+        ;; conformance/knowledge-resource `.url` paths.
+        split-all?       (fn [s e] (every? s (map str/trim (str/split e #"\|"))))
         context {:code-expression? (sdr/code-expressions structure-definition-repo)
                  :canonical-expression? (sdr/canonical-expressions structure-definition-repo)
+                 :canonical-url-expression? (partial split-all? canonical-url-set)
                  :terminology-service terminology-service}]
     (if-ok [{url-index :index} (build-url-index context entries)]
       (let [index (build-index url-index entries)

@@ -4,6 +4,7 @@
    [blaze.fhir.structure-definition-repo.protocols :as p]
    [blaze.fhir.structure-definition-repo.spec]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [integrant.core :as ig]
    [jsonista.core :as j]
    [taoensso.timbre :as log]))
@@ -48,6 +49,36 @@
    (mapcat (comp (partial single-type-paths "code") :element :snapshot))
    (resources repo)))
 
+(defn- single-type-code [element]
+  (let [types (:type element)]
+    (when (= 1 (count types))
+      (:code (first types)))))
+
+(defn- publication-status-binding? [element]
+  (str/includes? (get-in element [:binding :valueSet] "") "publication-status"))
+
+(defn canonical-url-expressions
+  "Returns a set of element paths whose single type is `uri`, whose resource has
+  both a `.version` element and a `.status` element bound to the
+  `publication-status` value set (the FHIR canonical/metadata-resource pattern).
+
+  These are the `.url` paths of conformance and knowledge resources, e.g.
+  `CapabilityStatement.url`, `ValueSet.url`."
+  [repo]
+  (into
+   #{}
+   (keep
+    (fn [{:keys [id snapshot]}]
+      (let [by-path (into {} (map (juxt :path identity)) (:element snapshot))
+            url-el  (get by-path (str id ".url"))
+            st-el   (get by-path (str id ".status"))]
+        (when (and url-el
+                   (= "uri" (single-type-code url-el))
+                   (get by-path (str id ".version"))
+                   (publication-status-binding? st-el))
+          (str id ".url")))))
+   (resources repo)))
+
 (defn- complex-type-canonical-sub-paths
   [repo]
   (into
@@ -62,7 +93,7 @@
 (defn- register-all!
   "Register specs for all FHIR data types and resources.
 
-  That specs are used to conform and unform resources from JSON/XML to the
+  These specs are used to conform and unform resources from JSON/XML to the
   internal format."
   [repo]
   (log/trace "Register primitive types")
