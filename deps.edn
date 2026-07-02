@@ -117,7 +117,7 @@
     {:mvn/version "0.61.0"}
 
     refactor-nrepl/refactor-nrepl
-    {:mvn/version "3.13.0"}
+    {:mvn/version "3.14.0"}
 
     mx.cider/sayid
     {:mvn/version "0.3.0"}}
