@@ -112,7 +112,8 @@
     com.google.errorprone/error_prone_annotations
     org.apache.santuario/xmlsec
     org.commonmark/commonmark
-    org.commonmark/commonmark-ext-gfm-tables]}
+    org.commonmark/commonmark-ext-gfm-tables
+    org.eclipse.jgit/org.eclipse.jgit]}
 
   com.fasterxml.jackson.datatype/jackson-datatype-jsr310
   {:mvn/version "2.22.0"}
