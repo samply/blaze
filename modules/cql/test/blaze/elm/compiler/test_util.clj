@@ -75,6 +75,12 @@
       {:name "A"}
       {:name "2019"}
       {:name "2020"}
+      {:name "fhir-date-2019"}
+      {:name "fhir-date-2020"}
+      {:name "fhir-date-2021"}
+      {:name "fhir-dateTime-2019"}
+      {:name "fhir-dateTime-2020"}
+      {:name "fhir-dateTime-2021"}
       {:name "2021"}
       {:name "2022"}
       {:name "12:54:00"}
@@ -92,6 +98,12 @@
     "2020" #system/date"2020"
     "2021" #system/date"2021"
     "2022" #system/date"2022"
+    "fhir-date-2019" #fhir/dateTime #system/date"2019"
+    "fhir-date-2020" #fhir/dateTime #system/date"2020"
+    "fhir-date-2021" #fhir/dateTime #system/date"2021"
+    "fhir-dateTime-2019" #fhir/dateTime #system/date-time"2019"
+    "fhir-dateTime-2020" #fhir/dateTime #system/date-time"2020"
+    "fhir-dateTime-2021" #fhir/dateTime #system/date-time"2021"
     "12:54:00" #system/time"12:54:00"
     "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
     "[1]" [1] "[1 2]" [1 2]
@@ -101,8 +113,11 @@
 (defn dynamic-compile [elm]
   (c/compile dynamic-compile-ctx elm))
 
+(defn dynamic-eval [expr]
+  (core/-eval expr dynamic-eval-ctx nil nil))
+
 (defn dynamic-compile-eval [elm]
-  (core/-eval (dynamic-compile elm) dynamic-eval-ctx nil nil))
+  (dynamic-eval (dynamic-compile elm)))
 
 (defn binary-operand [type]
   {:type type :operand [{:type "Null"} {:type "Null"}]})

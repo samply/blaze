@@ -123,7 +123,34 @@
 
       (elm/interval [#elm/integer "1"
                      (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref "nil"]) :>])
-      (interval 1 nil)))
+      (interval 1 nil))
+
+    (testing "FunctionRef"
+      (testing "ToDate"
+        (are [elm res] (= res (ctu/dynamic-compile-eval elm))
+          #elm/interval [#elm/function-ref ["ToDate" #elm/parameter-ref "fhir-date-2020"]
+                         #elm/function-ref ["ToDate" #elm/parameter-ref "fhir-date-2021"]]
+          (interval #system/date"2020" #system/date"2021"))
+
+        (testing "form"
+          (has-form
+           (ctu/dynamic-compile #elm/interval [#elm/function-ref ["ToDate" #elm/parameter-ref "fhir-date-2020"]
+                                               #elm/function-ref ["ToDate" #elm/parameter-ref "fhir-date-2021"]])
+            '(interval (call "ToDate" (param-ref "fhir-date-2020"))
+                       (call "ToDate" (param-ref "fhir-date-2021"))))))
+
+      (testing "ToDateTime"
+        (are [elm res] (= res (ctu/dynamic-compile-eval elm))
+          #elm/interval [#elm/function-ref ["ToDateTime" #elm/parameter-ref "fhir-dateTime-2020"]
+                         #elm/function-ref ["ToDateTime" #elm/parameter-ref "fhir-dateTime-2021"]]
+          (interval #system/date-time"2020" #system/date-time"2021"))
+
+        (testing "form"
+          (has-form
+           (ctu/dynamic-compile #elm/interval [#elm/function-ref ["ToDateTime" #elm/parameter-ref "fhir-dateTime-2020"]
+                                               #elm/function-ref ["ToDateTime" #elm/parameter-ref "fhir-dateTime-2021"]])
+            '(interval (call "ToDateTime" (param-ref "fhir-dateTime-2020"))
+                       (call "ToDateTime" (param-ref "fhir-dateTime-2021"))))))))
 
   (testing "Invalid interval"
     (are [elm] (thrown? Exception (core/-eval (c/compile {} elm) {} nil nil))
