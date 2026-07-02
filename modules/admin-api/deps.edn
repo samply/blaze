@@ -38,82 +38,46 @@
   {:mvn/version "0.10.1"
    :exclusions [javax.xml.bind/jaxb-api]}
 
-  ca.uhn.hapi.fhir/hapi-fhir-validation
-  {:mvn/version "8.10.0"
-   :exclusions
-   [com.nimbusds/nimbus-jose-jwt
-    commons-beanutils/commons-beanutils
-    info.cqframework/cql
-    info.cqframework/qdm
-    info.cqframework/quick
-    info.cqframework/cql-to-elm
-    info.cqframework/elm
-    info.cqframework/model
-    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
-    net.sf.saxon/Saxon-HE
-    net.sourceforge.plantuml/plantuml-mit
-    org.ogce/xpp3
-    ognl/ognl
-    org.attoparser/attoparser
-    org.unbescape/unbescape
-    org.xerial/sqlite-jdbc
-    org.apache.commons/commons-collections4
-    org.apache.httpcomponents/httpclient
-    com.google.errorprone/error_prone_annotations
-    org.apache.santuario/xmlsec
-    org.commonmark/commonmark
-    org.commonmark/commonmark-ext-gfm-tables]}
-
-  ca.uhn.hapi.fhir/hapi-fhir-structures-r4
+  ca.uhn.hapi.fhir/hapi-fhir-base
   {:mvn/version "8.10.0"
    :exclusions
    [com.google.code.findbugs/jsr305
-    commons-net/commons-net
-    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
-    ;; Remove after https://github.com/hapifhir/hapi-fhir/issues/7005 is fixed
-    org.apache.jena/jena-shex
-    net.sf.saxon/Saxon-HE]}
-
-  ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
-  {:mvn/version "8.10.0"
-   :exclusions
-   [com.google.code.findbugs/jsr305
-    io.opentelemetry/opentelemetry-api
-    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
-    org.slf4j/jcl-over-slf4j]}
-
-  ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
-  {:mvn/version "8.10.0"
-   :exclusions
-   [io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
+    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.validation
-  {:mvn/version "6.9.4.2"
+  {:mvn/version "6.9.11"
    :exclusions
-   [com.nimbusds/nimbus-jose-jwt
+   [ca.uhn.hapi.fhir/hapi-fhir-base
+    ca.uhn.hapi.fhir/org.hl7.fhir.dstu2
+    ca.uhn.hapi.fhir/org.hl7.fhir.dstu2016may
+    ca.uhn.hapi.fhir/org.hl7.fhir.dstu3
+    ca.uhn.hapi.fhir/org.hl7.fhir.dstu3.support
+    ca.uhn.hapi.fhir/org.hl7.fhir.r4b
+    com.google.errorprone/error_prone_annotations
+    com.nimbusds/nimbus-jose-jwt
     commons-beanutils/commons-beanutils
     commons-net/commons-net
     info.cqframework/cql
-    info.cqframework/qdm
-    info.cqframework/quick
     info.cqframework/cql-to-elm
     info.cqframework/elm
     info.cqframework/model
+    info.cqframework/qdm
+    info.cqframework/quick
     io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
     net.sf.saxon/Saxon-HE
     net.sourceforge.plantuml/plantuml-mit
-    org.ogce/xpp3
     ognl/ognl
-    org.attoparser/attoparser
-    org.unbescape/unbescape
-    org.xerial/sqlite-jdbc
-    org.apache.commons/commons-collections4
+    org.apache.commons/commons-compress
     org.apache.httpcomponents/httpclient
-    com.google.errorprone/error_prone_annotations
     org.apache.santuario/xmlsec
+    org.attoparser/attoparser
     org.commonmark/commonmark
     org.commonmark/commonmark-ext-gfm-tables
-    org.eclipse.jgit/org.eclipse.jgit]}
+    org.eclipse.jgit/org.eclipse.jgit
+    org.ogce/xpp3
+    org.thymeleaf/thymeleaf
+    org.unbescape/unbescape
+    org.xerial/sqlite-jdbc]}
 
   com.fasterxml.jackson.datatype/jackson-datatype-jsr310
   {:mvn/version "2.22.0"}

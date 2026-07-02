@@ -74,16 +74,12 @@
   (log/trace "Register resources")
   (si/register (mapcat si/struct-def->spec-def (resources repo))))
 
-(def ^:private object-mapper
-  (j/object-mapper
-   {:decode-key-fn true}))
-
 (defn- read-bundle
   "Reads a bundle from classpath named `resource-name`."
   [resource-name]
   (log/trace (format "Read FHIR bundle `%s`." resource-name))
   (with-open [rdr (io/reader (io/resource resource-name))]
-    (j/read-value rdr object-mapper)))
+    (j/read-value rdr j/keyword-keys-object-mapper)))
 
 (defn- abstract-base-resources
   []

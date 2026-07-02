@@ -11,6 +11,10 @@ COPY target/blaze-1.10.1-standalone.jar /app/
 WORKDIR /app
 USER 1001
 
+# The user 1001 has no passwd entry, so HOME would default to `/`. The
+# org.hl7.fhir validator builds paths like `$HOME/.fhir/fhir-settings.json`
+# and fails on a root home directory.
+ENV HOME="/app/data"
 ENV LD_PRELOAD="libjemalloc.so.2"
 ENV BASE_JAVA_TOOL_OPTIONS="-XX:+UseCompactObjectHeaders --enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=allow"
 ENV STORAGE="standalone"

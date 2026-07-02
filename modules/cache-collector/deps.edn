@@ -8,8 +8,8 @@
   com.github.ben-manes.caffeine/caffeine
   {:mvn/version "3.2.4"
    :exclusions
-   [org.jspecify/jspecify
-    com.google.errorprone/error_prone_annotations]}}
+   [com.google.errorprone/error_prone_annotations
+    org.jspecify/jspecify]}}
 
  :aliases
  {:test

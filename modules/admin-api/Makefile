@@ -9,7 +9,7 @@ prep:
 	clojure -X:deps prep :aliases '[:test]'
 
 test: prep
-	clojure -M:test:kaocha --profile :ci
+	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha --profile :ci
 
 test-focus: prep
 	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"

@@ -22,35 +22,38 @@
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
 
   ca.uhn.hapi.fhir/hapi-fhir-base
-  {:mvn/version "8.10.0"}
+  {:mvn/version "8.10.0"
+   :exclusions
+   [com.google.code.findbugs/jsr305
+    io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.r5
-  {:mvn/version "6.9.4.2"
+  {:mvn/version "6.9.11"
    :exclusions
-   [com.nimbusds/nimbus-jose-jwt
+   [com.google.errorprone/error_prone_annotations
+    com.nimbusds/nimbus-jose-jwt
     commons-beanutils/commons-beanutils
     commons-net/commons-net
     info.cqframework/cql
-    info.cqframework/qdm
-    info.cqframework/quick
     info.cqframework/cql-to-elm
     info.cqframework/elm
     info.cqframework/model
+    info.cqframework/qdm
+    info.cqframework/quick
     io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
     net.sf.saxon/Saxon-HE
     net.sourceforge.plantuml/plantuml-mit
-    org.ogce/xpp3
     ognl/ognl
-    org.attoparser/attoparser
-    org.unbescape/unbescape
-    org.xerial/sqlite-jdbc
     org.apache.commons/commons-collections4
     org.apache.httpcomponents/httpclient
-    com.google.errorprone/error_prone_annotations
     org.apache.santuario/xmlsec
+    org.attoparser/attoparser
     org.commonmark/commonmark
     org.commonmark/commonmark-ext-gfm-tables
-    org.eclipse.jgit/org.eclipse.jgit]}
+    org.eclipse.jgit/org.eclipse.jgit
+    org.ogce/xpp3
+    org.unbescape/unbescape
+    org.xerial/sqlite-jdbc]}
 
   ring/ring-codec
   {:mvn/version "1.3.0"}

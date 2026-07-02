@@ -40,9 +40,9 @@
   ring/ring-core
   {:mvn/version "1.15.5"
    :exclusions
-   [org.apache.commons/commons-fileupload2-core
-    crypto-equality/crypto-equality
-    crypto-random/crypto-random]}}
+   [crypto-equality/crypto-equality
+    crypto-random/crypto-random
+    org.apache.commons/commons-fileupload2-core]}}
 
  :aliases
  {:test
