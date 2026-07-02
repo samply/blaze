@@ -611,14 +611,72 @@
 
     (testing "Interval"
       (testing "low"
-        (are [elm result] (= result (c/compile {} elm))
-          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2"] "low"]
-          1))
+        (let [elm #elm/source-property [#elm/interval [#elm/parameter-ref "1" #elm/integer "2"] "low"]
+              expr (ctu/dynamic-compile elm)]
+
+          (testing "eval"
+            (is (= 1 (ctu/dynamic-eval expr))))
+
+          (testing "form"
+            (has-form expr '(param-ref "1")))))
 
       (testing "high"
+        (let [elm #elm/source-property [#elm/interval [#elm/integer "1" #elm/parameter-ref "2"] "high"]
+              expr (ctu/dynamic-compile elm)]
+
+          (testing "eval"
+            (is (= 2 (ctu/dynamic-eval expr))))
+
+          (testing "form"
+            (has-form expr '(param-ref "2")))))
+
+      (testing "lowClosed and highClosed default to true"
         (are [elm result] (= result (c/compile {} elm))
-          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2"] "high"]
-          2)))
+          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2"] "lowClosed"]
+          true
+          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2"] "highClosed"]
+          true))
+
+      (testing "open bounds"
+        (are [elm result] (= result (c/compile {} elm))
+          #elm/source-property [#elm/interval [:< #elm/integer "1" #elm/integer "2"] "lowClosed"]
+          false
+          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2" :>] "highClosed"]
+          false))
+
+      (testing "missing bounds resolve to null"
+        (are [elm result] (= result (c/compile {} elm))
+          #elm/source-property [{:type "Interval" :high #elm/integer "2"} "low"]
+          nil
+          #elm/source-property [{:type "Interval" :low #elm/integer "1"} "high"]
+          nil))
+
+      (testing "lowClosedExpression"
+        (doseq [bool [true false]]
+          (let [elm #elm/source-property [{:type "Interval" :lowClosedExpression #elm/parameter-ref (str bool)} "lowClosed"]
+                expr (ctu/dynamic-compile elm)]
+
+            (testing "eval"
+              (is (= bool (ctu/dynamic-eval expr))))
+
+            (testing "form"
+              (has-form expr `(~'param-ref ~(str bool)))))))
+
+      (testing "highClosedExpression"
+        (doseq [bool [true false]]
+          (let [elm #elm/source-property [{:type "Interval" :highClosedExpression #elm/parameter-ref (str bool)} "highClosed"]
+                expr (ctu/dynamic-compile elm)]
+
+            (testing "eval"
+              (is (= bool (ctu/dynamic-eval expr))))
+
+            (testing "form"
+              (has-form expr `(~'param-ref ~(str bool)))))))
+
+      (testing "unkown propery resolves to null"
+        (are [elm result] (= result (c/compile {} elm))
+          #elm/source-property [#elm/interval [#elm/integer "1" #elm/integer "2"] "unknown"]
+          nil)))
 
     (testing "nil"
       (are [elm result] (= result (c/compile {} elm))

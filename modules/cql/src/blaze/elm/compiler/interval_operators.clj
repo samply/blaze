@@ -11,10 +11,17 @@
    [blaze.elm.protocols :as p]))
 
 ;; 19.1. Interval
-(defn- determine-type [{:keys [resultTypeName asType type]}]
+(def ^:private function-ref-point-types
+  "Point types of FHIRHelpers conversion functions that can appear as interval
+  bounds when an interval is constructed directly from FHIR values."
+  {"ToDate" "{urn:hl7-org:elm-types:r1}Date"
+   "ToDateTime" "{urn:hl7-org:elm-types:r1}DateTime"})
+
+(defn- determine-type [{:keys [resultTypeName asType type] fn-name :name}]
   (or resultTypeName
       asType
-      (when (= "ToDateTime" type) "{urn:hl7-org:elm-types:r1}DateTime")))
+      (when (= "ToDateTime" type) "{urn:hl7-org:elm-types:r1}DateTime")
+      (when (= "FunctionRef" type) (function-ref-point-types fn-name))))
 
 (defn- interval-expr [type low high low-closed-expression
                       high-closed-expression low-closed high-closed]

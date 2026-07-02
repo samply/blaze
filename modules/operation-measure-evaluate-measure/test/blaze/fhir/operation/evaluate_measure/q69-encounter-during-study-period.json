@@ -1,0 +1,250 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "3"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "0",
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://example.com/fhir/CodeSystem/encounter-type",
+                "code": "outpatient"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "period": {
+          "start": "2020-03-01",
+          "end": "2020-03-05"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "1",
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://example.com/fhir/CodeSystem/encounter-type",
+                "code": "outpatient"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/1"
+        },
+        "period": {
+          "start": "2020-06-15",
+          "end": "2020-06-20"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "2",
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://example.com/fhir/CodeSystem/encounter-type",
+                "code": "outpatient"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/2"
+        },
+        "period": {
+          "start": "2019-11-01",
+          "end": "2019-11-05"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "3",
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://example.com/fhir/CodeSystem/encounter-type",
+                "code": "inpatient"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/3"
+        },
+        "period": {
+          "start": "2020-05-01",
+          "end": "2020-05-05"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Encounter/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "0",
+        "url": "urn:oid:2.16.840.1.113883.3.464.1003.101.12.1087",
+        "compose": {
+          "include": [
+            {
+              "system": "http://example.com/fhir/CodeSystem/encounter-type",
+              "concept": [
+                {
+                  "code": "outpatient"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "ValueSet/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CodeSystem",
+        "id": "0",
+        "url": "http://example.com/fhir/CodeSystem/encounter-type",
+        "content": "complete",
+        "concept": [
+          {
+            "code": "outpatient",
+            "display": "Outpatient"
+          },
+          {
+            "code": "inpatient",
+            "display": "Inpatient"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "CodeSystem/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql-identifier",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}

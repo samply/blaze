@@ -187,17 +187,41 @@
         (throw-anom (ba/unsupported (format "Unsupported path `%s`with more than one part." path))))
       [(keyword first-part)])))
 
+(defn- boolean-literal [value]
+  {:type "Literal"
+   :valueType "{urn:hl7-org:elm-types:r1}Boolean"
+   :value (str value)})
+
+(defn- interval-selector-property
+  "Resolves access of `key` on an interval selector to the corresponding bound
+  expression, so that e.g. `Interval[a, b].low` resolves to `a` instead of
+  materializing the interval."
+  [{:keys [low high lowClosed highClosed]
+    low-closed-expr :lowClosedExpression
+    high-closed-expr :highClosedExpression
+    :or {lowClosed true highClosed true}}
+   key]
+  (case key
+    :low (or low {:type "Null"})
+    :high (or high {:type "Null"})
+    :lowClosed (or low-closed-expr (boolean-literal lowClosed))
+    :highClosed (or high-closed-expr (boolean-literal highClosed))
+    {:type "Null"}))
+
 (defmethod core/compile* :elm.compiler.type/property
   [context {:keys [source scope path]}]
   (let [[key value?] (path->key path)]
     (cond
       source
-      (if value?
-        (source-property-value-expr (core/compile* context source) key)
-        (let [source (core/compile* context source)]
-          (if (core/static? source)
-            (p/get source key)
-            (source-property-expr source key))))
+      (condp = (:type source)
+        "Interval"
+        (core/compile* context (interval-selector-property source key))
+        (if value?
+          (source-property-value-expr (core/compile* context source) key)
+          (let [source (core/compile* context source)]
+            (if (core/static? source)
+              (p/get source key)
+              (source-property-expr source key)))))
 
       scope
       (if value?
