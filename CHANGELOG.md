@@ -1,6 +1,22 @@
 # Changelog
 
+## v1.10.1
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Bugfixes
+
+* Fix Interval Type Detection for Converted FHIR Values ([#3795](https://github.com/samply/blaze/issues/3795))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/129?closed=1).
+
 ## v1.10.0
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
 
 ### Enhancements
 
@@ -24,6 +40,10 @@
 The full changelog can be found [here](https://github.com/samply/blaze/milestone/127?closed=1).
 
 ## v1.9.0
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
 
 ### Performance
 
