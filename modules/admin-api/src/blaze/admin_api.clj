@@ -2,7 +2,8 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.admin-api.spec]
-   [blaze.admin-api.validation]
+   [blaze.admin-api.validator :as validator]
+   [blaze.admin-api.validator.spec]
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.impl.index.patient-last-change :as plc]
@@ -32,7 +33,6 @@
    [blaze.module :as m]
    [blaze.spec]
    [blaze.util :refer [str]]
-   [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [jsonista.core :as j]
@@ -42,18 +42,9 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [ca.uhn.fhir.context FhirContext]
-   [ca.uhn.fhir.context.support DefaultProfileValidationSupport]
-   [ca.uhn.fhir.parser IParser]
-   [ca.uhn.fhir.validation FhirValidator]
    [com.google.common.base CaseFormat]
    [java.io File]
-   [java.nio.file Files]
-   [org.hl7.fhir.common.hapi.validation.support
-    CommonCodeSystemsTerminologyService
-    InMemoryTerminologyServerValidationSupport PrePopulatedValidationSupport
-    ValidationSupportChain]
-   [org.hl7.fhir.common.hapi.validation.validator FhirInstanceValidator]))
+   [java.nio.file Files]))
 
 (set! *warn-on-reflection* true)
 
@@ -209,11 +200,9 @@
         :details #fhir/CodeableConcept
                   {:text #fhir/string "No allowed profile found."}}]})))
 
-(defn- validate [^FhirValidator validator writing-context resource]
-  (->> ^String (fhir-spec/write-json-as-string writing-context resource)
-       (.validateWithResult validator)
-       (.toOperationOutcome)
-       (datafy/datafy)))
+(defn- validate [validator writing-context resource]
+  (->> (fhir-spec/write-json-as-string writing-context resource)
+       (validator/validate validator)))
 
 (defn- error-issues [outcome]
   (update outcome :issue (partial filterv (comp #{"error"} :value :severity))))
@@ -458,82 +447,6 @@
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
-(defn- read-profile [name]
-  (let [classloader (.getContextClassLoader (Thread/currentThread))]
-    (with-open [source (.getResourceAsStream classloader name)]
-      (slurp source))))
-
-(defn- profile-validation-support [context]
-  (let [s (PrePopulatedValidationSupport. context)
-        parser ^IParser (.newJsonParser ^FhirContext context)]
-    (run!
-     (fn [name]
-       (log/debug "Load profile" name)
-       (.addResource s (.parseResource parser ^String (read-profile name))))
-     ;; The current (IG 1.10.0) profiles, copied from the IG into each module,
-     ;; plus the frozen legacy (IG 0.1.0) profiles bundled with this module —
-     ;; so Tasks submitted with either the current or the legacy canonical
-     ;; validate against a matching profile edition. The 0.1.0 editions are
-     ;; frozen rather than derived from the current ones, so they keep matching
-     ;; legacy submissions once the IG diverges from 0.1.0.
-     ["blaze/db/CodeSystem-ColumnFamily.json"
-      "blaze/db/CodeSystem-Database.json"
-      "blaze/db/ValueSet-ColumnFamily.json"
-      "blaze/db/ValueSet-Database.json"
-      "blaze/job_scheduler/StructureDefinition-Job.json"
-      "blaze/job_scheduler/CodeSystem-JobType.json"
-      "blaze/job_scheduler/CodeSystem-JobOutput.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionJob.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionRequestBundle.json"
-      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionResponseBundle.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobOutput.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
-      "blaze/job/compact/CodeSystem-CompactJobOutput.json"
-      "blaze/job/compact/CodeSystem-CompactJobParameter.json"
-      "blaze/job/compact/StructureDefinition-CompactJob.json"
-      "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-ColumnFamily.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-Database.json"
-      "blaze/admin-api/v0_1_0/ValueSet-ColumnFamily.json"
-      "blaze/admin-api/v0_1_0/ValueSet-Database.json"
-      "blaze/admin-api/v0_1_0/StructureDefinition-Job.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-JobType.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-JobOutput.json"
-      "blaze/admin-api/v0_1_0/StructureDefinition-AsyncInteractionJob.json"
-      "blaze/admin-api/v0_1_0/StructureDefinition-AsyncInteractionRequestBundle.json"
-      "blaze/admin-api/v0_1_0/StructureDefinition-AsyncInteractionResponseBundle.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-AsyncInteractionJobOutput.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-AsyncInteractionJobParameter.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-CompactJobOutput.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-CompactJobParameter.json"
-      "blaze/admin-api/v0_1_0/StructureDefinition-CompactJob.json"
-      "blaze/admin-api/v0_1_0/StructureDefinition-ReIndexJob.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-ReIndexJobOutput.json"
-      "blaze/admin-api/v0_1_0/CodeSystem-ReIndexJobParameter.json"])
-    s))
-
-(defn- create-validator* []
-  (let [context (FhirContext/forR4)
-        _ (.newJsonParser context)
-        validator (.newValidator context)
-        chain (doto (ValidationSupportChain.)
-                (.addValidationSupport (DefaultProfileValidationSupport. context))
-                (.addValidationSupport (InMemoryTerminologyServerValidationSupport. context))
-                (.addValidationSupport (CommonCodeSystemsTerminologyService. context))
-                (.addValidationSupport (profile-validation-support context)))
-        instanceValidator (FhirInstanceValidator. chain)]
-    (.registerValidatorModule validator instanceValidator)
-    validator))
-
-(defn- create-validator []
-  (try
-    (create-validator*)
-    (catch Exception e
-      (log/error e)
-      (throw e))))
-
 (defn- create-job-handler [job-scheduler]
   (fn [{:keys [body] :as request}]
     (do-sync [job (js/create-job job-scheduler (jc/canonicalize (iu/strip-meta body)))]
@@ -580,17 +493,18 @@
           (ac/completed-future)))))
 
 (defmethod m/pre-init-spec :blaze/admin-api [_]
-  (s/keys :req-un [:blaze/context-path ::admin-node :blaze.fhir/parsing-context
-                   :blaze.fhir/writing-context :blaze/job-scheduler
-                   ::read-job-handler ::history-job-handler
-                   ::search-type-job-handler ::settings ::features]
+  (s/keys :req-un [:blaze/context-path ::admin-node :blaze.admin-api/validator
+                   :blaze.fhir/parsing-context :blaze.fhir/writing-context
+                   :blaze/job-scheduler ::read-job-handler
+                   ::history-job-handler ::search-type-job-handler ::settings
+                   ::features]
           :opt [::dbs ::expr/cache ::db-sync-timeout]))
 
 (defmethod ig/init-key :blaze/admin-api
   [_ {:keys [job-scheduler] :as config}]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
-   (router (assoc config :validator (create-validator)
+   (router (assoc config
                   :create-job-handler (create-job-handler job-scheduler)
                   :pause-job-handler (job-action-handler job-scheduler js/pause-job)
                   :resume-job-handler (job-action-handler job-scheduler js/resume-job)

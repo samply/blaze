@@ -214,6 +214,7 @@
      :blaze/admin-api
      {:context-path "/fhir"
       :admin-node (ig/ref :blaze.db.admin/node)
+      :validator (ig/ref :blaze.admin-api/validator)
       :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
       :writing-context (ig/ref :blaze.fhir/writing-context)
       :job-scheduler (ig/ref :blaze/job-scheduler)
@@ -226,6 +227,8 @@
       :features []
       :clock (ig/ref :blaze.test/fixed-clock)
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+     :blaze.admin-api/validator {}
 
      :blaze/job-scheduler
      {:node (ig/ref :blaze.db.admin/node)
@@ -274,14 +277,15 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :validator))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "invalid context path"
     (given-failed-system (assoc-in (config!) [:blaze/admin-api :context-path] ::invalid)
@@ -860,7 +864,7 @@
             (given body
               "resourceType" := "OperationOutcome"
               ["issue" 0 "severity"] := "error"
-              ["issue" 0 "code"] := "processing"
+              ["issue" 0 "code"] := "structure"
               ["issue" 0 "diagnostics"] := (str "Task.code: minimum required = 1, but only found 0 (from " base "/StructureDefinition/ReIndexJob)")))))
 
       (testing "missing authoredOn"
@@ -877,7 +881,7 @@
             (given body
               "resourceType" := "OperationOutcome"
               ["issue" 0 "severity"] := "error"
-              ["issue" 0 "code"] := "processing"
+              ["issue" 0 "code"] := "structure"
               ["issue" 0 "diagnostics"] := (str "Task.authoredOn: minimum required = 1, but only found 0 (from " base "/StructureDefinition/ReIndexJob)")))))
 
       (testing "wrong code"
@@ -894,7 +898,7 @@
             (given body
               "resourceType" := "OperationOutcome"
               ["issue" 0 "severity"] := "error"
-              ["issue" 0 "code"] := "processing"
+              ["issue" 0 "code"] := "value"
               ["issue" 0 "diagnostics"] := (str "The pattern [system " base "/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile " base "/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but is fixed to 're-index' in the profile " base "/StructureDefinition/ReIndexJob#Task], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact a Database Column Family' but is fixed to '(Re)Index a Search Parameter' in the profile " base "/StructureDefinition/ReIndexJob#Task]]")))))
 
       (testing "re-index job"
@@ -912,7 +916,7 @@
               (given body
                 "resourceType" := "OperationOutcome"
                 ["issue" 0 "severity"] := "error"
-                ["issue" 0 "code"] := "processing"
+                ["issue" 0 "code"] := "invalid"
                 ["issue" 0 "diagnostics"] := "Canonical URLs must be absolute URLs if they are not fragment references (foo)"))))
 
         (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
@@ -957,10 +961,10 @@
               (given body
                 "resourceType" := "OperationOutcome"
                 ["issue" 0 "severity"] := "error"
-                ["issue" 0 "code"] := "processing"
-                ["issue" 0 "diagnostics"] := (str "Unknown code '" base "/CodeSystem/Database#foo'")
+                ["issue" 0 "code"] := "not-found"
+                ["issue" 0 "diagnostics"] := (str "The System URI could not be determined for the code 'foo' in the ValueSet '" base "/ValueSet/Database'")
                 ["issue" 1 "severity"] := "error"
-                ["issue" 1 "code"] := "processing"
+                ["issue" 1 "code"] := "code-invalid"
                 ["issue" 1 "diagnostics"] :# ".*foo.*"
                 ["issue" 1 "diagnostics"] :# ".*Database Value Set.*"))))
 

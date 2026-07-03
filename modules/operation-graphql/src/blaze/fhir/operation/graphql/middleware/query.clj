@@ -12,12 +12,8 @@
     (assoc request :body {:query (slurp body)})
     (ba/incorrect "Missing HTTP body.")))
 
-(def ^:private object-mapper
-  (j/object-mapper
-   {:decode-key-fn true}))
-
 (defn- parse-json [body]
-  (ba/try-all ::anom/incorrect (j/read-value body object-mapper)))
+  (ba/try-all ::anom/incorrect (j/read-value body j/keyword-keys-object-mapper)))
 
 (defn- conform-json [json]
   (if (map? json)

@@ -133,13 +133,9 @@
   (-patient-compartment-search-param-codes [_ type]
     (.get ^LoadingCache patient-compartment-search-param-codes-cache type)))
 
-(def ^:private object-mapper
-  (j/object-mapper
-   {:decode-key-fn true}))
-
 (defn- read-json-resource [x]
   (with-open [rdr (io/reader x)]
-    (j/read-value rdr object-mapper)))
+    (j/read-value rdr j/keyword-keys-object-mapper)))
 
 (defn- read-classpath-json-resource
   "Reads the JSON encoded resource with `name` from classpath."

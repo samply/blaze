@@ -10,16 +10,16 @@
   ring/ring-core
   {:mvn/version "1.15.5"
    :exclusions
-   [org.apache.commons/commons-fileupload2-core
-    crypto-equality/crypto-equality
-    crypto-random/crypto-random]}
+   [crypto-equality/crypto-equality
+    crypto-random/crypto-random
+    org.apache.commons/commons-fileupload2-core]}
 
   ring/ring-jetty-adapter
   {:mvn/version "1.15.5"
    :exclusions
-   [ring/ring-core
-    ;; replaced via local namespace ring.util.jakarta.servlet
-    org.ring-clojure/ring-jakarta-servlet]}}
+   [;; replaced via local namespace ring.util.jakarta.servlet
+    org.ring-clojure/ring-jakarta-servlet
+    ring/ring-core]}}
 
  :deps/prep-lib
  {:alias :build

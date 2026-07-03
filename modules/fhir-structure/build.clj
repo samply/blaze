@@ -3,7 +3,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.tools.build.api :as b]
-   [hato.client :as hc])
+   [hato.client :as hc]
+   [jsonista.core :as j])
   (:import
    [java.io FileOutputStream]
    [java.security MessageDigest]))
@@ -66,7 +67,45 @@
     (b/unzip {:zip-file filename :target-dir (str "target/generated-resources/blaze/fhir/" version)})
     (b/delete {:path filename})))
 
+(def single-definitions
+  "Resources to extract from the base definition bundles into files of their
+  own, by bundle filename.
+
+  The CodeSystems and ValueSets back the required bindings of the Task
+  elements."
+  {"profiles-resources.json"
+   #{["StructureDefinition" "Task"]}
+   "valuesets.json"
+   #{["CodeSystem" "task-status"]
+     ["ValueSet" "task-status"]
+     ["CodeSystem" "task-intent"]
+     ["ValueSet" "task-intent"]
+     ["CodeSystem" "request-intent"]
+     ["ValueSet" "request-intent"]
+     ["CodeSystem" "request-priority"]
+     ["ValueSet" "request-priority"]
+     ["CodeSystem" "identifier-use"]
+     ["ValueSet" "identifier-use"]}})
+
+(defn extract-single-definitions
+  "Extracts the resources listed in `single-definitions` from the base
+  definition bundles into files of their own, named `<type>-<id>.json`.
+
+  This way consumers like the admin-api validator only have to parse these
+  small files at startup instead of whole multi-MB bundles, which would take
+  seconds and allocate several hundred MB of garbage."
+  [{:keys [version]}]
+  (let [dir (str "target/generated-resources/blaze/fhir/" version)]
+    (doseq [[bundle-name wanted] single-definitions]
+      (let [{:keys [entry]} (j/read-value (io/file dir bundle-name) j/keyword-keys-object-mapper)]
+        (run!
+         (fn [{{:keys [resourceType id] :as resource} :resource}]
+           (when (wanted [resourceType id])
+             (j/write-value (io/file dir (str resourceType "-" id ".json")) resource)))
+         entry)))))
+
 (defn all [_]
   (compile nil)
   (download-definitions {:version "4.0.1"})
+  (extract-single-definitions {:version "4.0.1"})
   (b/write-file {:path "target/prep-done" :string ""}))
