@@ -139,10 +139,18 @@
     (is (= [""] (fhir-util/page-id-stack {"__page-id-stack" [""]})))
     (is (= ["" "1"] (fhir-util/page-id-stack {"__page-id-stack" ["" "1"]}))))
 
+  (testing "type qualified ids are used by the system-level search"
+    (is (= ["Patient/0"] (fhir-util/page-id-stack {"__page-id-stack" ["Patient/0"]})))
+    (is (= ["" "Patient/0" "Observation/1"]
+           (fhir-util/page-id-stack {"__page-id-stack" ["" "Patient/0" "Observation/1"]}))))
+
   (testing "an invalid entry yields an empty stack"
     (are [v] (= [] (fhir-util/page-id-stack {"__page-id-stack" v}))
       "<invalid>"
-      ["0" "<invalid>"])))
+      ["0" "<invalid>"]
+      "<invalid>/0"
+      "Patient/<invalid>"
+      "Patient/")))
 
 (def comma-with-spaces-gen
   (let [spaces #(apply str (repeat % " "))]

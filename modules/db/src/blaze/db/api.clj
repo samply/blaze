@@ -241,6 +241,13 @@
   [node-or-db clauses]
   (p/-compile-system-query node-or-db clauses))
 
+(defn compile-system-query-lenient
+  "Same as `compile-system-query` but ignores unknown search parameters.
+
+  Returns a CompletableFuture that completes with the compiled query."
+  [node-or-db clauses]
+  (p/-compile-system-query-lenient node-or-db clauses))
+
 (defn compile-system-matcher
   "Returns a matcher that can be later used in `matcher-transducer` to obtain
   a transducer that will filter resource handles matching `clauses`.
@@ -354,7 +361,9 @@
   ([db query]
    (p/-execute-query db query))
   ([db query arg1]
-   (p/-execute-query db query arg1)))
+   (p/-execute-query db query arg1))
+  ([db query arg1 arg2]
+   (p/-execute-query db query arg1 arg2)))
 
 (defn explain-query
   "Returns the plan of `query`."

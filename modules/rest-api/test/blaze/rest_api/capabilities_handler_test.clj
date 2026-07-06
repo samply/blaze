@@ -163,10 +163,13 @@
         [:rest 0 :searchParam 11 :type] := #fhir/code "special"
         [:rest 0 :searchParam 12 :name] := #fhir/string "_sort"
         [:rest 0 :searchParam 12 :type] := #fhir/code "special"
-        [:rest 0 :searchParam 12 :documentation] := #fhir/markdown "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."
+        [:rest 0 :searchParam 12 :documentation] := #fhir/markdown "`_id`, `_lastUpdated` and `-_lastUpdated` are supported at type-level"
         [:rest 0 :searchParam 13 :name] := #fhir/string "_summary"
         [:rest 0 :searchParam 13 :type] := #fhir/code "token"
-        [:rest 0 :searchParam 13 :documentation] := #fhir/markdown "Only `count` is supported at the moment."
+        [:rest 0 :searchParam 13 :documentation] := #fhir/markdown "`true`, `count` and `false` are supported"
+        [:rest 0 :searchParam 14 :name] := #fhir/string "_total"
+        [:rest 0 :searchParam 14 :type] := #fhir/code "token"
+        [:rest 0 :searchParam 14 :documentation] := #fhir/markdown "`accurate` is supported"
         [:rest 0 :compartment] := [#fhir/canonical "http://hl7.org/fhir/CompartmentDefinition/patient"]))
 
     (testing "filtering by _elements"
@@ -180,7 +183,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"5f166f55\"" "W/\"5f166f55\", \"foo\""]]
+      (doseq [if-none-match ["W/\"1bc8d67f\"" "W/\"1bc8d67f\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -189,7 +192,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"5f166f55\"" (get headers "ETag"))))))))
+            (is (= "W/\"1bc8d67f\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]

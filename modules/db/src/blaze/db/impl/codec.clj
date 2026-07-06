@@ -195,7 +195,11 @@
   (defn tid->type [tid]
     (let [idx (Arrays/binarySearch tid->idx (int tid))]
       (when (nat-int? idx)
-        (aget idx->type idx)))))
+        (aget idx->type idx))))
+
+  (def all-types
+    "A vector of all FHIR resource types in no particular order."
+    (mapv second kvs)))
 
 ;; ---- Identifier Functions --------------------------------------------------
 

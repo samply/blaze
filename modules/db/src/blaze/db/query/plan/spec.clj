@@ -6,7 +6,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/def ::plan/query-type
-  #{:type :compartment})
+  #{:type :system :compartment})
 
 (s/def ::plan/scan-type
   #{:ordered :unordered})

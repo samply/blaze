@@ -14,6 +14,7 @@
    [blaze.interaction.search-type]
    [blaze.interaction.search.include :as search-include]
    [blaze.interaction.search.nav-spec]
+   [blaze.interaction.search.page-spec]
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util-spec]
@@ -2762,6 +2763,39 @@
               [:fullUrl :value] := (str base-url context-path "/Patient/0")
               [:resource :fhir/type] := :fhir/Patient
               [:search :mode] := #fhir/code "include")))))
+
+    (testing "a match that is also an include is removed from the includes"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
+          [:put {:fhir/type :fhir/Observation :id "1"}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match (match-of "Observation")
+                 :params {"_include" "Observation:has-member"}})]
+
+          (is (= 200 status))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "the bundle contains only two entries because Observation/1
+                    is already a match and is therefore removed from the
+                    includes"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the first entry is the first matched Observation"
+            (given (-> body :entry first)
+              [:fullUrl :value] := (str base-url context-path "/Observation/0")
+              [:resource :fhir/type] := :fhir/Observation
+              [:search :mode] := #fhir/code "match"))
+
+          (testing "the second entry is the second matched Observation"
+            (given (-> body :entry second)
+              [:fullUrl :value] := (str base-url context-path "/Observation/1")
+              [:resource :fhir/type] := :fhir/Observation
+              [:search :mode] := #fhir/code "match")))))
 
     (testing "two includes"
       (with-handler [handler]

@@ -73,6 +73,8 @@
 
   (-compile-system-query [compiler clauses])
 
+  (-compile-system-query-lenient [compiler clauses])
+
   (-compile-system-matcher [compiler clauses])
 
   (-compile-compartment-query [compiler code type] [compiler code type clauses])

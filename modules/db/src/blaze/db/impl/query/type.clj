@@ -7,7 +7,6 @@
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.query.util :as qu]
    [blaze.db.impl.search-param.chained :as spc]))
@@ -95,8 +94,7 @@
 (defrecord EmptyTypeQuery [tid]
   p/Query
   (-count [_ batch-db]
-    (ac/completed-future
-     (:total (type-stats/seek-value (:snapshot batch-db) tid (:t batch-db)) 0)))
+    (ac/completed-future (p/-type-total batch-db tid)))
   (-execute [_ batch-db]
     (rao/type-list batch-db tid))
   (-execute [_ batch-db start-id]

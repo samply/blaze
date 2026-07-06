@@ -22,24 +22,39 @@ The following search param modifiers are supported:
 
 See [search modifiers][4] for a complete list of modifiers
 
-## Search Result Parameters
+## Search Parameters
 
-| Name             | Since | Description                                                     |
-|------------------|-------|-----------------------------------------------------------------|
-| `_sort`          |       | see [Sorting](#sorting)                                         |
-| `_count`         |       | the default page size is 50 and the maximum page size is 10.000 |
-| `_include`       |       | supported, except the wildcard `*`                              |
-| `_revinclude`    |       | supported, except the wildcard `*`                              |
-| `_summary`       | 1.0.0 | `true`, `count` and `false` are supported                       |
-| `_total`         |       | `accurate` is supported                                         |
-| `_elements`      |       | fully supported                                                 |
-| `_contained`     |       | not supported                                                   |
-| `_containedType` |       | not supported                                                   |
-| `__explain`      | 1.1.0 | see [Query Plan](#query-plan)                                   |
+The following common search parameters, defined on all resources, are supported:
 
-## _profile
+| Name           | Since  | Description                                |
+|----------------|--------|--------------------------------------------|
+| `_has`         |        | reverse chaining                           |
+| `_id`          |        | logical resource id                        |
+| `_lastUpdated` | 0.12.0 | date of last update                        |
+| `_list`        |        | resources referenced by a list             |
+| `_profile`     | 0.12.0 | profiles the resource claims to conform to |
+| `_security`    | 1.11.0 | security labels applied to the resource    |
+| `_source`      | 1.11.0 | where the resource comes from              |
+| `_tag`         | 0.27.1 | tags applied to the resource               |
+
+### _profile
 
 Search for `Resource.meta.profile` is supported using the `_profile` search param with exact match or using the `below` modifier as in `_profile:below` with major and minor version prefix match. [Semver][1] is expected for version numbers so a search value of `<url>|1` will find all versions with major version `1` and a search value of `<url>|1.2` will find all versions with major version `1` and minor version `2`. Patch versions are not supported with the `below` modifier.
+
+## Search Result Parameters
+
+| Name             | Since  | Description                                                     |
+|------------------|--------|-----------------------------------------------------------------|
+| `_sort`          |        | see [Sorting](#sorting)                                         |
+| `_count`         |        | the default page size is 50 and the maximum page size is 10.000 |
+| `_include`       | 0.11.0 | supported, except the wildcard `*`                              |
+| `_revinclude`    | 0.11.0 | supported, except the wildcard `*`                              |
+| `_summary`       | 1.0.0  | `true`, `count` and `false` are supported                       |
+| `_total`         | 0.31.0 | `accurate` is supported                                         |
+| `_elements`      |        | fully supported                                                 |
+| `_contained`     |        | not supported                                                   |
+| `_containedType` |        | not supported                                                   |
+| `__explain`      | 1.1.0  | see [Query Plan](#query-plan)                                   |
 
 ## Token in Modifier
 

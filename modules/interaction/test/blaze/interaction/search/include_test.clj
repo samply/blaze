@@ -160,4 +160,33 @@
         (given (include/add-includes db include-defs patients)
           count := 2
           [0 :fhir/type] := :fhir/Condition
-          [1 :fhir/type] := :fhir/Encounter)))))
+          [1 :fhir/type] := :fhir/Encounter))))
+
+  (testing "removes handles that are also matches"
+    (testing "a forward include that is also a match"
+      (with-system-data [{:blaze.db/keys [node]} non-ref-int-config]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
+          [:put {:fhir/type :fhir/Observation :id "1"}]]]
+
+        (let [db (d/db node)
+              include-defs {:direct {:forward {"Observation" [{:code "has-member"}]}}}
+              observations (d/type-list db "Observation")]
+          (testing "Observation/1 is a match and therefore removed"
+            (is (empty? (include/add-includes db include-defs observations)))))))
+
+    (testing "keeps includes that are not matches"
+      (with-system-data [{:blaze.db/keys [node]} non-ref-int-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
+          [:put {:fhir/type :fhir/Observation :id "1"}]]]
+
+        (let [db (d/db node)
+              include-defs {:direct {:forward {"Observation" [{:code "subject"} {:code "has-member"}]}}}
+              observations (d/type-list db "Observation")]
+          (testing "only the Patient remains, both Observations are matches"
+            (given (include/add-includes db include-defs observations)
+              count := 1
+              [0 :fhir/type] := :fhir/Patient)))))))

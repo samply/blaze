@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+script_dir="$(dirname "$(readlink -f "$0")")"
+. "$script_dir/util.sh"
+
 base="http://localhost:8080/fhir"
 
 bundle() {
@@ -152,7 +155,7 @@ END
 
 curl -sfH "Content-Type: application/fhir+json" -d "$(bundle)" -o /dev/null "$base"
 
-result="$(curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/DocumentReference?author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
+result="$(search_strict "$base/DocumentReference?author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
 
 if [ "$result" = "1" ]; then
   echo "✅ chaining works"
@@ -161,7 +164,7 @@ else
   exit 1
 fi
 
-result="$(curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/DocumentReference?identifier=system-111302|value-111304&author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
+result="$(search_strict "$base/DocumentReference?identifier=system-111302|value-111304&author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
 
 if [ "$result" = "1" ]; then
   echo "✅ chaining works"
@@ -170,7 +173,7 @@ else
   exit 1
 fi
 
-result="$(curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/DocumentReference?author:Organization.identifier=system-105539|value-105542&identifier=system-111302|value-111304&_summary=count" | jq -r '.total')"
+result="$(search_strict "$base/DocumentReference?author:Organization.identifier=system-105539|value-105542&identifier=system-111302|value-111304&_summary=count" | jq -r '.total')"
 
 if [ "$result" = "1" ]; then
   echo "✅ chaining works"

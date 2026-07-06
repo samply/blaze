@@ -362,10 +362,6 @@
          (count (unordered-resource-handles batch-db tid other-clauses)))))
     (ac/completed-future (p/-type-total batch-db tid))))
 
-(defn system-query [_ _]
-  ;; TODO: implement
-  [])
-
 (defn compartment-clauses
   [search-param-registry compartment-code search-param-codes type]
   (let [clauses [(mapv #(vector % (str compartment-code "/0")) search-param-codes)]]
