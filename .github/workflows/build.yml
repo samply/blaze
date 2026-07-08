@@ -105,7 +105,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -209,7 +209,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
@@ -293,7 +293,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
@@ -360,7 +360,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -413,7 +413,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -492,7 +492,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
@@ -577,7 +577,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -662,7 +662,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -2282,7 +2282,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -2381,7 +2381,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -2802,7 +2802,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
@@ -3244,7 +3244,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5
+      uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
       with:
         distribution: 'temurin'
         java-version: '25'
