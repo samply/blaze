@@ -80,7 +80,7 @@
     org.xerial/sqlite-jdbc]}
 
   com.fasterxml.jackson.datatype/jackson-datatype-jsr310
-  {:mvn/version "2.22.0"}
+  {:mvn/version "2.22.1"}
 
   org.fhir/ucum
   {:mvn/version "1.0.10"
