@@ -60,6 +60,10 @@ Rigorous adherence to these patterns is required:
     * To obtain the value of a successfully-completed future inside a test, use `@future` (Clojure's `deref`).
   * **Private Functions:** Do **not** call private functions (via `#'`) from tests. If a function needs to be tested, move it to an `impl` namespace where it becomes part of the public API of that namespace.
 
+## Integration Test Scripts
+
+* **Downloading search results:** In integration test scripts (`.github/scripts`, `.github/integration-test-*`), use `blazectl download` to fetch all resources matching a FHIR search — blazectl performs paging. Do **not** use `curl` with a large `_count` value, which silently truncates the result at one page.
+
 ## Documentation
 
 * **Environment Variables:** Every new environment variable introduced via `#blaze/cfg` in `resources/blaze.edn` must be documented in `docs/deployment/environment-variables.md`, following the existing format (heading, description, default value, since badge).
