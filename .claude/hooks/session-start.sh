@@ -65,9 +65,15 @@ find_java_home() {
   find /usr/lib/jvm -maxdepth 1 -type d -name "temurin-${JAVA_VERSION}-jdk*" 2>/dev/null | sort | tail -1
 }
 
+# --allow-releaseinfo-change: pre-existing third-party repositories in the
+# base image occasionally change their release info (e.g. the ondrej/php PPA
+# changed its Label), which apt otherwise treats as a hard error. An update
+# failure of an unrelated repository must not block the install either, so it
+# is downgraded to a warning and the install alone decides the exit status.
 install_apt_tools() {
-  apt-get update -qq &&
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@"
+  apt-get update -qq --allow-releaseinfo-change ||
+    warn "apt-get update failed for some repositories; trying to install anyway"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$@"
 }
 
 install_java() {
