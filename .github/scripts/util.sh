@@ -81,3 +81,8 @@ search_strict() {
 link_header() {
   curl -sfH 'Accept: application/fhir+json' -o /dev/null -D - "$1" | grep -i '^link:' | tr -d '\r'
 }
+
+# Downloads the IDs of all patients of the List with ID $2 from the server $1.
+fetch_patient_ids() {
+  blazectl --server "$1" download Patient -q "_list=$2&_elements=id&_count=200" 2>/dev/null | jq -r '.id'
+}

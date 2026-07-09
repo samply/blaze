@@ -114,10 +114,6 @@ evaluate_measure() {
    bundle_evaluate_measure "$2" | jq -cM ".entry[0].resource = $(parameters)" | transact_return_representation "$1"
 }
 
-fetch_patients() {
-  curl -sfH 'Accept: application/fhir+json' "$1/Patient?_list=$2&_count=200"
-}
-
 base="http://localhost:8080/fhir"
 name=$1
 expected_count=$2
@@ -142,14 +138,14 @@ else
 fi
 
 list_id=$(echo "$bundle" | jq -r '.entry[0].resource.group[0].population[0].subjectResults.reference | split("/")[1]')
-patient_bundle=$(fetch_patients "$base" "$list_id")
-id_count=$(echo "$patient_bundle" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs)
+patient_ids=$(fetch_patient_ids "$base" "$list_id")
+id_count=$(echo "$patient_ids" | sed '/^$/d' | sort -u | wc -l | xargs)
 
 if [ "$id_count" = "$expected_count" ]; then
   echo "✅ downloaded patient count ($id_count) equals the expected count"
 else
   echo "🆘 downloaded patient count ($id_count) != $expected_count"
-  echo "Patient bundle:"
-  echo "$patient_bundle" | jq .
+  echo "Patient IDs:"
+  echo "$patient_ids"
   exit 1
 fi
