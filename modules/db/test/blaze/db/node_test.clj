@@ -124,6 +124,54 @@
       [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
 
+  (testing "missing tx-cache"
+    (given-failed-system (update config :blaze.db/node dissoc :tx-cache)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))))
+
+  (testing "missing indexer-executor"
+    (given-failed-system (update config :blaze.db/node dissoc :indexer-executor)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))))
+
+  (testing "missing kv-store"
+    (given-failed-system (update config :blaze.db/node dissoc :kv-store)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))))
+
+  (testing "missing resource-indexer"
+    (given-failed-system (update config :blaze.db/node dissoc :resource-indexer)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))))
+
+  (testing "missing resource-cache"
+    (given-failed-system (update config :blaze.db/node dissoc :resource-cache)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-cache))))
+
+  (testing "missing resource-store"
+    (given-failed-system (update config :blaze.db/node dissoc :resource-store)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))))
+
+  (testing "missing search-param-registry"
+    (given-failed-system (update config :blaze.db/node dissoc :search-param-registry)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+
+  (testing "missing scheduler"
+    (given-failed-system (update config :blaze.db/node dissoc :scheduler)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
+
   (testing "invalid tx-log"
     (given-failed-system (assoc-in config [:blaze.db/node :tx-log] ::invalid)
       :key := :blaze.db/node

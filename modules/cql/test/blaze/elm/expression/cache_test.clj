@@ -67,6 +67,12 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
+  (testing "missing executor"
+    (given-failed-system (update config ::expr/cache dissoc :executor)
+      :key := ::expr/cache
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
   (testing "invalid max size"
     (given-failed-system (assoc-in config [::expr/cache :max-size-in-mb] ::invalid)
       :key := ::expr/cache

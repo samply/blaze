@@ -170,6 +170,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
 
+  (testing "missing admin-node"
+    (given-failed-system (update config :blaze.job/compact dissoc :admin-node)
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))))
+
+  (testing "missing clock"
+    (given-failed-system (update config :blaze.job/compact dissoc :clock)
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
   (testing "invalid index-db"
     (given-failed-system (assoc-in config [:blaze.job/compact :index-db] ::invalid)
       :key := :blaze.job/compact

@@ -98,6 +98,30 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :client-id))
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :client-secret))))
 
+  (testing "missing scheduler"
+    (given-failed-system (update config-success ::oic/token-provider dissoc :scheduler)
+      :key := ::oic/token-provider
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
+
+  (testing "missing provider-url"
+    (given-failed-system (update config-success ::oic/token-provider dissoc :provider-url)
+      :key := ::oic/token-provider
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))))
+
+  (testing "missing client-id"
+    (given-failed-system (update config-success ::oic/token-provider dissoc :client-id)
+      :key := ::oic/token-provider
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :client-id))))
+
+  (testing "missing client-secret"
+    (given-failed-system (update config-success ::oic/token-provider dissoc :client-secret)
+      :key := ::oic/token-provider
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :client-secret))))
+
   (testing "missing scheduler through client-secret"
     (given-failed-system {::oic/token-provider {:http-client ::invalid}}
       :key := ::oic/token-provider

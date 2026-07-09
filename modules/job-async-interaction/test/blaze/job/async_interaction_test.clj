@@ -241,6 +241,36 @@
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
       [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :context-path))))
 
+  (testing "missing main-node"
+    (given-failed-system (update config :blaze.job/async-interaction dissoc :main-node)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))))
+
+  (testing "missing admin-node"
+    (given-failed-system (update config :blaze.job/async-interaction dissoc :admin-node)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))))
+
+  (testing "missing batch-handler"
+    (given-failed-system (update config :blaze.job/async-interaction dissoc :batch-handler)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))))
+
+  (testing "missing db-sync-timeout"
+    (given-failed-system (update config :blaze.job/async-interaction dissoc :db-sync-timeout)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+
+  (testing "missing context-path"
+    (given-failed-system (update config :blaze.job/async-interaction dissoc :context-path)
+      :key := :blaze.job/async-interaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))))
+
   (testing "invalid base-url"
     (given-failed-system (assoc-in config [:blaze.job/async-interaction :blaze/base-url] ::invalid)
       :key := :blaze.job/async-interaction

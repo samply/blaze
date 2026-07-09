@@ -60,6 +60,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
 
+  (testing "missing release-date"
+    (given-failed-system (update minimal-config ::rest-api/capabilities-handler dissoc :release-date)
+      :key := ::rest-api/capabilities-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :release-date))))
+
+  (testing "missing structure-definition-repo"
+    (given-failed-system (update minimal-config ::rest-api/capabilities-handler dissoc :structure-definition-repo)
+      :key := ::rest-api/capabilities-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+
+  (testing "missing search-param-registry"
+    (given-failed-system (update minimal-config ::rest-api/capabilities-handler dissoc :search-param-registry)
+      :key := ::rest-api/capabilities-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+
   (testing "invalid version"
     (given-failed-system (assoc-in minimal-config [::rest-api/capabilities-handler :version] ::invalid)
       :key := ::rest-api/capabilities-handler

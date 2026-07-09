@@ -111,6 +111,30 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
+  (testing "missing terminology-service"
+    (given-failed-system (update config ::evaluate-measure/handler dissoc :terminology-service)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
+
+  (testing "missing executor"
+    (given-failed-system (update config ::evaluate-measure/handler dissoc :executor)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
+  (testing "missing clock"
+    (given-failed-system (update config ::evaluate-measure/handler dissoc :clock)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config ::evaluate-measure/handler dissoc :rng-fn)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
   (testing "invalid node"
     (given-failed-system (assoc-in config [::evaluate-measure/handler :node] ::invalid)
       :key := ::evaluate-measure/handler

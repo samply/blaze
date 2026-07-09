@@ -56,6 +56,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
 
+  (testing "missing rng-fn"
+    (given-failed-system (update config ::ts/local dissoc :rng-fn)
+      :key := ::ts/local
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing graph-cache"
+    (given-failed-system (update config ::ts/local dissoc :graph-cache)
+      :key := ::ts/local
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
+
   (testing "invalid clock"
     (given-failed-system (assoc-in config [::ts/local :clock] ::invalid)
       :key := ::ts/local

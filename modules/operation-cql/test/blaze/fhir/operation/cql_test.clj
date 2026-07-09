@@ -65,6 +65,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
+  (testing "missing terminology-service"
+    (given-failed-system (update config :blaze.fhir.operation/cql dissoc :terminology-service)
+      :key := :blaze.fhir.operation/cql
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
+
+  (testing "missing clock"
+    (given-failed-system (update config :blaze.fhir.operation/cql dissoc :clock)
+      :key := :blaze.fhir.operation/cql
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze.fhir.operation/cql dissoc :rng-fn)
+      :key := :blaze.fhir.operation/cql
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze.fhir.operation/cql :node] ::invalid)
       :key := :blaze.fhir.operation/cql

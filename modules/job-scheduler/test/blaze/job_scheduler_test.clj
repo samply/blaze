@@ -273,6 +273,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
+  (testing "missing clock"
+    (given-failed-system (update config :blaze/job-scheduler dissoc :clock)
+      :key := :blaze/job-scheduler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze/job-scheduler dissoc :rng-fn)
+      :key := :blaze/job-scheduler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze/job-scheduler :node] ::invalid)
       :key := :blaze/job-scheduler

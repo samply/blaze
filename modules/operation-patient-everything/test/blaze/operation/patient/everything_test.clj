@@ -63,6 +63,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
+  (testing "missing clock"
+    (given-failed-system (update config :blaze.operation.patient/everything dissoc :clock)
+      :key := :blaze.operation.patient/everything
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze.operation.patient/everything dissoc :rng-fn)
+      :key := :blaze.operation.patient/everything
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing page-id-cipher"
+    (given-failed-system (update config :blaze.operation.patient/everything dissoc :page-id-cipher)
+      :key := :blaze.operation.patient/everything
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
   (testing "invalid link function"
     (given-failed-system (assoc-in config [:blaze.operation.patient/everything ::search-util/link] ::invalid)
       :key := :blaze.operation.patient/everything

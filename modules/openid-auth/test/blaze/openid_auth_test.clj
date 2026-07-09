@@ -78,6 +78,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))))
 
+  (testing "missing scheduler"
+    (given-failed-system (update config-success ::openid-auth/backend dissoc :scheduler)
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
+
+  (testing "missing provider-url"
+    (given-failed-system (update config-success ::openid-auth/backend dissoc :provider-url)
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :provider-url))))
+
   (testing "missing scheduler and provider-url"
     (given-failed-system {::openid-auth/backend {:http-client ::invalid}}
       :key := ::openid-auth/backend

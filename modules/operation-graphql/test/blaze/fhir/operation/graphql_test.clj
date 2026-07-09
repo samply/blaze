@@ -51,6 +51,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
+  (testing "missing writing-context"
+    (given-failed-system (update config ::graphql/handler dissoc :writing-context)
+      :key := ::graphql/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+
+  (testing "missing executor"
+    (given-failed-system (update config ::graphql/handler dissoc :executor)
+      :key := ::graphql/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
   (testing "invalid node"
     (given-failed-system (assoc-in config [::graphql/handler :node] ::invalid)
       :key := ::graphql/handler

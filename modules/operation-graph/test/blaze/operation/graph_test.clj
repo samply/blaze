@@ -58,6 +58,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
+  (testing "missing clock"
+    (given-failed-system (update config :blaze.operation/graph dissoc :clock)
+      :key := :blaze.operation/graph
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze.operation/graph dissoc :rng-fn)
+      :key := :blaze.operation/graph
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing page-id-cipher"
+    (given-failed-system (update config :blaze.operation/graph dissoc :page-id-cipher)
+      :key := :blaze.operation/graph
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
   (testing "invalid graph-cache"
     (given-failed-system (assoc-in config [:blaze.operation/graph :compiled-graph-cache] ::invalid)
       :key := :blaze.operation/graph

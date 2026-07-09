@@ -121,6 +121,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
+  (testing "missing resource-store"
+    (given-failed-system (update config ::node/resource-indexer dissoc :resource-store)
+      :key := ::node/resource-indexer
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))))
+
+  (testing "missing search-param-registry"
+    (given-failed-system (update config ::node/resource-indexer dissoc :search-param-registry)
+      :key := ::node/resource-indexer
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+
+  (testing "missing executor"
+    (given-failed-system (update config ::node/resource-indexer dissoc :executor)
+      :key := ::node/resource-indexer
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
   (testing "invalid kv-store"
     (given-failed-system (assoc-in config [::node/resource-indexer :kv-store] ::invalid)
       :key := ::node/resource-indexer

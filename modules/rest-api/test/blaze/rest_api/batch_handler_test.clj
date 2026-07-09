@@ -49,6 +49,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :resource-patterns))))
 
+  (testing "missing capabilities-handler"
+    (given-failed-system (update minimal-config ::rest-api/batch-handler dissoc :capabilities-handler)
+      :key := ::rest-api/batch-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))))
+
+  (testing "missing resource-patterns"
+    (given-failed-system (update minimal-config ::rest-api/batch-handler dissoc :resource-patterns)
+      :key := ::rest-api/batch-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-patterns))))
+
   (testing "invalid structure-definition-repo"
     (given-failed-system (assoc-in minimal-config [::rest-api/batch-handler :structure-definition-repo] ::invalid)
       :key := ::rest-api/batch-handler
