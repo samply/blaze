@@ -23,7 +23,7 @@
 
 {#if targetType}
   <a
-    href="{resolve(`/[type=type]`, { type: targetType })}?url={value.value}"
+    href={resolve(`/[type=type]?_summary=true&url=${value.value}`, { type: targetType })}
     class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 hover:dark:text-indigo-400"
     >{value.value}</a
   >

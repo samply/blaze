@@ -41,8 +41,9 @@
         {params.type}
       {/snippet}
       {#snippet description()}
-        <a class="hover:text-gray-400" href="{resolve('/[type=type]', { type: params.type })}/"
-          >Resources</a
+        <a
+          class="hover:text-gray-400"
+          href={resolve('/[type=type]?_summary=true', { type: params.type })}>Resources</a
         >
       {/snippet}
       <Row title="Spec">
@@ -55,7 +56,7 @@
               <li>
                 <a
                   class="hover:text-gray-500 dark:text-gray-400"
-                  href="{resolve('/StructureDefinition')}?url={profile}">{profile}</a
+                  href="{resolve('/StructureDefinition?_summary=true')}&url={profile}">{profile}</a
                 >
               </li>
             {/each}

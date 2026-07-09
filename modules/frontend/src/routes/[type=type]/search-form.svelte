@@ -2,10 +2,8 @@
   import { preventDefault } from 'svelte/legacy';
 
   import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
-  import { SearchParamType } from '$lib/fhir.js';
-  import type { QueryParam } from './query-param.js';
+  import { initQueryParams, selectParam, submitParams } from './query-param.js';
   import {
-    defaultCount,
     insertAtIndex,
     moveDownAtIndex,
     moveUpAtIndex,
@@ -29,6 +27,7 @@
   import { quintIn } from 'svelte/easing';
   import { error, type NumericRange } from '@sveltejs/kit';
   import Dropdown from '$lib/tailwind/dropdown.svelte';
+  import Toggle from '$lib/tailwind/toggle.svelte';
 
   interface Props {
     searchParams: CapabilityStatementRestResourceSearchParam[];
@@ -36,7 +35,24 @@
   }
 
   let { searchParams, type }: Props = $props();
-  let queryPlan = $state(false);
+
+  // Filter out _summary from the dropdown options — it is managed by the
+  // Result control, not the form's param rows.
+  let filteredSearchParams = $derived(searchParams.filter((p) => p.name !== '_summary'));
+
+  let { queryParams: initialQueryParams, queryPlan: initialQueryPlan } = initQueryParams(
+    page.url.searchParams
+  );
+  let queryParamsState = $state(initialQueryParams);
+  let queryPlanState = $state(initialQueryPlan);
+
+  afterNavigate((nav) => {
+    if (nav.to) {
+      const init = initQueryParams(nav.to.url.searchParams);
+      queryParamsState = init.queryParams;
+      queryPlanState = init.queryPlan;
+    }
+  });
 
   async function loadSearchIncludes(type: string): Promise<string[]> {
     const res = await fetch(resolve('/[type=type]/__search-rev-includes', { type: type }), {
@@ -65,67 +81,15 @@
     return (await res.json()).searchRevIncludes;
   }
 
-  function removeInactiveModifier(name: string): [string, boolean] {
-    const active = !name.endsWith(':inactive');
-    return [active ? name : name.substring(0, name.length - 9), active];
-  }
-
-  function selectParam(id: number) {
-    return {
-      id: id,
-      active: true,
-      name: '__select',
-      type: SearchParamType.special,
-      value: ''
-    };
-  }
-
-  function initQueryParams(urlSearchParams: URLSearchParams): QueryParam[] {
-    const queryParams: QueryParam[] = [];
-    for (const [name, value] of urlSearchParams) {
-      if (name == '__explain') {
-        queryPlan = value == 'true';
-        continue;
-      }
-      if (name.startsWith('__')) {
-        continue;
-      }
-      if (name == '_count' && value == defaultCount) {
-        continue;
-      }
-      const [paramName, active] = removeInactiveModifier(name);
-      queryParams.push({
-        id: queryParams.length,
-        active: active,
-        name: paramName,
-        type: SearchParamType.composite,
-        value: value
-      });
-    }
-    if (queryParams.length == 0) {
-      queryParams.push(selectParam(queryParams.length));
-    }
-    return queryParams;
-  }
-
-  let queryParams = $state(initQueryParams(page.url.searchParams));
-
-  afterNavigate((nav) => {
-    if (nav.to) {
-      queryParams = initQueryParams(nav.to.url.searchParams);
-    }
-  });
-
   function send() {
-    const params = queryParams
-      .filter((p) => p.name != '__select')
-      .map((p) => ({ ...p, value: p.value.trim() }))
-      .filter((p) => p.value.length != 0)
-      .map((p) => [p.active ? p.name : p.name + ':inactive', p.value]) as string[][];
-    if (queryPlan) params.push(['__explain', 'true']);
+    const params = submitParams(
+      queryParamsState,
+      queryPlanState,
+      page.url.searchParams.get('_summary')
+    );
 
     // eslint-disable-next-line svelte/no-navigation-without-resolve
-    goto(`${resolve('/[type=type]', { type: type })}?${new URLSearchParams(params)}`);
+    goto(`${resolve('/[type=type]', { type: type })}?${params}`);
   }
 
   let openSearchSettings = $state(false);
@@ -136,19 +100,23 @@
   onsubmit={preventDefault(send)}
 >
   <div class="flex grow flex-col gap-2">
-    {#each queryParams as queryParam, index (queryParam.id)}
+    {#each queryParamsState as queryParam, index (queryParam.id)}
       <div in:fade={{ duration: 200, easing: quintIn }} class="flex gap-2">
         <CheckboxActive
           {index}
           active={queryParam.active}
           on:change={() =>
-            (queryParams = updateAtIndex(queryParams, index, (p) => ({
+            (queryParamsState = updateAtIndex(queryParamsState, index, (p) => ({
               ...p,
               active: !p.active
             })))}
         />
 
-        <SearchParamComboBox {searchParams} {index} bind:selected={queryParam.name} />
+        <SearchParamComboBox
+          searchParams={filteredSearchParams}
+          {index}
+          bind:selected={queryParam.name}
+        />
         {#if queryParam.name === '_include'}
           {#await loadSearchIncludes(type)}
             <ValueComboBox {index} bind:selected={queryParam.value} />
@@ -166,22 +134,25 @@
         {/if}
         {#if index === 0}
           <ButtonMoveDown
-            disabled={queryParams.length < 2}
-            on:click={() => (queryParams = moveDownAtIndex(queryParams, index))}
+            disabled={queryParamsState.length < 2}
+            on:click={() => (queryParamsState = moveDownAtIndex(queryParamsState, index))}
           />
         {:else}
-          <ButtonMoveUp on:click={() => (queryParams = moveUpAtIndex(queryParams, index))} />
+          <ButtonMoveUp
+            on:click={() => (queryParamsState = moveUpAtIndex(queryParamsState, index))}
+          />
         {/if}
         <RemoveButton
-          disabled={queryParams.length === 1}
-          on:click={() => (queryParams = removeAtIndex(queryParams, index, selectParam(0)))}
+          disabled={queryParamsState.length === 1}
+          on:click={() =>
+            (queryParamsState = removeAtIndex(queryParamsState, index, selectParam(0)))}
         />
         <AddButton
           on:click={() =>
-            (queryParams = insertAtIndex(
-              queryParams,
+            (queryParamsState = insertAtIndex(
+              queryParamsState,
               index,
-              selectParam(Math.max(...queryParams.map((p) => p.id)) + 1)
+              selectParam(Math.max(...queryParamsState.map((p) => p.id)) + 1)
             ))}
         />
       </div>
@@ -219,31 +190,14 @@
           </button>
         </div>
       {/snippet}
-      <div class="p-1">
-        <div class="flex items-center gap-3">
-          <div
-            class="group relative inline-flex w-11 shrink-0 rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-indigo-600 transition-colors duration-200 ease-in-out has-checked:bg-indigo-600 has-focus-visible:outline-2"
-          >
-            <span
-              class="size-5 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5 dark:bg-gray-800"
-            ></span>
-            <input
-              id="query-plan"
-              type="checkbox"
-              name="query-plan"
-              aria-labelledby="query-plan-label"
-              class="absolute inset-0 appearance-none focus:outline-hidden"
-              bind:checked={queryPlan}
-            />
-          </div>
-          <div class="text-sm">
-            <label
-              id="query-plan-label"
-              class="font-medium text-gray-900 dark:text-gray-100"
-              for="query-plan">Show Plan</label
-            >
-          </div>
-        </div>
+      <div class="flex flex-col gap-3 p-1">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Query options</h3>
+        <Toggle
+          id="query-plan"
+          label="Show Plan"
+          description="Show how the server executes the query."
+          bind:checked={queryPlanState}
+        />
       </div>
     </Dropdown>
   </div>

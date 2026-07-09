@@ -29,6 +29,12 @@
     });
   });
 
+  function isHistoryRoute(routeId: string | null | undefined): boolean {
+    return (
+      routeId != null && (routeId.startsWith('/_history') || routeId.startsWith('/__history-page'))
+    );
+  }
+
   function isHomeRoute(routeId: string | null): boolean {
     return (
       routeId != null &&
@@ -59,9 +65,9 @@
           <div class="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
             <NavItem active={isHomeRoute(page.route.id)} id="/" label="Home" />
             <NavItem
-              active={page.route.id?.startsWith('/_history') ||
-                page.route.id?.startsWith('/__history-page')}
+              active={isHistoryRoute(page.route.id)}
               id="/_history"
+              query="?_summary=true"
               label="History"
             />
             <NavItem

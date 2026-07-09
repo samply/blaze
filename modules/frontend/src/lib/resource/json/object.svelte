@@ -15,4 +15,4 @@
     indent={indent + 4}
     isLast={index + 1 === object.properties.length}
     {property}
-  />{/each}{' '.repeat(indent)}{'}'}
+  />{/each}{' '.repeat(indent)}}

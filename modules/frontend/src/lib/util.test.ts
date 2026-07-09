@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { toTitleCase, joinStrings, isTabActive, withTab, moveDownAtIndex } from '$lib/util.js';
+import {
+  toTitleCase,
+  joinStrings,
+  isTabActive,
+  withTab,
+  moveDownAtIndex,
+  processParams,
+  defaultCount
+} from '$lib/util.js';
 
 describe('toTitleCase test', () => {
   it('works with empty strings', () => {
@@ -99,5 +107,33 @@ describe('moveDownAtIndex test', () => {
     it.each([2, 3])('moving the element with index %i down does not change the array', (i) => {
       expect(moveDownAtIndex([1, 2, 3], i)).toStrictEqual([1, 2, 3]);
     });
+  });
+});
+
+describe('processParams test', () => {
+  function params(query: string): URLSearchParams {
+    return new URLSearchParams(new URLSearchParams(query));
+  }
+
+  it('injects the default count', () => {
+    expect(processParams(params(''))).toBe(`_count=${defaultCount}`);
+  });
+  it('keeps an explicit count', () => {
+    expect(processParams(params('_count=5'))).toBe(`_count=5`);
+  });
+  it('drops inactive params', () => {
+    expect(processParams(params('gender:inactive=male'))).toBe(`_count=${defaultCount}`);
+  });
+  it('forwards _summary=true verbatim', () => {
+    expect(processParams(params('_summary=true'))).toBe(`_summary=true&_count=${defaultCount}`);
+  });
+  it('forwards _summary=false verbatim, matching the request Blaze receives', () => {
+    expect(processParams(params('_summary=false'))).toBe(`_summary=false&_count=${defaultCount}`);
+  });
+  it('forwards _summary=count verbatim', () => {
+    expect(processParams(params('_summary=count'))).toBe(`_summary=count&_count=${defaultCount}`);
+  });
+  it('forwards _summary=text verbatim', () => {
+    expect(processParams(params('_summary=text'))).toBe(`_summary=text&_count=${defaultCount}`);
   });
 });

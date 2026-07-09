@@ -38,5 +38,5 @@
 {:else if value.code}
   {value.code}
 {:else}
-  {'<not-available>'}
+  &lt;not-available&gt;
 {/if}

@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
+  import { page } from '$app/state';
+
   import Breadcrumb from '$lib/breadcrumb.svelte';
   import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
   import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
@@ -10,8 +12,13 @@
   import TotalCard from '$lib/total-card.svelte';
   import TotalBadge from '$lib/total-badge.svelte';
   import EntryCard from '$lib/resource/entry-card.svelte';
+  import SummaryControl from '$lib/summary-control.svelte';
+  import SummaryBanner from '$lib/summary-banner.svelte';
+  import { bundleSummaryMode } from '$lib/resource/subsetted.js';
 
   let { data, params }: PageProps = $props();
+
+  let summaryMode = $derived(bundleSummaryMode(data.bundle));
 </script>
 
 <svelte:head>
@@ -34,7 +41,11 @@
         <TotalBadge total={data.bundle.total} />
       {/if}
     </p>
+    <!-- a paged result set is fixed to the summary mode of the history it belongs to -->
+    <SummaryControl mode={summaryMode} fixed kind="history" url={page.url} />
   </TotalCard>
+
+  <SummaryBanner mode={summaryMode} fixed url={page.url} />
 
   {#if data.bundle.fhirObjectEntry !== undefined && data.bundle.fhirObjectEntry.length > 0}
     {#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
