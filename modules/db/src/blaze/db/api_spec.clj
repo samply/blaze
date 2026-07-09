@@ -137,6 +137,11 @@
                :clauses :blaze.db.query/clauses)
   :ret ac/completable-future?)
 
+(s/fdef d/compile-system-query-lenient
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :clauses :blaze.db.query/clauses)
+  :ret ac/completable-future?)
+
 (s/fdef d/compile-system-matcher
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :clauses :blaze.db.query/clauses)

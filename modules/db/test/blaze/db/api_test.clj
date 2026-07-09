@@ -1802,6 +1802,31 @@
   ([node-or-db start-type start-id]
    @(d/pull-many node-or-db (vec (d/system-list (ensure-db node-or-db) start-type start-id)))))
 
+(defn- count-system-query [node-or-db clauses]
+  @(-> (d/compile-system-query node-or-db clauses)
+       (ac/then-compose #(d/count-query (ensure-db node-or-db) %))))
+
+(defn- pull-system-query
+  ([node-or-db clauses]
+   (with-open [db (d/new-batch-db (ensure-db node-or-db))]
+     (ba/try-anomaly
+      @(-> (d/system-query db clauses)
+           (ac/then-compose #(d/pull-many node-or-db (vec %)))))))
+  ([node-or-db clauses start-type start-id]
+   (with-open [db (d/new-batch-db (ensure-db node-or-db))]
+     (ba/try-anomaly
+      @(-> (d/compile-system-query db clauses)
+           (ac/then-compose
+            #(d/pull-many node-or-db (vec (d/execute-query db % start-type start-id)))))))))
+
+(defmacro given-system-query
+  "Combines `pull-system-query` with `count-system-query`. Assumes that the
+  first line of assertions is `count := x` because it takes the count from it."
+  [node-or-db clauses & [_count-sym _eq-sym count :as body]]
+  `(do (given (pull-system-query ~node-or-db ~clauses)
+         ~@body)
+       (is (= ~count (count-system-query ~node-or-db ~clauses)))))
+
 (def ^:private plus-1 (time/plus Instant/EPOCH (time/seconds 1)))
 (def ^:private plus-2 (time/plus Instant/EPOCH (time/seconds 2)))
 (def ^:private plus-4 (time/plus Instant/EPOCH (time/seconds 4)))
@@ -8147,6 +8172,38 @@
       count := 1
       [0 :id] := "2")))
 
+(deftest type-query-security-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"
+             :meta #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri "system-100958" :code #fhir/code "code-101003"}]}}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Patient :id "2"
+             :meta #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri "system-100958" :code #fhir/code "code-101010"}]}}]]]
+
+    (given-type-query node "Patient" [["_security" "system-100958|code-101003"]]
+      count := 1
+      [0 :id] := "0")
+
+    (given-type-query node "Patient" [["_security" "system-100958|code-101010"]]
+      count := 1
+      [0 :id] := "2")))
+
+(deftest type-query-source-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"
+             :meta #fhir/Meta{:source #fhir/uri "source-101439"}}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Patient :id "2"
+             :meta #fhir/Meta{:source #fhir/uri "source-101448"}}]]]
+
+    (given-type-query node "Patient" [["_source" "source-101439"]]
+      count := 1
+      [0 :id] := "0")
+
+    (given-type-query node "Patient" [["_source" "source-101448"]]
+      count := 1
+      [0 :id] := "2")))
+
 (deftest type-query-id-prefix-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "x"}]
@@ -8844,7 +8901,314 @@
         (testing "an unknown search-param errors"
           (given-failed-future (d/system-query db [["foo" "bar"]])
             ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Resource` was not found."))))))
+            ::anom/message := "The search-param with code `foo` and type `Resource` was not found.")))))
+
+  (testing "_has"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Group :id "0"}]
+        [:put {:fhir/type :fhir/Group :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "http://loinc.org"
+                    :code #fhir/code "8480-6"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Group/0"}
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "http://loinc.org"
+                    :code #fhir/code "8480-6"}]}}]]]
+
+      (let [clauses [["_has:Observation:subject:code" "8480-6"]]]
+        (testing "finds the referenced resources of all types in the order of
+                  their type hashes"
+          (given-system-query node clauses
+            count := 2
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [1 :fhir/type] := :fhir/Group
+            [1 :id] := "0"))
+
+        (testing "it is possible to start with the group"
+          (given (pull-system-query node clauses "Group" "0")
+            count := 1
+            [0 :fhir/type] := :fhir/Group
+            [0 :id] := "0"))
+
+        (testing "clauses can be read back"
+          (is (= (d/query-clauses @(d/compile-system-query node clauses))
+                 clauses))))
+
+      (testing "in combination with _id"
+        (given-system-query node [["_has:Observation:subject:code" "8480-6"]
+                                  ["_id" "0"]]
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Group
+          [1 :id] := "0"))
+
+      (testing "errors"
+        (testing "missing modifier"
+          (given-failed-future (d/system-query (d/db node) [["_has" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing modifier of _has search param."))
+
+        (testing "main search param not found"
+          (given-failed-future (d/system-query (d/db node) [["_has:Observation:subject:foo" ""]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
+
+  (testing "_id"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"}]]]
+
+      (testing "finds the resources of all types"
+        (given-system-query node [["_id" "0"]]
+          count := 2
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "0"))))
+
+  (testing "_lastUpdated"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"}]]]
+
+      (testing "finds the resources of all types"
+        (given-system-query node [["_lastUpdated" "1970-01-01"]]
+          count := 2
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "0"))
+
+      (testing "finds nothing after the last update"
+        (given-system-query node [["_lastUpdated" "gt1970-01-02"]]
+          count := 0))))
+
+  (testing "_list"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "1"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference{:reference #fhir/string "Patient/0"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference{:reference #fhir/string "Observation/0"}}]}]]]
+
+      (let [clauses [["_list" "0"]]]
+        (testing "finds the resources of all types referenced in the list in
+                  the order of their type hashes"
+          (given-system-query node clauses
+            count := 2
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "0"))
+
+        (testing "it is possible to start with the patient"
+          (given (pull-system-query node clauses "Patient" "0")
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"))
+
+        (testing "clauses can be read back"
+          (is (= (d/query-clauses @(d/compile-system-query node clauses))
+                 clauses))))
+
+      (testing "a non-existing list doesn't reference anything"
+        (given-system-query node [["_list" "1"]]
+          count := 0))))
+
+  (testing "_profile"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511"]}}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511"]}}]]]
+
+      (testing "finds the resources of all types claiming to conform to the
+                profile"
+        (given-system-query node [["_profile" "profile-uri-151511"]]
+          count := 2
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "0"))))
+
+  (testing "_security"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :meta #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri "system-104222" :code #fhir/code "code-104229"}]}}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :meta #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri "system-104222" :code #fhir/code "code-104229"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "1"}]]]
+
+      (testing "finds the resources of all types carrying the security label"
+        (given-system-query node [["_security" "system-104222|code-104229"]]
+          count := 2
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "0"))))
+
+  (testing "_source"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :meta #fhir/Meta{:source #fhir/uri "source-104735"}}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :meta #fhir/Meta{:source #fhir/uri "source-104735"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"}]]]
+
+      (testing "finds the resources of all types coming from the source"
+        (given-system-query node [["_source" "source-104735"]]
+          count := 2
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "0"))))
+
+  (testing "_tag"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "1"}]]]
+
+      (let [clauses [["_tag" "system-141141|code-141146"]]]
+        (testing "finds the tagged resources of all types in the order of
+                  their type hashes"
+          (given-system-query node clauses
+            count := 2
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "0"))
+
+        (testing "it is possible to start with the patient"
+          (given (pull-system-query node clauses "Patient" "0")
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"))
+
+        (testing "starting with Measure also returns the patient, because in
+                  type hash order, Measure comes before Patient but after
+                  Observation"
+          (given (pull-system-query node clauses "Measure" "0")
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"))
+
+        (testing "overshooting the start-id returns an empty collection"
+          (given (pull-system-query node clauses "Patient" "1")
+            count := 0))
+
+        (testing "clauses can be read back"
+          (is (= (d/query-clauses @(d/compile-system-query node clauses))
+                 clauses))))
+
+      (testing "deleted resources aren't found"
+        @(d/transact node [[:delete "Observation" "0"]])
+
+        (given-system-query node [["_tag" "system-141141|code-141146"]]
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"))))
+
+  (testing "_tag finds resources of types without own search parameters"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Parameters :id "0"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+        [:put {:fhir/type :fhir/Binary :id "0"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+        [:put {:fhir/type :fhir/Patient :id "0"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]]]
+
+      (given-system-query node [["_tag" "system-141141|code-141146"]]
+        count := 3
+        [0 :fhir/type] := :fhir/Parameters
+        [0 :id] := "0"
+        [1 :fhir/type] := :fhir/Binary
+        [1 :id] := "0"
+        [2 :fhir/type] := :fhir/Patient
+        [2 :id] := "0")))
+
+  (testing "_tag and _id"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+        [:put {:fhir/type :fhir/Observation :id "0"}]]]
+
+      (given-system-query node [["_tag" "system-141141|code-141146"]
+                                ["_id" "1"]]
+        count := 1
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "1")))
+
+  (testing "multiple _tag values are combined with logical or"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-155945"}]}}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]]]
+
+      (given-system-query node [["_tag" "system-141141|code-141146"
+                                 "system-141141|code-155945"]]
+        count := 2
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "0"
+        [1 :fhir/type] := :fhir/Patient
+        [1 :id] := "1")))
+
+  (testing "empty clauses return all resources"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"}]]]
+
+      (given-system-query node []
+        count := 2
+        [0 :fhir/type] := :fhir/Observation
+        [0 :id] := "0"
+        [1 :fhir/type] := :fhir/Patient
+        [1 :id] := "0")
+
+      (testing "it is possible to start with the patient"
+        (given (pull-system-query node [] "Patient" "0")
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"))
+
+      (testing "clauses read back are empty"
+        (is (empty? (d/query-clauses @(d/compile-system-query node [])))))))
+
+  (testing "query plan"
+    (with-system [{:blaze.db/keys [node]} config]
+      (with-open-db [db node]
+        (doseq [clauses [[["_id" "0"]] []]]
+          (is (= {:query-type :system}
+                 (d/explain-query db @(d/compile-system-query db clauses)))))))))
 
 (deftest compile-system-query-test
   (with-system [{:blaze.db/keys [node]} config]
@@ -8853,7 +9217,49 @@
       (doseq [target [node (d/db node)]]
         (given-failed-future (d/compile-system-query target [["foo" "bar"]])
           ::anom/category := ::anom/not-found
-          ::anom/message := "The search-param with code `foo` and type `Resource` was not found.")))))
+          ::anom/message := "The search-param with code `foo` and type `Resource` was not found.")))
+
+    (testing "sort clauses are unsupported"
+      (doseq [target [node (d/db node)]]
+        (given-failed-future (d/compile-system-query target [[:sort "_lastUpdated" :asc]])
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Sort clauses aren't supported in system-level queries.")))))
+
+(deftest compile-system-query-lenient-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"
+             :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-141141" :code #fhir/code "code-141146"}]}}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Observation :id "0"}]]]
+
+    (testing "an unknown search-param is ignored"
+      (doseq [target [node (d/db node)]]
+        (let [query @(d/compile-system-query-lenient target [["foo" "bar"]
+                                                             ["_tag" "system-141141|code-141146"]])]
+          (with-open-db [db node]
+            (given @(d/pull-many node (vec (d/execute-query db query)))
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "0"))
+
+          (testing "the clause with the unknown search-param is dropped"
+            (is (= (d/query-clauses query)
+                   [["_tag" "system-141141|code-141146"]]))))))
+
+    (testing "with all clauses dropped, all resources are returned"
+      (let [query @(d/compile-system-query-lenient node [["foo" "bar"]])]
+        (with-open-db [db node]
+          (given @(d/pull-many node (vec (d/execute-query db query)))
+            count := 3
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "0"
+            [2 :fhir/type] := :fhir/Patient
+            [2 :id] := "1"))
+
+        (testing "clauses read back are empty"
+          (is (empty? (d/query-clauses query))))))))
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
@@ -10982,6 +11388,24 @@
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given (pull-query batch-db @(d/compile-type-query-lenient batch-db "Patient" [["active" "true"]]))
+          count := 1
+          [0 :id] := "0"))))
+
+  (testing "compile-system-query"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (given (pull-query batch-db @(d/compile-system-query batch-db [["_id" "0"]]))
+          count := 1
+          [0 :id] := "0"))))
+
+  (testing "compile-system-query-lenient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (given (pull-query batch-db @(d/compile-system-query-lenient batch-db [["_id" "0"]]))
           count := 1
           [0 :id] := "0"))))
 

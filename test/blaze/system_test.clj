@@ -453,10 +453,11 @@
       :status := 204)))
 
 (deftest search-system-test
-  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
-      [:headers "Link" #(str/split % #",") 0] := "<http://localhost:8080?_count=50>;rel=\"self\""
+      [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "50" "__t" "1"}))
+      [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080?_count=50>;rel=\"self\""
       [:body json-parser :fhir/type] := :fhir/Bundle)))
 
 (deftest search-type-test

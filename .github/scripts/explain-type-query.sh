@@ -8,6 +8,6 @@ base="http://localhost:8080/fhir"
 type=$1
 query="${2//[[:space:]]/}"
 expected_plan=$3
-actual_plan=$(curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?$query&__explain=true" | jq -r '.entry[0].resource.issue[0].diagnostics')
+actual_plan=$(search_strict "$base/$type?$query&__explain=true" | jq -r '.entry[0].resource.issue[0].diagnostics')
 
 test "plan" "$actual_plan" "$expected_plan"

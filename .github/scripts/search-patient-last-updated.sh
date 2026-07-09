@@ -18,15 +18,13 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 base="http://localhost:8080/fhir"
 
 count() {
-  curl -sfH 'Accept: application/fhir+json' -H 'Prefer: handling=strict' \
-    "$base/Patient?$1&_summary=count" | jq -r .total
+  search_strict "$base/Patient?$1&_summary=count" | jq -r .total
 }
 
 # Returns the _lastUpdated of the first patient when sorted by `$1` (either
 # `_lastUpdated` for the earliest or `-_lastUpdated` for the latest).
 boundary_last_updated() {
-  curl -sfH 'Accept: application/fhir+json' -H 'Prefer: handling=strict' \
-    "$base/Patient?_sort=$1&_count=1" | jq -r '.entry[0].resource.meta.lastUpdated'
+  search_strict "$base/Patient?_sort=$1&_count=1" | jq -r '.entry[0].resource.meta.lastUpdated'
 }
 
 # Returns the number of unique patient ids downloaded when paging over all

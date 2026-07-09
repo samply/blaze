@@ -8,6 +8,7 @@
    [blaze.db.api :as d]
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
@@ -81,17 +82,27 @@
   [{v "__page-id"}]
   (some #(when (s/valid? :blaze.resource/id %) %) (u/to-seq v)))
 
+(defn- page-id-stack-entry?
+  "An entry is either an empty string (representing the first page which has no
+  start-id), a FHIR id (type-level search) or a type qualified FHIR id in the
+  form `Type/id` (system-level search)."
+  [entry]
+  (or (= "" entry)
+      (s/valid? :blaze.resource/id entry)
+      (fsr/split-literal-ref entry)))
+
 (defn page-id-stack
   "Returns the value of the `__page-id-stack` query param as a vector of the
   start-id's of the ancestor pages, oldest first.
 
-  An empty string represents the first page (which has no start-id). The param is
-  only set internally inside encrypted page id's. Returns an empty vector if
-  absent or if any entry is neither an empty string nor a valid FHIR id."
+  An empty string represents the first page (which has no start-id). In the
+  system-level search, the start-id's are qualified with the resource type in
+  the form `Type/id`. The param is only set internally inside encrypted page
+  id's. Returns an empty vector if absent or if any entry is invalid."
   {:arglists '([query-params])}
   [{v "__page-id-stack"}]
   (let [stack (vec (u/to-seq v))]
-    (if (every? #(or (= "" %) (s/valid? :blaze.resource/id %)) stack)
+    (if (every? page-id-stack-entry? stack)
       stack
       [])))
 

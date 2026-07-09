@@ -171,6 +171,8 @@
    :page-store #blaze/ref :blaze.page-store/local
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
+  :blaze.interaction.search-system/search-duration-seconds {}
+
   :blaze.interaction/search-type
   {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
    :clock #blaze/ref :blaze/clock

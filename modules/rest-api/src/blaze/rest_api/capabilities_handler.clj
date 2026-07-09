@@ -255,11 +255,15 @@
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
           :name #fhir/string "_sort"
           :type #fhir/code "special"
-          :documentation #fhir/markdown "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
+          :documentation #fhir/markdown "`_id`, `_lastUpdated` and `-_lastUpdated` are supported at type-level"}
          {:fhir/type :fhir.CapabilityStatement.rest/searchParam
           :name #fhir/string "_summary"
           :type #fhir/code "token"
-          :documentation #fhir/markdown "Only `count` is supported at the moment."}]
+          :documentation #fhir/markdown "`true`, `count` and `false` are supported"}
+         {:fhir/type :fhir.CapabilityStatement.rest/searchParam
+          :name #fhir/string "_total"
+          :type #fhir/code "token"
+          :documentation #fhir/markdown "`accurate` is supported"}]
         :compartment [#fhir/canonical "http://hl7.org/fhir/CompartmentDefinition/patient"]}
         (seq operations) (assoc :operation operations))]}))
 

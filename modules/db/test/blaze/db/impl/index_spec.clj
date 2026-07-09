@@ -74,11 +74,6 @@
                :scan-clauses (s/nilable ::query/search-clauses))
   :ret ac/completable-future?)
 
-(s/fdef index/system-query
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
-               :clauses ::query/clauses)
-  :ret (cs/coll-of :blaze.db/resource-handle))
-
 (s/fdef index/compartment-query
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment

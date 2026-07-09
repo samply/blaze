@@ -248,6 +248,9 @@
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))
 
+  (-compile-system-query-lenient [_ clauses]
+    (p/-compile-system-query-lenient node clauses))
+
   (-compile-system-matcher [_ clauses]
     (p/-compile-system-matcher node clauses))
 

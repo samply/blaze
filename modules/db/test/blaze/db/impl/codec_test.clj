@@ -43,6 +43,13 @@
 (deftest tid-test
   (check `codec/tid))
 
+(deftest all-types-test
+  (testing "contains types without own search parameters"
+    (is (every? (set codec/all-types) ["Binary" "Parameters" "OperationOutcome"])))
+
+  (testing "every type can be converted to a tid and back"
+    (is (every? #(= % (codec/tid->type (codec/tid %))) codec/all-types))))
+
 (deftest string-test
   (satisfies-prop 100
     (prop/for-all [s (s/gen string?)]

@@ -131,4 +131,5 @@
 
   (testing "keeps keys"
     (are [key] (seq (uc/clauses {key "bar"}))
-      "_id" "_list" "_profile" "_tag" "_lastUpdated" "_has")))
+      "_id" "_list" "_profile" "_security" "_source" "_tag" "_lastUpdated"
+      "_has")))

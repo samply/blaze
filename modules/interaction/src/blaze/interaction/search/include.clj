@@ -41,11 +41,16 @@
   (format "Inclusion(s) would return more than %,d resources which is too costly to output. Please either lower the page size or use $graphql or $graph operations." max-size))
 
 (defn add-includes
-  "Returns a set of included resource handles of `resource-handles`."
+  "Returns a set of included resource handles of `resource-handles`.
+
+  Resource handles that are also matches (part of `resource-handles`) are
+  removed from the result, so that a resource which is both a match and an
+  include appears only once in the bundle, as a match (see bdl-7)."
   [db include-defs resource-handles]
-  (loop [handles (includes db include-defs :direct resource-handles)]
-    (let [new-handles (set/union handles (includes db include-defs :iterate handles))]
-      (condp < (count new-handles)
-        max-size (ba/conflict (too-costly-msg) :fhir/issue "too-costly")
-        (count handles) (recur new-handles)
-        handles))))
+  (let [matches (set resource-handles)]
+    (loop [handles (includes db include-defs :direct resource-handles)]
+      (let [new-handles (set/union handles (includes db include-defs :iterate handles))]
+        (condp < (count new-handles)
+          max-size (ba/conflict (too-costly-msg) :fhir/issue "too-costly")
+          (count handles) (recur new-handles)
+          (set/difference handles matches))))))

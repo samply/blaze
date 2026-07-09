@@ -288,6 +288,18 @@
            (or (try-compile-patient-type-query search-param-registry type clauses)
                (qt/->TypeQuery (codec/tid type) clauses)))))))
 
+(defn- compile-system-query [search-param-registry clauses lenient?]
+  (do-sync [clauses (index/resolve-search-params search-param-registry "Resource" clauses lenient?)]
+    (cond
+      (:sort-clause clauses)
+      (ba/unsupported "Sort clauses aren't supported in system-level queries.")
+
+      (empty? clauses)
+      (qs/->EmptySystemQuery)
+
+      :else
+      (qs/system-query clauses))))
+
 (defn- compartment-clauses [search-param-registry code type]
   (let [search-param-codes (sr/compartment-resources search-param-registry code type)]
     (if (seq search-param-codes)
@@ -403,8 +415,10 @@
       (batch-db/->Matcher (:search-clauses clauses))))
 
   (-compile-system-query [_ clauses]
-    (do-sync [clauses (index/resolve-search-params search-param-registry "Resource" clauses false)]
-      (qs/->SystemQuery clauses)))
+    (compile-system-query search-param-registry clauses false))
+
+  (-compile-system-query-lenient [_ clauses]
+    (compile-system-query search-param-registry clauses true))
 
   (-compile-system-matcher [_ clauses]
     (compile-system-matcher search-param-registry clauses))

@@ -12,7 +12,7 @@ download() {
 }
 
 count() {
-  curl -sfH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$base/$type?date=$1&_summary=count" | jq .total
+  search_strict "$base/$type?date=$1&_summary=count" | jq .total
 }
 
 size() {

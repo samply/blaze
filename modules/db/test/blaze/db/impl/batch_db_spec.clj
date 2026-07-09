@@ -11,6 +11,7 @@
    [blaze.db.impl.index.system-as-of-spec]
    [blaze.db.impl.index.type-as-of-spec]
    [blaze.db.impl.query.compartment-spec]
+   [blaze.db.impl.query.system-spec]
    [blaze.db.impl.query.type-spec]
    [blaze.db.impl.search-param.chained-spec]
    [blaze.db.index.query :as-alias query]

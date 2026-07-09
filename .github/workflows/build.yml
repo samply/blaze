@@ -1579,8 +1579,41 @@ jobs:
     - name: Cancel Async Query
       run: .github/scripts/cancel-async.sh
 
+    - name: Search System _has
+      run: .github/scripts/search-system-has.sh
+
+    - name: Search Patient _id
+      run: .github/scripts/search-patient-id.sh
+
+    - name: Search System _id
+      run: .github/scripts/search-system-id.sh
+
+    - name: Search System _lastUpdated
+      run: .github/scripts/search-system-last-updated.sh
+
+    - name: Search System _list
+      run: .github/scripts/search-system-list.sh
+
+    - name: Search System _profile
+      run: .github/scripts/search-system-profile.sh
+
+    - name: Search _security
+      run: .github/scripts/search-security.sh
+
+    - name: Search System _security
+      run: .github/scripts/search-system-security.sh
+
+    - name: Search _source
+      run: .github/scripts/search-source.sh
+
+    - name: Search System _source
+      run: .github/scripts/search-system-source.sh
+
     - name: Search _tag
       run: .github/scripts/search-tag.sh
+
+    - name: Search System _tag
+      run: .github/scripts/search-system-tag.sh
 
     - name: Binary Content Download - not found
       run: .github/scripts/read-binary-content-not-found.sh
