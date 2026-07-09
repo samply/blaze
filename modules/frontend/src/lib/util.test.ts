@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { toTitleCase, joinStrings, isTabActive, withTab, moveDownAtIndex } from '$lib/util.js';
+import {
+  toTitleCase,
+  joinStrings,
+  isTabActive,
+  withTab,
+  moveDownAtIndex,
+  processParams,
+  defaultCount
+} from '$lib/util.js';
 
 describe('toTitleCase test', () => {
   it('works with empty strings', () => {
@@ -99,5 +107,37 @@ describe('moveDownAtIndex test', () => {
     it.each([2, 3])('moving the element with index %i down does not change the array', (i) => {
       expect(moveDownAtIndex([1, 2, 3], i)).toStrictEqual([1, 2, 3]);
     });
+  });
+});
+
+describe('processParams test', () => {
+  function params(query: string): URLSearchParams {
+    return new URLSearchParams(new URLSearchParams(query));
+  }
+
+  it('injects the default count', () => {
+    expect(processParams(params(''), false)).toBe(`_count=${defaultCount}`);
+  });
+  it('keeps an explicit count', () => {
+    expect(processParams(params('_count=5'), false)).toBe('_count=5');
+  });
+  it('drops inactive params', () => {
+    expect(processParams(params('gender:inactive=male'), false)).toBe(`_count=${defaultCount}`);
+  });
+  it('appends _summary=true when summary is enabled', () => {
+    expect(processParams(params(''), true)).toBe(`_count=${defaultCount}&_summary=true`);
+  });
+  it('appends _summary=true by default', () => {
+    expect(processParams(params(''))).toBe(`_count=${defaultCount}&_summary=true`);
+  });
+  it('omits _summary when summary is disabled', () => {
+    const result = processParams(params(''), false);
+    expect(result).toBe(`_count=${defaultCount}`);
+    expect(result).not.toContain('_summary');
+  });
+  it('keeps an explicit _summary even when summary is disabled', () => {
+    expect(processParams(params('_summary=count'), false)).toBe(
+      `_summary=count&_count=${defaultCount}`
+    );
   });
 });

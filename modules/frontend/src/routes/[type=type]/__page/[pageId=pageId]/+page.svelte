@@ -42,7 +42,7 @@
 </header>
 
 <main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
-  <SearchForm searchParams={data.searchParams} type={params.type} />
+  <SearchForm searchParams={data.searchParams} type={params.type} summary={data.summary} />
   {#await data.streamed.bundle}
     {#if duration > 300}
       <div

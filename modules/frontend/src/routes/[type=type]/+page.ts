@@ -4,6 +4,7 @@ import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
 import { fetchBundleWithDuration } from './util.js';
 import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
+import { loadSummary } from '$lib/summary.js';
 
 async function loadSearchParams(
   fetch: typeof window.fetch,
@@ -20,12 +21,14 @@ async function loadSearchParams(
   return (await res.json()).searchParams;
 }
 
-export const load: PageLoad = async ({ fetch, params, url }) => {
+export const load: PageLoad = async ({ fetch, params, url, parent }) => {
+  const summary = await loadSummary(parent, params.type);
   return {
+    summary,
     searchParams: await loadSearchParams(fetch, params.type),
     streamed: {
       start: Date.now(),
-      bundle: fetchBundleWithDuration(fetch, params, url)
+      bundle: fetchBundleWithDuration(fetch, params, url, summary)
     }
   };
 };

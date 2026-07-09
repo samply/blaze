@@ -37,13 +37,17 @@ export async function appError(params: RouteParams, res: Response) {
 export async function fetchBundleWithDuration(
   fetch: typeof window.fetch,
   params: RouteParams,
-  url: URL
+  url: URL,
+  summary: boolean
 ) {
   const start = Date.now();
 
-  const res = await fetch(`${resolve('/[type=type]', params)}?${processParams(url.searchParams)}`, {
-    headers: { Accept: 'application/fhir+json' }
-  });
+  const res = await fetch(
+    `${resolve('/[type=type]', params)}?${processParams(url.searchParams, summary)}`,
+    {
+      headers: { Accept: 'application/fhir+json' }
+    }
+  );
 
   if (!res.ok) {
     error(res.status as NumericRange<400, 599>, await appError(params, res));

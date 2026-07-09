@@ -4,6 +4,7 @@
   import TotalCard from '$lib/total-card.svelte';
   import TotalBadge from '$lib/total-badge.svelte';
   import EntryCard from '$lib/resource/entry-card.svelte';
+  import SettingsDropdown from '$lib/settings-dropdown.svelte';
 
   let { data }: PageProps = $props();
 </script>
@@ -19,6 +20,7 @@
         <TotalBadge total={data.bundle.total} />
       {/if}
     </p>
+    <SettingsDropdown enabled={data.summary} />
   </TotalCard>
 
   {#if data.bundle.fhirObjectEntry !== undefined && data.bundle.fhirObjectEntry.length > 0}
