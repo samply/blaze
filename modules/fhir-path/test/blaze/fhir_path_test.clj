@@ -308,7 +308,17 @@
               {:fhir/type :fhir.Observation/component
                :value #fhir/Quantity{:value #fhir/decimal 100M}}]})
       [0 :value] := #fhir/decimal 150M
-      [1 :value] := #fhir/decimal 100M)))
+      [1 :value] := #fhir/decimal 100M))
+
+  (testing "missing type specifier"
+    (given (fhir-path/compile "Observation.value.ofType()")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "missing type specifier in `as` function in expression `Observation.value.ofType()`"))
+
+  (testing "unknown FHIR type"
+    (given (fhir-path/compile "Observation.value.ofType(Foo)")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "unknown FHIR type `Foo` in expression `Observation.value.ofType(Foo)`")))
 
 ;; 5.3. Subsetting
 
@@ -419,7 +429,22 @@
     (given (eval "Patient.id = 'bar'"
                  {:fhir/type :fhir/Patient
                   :id "foo"})
-      identity := [false])))
+      identity := [false]))
+
+  (testing "collections of different sizes are not equal"
+    (given (eval "Patient.name.given = Patient.name.family"
+                 {:fhir/type :fhir/Patient :id "foo"
+                  :name
+                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]
+                                   :family #fhir/string "Doe"}]})
+      identity := [false]))
+
+  (testing "collections with multiple matching items are equal"
+    (given (eval "Patient.name.given = Patient.name.given"
+                 {:fhir/type :fhir/Patient :id "foo"
+                  :name
+                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]}]})
+      identity := [true])))
 
 ;; 6.1.3. != (Not Equals)
 (deftest not-equals-test
@@ -454,7 +479,22 @@
       (given (eval "Patient.id != 'foo'"
                    {:fhir/type :fhir/Patient
                     :id "foo"})
-        identity := [false]))))
+        identity := [false])))
+
+  (testing "collections of different sizes return false"
+    (given (eval "Patient.name.given != Patient.name.family"
+                 {:fhir/type :fhir/Patient :id "foo"
+                  :name
+                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]
+                                   :family #fhir/string "Doe"}]})
+      identity := [false]))
+
+  (testing "collections with multiple matching items are equal"
+    (given (eval "Patient.name.given != Patient.name.given"
+                 {:fhir/type :fhir/Patient :id "foo"
+                  :name
+                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]}]})
+      identity := [false])))
 
 ;; 6.3. Types
 
@@ -488,7 +528,12 @@
              [#fhir/Identifier{:value #fhir/string "value-163922"}
               #fhir/Identifier{:value #fhir/string "value-163928"}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "is type specifier with more than one item at the left side `[#fhir/Identifier{:value #fhir/string \"value-163922\"} #fhir/Identifier{:value #fhir/string \"value-163928\"}]`")))
+      ::anom/message := "is type specifier with more than one item at the left side `[#fhir/Identifier{:value #fhir/string \"value-163922\"} #fhir/Identifier{:value #fhir/string \"value-163928\"}]`"))
+
+  (testing "unknown FHIR type returns an error"
+    (given (fhir-path/compile "Patient.birthDate is Foo")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "unknown FHIR type `Foo` in expression `Patient.birthDate is Foo`")))
 
 ;; 6.3.3 as type specifier
 (deftest as-type-specifier-test
@@ -560,7 +605,17 @@
               #fhir/Identifier{:value #fhir/string "value-163928"}]})
       count := 2
       [0] := #fhir/Identifier{:value #fhir/string "value-163922"}
-      [1] := #fhir/Identifier{:value #fhir/string "value-163928"})))
+      [1] := #fhir/Identifier{:value #fhir/string "value-163928"}))
+
+  (testing "missing type specifier"
+    (given (fhir-path/compile "Patient.birthDate.as()")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "missing type specifier in `as` function in expression `Patient.birthDate.as()`"))
+
+  (testing "unknown FHIR type"
+    (given (fhir-path/compile "Patient.birthDate.as(Foo)")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "unknown FHIR type `Foo` in expression `Patient.birthDate.as(Foo)`")))
 
 ;; 6.5. Boolean logic
 
@@ -573,7 +628,17 @@
       "Patient.gender = 'male' and Patient.birthDate = @2020" true?
       "Patient.gender = 'male' and Patient.birthDate = @2021" false?
       "Patient.gender = 'female' and Patient.birthDate = @2020" false?
-      "Patient.gender = 'female' and Patient.birthDate = @2021" false?)))
+      "Patient.gender = 'female' and Patient.birthDate = @2021" false?))
+
+  (testing "true and empty is empty"
+    (is (empty? (eval "Patient.active and Patient.name.given"
+                      {:fhir/type :fhir/Patient :id "foo"
+                       :active #fhir/boolean true}))))
+
+  (testing "empty and true is empty"
+    (is (empty? (eval "Patient.name.given and Patient.active"
+                      {:fhir/type :fhir/Patient :id "foo"
+                       :active #fhir/boolean true})))))
 
 ;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
 

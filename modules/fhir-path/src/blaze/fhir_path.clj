@@ -452,12 +452,10 @@
 
   fhirpathParser$TypeExpressionContext
   (-compile [ctx]
-    (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
-      "is"
+    (if (= "is" (.getText (.getSymbol ^TerminalNode (.getChild ctx 1))))
       (->IsTypeExpression
        (-compile (.expression ctx))
        (-compile (.typeSpecifier ctx)))
-      "as"
       (->AsTypeExpression
        (-compile (.expression ctx))
        (-compile (.typeSpecifier ctx)))))
