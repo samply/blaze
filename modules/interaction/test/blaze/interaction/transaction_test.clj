@@ -5,6 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.kv :as kv]
@@ -35,6 +36,7 @@
    [blaze.test-util :as tu]
    [blaze.util-spec]
    [blaze.util.clauses-spec]
+   [blaze.validator.protocols :as p]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -201,6 +203,30 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
+  (testing "missing batch-handler"
+    (given-failed-system (update config :blaze.interaction/transaction dissoc :batch-handler)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))))
+
+  (testing "missing clock"
+    (given-failed-system (update config :blaze.interaction/transaction dissoc :clock)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze.interaction/transaction dissoc :rng-fn)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing db-sync-timeout"
+    (given-failed-system (update config :blaze.interaction/transaction dissoc :db-sync-timeout)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze.interaction/transaction :node] ::invalid)
       :key := :blaze.interaction/transaction
@@ -234,6 +260,13 @@
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/db-sync-timeout]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid validator"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :validator] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/validator]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn wrap-defaults [handler router]
@@ -2732,3 +2765,88 @@
                 [:issue 0 :code] := #fhir/code "invalid"
                 [:issue 0 :diagnostics] := #fhir/string "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`."
                 [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]"))))))))
+
+(defmethod ig/init-key ::tag-validator [_ _]
+  (reify p/Validator
+    (-validate [_ resource]
+      (ac/completed-future
+       (assoc resource :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code "invalid"}]})))))
+
+(defmethod ig/init-key ::reject-validator [_ _]
+  (reify p/Validator
+    (-validate [_ _]
+      (ac/completed-future
+       (ba/incorrect "External validation of the resource failed." :fhir/issue "invalid")))))
+
+(defmacro with-validator-handler [[handler-binding] validator-key & more]
+  (let [[txs body] (api-stub/extract-txs-body more)]
+    `(with-system-data [{handler# :blaze.interaction/transaction
+                         router# ::router}
+                        (-> config
+                            (assoc-in [:blaze.interaction/transaction :validator]
+                                      (ig/ref ~validator-key))
+                            (assoc ~validator-key {}))]
+       ~txs
+       (let [~handler-binding (-> handler# (wrap-defaults router#) wrap-error)]
+         ~@body))))
+
+(def ^:private transaction-create-bundle
+  {:fhir/type :fhir/Bundle
+   :type #fhir/code "transaction"
+   :entry
+   [{:fhir/type :fhir.Bundle/entry
+     :resource {:fhir/type :fhir/Patient}
+     :request
+     {:fhir/type :fhir.Bundle.entry/request
+      :method #fhir/code "POST"
+      :url #fhir/uri "Patient"}}]})
+
+(deftest validator-test
+  (testing "an invalid resource in a transaction is tagged and persisted"
+    (with-validator-handler [handler] ::tag-validator
+      (let [{:keys [status body]}
+            @(handler
+              {:headers {"prefer" "return=representation"}
+               :body transaction-create-bundle})]
+
+        (is (= 200 status))
+
+        (given body
+          :fhir/type := :fhir/Bundle
+          [:entry 0 :resource :fhir/type] := :fhir/Patient
+          [:entry 0 :resource :meta :tag 0 :code] := #fhir/code "invalid"))))
+
+  (testing "an invalid resource rejects the whole transaction"
+    (with-validator-handler [handler] ::reject-validator
+      (let [{:keys [status body]}
+            @(handler {:body transaction-create-bundle})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "External validation of the resource failed."))))
+
+  (testing "entries without resource are not validated"
+    (with-validator-handler [handler] ::reject-validator
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [{:keys [status body]}
+            @(handler
+              {:body
+               {:fhir/type :fhir/Bundle
+                :type #fhir/code "transaction"
+                :entry
+                [{:fhir/type :fhir.Bundle/entry
+                  :request
+                  {:fhir/type :fhir.Bundle.entry/request
+                   :method #fhir/code "DELETE"
+                   :url #fhir/uri "Patient/0"}}]}})]
+
+        (is (= 200 status))
+
+        (given body
+          :fhir/type := :fhir/Bundle
+          [:entry 0 :response :status] := #fhir/string "204")))))

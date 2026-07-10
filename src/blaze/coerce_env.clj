@@ -8,6 +8,19 @@
 (defn coerce-base-url [s]
   (cond-> s (str/ends-with? s "/") (subs 0 (dec (count s)))))
 
+(def ^:private valid-failure-modes
+  #{:tag-only :tag-outcome :reject})
+
+(defn coerce-validator-failure-mode
+  "Coerces `s` to a validator failure mode keyword which must be one of
+  `tag-only`, `tag-outcome` or `reject`."
+  [s]
+  (let [mode (-> s str/trim str/lower-case (str/replace "_" "-") keyword)]
+    (if (valid-failure-modes mode)
+      mode
+      (ba/incorrect
+       (format "Invalid validator failure mode `%s`. Must be one of tag-only, tag-outcome or reject." s)))))
+
 (defn- coerce-nat-int [s]
   (if-some [i (parse-long s)]
     (if (nat-int? i)

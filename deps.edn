@@ -13,6 +13,9 @@
   blaze/extern-terminology-service
   {:local/root "modules/extern-terminology-service"}
 
+  blaze/extern-validator
+  {:local/root "modules/extern-validator"}
+
   blaze/interaction
   {:local/root "modules/interaction"}
 
@@ -81,6 +84,9 @@
 
   blaze/thread-pool-executor-collector
   {:local/root "modules/thread-pool-executor-collector"}
+
+  blaze/validator
+  {:local/root "modules/validator"}
 
   org.clojars.akiel/spec-coerce
   {:mvn/version "0.4.0"}
@@ -183,6 +189,7 @@
     "-d" "modules/db-tx-log-kafka"
     "-d" "modules/executor"
     "-d" "modules/extern-terminology-service"
+    "-d" "modules/extern-validator"
     "-d" "modules/fhir-client"
     "-d" "modules/fhir-path"
     "-d" "modules/fhir-structure"
@@ -227,6 +234,7 @@
     "-d" "modules/terminology-service-local"
     "-d" "modules/test-util"
     "-d" "modules/thread-pool-executor-collector"
+    "-d" "modules/validator"
     "--exclude" "org.antlr/antlr4"
     "--exclude" "org.clojure/alpha.spec"
     "--exclude" "info.cqframework/cql"

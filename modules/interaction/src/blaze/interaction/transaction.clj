@@ -19,6 +19,8 @@
    [blaze.spec]
    [blaze.util :refer [str]]
    [blaze.util.clauses :as uc]
+   [blaze.validator :as validator]
+   [blaze.validator.spec]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -33,12 +35,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private validate-entry-xf
+(def ^:private check-entry-xf
   (comp (map-indexed fhir-util/validate-entry)
         (halt-when ba/anomaly?)))
 
-(defn- validate-entries [entries]
-  (transduce validate-entry-xf conj [] entries))
+(defn- check-entries [entries]
+  (transduce check-entry-xf conj [] entries))
 
 (defn- prepare-entry [res {{:keys [method]} :request :as entry}]
   (case (:value method)
@@ -49,8 +51,8 @@
 
     (update res :entries conj entry)))
 
-(defn- validate-and-prepare-bundle
-  "Validates the bundle and returns its entries.
+(defn- check-and-prepare-bundle
+  "Checks the bundle and returns its entries.
 
   Returns an anomaly in case of errors."
   [context {resource-type :fhir/type :keys [type] entries :entry :as bundle}]
@@ -74,7 +76,7 @@
 
       :else
       (if (= "transaction" type)
-        (when-ok [entries (validate-entries entries)]
+        (when-ok [entries (check-entries entries)]
           (-> (reduce
                prepare-entry
                {::luid/generator (m/luid-generator context) :entries []}
@@ -240,11 +242,33 @@
          #(build-response-entries (assoc context :blaze/db %) entries)))
     ac/completed-future))
 
-(defmethod process-entries "transaction"
-  [context _ entries]
+(defn- validate-entry-resource
+  [validator {{:keys [method]} :request :keys [resource] :as entry}]
+  (if (and resource (#{"POST" "PUT"} (:value method)))
+    (do-sync [resource (validator/validate validator resource)]
+      (assoc entry :resource resource))
+    (ac/completed-future entry)))
+
+(defn- validate-entry-resources
+  "Validates the resources of all create/update `entries` with `validator` and
+  returns a CompletableFuture that completes with the possibly tagged entries or
+  completes exceptionally with an anomaly."
+  [validator entries]
+  (let [futures (mapv (partial validate-entry-resource validator) entries)]
+    (-> (ac/all-of futures)
+        (ac/then-apply (fn [_] (mapv ac/join futures))))))
+
+(defn- process-transaction-entries [context entries]
   (ac/retry2 #(transact context entries)
              #(and (ba/conflict? %) (= "keep" (-> % :blaze.db/tx-cmd :op))
                    (nil? (:http/status %)))))
+
+(defmethod process-entries "transaction"
+  [{:keys [validator] :as context} _ entries]
+  (if validator
+    (-> (validate-entry-resources validator entries)
+        (ac/then-compose (partial process-transaction-entries context)))
+    (process-transaction-entries context entries)))
 
 (defn- process-context*
   [context {:keys [headers] :blaze/keys [base-url] ::reitit/keys [router match]}]
@@ -271,12 +295,13 @@
 
 (defmethod m/pre-init-spec :blaze.interaction/transaction [_]
   (s/keys :req-un [:blaze.db/node ::rest-api/batch-handler :blaze/clock :blaze/rng-fn
-                   ::rest-api/db-sync-timeout]))
+                   ::rest-api/db-sync-timeout]
+          :opt-un [:blaze/validator]))
 
 (defmethod ig/init-key :blaze.interaction/transaction [_ context]
   (log/info "Init FHIR transaction interaction handler")
   (fn [{{:keys [type] :as bundle} :body :as request}]
-    (if-ok [entries (validate-and-prepare-bundle context bundle)]
+    (if-ok [entries (check-and-prepare-bundle context bundle)]
       (-> (if (empty? entries)
             (ac/completed-future [])
             (-> (process-context context type request)

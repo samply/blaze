@@ -155,6 +155,7 @@ jobs:
         - db-tx-log-kafka
         - executor
         - extern-terminology-service
+        - extern-validator
         - fhir-client
         - fhir-path
         - fhir-structure
@@ -195,6 +196,7 @@ jobs:
         - terminology-service
         - terminology-service-local
         - thread-pool-executor-collector
+        - validator
 
         java-version: ${{ github.event_name == 'schedule' && fromJSON('["21", "25"]') || fromJSON('["25"]') }}
 
@@ -2052,8 +2054,11 @@ jobs:
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/kds-testdata-2024.0.1/tx
 
-    - name: Check Total-Number of Resources are 345
+    - name: Check Total Number of Resources
       run: .github/scripts/check-total-number-of-resources.sh 345
+
+    - name: Check Number of Invalid Resources
+      run: .github/integration-test-kds/check-invalid-resources.sh 67
 
     - name: Download MedicationStatement Resources with ATC Code B01AC06
       run: .github/scripts/download-resources-query.sh MedicationStatement "medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
