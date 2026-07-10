@@ -96,7 +96,13 @@
       :key := ::tx-log/local
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock)))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing clock"
+    (given-failed-system (update config ::tx-log/local dissoc :clock)
+      :key := ::tx-log/local
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock)))))
 
 (defn- write-cbor [x]
   (j/write-value-as-bytes x cbor-object-mapper))

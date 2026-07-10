@@ -105,6 +105,12 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
+  (testing "missing writing-context"
+    (given-failed-system (update config ::rs/cassandra dissoc :writing-context)
+      :key := ::rs/cassandra
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+
   (testing "invalid contact-points"
     (given-failed-system (assoc-in config [::rs/cassandra :contact-points] ::invalid)
       :key := ::rs/cassandra

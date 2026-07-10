@@ -39,55 +39,6 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(deftest init-test
-  (testing "nil config"
-    (given-failed-system {:blaze/rest-api nil}
-      :key := :blaze/rest-api
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-failed-system {:blaze/rest-api {}}
-      :key := :blaze/rest-api
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
-      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
-      [:cause-data ::s/problems 11 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
-      [:cause-data ::s/problems 12 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout)))))
-
-(deftest requests-total-collector-init-test
-  (with-system [{collector ::rest-api/requests-total} {::rest-api/requests-total {}}]
-    (is (s/valid? :blaze.metrics/collector collector))))
-
-(deftest request-duration-seconds-collector-init-test
-  (with-system [{collector ::rest-api/request-duration-seconds} {::rest-api/request-duration-seconds {}}]
-    (is (s/valid? :blaze.metrics/collector collector))))
-
-(deftest parse-duration-seconds-collector-init-test
-  (with-system [{collector ::rest-api/parse-duration-seconds} {::rest-api/parse-duration-seconds {}}]
-    (is (s/valid? :blaze.metrics/collector collector))))
-
-(deftest generate-duration-seconds-collector-init-test
-  (with-system [{collector ::rest-api/generate-duration-seconds} {::rest-api/generate-duration-seconds {}}]
-    (is (s/valid? :blaze.metrics/collector collector))))
-
-(deftest resource-patterns-init-test
-  (with-system [{::rest-api/keys [resource-patterns]} {::rest-api/resource-patterns {:default ::interactions}}]
-    (is (= [#:blaze.rest-api.resource-pattern{:type :default :interactions ::interactions}] resource-patterns))))
-
-(deftest operations-init-test
-  (with-system [{::rest-api/keys [operations]} {::rest-api/operations ::operations}]
-    (is (= ::operations operations))))
-
 (def ^:private success-handler
   (constantly (ac/completed-future (ring/status 200))))
 
@@ -148,6 +99,134 @@
    {:structure-definition-repo structure-definition-repo}
    :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}))
+
+(deftest init-test
+  (testing "nil config"
+    (given-failed-system {:blaze/rest-api nil}
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-failed-system {:blaze/rest-api {}}
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
+      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
+      [:cause-data ::s/problems 11 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
+      [:cause-data ::s/problems 12 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:cause-data ::s/problems 13 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "missing parsing-context"
+    (given-failed-system (update config :blaze/rest-api dissoc :parsing-context)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
+
+  (testing "missing writing-context"
+    (given-failed-system (update config :blaze/rest-api dissoc :writing-context)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+
+  (testing "missing structure-definition-repo"
+    (given-failed-system (update config :blaze/rest-api dissoc :structure-definition-repo)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+
+  (testing "missing node"
+    (given-failed-system (update config :blaze/rest-api dissoc :node)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
+
+  (testing "missing admin-node"
+    (given-failed-system (update config :blaze/rest-api dissoc :admin-node)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))))
+
+  (testing "missing job-scheduler"
+    (given-failed-system (update config :blaze/rest-api dissoc :job-scheduler)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))))
+
+  (testing "missing clock"
+    (given-failed-system (update config :blaze/rest-api dissoc :clock)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze/rest-api dissoc :rng-fn)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing async-status-handler"
+    (given-failed-system (update config :blaze/rest-api dissoc :async-status-handler)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))))
+
+  (testing "missing async-status-cancel-handler"
+    (given-failed-system (update config :blaze/rest-api dissoc :async-status-cancel-handler)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))))
+
+  (testing "missing capabilities-handler"
+    (given-failed-system (update config :blaze/rest-api dissoc :capabilities-handler)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))))
+
+  (testing "missing db-sync-timeout"
+    (given-failed-system (update config :blaze/rest-api dissoc :db-sync-timeout)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+
+  (testing "missing page-id-cipher"
+    (given-failed-system (update config :blaze/rest-api dissoc :page-id-cipher)
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher)))))
+
+(deftest requests-total-collector-init-test
+  (with-system [{collector ::rest-api/requests-total} {::rest-api/requests-total {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+(deftest request-duration-seconds-collector-init-test
+  (with-system [{collector ::rest-api/request-duration-seconds} {::rest-api/request-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+(deftest parse-duration-seconds-collector-init-test
+  (with-system [{collector ::rest-api/parse-duration-seconds} {::rest-api/parse-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+(deftest generate-duration-seconds-collector-init-test
+  (with-system [{collector ::rest-api/generate-duration-seconds} {::rest-api/generate-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+(deftest resource-patterns-init-test
+  (with-system [{::rest-api/keys [resource-patterns]} {::rest-api/resource-patterns {:default ::interactions}}]
+    (is (= [#:blaze.rest-api.resource-pattern{:type :default :interactions ::interactions}] resource-patterns))))
+
+(deftest operations-init-test
+  (with-system [{::rest-api/keys [operations]} {::rest-api/operations ::operations}]
+    (is (= ::operations operations))))
 
 (defmethod ig/init-key ::empty-structure-definition-repo
   [_ _]

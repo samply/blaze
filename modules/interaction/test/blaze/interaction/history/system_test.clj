@@ -92,6 +92,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
+  (testing "missing clock"
+    (given-failed-system (update config :blaze.interaction.history/system dissoc :clock)
+      :key := :blaze.interaction.history/system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze.interaction.history/system dissoc :rng-fn)
+      :key := :blaze.interaction.history/system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing page-id-cipher"
+    (given-failed-system (update config :blaze.interaction.history/system dissoc :page-id-cipher)
+      :key := :blaze.interaction.history/system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
   (testing "invalid link function"
     (given-failed-system (assoc-in config [:blaze.interaction.history/system ::search-util/link] ::invalid)
       :key := :blaze.interaction.history/system

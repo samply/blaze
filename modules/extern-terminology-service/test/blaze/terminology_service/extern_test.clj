@@ -101,6 +101,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
+  (testing "missing http-client"
+    (given-failed-system (update config ::ts/extern dissoc :http-client)
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))))
+
+  (testing "missing parsing-context"
+    (given-failed-system (update config ::ts/extern dissoc :parsing-context)
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
+
+  (testing "missing writing-context"
+    (given-failed-system (update config ::ts/extern dissoc :writing-context)
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+
   (testing "invalid base-uri"
     (given-failed-system (assoc-in config [::ts/extern :base-uri] ::invalid)
       :key := ::ts/extern

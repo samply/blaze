@@ -49,6 +49,12 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
 
+  (testing "missing terminology-service"
+    (given-failed-system (update config :blaze.db/search-param-registry dissoc :terminology-service)
+      :key := :blaze.db/search-param-registry
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
+
   (testing "invalid structure-definition-repo"
     (given-failed-system (assoc-in config [:blaze.db/search-param-registry :structure-definition-repo] ::invalid)
       :key := :blaze.db/search-param-registry

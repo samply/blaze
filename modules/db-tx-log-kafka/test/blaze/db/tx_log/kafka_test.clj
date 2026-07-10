@@ -83,6 +83,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :topic))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
 
+  (testing "missing topic"
+    (given-failed-system (update config ::tx-log/kafka dissoc :topic)
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :topic))))
+
+  (testing "missing last-t-executor"
+    (given-failed-system (update config ::tx-log/kafka dissoc :last-t-executor)
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
+
   (testing "invalid bootstrap servers"
     (given-failed-system (assoc-in config [::tx-log/kafka :bootstrap-servers] ::invalid)
       :key := ::tx-log/kafka

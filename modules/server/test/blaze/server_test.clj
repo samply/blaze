@@ -53,6 +53,18 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :handler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))))
 
+  (testing "missing handler"
+    (given-failed-system (update (config (find-free-port!)) :blaze/server dissoc :handler)
+      :key := :blaze/server
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :handler))))
+
+  (testing "missing version"
+    (given-failed-system (update (config (find-free-port!)) :blaze/server dissoc :version)
+      :key := :blaze/server
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))))
+
   (testing "invalid port"
     (given-failed-system (config ::invalid)
       :key := :blaze/server

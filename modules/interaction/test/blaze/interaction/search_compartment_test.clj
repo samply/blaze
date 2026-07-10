@@ -96,6 +96,30 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
+  (testing "missing clock"
+    (given-failed-system (update config :blaze.interaction/search-compartment dissoc :clock)
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze.interaction/search-compartment dissoc :rng-fn)
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing page-store"
+    (given-failed-system (update config :blaze.interaction/search-compartment dissoc :page-store)
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
+
+  (testing "missing page-id-cipher"
+    (given-failed-system (update config :blaze.interaction/search-compartment dissoc :page-id-cipher)
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
   (testing "invalid link function"
     (given-failed-system (assoc-in config [:blaze.interaction/search-compartment ::search-util/link] ::invalid)
       :key := :blaze.interaction/search-compartment

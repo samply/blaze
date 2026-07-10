@@ -149,6 +149,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
+  (testing "missing scheduler"
+    (given-failed-system (update config :blaze/page-id-cipher dissoc :scheduler)
+      :key := :blaze/page-id-cipher
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
+
+  (testing "missing clock"
+    (given-failed-system (update config :blaze/page-id-cipher dissoc :clock)
+      :key := :blaze/page-id-cipher
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "missing rng-fn"
+    (given-failed-system (update config :blaze/page-id-cipher dissoc :rng-fn)
+      :key := :blaze/page-id-cipher
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze/page-id-cipher :node] ::invalid)
       :key := :blaze/page-id-cipher

@@ -81,6 +81,24 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
+  (testing "missing parsing-context"
+    (given-failed-system (update config ::rs/kv dissoc :parsing-context)
+      :key := ::rs/kv
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
+
+  (testing "missing writing-context"
+    (given-failed-system (update config ::rs/kv dissoc :writing-context)
+      :key := ::rs/kv
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+
+  (testing "missing executor"
+    (given-failed-system (update config ::rs/kv dissoc :executor)
+      :key := ::rs/kv
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
   (testing "invalid kv-store"
     (given-failed-system (assoc-in config [::rs/kv :kv-store] ::invalid)
       :key := ::rs/kv

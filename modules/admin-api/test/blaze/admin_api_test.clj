@@ -287,6 +287,66 @@
       [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :settings))
       [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
+  (testing "missing admin-node"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :admin-node)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))))
+
+  (testing "missing validator"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :validator)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :validator))))
+
+  (testing "missing parsing-context"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :parsing-context)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
+
+  (testing "missing writing-context"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :writing-context)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+
+  (testing "missing job-scheduler"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :job-scheduler)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))))
+
+  (testing "missing read-job-handler"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :read-job-handler)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))))
+
+  (testing "missing history-job-handler"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :history-job-handler)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))))
+
+  (testing "missing search-type-job-handler"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :search-type-job-handler)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))))
+
+  (testing "missing settings"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :settings)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :settings))))
+
+  (testing "missing features"
+    (given-failed-system (update (config!) :blaze/admin-api dissoc :features)
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+
   (testing "invalid context path"
     (given-failed-system (assoc-in (config!) [:blaze/admin-api :context-path] ::invalid)
       :key := :blaze/admin-api
