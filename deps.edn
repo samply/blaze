@@ -126,7 +126,7 @@
     {:mvn/version "3.14.0"}
 
     mx.cider/sayid
-    {:mvn/version "0.3.0"}}
+    {:mvn/version "0.7.1"}}
 
    :main-opts
    ["--eval" "(require 'blaze.dev) (in-ns 'blaze.dev)"
