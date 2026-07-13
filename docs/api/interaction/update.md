@@ -6,6 +6,9 @@ The update interaction creates a new current version for an existing resource or
 PUT [base]/[type]/[id]
 ```
 
+> [!NOTE]
+> Blaze runs all writes as transactions one at a time in a single total order (actual serial execution). A transaction can only start once the previous one has finished, so a large transaction blocks all smaller ones — including this update — until it completes. See [Actual Serial Execution](../../architecture.md#actual-serial-execution) for details.
+
 The request body has to be a resource with an `id` element that matches the `[id]` in the URL. If the `id` is missing or doesn't match, Blaze returns a `400 Bad Request` with an `OperationOutcome`. Any `meta.versionId` and `meta.lastUpdated` values in the request body are ignored.
 
 On success, Blaze returns either a `200 OK` if an already existing resource was updated or a `201 Created` if a new resource was created. In both cases the response contains an `ETag` header with the version id of the resource and a `Last-Modified` header. On creation, a `Location` header with the version-specific URL of the resource is returned as well.

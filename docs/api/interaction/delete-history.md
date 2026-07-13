@@ -12,6 +12,9 @@ The delete history interaction removes all versions of the resource except the c
 DELETE [base]/[type]/[id]/_history
 ```
 
+> [!NOTE]
+> Blaze runs all writes as transactions one at a time in a single total order (actual serial execution). A transaction can only start once the previous one has finished, so a large transaction blocks all smaller ones — including this delete history — until it completes. See [Actual Serial Execution](../../architecture.md#actual-serial-execution) for details.
+
 Deleting the history of a resource means that the historical versions of that resource can no longer be accessed. Subsequent [versioned reads](read.md#versioned-read) of that historical versions will return a `404 Not Found`. Versions are also removed from the [type history](history-type.md) and [system history](history-system.md). Only active [paging sessions](../../api.md#paging-sessions) and [asynchronous requests](../../api.md#asynchronous-requests) started before the delete history interaction will be able to access the deleted versions for a limited amount of time.
 
 > [!NOTE]
