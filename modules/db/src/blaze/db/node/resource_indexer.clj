@@ -9,6 +9,7 @@
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.kv :as kv]
    [blaze.db.kv.spec]
+   [blaze.db.node.local-payload :as lp]
    [blaze.db.node.resource-indexer.spec]
    [blaze.db.node.util :as node-util]
    [blaze.db.resource-store :as rs]
@@ -113,24 +114,34 @@
 (defn- cmd-rs-keys [tx-cmds variant]
   (into [] (keep (fn [{:keys [type hash]}] (when hash [(keyword "fhir" type) hash variant]))) tx-cmds))
 
+(defn- discarded-local-payload-msg [t]
+  (format "The local payload of the transaction with t = %d was discarded due to memory pressure. Loading the resources from the resource store instead." t))
+
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of
    `tx-data` are indexed.
+
+   Takes the resources from the local payload of `tx-data` if it is available
+   and wasn't discarded due to memory pressure. Otherwise loads the resources
+   from the resource store.
 
    The :instant from `tx-data` is used to index the _lastUpdated search
    parameter because the property doesn't exist in the resource itself."
   {:arglists '([resource-indexer tx-data])}
   [{:keys [resource-store] :as resource-indexer}
-   {:keys [tx-cmds] resources :local-payload last-updated :instant}]
+   {:keys [t tx-cmds] payload :local-payload last-updated :instant}]
   (let [context (assoc resource-indexer :last-updated (node-util/instant last-updated))]
-    (if resources
+    (if-let [resources (some-> payload lp/unwrap)]
       (index-resources* context resources)
-      (-> (rs/multi-get resource-store (cmd-rs-keys tx-cmds :complete))
-          (ac/then-compose
-           (fn [resources]
-             (index-resources*
-              context
-              (into {} (map (fn [[[_type hash] resource]] [hash resource])) resources))))))))
+      (do
+        (when payload
+          (log/warn (discarded-local-payload-msg t)))
+        (-> (rs/multi-get resource-store (cmd-rs-keys tx-cmds :complete))
+            (ac/then-compose
+             (fn [resources]
+               (index-resources*
+                context
+                (into {} (map (fn [[[_type hash] resource]] [hash resource])) resources)))))))))
 
 (defn- re-index-resource [search-param [[_type hash] resource]]
   (log/trace "Re-index resource with hash" (str hash))

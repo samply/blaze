@@ -20,6 +20,7 @@
    [blaze.db.impl.query.system :as qs]
    [blaze.db.impl.query.type :as qt]
    [blaze.db.kv :as kv]
+   [blaze.db.node.local-payload :as lp]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer.spec]
@@ -368,7 +369,7 @@
       (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
         (-> (rs/put! resource-store entries)
             (ac/then-compose-async
-             (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
+             (fn [_] (tx-log/submit tx-log tx-cmds (lp/wrap entries))))))
       ac/completed-future))
 
   (-tx-result [node t]

@@ -13,6 +13,8 @@
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as-alias node]
+   [blaze.db.node.local-payload :as lp]
+   [blaze.db.node.local-payload-spec]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer-spec]
    [blaze.db.node.resource-indexer.spec]
@@ -39,6 +41,7 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
+   [java.lang.ref SoftReference]
    [java.time Instant]))
 
 (set! *warn-on-reflection* true)
@@ -210,7 +213,7 @@
              :id "0"
              :hash hash}]
            :local-payload
-           {hash patient}})
+           (lp/wrap {hash patient})})
           ::anom/category := ::anom/fault
           ::anom/message := "msg-200802")))))
 
@@ -232,7 +235,7 @@
              :id "0"
              :hash hash}]
            :local-payload
-           {hash observation}}))
+           (lp/wrap {hash observation})}))
 
       (is (empty? (sp-vr-tu/decode-index-entries kv-store :id))))))
 
@@ -278,6 +281,35 @@
 
       (testing "CompartmentSearchParamValueResource index"
         (is (empty? (c-sp-vr-tu/decode-index-entries kv-store)))))))
+
+(deftest index-discarded-local-payload-test
+  (testing "resources are loaded from the resource store if the local payload was discarded"
+    (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
+                   resource-store ::rs/kv
+                   ::node/keys [resource-indexer]} config]
+      (let [resource
+            {:fhir/type :fhir/Patient :id "id-104313"
+             :active #fhir/boolean true}
+            hash (hash/generate resource)
+            payload (lp/wrap {hash resource})]
+        @(rs/put! resource-store {hash resource})
+        (.clear ^SoftReference payload)
+        @(resource-indexer/index-resources
+          resource-indexer
+          {:t 0
+           :instant Instant/EPOCH
+           :tx-cmds
+           [{:op "put"
+             :type "Patient"
+             :id "id-104313"
+             :hash hash}]
+           :local-payload payload})
+
+        (testing "SearchParamValueResource index"
+          (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
+                 [["active" (codec/v-hash "true")]
+                  ["deceased" (codec/v-hash "false")]
+                  ["_lastUpdated" #blaze/byte-string"80008001"]])))))))
 
 (deftest index-condition-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]

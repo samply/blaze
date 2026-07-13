@@ -13,6 +13,8 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
+   [blaze.db.node.local-payload :as lp]
+   [blaze.db.node.local-payload-spec]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer.spec]
    [blaze.db.node.spec]
@@ -25,6 +27,7 @@
    [blaze.db.search-param-registry.spec]
    [blaze.db.spec]
    [blaze.db.test-util :refer [config]]
+   [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
    [blaze.db.tx-log.spec]
@@ -96,6 +99,27 @@
     {:resource-store (ig/ref ::resource-store-slow-on-put)}
     ::resource-store-slow-on-put
     {:resource-store (ig/ref ::rs/kv)}}))
+
+(defmethod ig/init-key ::local-payload-recording-tx-log
+  [_ {:keys [tx-log local-payloads]}]
+  (reify tx-log/TxLog
+    (-submit [_ tx-cmds local-payload]
+      (swap! local-payloads conj local-payload)
+      (tx-log/submit tx-log tx-cmds local-payload))
+    (-last-t [_]
+      (tx-log/last-t tx-log))
+    (-new-queue [_ offset]
+      (tx-log/new-queue tx-log offset))))
+
+(defn- local-payload-recording-config [local-payloads]
+  (merge-with
+   merge
+   config
+   {:blaze.db/node
+    {:tx-log (ig/ref ::local-payload-recording-tx-log)}
+    ::local-payload-recording-tx-log
+    {:tx-log (ig/ref :blaze.db.tx-log/local)
+     :local-payloads local-payloads}}))
 
 (defn- with-index-store-version [config version]
   (assoc-in config [[::kv/mem :blaze.db/index-kv-store] :init-data]
@@ -322,6 +346,17 @@
                     (node/tx-result node t))))
               ::anom/category := ::anom/fault
               ::x ::y)))))))
+
+(deftest submit-tx-local-payload-test
+  (testing "the transaction resources are sent as local payload"
+    (let [local-payloads (atom [])]
+      (with-system [{:blaze.db/keys [node]} (local-payload-recording-config local-payloads)]
+        @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+             (ac/then-compose (partial node/tx-result node)))
+
+        (given @local-payloads
+          count := 1
+          [0 lp/unwrap vals first] := {:fhir/type :fhir/Patient :id "0"})))))
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::node/keys [indexer-executor] :as system}
