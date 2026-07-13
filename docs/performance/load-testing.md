@@ -24,6 +24,14 @@ The following datasets were used:
 
 The load testing tool [k6][1] is used to create load from another host in the same network as the test system.
 
+Each test is a k6 script in the [`load-testing`](load-testing) directory and is run via the [`Makefile`](load-testing/Makefile). The FHIR base URL of the system under test — for example a Blaze running in a Docker container — is passed via the `BASE` environment variable:
+
+```sh
+BASE=http://localhost:8080/fhir k6 run transaction.js
+```
+
+The optional `DURATION` environment variable (default 60 s) sets how long each concurrency level runs. Running `make` additionally renders the result plots with [gnuplot][2].
+
 ## Single Patient Reads
 
 ### Results
@@ -52,4 +60,23 @@ The load testing tool [k6][1] is used to create load from another host in the sa
 | 1M      | A5N46  |  16 | 261.2 |  57.6 |  98.7 | 125.1 |
 | 1M      | A5N46  |  32 | 258.7 | 119.4 | 174.3 | 202.1 |
 
+## Transaction
+
+This write test measures the throughput and latency of small [FHIR transactions][3]. It is the external analog of the internal `transact-test` benchmark in `blaze.db.api-test-perf`.
+
+The [`transaction.js`](load-testing/transaction.js) script repeatedly `POST`s a small transaction bundle to the FHIR base URL. Each bundle creates one Patient and one Observation, where the Observation references the Patient via a bundle-internal URN, so reference resolution is exercised as well. The Patient's birthDate and the Observation's systolic blood pressure are randomized per transaction, so the date and quantity search-param indices see a realistic spread of values instead of a single repeated entry. New resources are created on every request, so the database grows over the course of the run.
+
+### Results
+
+| Dataset | System | VUs | Req/s | med | q95 | q99 |
+|---------|--------|----:|------:|----:|----:|----:|
+|         |        |   1 |       |     |     |     |
+|         |        |   2 |       |     |     |     |
+|         |        |   4 |       |     |     |     |
+|         |        |   8 |       |     |     |     |
+|         |        |  16 |       |     |     |     |
+|         |        |  32 |       |     |     |     |
+
 [1]: <https://k6.io>
+[2]: <http://www.gnuplot.info>
+[3]: <https://www.hl7.org/fhir/http.html#transaction>

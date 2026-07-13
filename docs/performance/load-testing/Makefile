@@ -10,6 +10,12 @@ data/patient-graph.csv: patient-graph.js
 plots/patient-graph.png: data/patient-graph.csv patient-graph.gnuplot
 	gnuplot patient-graph.gnuplot
 
-all: plots/patient-everything.png plots/patient-graph.png
+data/transaction.csv: transaction.js
+	k6 run transaction.js
+
+plots/transaction.png: data/transaction.csv transaction.gnuplot
+	gnuplot transaction.gnuplot
+
+all: plots/patient-everything.png plots/patient-graph.png plots/transaction.png
 
 .PHONY: all
