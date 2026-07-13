@@ -10,9 +10,10 @@ The return content is a Bundle with type set to `history` containing the version
 
 ## Search Result Parameters
 
-| Name       | Since | Description                               |
-|------------|-------|-------------------------------------------|
-| `_summary` | 1.0.0 | `true`, `count` and `false` are supported |
+| Name       | Since | Description                                                         |
+|------------|-------|---------------------------------------------------------------------|
+| `_since`   | 1.0.0 | only include resource versions created at or after the given instant |
+| `_summary` | 1.0.0 | `true`, `count` and `false` are supported                           |
 
 ## Large Histories
 
