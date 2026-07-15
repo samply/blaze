@@ -31,7 +31,7 @@ Latest release: [v1.10.1][5]
 
 * Implements large parts of the [FHIR® R4 API][1]
 * Contains a fast [CQL Evaluation Engine][17]
-* Supports the operations [$evaluate-measure][2], [$everything][13], [$validate-code][14], [$expand][15] amongst others
+* Supports the operations [$evaluate-measure][2], [$cql][20], [$everything][13], [$validate-code][14], [$expand][15] [amongst others][21]
 * Offers [terminology services][16] including LOINC and SNOMED CT
 * Scales horizontally via [Distributed Storage Variant][18]
 * Comes with a modern [Web Frontend][19]
@@ -93,3 +93,5 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [17]: <https://blaze-server.org/cql-queries.html>
 [18]: <https://blaze-server.org/deployment/distributed-backend.html>
 [19]: <https://blaze-server.org/frontend.html>
+[20]: <https://blaze-server.org/api/operation/cql.html>
+[21]: <https://blaze-server.org/api.html#operations>
