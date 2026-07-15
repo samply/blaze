@@ -25,7 +25,7 @@
    [blaze.elm.quantity :refer [quantity]]
    [blaze.elm.resource :as cr]
    [blaze.elm.spec :as elm-spec]
-   [blaze.fhir.test-util]
+   [blaze.fhir.test-util :refer [run-all!]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :refer [given-thrown satisfies-prop]]
    [blaze.util-spec]
@@ -255,8 +255,8 @@
    api-stub/mem-node-config
    ::expr/cache
    {:node (ig/ref :blaze.db/node)
-    :executor (ig/ref :blaze.test/executor)}
-   :blaze.test/executor {}))
+    :executor (ig/ref :blaze.test/manual-executor)}
+   :blaze.test/manual-executor {}))
 
 (defmethod elm-spec/expression :elm.spec.type/exists-test [_]
   map?)
@@ -293,11 +293,12 @@
       {:type "Null"} false)
 
     (testing "doesn't attach the cache downstream because there is no need for double caching"
-      (with-system [{:blaze.db/keys [node] ::expr/keys [cache]} exists-config]
+      (with-system [{:blaze.db/keys [node] ::expr/keys [cache]
+                     executor :blaze.test/manual-executor} exists-config]
         (let [elm #elm/exists {:type "ExistsTest"}
               expr (c/compile {:node node :eval-context "Patient"} elm)
               ;; ensure Bloom filter is available
-              _ (do (c/attach-cache expr cache) (Thread/sleep 100))
+              _ (do (c/attach-cache expr cache) (run-all! executor))
               expr (first (c/attach-cache expr cache))]
 
           (has-form expr '(exists exists-test))
@@ -306,7 +307,8 @@
             (has-form (first (c/attach-cache expr cache)) '(exists exists-test))))))
 
     (testing "with caching expressions"
-      (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]} exists-config]
+      (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
+                          executor :blaze.test/manual-executor} exists-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)
@@ -326,7 +328,7 @@
               (is (every? ba/unavailable? bloom-filters))
               (is (false? (expr/eval eval-context expr patient)))))
 
-          (Thread/sleep 100)
+          (run-all! executor)
 
           (testing "has still no Observation after the Bloom filter is filled"
             (let [[expr bloom-filters] (c/attach-cache expr cache)]
