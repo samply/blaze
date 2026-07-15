@@ -11,7 +11,7 @@
    [com.google.crypto.tink.daead DeterministicAeadConfig PredefinedDeterministicAeadParameters]
    [java.time Instant InstantSource ZoneOffset]
    [java.util Random]
-   [java.util.concurrent Executors TimeUnit]
+   [java.util.concurrent ConcurrentLinkedQueue Executor Executors TimeUnit]
    [java.util.concurrent.atomic AtomicReference]))
 
 (set! *warn-on-reflection* true)
@@ -67,6 +67,27 @@
   [_ executor]
   (ex/shutdown! executor)
   (ex/await-termination executor 10 TimeUnit/SECONDS))
+
+(deftype ManualExecutor [^ConcurrentLinkedQueue queue]
+  Executor
+  (execute [_ command]
+    (.add queue command)))
+
+(defmethod ig/init-key :blaze.test/manual-executor
+  [_ _]
+  (ManualExecutor. (ConcurrentLinkedQueue.)))
+
+(defn run-all!
+  "Runs all tasks submitted to the manual `executor` on the calling thread,
+  including tasks submitted by the tasks being run.
+
+  Used to deterministically control when asynchronous work happens in tests."
+  [executor]
+  (let [^ConcurrentLinkedQueue queue (.-queue ^ManualExecutor executor)]
+    (loop []
+      (when-let [^Runnable task (.poll queue)]
+        (.run task)
+        (recur)))))
 
 (defonce structure-definition-repo
   (ig/init-key :blaze.fhir/structure-definition-repo {}))
