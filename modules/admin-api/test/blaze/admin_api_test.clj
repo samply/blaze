@@ -18,7 +18,7 @@
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.test-util :refer [run-all! structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.interaction.history.instance]
    [blaze.interaction.read]
@@ -1260,8 +1260,8 @@
   (-> (assoc config
              ::expr/cache
              {:node (ig/ref :blaze.db.main/node)
-              :executor (ig/ref :blaze.test/executor)}
-             :blaze.test/executor {})
+              :executor (ig/ref :blaze.test/manual-executor)}
+             :blaze.test/manual-executor {})
       (assoc-in [:blaze/admin-api ::expr/cache] (ig/ref ::expr/cache))))
 
 (deftest cql-bloom-filters-test
@@ -1274,13 +1274,14 @@
           :status := 404
           [:body "msg"] := "The feature \"CQL Expression Cache\" is disabled."))))
 
-  (with-handler [handler {node [:blaze.db/node :blaze.db.main/node] ::expr/keys [cache]}] (with-cql-expr-cache (config!)) []
+  (with-handler [handler {node [:blaze.db/node :blaze.db.main/node] ::expr/keys [cache]
+                          executor :blaze.test/manual-executor}] (with-cql-expr-cache (config!)) []
     (let [elm {:type "Exists"
                :operand {:type "Retrieve" :dataType "{http://hl7.org/fhir}Observation"}}
           expr (c/compile {:node node :eval-context "Patient"} elm)]
       (ec/get cache expr))
 
-    (Thread/sleep 100)
+    (run-all! executor)
 
     (testing "success"
       (given @(handler

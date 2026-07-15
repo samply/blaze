@@ -17,7 +17,7 @@
    [blaze.elm.expression.cache.spec]
    [blaze.elm.literal :as elm]
    [blaze.executors :as ex]
-   [blaze.fhir.test-util]
+   [blaze.fhir.test-util :refer [run-all!]]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [clojure.spec.alpha :as s]
@@ -147,24 +147,25 @@
    api-stub/mem-node-config
    ::expr/cache
    {:node (ig/ref :blaze.db/node)
-    :executor (ig/ref :blaze.test/executor)}
-   :blaze.test/executor {}))
+    :executor (ig/ref :blaze.test/manual-executor)}
+   :blaze.test/manual-executor {}))
 
 (defn- compile-exists-expr [node resource-type]
   (let [elm (elm/exists (elm/retrieve {:type resource-type}))]
     (c/compile {:node node :eval-context "Patient"} elm)))
 
 (defn- create-bloom-filter!
-  "Creates the Bloom filters used in `expr` and wait's some time to ensure that
-  the creation is finished."
-  [expr cache]
+  "Creates the Bloom filters used in `expr` and runs all tasks of `executor`
+  to ensure that the creation is finished."
+  [expr cache executor]
   (c/attach-cache expr cache)
-  (Thread/sleep 100))
+  (run-all! executor))
 
 (deftest get-test
   (testing "one Bloom filter on empty database"
-    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]} config]
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]
+                   executor :blaze.test/manual-executor} config]
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       (given (ec/get cache (compile-exists-expr node "Observation"))
         ::bloom-filter/t := 0
@@ -173,10 +174,11 @@
         ::bloom-filter/mem-size := 11981))))
 
 (deftest with-max-t-test
-  (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]} config]
+  (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
+                      executor :blaze.test/manual-executor} config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-    (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+    (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
     (testing "the Bloom filter is returned if it isn't newer than max-t"
       (doseq [max-t [1 2]]
@@ -222,8 +224,9 @@
       (is (ba/not-found? (ec/get-disk cache (HashCode/fromString "d4fc6cde1636852f9e362a68ca7be027a66bf7cb38ebff9c256c3eb2179c2639"))))))
 
   (testing "one Bloom filter on empty database"
-    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]} config]
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]
+                   executor :blaze.test/manual-executor} config]
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       (given (ec/get-disk cache (HashCode/fromString "78c3f9b9e187480870ce815ad6d324713dfa2cbd12968c5b14727fef7377b985"))
         ::bloom-filter/t := 0
@@ -237,8 +240,9 @@
       (is (ba/not-found? (ec/delete-disk! cache (HashCode/fromString "d4fc6cde1636852f9e362a68ca7be027a66bf7cb38ebff9c256c3eb2179c2639"))))))
 
   (testing "one Bloom filter on empty database"
-    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]} config]
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]
+                   executor :blaze.test/manual-executor} config]
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       (let [hash (HashCode/fromString "78c3f9b9e187480870ce815ad6d324713dfa2cbd12968c5b14727fef7377b985")]
         (is (not (ba/anomaly? (ec/get-disk cache hash))))
@@ -253,8 +257,9 @@
       (is (coll/empty? (ec/list-by-t cache)))))
 
   (testing "one Bloom filter on empty database"
-    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]} config]
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]
+                   executor :blaze.test/manual-executor} config]
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       (given (into [] (ec/list-by-t cache))
         count := 1
@@ -265,12 +270,13 @@
         [0 ::bloom-filter/mem-size] := 11981)))
 
   (testing "one Bloom filter on database with one patient"
-    (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]} config]
+    (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
+                        executor :blaze.test/manual-executor} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       (given (into [] (ec/list-by-t cache))
         count := 1
@@ -281,13 +287,14 @@
         [0 ::bloom-filter/mem-size] := 11981)))
 
   (testing "two Bloom filters on database with one patient"
-    (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]} config]
+    (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
+                        executor :blaze.test/manual-executor} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
-      (create-bloom-filter! (compile-exists-expr node "Condition") cache)
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
+      (create-bloom-filter! (compile-exists-expr node "Condition") cache executor)
 
       (given (into [] (ec/list-by-t cache))
         count := 2
@@ -303,19 +310,20 @@
         [1 ::bloom-filter/mem-size] := 11981)))
 
   (testing "Bloom filter updates are reflected in the list"
-    (with-system-data [{::expr/keys [cache] :blaze.db/keys [node]}
+    (with-system-data [{::expr/keys [cache] :blaze.db/keys [node]
+                        executor :blaze.test/manual-executor}
                        (assoc-in config [::expr/cache :refresh] (time/millis 1))]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]
                          [:put {:fhir/type :fhir/Observation :id "1"
                                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
 
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       (given (into [] (ec/list-by-t cache))
         count := 1
@@ -326,13 +334,14 @@
         [0 ::bloom-filter/mem-size] := 11981)))
 
   (testing "an old Bloom filter is loaded from the store even if the t was increased in the meantime"
-    (with-system-data [{::expr/keys [cache] :blaze.db/keys [node]} config]
+    (with-system-data [{::expr/keys [cache] :blaze.db/keys [node]
+                        executor :blaze.test/manual-executor} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (testing "creates the Bloom filter with t=1"
-        (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+        (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
         (given (into [] (ec/list-by-t cache))
           count := 1
@@ -347,7 +356,7 @@
                                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
 
       (testing "doesn't create a new Bloom filter because the old one is still in the store"
-        (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+        (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
         (given (into [] (ec/list-by-t cache))
           count := 1
@@ -359,8 +368,9 @@
       (is (zero? (ec/total cache)))))
 
   (testing "one Bloom filter on empty database"
-    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]} config]
-      (create-bloom-filter! (compile-exists-expr node "Observation") cache)
+    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]
+                   executor :blaze.test/manual-executor} config]
+      (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
       (is (= 1 (ec/total cache))))))
 

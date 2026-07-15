@@ -16,7 +16,7 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.test-util :refer [run-all! structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.terminology-service :as-alias ts]
@@ -92,7 +92,8 @@
    api-stub/mem-node-config
    ::expr/cache
    {:node (ig/ref :blaze.db/node)
-    :executor (ig/ref :blaze.test/executor)}
+    :executor (ig/ref :blaze.test/manual-executor)}
+   :blaze.test/manual-executor {}
    :blaze.test/executor {}))
 
 (defn- evaluate
@@ -105,6 +106,7 @@
      [{:blaze.db/keys [node]
        ::expr/keys [cache]
        :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+       manual-executor :blaze.test/manual-executor
        ::ts/keys [local]} config]
      [(tx-ops (:entry (read-data name)))]
 
@@ -121,7 +123,7 @@
                      (ex-data (ex-cause e))))]
        (if twice-for-caching
          (when-ok [_ (eval)]
-           (Thread/sleep 200)
+           (run-all! manual-executor)
            (eval))
          (eval))))))
 
@@ -798,6 +800,7 @@
       [{:blaze.db/keys [node]
         ::expr/keys [cache]
         :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        manual-executor :blaze.test/manual-executor
         ::ts/keys [local]} config]
       [(into [] (mapcat patient-condition-tx-ops) (range 2000))
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
@@ -832,7 +835,7 @@
               [:extension legacy-bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
               [:group 0 :population 0 :count] := #fhir/integer 1000)))
 
-        (Thread/sleep 1000)
+        (run-all! manual-executor)
 
         (testing "with bloom filter"
           (let [params {:period [#system/date "2000" #system/date "2100"]
@@ -852,6 +855,7 @@
       [{:blaze.db/keys [node]
         ::expr/keys [cache]
         :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        manual-executor :blaze.test/manual-executor
         ::ts/keys [local]} config]
       [[[:put {:fhir/type :fhir/Medication :id "0"
                :code #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/atc" :code #fhir/code "L01AX03"}]}}]]
@@ -882,7 +886,7 @@
               [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
               [:group 0 :population 0 :count] := #fhir/integer 500)))
 
-        (Thread/sleep 1000)
+        (run-all! manual-executor)
 
         (testing "with bloom filter"
           (let [params {:period [#system/date "2000" #system/date "2100"]
@@ -902,6 +906,7 @@
       [{:blaze.db/keys [node]
         ::expr/keys [cache]
         :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        manual-executor :blaze.test/manual-executor
         ::ts/keys [local]} config]
       [(into [] (mapcat patient-condition-tx-ops) (range 2000))
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
@@ -927,7 +932,7 @@
 
         (testing "create the Bloom filter on the newer database state"
           @(measure/evaluate-measure (assoc context :db (d/db node)) measure params)
-          (Thread/sleep 1000)
+          (run-all! manual-executor)
 
           (given (into [] (ec/list-by-t cache))
             count := 1

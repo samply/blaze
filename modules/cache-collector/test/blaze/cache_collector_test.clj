@@ -12,6 +12,7 @@
    [juxt.iota :refer [given]])
   (:import
    [com.github.benmanes.caffeine.cache AsyncCache Cache Caffeine]
+   [java.util.concurrent Executor]
    [java.util.function Function]))
 
 (set! *warn-on-reflection* true)
@@ -19,8 +20,15 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private same-thread-executor
+  "Executor that runs tasks directly on the calling thread, so that loads of
+  `async-cache` complete synchronously."
+  (reify Executor
+    (execute [_ command]
+      (.run command))))
+
 (def ^Cache cache (-> (Caffeine/newBuilder) (.recordStats) (.build)))
-(def ^AsyncCache async-cache (-> (Caffeine/newBuilder) (.recordStats) (.buildAsync)))
+(def ^AsyncCache async-cache (-> (Caffeine/newBuilder) (.recordStats) (.executor same-thread-executor) (.buildAsync)))
 
 (def config
   {:blaze/cache-collector
@@ -95,7 +103,6 @@
     (testing "one load"
       (.get cache "1" identity)
       (.get async-cache "1" ^Function identity)
-      (Thread/sleep 100)
 
       (given (metrics/collect collector)
         [0 :name] := "blaze_cache_hits"
@@ -120,7 +127,6 @@
     (testing "one loads and one hit"
       (.get cache "1" identity)
       (.get async-cache "1" ^Function identity)
-      (Thread/sleep 100)
 
       (given (metrics/collect collector)
         [0 :name] := "blaze_cache_hits"
