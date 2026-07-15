@@ -83,7 +83,7 @@ When generating a `CHANGELOG.md` entry for a new version:
 
 When starting to work on an issue, you can use the GitHub CLI to fetch the issue details: `gh issue view <issue-number>`
 
-When **creating** an issue, classify it via GitHub's native issue **type** (e.g. `Bug`, `Feature`), not via a `bug`/`feature` label. The `gh issue create` flag for this is `--type` (e.g. `gh issue create --type Bug ...`). Only labels that aren't covered by a type (e.g. `module:db`) should be passed via `--label`.
+When **creating** an issue, classify it via GitHub's native issue **type** (e.g. `Bug`, `Feature`), not via a `bug`/`feature` label. The `gh issue create` flag for this is `--type` (e.g. `gh issue create --type Bug ...`). Only labels that aren't covered by a type (e.g. `module:db`) should be passed via `--label`. Bugs in test code that can be fixed purely by changing **only** test code (e.g. a flaky test) aren't bugs, because the production code is unaffected. Such issues get the type `Task`, not `Bug`.
 
 Always run `make build-ig` first on a freshly created git worktree. Some modules (e.g. `job-async-interaction` and anything depending on it, like `interaction`) need the generated IG resources, which are absent in a new worktree and would otherwise make prep fail.
 
