@@ -22,12 +22,10 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
-   [clojure.spec.gen.alpha :as sg]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
-   [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
@@ -54,19 +52,23 @@
      {:db-before db :read-only-matcher read-only-matcher}
      t tx-cmds)))
 
+(defmulti verify-cmd identity)
+
+(defmethod verify-cmd "hold" [op]
+  {:op op :type "Patient" :id "0" :hash (hash/generate patient-0)
+   :if-none-exist [["foo" "bar"]]})
+
+(defmethod verify-cmd :default [op]
+  {:op op :type "Patient" :id "0" :hash (hash/generate patient-0)})
+
 (deftest verify-tx-cmds-test
   (testing "two commands with the same identity aren't allowed"
-    (let [hash (hash/generate patient-0)
-          op-gen (sg/such-that (complement #{"conditional-delete" "patient-purge"})
-                               (s/gen :blaze.db.tx-cmd/op))
-          cmd (fn [op] {:op op :type "Patient" :id "0" :hash hash})]
-      (with-system [{:blaze.db/keys [node]} config]
+    (with-system [{:blaze.db/keys [node]} config]
 
-        (satisfies-prop 100
-          (prop/for-all [op-1 op-gen
-                         op-2 op-gen]
-            (ba/conflict?
-             (verify-tx-cmds node 1 [(cmd op-1) (cmd op-2)])))))))
+      (doseq [op-1 (s/form ::verify/op)
+              op-2 (s/form ::verify/op)]
+        (is (ba/conflict?
+             (verify-tx-cmds node 1 [(verify-cmd op-1) (verify-cmd op-2)]))))))
 
   (testing "adding one Patient to an empty store"
     (let [hash (hash/generate patient-0)]
