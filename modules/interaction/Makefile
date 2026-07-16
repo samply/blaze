@@ -9,13 +9,13 @@ prep:
 	clojure -X:deps prep :aliases '[:test]'
 
 test: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha --profile :ci
+	clojure -M:test:kaocha --profile :ci
 
 test-focus: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-coverage: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha:coverage
+	clojure -M:test:kaocha:coverage
 
 deps-list:
 	clojure -X:deps list

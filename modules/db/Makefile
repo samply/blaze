@@ -9,22 +9,22 @@ prep:
 	clojure -X:deps prep :current true
 
 test: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha --profile :ci --skip-meta :slow
+	clojure -M:test:kaocha --profile :ci --skip-meta :slow
 
 test-focus: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-slow: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha --profile :ci --focus-meta :slow
+	clojure -M:test:kaocha --profile :ci --focus-meta :slow
 
 test-coverage: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha:coverage --skip-meta :slow
+	clojure -M:test:kaocha:coverage --skip-meta :slow
 
 test-coverage-slow: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha:coverage --focus-meta :slow
+	clojure -M:test:kaocha:coverage --focus-meta :slow
 
 test-coverage-all: prep
-	clojure -J--enable-native-access=ALL-UNNAMED -J--sun-misc-unsafe-memory-access=allow -M:test:kaocha:coverage
+	clojure -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree
