@@ -33,7 +33,8 @@
   (s/keys :req-un [::verify/op
                    :fhir.resource/type
                    :blaze.resource/id
-                   :blaze.db.tx-cmd/if-none-exist]))
+                   :blaze.db.tx-cmd/if-none-exist]
+          :opt-un [:blaze.db.tx-cmd/refs]))
 
 (defmethod terminal-tx-cmd "put" [_]
   (s/keys :req-un [::verify/op
