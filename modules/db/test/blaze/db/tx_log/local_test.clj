@@ -25,9 +25,11 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
+   [clojure.lang IDeref]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [java.lang AutoCloseable]
-   [java.time Instant]))
+   [java.time Instant]
+   [java.util.concurrent CountDownLatch TimeUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -48,23 +50,48 @@
   []
   (byte-array [0xA1]))
 
+(defn- empty-snapshot []
+  (reify
+    p/KvSnapshot
+    (-new-iterator [_ _]
+      (reify
+        p/KvIterator
+        (-seek-to-last [_])
+        (-seek [_ _])
+        (-valid [_] false)
+        AutoCloseable
+        (close [_])))
+    AutoCloseable
+    (close [_])))
+
 (defmethod ig/init-key ::failing-kv-store [_ _]
   (reify p/KvStore
     (-new-snapshot [_]
-      (reify
-        p/KvSnapshot
-        (-new-iterator [_ _]
-          (reify
-            p/KvIterator
-            (-seek-to-last [_])
-            (-seek [_ _])
-            (-valid [_] false)
-            AutoCloseable
-            (close [_])))
-        AutoCloseable
-        (close [_])))
+      (empty-snapshot))
     (-put [_ _]
       (throw (Exception. "put-error")))))
+
+(defmethod ig/init-key ::recording-kv-store [_ {:keys [kv-store]}]
+  (let [put-thread-names (atom [])]
+    (reify
+      p/KvStore
+      (-new-snapshot [_]
+        (p/-new-snapshot kv-store))
+      (-put [_ entries]
+        (swap! put-thread-names conj (.getName (Thread/currentThread)))
+        (p/-put kv-store entries))
+      IDeref
+      (deref [_]
+        @put-thread-names))))
+
+(defmethod ig/init-key ::blocking-kv-store
+  [_ {:keys [^CountDownLatch started-latch ^CountDownLatch blocking-latch]}]
+  (reify p/KvStore
+    (-new-snapshot [_]
+      (empty-snapshot))
+    (-put [_ _]
+      (.countDown started-latch)
+      (.await blocking-latch))))
 
 (def config
   {::tx-log/local
@@ -82,6 +109,25 @@
    {:kv-store (ig/ref ::failing-kv-store)
     :clock (ig/ref :blaze.test/fixed-clock)}
    ::failing-kv-store {}
+   :blaze.test/fixed-clock {}})
+
+(def recording-kv-store-config
+  {::tx-log/local
+   {:kv-store (ig/ref ::recording-kv-store)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+   ::recording-kv-store
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/fixed-clock {}})
+
+(defn- blocking-kv-store-config [started-latch blocking-latch]
+  {::tx-log/local
+   {:kv-store (ig/ref ::blocking-kv-store)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+   ::blocking-kv-store
+   {:started-latch started-latch
+    :blocking-latch blocking-latch}
    :blaze.test/fixed-clock {}})
 
 (deftest init-test
@@ -290,6 +336,41 @@
 
           (with-open [queue (tx-log/new-queue tx-log 1)]
             (is (empty? (tx-log/poll! queue (time/millis 10))))))))))
+
+(deftest submit-executor-test
+  (testing "the transaction data is stored on the single `local-tx-log` thread"
+    (with-system [{tx-log ::tx-log/local
+                   kv-store ::recording-kv-store}
+                  recording-kv-store-config]
+      @(tx-log/submit
+        tx-log
+        [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+        nil)
+
+      (is (= ["local-tx-log"] @kv-store)))))
+
+(deftest submit-executor-shutdown-timeout-test
+  (let [started-latch (CountDownLatch. 1)
+        blocking-latch (CountDownLatch. 1)
+        {tx-log ::tx-log/local :as system}
+        (ig/init (blocking-kv-store-config started-latch blocking-latch))
+        future (tx-log/submit
+                tx-log
+                [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+                nil)]
+
+    ;; wait until the submit task blocks in the kv-store
+    (is (true? (.await started-latch 10 TimeUnit/SECONDS)))
+
+    ;; halting runs into the 10 second termination timeout of the submit
+    ;; executor
+    (ig/halt! system)
+
+    ;; the future isn't completed because the submit task is still blocked
+    (is (false? (ac/done? future)))
+
+    ;; unblock the submit task so that its thread can end
+    (.countDown blocking-latch)))
 
 (deftest new-queue-test
   (testing "it is possible to open two queues"

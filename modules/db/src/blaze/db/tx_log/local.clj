@@ -9,7 +9,6 @@
   Uses a single thread named `local-tx-log` to increment the point in time `t`,
   store the transaction and transfers it to listening queues."
   (:require
-   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.db.impl.iterators :as i]
@@ -17,6 +16,7 @@
    [blaze.db.node.util :as node-util]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local.codec :as codec]
+   [blaze.executors :as ex]
    [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -26,8 +26,7 @@
   (:import
    [com.google.common.primitives Longs]
    [java.lang AutoCloseable]
-   [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
-   [java.util.concurrent.locks Lock ReentrantLock]))
+   [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -96,18 +95,17 @@
 ;; The state contains the following keys:
 ;;  * :t - the current point in time
 ;;  * :queues - a map of queues created through `new-queue`
-(deftype LocalTxLog [kv-store clock ^Lock submit-lock state]
+(deftype LocalTxLog [kv-store clock submit-executor state]
   tx-log/TxLog
   (-submit [_ tx-cmds local-payload]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
-    (with-open [_ (prom/timer duration-seconds "submit")]
-      (.lock submit-lock)
-      (try
-        (-> (submit! kv-store clock state tx-cmds local-payload)
-            ba/try-anomaly
-            ac/completed-future)
-        (finally
-          (.unlock submit-lock)))))
+    (let [timer (prom/timer duration-seconds "submit")]
+      (-> (ac/supply-async
+           #(submit! kv-store clock state tx-cmds local-payload)
+           submit-executor)
+          (ac/when-complete
+           (fn [_ _]
+             (prom/observe-duration! timer))))))
 
   (-last-t [_]
     (ac/completed-future (:t @state)))
@@ -118,7 +116,13 @@
           queue-start (inc (:t (swap! state update :queues assoc key queue)))]
       (log/trace "new-queue offset =" offset "queue-start =" queue-start)
       (->LocalQueue kv-store (volatile! offset) queue queue-start
-                    #(swap! state update :queues dissoc key)))))
+                    #(swap! state update :queues dissoc key))))
+
+  AutoCloseable
+  (close [_]
+    (ex/shutdown! submit-executor)
+    (when-not (ex/await-termination submit-executor 10 TimeUnit/SECONDS)
+      (log/warn "Got timeout while stopping the submit executor"))))
 
 (defn- last-t
   "Returns the last (newest) point in time, the transaction log has persisted
@@ -136,8 +140,15 @@
 (defmethod ig/init-key :blaze.db.tx-log/local
   [key {:keys [kv-store clock]}]
   (log/info "Open" (node-util/component-name key "local transaction log"))
-  (->LocalTxLog kv-store clock (ReentrantLock.)
+  (->LocalTxLog kv-store clock
+                (ex/single-thread-executor
+                 (node-util/thread-name-template key "local-tx-log"))
                 (atom {:t (or (last-t kv-store) 0)})))
+
+(defmethod ig/halt-key! :blaze.db.tx-log/local
+  [key tx-log]
+  (log/info "Close" (node-util/component-name key "local transaction log"))
+  (.close ^AutoCloseable tx-log))
 
 (reg-collector ::duration-seconds
   duration-seconds)
