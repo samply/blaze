@@ -9,9 +9,6 @@
 (s/def :blaze.db/tx-log
   #(satisfies? tx-log/TxLog %))
 
-(s/def :blaze.db.tx-log/queue
-  #(satisfies? tx-log/Queue %))
-
 (s/def :blaze.db.tx-cmd/op
   #{"create" "put" "keep" "delete" "conditional-delete" "delete-history"
     "patient-purge"})

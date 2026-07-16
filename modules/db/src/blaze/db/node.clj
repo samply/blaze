@@ -163,17 +163,21 @@
         (wait-for-resources future timer)
         (commit-success! node t instant)))))
 
-(defn- poll-tx-queue! [queue poll-timeout]
-  (with-open [_ (prom/timer duration-seconds "poll-tx-queue")]
-    (tx-log/poll! queue poll-timeout)))
+(defn- poll-tx-log! [tx-log offset poll-timeout]
+  (with-open [_ (prom/timer duration-seconds "poll-tx-log")]
+    (tx-log/poll! tx-log offset poll-timeout)))
 
 (defn- poll-and-index!
-  "Polls `queue` once and indexes the resulting transaction data.
+  "Polls `tx-log` once and indexes the resulting transaction data.
 
-  Waits up to `poll-timeout` for the transaction data to become available."
-  [node queue poll-timeout]
-  (log/trace "poll transaction queue")
-  (run! (partial index-tx-data! node) (poll-tx-queue! queue poll-timeout)))
+  Takes the offset of the next transaction data to index from `state`. Waits
+  up to `poll-timeout` for the transaction data to become available."
+  [node tx-log state poll-timeout]
+  (let [{:keys [t error-t]} @state
+        offset (inc (max t error-t))]
+    (log/trace "poll transaction data with offset =" offset)
+    (run! (partial index-tx-data! node)
+          (poll-tx-log! tx-log offset poll-timeout))))
 
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta #fhir/Meta{})
@@ -471,15 +475,13 @@
   Runnable
   (run [node]
     (try
-      (let [offset (inc (:t @state))]
-        (log/trace "enter indexer and open transaction queue with offset =" offset)
-        (with-open [queue (tx-log/new-queue tx-log offset)]
-          (while @run?
-            (try
-              (poll-and-index! node queue poll-timeout)
-              (catch Exception e
-                (swap! state assoc :e e)
-                (throw e))))))
+      (log/trace "enter indexer")
+      (while @run?
+        (try
+          (poll-and-index! node tx-log state poll-timeout)
+          (catch Exception e
+            (swap! state assoc :e e)
+            (throw e))))
       (finally
         (ac/complete! finished true)
         (log/trace "exit indexer"))))

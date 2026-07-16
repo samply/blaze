@@ -17,7 +17,6 @@
    [clojure.repl :refer [pst]]
    [clojure.spec.test.alpha :as st]
    [clojure.tools.namespace.repl :refer [refresh]]
-   [java-time.api :as time]
    [taoensso.timbre :as log]))
 
 (defonce system nil)
@@ -75,10 +74,7 @@
 
 ;; Kafka Transaction Log
 (comment
-  (def tx-log (::tx-log/kafka system))
-
-  (with-open [queue (tx-log/new-queue tx-log 0)]
-    (tx-log/poll! queue (time/seconds 1))))
+  (def tx-log (::tx-log/kafka system)))
 
 ;; Cassandra Resource Store
 (comment
