@@ -85,13 +85,30 @@
         @put-thread-names))))
 
 (defmethod ig/init-key ::blocking-kv-store
-  [_ {:keys [^CountDownLatch started-latch ^CountDownLatch blocking-latch]}]
-  (reify p/KvStore
-    (-new-snapshot [_]
-      (empty-snapshot))
-    (-put [_ _]
-      (.countDown started-latch)
-      (.await blocking-latch))))
+  [_ {:keys [kv-store ^CountDownLatch started-latch ^CountDownLatch blocking-latch]}]
+  (let [put-sizes (atom [])]
+    (reify
+      p/KvStore
+      (-new-snapshot [_]
+        (p/-new-snapshot kv-store))
+      (-put [_ entries]
+        (swap! put-sizes conj (count entries))
+        (.countDown started-latch)
+        (.await blocking-latch)
+        (p/-put kv-store entries))
+      IDeref
+      (deref [_]
+        @put-sizes))))
+
+(defmethod ig/init-key ::failing-once-kv-store [_ {:keys [kv-store]}]
+  (let [failed? (atom false)]
+    (reify p/KvStore
+      (-new-snapshot [_]
+        (p/-new-snapshot kv-store))
+      (-put [_ entries]
+        (if (compare-and-set! failed? false true)
+          (throw (Exception. "put-error"))
+          (p/-put kv-store entries))))))
 
 (def config
   {::tx-log/local
@@ -126,8 +143,21 @@
    {:kv-store (ig/ref ::blocking-kv-store)
     :clock (ig/ref :blaze.test/fixed-clock)}
    ::blocking-kv-store
-   {:started-latch started-latch
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
+    :started-latch started-latch
     :blocking-latch blocking-latch}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/fixed-clock {}})
+
+(def failing-once-kv-store-config
+  {::tx-log/local
+   {:kv-store (ig/ref ::failing-once-kv-store)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+   ::failing-once-kv-store
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
    :blaze.test/fixed-clock {}})
 
 (deftest init-test
@@ -371,6 +401,118 @@
 
     ;; unblock the submit task so that its thread can end
     (.countDown blocking-latch)))
+
+(deftest submit-batch-test
+  (testing "transaction data of multiple submits is stored in one batch"
+    (let [started-latch (CountDownLatch. 1)
+          blocking-latch (CountDownLatch. 1)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store ::blocking-kv-store}
+                    (blocking-kv-store-config started-latch blocking-latch)]
+        ;; the first submit blocks the storer thread in the kv-store
+        (tx-log/submit
+         tx-log
+         [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+         nil)
+        (is (true? (.await started-latch 10 TimeUnit/SECONDS)))
+
+        ;; two more submits are buffered while the storer thread is blocked
+        (let [future-2 (tx-log/submit
+                        tx-log
+                        [{:op "create" :type "Patient" :id "1" :hash patient-hash-0}]
+                        nil)
+              future-3 (tx-log/submit
+                        tx-log
+                        [{:op "create" :type "Patient" :id "2" :hash patient-hash-0}]
+                        nil)]
+          (.countDown blocking-latch)
+          (is (= 2 @future-2))
+          (is (= 3 @future-3)))
+
+        ;; the buffered transaction data was stored with a single put
+        (is (= [1 2] @kv-store))))))
+
+(deftest submit-busy-test
+  (testing "submits are rejected with a busy anomaly if the buffer is full"
+    (let [started-latch (CountDownLatch. 1)
+          blocking-latch (CountDownLatch. 1)]
+      (with-system [{tx-log ::tx-log/local}
+                    (blocking-kv-store-config started-latch blocking-latch)]
+        ;; the first submit blocks the storer thread in the kv-store
+        (tx-log/submit
+         tx-log
+         [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+         nil)
+        (is (true? (.await started-latch 10 TimeUnit/SECONDS)))
+
+        ;; fill the buffer up to its capacity of 1024 entries
+        (dotimes [_ 1023]
+          (tx-log/submit
+           tx-log
+           [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+           nil))
+
+        (let [future (tx-log/submit
+                      tx-log
+                      [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+                      nil)]
+          (if (ac/done? future)
+            (given-failed-future future
+              ::anom/category := ::anom/busy)
+            (is false "expected the submit future to be already completed with a busy anomaly")))
+
+        ;; unblock the storer thread so that the system can be halted
+        (.countDown blocking-latch)))))
+
+(deftest poll-only-stored-test
+  (testing "queues only offer already stored transaction data"
+    (let [started-latch (CountDownLatch. 1)
+          blocking-latch (CountDownLatch. 1)]
+      (with-system [{tx-log ::tx-log/local}
+                    (blocking-kv-store-config started-latch blocking-latch)]
+        (with-open [queue (tx-log/new-queue tx-log 1)]
+          (let [future (tx-log/submit
+                        tx-log
+                        [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+                        nil)]
+            (is (true? (.await started-latch 10 TimeUnit/SECONDS)))
+
+            (testing "the transaction data is invisible while it isn't stored"
+              (is (empty? (tx-log/poll! queue (time/millis 10)))))
+
+            (.countDown blocking-latch)
+            @future
+
+            (testing "the transaction data is visible after it is stored"
+              (given (first (tx-log/poll! queue (time/millis 10)))
+                :t := 1
+                [:tx-cmds 0 :id] := "0"))))))))
+
+(deftest submit-failure-gap-test
+  (testing "a failed submit leaves a gap in `t`"
+    (with-system [{tx-log ::tx-log/local} failing-once-kv-store-config]
+      (given-failed-future
+       (tx-log/submit
+        tx-log
+        [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+        nil)
+        ::anom/message := "put-error")
+
+      (is (= 2 @(tx-log/submit
+                 tx-log
+                 [{:op "create" :type "Patient" :id "1" :hash patient-hash-0}]
+                 nil)))
+
+      (testing "the last `t` is the last assigned `t`"
+        (is (= 2 @(tx-log/last-t tx-log))))
+
+      (testing "only the successful transaction is offered"
+        (with-open [queue (tx-log/new-queue tx-log 1)]
+          (let [tx-data (tx-log/poll! queue (time/millis 10))]
+            (is (= 1 (count tx-data)))
+            (given (first tx-data)
+              :t := 2
+              [:tx-cmds 0 :id] := "1")))))))
 
 (deftest new-queue-test
   (testing "it is possible to open two queues"
