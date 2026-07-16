@@ -195,6 +195,7 @@ jobs:
         - server
         - terminology-service
         - terminology-service-local
+        - test-util
         - thread-pool-executor-collector
         - validator
 
