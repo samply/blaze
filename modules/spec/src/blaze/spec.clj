@@ -69,7 +69,7 @@
 
 (s/def :blaze.db.query/disjunction
   (s/or :clause :blaze.db.query/clause
-        :clauses (s/coll-of :blaze.db.query/clause :kind vector?)))
+        :clauses (s/coll-of :blaze.db.query/clause :kind vector? :min-count 1)))
 
 (s/def :blaze.db.query/clauses
   (s/coll-of :blaze.db.query/disjunction :kind vector?))

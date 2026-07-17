@@ -4,10 +4,15 @@
    [blaze.page-store.token :as token]
    [blaze.page-store.token-spec]
    [blaze.spec]
-   [blaze.test-util :refer [satisfies-prop]]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
-   [clojure.test :refer [deftest is]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is]]
    [clojure.test.check.properties :as prop]))
+
+(st/instrument)
+
+(test/use-fixtures :each tu/fixture)
 
 (deftest generate-test
   ;; Base 16 = 4 bit per char = 64 * 4 bit = 256 bit
