@@ -1,7 +1,5 @@
 (ns blaze.db.tx-log
-  "Protocols for transaction log backend implementations."
-  (:import
-   [java.lang AutoCloseable]))
+  "Protocols for transaction log backend implementations.")
 
 (defprotocol TxLog
   "The central transaction log shared between all nodes.
@@ -12,7 +10,7 @@
 
   (-last-t [tx-log])
 
-  (-new-queue [tx-log offset]))
+  (-poll [tx-log offset timeout]))
 
 (defn submit
   "Submits `tx-cmds` (transaction commands) to `tx-log`.
@@ -37,22 +35,16 @@
   [tx-log]
   (-last-t tx-log))
 
-(defn new-queue
-  "Returns a new queue starting at `offset`.
-
-  The queue has to be closed after usage."
-  ^AutoCloseable
-  [tx-log offset]
-  (-new-queue tx-log offset))
-
-(defprotocol Queue
-  (-poll [queue timeout]))
-
 (defn poll!
-  "Retrieves and removes the head, a collection of transaction data, of `queue`,
-  waiting up to `timeout` if necessary for transaction data to become available.
+  "Returns a collection of transaction data with a point in time `t` of at
+  least `offset`, in order of `t`, waiting up to `timeout` if necessary for
+  transaction data to become available.
+
+  By passing `offset`, the poller acknowledges that it has processed all
+  transaction data below `offset`, so the transaction log is free to release
+  resources associated with it. Has to be called by a single poller at a time.
 
   Transaction data optionally contains :local-payload if the transaction was
   submitted on the same node and the transaction log supports this feature."
-  [queue timeout]
-  (-poll queue timeout))
+  [tx-log offset timeout]
+  (-poll tx-log offset timeout))

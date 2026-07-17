@@ -4204,7 +4204,7 @@
                       },
                       "spec": {
                         "exemplar": true,
-                        "expr": "1 - rate(blaze_db_node_duration_seconds_sum{job=\"$job\",instance=\"$instance\",op=\"poll-tx-queue\"}[1m])",
+                        "expr": "1 - rate(blaze_db_node_duration_seconds_sum{job=\"$job\",instance=\"$instance\",op=\"poll-tx-log\"}[1m])",
                         "interval": "",
                         "legendFormat": ""
                       }

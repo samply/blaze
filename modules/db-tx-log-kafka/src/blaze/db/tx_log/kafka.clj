@@ -69,7 +69,8 @@
     (get (.endOffsets consumer [tx-partition]) tx-partition)))
 
 (deftype KafkaTxLog [config ^TopicPartition partition ^Producer producer
-                     last-t-consumer last-t-executor]
+                     ^Consumer poll-consumer poll-position last-t-consumer
+                     last-t-executor]
   tx-log/TxLog
   (-submit [_ tx-cmds _]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
@@ -87,20 +88,23 @@
   (-last-t [_]
     (ac/supply-async #(end-offset last-t-consumer partition) last-t-executor))
 
-  (-new-queue [_ offset]
-    (log/trace "new-queue offset =" offset)
-    (doto (create-consumer partition config)
-      (.seek partition ^long (dec offset))))
+  (-poll [_ offset timeout]
+    (log/trace "poll transaction data with offset =" offset)
+    (when-not (= offset @poll-position)
+      (log/trace "seek to offset =" offset)
+      (.seek poll-consumer partition ^long (dec offset)))
+    (let [tx-data (into [] u/record-transformer
+                        (.poll poll-consumer ^Duration timeout))]
+      (vreset! poll-position (if-let [{last-t :t} (peek tx-data)]
+                               (inc last-t)
+                               offset))
+      tx-data))
 
   AutoCloseable
   (close [_]
     (.close producer)
+    (.close poll-consumer)
     (.close ^AutoCloseable last-t-consumer)))
-
-(extend-protocol tx-log/Queue
-  Consumer
-  (-poll [consumer timeout]
-    (into [] u/record-transformer (.poll consumer ^Duration timeout))))
 
 (def create-last-t-consumer
   create-consumer)
@@ -123,6 +127,7 @@
   (log/info (l/init-msg key config))
   (let [partition (TopicPartition. topic 0)]
     (->KafkaTxLog config partition (create-producer config)
+                  (create-consumer partition config) (volatile! nil)
                   (create-last-t-consumer partition config)
                   (:last-t-executor config))))
 

@@ -10,7 +10,6 @@
    [clojure.test :as test :refer [deftest is]]
    [java-time.api :as time])
   (:import
-   [java.lang AutoCloseable]
    [java.time Instant]))
 
 (set! *warn-on-reflection* true)
@@ -46,14 +45,9 @@
                 :id "0"
                 :hash patient-hash-0}]})
 
-(deftest new-queue-test
+(deftest poll-test
   (let [tx-log (reify tx-log/TxLog
-                 (-new-queue [_ _]
-                   (reify
-                     tx-log/Queue
-                     (-poll [_ _]
-                       [tx-data])
-                     AutoCloseable
-                     (close [_]))))]
-    (with-open [queue (tx-log/new-queue tx-log 1)]
-      (is (= [tx-data] (tx-log/poll! queue (time/millis 100)))))))
+                 (-poll [_ offset _]
+                   (assert (= 1 offset))
+                   [tx-data]))]
+    (is (= [tx-data] (tx-log/poll! tx-log 1 (time/millis 100))))))

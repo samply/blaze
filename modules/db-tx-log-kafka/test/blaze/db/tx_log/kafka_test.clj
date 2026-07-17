@@ -4,6 +4,7 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.kafka :as kafka]
    [blaze.db.tx-log.kafka.spec]
+   [blaze.db.tx-log.kafka.util-test :refer [consumer-record]]
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
@@ -21,13 +22,14 @@
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]
-   [java.time Duration]
+   [java.time Duration Instant]
    [java.util Map]
    [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
    [org.apache.kafka.clients.producer KafkaProducer Producer RecordMetadata]
    [org.apache.kafka.common TopicPartition]
    [org.apache.kafka.common.errors
-    AuthorizationException RecordTooLargeException]))
+    AuthorizationException RecordTooLargeException]
+   [org.apache.kafka.common.record TimestampType]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -127,6 +129,7 @@
             (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
           AutoCloseable
           (close [_])))
+      kafka/create-consumer no-op-consumer
       kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log [::tx-log/kafka :blaze.db.admin/tx-log]} none-default-key-config]
         (is (satisfies? tx-log/TxLog tx-log))))))
@@ -136,6 +139,19 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 (deftest tx-log-test
+  (testing "the consumer is created at init"
+    (let [created-count (atom 0)]
+      (with-redefs
+       [kafka/create-producer no-op-producer
+        kafka/create-consumer
+        (fn [tx-partition config]
+          (swap! created-count inc)
+          (no-op-consumer tx-partition config))
+        kafka/create-last-t-consumer no-op-consumer]
+        (with-system [{tx-log ::tx-log/kafka} config]
+          (is (satisfies? tx-log/TxLog tx-log))
+          (is (= 1 @created-count))))))
+
   (testing "submit"
     (with-redefs
      [kafka/create-producer
@@ -147,6 +163,7 @@
             (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
           AutoCloseable
           (close [_])))
+      kafka/create-consumer no-op-consumer
       kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} config]
         (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil)))))
@@ -163,6 +180,7 @@
                              (RecordTooLargeException. "msg-173357")))
             AutoCloseable
             (close [_])))
+        kafka/create-consumer no-op-consumer
         kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} config]
           (given-failed-future (tx-log/submit tx-log [tx-cmd] nil)
@@ -181,6 +199,7 @@
                              (AuthorizationException. "msg-175337")))
             AutoCloseable
             (close [_])))
+        kafka/create-consumer no-op-consumer
         kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} config]
           (given-failed-future @(tx-log/submit tx-log [tx-cmd] nil)
@@ -205,12 +224,77 @@
           (close [_])))
       kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} config]
-        (with-open [queue (tx-log/new-queue tx-log 1)]
-          (is (empty? (tx-log/poll! queue (time/seconds 1))))))))
+        (is (empty? (tx-log/poll! tx-log 1 (time/seconds 1)))))))
+
+  (testing "polling the same offset again doesn't seek"
+    (let [seek-count (atom 0)]
+      (with-redefs
+       [kafka/create-producer no-op-producer
+        kafka/create-consumer
+        (fn [tx-partition {servers :bootstrap-servers}]
+          (assert (= bootstrap-servers servers))
+          (reify
+            Consumer
+            (^void seek [_ ^TopicPartition partition ^long offset]
+              (assert (= tx-partition partition))
+              (assert (zero? offset))
+              (swap! seek-count inc))
+            (^ConsumerRecords poll [_ ^Duration _]
+              (ConsumerRecords. (Map/of) (Map/of)))
+            AutoCloseable
+            (close [_])))
+        kafka/create-last-t-consumer no-op-consumer]
+        (with-system [{tx-log ::tx-log/kafka} config]
+          (is (empty? (tx-log/poll! tx-log 1 (time/seconds 1))))
+          (is (empty? (tx-log/poll! tx-log 1 (time/seconds 1))))
+          (is (= 1 @seek-count))))))
+
+  (testing "polling continues at the offset after the last returned
+            transaction data without seeking"
+    (let [seek-count (atom 0)
+          poll-count (atom 0)]
+      (with-redefs
+       [kafka/create-producer no-op-producer
+        kafka/create-consumer
+        (fn [tx-partition {servers :bootstrap-servers}]
+          (assert (= bootstrap-servers servers))
+          (reify
+            Consumer
+            (^void seek [_ ^TopicPartition partition ^long offset]
+              (assert (= tx-partition partition))
+              (assert (zero? offset))
+              (swap! seek-count inc))
+            (^ConsumerRecords poll [_ ^Duration _]
+              (if (= 1 (swap! poll-count inc))
+                (ConsumerRecords.
+                 (Map/of tx-partition
+                         [(consumer-record 0 0 TimestampType/LOG_APPEND_TIME [tx-cmd])
+                          (consumer-record 1 0 TimestampType/LOG_APPEND_TIME [tx-cmd])])
+                 (Map/of))
+                (ConsumerRecords. (Map/of) (Map/of))))
+            AutoCloseable
+            (close [_])))
+        kafka/create-last-t-consumer no-op-consumer]
+        (with-system [{tx-log ::tx-log/kafka} config]
+          (testing "the first poll seeks and returns the transaction data"
+            (given (tx-log/poll! tx-log 1 (time/seconds 1))
+              count := 2
+              [0 :t] := 1
+              [0 :instant] := (Instant/ofEpochSecond 0)
+              [0 :tx-cmds] := [tx-cmd]
+              [1 :t] := 2
+              [1 :instant] := (Instant/ofEpochSecond 0)
+              [1 :tx-cmds] := [tx-cmd]))
+
+          (testing "polling the offset after the returned transaction data
+                    doesn't seek"
+            (is (empty? (tx-log/poll! tx-log 3 (time/seconds 1))))
+            (is (= 1 @seek-count)))))))
 
   (testing "last-t"
     (with-redefs
      [kafka/create-producer no-op-producer
+      kafka/create-consumer no-op-consumer
       kafka/create-last-t-consumer
       (fn [tx-partition {servers :bootstrap-servers}]
         (assert (= bootstrap-servers servers))

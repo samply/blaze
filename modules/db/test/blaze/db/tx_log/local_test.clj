@@ -25,6 +25,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
+   [clojure.lang IDeref]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [java.lang AutoCloseable]
    [java.time Instant]))
@@ -66,6 +67,33 @@
     (-put [_ _]
       (throw (Exception. "put-error")))))
 
+(defmethod ig/init-key ::blocking-kv-store [_ {:keys [kv-store]}]
+  (let [put-called (promise)
+        release-put (promise)]
+    (with-meta
+      (reify
+        p/KvStore
+        (-new-snapshot [_]
+          (p/-new-snapshot kv-store))
+        (-put [_ entries]
+          (p/-put kv-store entries)
+          (deliver put-called true)
+          @release-put))
+      {:put-called put-called :release-put release-put})))
+
+(defmethod ig/init-key ::snapshot-counting-kv-store [_ {:keys [kv-store]}]
+  (let [snapshot-count (atom 0)]
+    (reify
+      p/KvStore
+      (-new-snapshot [_]
+        (swap! snapshot-count inc)
+        (p/-new-snapshot kv-store))
+      (-put [_ entries]
+        (p/-put kv-store entries))
+      IDeref
+      (deref [_]
+        @snapshot-count))))
+
 (def config
   {::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
@@ -82,6 +110,26 @@
    {:kv-store (ig/ref ::failing-kv-store)
     :clock (ig/ref :blaze.test/fixed-clock)}
    ::failing-kv-store {}
+   :blaze.test/fixed-clock {}})
+
+(def blocking-kv-store-config
+  {::tx-log/local
+   {:kv-store (ig/ref ::blocking-kv-store)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+   ::blocking-kv-store
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/fixed-clock {}})
+
+(def snapshot-counting-kv-store-config
+  {::tx-log/local
+   {:kv-store (ig/ref ::snapshot-counting-kv-store)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+   ::snapshot-counting-kv-store
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
    :blaze.test/fixed-clock {}})
 
 (deftest init-test
@@ -114,8 +162,7 @@
         (is (zero? @(tx-log/last-t tx-log))))
 
       (testing "has no transaction data"
-        (with-open [queue (tx-log/new-queue tx-log 1)]
-          (is (empty? (tx-log/poll! queue (time/millis 10))))))))
+        (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
 
   (testing "an already filled transaction log"
     (with-system [{tx-log ::tx-log/local}
@@ -133,14 +180,13 @@
         (is (= 1 @(tx-log/last-t tx-log))))
 
       (testing "has transaction data"
-        (with-open [queue (tx-log/new-queue tx-log 1)]
-          (given (first (tx-log/poll! queue (time/millis 10)))
-            :t := 1
-            :instant := (Instant/ofEpochSecond 0)
-            [:tx-cmds 0 :op] := "create"
-            [:tx-cmds 0 :type] := "Patient"
-            [:tx-cmds 0 :id] := "0"
-            [:tx-cmds 0 :hash] := patient-hash-0)))))
+        (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+          :t := 1
+          :instant := (Instant/ofEpochSecond 0)
+          [:tx-cmds 0 :op] := "create"
+          [:tx-cmds 0 :type] := "Patient"
+          [:tx-cmds 0 :id] := "0"
+          [:tx-cmds 0 :hash] := patient-hash-0))))
 
   (testing "with one submitted command in one transaction"
     (with-system [{tx-log ::tx-log/local} config]
@@ -149,14 +195,13 @@
         [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
         nil)
 
-      (with-open [queue (tx-log/new-queue tx-log 1)]
-        (given (first (tx-log/poll! queue (time/millis 10)))
-          :t := 1
-          :instant := (Instant/ofEpochSecond 0)
-          [:tx-cmds 0 :op] := "create"
-          [:tx-cmds 0 :type] := "Patient"
-          [:tx-cmds 0 :id] := "0"
-          [:tx-cmds 0 :hash] := patient-hash-0))))
+      (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+        :t := 1
+        :instant := (Instant/ofEpochSecond 0)
+        [:tx-cmds 0 :op] := "create"
+        [:tx-cmds 0 :type] := "Patient"
+        [:tx-cmds 0 :id] := "0"
+        [:tx-cmds 0 :hash] := patient-hash-0)))
 
   (testing "with two submitted commands in two transactions"
     (with-system [{tx-log ::tx-log/local} config]
@@ -171,26 +216,24 @@
           :refs [["Patient" "0"]]}]
         nil)
 
-      (with-open [queue (tx-log/new-queue tx-log 1)]
-        (given (second (tx-log/poll! queue (time/millis 10)))
-          :t := 2
-          :instant := (Instant/ofEpochSecond 0)
-          [:tx-cmds 0 :op] := "create"
-          [:tx-cmds 0 :type] := "Observation"
-          [:tx-cmds 0 :id] := "0"
-          [:tx-cmds 0 :hash] := observation-hash-0
-          [:tx-cmds 0 :refs] := [["Patient" "0"]]))))
+      (given (second (tx-log/poll! tx-log 1 (time/millis 10)))
+        :t := 2
+        :instant := (Instant/ofEpochSecond 0)
+        [:tx-cmds 0 :op] := "create"
+        [:tx-cmds 0 :type] := "Observation"
+        [:tx-cmds 0 :id] := "0"
+        [:tx-cmds 0 :hash] := observation-hash-0
+        [:tx-cmds 0 :refs] := [["Patient" "0"]])))
 
   (testing "with local payload"
     (with-system [{tx-log ::tx-log/local} config]
-      (with-open [queue (tx-log/new-queue tx-log 1)]
-        @(tx-log/submit
-          tx-log
-          [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
-          ::payload)
+      @(tx-log/submit
+        tx-log
+        [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+        ::payload)
 
-        (given (first (tx-log/poll! queue (time/millis 10)))
-          :local-payload := ::payload))))
+      (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+        :local-payload := ::payload)))
 
   (testing "with invalid transaction data"
     (testing "with invalid key"
@@ -200,8 +243,7 @@
         (kv/put! kv-store [[:default (byte-array 0) (byte-array 0)]])
 
         (testing "the invalid transaction data is ignored"
-          (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
+          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
 
     (testing "with invalid key followed by valid entry"
       (with-system [{tx-log ::tx-log/local
@@ -213,14 +255,13 @@
                                                  :id "0" :hash patient-hash-0}])])
 
         (testing "the invalid transaction data is ignored"
-          (with-open [queue (tx-log/new-queue tx-log 0)]
-            (given (first (tx-log/poll! queue (time/millis 10)))
-              :t := 1
-              :instant := (Instant/ofEpochSecond 0)
-              [:tx-cmds 0 :op] := "create"
-              [:tx-cmds 0 :type] := "Patient"
-              [:tx-cmds 0 :id] := "0"
-              [:tx-cmds 0 :hash] := patient-hash-0)))))
+          (given (first (tx-log/poll! tx-log 0 (time/millis 10)))
+            :t := 1
+            :instant := (Instant/ofEpochSecond 0)
+            [:tx-cmds 0 :op] := "create"
+            [:tx-cmds 0 :type] := "Patient"
+            [:tx-cmds 0 :id] := "0"
+            [:tx-cmds 0 :hash] := patient-hash-0))))
 
     (testing "with two invalid keys followed by valid entry"
       (with-system [{tx-log ::tx-log/local
@@ -233,14 +274,13 @@
                                                  :id "0" :hash patient-hash-0}])])
 
         (testing "the invalid transaction data is ignored"
-          (with-open [queue (tx-log/new-queue tx-log 0)]
-            (given (first (tx-log/poll! queue (time/millis 10)))
-              :t := 1
-              :instant := (Instant/ofEpochSecond 0)
-              [:tx-cmds 0 :op] := "create"
-              [:tx-cmds 0 :type] := "Patient"
-              [:tx-cmds 0 :id] := "0"
-              [:tx-cmds 0 :hash] := patient-hash-0)))))
+          (given (first (tx-log/poll! tx-log 0 (time/millis 10)))
+            :t := 1
+            :instant := (Instant/ofEpochSecond 0)
+            [:tx-cmds 0 :op] := "create"
+            [:tx-cmds 0 :type] := "Patient"
+            [:tx-cmds 0 :id] := "0"
+            [:tx-cmds 0 :hash] := patient-hash-0))))
 
     (testing "with empty value"
       (with-system [{tx-log ::tx-log/local
@@ -249,8 +289,7 @@
         (kv/put! kv-store [[:default (byte-array Long/BYTES) (byte-array 0)]])
 
         (testing "the invalid transaction data is ignored"
-          (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
+          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
 
     (testing "with invalid cbor value"
       (with-system [{tx-log ::tx-log/local
@@ -259,8 +298,7 @@
         (kv/put! kv-store [[:default (byte-array Long/BYTES) (invalid-cbor-content)]])
 
         (testing "the invalid transaction data is ignored"
-          (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
+          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
 
     (testing "with invalid instant value"
       (with-system [{tx-log ::tx-log/local
@@ -269,8 +307,7 @@
         (kv/put! kv-store [[:default (byte-array Long/BYTES) (write-cbor {:instant ""})]])
 
         (testing "the invalid transaction data is ignored"
-          (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
+          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
 
     (testing "with invalid tx-cmd value"
       (with-system [{tx-log ::tx-log/local
@@ -279,8 +316,7 @@
         (kv/put! kv-store [[:default (byte-array Long/BYTES) (write-cbor {:tx-cmds [{}]})]])
 
         (testing "the invalid transaction data is ignored"
-          (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
+          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
 
     (testing "with failing kv-store"
       (let [tx-cmds [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]]
@@ -288,62 +324,143 @@
           (given-failed-future (tx-log/submit tx-log tx-cmds nil)
             ::anom/message := "put-error")
 
-          (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll! queue (time/millis 10))))))))))
+          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))))
 
-(deftest new-queue-test
-  (testing "it is possible to open two queues"
-    (testing "with one existing transaction"
-      (with-system [{tx-log ::tx-log/local}
-                    (assoc-kv-store-init-data
-                     config
-                     [[:default
-                       (codec/encode-key 1)
-                       (codec/encode-tx-data
-                        (Instant/ofEpochSecond 0)
+(deftest poll-test
+  (testing "polling the same offset again returns the same transaction data"
+    (with-system [{tx-log ::tx-log/local} config]
+      @(tx-log/submit
+        tx-log
+        [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+        nil)
+
+      (is (= (tx-log/poll! tx-log 1 (time/millis 10))
+             (tx-log/poll! tx-log 1 (time/millis 10))))
+
+      (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+        :t := 1
+        :instant := (Instant/ofEpochSecond 0)
+        [:tx-cmds 0 :op] := "create"
+        [:tx-cmds 0 :type] := "Patient"
+        [:tx-cmds 0 :id] := "0"
+        [:tx-cmds 0 :hash] := patient-hash-0)))
+
+  (testing "a poller is woken up by an incoming transaction"
+    (with-system [{tx-log ::tx-log/local} config]
+      (let [tx-data (ac/supply-async
+                     #(loop [tx-data nil]
+                        (if (seq tx-data)
+                          (first tx-data)
+                          (recur (tx-log/poll! tx-log 1 (time/millis 100))))))]
+
+        @(tx-log/submit
+          tx-log
+          [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+          nil)
+
+        (given @tx-data
+          :t := 1
+          :instant := (Instant/ofEpochSecond 0)
+          [:tx-cmds 0 :op] := "create"
+          [:tx-cmds 0 :type] := "Patient"
+          [:tx-cmds 0 :id] := "0"
+          [:tx-cmds 0 :hash] := patient-hash-0))))
+
+  (testing "polling while a submit stores its transaction data waits instead
+            of reading the not yet published transaction data from storage"
+    (with-system [{tx-log ::tx-log/local
+                   kv-store ::blocking-kv-store}
+                  blocking-kv-store-config]
+      (let [{:keys [put-called release-put]} (meta kv-store)
+            t (ac/supply-async
+               #(deref (tx-log/submit
+                        tx-log
                         [{:op "create" :type "Patient" :id "0"
-                          :hash patient-hash-0}])]])]
+                          :hash patient-hash-0}]
+                        ::payload)))]
+        (is (true? (deref put-called 1000 nil)))
 
-        (let [fn #(with-open [queue (tx-log/new-queue tx-log 0)]
-                    (->> (fn [] (tx-log/poll! queue (time/millis 10)))
-                         (repeatedly 10)
-                         (flatten)
-                         (first)))
-              tx-data-1 (ac/supply-async fn)
-              tx-data-2 (ac/supply-async fn)]
+        (testing "the transaction data is stored but not yet published, so
+                  polling waits instead of returning it without the local
+                  payload"
+          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))
 
-          (is (= @tx-data-1 @tx-data-2))
+        (deliver release-put nil)
+        (is (= 1 @t))
 
-          (given @tx-data-1
+        (testing "after the submit has finished, polling returns the
+                  transaction data including the local payload"
+          (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
             :t := 1
-            :instant := (Instant/ofEpochSecond 0)
-            [:tx-cmds 0 :op] := "create"
-            [:tx-cmds 0 :type] := "Patient"
-            [:tx-cmds 0 :id] := "0"
-            [:tx-cmds 0 :hash] := patient-hash-0))))
+            :local-payload := ::payload)))))
 
-    (testing "with one incoming incoming transaction"
-      (with-system [{tx-log ::tx-log/local} config]
+  (testing "polling beyond the last submitted transaction doesn't access
+            storage"
+    (with-system [{tx-log ::tx-log/local
+                   kv-store ::snapshot-counting-kv-store}
+                  snapshot-counting-kv-store-config]
+      @(tx-log/submit
+        tx-log
+        [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+        nil)
 
-        (let [fn #(with-open [queue (tx-log/new-queue tx-log 1)]
-                    (loop [tx-data nil]
-                      (if (seq tx-data)
-                        (first tx-data)
-                        (recur (tx-log/poll! queue (time/millis 100))))))
-              tx-data-1 (ac/supply-async fn)
-              tx-data-2 (ac/supply-async fn)]
+      (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+        :t := 1)
 
-          @(tx-log/submit
-            tx-log
-            [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
-            nil)
+      (let [snapshot-count @kv-store]
+        (is (empty? (tx-log/poll! tx-log 2 (time/millis 10))))
+        (is (= snapshot-count @kv-store)))))
 
-          (is (= @tx-data-1 @tx-data-2))
+  (testing "polling releases acknowledged transaction data from the tail"
+    (with-system [{tx-log ::tx-log/local} config]
+      (dotimes [_ 2]
+        @(tx-log/submit
+          tx-log
+          [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+          ::payload))
 
-          (given @tx-data-1
-            :t := 1
-            :instant := (Instant/ofEpochSecond 0)
-            [:tx-cmds 0 :op] := "create"
-            [:tx-cmds 0 :type] := "Patient"
-            [:tx-cmds 0 :id] := "0"
-            [:tx-cmds 0 :hash] := patient-hash-0))))))
+      (testing "before acknowledgment, old transaction data comes from the
+                tail with the local payload"
+        (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+          :t := 1
+          :local-payload := ::payload))
+
+      (testing "polling with offset 2 acknowledges the transaction data below"
+        (given (first (tx-log/poll! tx-log 2 (time/millis 10)))
+          :t := 2
+          :local-payload := ::payload))
+
+      (testing "afterwards the released transaction data comes from storage
+                without the local payload"
+        (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+          :t := 1
+          :local-payload := nil))))
+
+  (testing "submitting blocks while the tail is full"
+    (with-system [{tx-log ::tx-log/local} config]
+      (dotimes [_ 10]
+        @(tx-log/submit
+          tx-log
+          [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+          ::payload))
+
+      (let [t (ac/supply-async
+               #(deref (tx-log/submit
+                        tx-log
+                        [{:op "create" :type "Patient" :id "0"
+                          :hash patient-hash-0}]
+                        ::payload)))]
+
+        (testing "the submit doesn't complete while the tail is full"
+          (is (= ::timeout (deref t 100 ::timeout))))
+
+        (testing "acknowledging transaction data unblocks the submit"
+          (given (first (tx-log/poll! tx-log 2 (time/millis 10)))
+            :t := 2)
+          (is (= 11 (deref t 1000 ::timeout))))
+
+        (testing "the blocked transaction data comes from the tail, including
+                  the local payload"
+          (given (peek (tx-log/poll! tx-log 2 (time/millis 10)))
+            :t := 11
+            :local-payload := ::payload))))))
