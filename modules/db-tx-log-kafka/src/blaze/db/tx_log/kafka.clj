@@ -27,11 +27,13 @@
 (set! *warn-on-reflection* true)
 
 (defhistogram duration-seconds
-  "Durations in Kafka transaction log."
+  "Durations in Kafka transaction log.
+
+  The `node` label distinguishes the individual nodes like main and admin."
   {:namespace "blaze"
    :subsystem "db_tx_log"}
   (take 12 (iterate #(* 2 %) 0.0001))
-  "op")
+  "node" "op")
 
 (defn create-producer [config]
   (KafkaProducer. ^Map (c/producer-config config)
@@ -54,39 +56,44 @@
   (format "A transaction with %d commands generated a Kafka message which is larger than the configured maximum of %d bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. %s"
           num-of-tx-cmds max-request-size msg))
 
-(defn- producer-error
+(defn- producer-anomaly
   [e {:keys [max-request-size]} num-of-tx-cmds]
   (condp identical? (class e)
     RecordTooLargeException
-    (ba/ex-anom
-     (ba/unsupported
-      (record-too-large-msg max-request-size num-of-tx-cmds
-                            (ex-message e))))
-    (ba/ex-anom (ba/fault (ex-message e)))))
+    (ba/unsupported
+     (record-too-large-msg max-request-size num-of-tx-cmds
+                           (ex-message e)))
+    (ba/fault (ex-message e))))
 
-(defn- end-offset [^Consumer consumer tx-partition]
-  (with-open [_ (prom/timer duration-seconds "end-offset")]
+(defn- end-offset [node-name ^Consumer consumer tx-partition]
+  (with-open [_ (prom/timer duration-seconds node-name "end-offset")]
     (get (.endOffsets consumer [tx-partition]) tx-partition)))
 
-(deftype KafkaTxLog [config ^TopicPartition partition ^Producer producer
+(deftype KafkaTxLog [node-name config ^TopicPartition partition ^Producer producer
                      ^Consumer poll-consumer poll-position last-t-consumer
                      last-t-executor]
   tx-log/TxLog
   (-submit [_ tx-cmds _]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
-    (let [timer (prom/timer duration-seconds "submit")
+    (let [timer (prom/timer duration-seconds node-name "submit")
           future (ac/future)]
       (.send producer (ProducerRecord. (:topic config) tx-cmds)
              (reify Callback
                (onCompletion [_ metadata e]
                  (prom/observe-duration! timer)
-                 (if e
-                   (ac/complete-exceptionally! future (producer-error e config (count tx-cmds)))
-                   (ac/complete! future (metadata->t metadata))))))
+                 ;; completes asynchronously, because otherwise all the work
+                 ;; depending on the submit would run on the I/O thread of the
+                 ;; producer, delaying the sending of every other transaction
+                 (ac/complete-async!
+                  future
+                  (if e
+                    #(producer-anomaly e config (count tx-cmds))
+                    #(metadata->t metadata))))))
       future))
 
   (-last-t [_]
-    (ac/supply-async #(end-offset last-t-consumer partition) last-t-executor))
+    (ac/supply-async #(end-offset node-name last-t-consumer partition)
+                     last-t-executor))
 
   (-poll [_ offset timeout]
     (log/trace "poll transaction data with offset =" offset)
@@ -126,7 +133,7 @@
   [key {:keys [topic] :as config}]
   (log/info (l/init-msg key config))
   (let [partition (TopicPartition. topic 0)]
-    (->KafkaTxLog config partition (create-producer config)
+    (->KafkaTxLog (u/node-name key) config partition (create-producer config)
                   (create-consumer partition config) (volatile! nil)
                   (create-last-t-consumer partition config)
                   (:last-t-executor config))))

@@ -30,6 +30,27 @@
   other subscribers are ever slowed down by a subscriber that doesn't consume
   fast enough.
 
+  Submitting a transaction starts by taking one of the places for in-flight
+  transactions. If none is free, the submit returns a busy anomaly without
+  writing anything. The node is the only place a transaction is turned away,
+  because the transaction log accepts whatever is submitted to it. So after the
+  resource contents were stored and the commands were submitted to the log, the
+  transaction is on its way to being indexed. Once the log has assigned a `t`,
+  the transaction moves from `:submitting` to `:in-flight`, where it stays until
+  the indexer got to it. So `:submitting` and `:in-flight` together limit how far
+  this node can run ahead of its own indexing, which in turn bounds the memory
+  the not yet indexed transactions occupy.
+
+  The t's in `:in-flight` are not the t's the `:waiters` wait for. `:in-flight`
+  holds only the transactions this node submitted itself, so it bounds its own
+  writes, while a waiter is registered for every t a caller waits for, which is
+  a read syncing on a t just as much as a caller waiting for the result of a
+  transaction. With distributed storage a read syncs on the last t of the
+  transaction log, which can be a transaction another node submitted and so was
+  never in-flight here. The two overlap, but neither contains the other and the
+  number of waiters isn't bounded by the maximum number of in-flight
+  transactions.
+
   Closing the node is the one point at which transactions are lost. It doesn't
   wait for a subscriber that doesn't consume. Instead it stops publishing and
   drops what a subscription didn't deliver yet, the queued transactions and the
@@ -65,6 +86,7 @@
    [blaze.db.impl.query.compartment :as qc]
    [blaze.db.impl.query.system :as qs]
    [blaze.db.impl.query.type :as qt]
+   [blaze.db.impl.thread :as thread]
    [blaze.db.kv :as kv]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
@@ -96,7 +118,7 @@
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [java-time.api :as time]
-   [prometheus.alpha :as prom :refer [defhistogram]]
+   [prometheus.alpha :as prom :refer [defcounter defhistogram]]
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]))
@@ -123,6 +145,17 @@
    :subsystem "db_node"}
   (take 16 (iterate #(* 2 %) 0.0001))
   "node" "op")
+
+(defcounter submit-rejections-total
+  "Number of transaction submits rejected because the maximum number of
+  in-flight transactions was already reached.
+
+  The `node` label distinguishes the individual nodes like main and admin."
+  {:namespace "blaze"
+   :subsystem "db_node"}
+  "node")
+
+(def ^:private ^:const default-max-in-flight-transactions 1024)
 
 (defn- closed-node-msg [node-name]
   (format "The database node `%s` is closed." node-name))
@@ -219,6 +252,54 @@
               :else
               (ac/then-apply-async (new-waiters t) f))))))
 
+(defn- acquire-in-flight
+  "Counts one more transaction as submitting.
+
+  Returns `state` unchanged if the maximum number of in-flight transactions is
+  already reached."
+  [{:keys [submitting in-flight] :as state} max-in-flight-transactions]
+  (cond-> state
+    (< (+ submitting (count in-flight)) max-in-flight-transactions)
+    (update :submitting inc)))
+
+(defn- max-in-flight-msg [max-in-flight-transactions]
+  (format "The maximum number of %d in-flight transactions is reached. Please try again later."
+          max-in-flight-transactions))
+
+(defn- acquire-in-flight-fn
+  "Returns a function that tries to take one of the places for in-flight
+  transactions.
+
+  That function returns a busy anomaly and counts the rejection if the maximum
+  number of in-flight transactions is already reached. It's the only point at
+  which a transaction is turned away, so it has to be called before any data of
+  the transaction is stored."
+  [node-name state max-in-flight-transactions]
+  (fn []
+    (let [[old new] (swap-vals! state acquire-in-flight
+                                max-in-flight-transactions)]
+      (when (identical? old new)
+        (prom/inc! submit-rejections-total node-name)
+        (ba/busy (max-in-flight-msg max-in-flight-transactions))))))
+
+(defn- settle-in-flight
+  "Stops counting the transaction as submitting and starts counting it as
+  in-flight under its `new-t`.
+
+  A transaction without a `new-t` never made it into the transaction log and one
+  that is already indexed was released by `release-in-flight` before its `t`
+  became known here. Both only stop being counted as submitting."
+  [{:keys [t error-t] :as state} new-t]
+  (cond-> (update state :submitting dec)
+    (and new-t (< (max t error-t) new-t))
+    (update :in-flight conj new-t)))
+
+(defn- release-in-flight
+  "Stops counting the transactions up to `t` as in-flight, because they are
+  indexed now."
+  [{:keys [in-flight] :as state} t]
+  (assoc state :in-flight (reduce disj in-flight (subseq in-flight <= t))))
+
 (defn- index-tx [node-name context tx-data]
   (with-open [_ (prom/timer duration-seconds node-name "index-transactions")]
     (ba/try-anomaly (ac/join (tx-indexer/index-tx context tx-data)))))
@@ -247,16 +328,19 @@
   (swap-state! state identity))
 
 (defn- advance-t!
-  "Advances `state` to `t` and completes the waiters `t` released."
+  "Advances `state` to `t`, stops counting the transactions up to `t` as
+  in-flight and completes the waiters `t` released."
   [state t]
   (log/trace "advance state to t =" t)
   (let [{old-waiters :waiters}
         (swap-state! state #(-> (assoc % :t t)
+                                (release-in-flight t)
                                 (update :waiters waiters/remove-ready t)))]
     (waiters/complete-ready! old-waiters t t)))
 
 (defn- advance-error-t!
-  "Advances `state` to the error-t `t` and completes the waiters `t` released.
+  "Advances `state` to the error-t `t`, stops counting the transactions up to
+  `t` as in-flight and completes the waiters `t` released.
 
   Completes them with the t of the last successful transaction, because a failed
   transaction produces no new database value.
@@ -267,6 +351,7 @@
   (log/trace "advance state to error-t =" t)
   (let [[{old-waiters :waiters current-t :t}]
         (swap-vals! state #(-> (assoc % :error-t t)
+                               (release-in-flight t)
                                (update :waiters waiters/remove-ready t)))]
     (waiters/complete-ready! old-waiters t current-t)))
 
@@ -885,8 +970,8 @@
 
 (defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
                  resource-store sync-fn search-param-registry resource-indexer
-                 read-only-matcher state poll-timeout queue-capacity
-                 index-finished publish-finished]
+                 read-only-matcher acquire-in-flight! state poll-timeout
+                 queue-capacity index-finished publish-finished]
   np/Node
   (-db [node]
     (db/db node (:t @state)))
@@ -913,11 +998,13 @@
         (not run?) (ac/completed-future (ba/unavailable (closed-node-msg node-name)))
 
         :else
-        (if-ok [_ (validation/validate-ops tx-ops)]
+        (if-ok [_ (validation/validate-ops tx-ops)
+                _ (acquire-in-flight!)]
           (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
             (-> (rs/put! resource-store entries)
                 (ac/then-compose-async
-                 (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
+                 (fn [_] (tx-log/submit tx-log tx-cmds entries)))
+                (ac/when-complete (fn [t _] (swap! state settle-in-flight t)))))
           ac/completed-future))))
 
   (-tx-result [node t]
@@ -1019,10 +1106,12 @@
 
   The state contains the `:run?` flag of the indexing loop, whether the node
   `:failed?`, whether the `:indexing-finished?`, the `:t` of the last indexed
-  transaction and the `:error-t` of the last failed one, the `:waiters` for a t
-  to be indexed, the `:subscriptions` per type, whether they are
-  `:subscriptions-closed?`, the `:running-subscriptions` and the
-  `:publish-future` the publishing loop waits on.
+  transaction and the `:error-t` of the last failed one, the number of
+  transactions currently `:submitting` and the `:in-flight` t's of the ones
+  already submitted but not indexed yet, the `:waiters` for a t to be indexed,
+  the `:subscriptions` per type, whether they are `:subscriptions-closed?`, the
+  `:running-subscriptions` and the `:publish-future` the publishing loop waits
+  on.
 
   The `:failed?` flag only tells that the node stopped because of an error, not
   which one. That distinguishes a node that failed from one that is closing
@@ -1048,6 +1137,8 @@
    :indexing-finished? false
    :t (or (tx-success/last-t kv-store) 0)
    :error-t 0
+   :submitting 0
+   :in-flight (sorted-set)
    :waiters waiters/empty-waiters
    :subscriptions {}
    :subscriptions-closed? false
@@ -1139,33 +1230,39 @@
    :opt-un
    [:blaze.db/enforce-referential-integrity
     :blaze.db/allow-multiple-delete
+    :blaze.db/max-in-flight-transactions
     ::poll-timeout
     ::queue-capacity]))
 
 (defmethod ig/init-key :blaze.db/node
   [key {:keys [storage tx-log tx-cache kv-store resource-indexer resource-cache
                resource-store search-param-registry scheduler poll-timeout
-               queue-capacity]
+               queue-capacity max-in-flight-transactions]
         :or {poll-timeout (time/seconds 1)
-             queue-capacity 16}
+             queue-capacity 16
+             max-in-flight-transactions default-max-in-flight-transactions}
         :as config}]
   (init-msg key config)
   (check-version! kv-store)
   (let [node-name (node-util/node-name key)
+        state (atom (initial-state kv-store))
         node (->Node node-name (ctx config) tx-log tx-cache
                      kv-store resource-cache resource-store (sync-fn storage)
                      search-param-registry resource-indexer
                      (compile-read-only-matcher search-param-registry)
-                     (atom (initial-state kv-store))
+                     (acquire-in-flight-fn node-name state
+                                           max-in-flight-transactions)
+                     state
                      poll-timeout
                      queue-capacity
                      (ac/future)
                      (ac/future))]
     (when (= :building (:type (plc/state kv-store)))
       (sched/submit scheduler #(build-patient-last-change-index key node)))
-    (node-util/start-thread! #(index-loop node) (str node-name "-indexer"))
-    (node-util/start-thread! #(publish-loop node)
-                             (str node-name "-changed-resources-publisher"))
+    (thread/start-thread! #(index-loop node)
+                          (node-util/thread-name key "indexer"))
+    (thread/start-thread! #(publish-loop node)
+                          (node-util/thread-name key "changed-resources-publisher"))
     node))
 
 (defmethod ig/halt-key! :blaze.db/node
@@ -1223,6 +1320,9 @@
 
 (reg-collector ::duration-seconds
   duration-seconds)
+
+(reg-collector ::submit-rejections-total
+  submit-rejections-total)
 
 (reg-collector ::transaction-sizes
   verify/transaction-sizes)

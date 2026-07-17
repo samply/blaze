@@ -20,7 +20,7 @@
   :args (s/cat :key ::bi/key :suffix string?)
   :ret string?)
 
-(s/fdef node-util/thread-name-template
+(s/fdef node-util/thread-name
   :args (s/cat :key ::bi/key :suffix string?)
   :ret string?)
 
@@ -32,6 +32,3 @@
 (s/fdef node-util/instant
   :args (s/cat :last-updated :blaze.db.tx/instant)
   :ret :fhir/instant)
-
-(s/fdef node-util/start-thread!
-  :args (s/cat :f fn? :name string?))

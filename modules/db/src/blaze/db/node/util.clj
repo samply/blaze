@@ -35,10 +35,12 @@
     (vector? key)
     (str (name-part key) " ")))
 
-(defn thread-name-template
-  "Returns the thread name template of the component with Integrant `key`,
-  `suffix` prefixed with the node name for a composite key, so that the threads
-  of the nodes of a system can be told apart."
+(defn thread-name
+  "Returns the thread name of the component with Integrant `key`, `suffix`
+  prefixed with the node name for a composite key, so that the threads of the
+  nodes of a system can be told apart.
+
+  For thread pools, `suffix` is a name template like `resource-indexer-%d`."
   [key suffix]
   (cond->> suffix
     (vector? key)
@@ -54,8 +56,3 @@
   offset."
   [last-updated]
   (type/instant (.atOffset ^Instant last-updated ZoneOffset/UTC)))
-
-(defn start-thread!
-  "Starts a daemon thread with `name` that runs `f`."
-  [^Runnable f ^String name]
-  (.start (doto (Thread. f name) (.setDaemon true))))

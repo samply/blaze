@@ -34,6 +34,12 @@ BASE=http://localhost:8080/fhir k6 run transaction.js
 
 The optional `DURATION` environment variable (default 60 s) sets how long each concurrency level runs.
 
+The transaction test sweeps over the concurrency levels 1 to 128, one after the other. The optional `VUS` environment variable restricts it to a single level, which is what to use while profiling the server: the batches of the transaction log and the resource store grow with the number of concurrent clients, so every level has its own ratio of per-batch to per-entry work that a profile over the whole sweep would blur. Such a run reports its result line on stdout instead of writing the CSV, so it leaves the committed sweep data alone:
+
+```sh
+BASE=http://localhost:8080/fhir VUS=64 DURATION=300 k6 run transaction.js
+```
+
 ## Single Patient Reads
 
 ### Results
@@ -72,49 +78,27 @@ All runs start from an empty database and grow it with every request, so there i
 
 ### Results
 
-| System | VUs | Req/s |    med |     q95 |     q99 |
-|--------|----:|------:|-------:|--------:|--------:|
-| LEA47  |   1 | 129.6 |   6.57 |    8.83 |   12.37 |
-| LEA47  |   2 | 266.3 |   6.35 |    8.72 |   13.37 |
-| LEA47  |   4 | 399.8 |   9.28 |   13.32 |   20.61 |
-| LEA47  |   8 | 420.7 |  19.36 |   27.11 |   34.98 |
-| LEA47  |  16 | 404.8 |  40.71 |   57.77 |   71.40 |
-| LEA47  |  32 | 443.6 |  46.83 |  184.06 |  217.65 |
-| LEA47  |  64 | 452.2 | 119.24 |  344.03 |  433.56 |
-| LEA79  |   1 |  1282 |   0.53 |    0.62 |    0.68 |
-| LEA79  |   2 |  2535 |   0.52 |    0.68 |    0.84 |
-| LEA79  |   4 |  4639 |   0.58 |    0.78 |    0.92 |
-| LEA79  |   8 |  5408 |   1.21 |    1.42 |    1.54 |
-| LEA79  |  16 |  5291 |   2.79 |    3.16 |    3.39 |
-| LEA79  |  32 |  5310 |   5.95 |    6.63 |    7.15 |
-| LEA79  |  64 |  5617 |  11.62 |   12.96 |   15.64 |
-| A5N46  |   1 | 87.70 |  10.60 |   14.11 |   15.09 |
-| A5N46  |   2 | 106.1 |  19.28 |   26.66 |   27.55 |
-| A5N46  |   4 | 93.97 |  39.17 |   53.71 |   54.47 |
-| A5N46  |   8 | 95.05 |  78.22 |  105.84 |  106.86 |
-| A5N46  |  16 | 96.95 | 156.61 |  209.35 |  212.69 |
-| A5N46  |  32 | 145.7 |  81.68 |  569.79 |  693.27 |
-| A5N46  |  64 | 162.6 | 244.23 | 1430.35 | 1780.56 |
-
-At high concurrency LEA47 plateaus around 450 transactions/s — close to its measured fsync rate of 479/s — because every transaction must durably persist its write to disk before responding, whereas LEA79 sustains over 5000 transactions/s.
-
-LEA47:
+Every transaction durably writes its transaction log entry and its resources before it is answered, so the disk's sync behaviour sets the processing time. It does not cap the throughput, though: the transaction log batches all transactions submitted while the previous write was in flight into a single write followed by one fsync, and the resource store group-commits its concurrent writers the same way. The batches grow with the number of concurrent clients, so throughput scales past the disk's raw fsync rate.
 
 <LineChart src="load-testing/data/transaction-LEA47.csv"
   title="Transaction (LEA47)"
   x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
 
-LEA79:
+LEA47 plateaus at about 1390 transactions/s from 16 clients on — nearly three transactions per fsync at its 484 fsyncs/s — with a median processing time of 46 ms and a q99 of 68 ms at 64 clients.
 
 <LineChart src="load-testing/data/transaction-LEA79.csv"
   title="Transaction (LEA79)"
   x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
 
-A5N46:
+LEA79 syncs from a write cache in a few microseconds and is not disk-bound at all: it already sustains over 5000 transactions/s at 8 clients and stays there over the whole sweep, with a q99 of 13 ms at 64 clients.
 
 <LineChart src="load-testing/data/transaction-A5N46.csv"
   title="Transaction (A5N46)"
-  x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
+  x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
+
+A5N46 shows the batching most clearly. Its drive syncs at only 178/s, which pins the median processing time at about 30 ms from 4 clients on — but with the batches growing along the concurrency, throughput roughly doubles with every doubling of clients: 234 transactions/s at 8 clients, 1084 at 32 and 2033 at 64 clients, more than eleven transactions per fsync. The q99 stays at about 41 ms over that range.
+
+At 128 clients the doubling stops. Throughput still grows to 3505 transactions/s — more than nineteen transactions per fsync — but the median processing time leaves its 30 ms plateau for the first time and rises to 37 ms. It is also the first level at which the clients outnumber the 64 writer threads of the resource store. The processing times shift up as a block instead of spreading out, with a q99 of only 50 ms, which points at one additional round of waiting rather than at contention.
 
 [1]: <https://k6.io>
 [2]: <https://www.hl7.org/fhir/http.html#transaction>

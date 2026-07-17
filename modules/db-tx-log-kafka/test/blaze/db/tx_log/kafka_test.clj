@@ -10,7 +10,7 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.test-util]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.module.test-util :as mtu :refer [given-failed-system with-system]]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -19,13 +19,15 @@
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
+   [prometheus.alpha :as prom]
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]
    [java.time Duration Instant]
    [java.util Map]
    [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
-   [org.apache.kafka.clients.producer KafkaProducer Producer RecordMetadata]
+   [org.apache.kafka.clients.producer
+    Callback KafkaProducer Producer RecordMetadata]
    [org.apache.kafka.common TopicPartition]
    [org.apache.kafka.common.errors
     AuthorizationException RecordTooLargeException]
@@ -307,6 +309,76 @@
           (close [_])))]
       (with-system [{tx-log ::tx-log/kafka} config]
         (is (= 104614 @(tx-log/last-t tx-log)))))))
+
+(defn- submit-durations
+  "Returns the number of durations observed under the node label `main` and the
+  op label `submit`.
+
+  The last bucket of a Prometheus histogram is the +Inf bucket that counts all
+  observations."
+  []
+  (peek (:histogram/buckets (prom/get kafka/duration-seconds "main" "submit"))))
+
+(deftest submit-duration-test
+  (testing "the duration of a submit is observed under the node the
+            transaction log belongs to"
+    (with-redefs
+     [kafka/create-producer
+      (fn [{servers :bootstrap-servers}]
+        (assert (= bootstrap-servers servers))
+        (reify
+          Producer
+          (send [_ _ callback]
+            (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
+          AutoCloseable
+          (close [_])))
+      kafka/create-consumer no-op-consumer
+      kafka/create-last-t-consumer no-op-consumer]
+      (with-system [{tx-log ::tx-log/kafka} config]
+        (let [durations (submit-durations)]
+          (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil)))
+
+          (is (= (inc durations) (submit-durations))))))))
+
+(def callback-thread-name "kafka-callback")
+
+(defn- callback-thread-producer
+  "Returns a function creating a producer that calls the callback of `send` on
+  its own thread named `callback-thread-name`, like the I/O thread of a real
+  producer does, as soon as `release` is delivered."
+  [release]
+  (fn [{servers :bootstrap-servers}]
+    (assert (= bootstrap-servers servers))
+    (reify
+      Producer
+      (send [_ _ callback]
+        (.start
+         (Thread.
+          ^Runnable
+          (fn []
+            @release
+            (.onCompletion ^Callback callback (RecordMetadata. nil 0 0 0 0 0) nil))
+          callback-thread-name))
+        nil)
+      AutoCloseable
+      (close [_]))))
+
+(deftest submit-completion-thread-test
+  (testing "the future of a submit doesn't complete on the thread the producer
+            calls back on, so that the continuations of the submitter don't
+            delay the I/O thread of the producer"
+    (let [release (promise)]
+      (with-redefs
+       [kafka/create-producer (callback-thread-producer release)
+        kafka/create-consumer no-op-consumer
+        kafka/create-last-t-consumer no-op-consumer]
+        (with-system [{tx-log ::tx-log/kafka} config]
+          ;; the producer waits with its callback, so the continuation is
+          ;; registered before the future of the submit is completed
+          (let [thread-name (mtu/thread-name (tx-log/submit tx-log [tx-cmd] nil))]
+            (deliver release nil)
+
+            (is (mtu/common-pool-thread? (deref thread-name 1000 "timeout")))))))))
 
 (def producer-config {:bootstrap-servers "localhost:9092"})
 

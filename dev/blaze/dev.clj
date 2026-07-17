@@ -72,6 +72,12 @@
   (def node (:blaze.db/node system))
   (def db (d/db node)))
 
+;; Local Transaction Log
+(comment
+  (def tx-log (system [::tx-log/local :blaze.db.main/tx-log]))
+
+  (count (:buffer @(.state tx-log))))
+
 ;; Kafka Transaction Log
 (comment
   (def tx-log (::tx-log/kafka system)))
