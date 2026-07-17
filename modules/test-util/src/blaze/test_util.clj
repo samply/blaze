@@ -1,8 +1,9 @@
 (ns blaze.test-util
   (:require
+   [clojure.pprint :as pprint]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
-   [clojure.test :refer [is]]
+   [clojure.test :as test :refer [is]]
    [clojure.test.check :as tc]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
@@ -25,11 +26,16 @@
 
 (defmacro satisfies-prop [num-tests prop]
   `(let [result# (tc/quick-check ~num-tests ~prop)]
-     (if (instance? Throwable (:result result#))
-       (prn (:result result#))
-       (if (true? (:result result#))
-         (is :success)
-         (is (clojure.pprint/pprint result#))))))
+     (if (true? (:result result#))
+       (is :success)
+       (let [error# (:result result#)]
+         (if (instance? Throwable error#)
+           (test/do-report
+            {:type :error
+             :message (with-out-str (pprint/pprint result#))
+             :expected true
+             :actual error#})
+           (is (pprint/pprint result#)))))))
 
 (defn ba
   "Creates a byte array from `bytes`."
