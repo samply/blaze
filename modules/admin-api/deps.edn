@@ -19,6 +19,9 @@
   blaze/job-compact
   {:local/root "../job-compact"}
 
+  blaze/job-disk-perf
+  {:local/root "../job-disk-perf"}
+
   blaze/job-re-index
   {:local/root "../job-re-index"}
 

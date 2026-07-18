@@ -8,6 +8,9 @@
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
+  blaze/job-util
+  {:local/root "../job-util"}
+
   blaze/page-id-cipher
   {:local/root "../page-id-cipher"}
 

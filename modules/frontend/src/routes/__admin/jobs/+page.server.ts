@@ -13,6 +13,11 @@ import {
   extractProcessingDuration as extractCompactProcessingDuration
 } from '$lib/jobs/compact';
 import {
+  extractDatabase as extractDiskPerfDatabase,
+  extractScore,
+  extractProcessingDuration as extractDiskPerfProcessingDuration
+} from '$lib/jobs/disk-perf';
+import {
   extractSearchParamUrl,
   extractProcessingDuration as extractReIndexProcessingDuration
 } from '$lib/jobs/re-index';
@@ -46,6 +51,16 @@ function toSummaryJob(job: Task, includes: BundleEntry[]): SummaryJob | undefine
           detail: pascalCase(database) + ' / ' + pascalCase(columnFamily),
           processingDuration: extractCompactProcessingDuration(job)
         };
+  }
+
+  if (baseJob.type.code === 'disk-perf') {
+    const score = extractScore(job);
+    return {
+      ...baseJob,
+      detail:
+        pascalCase(extractDiskPerfDatabase(job)) + (score !== undefined ? ` / Score ${score}` : ''),
+      processingDuration: extractDiskPerfProcessingDuration(job)
+    };
   }
 
   if (baseJob.type.code === 're-index') {

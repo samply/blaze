@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.db.kv.rocksdb.column-family-meta-data :as-alias column-family-meta-data]
    [blaze.db.kv.rocksdb.column-family-meta-data.level :as-alias column-family-meta-data-level]
+   [blaze.util :as u]
    [clojure.core.protocols :as p]
    [clojure.string :as str])
   (:import
@@ -59,12 +60,12 @@
       (.setLevelCompactionDynamicLevelBytes true)
       (.setCompressionType CompressionType/LZ4_COMPRESSION)
       (.setBottommostCompressionType CompressionType/ZSTD_COMPRESSION)
-      (.setWriteBufferSize (bit-shift-left write-buffer-size-in-mb 20))
+      (.setWriteBufferSize (* write-buffer-size-in-mb u/mib))
       (.setMaxWriteBufferNumber (long max-write-buffer-number))
-      (.setMaxBytesForLevelBase (bit-shift-left max-bytes-for-level-base-in-mb 20))
+      (.setMaxBytesForLevelBase (* max-bytes-for-level-base-in-mb u/mib))
       (.setLevel0FileNumCompactionTrigger (long level0-file-num-compaction-trigger))
       (.setMinWriteBufferNumberToMerge (long min-write-buffer-number-to-merge))
-      (.setTargetFileSizeBase (bit-shift-left target-file-size-base-in-mb 20))
+      (.setTargetFileSizeBase (* target-file-size-base-in-mb u/mib))
       (.setTableFormatConfig
        (cond->
         (doto (BlockBasedTableConfig.)

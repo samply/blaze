@@ -5,7 +5,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.util :as cs-u]
    [blaze.terminology-service.local.search-index :as search-index]
-   [blaze.util :refer [str]]
+   [blaze.util :refer [conj-vec str]]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]))
@@ -145,8 +145,8 @@
         [name code]))))
 
 (defn- update-part-index [part-index [name code] concept]
-  (-> (update part-index name (fnil conj []) concept)
-      (update code (fnil conj []) concept)))
+  (-> (update part-index name conj-vec concept)
+      (update code conj-vec concept)))
 
 (defn- read-table [index]
   (when-let [in (resource-as-stream table)]
@@ -179,14 +179,14 @@
               (-> (assoc-in index [:concept-index code] concept)
                   (update :component-index update-part-index component-pair concept)
                   (update :class-index update-part-index class-pair concept)
-                  (update-in [:status-index status] (fnil conj []) concept)
-                  (update-in [:class-type-index class-type] (fnil conj []) concept))
+                  (update-in [:status-index status] conj-vec concept)
+                  (update-in [:class-type-index class-type] conj-vec concept))
                time-pair (update :time-index update-part-index time-pair concept)
                system-pair (update :system-index update-part-index system-pair concept)
                scale-pair (update :scale-index update-part-index scale-pair concept)
                property-pair (update :property-index update-part-index property-pair concept)
                method-pair (update :method-index update-part-index method-pair concept)
-               order-obs (update-in [:order-obs-index order-obs] (fnil conj []) concept)))
+               order-obs (update-in [:order-obs-index order-obs] conj-vec concept)))
            reduced))
        index
        (rest (csv/read-csv reader))))))
@@ -209,7 +209,7 @@
           (let [concept (answer-concept id answer-id answer-display)]
             (-> (assoc-in index [:concept-index answer-id] concept)
                 (assoc-in [:value-sets id] {:title (type/string name)})
-                (update-in [:value-set-concepts id] (fnil conj []) concept)))))
+                (update-in [:value-set-concepts id] conj-vec concept)))))
        index
        (rest (csv/read-csv reader))))))
 

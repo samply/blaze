@@ -184,7 +184,7 @@
 (def ^:private allowed-profiles
   (into #{}
         (mapcat #(canonical/urls (str "StructureDefinition/" %)))
-        ["AsyncInteractionJob" "CompactJob" "ReIndexJob"]))
+        ["AsyncInteractionJob" "CompactJob" "DiskPerfJob" "ReIndexJob"]))
 
 (defn- check-profile [resource]
   (if (some allowed-profiles (map :value (-> resource :meta :profile)))

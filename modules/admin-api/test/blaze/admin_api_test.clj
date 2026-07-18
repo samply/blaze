@@ -842,6 +842,41 @@
                 :code #fhir/code "column-family"})]})
      :value #fhir/code "search-param-value-index"}]})
 
+(defn- disk-perf-input [code value]
+  {:fhir/type :fhir.Task/input
+   :type (type/codeable-concept
+          {:coding
+           [(type/coding
+             {:system (type/uri (str canonical/base "/CodeSystem/DiskPerfJobParameter"))
+              :code (type/code code)})]})
+   :value value})
+
+;; the disk-perf job type never existed in IG version 0.1.0, so it carries only
+;; the current canonical
+(def ^:private disk-perf-job
+  {:fhir/type :fhir/Task
+   :meta (type/meta {:profile [(type/canonical (str canonical/base "/StructureDefinition/DiskPerfJob"))]})
+   :status #fhir/code "draft"
+   :intent #fhir/code "order"
+   :code (type/codeable-concept
+          {:coding
+           [(type/coding
+             {:system (type/uri (str canonical/base "/CodeSystem/JobType"))
+              :code #fhir/code "disk-perf"
+              :display #fhir/string "Measure Disk Performance"})]})
+   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
+   :input
+   [(disk-perf-input "database" #fhir/code "index")
+    (disk-perf-input "file-size" #fhir/Quantity{:value #fhir/decimal 4M
+                                                :unit #fhir/string "GiBy"
+                                                :system #fhir/uri "http://unitsofmeasure.org"
+                                                :code #fhir/code "GiBy"})
+    (disk-perf-input "phase-duration" #fhir/Quantity{:value #fhir/decimal 30M
+                                                     :unit #fhir/string "s"
+                                                     :system #fhir/uri "http://unitsofmeasure.org"
+                                                     :code #fhir/code "s"})
+    (disk-perf-input "max-concurrency" #fhir/positiveInt 32)]})
+
 ;; a re-index job carrying both canonicals in every sliced element, as a fully
 ;; migrated client (or Blaze's own normalization) produces it
 (def re-index-job-both
@@ -911,6 +946,72 @@
                :body (json-writer re-index-job-both)})]
 
         (is (= 201 status)))))
+
+  (testing "disk-perf job"
+    (testing "unknown database code"
+      (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :uri "/fhir/__admin/Task"
+                 :headers {"content-type" "application/fhir+json"}
+                 :body (json-writer (assoc-in disk-perf-job [:input 0 :value] #fhir/code "foo"))})]
+
+          (is (= 400 status))
+
+          (given body
+            "resourceType" := "OperationOutcome"
+            ["issue" 0 "severity"] := "error"))))
+
+    (testing "out-of-range parameter values are rejected"
+      (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+        (doseq [[input-idx value]
+                [[1 #fhir/Quantity{:value #fhir/decimal 100M
+                                   :unit #fhir/string "GiBy"
+                                   :system #fhir/uri "http://unitsofmeasure.org"
+                                   :code #fhir/code "GiBy"}]
+                 [2 #fhir/Quantity{:value #fhir/decimal 0M
+                                   :unit #fhir/string "s"
+                                   :system #fhir/uri "http://unitsofmeasure.org"
+                                   :code #fhir/code "s"}]
+                 [2 #fhir/Quantity{:value #fhir/decimal 400M
+                                   :unit #fhir/string "s"
+                                   :system #fhir/uri "http://unitsofmeasure.org"
+                                   :code #fhir/code "s"}]
+                 [3 #fhir/positiveInt 200]]]
+          (let [{:keys [status body]}
+                @(handler
+                  {:request-method :post
+                   :uri "/fhir/__admin/Task"
+                   :headers {"content-type" "application/fhir+json"}
+                   :body (json-writer (assoc-in disk-perf-job [:input input-idx :value] value))})]
+
+            (is (= 400 status))
+
+            (given body
+              "resourceType" := "OperationOutcome"
+              ["issue" 0 "severity"] := "error")))))
+
+    (testing "is stored carrying only the current canonical"
+      (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :uri "/fhir/__admin/Task"
+                 :headers {"content-type" "application/fhir+json"}
+                 :body (json-writer disk-perf-job)})]
+
+          (is (= 201 status))
+
+          (given body
+            "resourceType" := "Task"
+            "id" := "AAAAAAAAAAAAAAAA"
+            ["meta" "profile" count] := 1
+            ["meta" "profile" 0] := "https://blaze-server.org/fhir/StructureDefinition/DiskPerfJob"
+            ["code" "coding" count] := 1
+            ["code" "coding" 0 "system"] := "https://blaze-server.org/fhir/CodeSystem/JobType"
+            ["code" "coding" 0 "code"] := "disk-perf"
+            "status" := "draft")))))
 
   (doseq [base [canonical/base canonical/old-base]]
     (testing base

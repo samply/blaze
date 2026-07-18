@@ -4,7 +4,7 @@
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.terminology-service.local.code-system.sct.util :as sct-u]
    [blaze.terminology-service.local.search-index :as search-index]
-   [blaze.util :refer [str]]
+   [blaze.util :refer [conj-vec str]]
    [clojure.string :as str])
   (:import
    [com.google.common.base CaseFormat]
@@ -118,7 +118,7 @@
       (.reduce
        {}
        (fn [index {:keys [id module-id concept-id effective-time active language-code term]}]
-         (update-in index [module-id concept-id] update-time-map effective-time update (= 1 active) (fnil conj []) [id [language-code term]]))
+         (update-in index [module-id concept-id] update-time-map effective-time update (= 1 active) conj-vec [id [language-code term]]))
        (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
 (defn build-parent-index
@@ -140,7 +140,7 @@
        (fn [index {:keys [module-id destination-id effective-time active source-id]}]
          (update-in index [module-id source-id]
                     update-time-map effective-time
-                    update (= 1 active) (fnil conj []) destination-id))
+                    update (= 1 active) conj-vec destination-id))
        (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
 (defn build-child-index
@@ -162,7 +162,7 @@
        (fn [index {:keys [module-id destination-id effective-time active source-id]}]
          (update-in index [module-id destination-id]
                     update-time-map effective-time
-                    update (= 1 active) (fnil conj []) source-id))
+                    update (= 1 active) conj-vec source-id))
        (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
 (defn- find-dependencies
@@ -339,7 +339,7 @@
             {:keys [module-id source-effective-time
                     referenced-component-id target-effective-time]}]
          (update index module-id update-time-map source-effective-time
-                 (fnil conj []) [referenced-component-id target-effective-time]))
+                 conj-vec [referenced-component-id target-effective-time]))
        (partial merge-with (partial merge-with into)))))
 
 (defn- acceptability [acceptability-id]
