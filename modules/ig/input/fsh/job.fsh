@@ -5,6 +5,7 @@ Title: "Job Type"
 * #async-interaction "Asynchronous Interaction Request"
 * #async-bulk-data "Asynchronous Bulk Data Request"
 * #compact "Compact a Database Column Family"
+* #disk-perf "Measure Disk Performance"
 * #re-index "(Re)Index a Search Parameter"
 
 CodeSystem: JobStatusReason

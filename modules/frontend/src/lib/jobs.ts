@@ -45,6 +45,10 @@ export function output(job: Task, system: string, code: string): TaskOutput | un
   return job.output?.filter((i) => jobCoding(i.type, system)?.code == code)[0];
 }
 
+export function outputs(job: Task, system: string, code: string): TaskOutput[] {
+  return job.output?.filter((i) => jobCoding(i.type, system)?.code == code) ?? [];
+}
+
 export function toJob(job: Task): Job | undefined {
   const lastUpdated = job.meta?.lastUpdated;
   const n = number(job);

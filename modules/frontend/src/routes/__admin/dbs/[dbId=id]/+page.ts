@@ -71,8 +71,9 @@ async function loadColumnFamilies(fetch: Fetch, params: RouteParams): Promise<Co
   return await res.json();
 }
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageLoad = async ({ data, fetch, params }) => {
   return {
+    ...data,
     stats: await loadStats(fetch, params),
     columnFamilies: await loadColumnFamilies(fetch, params)
   };

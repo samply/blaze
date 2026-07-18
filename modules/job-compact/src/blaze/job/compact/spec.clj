@@ -16,3 +16,12 @@
 
 (s/def ::job-compact/admin-node
   :blaze.db/node)
+
+(s/def ::job-compact/database
+  string?)
+
+(s/def ::job-compact/column-family
+  string?)
+
+(s/def ::job-compact/params
+  (s/keys :opt-un [::job-compact/database ::job-compact/column-family]))

@@ -30,10 +30,6 @@
      (cond-> {}
        return-preference (assoc :blaze.preference/return return-preference)))))
 
-(defn- async-status-url
-  [{:keys [context-path]} {:blaze/keys [base-url]} {:keys [id]}]
-  (str base-url context-path "/__async-status/" id))
-
 (defn handle-async
   {:arglists '([context request])}
   [{:keys [context-path clock] :or {context-path ""} :as context}
@@ -45,4 +41,4 @@
                                  (job-async/job authored-on bundle-id (d/t db))
                                  (request-bundle bundle-id context-path request))]
       (-> (ring/status 202)
-          (ring/header "Content-Location" (async-status-url context request job))))))
+          (handler-util/async-status-location context request job)))))

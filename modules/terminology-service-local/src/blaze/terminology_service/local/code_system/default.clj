@@ -14,6 +14,7 @@
    [blaze.terminology-service.local.code-system.filter.regex]
    [blaze.terminology-service.local.graph :as graph]
    [blaze.terminology-service.local.search-index :as search-index]
+   [blaze.util :refer [conj-vec]]
    [clojure.string :as str])
   (:import
    [com.github.benmanes.caffeine.cache Cache]))
@@ -96,7 +97,7 @@
       (not-selectable? concept) (assoc :abstract #fhir/boolean true)
       include-designations (assoc :designation (:designation concept))
       (seq normal-properties) (assoc :property (filterv (comp (set normal-properties) :value :code) (:property concept)))
-      (and definition (some #{"definition"} properties)) (update :property (fnil conj []) (definition-property definition)))))
+      (and definition (some #{"definition"} properties)) (update :property conj-vec (definition-property definition)))))
 
 (defn- xf [params {:keys [url]}]
   (map

@@ -4,6 +4,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.impl.search-param]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [blaze.job.async-interaction :as job-async]
    [blaze.job.compact :as job-compact]
@@ -55,8 +56,25 @@
       (job-async/add-response-bundle-reference response-bundle-id)))
 
 (defn- completed-compact-job [authored-on]
-  (-> (job-compact/job authored-on "index" "resource-as-of-index")
+  (-> (job-compact/job authored-on {:database "index"
+                                    :column-family "resource-as-of-index"})
       (assoc :status #fhir/code "completed")))
+
+;; a fake job type providing a response resource for the completed job
+(defmethod job-util/response-resource :fake-134216
+  [_]
+  {:fhir/type :fhir/Parameters
+   :parameter
+   [{:fhir/type :fhir.Parameters/parameter
+     :name #fhir/string "score"
+     :value #fhir/decimal 53.0M}]})
+
+(defn- completed-fake-job [authored-on]
+  {:fhir/type :fhir/Task
+   :status #fhir/code "completed"
+   :intent #fhir/code "order"
+   :code (job-util/type-codeable-concept "fake-134216" "Fake Job")
+   :authoredOn (type/dateTime authored-on)})
 
 (defn- failed-job [authored-on bundle-id t error-msg]
   (-> (job-async/job authored-on bundle-id t)
@@ -126,7 +144,25 @@
         (given body
           :fhir/type := :fhir/Bundle
           :type := #fhir/code "batch-response"
-          [:entry 0 :response :status] := #fhir/string "200"))))
+          [:entry 0 :response :status] := #fhir/string "200"
+          [:entry 0 :resource] := nil))))
+
+  (testing "with completed job providing a response resource"
+    (with-handler [handler]
+      [[[:put (assoc (completed-fake-job (time/offset-date-time)) :id "0")]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :fhir/type := :fhir/Bundle
+          :type := #fhir/code "batch-response"
+          [:entry 0 :response :status] := #fhir/string "200"
+          [:entry 0 :resource :fhir/type] := :fhir/Parameters
+          [:entry 0 :resource :parameter 0 :name] := #fhir/string "score"
+          [:entry 0 :resource :parameter 0 :value] := #fhir/decimal 53.0M))))
 
   (testing "with failed job"
     (with-handler [handler]

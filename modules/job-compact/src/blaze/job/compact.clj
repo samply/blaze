@@ -34,7 +34,7 @@
 
 (defn job
   "Creates a compact job resource."
-  [authored-on database column-family]
+  [authored-on {:keys [database column-family]}]
   {:fhir/type :fhir/Task
    :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/CompactJob"))})
    :status #fhir/code "ready"

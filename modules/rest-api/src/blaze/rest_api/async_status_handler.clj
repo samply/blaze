@@ -35,14 +35,17 @@
              (if-let [[type id] (some-> job job-async/response-bundle-ref fsr/split-literal-ref)]
                (do-sync [response-bundle (fhir-util/pull db type id)]
                  (ring/response response-bundle))
-               (ac/completed-future
-                (ring/response
-                 {:fhir/type :fhir/Bundle
-                  :type #fhir/code "batch-response"
-                  :entry
-                  [{:fhir/type :fhir.Bundle/entry
-                    :response {:fhir/type :fhir.Bundle.entry/response
-                               :status #fhir/string "200"}}]})))
+               (let [resource (job-util/response-resource job)]
+                 (ac/completed-future
+                  (ring/response
+                   {:fhir/type :fhir/Bundle
+                    :type #fhir/code "batch-response"
+                    :entry
+                    [(cond-> {:fhir/type :fhir.Bundle/entry
+                              :response {:fhir/type :fhir.Bundle.entry/response
+                                         :status #fhir/string "200"}}
+                       resource
+                       (assoc :resource resource))]}))))
              "failed"
              (ac/completed-future
               (ring/response
