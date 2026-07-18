@@ -123,6 +123,7 @@ export default defineConfig({
                 items: [
                   { text: "$compact", link: "/api/operation/compact" },
                   { text: "$cql", link: "/api/operation/cql" },
+                  { text: "$disk-perf", link: "/api/operation/disk-perf" },
                 ],
               },
               {
@@ -206,7 +207,11 @@ export default defineConfig({
       {
         text: "Usage",
         items: [
-          { text: "Web Frontend", link: "/frontend" },
+          {
+            text: "Web Frontend",
+            link: "/frontend",
+            items: [{ text: "Databases", link: "/frontend/databases" }],
+          },
           { text: "Importing Data", link: "/importing-data" },
           { text: "Sync Data", link: "/data-sync" },
           { text: "Conformance", link: "/conformance" },
@@ -239,6 +244,7 @@ export default defineConfig({
         text: "Performance",
         items: [
           { text: "CQL", link: "/performance/cql" },
+          { text: "Disk I/O", link: "/performance/disk-perf" },
           { text: "FHIR Search", link: "/performance/fhir-search" },
           { text: "Import", link: "/performance/import" },
           {

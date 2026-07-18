@@ -4,9 +4,10 @@
   import ColumnFamilyTable from './column-family-table.svelte';
   import { toTitleCase } from '$lib/util.js';
   import { descriptions } from '../util.js';
+  import DiskPerf from './disk-perf.svelte';
   import Stats from './stats.svelte';
 
-  let { data, params }: PageProps = $props();
+  let { data, form, params }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -24,5 +25,6 @@
   </div>
 
   <Stats stats={data.stats} />
+  <DiskPerf results={data.diskPerf.results} running={data.diskPerf.running} error={form?.msg} />
   <ColumnFamilyTable dbId={params.dbId} columnFamilies={data.columnFamilies} />
 </main>

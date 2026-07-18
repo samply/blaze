@@ -144,34 +144,7 @@
 (defn- unsupported-parameter-anom [name]
   (ba/unsupported (format "Unsupported parameter `%s`." name) :http/status 400))
 
-(defn coerce-params
-  "Coerces parameters from a FHIR `parameters` resource according to `specs`.
-
-  The `specs` argument is a map from parameter name to a specification map with
-  the following keys:
-   * :action      - one of :copy, :copy-complex-type or :copy-resource
-   * :cardinality - :many if the parameter can appear multiple times
-   * :coerce      - a function to coerce the value (only for :action :copy)
-
-  The :action determines how the value is extracted:
-   * :copy              - uses the value of the parameter (e.g. valueString)
-   * :copy-complex-type - uses the value of the parameter (e.g. valueCoding)
-   * :copy-resource     - uses the resource of the parameter
-
-  If :coerce is given, the value is passed to that function. If the function
-  returns an anomaly, the processing stops and the anomaly is returned.
-
-  The keys of the resulting map are the kebab-cased parameter names. If
-  :cardinality is :many, the key is pluralized and the values are collected in
-  a vector. If the coerced value is sequential, it is flattened into the vector.
-
-  Parameters in `parameters` that are not in `specs` are ignored. Parameters in
-  `specs` that are not in `parameters` don't appear in the result.
-
-  Returns the coerced map or an anomaly in case of coercion errors or unsupported
-  parameters (if a parameter is in `specs` but the :action is missing or invalid)."
-  {:arglists '([specs parameters])}
-  [specs {params :parameter}]
+(defn- coerce-params* [specs params]
   (reduce
    (fn [new-params {{name :value} :name :as param}]
      (if-let [{:keys [action] :as spec} (specs name)]
@@ -192,6 +165,53 @@
        new-params))
    {}
    params))
+
+(defn- missing-parameter-anom [name]
+  (ba/incorrect (format "Missing required parameter `%s`." name) :http/status 400))
+
+(defn- check-required-params [specs params]
+  (let [present (into #{} (keep (comp :value :name)) params)]
+    (reduce-kv
+     (fn [_ name {:keys [required]}]
+       (when (and required (not (contains? present name)))
+         (reduced (missing-parameter-anom name))))
+     nil
+     specs)))
+
+(defn coerce-params
+  "Coerces parameters from a FHIR `parameters` resource according to `specs`.
+
+  The `specs` argument is a map from parameter name to a specification map with
+  the following keys:
+   * :action      - one of :copy, :copy-complex-type or :copy-resource
+   * :cardinality - :many if the parameter can appear multiple times
+   * :coerce      - a function to coerce the value (only for :action :copy)
+   * :required    - true if the parameter must be present
+
+  The :action determines how the value is extracted:
+   * :copy              - uses the value of the parameter (e.g. valueString)
+   * :copy-complex-type - uses the value of the parameter (e.g. valueCoding)
+   * :copy-resource     - uses the resource of the parameter
+
+  If :coerce is given, the value is passed to that function. If the function
+  returns an anomaly, the processing stops and the anomaly is returned.
+
+  The keys of the resulting map are the kebab-cased parameter names. If
+  :cardinality is :many, the key is pluralized and the values are collected in
+  a vector. If the coerced value is sequential, it is flattened into the vector.
+
+  Parameters in `parameters` that are not in `specs` are ignored. Parameters in
+  `specs` that are not in `parameters` don't appear in the result, unless they
+  are marked :required, in which case an anomaly is returned.
+
+  Returns the coerced map or an anomaly in case of coercion errors, missing
+  required parameters or unsupported parameters (if a parameter is in `specs` but
+  the :action is missing or invalid)."
+  {:arglists '([specs parameters])}
+  [specs {params :parameter}]
+  (when-ok [new-params (coerce-params* specs params)
+            _ (check-required-params specs params)]
+    new-params))
 
 (defn coerce-boolean [name value]
   (if-some [value (parse-boolean value)]

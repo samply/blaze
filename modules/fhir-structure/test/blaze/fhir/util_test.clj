@@ -256,7 +256,22 @@
   (testing "undefined param is ignored"
     (is (empty? (fu/coerce-params
                  {"a" {}}
-                 (fu/parameters "b" #fhir/string "c"))))))
+                 (fu/parameters "b" #fhir/string "c")))))
+
+  (testing "required param"
+    (testing "is present"
+      (given (fu/coerce-params
+              {"a" {:action :copy :required true}}
+              (fu/parameters "a" #fhir/string "b"))
+        :a := "b"))
+
+    (testing "is missing"
+      (given (fu/coerce-params
+              {"a" {:action :copy :required true}}
+              (fu/parameters "b" #fhir/string "c"))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing required parameter `a`."
+        :http/status := 400))))
 
 (deftest validate-query-params-test
   (testing "empty parameter spec"

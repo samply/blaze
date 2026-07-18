@@ -15,7 +15,7 @@
    [blaze.spec]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.local :as local]
-   [blaze.util :as u :refer [str]]
+   [blaze.util :as u :refer [conj-vec str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -187,7 +187,7 @@
         (update :base-config (partial merge-with merge) (get storage (keyword key))))))
 
 (defn- conj-feature [config {:keys [key name toggle]} enabled?]
-  (update-in config [:blaze/admin-api :features] (fnil conj [])
+  (update-in config [:blaze/admin-api :features] conj-vec
              {:key (clojure.core/name key) :name name :toggle toggle
               :enabled enabled?}))
 

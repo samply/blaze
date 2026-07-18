@@ -4,6 +4,9 @@
    [blaze.db.spec]
    [blaze.fhir.spec]
    [blaze.job.util :as job-util]
+   [blaze.job.util.async-status-url :as-alias async-status-url]
+   [blaze.job.util.spec]
+   [blaze.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
@@ -34,6 +37,10 @@
 (s/fdef job-util/output-value
   :args (s/cat :job :fhir/Task :system (s/? string?) :code string?)
   :ret any?)
+
+(s/fdef job-util/outputs
+  :args (s/cat :job :fhir/Task :system string? :code string?)
+  :ret (s/coll-of :fhir.Task/output :kind vector?))
 
 (s/fdef job-util/error-category
   :args (s/cat :job :fhir/Task)
@@ -80,3 +87,9 @@
 (s/fdef job-util/job-update-failed?
   :args (s/cat :anomaly ::anom/anomaly)
   :ret boolean?)
+
+(s/fdef job-util/async-status-url
+  :args (s/cat :context ::async-status-url/context
+               :request ::async-status-url/request
+               :job :fhir/Task)
+  :ret string?)

@@ -1,4 +1,5 @@
 (ns blaze.job.util
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
@@ -6,6 +7,7 @@
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler :as-alias js]
+   [blaze.util :refer [str]]
    [cognitect.anomalies :as anom])
   (:import
    [java.util.concurrent TimeUnit]))
@@ -99,6 +101,13 @@
    (output-value job output-system code))
   ([{:keys [output]} system code]
    (some (io-pred system code) output)))
+
+(defn outputs
+  "Returns all outputs of `job` with a type containing a coding with `system`
+  and `code`."
+  {:arglists '([job system code])}
+  [{:keys [output]} system code]
+  (filterv #(= code (code-value system (:type %))) output))
 
 (defn error-category
   "Returns the error category of `job` in case it failed and an error category
@@ -261,3 +270,25 @@
       (dissoc :statusReason :businessStatus)
       (add-output "error-category" (type/string (name category)))
       (add-output "error" (type/string (or message "empty error message")))))
+
+(defn async-status-url
+  "Returns the URL of the async status endpoint of `job`.
+
+  Takes the base URL from `request` and the optional context path from
+  `context`."
+  {:arglists '([context request job])}
+  [{:keys [context-path]} {:blaze/keys [base-url]} {:keys [id]}]
+  (str base-url context-path "/__async-status/" id))
+
+(defmulti response-resource
+  "Returns the resource the async status endpoint embeds in the response
+  bundle entry of the completed `job` or nil if the job type doesn't provide
+  one.
+
+  Job types backing a FHIR operation implement this to return the operation
+  response, usually a Parameters resource built from the job outputs."
+  {:arglists '([job])}
+  job-type)
+
+(defmethod response-resource :default
+  [_])

@@ -9,6 +9,7 @@
    [blaze.module :as m]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
+   [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [ring.util.response :as ring]
@@ -49,7 +50,7 @@
   (if-ok [params (validate-params* request)]
     (if id
       (do-sync [{:keys [url]} (fhir-util/pull db "ValueSet" id :summary)]
-        (update params :parameter (fnil conj []) (fu/parameter "url" url)))
+        (update params :parameter conj-vec (fu/parameter "url" url)))
       (ac/completed-future params))
     ac/completed-future))
 

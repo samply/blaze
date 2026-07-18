@@ -1,0 +1,44 @@
+{:paths ["src" "target/generated-resources"]
+
+ :deps
+ {blaze/executor
+  {:local/root "../executor"}
+
+  blaze/job-scheduler
+  {:local/root "../job-scheduler"}}
+
+ :deps/prep-lib
+ {:alias :build
+  :fn copy-profiles
+  :ensure "target/generated-resources"}
+
+ :aliases
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.10.13" :git/sha "ae52edf"}}
+   :ns-default build}
+
+  :test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    blaze/job-test-util
+    {:local/root "../job-test-util"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.91.1392"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {lambdaisland/kaocha-cloverage
+    {:mvn/version "1.1.89"}}
+
+   :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}

@@ -130,6 +130,20 @@
             "bar")
            #fhir/code "baz"))))
 
+(deftest outputs-test
+  (is (= (job-util/outputs
+          {:fhir/type :fhir/Task
+           :output
+           [(job-util/task-output "foo" "other" #fhir/string "other")
+            (job-util/task-output "foo" "bar" #fhir/code "baz")
+            (job-util/task-output "foo" "bar" #fhir/code "qux")]}
+          "foo" "bar")
+         [(job-util/task-output "foo" "bar" #fhir/code "baz")
+          (job-util/task-output "foo" "bar" #fhir/code "qux")]))
+
+  (testing "without matching outputs"
+    (is (= (job-util/outputs {:fhir/type :fhir/Task} "foo" "bar") []))))
+
 (deftest error-msg-test
   (is (= (job-util/error-msg
           {:fhir/type :fhir/Task
@@ -348,3 +362,24 @@
   (testing "without message"
     (given (job-util/fail-job {:fhir/type :fhir/Task} (ba/fault))
       job-util/error-msg := "empty error message")))
+
+(deftest async-status-url-test
+  (testing "with context path"
+    (is (= "http://localhost:8080/fhir/__async-status/AAAAAAAAAAAAAAAA"
+           (job-util/async-status-url
+            {:context-path "/fhir"}
+            {:blaze/base-url "http://localhost:8080"}
+            {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"}))))
+
+  (testing "without context path"
+    (is (= "http://localhost:8080/__async-status/AAAAAAAAAAAAAAAA"
+           (job-util/async-status-url
+            {}
+            {:blaze/base-url "http://localhost:8080"}
+            {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})))))
+
+(deftest response-resource-test
+  (testing "job types without an implementation have no response resource"
+    (is (nil? (job-util/response-resource
+               {:fhir/type :fhir/Task
+                :code (job-util/type-codeable-concept "foo" "Foo")})))))
