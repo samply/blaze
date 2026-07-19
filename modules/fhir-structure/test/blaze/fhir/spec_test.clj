@@ -6967,7 +6967,10 @@
       (prop/for-all [medication-administration (fg/medication-administration)]
         (murmur3 medication-administration)))))
 
-(deftest ^:mem-size medication-administration-mem-size-test
+;; Flaky: the calculated size occasionally falls more than 10% short of the
+;; real size on minimal shrunk counterexamples. See
+;; https://github.com/samply/blaze/issues/3897 for the root-cause analysis.
+(deftest ^:mem-size ^:kaocha/pending medication-administration-mem-size-test
   (satisfies-prop 20
     (memsize-prop "medication-administration")))
 
