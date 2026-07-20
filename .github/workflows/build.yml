@@ -45,7 +45,7 @@ jobs:
         cljfmt: ${{ env.CLJFMT_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Check Formatting
       run: make fmt
@@ -63,7 +63,7 @@ jobs:
         clj-kondo: ${{ env.CLJ_KONDO_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Actionlint
       env:
@@ -79,7 +79,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -116,7 +116,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -223,7 +223,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -307,7 +307,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -374,7 +374,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -427,7 +427,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -506,7 +506,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -555,7 +555,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Download Coverage Reports
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -591,7 +591,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -676,7 +676,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -760,7 +760,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.sha }} ${{ matrix.image }}:latest
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -783,7 +783,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -997,7 +997,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -1730,7 +1730,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -1981,7 +1981,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2085,7 +2085,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2180,7 +2180,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2245,7 +2245,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -2327,7 +2327,7 @@ jobs:
         java-version: '25'
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -2343,7 +2343,7 @@ jobs:
       run: .github/scripts/install-validator.sh
 
     - name: Download FHIR Package Cache
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         repository: medizininformatik-initiative/fhir-package-store
         ref: cache-store
@@ -2426,7 +2426,7 @@ jobs:
         java-version: '25'
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -2437,7 +2437,7 @@ jobs:
       run: .github/scripts/install-validator.sh
 
     - name: Download FHIR Package Cache
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       with:
         repository: medizininformatik-initiative/fhir-package-store
         ref: cache-store
@@ -2502,7 +2502,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2555,7 +2555,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2603,7 +2603,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2653,7 +2653,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2697,7 +2697,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2744,7 +2744,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
       uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
@@ -2774,7 +2774,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
       uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
@@ -2806,7 +2806,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -2852,7 +2852,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -2923,7 +2923,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
       uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
@@ -2974,7 +2974,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
       uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
@@ -3004,7 +3004,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -3058,7 +3058,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
       uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
@@ -3097,7 +3097,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Setup Node
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -3181,7 +3181,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
       uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
@@ -3233,7 +3233,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Install Blazectl
       env:
@@ -3294,7 +3294,7 @@ jobs:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Cache Local Maven Repo
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -3432,7 +3432,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
       uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
