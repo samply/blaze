@@ -5,14 +5,24 @@
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [blaze ReducibleArray]
+   [java.util ArrayList]))
 
 (st/instrument)
+(set! *warn-on-reflection* true)
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
+
+(deftest reducible-array-test
+  (let [list (doto (ArrayList.)
+               (.add :a)
+               (.add :b))]
+    (is (= [:a :b] (vec (.array (ReducibleArray. list)))))))
 
 (deftest init-test
   (testing "nil config"

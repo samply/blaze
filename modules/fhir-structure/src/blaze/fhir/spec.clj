@@ -13,8 +13,10 @@
    [clojure.walk :as walk]
    [cognitect.anomalies :as anom])
   (:import
+   [blaze.fhir XmlUtf8Writer]
    [blaze.fhir.spec.type Primitive]
-   [java.io ByteArrayOutputStream]
+   [clojure.data.xml.node Element]
+   [java.io ByteArrayOutputStream OutputStream Writer]
    [java.nio.charset StandardCharsets]
    [java.util.regex Pattern]))
 
@@ -66,6 +68,109 @@
   [context value]
   (when-ok [bytes (write-json-as-bytes context value)]
     (String. ^bytes bytes StandardCharsets/UTF_8)))
+
+(declare unform-xml)
+
+(defn- valid-xml-char? [^long c]
+  (or (== 0x09 c) (== 0x0A c) (== 0x0D c)
+      (and (<= 0x20 c) (<= c 0xD7FF))
+      (and (<= 0xE000 c) (<= c 0xFFFD))))
+
+(defn- write-xml-str [^Writer writer s]
+  (let [^String s (str s)
+        len (.length s)]
+    (loop [i 0
+           start 0]
+      (if (< i len)
+        (let [c (.charAt s i)]
+          (case c
+            \& (do
+                 (when (< start i)
+                   (.write writer s start (- i start)))
+                 (.write writer "&amp;")
+                 (recur (inc i) (inc i)))
+            \< (do
+                 (when (< start i)
+                   (.write writer s start (- i start)))
+                 (.write writer "&lt;")
+                 (recur (inc i) (inc i)))
+            \> (do
+                 (when (< start i)
+                   (.write writer s start (- i start)))
+                 (.write writer "&gt;")
+                 (recur (inc i) (inc i)))
+            \" (do
+                 (when (< start i)
+                   (.write writer s start (- i start)))
+                 (.write writer "&quot;")
+                 (recur (inc i) (inc i)))
+            (cond
+              (Character/isHighSurrogate c)
+              (let [i' (inc i)]
+                (if (and (< i' len) (Character/isLowSurrogate (.charAt s i')))
+                  (recur (inc i') start)
+                  (do
+                    (when (< start i)
+                      (.write writer s start (- i start)))
+                    (.write writer "?")
+                    (recur i' i'))))
+
+              (or (Character/isLowSurrogate c) (not (valid-xml-char? (int c))))
+              (do
+                (when (< start i)
+                  (.write writer s start (- i start)))
+                (.write writer "?")
+                (recur (inc i) (inc i)))
+
+              :else
+              (recur (inc i) start))))
+        (when (< start len)
+          (.write writer s start (- len start)))))))
+
+(defn- write-xml-attr [^Writer writer k v]
+  (.write writer " ")
+  (.write writer (name k))
+  (.write writer "=\"")
+  (write-xml-str writer v)
+  (.write writer "\""))
+
+(defn- write-xml-start-tag [^Writer writer tag attrs]
+  (.write writer "<")
+  (.write writer (name tag))
+  (run! (fn [[k v]] (write-xml-attr writer k v)) attrs))
+
+(declare write-xml-element)
+
+(defn- write-xml-content [^Writer writer content]
+  (run!
+   (fn [x]
+     (if (instance? Element x)
+       (write-xml-element writer x)
+       (write-xml-str writer x)))
+   content))
+
+(defn- write-xml-element [^Writer writer {:keys [tag attrs content]}]
+  (write-xml-start-tag writer tag attrs)
+  (if (seq content)
+    (do
+      (.write writer ">")
+      (write-xml-content writer content)
+      (.write writer "</")
+      (.write writer (name tag))
+      (.write writer ">"))
+    (.write writer "/>")))
+
+(defn write-xml
+  "Writes `value` to output stream `out` closing it if done."
+  [context out value]
+  (with-open [writer (XmlUtf8Writer. ^OutputStream out 65536)]
+    (.write writer "<?xml version='1.0' encoding='UTF-8'?>")
+    (if-some [xml-handlers (:xml-handlers (meta context))]
+      (if-some [handler (xml-handlers (:fhir/type value))]
+        (handler xml-handlers writer value)
+        (write-xml-element writer (unform-xml value)))
+      (write-xml-element writer (unform-xml value)))
+    nil))
 
 (defn write-cbor
   [context x]
