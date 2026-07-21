@@ -1,0 +1,561 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BuildSystemProperties">
+    <option name="modules">
+      <map>
+        <entry key="admin-api">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="admin-api" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="anomaly">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="anomaly" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="async">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="async" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="blaze">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="blaze" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="byte-buffer">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="byte-buffer" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="byte-string">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="byte-string" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="cache-collector">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="cache-collector" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="cassandra">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="cassandra" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="coll">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="coll" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="cql">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="cql" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="db">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="db" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="db-protocols">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="db-protocols" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="db-resource-store">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="db-resource-store" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="db-resource-store-cassandra">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="db-resource-store-cassandra" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="db-stub">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="db-stub" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="db-tx-log">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="db-tx-log" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="db-tx-log-kafka">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="db-tx-log-kafka" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="executor">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="executor" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="extern-terminology-service">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="extern-terminology-service" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="extern-validator">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="extern-validator" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="fhir-client">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="fhir-client" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="fhir-path">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="fhir-path" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="fhir-structure">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="fhir-structure" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="fhir-test-util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="fhir-test-util" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="http-client">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="http-client" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="interaction">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="interaction" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="jepsen">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="jepsen" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="job-async-interaction">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="job-async-interaction" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="job-compact">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="job-compact" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="job-re-index">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="job-re-index" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="job-scheduler">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="job-scheduler" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="job-test-util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="job-test-util" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="job-util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="job-util" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="jvm-metrics-logger">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="jvm-metrics-logger" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="kv">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="kv" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="luid">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="luid" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="metrics">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="metrics" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="module-base">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="module-base" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="module-test-util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="module-test-util" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="openid-auth">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="openid-auth" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="openid-client">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="openid-client" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-code-system-lookup">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-code-system-lookup" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-code-system-validate-code">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-code-system-validate-code" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-compact">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-compact" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-cql">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-cql" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-graph">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-graph" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-graphql">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-graphql" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-measure-evaluate-measure">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-measure-evaluate-measure" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-patient-everything">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-patient-everything" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-patient-purge">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-patient-purge" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-totals">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-totals" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-value-set-expand">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-value-set-expand" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-value-set-validate-code">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-value-set-validate-code" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-versions">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-versions" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="page-id-cipher">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="page-id-cipher" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="page-store">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="page-store" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="page-store-cassandra">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="page-store-cassandra" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="rest-api">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="rest-api" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="rest-util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="rest-util" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="rocksdb">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="rocksdb" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="scheduler">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="scheduler" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="server">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="server" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="spec">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="spec" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="terminology-service">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="terminology-service" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="terminology-service-local">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="terminology-service-local" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="test-util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="test-util" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="thread-pool-executor-collector">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="thread-pool-executor-collector" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="util" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="validator">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="validator" />
+            </ModuleState>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
