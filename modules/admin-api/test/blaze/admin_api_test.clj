@@ -5,7 +5,8 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub]
    [blaze.db.impl.index.patient-last-change :as plc]
-   [blaze.db.kv :as-alias kv]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv-spec]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.db.node :as node]
    [blaze.db.resource-cache]
@@ -750,7 +751,7 @@
         [:body "msg"] := "The column family `foo` in database `index` was not found."))))
 
 (deftest rocksdb-tables-test
-  (with-handler [handler] (config!)
+  (with-handler [handler system] (config!)
     (-> (fn [pat-id]
           (into
            [[:put {:fhir/type :fhir/Patient :id (str pat-id)}]]
@@ -766,7 +767,10 @@
            (range 120)))
         (mapv (range 100)))
 
-    (Thread/sleep 1000)
+    ;; compact the column family so that all data ends up in one SST file in
+    ;; the last level which uses ZSTD compression
+    @(kv/compact! (system [::kv/rocksdb :blaze.db.main/index-kv-store])
+                  :compartment-search-param-value-index)
 
     (testing "success"
       (given @(handler
