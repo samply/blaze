@@ -27,6 +27,7 @@
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [clojure.test.check.results]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [jsonista.core :as j]
@@ -2268,8 +2269,13 @@
              real-size# (mem/total-size (parse-cbor ~pascal-type source#)
                                         (parse-cbor ~pascal-type source#))
              calculated-size# (Base/memSize (parse-cbor ~pascal-type source#))]
-         ;; allow for 10% smaller calculated size
-         (>= calculated-size# (- real-size# (/ real-size# 10)))))))
+         (reify clojure.test.check.results/Result
+           (pass? [_]
+            ;; allow for 10% smaller calculated size
+             (>= calculated-size# (- real-size# (/ real-size# 10))))
+           (result-data [_]
+             {:calculated-size calculated-size#
+              :real-size real-size#}))))))
 
 (deftest address-test
   (testing "FHIR spec"

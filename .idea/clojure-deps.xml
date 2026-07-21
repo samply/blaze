@@ -22,12 +22,24 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/admin-api/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/admin-api/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/anomaly/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/anomaly/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/async/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/async/test" />
@@ -36,6 +48,10 @@
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/byte-buffer/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/byte-string/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/byte-string/test" />
@@ -48,6 +64,10 @@
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/cassandra/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/coll/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/coll/test" />
@@ -66,12 +86,20 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-stub/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-tx-log-kafka/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-tx-log/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db/test" />
@@ -92,6 +120,10 @@
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/fhir-path/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/fhir-structure/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/fhir-structure/test" />
@@ -154,8 +186,16 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-base/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-base/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-test-util/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/openid-auth/test" />
@@ -278,12 +318,20 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/test-util/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/thread-pool-executor-collector/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/util/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/test" />

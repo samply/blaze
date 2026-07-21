@@ -13,6 +13,7 @@
    [clojure.data.xml :as xml]
    [clojure.data.xml.name :as xml-name]
    [clojure.data.xml.node :as xml-node]
+   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
@@ -32,7 +33,6 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 (set! *warn-on-reflection* true)
-(set! *unchecked-math* :warn-on-boxed)
 
 (defn to-xml [^Primitive x]
   (xml-node/element*
@@ -66,13 +66,19 @@
        (.write ~'w "}")))
 
 (defmacro def-print-method-primitive [name & [tag-name]]
-  (let [class-sym (symbol (str "blaze.fhir.spec.type." (su/capital (str name))))]
-    `(defmethod print-method ~class-sym
-       [~(with-meta 'v {:tag class-sym}) ~(with-meta 'w {:tag 'Writer})]
-       (if (or (.id ~'v) (seq (.extension ~'v)))
-         (print-type ~name ~tag-name)
-         (do (.write ~'w ~(str "#" (or tag-name (format "fhir/%s" name)) " "))
-             (print-method (.value ~'v) ~'w))))))
+  (let [class-sym (symbol (str "blaze.fhir.spec.type." (su/capital (str name))))
+        tag (str "#" (or tag-name (format "fhir/%s" name)) " ")]
+    `(do
+       (defmethod print-method ~class-sym
+         [~(with-meta 'v {:tag class-sym}) ~(with-meta 'w {:tag 'Writer})]
+         (if (or (.id ~'v) (seq (.extension ~'v)))
+           (print-type ~name ~tag-name)
+           (do (.write ~'w ~tag)
+               (print-method (.value ~'v) ~'w))))
+
+       (defmethod pprint/simple-dispatch ~class-sym [x#]
+         (pprint/pprint-logical-block
+          :prefix ~tag (pprint/write-out (into {} x#)))))))
 
 ;; ---- boolean ---------------------------------------------------------------
 
@@ -378,9 +384,14 @@
 ;; ---- Complex Types --------------------------------------------------------
 
 (defmacro def-print-method-complex [name & [tag-name]]
-  `(defmethod print-method ~(symbol name)
-     [~(with-meta 'v {:tag (symbol name)}) ~(with-meta 'w {:tag 'Writer})]
-     (print-type ~name ~tag-name)))
+  `(do
+     (defmethod print-method ~(symbol name)
+       [~(with-meta 'v {:tag (symbol name)}) ~(with-meta 'w {:tag 'Writer})]
+       (print-type ~name ~tag-name))
+
+     (defmethod pprint/simple-dispatch ~(symbol name) [x#]
+       (pprint/pprint-logical-block
+        :prefix ~(str "#fhir/" name " ") (pprint/write-out (into {} x#))))))
 
 ;; ---- Address ---------------------------------------------------------------
 
