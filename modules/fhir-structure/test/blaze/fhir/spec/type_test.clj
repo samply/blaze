@@ -9,7 +9,9 @@
    [clojure.data.xml.name :as xml-name]
    [clojure.data.xml.node :as xml-node]
    [clojure.data.xml.prxml :as prxml]
+   [clojure.pprint :as pprint]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
@@ -36,6 +38,9 @@
   (let [hasher (.newHasher (Hashing/murmur3_32_fixed))]
     (Base/hashInto x hasher)
     (Integer/toHexString (.asInt (.hash hasher)))))
+
+(defn- pprint-str [x]
+  (str/trim-newline (with-out-str (pprint/pprint x))))
 
 (def ^:private object-serializer
   (proxy [StdSerializer] [Object]
@@ -196,7 +201,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/boolean true "#fhir/boolean true"
-      #fhir/boolean{:id "foo"} "#fhir/boolean{:id \"foo\"}")))
+      #fhir/boolean{:id "foo"} "#fhir/boolean{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/boolean true "#fhir/boolean {:value true}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/boolean true)))))))
 
 (deftest integer-test
   (testing "integer?"
@@ -297,7 +310,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/integer 0 "#fhir/integer 0"
-      #fhir/integer{:id "foo"} "#fhir/integer{:id \"foo\"}")))
+      #fhir/integer{:id "foo"} "#fhir/integer{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/integer 1 "#fhir/integer {:value 1}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/integer 1)))))))
 
 (deftest string-test
   (testing "string?"
@@ -402,7 +423,17 @@
       #fhir/string-interned "12345" "#fhir/string-interned \"12345\""
       #fhir/string "142600" "#fhir/string \"142600\""
       #fhir/string{:id "0"} "#fhir/string{:id \"0\"}"
-      #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "#fhir/string-interned{:extension [#fhir/Extension{:url \"foo\"}]}")))
+      #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "#fhir/string-interned{:extension [#fhir/Extension{:url \"foo\"}]}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/string "142600" "#fhir/string {:value \"142600\"}"
+      #fhir/string-interned "142600" "#fhir/string-interned {:value \"142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/string "142600")))
+        (is (= "#" (pprint-str #fhir/string-interned "142600")))))))
 
 (deftest decimal-test
   (testing "decimal?"
@@ -483,7 +514,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/decimal 0M "#fhir/decimal 0M"
-      #fhir/decimal{:id "foo"} "#fhir/decimal{:id \"foo\"}")))
+      #fhir/decimal{:id "foo"} "#fhir/decimal{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/decimal 1.1M "#fhir/decimal {:value 1.1M}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/decimal 1.1M)))))))
 
 (deftest uri-test
   (testing "uri?"
@@ -587,7 +626,17 @@
       #fhir/uri-interned "142600" "#fhir/uri-interned \"142600\""
       #fhir/uri "142600" "#fhir/uri \"142600\""
       #fhir/uri{:id "0"} "#fhir/uri{:id \"0\"}"
-      #fhir/uri{:extension [#fhir/Extension{:url "foo"}]} "#fhir/uri-interned{:extension [#fhir/Extension{:url \"foo\"}]}")))
+      #fhir/uri{:extension [#fhir/Extension{:url "foo"}]} "#fhir/uri-interned{:extension [#fhir/Extension{:url \"foo\"}]}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/uri "142600" "#fhir/uri {:value \"142600\"}"
+      #fhir/uri-interned "142600" "#fhir/uri-interned {:value \"142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/uri "142600")))
+        (is (= "#" (pprint-str #fhir/uri-interned "142600")))))))
 
 (deftest url-test
   (testing "url?"
@@ -688,7 +737,15 @@
       "#fhir/url{:id \"id-191655\" :value \"191802\"}"
 
       #fhir/url{:extension [#fhir/Extension{:url "url-191551"}]}
-      "#fhir/url{:extension [#fhir/Extension{:url \"url-191551\"}]}")))
+      "#fhir/url{:extension [#fhir/Extension{:url \"url-191551\"}]}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/url "url-142600" "#fhir/url {:value \"url-142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/url "url-142600")))))))
 
 (deftest canonical-test
   (testing "canonical?"
@@ -793,7 +850,15 @@
       "#fhir/canonical{:id \"211202\"}"
 
       #fhir/canonical{:value "213644"}
-      "#fhir/canonical \"213644\"")))
+      "#fhir/canonical \"213644\""))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/canonical "canonical-142600" "#fhir/canonical {:value \"canonical-142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/canonical "canonical-142600")))))))
 
 (deftest base64Binary-test
   (testing "base64Binary?"
@@ -888,7 +953,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/base64Binary "YQo" "#fhir/base64Binary \"YQo\""
-      #fhir/base64Binary{:id "foo"} "#fhir/base64Binary{:id \"foo\"}")))
+      #fhir/base64Binary{:id "foo"} "#fhir/base64Binary{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/base64Binary "MTA1NjE0Cg==" "#fhir/base64Binary {:value \"MTA1NjE0Cg==\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/base64Binary "MTA1NjE0Cg==")))))))
 
 (deftest instant-test
   (testing "instant?"
@@ -1021,7 +1094,15 @@
       "#fhir/instant{:id \"211213\"}"
 
       #fhir/instant{:value #system/date-time "2020-01-01T00:00:00Z"}
-      "#fhir/instant #system/date-time \"2020-01-01T00:00:00Z\"")))
+      "#fhir/instant #system/date-time \"2020-01-01T00:00:00Z\""))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/instant #system/date-time "2020-01-01T00:00:00Z" "#fhir/instant {:value #system/date-time \"2020-01-01T00:00:00Z\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/instant #system/date-time "2020-01-01T00:00:00Z")))))))
 
 (deftest date-test
   (testing "with year precision"
@@ -1298,7 +1379,15 @@
       (is (empty? (type/references #fhir/date #system/date "2020-01-01"))))
 
     (testing "print"
-      (is (= "#fhir/date #system/date \"2020-01-01\"" (pr-str #fhir/date #system/date "2020-01-01"))))))
+      (is (= "#fhir/date #system/date \"2020-01-01\"" (pr-str #fhir/date #system/date "2020-01-01")))))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/date #system/date "2020" "#fhir/date {:value #system/date \"2020\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/date #system/date "2020")))))))
 
 (deftest dateTime-test
   (testing "with year precision"
@@ -1840,7 +1929,15 @@
           extended-date-time 32))
 
       (testing "references"
-        (is (empty? (type/references extended-date-time)))))))
+        (is (empty? (type/references extended-date-time))))))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/dateTime #system/date-time "2020" "#fhir/dateTime {:value #system/date-time \"2020\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/dateTime #system/date-time "2020")))))))
 
 (deftest time-test
   (testing "time?"
@@ -1931,7 +2028,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/time #system/time "13:53:21" "#fhir/time #system/time \"13:53:21\""
-      #fhir/time{:id "foo"} "#fhir/time{:id \"foo\"}")))
+      #fhir/time{:id "foo"} "#fhir/time{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/time #system/time "13:53:21" "#fhir/time {:value #system/time \"13:53:21\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/time #system/time "13:53:21")))))))
 
 (def gender-extension
   #fhir/Extension
@@ -2082,7 +2187,16 @@
     (is (= "#fhir/code{:extension [#fhir/Extension{:url \"181911\"}]}"
            (pr-str #fhir/code{:extension [#fhir/Extension{:url "181911"}]})))
     (is (= "#fhir/code{:id \"170837\" :extension [#fhir/Extension{:url \"181911\"}]}"
-           (pr-str #fhir/code{:id "170837" :extension [#fhir/Extension{:url "181911"}]})))))
+           (pr-str #fhir/code{:id "170837" :extension [#fhir/Extension{:url "181911"}]}))))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/code "code-142600" "#fhir/code {:value \"code-142600\"}"
+      #fhir/code{:id "170837" :value "175718"} "#fhir/code {:id \"170837\", :value \"175718\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/code "code-142600")))))))
 
 (deftest oid-test
   (testing "oid?"
@@ -2173,7 +2287,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/oid "175726" "#fhir/oid \"175726\""
-      #fhir/oid{:id "foo"} "#fhir/oid{:id \"foo\"}")))
+      #fhir/oid{:id "foo"} "#fhir/oid{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/oid "oid-142600" "#fhir/oid {:value \"oid-142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/oid "oid-142600")))))))
 
 (deftest id-test
   (testing "id?"
@@ -2264,7 +2386,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/id "175726" "#fhir/id \"175726\""
-      #fhir/id{:id "foo"} "#fhir/id{:id \"foo\"}")))
+      #fhir/id{:id "foo"} "#fhir/id{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/id "id-142600" "#fhir/id {:value \"id-142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/id "id-142600")))))))
 
 (deftest markdown-test
   (testing "markdown?"
@@ -2356,7 +2486,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/markdown "175726" "#fhir/markdown \"175726\""
-      #fhir/markdown{:id "foo"} "#fhir/markdown{:id \"foo\"}")))
+      #fhir/markdown{:id "foo"} "#fhir/markdown{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/markdown "markdown-142600" "#fhir/markdown {:value \"markdown-142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/markdown "markdown-142600")))))))
 
 (deftest unsignedInt-test
   (testing "unsignedInt?"
@@ -2468,7 +2606,15 @@
       "#fhir/unsignedInt{:id \"id-192703\" :value 192711}"
 
       #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-192724"}]}
-      "#fhir/unsignedInt{:extension [#fhir/Extension{:url \"url-192724\"}]}")))
+      "#fhir/unsignedInt{:extension [#fhir/Extension{:url \"url-192724\"}]}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/unsignedInt 1 "#fhir/unsignedInt {:value 1}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/unsignedInt 1)))))))
 
 (deftest positiveInt-test
   (testing "positiveInt?"
@@ -2576,7 +2722,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/positiveInt 160845 "#fhir/positiveInt 160845"
-      #fhir/positiveInt{:id "foo"} "#fhir/positiveInt{:id \"foo\"}")))
+      #fhir/positiveInt{:id "foo"} "#fhir/positiveInt{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/positiveInt 1 "#fhir/positiveInt {:value 1}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/positiveInt 1)))))))
 
 (deftest uuid-test
   (testing "uuid?"
@@ -2682,7 +2836,15 @@
   (testing "print"
     (are [x s] (= (pr-str x) s)
       #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "#fhir/uuid \"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3\""
-      #fhir/uuid{:id "foo"} "#fhir/uuid{:id \"foo\"}")))
+      #fhir/uuid{:id "foo"} "#fhir/uuid{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/uuid "urn:uuid:53c4a2a2-a97b-49e0-9647-4b3e39e4a1e0" "#fhir/uuid {:value \"urn:uuid:53c4a2a2-a97b-49e0-9647-4b3e39e4a1e0\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/uuid "urn:uuid:53c4a2a2-a97b-49e0-9647-4b3e39e4a1e0")))))))
 
 (def xhtml-element
   (sexp
@@ -2760,7 +2922,15 @@
       #fhir/xhtml{:id "foo"} "#fhir/xhtml{:id \"foo\"}"))
 
   (testing "toString"
-    (is (= "Xhtml{id=null, extension=[], value='175718'}" (str #fhir/xhtml "175718")))))
+    (is (= "Xhtml{id=null, extension=[], value='175718'}" (str #fhir/xhtml "175718"))))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/xhtml "xhtml-142600" "#fhir/xhtml {:value \"xhtml-142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/xhtml "xhtml-142600")))))))
 
 (defn- recreate
   "Takes `x`, a complex type and recreates it from its components using
@@ -2857,7 +3027,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Address{} "#fhir/Address{}"
-      #fhir/Address{:id "084856"} "#fhir/Address{:id \"084856\"}")))
+      #fhir/Address{:id "084856"} "#fhir/Address{:id \"084856\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Address{:city #fhir/string "city-142600"} "#fhir/Address {:city #fhir/string {:value \"city-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Address{:city #fhir/string "city-142600"})))))))
 
 (deftest age-test
   (testing "type"
@@ -2887,7 +3065,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Age{} "#fhir/Age{}"
-      #fhir/Age{:id "212329"} "#fhir/Age{:id \"212329\"}")))
+      #fhir/Age{:id "212329"} "#fhir/Age{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Age{:value #fhir/decimal 1M} "#fhir/Age {:value #fhir/decimal {:value 1M}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Age{:value #fhir/decimal 1M})))))))
 
 (deftest annotation-test
   (testing "type"
@@ -2917,7 +3103,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Annotation{} "#fhir/Annotation{}"
-      #fhir/Annotation{:id "212329"} "#fhir/Annotation{:id \"212329\"}")))
+      #fhir/Annotation{:id "212329"} "#fhir/Annotation{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Annotation{:text #fhir/markdown "text-142600"} "#fhir/Annotation {:text #fhir/markdown {:value \"text-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Annotation{:text #fhir/markdown "text-142600"})))))))
 
 (deftest attachment-test
   (testing "type"
@@ -2977,7 +3171,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Attachment{} "#fhir/Attachment{}"
-      #fhir/Attachment{:id "212329"} "#fhir/Attachment{:id \"212329\"}")))
+      #fhir/Attachment{:id "212329"} "#fhir/Attachment{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Attachment{:title #fhir/string "title-142600"} "#fhir/Attachment {:title #fhir/string {:value \"title-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Attachment{:title #fhir/string "title-142600"})))))))
 
 (deftest bundle-entry-search-test
   (testing "type"
@@ -3025,7 +3227,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.Bundle.entry/search{} "#fhir.Bundle.entry/search{}"
-      #fhir.Bundle.entry/search{:id "212329"} "#fhir.Bundle.entry/search{:id \"212329\"}")))
+      #fhir.Bundle.entry/search{:id "212329"} "#fhir.Bundle.entry/search{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir.Bundle.entry/search{:mode #fhir/code "match"} "#fhir.Bundle.entry/search {:mode #fhir/code {:value \"match\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir.Bundle.entry/search{:mode #fhir/code "match"})))))))
 
 (deftest codeable-concept-test
   (testing "type"
@@ -3081,7 +3291,22 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/CodeableConcept{} "#fhir/CodeableConcept{}"
-      #fhir/CodeableConcept{:id "212329"} "#fhir/CodeableConcept{:id \"212329\"}")))
+      #fhir/CodeableConcept{:id "212329"} "#fhir/CodeableConcept{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/CodeableConcept{:text #fhir/string "text-142600"} "#fhir/CodeableConcept {:text #fhir/string {:value \"text-142600\"}}")
+
+    (testing "line wrapping"
+      (is (= (str "#fhir/CodeableConcept {:coding\n"
+                  "                       [#fhir/Coding {:system\n"
+                  "                                      #fhir/uri {:value\n"
+                  "                                                 \"system-115910\"}}]}")
+             (pprint-str #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "system-115910"}]}))))
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/CodeableConcept{:text #fhir/string "text-142600"})))))))
 
 (deftest coding-test
   (testing "type"
@@ -3138,7 +3363,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Coding{} "#fhir/Coding{}"
-      #fhir/Coding{:id "212329"} "#fhir/Coding{:id \"212329\"}")))
+      #fhir/Coding{:id "212329"} "#fhir/Coding{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Coding{:code #fhir/code "code-142600"} "#fhir/Coding {:code #fhir/code {:value \"code-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Coding{:code #fhir/code "code-142600"})))))))
 
 (deftest contact-detail-test
   (testing "type"
@@ -3172,7 +3405,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/ContactDetail{} "#fhir/ContactDetail{}"
-      #fhir/ContactDetail{:id "212329"} "#fhir/ContactDetail{:id \"212329\"}")))
+      #fhir/ContactDetail{:id "212329"} "#fhir/ContactDetail{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/ContactDetail{:name #fhir/string "name-142600"} "#fhir/ContactDetail {:name #fhir/string {:value \"name-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/ContactDetail{:name #fhir/string "name-142600"})))))))
 
 (deftest contact-point-test
   (testing "type"
@@ -3202,7 +3443,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/ContactPoint{} "#fhir/ContactPoint{}"
-      #fhir/ContactPoint{:id "212329"} "#fhir/ContactPoint{:id \"212329\"}")))
+      #fhir/ContactPoint{:id "212329"} "#fhir/ContactPoint{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/ContactPoint{:value #fhir/string "value-142600"} "#fhir/ContactPoint {:value #fhir/string {:value \"value-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/ContactPoint{:value #fhir/string "value-142600"})))))))
 
 (deftest contributor-test
   (testing "type"
@@ -3236,7 +3485,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Contributor{} "#fhir/Contributor{}"
-      #fhir/Contributor{:id "212329"} "#fhir/Contributor{:id \"212329\"}")))
+      #fhir/Contributor{:id "212329"} "#fhir/Contributor{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Contributor{:name #fhir/string "name-142600"} "#fhir/Contributor {:name #fhir/string {:value \"name-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Contributor{:name #fhir/string "name-142600"})))))))
 
 (deftest count-test
   (testing "type"
@@ -3266,7 +3523,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Count{} "#fhir/Count{}"
-      #fhir/Count{:id "212329"} "#fhir/Count{:id \"212329\"}")))
+      #fhir/Count{:id "212329"} "#fhir/Count{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Count{:value #fhir/decimal 1M} "#fhir/Count {:value #fhir/decimal {:value 1M}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Count{:value #fhir/decimal 1M})))))))
 
 (deftest data-requirement-test
   (testing "type"
@@ -3309,7 +3574,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/DataRequirement{} "#fhir/DataRequirement{}"
-      #fhir/DataRequirement{:id "212329"} "#fhir/DataRequirement{:id \"212329\"}")))
+      #fhir/DataRequirement{:id "212329"} "#fhir/DataRequirement{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/DataRequirement{:type #fhir/code "type-142600"} "#fhir/DataRequirement {:type #fhir/code {:value \"type-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/DataRequirement{:type #fhir/code "type-142600"})))))))
 
 (deftest data-requirement-code-filter-test
   (testing "type"
@@ -3349,7 +3622,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.DataRequirement/codeFilter{} "#fhir.DataRequirement/codeFilter{}"
-      #fhir.DataRequirement/codeFilter{:id "212329"} "#fhir.DataRequirement/codeFilter{:id \"212329\"}")))
+      #fhir.DataRequirement/codeFilter{:id "212329"} "#fhir.DataRequirement/codeFilter{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir.DataRequirement/codeFilter{:path #fhir/string "160542"} "#fhir.DataRequirement/codeFilter {:path #fhir/string {:value \"160542\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir.DataRequirement/codeFilter{:path #fhir/string "160542"})))))))
 
 (deftest data-requirement-date-filter-test
   (testing "type"
@@ -3385,7 +3666,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.DataRequirement/dateFilter{} "#fhir.DataRequirement/dateFilter{}"
-      #fhir.DataRequirement/dateFilter{:id "212329"} "#fhir.DataRequirement/dateFilter{:id \"212329\"}")))
+      #fhir.DataRequirement/dateFilter{:id "212329"} "#fhir.DataRequirement/dateFilter{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir.DataRequirement/dateFilter{:path #fhir/string "160542"} "#fhir.DataRequirement/dateFilter {:path #fhir/string {:value \"160542\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir.DataRequirement/dateFilter{:path #fhir/string "160542"})))))))
 
 (deftest data-requirement-sort-test
   (testing "type"
@@ -3421,7 +3710,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.DataRequirement/sort{} "#fhir.DataRequirement/sort{}"
-      #fhir.DataRequirement/sort{:id "212329"} "#fhir.DataRequirement/sort{:id \"212329\"}")))
+      #fhir.DataRequirement/sort{:id "212329"} "#fhir.DataRequirement/sort{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir.DataRequirement/sort{:path #fhir/string "160542"} "#fhir.DataRequirement/sort {:path #fhir/string {:value \"160542\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir.DataRequirement/sort{:path #fhir/string "160542"})))))))
 
 (deftest distance-test
   (testing "type"
@@ -3451,7 +3748,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Distance{} "#fhir/Distance{}"
-      #fhir/Distance{:id "212329"} "#fhir/Distance{:id \"212329\"}")))
+      #fhir/Distance{:id "212329"} "#fhir/Distance{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Distance{:value #fhir/decimal 1M} "#fhir/Distance {:value #fhir/decimal {:value 1M}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Distance{:value #fhir/decimal 1M})))))))
 
 (deftest duration-test
   (testing "type"
@@ -3481,7 +3786,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Duration{} "#fhir/Duration{}"
-      #fhir/Duration{:id "212329"} "#fhir/Duration{:id \"212329\"}")))
+      #fhir/Duration{:id "212329"} "#fhir/Duration{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Duration{:value #fhir/decimal 1M} "#fhir/Duration {:value #fhir/decimal {:value 1M}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Duration{:value #fhir/decimal 1M})))))))
 
 (deftest expression-test
   (testing "type"
@@ -3511,7 +3824,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Expression{} "#fhir/Expression{}"
-      #fhir/Expression{:id "212329"} "#fhir/Expression{:id \"212329\"}")))
+      #fhir/Expression{:id "212329"} "#fhir/Expression{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Expression{:name #fhir/id "name-142600"} "#fhir/Expression {:name #fhir/id {:value \"name-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Expression{:name #fhir/id "name-142600"})))))))
 
 (deftest dosage-test
   (testing "type"
@@ -3545,7 +3866,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Dosage{} "#fhir/Dosage{}"
-      #fhir/Dosage{:id "212329"} "#fhir/Dosage{:id \"212329\"}")))
+      #fhir/Dosage{:id "212329"} "#fhir/Dosage{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Dosage{:text #fhir/string "text-142600"} "#fhir/Dosage {:text #fhir/string {:value \"text-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Dosage{:text #fhir/string "text-142600"})))))))
 
 (deftest dosage-dose-and-rate-test
   (testing "type"
@@ -3572,7 +3901,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.Dosage/doseAndRate{} "#fhir.Dosage/doseAndRate{}"
-      #fhir.Dosage/doseAndRate{:id "212329"} "#fhir.Dosage/doseAndRate{:id \"212329\"}")))
+      #fhir.Dosage/doseAndRate{:id "212329"} "#fhir.Dosage/doseAndRate{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir.Dosage/doseAndRate{:id "160542"} "#fhir.Dosage/doseAndRate {:id \"160542\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir.Dosage/doseAndRate{:id "160542"})))))))
 
 (deftest extension-test
   (testing "type"
@@ -3644,7 +3981,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Extension{} "#fhir/Extension{}"
-      #fhir/Extension{:id "212329"} "#fhir/Extension{:id \"212329\"}")))
+      #fhir/Extension{:id "212329"} "#fhir/Extension{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Extension{:url "url-142600"} "#fhir/Extension {:url \"url-142600\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Extension{:url "url-142600"})))))))
 
 (deftest human-name-test
   (testing "type"
@@ -3731,7 +4076,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/HumanName{} "#fhir/HumanName{}"
-      #fhir/HumanName{:id "212625"} "#fhir/HumanName{:id \"212625\"}")))
+      #fhir/HumanName{:id "212625"} "#fhir/HumanName{:id \"212625\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/HumanName{:family #fhir/string "family-142600"} "#fhir/HumanName {:family #fhir/string {:value \"family-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/HumanName{:family #fhir/string "family-142600"})))))))
 
 (deftest identifier-test
   (testing "type"
@@ -3795,7 +4148,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Identifier{} "#fhir/Identifier{}"
-      #fhir/Identifier{:id "212329"} "#fhir/Identifier{:id \"212329\"}")))
+      #fhir/Identifier{:id "212329"} "#fhir/Identifier{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Identifier{:value #fhir/string "value-142600"} "#fhir/Identifier {:value #fhir/string {:value \"value-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Identifier{:value #fhir/string "value-142600"})))))))
 
 (deftest meta-test
   (testing "type"
@@ -3892,7 +4253,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Meta{} "#fhir/Meta{}"
-      #fhir/Meta{:id "212329"} "#fhir/Meta{:id \"212329\"}")))
+      #fhir/Meta{:id "212329"} "#fhir/Meta{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Meta{:versionId #fhir/id "versionId-142600"} "#fhir/Meta {:versionId #fhir/id {:value \"versionId-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Meta{:versionId #fhir/id "versionId-142600"})))))))
 
 (deftest money-test
   (testing "type"
@@ -3936,7 +4305,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Money{} "#fhir/Money{}"
-      #fhir/Money{:id "212329"} "#fhir/Money{:id \"212329\"}")))
+      #fhir/Money{:id "212329"} "#fhir/Money{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Money{:value #fhir/decimal 1M} "#fhir/Money {:value #fhir/decimal {:value 1M}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Money{:value #fhir/decimal 1M})))))))
 
 (deftest narrative-test
   (testing "type"
@@ -3984,7 +4361,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Narrative{} "#fhir/Narrative{}"
-      #fhir/Narrative{:id "212329"} "#fhir/Narrative{:id \"212329\"}")))
+      #fhir/Narrative{:id "212329"} "#fhir/Narrative{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Narrative{:status #fhir/code "generated"} "#fhir/Narrative {:status #fhir/code {:value \"generated\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Narrative{:status #fhir/code "generated"})))))))
 
 (deftest parameter-definition-test
   (testing "type"
@@ -4028,7 +4413,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/ParameterDefinition{} "#fhir/ParameterDefinition{}"
-      #fhir/ParameterDefinition{:id "212329"} "#fhir/ParameterDefinition{:id \"212329\"}")))
+      #fhir/ParameterDefinition{:id "212329"} "#fhir/ParameterDefinition{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/ParameterDefinition{:name #fhir/code "name-142600"} "#fhir/ParameterDefinition {:name #fhir/code {:value \"name-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/ParameterDefinition{:name #fhir/code "name-142600"})))))))
 
 (deftest period-test
   (testing "type"
@@ -4081,7 +4474,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Period{} "#fhir/Period{}"
-      #fhir/Period{:id "212329"} "#fhir/Period{:id \"212329\"}")))
+      #fhir/Period{:id "212329"} "#fhir/Period{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Period{:start #fhir/dateTime #system/date-time "2020"} "#fhir/Period {:start #fhir/dateTime {:value #system/date-time \"2020\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Period{:start #fhir/dateTime #system/date-time "2020"})))))))
 
 (deftest quantity-test
   (testing "type"
@@ -4158,7 +4559,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Quantity{} "#fhir/Quantity{}"
-      #fhir/Quantity{:id "212329"} "#fhir/Quantity{:id \"212329\"}")))
+      #fhir/Quantity{:id "212329"} "#fhir/Quantity{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Quantity{:value #fhir/decimal 1M} "#fhir/Quantity {:value #fhir/decimal {:value 1M}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Quantity{:value #fhir/decimal 1M})))))))
 
 (deftest range-test
   (testing "type"
@@ -4214,7 +4623,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Range{} "#fhir/Range{}"
-      #fhir/Range{:id "212329"} "#fhir/Range{:id \"212329\"}")))
+      #fhir/Range{:id "212329"} "#fhir/Range{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Range{:low #fhir/Quantity{:value #fhir/decimal 1M}} "#fhir/Range {:low #fhir/Quantity {:value #fhir/decimal {:value 1M}}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Range{:low #fhir/Quantity{:value #fhir/decimal 1M}})))))))
 
 (deftest ratio-test
   (testing "type"
@@ -4269,7 +4686,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Ratio{} "#fhir/Ratio{}"
-      #fhir/Ratio{:id "212329"} "#fhir/Ratio{:id \"212329\"}")))
+      #fhir/Ratio{:id "212329"} "#fhir/Ratio{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Ratio{:numerator #fhir/Quantity{:id "160542"}} "#fhir/Ratio {:numerator #fhir/Quantity {:id \"160542\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Ratio{:numerator #fhir/Quantity{:id "160542"}})))))))
 
 (deftest reference-test
   (testing "type"
@@ -4369,7 +4794,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Reference{} "#fhir/Reference{}"
-      #fhir/Reference{:id "212329"} "#fhir/Reference{:id \"212329\"}")))
+      #fhir/Reference{:id "212329"} "#fhir/Reference{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Reference{:reference #fhir/string "Patient/0"} "#fhir/Reference {:reference #fhir/string {:value \"Patient/0\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Reference{:reference #fhir/string "Patient/0"})))))))
 
 (deftest related-artifact-test
   (testing "type"
@@ -4399,7 +4832,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/RelatedArtifact{} "#fhir/RelatedArtifact{}"
-      #fhir/RelatedArtifact{:id "212329"} "#fhir/RelatedArtifact{:id \"212329\"}")))
+      #fhir/RelatedArtifact{:id "212329"} "#fhir/RelatedArtifact{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/RelatedArtifact{:type #fhir/code "type-142600"} "#fhir/RelatedArtifact {:type #fhir/code {:value \"type-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/RelatedArtifact{:type #fhir/code "type-142600"})))))))
 
 (deftest sampled-data-test
   (testing "type"
@@ -4441,7 +4882,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/SampledData{} "#fhir/SampledData{}"
-      #fhir/SampledData{:id "212329"} "#fhir/SampledData{:id \"212329\"}")))
+      #fhir/SampledData{:id "212329"} "#fhir/SampledData{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/SampledData{:dimensions #fhir/positiveInt 1} "#fhir/SampledData {:dimensions #fhir/positiveInt {:value 1}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/SampledData{:dimensions #fhir/positiveInt 1})))))))
 
 (deftest signature-test
   (testing "type"
@@ -4487,7 +4936,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Signature{} "#fhir/Signature{}"
-      #fhir/Signature{:id "212329"} "#fhir/Signature{:id \"212329\"}")))
+      #fhir/Signature{:id "212329"} "#fhir/Signature{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Signature{:id "160542"} "#fhir/Signature {:id \"160542\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Signature{:id "160542"})))))))
 
 (deftest timing-test
   (testing "type"
@@ -4518,7 +4975,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Timing{} "#fhir/Timing{}"
-      #fhir/Timing{:id "212329"} "#fhir/Timing{:id \"212329\"}")))
+      #fhir/Timing{:id "212329"} "#fhir/Timing{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/Timing{:id "160542"} "#fhir/Timing {:id \"160542\"}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/Timing{:id "160542"})))))))
 
 (deftest timing-repeat-test
   (testing "type"
@@ -4549,7 +5014,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.Timing/repeat{} "#fhir.Timing/repeat{}"
-      #fhir.Timing/repeat{:id "212329"} "#fhir.Timing/repeat{:id \"212329\"}")))
+      #fhir.Timing/repeat{:id "212329"} "#fhir.Timing/repeat{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir.Timing/repeat{:count #fhir/positiveInt 1} "#fhir.Timing/repeat {:count #fhir/positiveInt {:value 1}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir.Timing/repeat{:count #fhir/positiveInt 1})))))))
 
 (deftest trigger-definition-test
   (testing "type"
@@ -4583,7 +5056,15 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/TriggerDefinition{} "#fhir/TriggerDefinition{}"
-      #fhir/TriggerDefinition{:id "212329"} "#fhir/TriggerDefinition{:id \"212329\"}")))
+      #fhir/TriggerDefinition{:id "212329"} "#fhir/TriggerDefinition{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/TriggerDefinition{:type #fhir/code "type-142600"} "#fhir/TriggerDefinition {:type #fhir/code {:value \"type-142600\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/TriggerDefinition{:type #fhir/code "type-142600"})))))))
 
 (deftest usage-context-test
   (testing "type"
@@ -4625,4 +5106,12 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/UsageContext{} "#fhir/UsageContext{}"
-      #fhir/UsageContext{:id "212329"} "#fhir/UsageContext{:id \"212329\"}")))
+      #fhir/UsageContext{:id "212329"} "#fhir/UsageContext{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/UsageContext{:code #fhir/Coding{:id "160542"}} "#fhir/UsageContext {:code #fhir/Coding {:id \"160542\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/UsageContext{:code #fhir/Coding{:id "160542"}})))))))
