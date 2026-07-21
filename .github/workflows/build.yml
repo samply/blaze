@@ -21,8 +21,8 @@ concurrency:
 
 env:
   # renovate: datasource=github-release-attachments depName=samply/blazectl
-  BLAZECTL_VERSION: v1.4.0
-  BLAZECTL_CHECKSUM: ed411d59b4856667c7817235caacdd0933c59858a342f91982141e6ce2c0e663
+  BLAZECTL_VERSION: v1.5.0
+  BLAZECTL_CHECKSUM: bb2127c23d3a523e5fd02b3fa84decee27eb5ec32f8726ce1f3f29b49182ff5f
 
   # renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
   CLOJURE_CLI_VERSION: 1.12.5.1654
