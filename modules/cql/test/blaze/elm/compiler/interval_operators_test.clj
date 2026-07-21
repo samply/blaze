@@ -9,6 +9,7 @@
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.interval-operators]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.date-time :as date-time]
    [blaze.elm.decimal :as decimal]
    [blaze.elm.interval :refer [interval]]
    [blaze.elm.literal :as elm]
@@ -606,6 +607,20 @@
       [#elm/decimal "1" #elm/decimal "2.1" :>] 2.09999999M
       [#elm/decimal "1" {:type "Null"}] decimal/max))
 
+  (testing "Date"
+    (are [x res] (= res (ctu/compile-unop elm/end elm/interval x))
+      [#elm/date "2019" #elm/date "2021"] #system/date"2021"
+      [#elm/date "2019" #elm/date "2021" :>] #system/date"2020"
+      [#elm/date "2019" {:type "Null"}] date-time/max-date
+      [#elm/date "2019" {:type "Null"} :>] nil))
+
+  (testing "DateTime"
+    (are [x res] (= res (ctu/compile-unop elm/end elm/interval x))
+      [#elm/date-time "2019" #elm/date-time "2021"] #system/date-time"2021"
+      [#elm/date-time "2019" #elm/date-time "2021" :>] #system/date-time"2020"
+      [#elm/date-time "2019" {:type "Null"}] date-time/max-date-time
+      [#elm/date-time "2019" {:type "Null"} :>] nil))
+
   (ctu/testing-unary-null elm/end)
 
   (ctu/testing-unary-op elm/end)
@@ -643,6 +658,20 @@
         [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "3"] true?
         [#elm/integer "2" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "3"] true?
         [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "2" #elm/parameter-ref "3"] false?)))
+
+  (testing "Date"
+    (are [x y pred] (pred (ctu/compile-binop elm/ends elm/interval x y))
+      [#elm/date "2019" {:type "Null"}] [#elm/date "2018" {:type "Null"}] true?
+      [#elm/date "2019" {:type "Null"} :>] [#elm/date "2018" {:type "Null"} :>] nil?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] true?
+      [#elm/date "2019" {:type "Null"}] [#elm/date "2020" {:type "Null"}] false?))
+
+  (testing "DateTime"
+    (are [x y pred] (pred (ctu/compile-binop elm/ends elm/interval x y))
+      [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2018" {:type "Null"}] true?
+      [#elm/date-time "2019" {:type "Null"} :>] [#elm/date-time "2018" {:type "Null"} :>] nil?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] true?
+      [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2020" {:type "Null"}] false?))
 
   (ctu/testing-binary-null elm/ends interval-zero)
 
@@ -783,6 +812,20 @@
         [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] true?
         [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] false?))
 
+    (testing "Date"
+      (are [x y pred] (pred (ctu/compile-binop elm/includes elm/interval x y))
+        [#elm/date "2019" {:type "Null"}] [#elm/date "2020" {:type "Null"}] true?
+        [#elm/date "2019" {:type "Null"}] [#elm/date "2020" {:type "Null"} :>] nil?
+        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2020"] true?
+        [#elm/date "2020" {:type "Null"}] [#elm/date "2019" {:type "Null"}] false?))
+
+    (testing "DateTime"
+      (are [x y pred] (pred (ctu/compile-binop elm/includes elm/interval x y))
+        [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2020" {:type "Null"}] true?
+        [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2020" {:type "Null"} :>] nil?
+        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] true?
+        [#elm/date-time "2020" {:type "Null"}] [#elm/date-time "2019" {:type "Null"}] false?))
+
     (ctu/testing-binary-null elm/includes interval-zero))
 
   (ctu/testing-binary-precision-op elm/includes))
@@ -877,6 +920,20 @@
       [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] true?
       [#elm/integer "1" #elm/integer "2"] [#elm/integer "4" #elm/integer "5"] false?))
 
+  (testing "Date"
+    (are [x y pred] (pred (ctu/compile-binop elm/meets-before elm/interval x y))
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2018"] [#elm/date "2019" {:type "Null"}] true?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2018"] [#elm/date "2020" {:type "Null"}] false?
+      [#elm/date "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2020"] nil?
+      [#elm/date "2019" {:type "Null"}] [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] nil?))
+
+  (testing "DateTime"
+    (are [x y pred] (pred (ctu/compile-binop elm/meets-before elm/interval x y))
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2018"] [#elm/date-time "2019" {:type "Null"}] true?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2018"] [#elm/date-time "2020" {:type "Null"}] false?
+      [#elm/date-time "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] nil?
+      [#elm/date-time "2019" {:type "Null"}] [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] nil?))
+
   (ctu/testing-binary-null elm/meets-before interval-zero)
 
   (ctu/testing-binary-precision-op elm/meets-before))
@@ -900,6 +957,20 @@
     (are [x y pred] (pred (ctu/compile-binop elm/meets-after elm/interval x y))
       [#elm/integer "3" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] true?
       [#elm/integer "4" #elm/integer "5"] [#elm/integer "1" #elm/integer "2"] false?))
+
+  (testing "Date"
+    (are [x y pred] (pred (ctu/compile-binop elm/meets-after elm/interval x y))
+      [#elm/date "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2018"] true?
+      [#elm/date "2020" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2018"] false?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2020"] [#elm/date "2019" {:type "Null"}] nil?
+      [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] [#elm/date "2019" {:type "Null"}] nil?))
+
+  (testing "DateTime"
+    (are [x y pred] (pred (ctu/compile-binop elm/meets-after elm/interval x y))
+      [#elm/date-time "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2018"] true?
+      [#elm/date-time "2020" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2018"] false?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] [#elm/date-time "2019" {:type "Null"}] nil?
+      [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] [#elm/date-time "2019" {:type "Null"}] nil?))
 
   (ctu/testing-binary-null elm/meets-after interval-zero)
 
@@ -954,6 +1025,20 @@
       [#elm/integer "1" #elm/parameter-ref "4"] [#elm/integer "2" #elm/parameter-ref "3"] true?
 
       [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "1" #elm/parameter-ref "2"] true?))
+
+  (testing "Date"
+    (are [x y pred] (pred (ctu/compile-binop elm/overlaps elm/interval x y))
+      [#elm/date "2019" {:type "Null"}] [#elm/date "2020" #elm/date "2021"] true?
+      [#elm/date "2021" {:type "Null"} :>] [#elm/date "2020" #elm/date "2022"] nil?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2019"] [#elm/date "2020" #elm/date "2021"] false?
+      [#elm/date "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] true?))
+
+  (testing "DateTime"
+    (are [x y pred] (pred (ctu/compile-binop elm/overlaps elm/interval x y))
+      [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2020" #elm/date-time "2021"] true?
+      [#elm/date-time "2021" {:type "Null"} :>] [#elm/date-time "2020" #elm/date-time "2022"] nil?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2019"] [#elm/date-time "2020" #elm/date-time "2021"] false?
+      [#elm/date-time "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] true?))
 
   (ctu/testing-binary-null elm/overlaps interval-zero)
 
@@ -1141,6 +1226,20 @@
       [:< #elm/decimal "1.1" #elm/decimal "2"] 1.10000001M
       [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"} #elm/decimal "2"] decimal/min))
 
+  (testing "Date"
+    (are [x res] (= res (ctu/compile-unop elm/start elm/interval x))
+      [#elm/date "2019" #elm/date "2021"] #system/date"2019"
+      [:< #elm/date "2019" #elm/date "2021"] #system/date"2020"
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] date-time/min-date
+      [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2021"] nil))
+
+  (testing "DateTime"
+    (are [x res] (= res (ctu/compile-unop elm/start elm/interval x))
+      [#elm/date-time "2019" #elm/date-time "2021"] #system/date-time"2019"
+      [:< #elm/date-time "2019" #elm/date-time "2021"] #system/date-time"2020"
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] date-time/min-date-time
+      [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] nil))
+
   (ctu/testing-unary-null elm/start)
 
   (ctu/testing-unary-op elm/start)
@@ -1171,6 +1270,20 @@
       [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true?
       [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] true?
       [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] false?))
+
+  (testing "Date"
+    (are [x y pred] (pred (ctu/compile-binop elm/starts elm/interval x y))
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2019"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2020"] true?
+      [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2019"] [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2020"] nil?
+      [#elm/date "2019" {:type "Null"}] [#elm/date "2019" {:type "Null"}] true?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2020"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Date"} #elm/date "2019"] false?))
+
+  (testing "DateTime"
+    (are [x y pred] (pred (ctu/compile-binop elm/starts elm/interval x y))
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2019"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] true?
+      [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2019"] [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] nil?
+      [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2019" {:type "Null"}] true?
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2019"] false?))
 
   (ctu/testing-binary-null elm/starts interval-zero)
 
