@@ -10,6 +10,7 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.concept :refer [concept]]
+   [blaze.elm.date-time :as date-time]
    [blaze.elm.interval :as interval]
    [blaze.elm.protocols :as p]
    [blaze.elm.quantity :as quantity]
@@ -197,7 +198,7 @@
   (-to-interval [{:keys [start end]} {:keys [now]}]
     (interval/interval
      (p/to-date-time (:value start) now)
-     (p/to-date-time (:value end) now)))
+     (or (p/to-date-time (:value end) now) date-time/max-date-time)))
 
   nil
   (-to-interval [_ _]))
