@@ -68,7 +68,7 @@
     (r-sp-v/single-version-id-value-prefix-filter
      (:snapshot batch-db) tid c-hash compiled-values))
 
-  (-postprocess-matches [_ _ _ _])
+  (-postprocess-matches [_ _ _ _ _])
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

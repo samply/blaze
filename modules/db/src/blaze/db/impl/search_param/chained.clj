@@ -173,7 +173,7 @@
         nil
         (single-version-id-targets batch-db tid single-version-id ref-c-hash ref-tid)))))
 
-  (-postprocess-matches [_ _ _ _]))
+  (-postprocess-matches [_ _ _ _ _]))
 
 (defn- compile-ref-search-param-value
   "Compiles the value of the reference of `resource-handle` via

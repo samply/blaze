@@ -147,7 +147,7 @@
   (-matcher [_ batch-db modifier compiled-values])
   (-single-version-id-matcher [_ batch-db tid modifier compiled-values])
   (-postprocess-matches
-    [search-param batch-db values compiled-values]
+    [search-param batch-db modifier values compiled-values]
     "Returns a transducer that will be applied on every matching resource-handle
      at the end of the query execution. Can also be used to finally remove
      unwanted matches.")

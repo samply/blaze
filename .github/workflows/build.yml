@@ -1296,6 +1296,9 @@ jobs:
     - name: Search Observation _profile Version
       run: .github/scripts/search-observation-profile-version.sh
 
+    - name: Search ValueSet url Version
+      run: .github/scripts/search-value-set-url-version.sh
+
     - name: Search Modifier
       run: .github/scripts/search-modifier.sh
 

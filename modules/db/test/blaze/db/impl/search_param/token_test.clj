@@ -162,6 +162,65 @@
             :code := "_profile:below"
             :v-hash := (codec/v-hash "uri-091902|2.3")))))
 
+    (testing "ValueSet url without version"
+      (let [value-set
+            {:fhir/type :fhir/ValueSet :id "id-094531"
+             :url #fhir/uri "http://example.com/vs-105914"}
+            hash (hash/generate value-set)
+            entries (into [] (index-entries (sr/get search-param-registry "url" "ValueSet")
+                                            [] hash value-set))
+            [_ k0] (nth entries 0)
+            [_ k1] (nth entries 1)]
+
+        (testing "produces a single exact unversioned url index entry (no below entry)"
+          (is (= 2 (count entries))))
+
+        (testing "SearchParamValueResource key is exact unversioned url"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+            :code := "url"
+            :type := "ValueSet"
+            :v-hash := (codec/v-hash "http://example.com/vs-105914")
+            :id := "id-094531"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "ResourceSearchParamValue key is exact unversioned url"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
+            :type := "ValueSet"
+            :id := "id-094531"
+            :hash-prefix := (hash/prefix hash)
+            :code := "url"
+            :v-hash := (codec/v-hash "http://example.com/vs-105914")))))
+
+    (testing "ValueSet url with version"
+      (let [value-set
+            {:fhir/type :fhir/ValueSet :id "id-104832"
+             :url #fhir/uri "http://example.com/vs-105914"
+             :version #fhir/string "1.2.3"}
+            hash (hash/generate value-set)
+            entries (into [] (index-entries (sr/get search-param-registry "url" "ValueSet")
+                                            [] hash value-set))
+            [_ k0] (nth entries 0)
+            [_ k1] (nth entries 1)]
+
+        (testing "produces a single exact unversioned url index entry, identical to the unversioned case (version handling moved to postprocess)"
+          (is (= 2 (count entries))))
+
+        (testing "SearchParamValueResource key is exact unversioned url"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+            :code := "url"
+            :type := "ValueSet"
+            :v-hash := (codec/v-hash "http://example.com/vs-105914")
+            :id := "id-104832"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "ResourceSearchParamValue key is exact unversioned url"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
+            :type := "ValueSet"
+            :id := "id-104832"
+            :hash-prefix := (hash/prefix hash)
+            :code := "url"
+            :v-hash := (codec/v-hash "http://example.com/vs-105914")))))
+
     (testing "Observation code"
       (let [observation
             {:fhir/type :fhir/Observation
@@ -799,10 +858,10 @@
 (defn profile-param [search-param-registry]
   (sr/get search-param-registry "_profile" "Observation"))
 
-(defn- uri-url-param [search-param-registry]
+(defn- canonical-url-param [search-param-registry]
   (sr/get search-param-registry "url" "CapabilityStatement"))
 
-(defn- url-param [search-param-registry]
+(defn- non-canonical-url-param [search-param-registry]
   (sr/get search-param-registry "url" "Subscription"))
 
 (deftest validate-modifier-test
@@ -843,13 +902,11 @@
       (testing "implemented modifier"
         (is (nil? (search-param/validate-modifier (profile-param search-param-registry) "below"))))
 
-      (testing "modifier below not implemented on uri type"
-        (given (search-param/validate-modifier (uri-url-param search-param-registry) "below")
-          ::anom/category := ::anom/unsupported
-          ::anom/message := "Unsupported modifier `below` on search parameter `url`."))
+      (testing "below implemented for canonical-url params"
+        (is (nil? (search-param/validate-modifier (canonical-url-param search-param-registry) "below"))))
 
-      (testing "modifier below not implemented on url type"
-        (given (search-param/validate-modifier (url-param search-param-registry) "below")
+      (testing "below not implemented for non-canonical url params"
+        (given (search-param/validate-modifier (non-canonical-url-param search-param-registry) "below")
           ::anom/category := ::anom/unsupported
           ::anom/message := "Unsupported modifier `below` on search parameter `url`.")))
 

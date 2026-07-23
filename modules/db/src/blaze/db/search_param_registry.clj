@@ -8,6 +8,7 @@
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry.spec]
+   [blaze.fhir-path :as fhir-path]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.module :as m]
    [blaze.util :refer [conj-vec str]]
@@ -345,6 +346,22 @@
       (nil? (get-in index [type "patient"])) #{"subject"}
       :else #{"subject" "patient"})))
 
+(defn expression-type
+  "Categorizes `expr` by looking up each union-branch path in
+  `expression-types` (the result of `sdr/expression-types`). All branches
+  must categorize the same way; returns nil when they differ or when the
+  expression does not parse.
+
+  An expression may be a `|`-separated union of paths (e.g. the `depends-on`
+  or `conformance-url` search parameters). All branches must categorize the
+  same way for the union to inherit the category."
+  [expression-types expr]
+  (let [paths (fhir-path/union-paths expr)]
+    (when-not (ba/anomaly? paths)
+      (let [kinds (into #{} (map expression-types) paths)]
+        (when (= 1 (count kinds))
+          (first kinds))))))
+
 (defmethod m/pre-init-spec :blaze.db/search-param-registry [_]
   (s/keys :req-un [:blaze.fhir/structure-definition-repo :blaze/terminology-service]
           :opt-un [::extra-bundle-file]))
@@ -357,8 +374,8 @@
      (str " including extra search parameters from file: " extra-bundle-file)))
   (let [entries (read-bundle-entries extra-bundle-file)
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")
-        context {:code-expression? (sdr/code-expressions structure-definition-repo)
-                 :canonical-expression? (sdr/canonical-expressions structure-definition-repo)
+        expression-types (sdr/expression-types structure-definition-repo)
+        context {:expression-type (partial expression-type expression-types)
                  :terminology-service terminology-service}]
     (if-ok [{url-index :index} (build-url-index context entries)]
       (let [index (build-index url-index entries)

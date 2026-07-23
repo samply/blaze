@@ -14,3 +14,7 @@
 
 (s/fdef sdr/resources
   :args (s/cat :repo :blaze.fhir/structure-definition-repo))
+
+(s/fdef sdr/expression-types
+  :args (s/cat :repo :blaze.fhir/structure-definition-repo)
+  :ret (s/map-of string? #{:code :canonical :canonical-url}))

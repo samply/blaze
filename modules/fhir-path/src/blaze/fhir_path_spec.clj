@@ -23,3 +23,7 @@
 (s/fdef fhir-path/compile
   :args (s/cat :expr string?)
   :ret (s/or :expr :blaze.fhir-path/expression :anomaly ::anom/anomaly))
+
+(s/fdef fhir-path/union-paths
+  :args (s/cat :expr string?)
+  :ret (s/or :paths (s/coll-of string? :kind vector?) :anomaly ::anom/anomaly))
