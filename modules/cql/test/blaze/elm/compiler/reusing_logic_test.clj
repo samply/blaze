@@ -14,6 +14,7 @@
    [blaze.elm.compiler.function-spec]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.concept :refer [concept]]
+   [blaze.elm.date-time :as date-time]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.interval :as interval]
    [blaze.elm.literal :as elm]
@@ -559,7 +560,13 @@
             :end nil}
           (interval/interval
            (system/date-time 2021 2 23 14 12 45)
-           nil)
+           date-time/max-date-time)
+          #fhir/Period
+           {:start nil
+            :end nil}
+          (interval/interval
+           nil
+           date-time/max-date-time)
           nil
           nil))
 
