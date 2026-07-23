@@ -69,6 +69,29 @@
        (ac/then-apply (constantly {:type :ok}))
        (ac/exceptionally (fn [e] (prn e) {:type :fail}))))
 
+(def warm-up-num-ops
+  "Number of add and read operations used to warm up the server and the client."
+  1000)
+
+(def warm-up-reset-interval
+  "Number of add and read operations after which the history of the warm-up
+  patient is reset.
+
+  Bounds the cost of the reads which fetch the whole history and mirrors the
+  workload which resets the history after every cycle of 120 operations."
+  50)
+
+(defn warm-up!
+  "Warms up the server's history code paths and the client JVM by running add,
+  read and reset operations against a throwaway patient."
+  [context]
+  (let [id (str (random-uuid))]
+    (dotimes [i warm-up-num-ops]
+      (client-add-history context id (str (random-uuid)))
+      (client-read-history context id)
+      (when (zero? (mod (inc i) warm-up-reset-interval))
+        (client-reset-history context id)))))
+
 (defrecord Client [context]
   client/Client
   (open! [this _test node]
@@ -80,6 +103,7 @@
             :writing-context (:blaze.fhir/writing-context u/system)))
 
   (setup! [this _test]
+    (warm-up! context)
     this)
 
   (invoke! [_ test op]

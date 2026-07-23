@@ -30,10 +30,10 @@ register-test-slow: prep
 	clojure -M:register test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.1
 
 resource-history-test-fast: prep
-	clojure -J-Xmx4g -M:resource-history test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.02
+	clojure -J-Xmx8g -M:resource-history test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.04
 
 resource-history-test-slow: prep
-	clojure -J-Xmx4g -M:resource-history test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.1
+	clojure -J-Xmx8g -M:resource-history test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.1
 
 cloc-prod:
 	cloc src
