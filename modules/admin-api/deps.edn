@@ -39,7 +39,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ca.uhn.hapi.fhir/hapi-fhir-base
-  {:mvn/version "8.10.0"
+  {:mvn/version "8.10.1"
    :exclusions
    [com.google.code.findbugs/jsr305
     io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
