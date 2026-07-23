@@ -9,8 +9,16 @@
 
   import SearchForm from './search-form.svelte';
   import ErrorCard from '$lib/error-card.svelte';
+  import { defaultSummarySettings, isSummaryEnabled, type SummarySettings } from '$lib/summary.js';
 
   let { params }: PageProps = $props();
+
+  let summary = $derived(
+    isSummaryEnabled(
+      (page.data.summarySettings as SummarySettings | undefined) ?? defaultSummarySettings,
+      params.type
+    )
+  );
 </script>
 
 <svelte:head>
@@ -25,6 +33,6 @@
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col">
-  <SearchForm searchParams={page.data.searchParams || []} type={params.type} />
+  <SearchForm searchParams={page.data.searchParams || []} type={params.type} {summary} />
   <ErrorCard />
 </main>

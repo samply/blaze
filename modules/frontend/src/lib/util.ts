@@ -70,7 +70,7 @@ export function moveDownAtIndex<T>(array: T[], i: number): T[] {
 
 export const defaultCount = '20';
 
-export function processParams(params: URLSearchParams): string {
+export function processParams(params: URLSearchParams, summary = true): string {
   const newParams = new URLSearchParams();
   for (const [name, value] of params) {
     if (!name.endsWith(':inactive')) {
@@ -81,8 +81,9 @@ export function processParams(params: URLSearchParams): string {
   if (!newParams.has('_count')) {
     newParams.append('_count', defaultCount);
   }
-  // we like to have summary representations by default
-  if (!newParams.has('_summary')) {
+  // request summary representations when summary mode is enabled; omitting the
+  // param yields full resources
+  if (summary && !newParams.has('_summary')) {
     newParams.append('_summary', 'true');
   }
   return newParams.toString();

@@ -29,13 +29,16 @@
   import { quintIn } from 'svelte/easing';
   import { error, type NumericRange } from '@sveltejs/kit';
   import Dropdown from '$lib/tailwind/dropdown.svelte';
+  import Toggle from '$lib/tailwind/toggle.svelte';
+  import SummaryToggle from '$lib/summary-toggle.svelte';
 
   interface Props {
     searchParams: CapabilityStatementRestResourceSearchParam[];
     type: string;
+    summary: boolean;
   }
 
-  let { searchParams, type }: Props = $props();
+  let { searchParams, type, summary }: Props = $props();
   let queryPlan = $state(false);
 
   async function loadSearchIncludes(type: string): Promise<string[]> {
@@ -219,31 +222,9 @@
           </button>
         </div>
       {/snippet}
-      <div class="p-1">
-        <div class="flex items-center gap-3">
-          <div
-            class="group relative inline-flex w-11 shrink-0 rounded-full bg-gray-200 p-0.5 inset-ring inset-ring-gray-900/5 outline-offset-2 outline-indigo-600 transition-colors duration-200 ease-in-out has-checked:bg-indigo-600 has-focus-visible:outline-2"
-          >
-            <span
-              class="size-5 rounded-full bg-white dark:bg-gray-800 shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-5"
-            ></span>
-            <input
-              id="query-plan"
-              type="checkbox"
-              name="query-plan"
-              aria-labelledby="query-plan-label"
-              class="absolute inset-0 appearance-none focus:outline-hidden"
-              bind:checked={queryPlan}
-            />
-          </div>
-          <div class="text-sm">
-            <label
-              id="query-plan-label"
-              class="font-medium text-gray-900 dark:text-gray-100"
-              for="query-plan">Show Plan</label
-            >
-          </div>
-        </div>
+      <div class="flex flex-col gap-3 p-1">
+        <SummaryToggle enabled={summary} {type} />
+        <Toggle id="query-plan" label="Show Plan" bind:checked={queryPlan} />
       </div>
     </Dropdown>
   </div>

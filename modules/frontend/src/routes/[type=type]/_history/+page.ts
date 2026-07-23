@@ -1,24 +1,18 @@
 import type { PageLoad } from './$types';
 
 import { resolve } from '$app/paths';
-import { error, type NumericRange } from '@sveltejs/kit';
-import { processParams } from '$lib/util.js';
-import { transformBundle } from '$lib/resource/resource-card.js';
+import { loadSummary } from '$lib/summary.js';
+import { fetchHistoryBundle } from '$lib/history.js';
 
-export const load: PageLoad = async ({ fetch, params, url }) => {
-  const res = await fetch(
-    `${resolve('/[type=type]/_history', params)}?${processParams(url.searchParams)}`,
-    {
-      headers: { Accept: 'application/fhir+json' }
-    }
+export const load: PageLoad = async ({ fetch, params, url, parent }) => {
+  const summary = await loadSummary(parent, params.type);
+  const bundle = await fetchHistoryBundle(
+    fetch,
+    resolve('/[type=type]/_history', params),
+    url.searchParams,
+    summary,
+    { message: `error while loading the ${params.type} history bundle` }
   );
 
-  if (!res.ok) {
-    error(
-      res.status as NumericRange<400, 599>,
-      `error while loading the ${params.type} history bundle`
-    );
-  }
-
-  return { bundle: await transformBundle(fetch, await res.json()) };
+  return { summary, bundle };
 };
