@@ -266,6 +266,15 @@ export default defineConfig({
           },
         ],
       },
+      {
+        text: "Contributing",
+        items: [
+          {
+            text: "AI-Assisted Contributions",
+            link: "/contributing#ai-assisted-contributions",
+          },
+        ],
+      },
     ],
   },
 });
