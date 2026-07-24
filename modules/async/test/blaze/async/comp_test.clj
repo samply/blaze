@@ -78,7 +78,6 @@
   (testing "with timeout happen"
     (let [f (ac/future)]
       (ac/or-timeout! f 1 TimeUnit/MILLISECONDS)
-      (Thread/sleep 10)
       (is (= ::anom/busy @(ac/exceptionally f ::anom/category)))))
 
   (testing "without timeout happen"
@@ -91,7 +90,7 @@
   (testing "with timeout happen"
     (let [f (ac/future)]
       (ac/complete-on-timeout! f ::a 1 TimeUnit/MILLISECONDS)
-      (Thread/sleep 10)
+      @f
       (ac/complete! f ::b)
       (is (= ::a @f))))
 
