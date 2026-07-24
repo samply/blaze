@@ -42,7 +42,7 @@ JAVA_VERSION="25"
 # renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
 CLOJURE_CLI_VERSION="1.12.5.1654"
 # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
-CLJ_KONDO_VERSION="2026.05.25"
+CLJ_KONDO_VERSION="2026.07.24"
 # renovate: datasource=github-releases depName=weavejester/cljfmt
 CLJFMT_VERSION="0.16.5"
 # Pinned to match .github/scripts/install-actionlint.sh.
