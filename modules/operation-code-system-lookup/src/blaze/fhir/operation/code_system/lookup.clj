@@ -9,6 +9,7 @@
    [blaze.module :as m]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
+   [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -36,7 +37,7 @@
     (if id
       (do-sync [{:keys [url version]} (fhir-util/pull db "CodeSystem" id :summary)]
         (update params :parameter
-                (fnil conj [])
+                conj-vec
                 (fu/parameter "system" url)
                 (fu/parameter "version" version)))
       (ac/completed-future params))

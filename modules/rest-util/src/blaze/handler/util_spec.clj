@@ -1,7 +1,9 @@
 (ns blaze.handler.util-spec
   (:require
    [blaze.anomaly-spec]
+   [blaze.fhir.spec]
    [blaze.handler.util :as handler-util]
+   [blaze.spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef handler-util/preference
@@ -15,3 +17,10 @@
 (s/fdef handler-util/instant
   :args (s/cat :tx :blaze.db/tx)
   :ret :fhir/instant)
+
+(s/fdef handler-util/async-status-location
+  :args (s/cat :response map?
+               :context (s/keys :opt-un [:blaze/context-path])
+               :request (s/keys :req [:blaze/base-url])
+               :job :fhir/Task)
+  :ret map?)

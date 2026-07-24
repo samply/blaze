@@ -476,6 +476,17 @@
    :admin-node #blaze/ref :blaze.db.admin/node
    :clock #blaze/ref :blaze/clock}
 
+  ;; The storage profiles with local RocksDB databases add their database
+  ;; directories under :dirs.
+  :blaze.job/disk-perf
+  {:dirs {}
+   :admin-node #blaze/ref :blaze.db.admin/node
+   :executor #blaze/ref :blaze.job.disk-perf/executor
+   :block-size #blaze/var db-block-size
+   :clock #blaze/ref :blaze/clock}
+
+  :blaze.job.disk-perf/executor {}
+
   :blaze.job/re-index
   {:main-node #blaze/ref :blaze.db.main/node
    :admin-node #blaze/ref :blaze.db.admin/node
@@ -1007,6 +1018,12 @@
    {:transaction-db #blaze/ref :blaze.db.main/transaction-kv-store
     :resource-db #blaze/ref :blaze.db/resource-kv-store}
 
+   :blaze.job/disk-perf
+   {:dirs
+    {"index" #blaze/cfg ["INDEX_DB_DIR" string? "index"]
+     "transaction" #blaze/cfg ["TRANSACTION_DB_DIR" string? "transaction"]
+     "resource" #blaze/cfg ["RESOURCE_DB_DIR" string? "resource"]}}
+
    ;;
    ;; Local Page Store
    ;;
@@ -1259,6 +1276,12 @@
    {:dbs
     {"index" #blaze/ref :blaze.db.main/index-kv-store}}
 
+   ;; Only the index database is a local RocksDB database in the distributed
+   ;; storage profile.
+   :blaze.job/disk-perf
+   {:dirs
+    {"index" #blaze/cfg ["INDEX_DB_DIR" string? "index"]}}
+
    ;;
    ;; Main Kafka Transaction Log
    ;;
@@ -1362,13 +1385,23 @@
     {:clock #blaze/ref :blaze/clock
      :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
+    :blaze.fhir.operation/disk-perf
+    {:clock #blaze/ref :blaze/clock
+     :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
+
     :blaze.rest-api/operations
     [#:blaze.rest-api.operation
       {:code "compact"
        :def-uri "https://blaze-server.org/fhir/OperationDefinition/compact"
        :affects-state true
        :system-handler #blaze/ref :blaze.fhir.operation/compact
-       :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]
+       :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}
+     #:blaze.rest-api.operation
+      {:code "disk-perf"
+       :def-uri "https://blaze-server.org/fhir/OperationDefinition/disk-perf"
+       :affects-state true
+       :system-handler #blaze/ref :blaze.fhir.operation/disk-perf
+       :documentation "This operation measures the disk performance of the volume of one of the database directories with an I/O profile similar to the one Blaze's RocksDB stores produce. It will be always async."}]
 
     :blaze/java-tool-options #blaze/cfg ["JAVA_TOOL_OPTIONS" string? ""]}}
 

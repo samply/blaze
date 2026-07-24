@@ -7,6 +7,10 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:const ^long mib (bit-shift-left 1 20))
+
+(def ^:const ^long gib (bit-shift-left 1 30))
+
 (def conj-vec (fnil conj []))
 
 (defn duration-s

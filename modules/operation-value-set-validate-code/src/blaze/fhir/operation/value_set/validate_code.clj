@@ -9,6 +9,7 @@
    [blaze.module :as m]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
+   [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -40,7 +41,7 @@
 (defn- body-params [{:keys [body] {:strs [accept-language]} :headers}]
   (cond-> body
     (and accept-language (not (contains-param? "displayLanguage" body)))
-    (update :parameter (fnil conj []) (fu/parameter "displayLanguage" (type/string accept-language)))))
+    (update :parameter conj-vec (fu/parameter "displayLanguage" (type/string accept-language)))))
 
 (defn- params-from-headers [{:strs [accept-language]}]
   (cond-> {}
@@ -58,7 +59,7 @@
   (if-ok [params (validate-params* request)]
     (if id
       (do-sync [{:keys [url]} (fhir-util/pull db "ValueSet" id :summary)]
-        (update params :parameter (fnil conj []) (fu/parameter "url" url)))
+        (update params :parameter conj-vec (fu/parameter "url" url)))
       (ac/completed-future params))
     ac/completed-future))
 

@@ -12,6 +12,7 @@
    [blaze.db.kv.rocksdb.protocols :as p]
    [blaze.db.kv.rocksdb.spec]
    [blaze.module :as m]
+   [blaze.util :as u]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -305,7 +306,7 @@
 (defmethod ig/init-key ::block-cache
   [_ {:keys [size-in-mb] :or {size-in-mb 128}}]
   (log/info (format "Init RocksDB block cache of %d MB" size-in-mb))
-  (LRUCache. (bit-shift-left size-in-mb 20)))
+  (LRUCache. (* size-in-mb u/mib)))
 
 (defmethod ig/halt-key! ::block-cache
   [_ cache]
