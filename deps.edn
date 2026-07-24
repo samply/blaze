@@ -104,13 +104,13 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.10.13" :git/sha "ae52edf"}}
+    {:git/tag "v0.10.14" :git/sha "1176afd"}}
    :ns-default build}
 
   :deps-prep
   {:deps
    {org.clojure/tools.deps
-    {:mvn/version "0.29.1598"}}
+    {:mvn/version "0.31.1629"}}
    :ns-default deps-prep}
 
   ;; For both toying at the terminal and/or use via any nREPL-aware IDE
@@ -170,7 +170,7 @@
     {:mvn/version "2.11.1276"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "2.0.17"}}
+    {:mvn/version "2.0.18"}}
 
    :main-opts
    ["-m" "antq.core"
