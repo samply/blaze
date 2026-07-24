@@ -34,6 +34,7 @@ The following Operations are implemented:
 
 * [$compact](api/operation/compact.md) <Badge type="warning" text="Since 0.31"/>
 * [$cql](api/operation/cql.md) <Badge type="warning" text="Since 1.5.0"/>
+* [$disk-perf](api/operation/disk-perf.md) <Badge type="warning" text="Since 1.11"/>
 * [$graphql](http://hl7.org/fhir/resource-operation-graphql.html)
 * [Measure $evaluate-measure](api/operation/measure-evaluate-measure.md)
 * [Patient $everything](api/operation/patient-everything.md) <Badge type="warning" text="Since 0.22"/>

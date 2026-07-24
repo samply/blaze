@@ -235,6 +235,21 @@
    (fn [_ _ _] (throw (ex-info msg ex-data)))))
 
 (deftest handler-test
+  (testing "errors on missing expression"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler
+              {:request-method :post
+               :body (fu/parameters)})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Missing required parameter `expression`."))))
+
   (testing "errors on invalid expression"
     (with-handler [handler]
       (let [{:keys [status body]}
@@ -659,7 +674,8 @@
               {:request-method :post
                :body
                (fu/parameters
-                "subject" #fhir/string "Practitioner/0")})]
+                "subject" #fhir/string "Practitioner/0"
+                "expression" #fhir/string "true")})]
 
         (is (= 422 status))
 
@@ -676,7 +692,8 @@
               {:request-method :post
                :body
                (fu/parameters
-                "subject" #fhir/string "Patient/0")})]
+                "subject" #fhir/string "Patient/0"
+                "expression" #fhir/string "true")})]
 
         (is (= 400 status))
 
@@ -696,7 +713,8 @@
               {:request-method :post
                :body
                (fu/parameters
-                "subject" #fhir/string "Patient/0")})]
+                "subject" #fhir/string "Patient/0"
+                "expression" #fhir/string "true")})]
 
         (is (= 400 status))
 

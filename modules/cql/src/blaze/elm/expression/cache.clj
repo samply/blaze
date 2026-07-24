@@ -20,6 +20,7 @@
    [blaze.elm.expression.spec]
    [blaze.executors :as ex]
    [blaze.module :as m :refer [reg-collector]]
+   [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -128,7 +129,7 @@
   [state {:keys [kv-store] :as node} executor max-size-in-mb refresh]
   (-> (Caffeine/newBuilder)
       (.weigher weigher)
-      (.maximumWeight (bit-shift-left max-size-in-mb 20))
+      (.maximumWeight (* max-size-in-mb u/mib))
       (.refreshAfterWrite refresh)
       (.executor executor)
       (.recordStats)

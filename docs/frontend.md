@@ -10,6 +10,10 @@ Blaze comes with a Web UI that provides a user friendly view on the FHIR data an
 
 **TODO**
 
+### Databases
+
+The state of the RocksDB databases of Blaze can be inspected in the Databases section of the Admin UI, described on a [separate page](frontend/databases.md).
+
 ### Job System
 
 The next part of the Admin UI is a job system where background jobs of Blaze can be managed. Currently, the only available job type is **(Re)Index a Search Parameter**.  

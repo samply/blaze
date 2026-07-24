@@ -6,6 +6,7 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.spec.type :as type]
    [blaze.http.util :as hu]
+   [blaze.job.util :as job-util]
    [blaze.util :refer [str]]
    [clj-commons.format.exceptions :as e]
    [clojure.string :as str]
@@ -246,3 +247,10 @@
 
 (defn instant [{:blaze.db.tx/keys [instant]}]
   (type/instant (.atOffset ^Instant instant ZoneOffset/UTC)))
+
+(defn async-status-location
+  "Adds a Content-Location header with the URL of the async status endpoint of
+  `job` to `response`."
+  [response context request job]
+  (->> (job-util/async-status-url context request job)
+       (ring/header response "Content-Location")))

@@ -54,7 +54,7 @@
 
 (def ^:private param-specs
   {"subject" {:action :copy :coerce coerce-subject}
-   "expression" {:action :copy}
+   "expression" {:action :copy :required true}
    "parameters" {:action :copy-resource}
    "data" {}
    "dataEndpoint" {}

@@ -37,6 +37,9 @@
   blaze.operation/cql
   {:local/root "modules/operation-cql"}
 
+  blaze.operation/disk-perf
+  {:local/root "modules/operation-disk-perf"}
+
   blaze.operation/graph
   {:local/root "modules/operation-graph"}
 
@@ -198,6 +201,7 @@
     "-d" "modules/jepsen"
     "-d" "modules/job-async-interaction"
     "-d" "modules/job-compact"
+    "-d" "modules/job-disk-perf"
     "-d" "modules/job-re-index"
     "-d" "modules/job-scheduler"
     "-d" "modules/job-test-util"
@@ -213,6 +217,7 @@
     "-d" "modules/operation-code-system-validate-code"
     "-d" "modules/operation-compact"
     "-d" "modules/operation-cql"
+    "-d" "modules/operation-disk-perf"
     "-d" "modules/operation-graphql"
     "-d" "modules/operation-measure-evaluate-measure"
     "-d" "modules/operation-patient-everything"

@@ -6,13 +6,24 @@
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
+
+(deftest async-status-location-test
+  (testing "the Content-Location header contains the async status endpoint URL"
+    (is (= "http://localhost:8080/fhir/__async-status/AAAAAAAAAAAAAAAA"
+           (get-in
+            (handler-util/async-status-location
+             {:status 202}
+             {:context-path "/fhir"}
+             {:blaze/base-url "http://localhost:8080"}
+             {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})
+            [:headers "Content-Location"])))))
 
 (deftest preference-test
   (testing "return"

@@ -164,6 +164,7 @@ jobs:
         - jepsen
         - job-async-interaction
         - job-compact
+        - job-disk-perf
         - job-re-index
         - job-scheduler
         - job-util
@@ -176,6 +177,7 @@ jobs:
         - openid-client
         - operation-code-system-validate-code
         - operation-compact
+        - operation-disk-perf
         - operation-graph
         - operation-graphql
         - operation-measure-evaluate-measure
@@ -2592,6 +2594,9 @@ jobs:
 
     - name: Compact Unknown Database
       run: .github/scripts/compact-unknown-database.sh
+
+    - name: Measure Disk Performance
+      run: .github/scripts/disk-perf.sh
 
   # This test uploads many small transactions in order to show that Blaze can handle many small requests containing
   # chunked payload blazectl uses. Versions of Blaze from 0.13.2 to 0.15.3, starting with the migration to Jetty, had

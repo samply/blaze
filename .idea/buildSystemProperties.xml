@@ -235,6 +235,14 @@
             </ModuleState>
           </value>
         </entry>
+        <entry key="job-disk-perf">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="job-disk-perf" />
+            </ModuleState>
+          </value>
+        </entry>
         <entry key="job-re-index">
           <value>
             <ModuleState>
@@ -360,6 +368,14 @@
             <ModuleState>
               <option name="buildSystemId" value="CLOJURE_DEPS" />
               <option name="displayName" value="operation-cql" />
+            </ModuleState>
+          </value>
+        </entry>
+        <entry key="operation-disk-perf">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="operation-disk-perf" />
             </ModuleState>
           </value>
         </entry>

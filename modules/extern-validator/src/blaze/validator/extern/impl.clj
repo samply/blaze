@@ -4,7 +4,8 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.hash :as hash]
-   [blaze.fhir.spec.type :as type]))
+   [blaze.fhir.spec.type :as type]
+   [blaze.util :refer [conj-vec]]))
 
 (def validation-status-system
   "Code system of the tag added to invalid resources."
@@ -61,12 +62,12 @@
   When `embed-outcome?` is true, additionally embeds `operation-outcome` as a
   contained resource referenced from a meta extension."
   [resource operation-outcome embed-outcome?]
-  (let [meta (update (meta-map (:meta resource)) :tag (fnil conj []) invalid-coding)]
+  (let [meta (update (meta-map (:meta resource)) :tag conj-vec invalid-coding)]
     (if embed-outcome?
       (let [id (outcome-id operation-outcome)]
         (-> resource
-            (assoc :meta (type/meta (update meta :extension (fnil conj []) (outcome-extension id))))
-            (update :contained (fnil conj []) (assoc operation-outcome :id id))))
+            (assoc :meta (type/meta (update meta :extension conj-vec (outcome-extension id))))
+            (update :contained conj-vec (assoc operation-outcome :id id))))
       (assoc resource :meta (type/meta meta)))))
 
 (defn- issue->internal [{:keys [severity code diagnostics expression]}]

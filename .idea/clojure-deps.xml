@@ -34,8 +34,16 @@
           <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/anomaly/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/anomaly/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/async/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/async/resources" />
@@ -70,6 +78,10 @@
           <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/coll/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/coll/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
@@ -84,6 +96,10 @@
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-resource-store/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-stub/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-stub/resources" />
@@ -111,6 +127,10 @@
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/extern-terminology-service/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/extern-validator/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
@@ -154,6 +174,10 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-disk-perf/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/job-prune/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
@@ -190,8 +214,16 @@
           <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-base/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-base/test" />
           <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-test-util/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-test-util/resources" />
@@ -223,6 +255,10 @@
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-cql/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/operation-disk-perf/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
@@ -322,11 +358,23 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/test-util/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/thread-pool-executor-collector/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/util/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/resources" />
+          <option name="type" value="RESOURCE" />
+        </FolderState>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/validator/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
@@ -360,6 +408,7 @@
         <option value="file://$PROJECT_DIR$/modules/db/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/executor/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/extern-terminology-service/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/extern-validator/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/fhir-client/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/fhir-path/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/fhir-structure/deps.edn" />
@@ -369,6 +418,7 @@
         <option value="file://$PROJECT_DIR$/modules/jepsen/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/job-async-interaction/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/job-compact/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/job-disk-perf/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/job-re-index/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/job-scheduler/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/job-test-util/deps.edn" />
@@ -385,6 +435,7 @@
         <option value="file://$PROJECT_DIR$/modules/operation-code-system-validate-code/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-compact/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-cql/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/operation-disk-perf/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-graph/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-graphql/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/operation-measure-evaluate-measure/deps.edn" />
@@ -409,6 +460,7 @@
         <option value="file://$PROJECT_DIR$/modules/test-util/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/thread-pool-executor-collector/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/validator/deps.edn" />
       </set>
     </option>
   </component>

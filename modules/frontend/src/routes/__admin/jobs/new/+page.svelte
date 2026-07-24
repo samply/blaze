@@ -2,7 +2,7 @@
   import { resolve } from '$app/paths';
 
   import Card from '$lib/tailwind/simple-logo-card.svelte';
-  import { CircleStack, MagnifyingGlass } from 'svelte-heros-v2';
+  import { Bolt, CircleStack, MagnifyingGlass } from 'svelte-heros-v2';
 </script>
 
 <svelte:head>
@@ -18,6 +18,9 @@
     </Card>
     <Card href={resolve('/__admin/jobs/new/compact')} title="Compact a Database Column Family">
       <CircleStack class="size-7 text-gray-900 dark:text-gray-100" />
+    </Card>
+    <Card href={resolve('/__admin/jobs/new/disk-perf')} title="Measure Disk Performance">
+      <Bolt class="size-7 text-gray-900 dark:text-gray-100" />
     </Card>
   </ul>
 </main>

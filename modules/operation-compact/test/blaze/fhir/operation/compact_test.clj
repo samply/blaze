@@ -103,7 +103,20 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "invalid"
-          [:issue 0 :diagnostics] := #fhir/string "Missing `database` parameter."))))
+          [:issue 0 :diagnostics] := #fhir/string "Missing required parameter `database`."))))
+
+  (testing "Invalid database parameter"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler {:body (fu/parameters "database" #fhir/code "foo")})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `database`. Should be one of `index`, `transaction` or `resource` but was `foo`."))))
 
   (testing "Missing column-family parameter"
     (with-handler [handler]
@@ -116,7 +129,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "invalid"
-          [:issue 0 :diagnostics] := #fhir/string "Missing `column-family` parameter."))))
+          [:issue 0 :diagnostics] := #fhir/string "Missing required parameter `column-family`."))))
 
   (testing "success"
     (with-handler [handler]

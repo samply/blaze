@@ -217,7 +217,7 @@
      :value #fhir/code "index"}]))
 
 (deftest job-emits-both-canonicals-test
-  (let [job (job-compact/job (time/offset-date-time) "index" "resource-as-of-index")]
+  (let [job (job-compact/job (time/offset-date-time) {:database "index" :column-family "resource-as-of-index"})]
     (testing "meta.profile carries both canonicals, current first"
       (given (:profile (:meta job))
         [0] := #fhir/canonical "https://blaze-server.org/fhir/StructureDefinition/CompactJob"
@@ -248,7 +248,7 @@
     (testing "increment three times, once for each index"
       (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-        @(js/create-job job-scheduler (job-compact/job (time/offset-date-time) "index" "resource-as-of-index"))
+        @(js/create-job job-scheduler (job-compact/job (time/offset-date-time) {:database "index" :column-family "resource-as-of-index"}))
 
         (testing "the job is completed"
           (given @(jtu/pull-job system :completed)
