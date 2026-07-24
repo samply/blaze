@@ -19,7 +19,12 @@
    :exclusions
    [;; replaced via local namespace ring.util.jakarta.servlet
     org.ring-clojure/ring-jakarta-servlet
-    ring/ring-core]}}
+    ring/ring-core]}
+
+  ;; pinned so that Jetty can be updated independently of
+  ;; ring-jetty-adapter releases
+  org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server
+  {:mvn/version "12.1.10"}}
 
  :deps/prep-lib
  {:alias :build
