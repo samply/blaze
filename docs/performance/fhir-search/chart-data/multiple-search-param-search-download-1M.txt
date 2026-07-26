@@ -1,0 +1,8 @@
+| LEA47 | laboratory | 30.9 |
+| LEA47 | vital-signs | 23.0 |
+| LEA58 | laboratory | 36.2 |
+| LEA58 | vital-signs | 56.5 |
+| LEA79 | laboratory | 42.3 |
+| LEA79 | vital-signs | 37.8 |
+| A5N46 | laboratory | 102.6 |
+| A5N46 | vital-signs | 62.7 |
