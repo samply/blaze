@@ -1,6 +1,7 @@
 import type { Theme } from "vitepress";
 import DefaultTheme from "vitepress/theme";
 import BarChart from "./chart/BarChart.vue";
+import LineChart from "./chart/LineChart.vue";
 import "./custom.css";
 
 // The chart components are registered globally so that a chart's `src` is
@@ -10,5 +11,6 @@ export default {
   extends: DefaultTheme,
   enhanceApp({ app }) {
     app.component("BarChart", BarChart);
+    app.component("LineChart", LineChart);
   },
 } satisfies Theme;
