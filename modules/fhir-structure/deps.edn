@@ -41,7 +41,7 @@
     {:mvn/version "1.0.0"}
 
     io.github.clojure/tools.build
-    {:git/tag "v0.10.13" :git/sha "ae52edf"}
+    {:git/tag "v0.10.14" :git/sha "1176afd"}
 
     metosin/jsonista
     {:mvn/version "1.0.0"}}
