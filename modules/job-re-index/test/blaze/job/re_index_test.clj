@@ -510,93 +510,112 @@
             [2 resources-processed] := #fhir/unsignedInt 10000
             [3 resources-processed] := #fhir/unsignedInt 10000))))))
 
+(defn- blocking-re-index [lock-1 lock-2 re-index]
+  (fn
+    ([db search-param-url]
+     (when (deref lock-1 10000 nil)
+       (re-index db search-param-url)))
+    ([db search-param-url start-type start-id]
+     (when (deref lock-2 10000 nil)
+       (re-index db search-param-url start-type start-id)))))
+
 (deftest job-execution-with-pause-test
   (testing "resume from started state"
-    (with-system-data [{:blaze/keys [job-scheduler] :as system} never-increment-config]
-      [(gen-tx-data 60001)]
+    (let [lock (promise)]
+      (log/set-min-level! :info)
+      (with-redefs [d/re-index (blocking-re-index lock lock d/re-index)]
+        (with-system-data [{:blaze/keys [job-scheduler] :as system} never-increment-config]
+          [(gen-tx-data 10001)]
 
-      @(js/create-job job-scheduler job-clinical-code)
+          @(js/create-job job-scheduler job-clinical-code)
 
-      @(jtu/pull-job system :in-progress/started)
+          @(jtu/pull-job system :in-progress/started)
 
-      (given @(js/pause-job job-scheduler (job-id job-scheduler))
-        :fhir/type := :fhir/Task
-        job-util/job-number := "1"
-        jtu/combined-status := :on-hold/paused)
+          (given @(js/pause-job job-scheduler (job-id job-scheduler))
+            :fhir/type := :fhir/Task
+            job-util/job-number := "1"
+            jtu/combined-status := :on-hold/paused)
 
-      (given @(js/resume-job job-scheduler (job-id job-scheduler))
-        :fhir/type := :fhir/Task
-        job-util/job-number := "1"
-        jtu/combined-status := :in-progress/resumed)
+          (deliver lock true)
 
-      (testing "the job is completed"
-        (given @(jtu/pull-job system :completed)
-          :fhir/type := :fhir/Task
-          job-util/job-number := "1"
-          jtu/combined-status := :completed
-          total-resources := #fhir/unsignedInt 60001
-          resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value :fhir/type] := :fhir/decimal
-          [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
-          [processing-duration :unit] := #fhir/string "s"
-          [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
-          [processing-duration :code] := #fhir/code "s"))
+          (given @(js/resume-job job-scheduler (job-id job-scheduler))
+            :fhir/type := :fhir/Task
+            job-util/job-number := "1"
+            jtu/combined-status := :in-progress/resumed)
 
-      (testing "job history"
-        (given @(jtu/pull-job-history system)
-          count := 5
+          (testing "the job is completed"
+            (given @(jtu/pull-job system :completed)
+              :fhir/type := :fhir/Task
+              job-util/job-number := "1"
+              jtu/combined-status := :completed
+              total-resources := #fhir/unsignedInt 10001
+              resources-processed := #fhir/unsignedInt 10001
+              [processing-duration :value :fhir/type] := :fhir/decimal
+              [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
+              [processing-duration :unit] := #fhir/string "s"
+              [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
+              [processing-duration :code] := #fhir/code "s"))
 
-          [0 jtu/combined-status] := :ready
-          [1 jtu/combined-status] := :in-progress/started
-          [2 jtu/combined-status] := :on-hold/paused
-          [3 jtu/combined-status] := :in-progress/resumed
-          [4 jtu/combined-status] := :completed
+          (testing "job history"
+            (given @(jtu/pull-job-history system)
+              count := 5
 
-          [0 total-resources] := nil
-          [1 total-resources] := #fhir/unsignedInt 60001
-          [2 total-resources] := #fhir/unsignedInt 60001
-          [3 total-resources] := #fhir/unsignedInt 60001
-          [4 total-resources] := #fhir/unsignedInt 60001
+              [0 jtu/combined-status] := :ready
+              [1 jtu/combined-status] := :in-progress/started
+              [2 jtu/combined-status] := :on-hold/paused
+              [3 jtu/combined-status] := :in-progress/resumed
+              [4 jtu/combined-status] := :completed
 
-          [0 resources-processed] := nil
-          [1 resources-processed] := #fhir/unsignedInt 0
-          [2 resources-processed] := #fhir/unsignedInt 0
-          [3 resources-processed] := #fhir/unsignedInt 0
-          [4 resources-processed] := #fhir/unsignedInt 60001))))
+              [0 total-resources] := nil
+              [1 total-resources] := #fhir/unsignedInt 10001
+              [2 total-resources] := #fhir/unsignedInt 10001
+              [3 total-resources] := #fhir/unsignedInt 10001
+              [4 total-resources] := #fhir/unsignedInt 10001
+
+              [0 resources-processed] := nil
+              [1 resources-processed] := #fhir/unsignedInt 0
+              [2 resources-processed] := #fhir/unsignedInt 0
+              [3 resources-processed] := #fhir/unsignedInt 0
+              [4 resources-processed] := #fhir/unsignedInt 10001))))))
 
   (testing "resume from incremented state"
-    (with-system-data [{:blaze/keys [job-scheduler] :as system} config]
-      [(gen-tx-data 60001)]
+    (let [lock-1 (deliver (promise) true)
+          lock-2 (promise)]
+      (with-redefs [d/re-index (blocking-re-index lock-1 lock-2 d/re-index)]
+        (with-system-data [{:blaze/keys [job-scheduler] :as system} config]
+          [(gen-tx-data 20001)]
 
-      @(js/create-job job-scheduler job-clinical-code)
+          @(js/create-job job-scheduler job-clinical-code)
 
-      @(jtu/pull-job system :in-progress/incremented)
+          @(jtu/pull-job system :in-progress/incremented)
 
-      (given @(js/pause-job job-scheduler (job-id job-scheduler))
-        :fhir/type := :fhir/Task
-        job-util/job-number := "1"
-        jtu/combined-status := :on-hold/paused)
+          (given @(js/pause-job job-scheduler (job-id job-scheduler))
+            :fhir/type := :fhir/Task
+            job-util/job-number := "1"
+            jtu/combined-status := :on-hold/paused)
 
-      (given @(js/resume-job job-scheduler (job-id job-scheduler))
-        :fhir/type := :fhir/Task
-        job-util/job-number := "1"
-        jtu/combined-status := :in-progress/resumed)
+          (deliver lock-2 true)
 
-      (testing "the job is completed"
-        (given @(jtu/pull-job system :completed)
-          :fhir/type := :fhir/Task
-          job-util/job-number := "1"
-          jtu/combined-status := :completed
-          total-resources := #fhir/unsignedInt 60001
-          resources-processed := #fhir/unsignedInt 60001
-          [processing-duration :value :fhir/type] := :fhir/decimal
-          [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
-          [processing-duration :unit] := #fhir/string "s"
-          [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
-          [processing-duration :code] := #fhir/code "s"))
+          (given @(js/resume-job job-scheduler (job-id job-scheduler))
+            :fhir/type := :fhir/Task
+            job-util/job-number := "1"
+            jtu/combined-status := :in-progress/resumed)
 
-      (testing "job history"
-        (given @(jtu/pull-job-history system)
-          [0 jtu/combined-status] := :ready
-          [1 jtu/combined-status] := :in-progress/started
-          [2 jtu/combined-status] := :in-progress/incremented)))))
+          (testing "the job is completed"
+            (given @(jtu/pull-job system :completed)
+              :fhir/type := :fhir/Task
+              job-util/job-number := "1"
+              jtu/combined-status := :completed
+              total-resources := #fhir/unsignedInt 20001
+              resources-processed := #fhir/unsignedInt 20001
+              [processing-duration :value :fhir/type] := :fhir/decimal
+              [processing-duration :value :value] :? #(and (decimal? %) (pos? %))
+              [processing-duration :unit] := #fhir/string "s"
+              [processing-duration :system] := #fhir/uri "http://unitsofmeasure.org"
+              [processing-duration :code] := #fhir/code "s"))
+
+          (testing "job history"
+            (given @(jtu/pull-job-history system)
+              [0 jtu/combined-status] := :ready
+              [1 jtu/combined-status] := :in-progress/started
+              [2 jtu/combined-status] := :in-progress/incremented)))))))
