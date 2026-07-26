@@ -1,28 +1,30 @@
 #!/bin/bash
-# Generates the gnuplot data files (*.txt) for the FHIR Search download charts
-# directly from the tables in ../fhir-search.md. This keeps the markdown the
-# single source of truth: edit the tables there, then run plot.sh to regenerate
-# the data files and the charts.
+# Generates the data files (*.txt) for the FHIR Search download charts directly
+# from the tables in ../fhir-search.md. This keeps the markdown the single
+# source of truth: edit the tables there, run this script and commit the
+# regenerated files.
 #
-# The data files are derived artifacts and are not committed; plot.sh generates
-# them into a temporary directory. Usage: gen-chart-data.sh [output-dir]
-# (the output directory defaults to the current directory).
+# The generated files are committed because the charts are rendered from them
+# by docs/.vitepress/theme/chart at build time. Usage:
+# gen-chart-data.sh [output-dir] (the output directory defaults to chart-data).
 #
 # Each data file row has the form
 #
 #   | <System> | <Series> | <Resources/s in k> |
 #
-# ordered system-major (so a chart with N series can slice it with `every N`).
+# ordered system-major (so a chart with N series can slice it with `:series`).
 # The value is the numeric part of the "Res/s" column in thousands (the " k"
 # suffix is stripped).
 set -euo pipefail
 
-outdir="${1:-.}"
-mkdir -p "$outdir"
-outdir="$(cd "$outdir" && pwd)"
-
+# Resolve the output directory relative to this script, so that the default
+# lands next to it no matter where the script is called from.
 cd "$(dirname "$(readlink -f "$0")")"
 md="../fhir-search.md"
+
+outdir="${1:-chart-data}"
+mkdir -p "$outdir"
+outdir="$(cd "$outdir" && pwd)"
 
 # extract-rows <section-title>
 # Prints the body rows of the (non-_elements) "Downloading Resources" table of

@@ -72,7 +72,11 @@ The script `simple-code-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/simple-code-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/simple-code-search-download-1M.txt"
+  title="Simple Code Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="150"
+  :series="['0.2 % hits', '2 % hits', '5 % hits']" />
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
@@ -158,7 +162,11 @@ The script `multiple-codes-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/multiple-codes-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/multiple-codes-search-download-1M.txt"
+  title="Multiple Codes Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="110"
+  :series="['10 codes', '100 codes']" />
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
@@ -195,7 +203,11 @@ The script `multiple-codes-search-vs.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/multiple-codes-search-vs-download-1M.png)
+<BarChart src="fhir-search/chart-data/multiple-codes-search-vs-download-1M.txt"
+  title="Multiple Codes Search – ValueSet - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="140"
+  :series="['10 codes', '100 codes']" />
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
@@ -236,7 +248,11 @@ The script `observation-final-category-multiple-codes-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/multiple-search-param-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/multiple-search-param-search-download-1M.txt"
+  title="Multiple Search Param Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="110"
+  :series="['laboratory', 'vital-signs']" />
 
 | System | Dataset | Category    | Codes | # Hits | Time (s) |  StdDev | Res/s ¹ |
 |--------|---------|-------------|------:|-------:|---------:|--------:|--------:|
@@ -312,7 +328,11 @@ The script `token-forward-chaining-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/token-forward-chaining-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/token-forward-chaining-search-download-1M.txt"
+  title="Token and Forward Chaining Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="30"
+  :series="['32 k hits']" />
 
 | System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------:|---------:|-------:|--------:|
@@ -345,7 +365,11 @@ The script `code-value-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/code-value-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/code-value-search-download-1M.txt"
+  title="Code and Value Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="50"
+  :series="['value 26.8', 'value 79.5', 'value 183']" />
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev |  Res/s ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|---------:|
@@ -533,7 +557,11 @@ The script `code-patient-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/code-patient-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/code-patient-search-download-1M.txt"
+  title="Code and Patient Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="140"
+  :series="['8310-5', '55758-7', '72514-3']" />
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
@@ -613,7 +641,11 @@ The script `multiple-codes-patient-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/multiple-codes-patient-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/multiple-codes-patient-search-download-1M.txt"
+  title="Multiple Codes and Patient Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="130"
+  :series="['10 codes', '100 codes']" />
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|------:|-------:|---------:|-------:|--------:|
@@ -662,7 +694,11 @@ The script `code-date-patient-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/code-date-patient-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/code-date-patient-search-download-1M.txt"
+  title="Code, Date, and Patient Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="40"
+  :series="['8310-5', '55758-7', '72514-3']" />
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
@@ -727,7 +763,11 @@ The script `simple-date-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/simple-date-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/simple-date-search-download-1M.txt"
+  title="Simple Date Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="130"
+  :series="['2013', '2019']" />
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|------|-------:|---------:|-------:|--------:|
@@ -800,7 +840,11 @@ The script `patient-date-search.sh` is used.
 
 ### Downloading Resources
 
-![](fhir-search/patient-date-search-download-1M.png)
+<BarChart src="fhir-search/chart-data/patient-date-search-download-1M.txt"
+  title="Patient Date Search - Download - Dataset 1M"
+  x-label="System" :x-col="2"
+  y-label="Resources/s" :y-col="4" :y-max="70"
+  :series="['gt', 'ge', 'lt', 'le']" />
 
 | System | Dataset | Date         | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|--------------|-------:|---------:|-------:|--------:|
