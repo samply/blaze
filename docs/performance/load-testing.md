@@ -32,7 +32,7 @@ Each test is a k6 script in the `load-testing` directory and is run via the `Mak
 BASE=http://localhost:8080/fhir k6 run transaction.js
 ```
 
-The optional `DURATION` environment variable (default 60 s) sets how long each concurrency level runs. Running `make` additionally renders the result plots with [gnuplot][2].
+The optional `DURATION` environment variable (default 60 s) sets how long each concurrency level runs.
 
 ## Single Patient Reads
 
@@ -64,7 +64,7 @@ The optional `DURATION` environment variable (default 60 s) sets how long each c
 
 ## Transaction
 
-This write test measures the throughput and latency of small [FHIR transactions][3].
+This write test measures the throughput and latency of small [FHIR transactions][2].
 
 The [`transaction.js`](load-testing/transaction.js) script repeatedly `POST`s a small transaction bundle to the FHIR base URL. Each bundle creates one Patient and one Observation, where the Observation references the Patient via a bundle-internal URN, so reference resolution is exercised as well. The Patient's birthDate and the Observation's systolic blood pressure are randomized per transaction, so the date and quantity search-param indices see a realistic spread of values instead of a single repeated entry. New resources are created on every request, so the database grows over the course of the run.
 
@@ -93,12 +93,15 @@ At high concurrency LEA47 plateaus around 450 transactions/s — close to its me
 
 LEA47:
 
-![](load-testing/plots/transaction-LEA47.png)
+<LineChart src="load-testing/data/transaction-LEA47.csv"
+  title="Transaction (LEA47)"
+  x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
 
 LEA79:
 
-![](load-testing/plots/transaction-LEA79.png)
+<LineChart src="load-testing/data/transaction-LEA79.csv"
+  title="Transaction (LEA79)"
+  x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
 
 [1]: <https://k6.io>
-[2]: <http://www.gnuplot.info>
-[3]: <https://www.hl7.org/fhir/http.html#transaction>
+[2]: <https://www.hl7.org/fhir/http.html#transaction>
