@@ -2,7 +2,11 @@
 
 In this section, CQL Queries for selecting patients which have observation resources with code 718-7 (Hemoglobin), date between 2015 and 2019 and age of patient at observation date below 18.
 
-![](code-date-age-search-100k.png)
+<BarChart src="cql/code-date-age-search-100k.txt"
+  title="Code, Date and Age Search - Dataset 100k"
+  x-label="System" :x-col="3"
+  y-label="Patients/s" :y-col="8"
+  :series="['hemoglobin', 'calcium']" />
 
 ### Data
 

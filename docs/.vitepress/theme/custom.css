@@ -1,0 +1,131 @@
+/*
+ * Performance charts.
+ *
+ * The series colors are custom properties rather than attributes on the marks,
+ * so the VitePress theme toggle restyles a chart instantly without the
+ * components knowing which mode they are in.
+ *
+ * Every ramp is ordinal — the series these charts show are 2 %/60 %/100 % hits
+ * and median/p95/p99, which are ordered, not merely different. So each is a
+ * single hue running light to dark, with the steps chosen per series count and
+ * validated for lightness spacing and contrast against the surface of the mode
+ * they are used in (--vp-c-bg is #ffffff in light and #1b1b1f in dark).
+ */
+:root {
+  --blaze-chart-bar-1-1: #2a78d6;
+
+  --blaze-chart-bar-2-1: #86b6ef;
+  --blaze-chart-bar-2-2: #1c5cab;
+
+  --blaze-chart-bar-3-1: #86b6ef;
+  --blaze-chart-bar-3-2: #3987e5;
+  --blaze-chart-bar-3-3: #1c5cab;
+
+  --blaze-chart-bar-4-1: #86b6ef;
+  --blaze-chart-bar-4-2: #5598e7;
+  --blaze-chart-bar-4-3: #2a78d6;
+  --blaze-chart-bar-4-4: #1c5cab;
+
+  /*
+   * The line charts carry two quantities on two axes. Hue tells the reader
+   * which axis a curve belongs to: the throughput on the left axis is blue,
+   * the ordered processing times on the right axis are one orange ramp. The
+   * steps are darker than the bar ramps because a 2px stroke needs more
+   * contrast than a 24px bar to clear the surface.
+   */
+  --blaze-chart-line-y1: #2a78d6;
+  --blaze-chart-line-y2-1: #e2691f;
+  --blaze-chart-line-y2-2: #b8500f;
+  --blaze-chart-line-y2-3: #7d3409;
+}
+
+.dark {
+  --blaze-chart-bar-1-1: #3987e5;
+
+  --blaze-chart-bar-2-1: #b7d3f6;
+  --blaze-chart-bar-2-2: #184f95;
+
+  --blaze-chart-bar-3-1: #b7d3f6;
+  --blaze-chart-bar-3-2: #5598e7;
+  --blaze-chart-bar-3-3: #184f95;
+
+  --blaze-chart-bar-4-1: #b7d3f6;
+  --blaze-chart-bar-4-2: #6da7ec;
+  --blaze-chart-bar-4-3: #2a78d6;
+  --blaze-chart-bar-4-4: #184f95;
+
+  --blaze-chart-line-y1: #3987e5;
+  --blaze-chart-line-y2-1: #f7c3a4;
+  --blaze-chart-line-y2-2: #e8763f;
+  --blaze-chart-line-y2-3: #c0561a;
+}
+
+/*
+ * The 4:3 aspect ratio the charts are laid out in is declared here as well, so
+ * their height is known before the SVG is parsed and nothing on the page shifts
+ * while it loads.
+ */
+.blaze-chart {
+  margin: 24px 0;
+}
+
+.blaze-chart svg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: visible;
+}
+
+/* Text belongs to the page, not to a series — it never wears a series color. */
+.blaze-chart-title {
+  fill: var(--vp-c-text-1);
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.blaze-chart-subtitle,
+.blaze-chart-tick {
+  fill: var(--vp-c-text-2);
+}
+
+.blaze-chart-subtitle {
+  text-anchor: middle;
+}
+
+.blaze-chart-label {
+  fill: var(--vp-c-text-1);
+}
+
+.blaze-chart-legend text {
+  fill: var(--vp-c-text-1);
+  dominant-baseline: middle;
+}
+
+.blaze-chart-grid line {
+  stroke: var(--vp-c-divider);
+  stroke-width: 1;
+}
+
+.blaze-chart-axis {
+  stroke: var(--vp-c-text-3);
+  stroke-width: 1;
+}
+
+/* A 2px surface-colored ring keeps overlapping markers readable. */
+.blaze-chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.blaze-chart-marker {
+  stroke: var(--vp-c-bg);
+  stroke-width: 2;
+}
+
+@media print {
+  .blaze-chart {
+    break-inside: avoid;
+  }
+}

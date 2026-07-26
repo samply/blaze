@@ -2,7 +2,11 @@
 
 In this section, CQL Queries for selecting patients which have Condition resources with one of two codes used.
 
-![](double-code-search-100k.png)
+<BarChart src="cql/double-code-search-100k.txt"
+  title="Double Code Search - Dataset 100k"
+  x-label="System" :x-col="3"
+  y-label="Patients/s" :y-col="7"
+  :series="['9 k hits']" />
 
 ### Data
 
