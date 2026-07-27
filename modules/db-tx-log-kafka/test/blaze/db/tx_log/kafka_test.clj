@@ -321,13 +321,9 @@
 
 (deftest last-t-executor-shutdown-timeout-test
   (let [{::kafka/keys [last-t-executor] :as system}
-        (ig/init {::kafka/last-t-executor {}})]
-
-    ;; will produce a timeout, because the function runs 11 seconds
-    (ex/execute! last-t-executor #(Thread/sleep 11000))
-
-    ;; ensure that the function is called before the scheduler is halted
-    (Thread/sleep 100)
+        (ig/init {::kafka/last-t-executor {}})
+        ;; blocks until released, so halting the system produces a timeout
+        release! (tu/submit-blocking-task! #(ex/execute! last-t-executor %))]
 
     (ig/halt! system)
 
@@ -335,4 +331,7 @@
     (is (ex/shutdown? last-t-executor))
 
     ;; but it isn't terminated yet
-    (is (not (ex/terminated? last-t-executor)))))
+    (is (not (ex/terminated? last-t-executor)))
+
+    ;; release the blocking task, so its thread is freed
+    (release!)))

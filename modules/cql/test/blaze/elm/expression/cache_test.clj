@@ -20,6 +20,7 @@
    [blaze.fhir.test-util :refer [run-all!]]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -106,13 +107,9 @@
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest executor-shutdown-timeout-test
-  (let [{::ec/keys [executor] :as system} (ig/init {::ec/executor {}})]
-
-    ;; will produce a timeout, because the function runs 11 seconds
-    (ex/execute! executor #(Thread/sleep 11000))
-
-    ;; ensure that the function is called before the scheduler is halted
-    (Thread/sleep 100)
+  (let [{::ec/keys [executor] :as system} (ig/init {::ec/executor {}})
+        ;; blocks until released, so halting the system produces a timeout
+        release! (tu/submit-blocking-task! #(ex/execute! executor %))]
 
     (ig/halt! system)
 
@@ -120,7 +117,10 @@
     (is (ex/shutdown? executor))
 
     ;; but it isn't terminated yet
-    (is (not (ex/terminated? executor)))))
+    (is (not (ex/terminated? executor)))
+
+    ;; release the blocking task, so its thread is freed
+    (release!)))
 
 (deftest bloom-filter-creation-duration-seconds-collector-init-test
   (with-system [{collector ::ec/bloom-filter-creation-duration-seconds} {::ec/bloom-filter-creation-duration-seconds {}}]

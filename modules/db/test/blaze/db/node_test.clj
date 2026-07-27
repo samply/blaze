@@ -326,13 +326,9 @@
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::node/keys [indexer-executor] :as system}
-        (ig/init {::node/indexer-executor {}})]
-
-    ;; will produce a timeout, because the function runs 11 seconds
-    (ex/execute! indexer-executor #(Thread/sleep 11000))
-
-    ;; ensure that the function is called before the scheduler is halted
-    (Thread/sleep 100)
+        (ig/init {::node/indexer-executor {}})
+        ;; blocks until released, so halting the system produces a timeout
+        release! (tu/submit-blocking-task! #(ex/execute! indexer-executor %))]
 
     (ig/halt! system)
 
@@ -340,7 +336,10 @@
     (is (ex/shutdown? indexer-executor))
 
     ;; but it isn't terminated yet
-    (is (not (ex/terminated? indexer-executor)))))
+    (is (not (ex/terminated? indexer-executor)))
+
+    ;; release the blocking task, so its thread is freed
+    (release!)))
 
 (deftest existing-data-without-version
   (with-system [{:blaze.db/keys [node]} (with-index-store-version config nil)]
