@@ -8,6 +8,7 @@
    [blaze.openid-client.token-provider.spec]
    [blaze.scheduler :as sched]
    [blaze.scheduler.spec]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [hato.client :as hc]
@@ -39,7 +40,7 @@
                                     :as :json}))]
       {:token (:access_token response)
        :expires-at (when-let [expires-in (:expires_in response)]
-                     (time/plus (time/instant) (time/seconds (long expires-in))))})
+                     (time/plus (bt/instant) (time/seconds (long expires-in))))})
     (catch Throwable _
       (ba/fault (str "Error while obtaining a token from: " token-endpoint)))))
 

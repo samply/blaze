@@ -24,10 +24,10 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.protocols :as p]
+   [blaze.time :as bt]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
 (st/instrument)
@@ -123,7 +123,7 @@
 ;; The third argument is expected to be a CodeSystem, allowing references to 
 ;; code systems to be preserved as references.
 (defn- eval-context [db]
-  {:db db :now (time/offset-date-time)
+  {:db db :now (bt/offset-date-time)
    :parameters {"nil" nil "code-115927" "code-115927"}})
 
 (deftest compile-in-code-system-test

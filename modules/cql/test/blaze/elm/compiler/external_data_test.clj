@@ -22,11 +22,11 @@
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
+   [blaze.time :as bt]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
 (st/instrument)
@@ -44,7 +44,7 @@
   {:node node :terminology-service local})
 
 (defn- eval-context [db]
-  {:db db :now (time/offset-date-time)})
+  {:db db :now (bt/offset-date-time)})
 
 ;; 11.1. Retrieve
 ;;

@@ -10,9 +10,9 @@
    [blaze.job.disk-perf.spec]
    [blaze.module :as m]
    [blaze.spec]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
@@ -54,7 +54,7 @@
   (fn [{:keys [body] :blaze/keys [job-scheduler] :as request}]
     (if-ok [parameters (parameters body)
             params (fu/coerce-params param-specs parameters)]
-      (let [authored-on (time/offset-date-time clock)]
+      (let [authored-on (bt/offset-date-time clock)]
         (log/debug "Initiate async response...")
         (do-sync [job (js/create-job job-scheduler (job-disk-perf/job authored-on params))]
           (-> (ring/status 202)

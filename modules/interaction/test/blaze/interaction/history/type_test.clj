@@ -23,12 +23,12 @@
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
    [taoensso.timbre :as log]))
@@ -455,7 +455,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
       (Thread/sleep 2000)
-      (let [after-init (time/instant system-clock)
+      (let [after-init (bt/instant system-clock)
             handler (wrap-middleware handler node page-id-cipher)]
 
         (Thread/sleep 2000)

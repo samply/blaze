@@ -15,11 +15,11 @@
    [blaze.handler.util :as handler-util]
    [blaze.job.async-interaction.request :as req]
    [blaze.module :as m :refer [reg-collector]]
+   [blaze.time :as bt]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [prometheus.alpha :as prom]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
@@ -194,7 +194,7 @@
    :parameter (into [] parameter-xf values)})
 
 (defn- eval-context [{:keys [clock] :as context}]
-  (assoc context :now (time/offset-date-time clock)))
+  (assoc context :now (bt/offset-date-time clock)))
 
 (defn- missing-subject-msg [type id]
   (format "Subject with type `%s` and id `%s` was not found." type id))

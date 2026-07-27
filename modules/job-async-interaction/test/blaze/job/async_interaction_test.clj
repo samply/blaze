@@ -30,6 +30,7 @@
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -46,7 +47,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (deftest job-emits-both-canonicals-test
-  (let [job (job-async/job (time/offset-date-time) "bundle-id" 42)]
+  (let [job (job-async/job (bt/offset-date-time) "bundle-id" 42)]
     (testing "meta.profile carries both canonicals, current first"
       (given (:profile (:meta job))
         [0] := #fhir/canonical "https://blaze-server.org/fhir/StructureDefinition/AsyncInteractionJob"

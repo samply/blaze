@@ -9,6 +9,7 @@
    [blaze.job.re-index.spec]
    [blaze.job.util :as job-util]
    [blaze.module :as m]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]
@@ -83,7 +84,7 @@
   (-> (job-util/output-value job output-system "next-resource") :value))
 
 (defn- instant [clock]
-  (.atOffset (time/instant clock) ZoneOffset/UTC))
+  (.atOffset (bt/instant clock) ZoneOffset/UTC))
 
 (defn- elapsed [clock job]
   (-> (time/duration (-> job :meta :lastUpdated :value) (instant clock))

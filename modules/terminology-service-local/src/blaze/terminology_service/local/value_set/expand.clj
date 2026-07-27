@@ -9,10 +9,10 @@
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.value-set :as vs]
    [blaze.terminology-service.local.value-set.util :as vs-u]
+   [blaze.time :as bt]
    [blaze.util :refer [str]]
    [clojure.set :as set]
-   [cognitect.anomalies :as anom]
-   [java-time.api :as time]))
+   [cognitect.anomalies :as anom]))
 
 (set! *warn-on-reflection* true)
 
@@ -143,7 +143,7 @@
   (cond->
    {:fhir/type :fhir.ValueSet/expansion
     :identifier (type/uri (str "urn:uuid:" (random-uuid)))
-    :timestamp (type/dateTime (time/offset-date-time clock))
+    :timestamp (type/dateTime (bt/offset-date-time clock))
     :total (type/integer (clojure.core/count concepts))
     :parameter (append-params parameters params)}
     (seq properties) (assoc :property (append-properties properties))

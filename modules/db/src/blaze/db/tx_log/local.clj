@@ -21,6 +21,7 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local.codec :as codec]
    [blaze.module :as m :refer [reg-collector]]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -83,7 +84,7 @@
   to store transaction data in order."
   [kv-store clock state tx-cmds local-payload]
   (let [{:keys [t]} (swap! state update :t inc)
-        tx-data {:t t :instant (time/instant clock) :tx-cmds tx-cmds}]
+        tx-data {:t t :instant (bt/instant clock) :tx-cmds tx-cmds}]
     (store-tx-data! kv-store tx-data)
     (await-space! state)
     (let [tx-data (assoc-local-payload tx-data local-payload)

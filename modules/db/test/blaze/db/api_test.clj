@@ -31,6 +31,7 @@
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.terminology-service :as ts]
    [blaze.test-util :as tu :refer [satisfies-prop]]
+   [blaze.time :as bt]
    [clojure.math.combinatorics :as combo]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -1836,7 +1837,7 @@
     (with-system [{:blaze.db/keys [node] :blaze.test/keys [step-clock]} step-clock-config]
 
       ;; take one tick from the clock so that the first transaction happens on epoch + 1
-      (time/offset-date-time step-clock)
+      (bt/offset-date-time step-clock)
 
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]])
 
@@ -1900,7 +1901,7 @@
     (with-system [{:blaze.db/keys [node] :blaze.test/keys [step-clock]} step-clock-config]
 
       ;; take one tick from the clock so that the first transaction happens on epoch + 1
-      (time/offset-date-time step-clock)
+      (bt/offset-date-time step-clock)
 
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
@@ -10527,7 +10528,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (Thread/sleep 2000)
-      (let [since (time/instant system-clock)
+      (let [since (bt/instant system-clock)
             _ (Thread/sleep 2000)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                          :active #fhir/boolean true}]])]
@@ -10674,7 +10675,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (Thread/sleep 200)
-      (let [since (time/instant system-clock)
+      (let [since (bt/instant system-clock)
             _ (Thread/sleep 200)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 
@@ -10834,7 +10835,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (Thread/sleep 200)
-      (let [since (time/instant system-clock)
+      (let [since (bt/instant system-clock)
             _ (Thread/sleep 200)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 

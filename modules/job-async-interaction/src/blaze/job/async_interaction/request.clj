@@ -7,9 +7,9 @@
    [blaze.job-scheduler :as js]
    [blaze.job.async-interaction :as job-async]
    [blaze.module :as m]
+   [blaze.time :as bt]
    [blaze.util :refer [str]]
    [clojure.string :as str]
-   [java-time.api :as time]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
@@ -34,7 +34,7 @@
   {:arglists '([context request])}
   [{:keys [context-path clock] :or {context-path ""} :as context}
    {:blaze/keys [job-scheduler db] :as request}]
-  (let [authored-on (time/offset-date-time clock)
+  (let [authored-on (bt/offset-date-time clock)
         bundle-id (m/luid context)]
     (log/debug "Initiate async response...")
     (do-sync [job (js/create-job job-scheduler

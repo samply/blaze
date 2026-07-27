@@ -87,6 +87,7 @@
     blaze.scheduler sched
     blaze.terminology-service ts
     blaze.test-util tu
+    blaze.time bt
     blaze.util u
     blaze.util.clauses uc
     buddy.auth auth
@@ -99,6 +100,7 @@
     clojure.test.check.generators gen
     clojure.test.check.properties prop
     integrant.core ig
+    java-time.api time
     jsonista.core j
     prometheus.alpha prom
     reitit.core reitit

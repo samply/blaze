@@ -10,12 +10,12 @@
    [blaze.elm.expression-spec]
    [blaze.elm.normalizer :as normalizer]
    [blaze.elm.protocols :as p]
+   [blaze.time :as bt]
    [clojure.data.xml :as xml]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
-   [clojure.test :as test :refer [deftest is testing]]
-   [java-time.api :as time]))
+   [clojure.test :as test :refer [deftest is testing]]))
 
 (st/instrument)
 
@@ -85,7 +85,7 @@
          `(testing ~name
             ~@(for [{:keys [name expression invalid? output]} tests]
                 `(testing ~name
-                   (let [~'now (time/offset-date-time)]
+                   (let [~'now (bt/offset-date-time)]
                      ~(if invalid?
                         `(is (~'thrown? Exception (eval ~'now ~expression)))
                         `(is
