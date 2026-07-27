@@ -11,7 +11,10 @@
 
    :extra-deps
    {blaze/module-test-util
-    {:local/root "../module-test-util"}}}
+    {:local/root "../module-test-util"}
+
+    blaze/scheduler-test-util
+    {:local/root "../scheduler-test-util"}}}
 
   :kaocha
   {:extra-deps

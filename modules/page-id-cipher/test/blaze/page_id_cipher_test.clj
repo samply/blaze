@@ -19,6 +19,7 @@
    [blaze.page-id-cipher]
    [blaze.page-id-cipher.spec]
    [blaze.scheduler.spec]
+   [blaze.scheduler.test-util :as stu]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
@@ -43,7 +44,7 @@
 (def config
   {:blaze/page-id-cipher
    {:node (ig/ref :blaze.db.admin/node)
-    :scheduler (ig/ref :blaze/scheduler)
+    :scheduler (ig/ref :blaze.test/manual-scheduler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :key-rotation-period (time/seconds 1)}
@@ -129,6 +130,8 @@
 
    :blaze/scheduler {}
 
+   :blaze.test/manual-scheduler {}
+
    :blaze.test/fixed-clock {}
 
    :blaze.test/fixed-rng-fn {}})
@@ -200,11 +203,21 @@
       (is (s/valid? :blaze/page-id-cipher page-id-cipher)))))
 
 (deftest key-rotation-test
-  (with-system [{:blaze/keys [page-id-cipher]} config]
-    (Thread/sleep 1500)
-    (given (datafy/datafy (:key-set-handle @(:state page-id-cipher)))
-      count := 2
-      [0 :primary] := true
-      [0 :status] := :key.status/enabled
-      [1 :primary] := false
-      [1 :status] := :key.status/enabled)))
+  (with-system [{:blaze/keys [page-id-cipher]
+                 :blaze.test/keys [manual-scheduler]} config]
+    ;; the rotated key set is published back into the cipher state asynchronously
+    (let [rotated-state (promise)]
+      (add-watch (:state page-id-cipher) ::rotated
+                 (fn [_ _ _ new-state] (deliver rotated-state new-state)))
+
+      (stu/tick! manual-scheduler)
+
+      (let [state (deref rotated-state 10000 ::timeout)]
+        (is (not= ::timeout state))
+
+        (given (datafy/datafy (:key-set-handle state))
+          count := 2
+          [0 :primary] := true
+          [0 :status] := :key.status/enabled
+          [1 :primary] := false
+          [1 :status] := :key.status/enabled)))))

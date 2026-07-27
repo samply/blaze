@@ -32,6 +32,7 @@
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.scheduler.spec]
+   [blaze.scheduler.test-util :as stu]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -349,11 +350,19 @@
   (with-system [{:blaze.db/keys [node]} (with-index-store-version config 0)]
     (is node)))
 
+(def ^:private manual-scheduler-config
+  (-> (assoc-in config [:blaze.db/node :scheduler] (ig/ref :blaze.test/manual-scheduler))
+      (assoc :blaze.test/manual-scheduler {})))
+
 (deftest patient-last-change-index-state-test
   (testing "the state is set to current on a fresh start of the node"
-    (with-system [{:blaze.db/keys [node]} config]
-      ;; Wait for index building finished
-      (Thread/sleep 100)
+    (with-system [{:blaze.db/keys [node]
+                   :blaze.test/keys [manual-scheduler]} manual-scheduler-config]
+      (testing "the index is still building before the submitted task runs"
+        (given (plc/state (:kv-store node))
+          :type := :building))
+
+      (stu/run-all! manual-scheduler)
 
       (given (plc/state (:kv-store node))
         :type := :current))))

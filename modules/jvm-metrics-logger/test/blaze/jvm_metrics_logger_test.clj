@@ -4,6 +4,7 @@
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.scheduler.spec]
+   [blaze.scheduler.test-util :as stu]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -59,24 +60,21 @@
     (with-system [system config]
       (is (some? (get system :blaze/jvm-metrics-logger))))))
 
+(defn- manual-scheduler-config [warn-threshold]
+  {:blaze/jvm-metrics-logger
+   {:scheduler (ig/ref :blaze.test/manual-scheduler)
+    :interval (time/millis 50)
+    :warn-factor 1
+    :warn-threshold warn-threshold}
+
+   :blaze.test/manual-scheduler {}})
+
 (deftest scheduled-debug-task-test
   (testing "debug task fires and logs without error when heap is below threshold"
-    (with-system [_ {:blaze/jvm-metrics-logger
-                     {:scheduler (ig/ref :blaze/scheduler)
-                      :interval (time/millis 50)
-                      :warn-factor 1
-                      :warn-threshold 99}
-                     :blaze/scheduler {}}]
-      (Thread/sleep 200)
-      (is true))))
+    (with-system [{:blaze.test/keys [manual-scheduler]} (manual-scheduler-config 99)]
+      (is (nil? (stu/tick! manual-scheduler))))))
 
 (deftest scheduled-warn-task-test
   (testing "warn task fires and logs without error when heap is above threshold"
-    (with-system [_ {:blaze/jvm-metrics-logger
-                     {:scheduler (ig/ref :blaze/scheduler)
-                      :interval (time/millis 50)
-                      :warn-factor 1
-                      :warn-threshold 1}
-                     :blaze/scheduler {}}]
-      (Thread/sleep 200)
-      (is true))))
+    (with-system [{:blaze.test/keys [manual-scheduler]} (manual-scheduler-config 1)]
+      (is (nil? (stu/tick! manual-scheduler))))))

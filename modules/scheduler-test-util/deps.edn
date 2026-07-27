@@ -1,0 +1,3 @@
+{:deps
+ {blaze/scheduler
+  {:local/root "../scheduler"}}}

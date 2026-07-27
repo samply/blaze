@@ -20,7 +20,10 @@
 
    :extra-deps
    {blaze/fhir-test-util
-    {:local/root "../fhir-test-util"}}}
+    {:local/root "../fhir-test-util"}
+
+    blaze/scheduler-test-util
+    {:local/root "../scheduler-test-util"}}}
 
   :kaocha
   {:extra-deps
