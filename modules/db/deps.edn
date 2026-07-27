@@ -68,6 +68,9 @@
    {blaze/fhir-test-util
     {:local/root "../fhir-test-util"}
 
+    blaze/scheduler-test-util
+    {:local/root "../scheduler-test-util"}
+
     org.clojure/math.combinatorics
     {:mvn/version "0.3.2"}}}
 

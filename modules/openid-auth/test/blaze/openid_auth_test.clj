@@ -6,6 +6,7 @@
    [blaze.openid-auth :as openid-auth]
    [blaze.openid-auth.spec]
    [blaze.scheduler.spec]
+   [blaze.scheduler.test-util :as stu]
    [blaze.test-util :as tu]
    [buddy.auth.protocols :as p]
    [clojure.java.io :as io]
@@ -40,18 +41,18 @@
 (def ^:private config-not-found
   {::openid-auth/backend
    {:http-client (ig/ref ::http-client-not-found)
-    :scheduler (ig/ref :blaze/scheduler)
+    :scheduler (ig/ref :blaze.test/manual-scheduler)
     :provider-url "http://localhost:8080"}
    ::http-client-not-found {}
-   :blaze/scheduler {}})
+   :blaze.test/manual-scheduler {}})
 
 (def ^:private config-success
   {::openid-auth/backend
    {:http-client (ig/ref ::http-client-success)
-    :scheduler (ig/ref :blaze/scheduler)
+    :scheduler (ig/ref :blaze.test/manual-scheduler)
     :provider-url "http://localhost:8080"}
    ::http-client-success {}
-   :blaze/scheduler {}})
+   :blaze.test/manual-scheduler {}})
 
 (def ^:private config-success-iss
   (assoc-in config-success [::openid-auth/backend :issuer] "http://localhost:8080"))
@@ -150,19 +151,22 @@
 
 (deftest backend-test
   (testing "public key not found"
-    (with-system [{::openid-auth/keys [backend]} config-not-found]
+    (with-system [{::openid-auth/keys [backend]
+                   :blaze.test/keys [manual-scheduler]} config-not-found]
       (is (satisfies? p/IAuthentication backend))
-      (Thread/sleep 2000)
+      (stu/tick! manual-scheduler)
       (is (nil? (p/-authenticate backend {} "")))))
 
   (testing "public key found"
-    (with-system [{::openid-auth/keys [backend]} config-success]
+    (with-system [{::openid-auth/keys [backend]
+                   :blaze.test/keys [manual-scheduler]} config-success]
       (is (satisfies? p/IAuthentication backend))
-      (Thread/sleep 2000)
+      (stu/tick! manual-scheduler)
       (is (nil? (p/-authenticate backend {} ""))))
 
     (testing "including iss / auth"
-      (with-system [{::openid-auth/keys [backend]} config-success-iss-aud]
+      (with-system [{::openid-auth/keys [backend]
+                     :blaze.test/keys [manual-scheduler]} config-success-iss-aud]
         (is (satisfies? p/IAuthentication backend))
-        (Thread/sleep 2000)
+        (stu/tick! manual-scheduler)
         (is (nil? (p/-authenticate backend {} "")))))))

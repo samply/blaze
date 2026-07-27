@@ -19,22 +19,18 @@
 
 (deftest schedule-at-fixed-rate-test
   (with-system [{:blaze/keys [scheduler]} {:blaze/scheduler {}}]
-    (let [state (atom 0)]
-      (sched/schedule-at-fixed-rate scheduler #(swap! state inc)
-                                    (time/millis 100) (time/millis 100))
+    (let [calls (atom 0)
+          called-twice (promise)]
+      (sched/schedule-at-fixed-rate
+       scheduler
+       #(when (= 2 (swap! calls inc)) (deliver called-twice true))
+       (time/millis 100) (time/millis 100))
 
-      (testing "the function wasn't called yet"
-        (is (zero? @state)))
+      (testing "the function wasn't called yet, because of the initial delay"
+        (is (zero? @calls)))
 
-      (Thread/sleep 120)
-
-      (testing "the function was called once"
-        (is (= 1 @state)))
-
-      (Thread/sleep 100)
-
-      (testing "the function was called twice"
-        (is (= 2 @state))))))
+      (testing "the function is called again after the period elapsed"
+        (is (true? (deref called-twice 10000 false)))))))
 
 (deftest cancel-test
   (with-system [{:blaze/keys [scheduler]} {:blaze/scheduler {}}]

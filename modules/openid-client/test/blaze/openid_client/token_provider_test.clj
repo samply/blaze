@@ -1,6 +1,5 @@
 (ns blaze.openid-client.token-provider-test
   (:require
-   [blaze.anomaly :as ba]
    [blaze.http-client]
    [blaze.http-client.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
@@ -8,6 +7,7 @@
    [blaze.openid-client.token-provider :as tp]
    [blaze.openid-client.token-provider-spec]
    [blaze.scheduler.spec]
+   [blaze.scheduler.test-util :as stu]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -55,11 +55,11 @@
 
 (def ^:private base-config
   {::oic/token-provider
-   {:scheduler (ig/ref :blaze/scheduler)
+   {:scheduler (ig/ref :blaze.test/manual-scheduler)
     :provider-url "http://localhost:8080"
     :client-id "my-client"
     :client-secret "my-secret"}
-   :blaze/scheduler {}})
+   :blaze.test/manual-scheduler {}})
 
 (def ^:private config-config-not-found
   (-> (assoc-in base-config [::oic/token-provider :http-client]
@@ -183,38 +183,39 @@
 
 (deftest current-token-test
   (testing "config not found"
-    (with-system [{::oic/keys [token-provider]} config-config-not-found]
-      (while (ba/unavailable? (tp/current-token token-provider))
-        (Thread/sleep 10))
+    (with-system [{::oic/keys [token-provider]
+                   :blaze.test/keys [manual-scheduler]} config-config-not-found]
+      (stu/tick! manual-scheduler)
 
       (given (tp/current-token token-provider)
         ::anom/category := ::anom/fault
         ::anom/message := "Error while fetching the OpenID config from: http://localhost:8080/.well-known/openid-configuration")))
 
   (testing "config no token endpoint"
-    (with-system [{::oic/keys [token-provider]} config-config-no-token-endpoint]
-      (while (ba/unavailable? (tp/current-token token-provider))
-        (Thread/sleep 10))
+    (with-system [{::oic/keys [token-provider]
+                   :blaze.test/keys [manual-scheduler]} config-config-no-token-endpoint]
+      (stu/tick! manual-scheduler)
 
       (given (tp/current-token token-provider)
         ::anom/category := ::anom/fault
         ::anom/message := "Missing `token_endpoint` in OpenID config at `http://localhost:8080`.")))
 
   (testing "token error"
-    (with-system [{::oic/keys [token-provider]} config-token-error]
-      (while (ba/unavailable? (tp/current-token token-provider))
-        (Thread/sleep 10))
+    (with-system [{::oic/keys [token-provider]
+                   :blaze.test/keys [manual-scheduler]} config-token-error]
+      (stu/tick! manual-scheduler)
 
       (given (tp/current-token token-provider)
         ::anom/category := ::anom/fault
         ::anom/message := "Error while obtaining a token from: http://localhost:8080/token")))
 
   (testing "token fetch succeeds"
-    (with-system [{::oic/keys [token-provider]} config-success]
-      (given (tp/current-token token-provider)
-        ::anom/category := ::anom/unavailable)
+    (with-system [{::oic/keys [token-provider]
+                   :blaze.test/keys [manual-scheduler]} config-success]
+      (testing "no token is available before the first fetch"
+        (given (tp/current-token token-provider)
+          ::anom/category := ::anom/unavailable))
 
-      (while (ba/unavailable? (tp/current-token token-provider))
-        (Thread/sleep 10))
+      (stu/tick! manual-scheduler)
 
       (is (= "my-token" (tp/current-token token-provider))))))

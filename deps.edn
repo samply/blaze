@@ -233,6 +233,7 @@
     "-d" "modules/rest-util"
     "-d" "modules/rocksdb"
     "-d" "modules/scheduler"
+    "-d" "modules/scheduler-test-util"
     "-d" "modules/server"
     "-d" "modules/spec"
     "-d" "modules/terminology-service"

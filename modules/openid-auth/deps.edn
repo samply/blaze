@@ -35,6 +35,9 @@
    {blaze/module-test-util
     {:local/root "../module-test-util"}
 
+    blaze/scheduler-test-util
+    {:local/root "../scheduler-test-util"}
+
     com.pgs-soft/HttpClientMock
     {:mvn/version "1.0.0"}}}
 
