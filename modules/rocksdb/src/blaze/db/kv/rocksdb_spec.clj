@@ -46,3 +46,7 @@
 (s/fdef rocksdb/column-family-meta-data
   :args (s/cat :store ::kv/rocksdb :column-family simple-keyword?)
   :ret (s/or :meta-data ::rocksdb/column-family-meta-data :anomaly ::anom/anomaly))
+
+(s/fdef rocksdb/flush!
+  :args (s/cat :store ::kv/rocksdb :column-family (s/? simple-keyword?))
+  :ret (s/nilable ::anom/anomaly))
