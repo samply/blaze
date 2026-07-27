@@ -112,7 +112,9 @@
       (testing "marital-status"
         (given (sr/get search-param-registry "marital-status" "Patient")
           :type := "token"
-          :url := "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status")))))
+          :url := "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status"
+          :name := "PatientMaritalStatus"
+          :code := "marital-status")))))
 
 (deftest get-by-url-test
   (testing "default system"

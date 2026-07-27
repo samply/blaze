@@ -44,6 +44,9 @@
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)}))
 
+(defn- search-param [name]
+  (fn [params] (some #(when (= name (-> % :name :value)) %) params)))
+
 (deftest init-test
   (testing "nil config"
     (given-failed-system {::rest-api/capabilities-handler nil}
@@ -264,6 +267,11 @@
                 #:blaze.rest-api.interaction
                  {:handler (fn [_])}}}]))
 
+(def ^:private custom-search-param-config
+  (assoc-in patient-read-interaction-config
+            [:blaze.db/search-param-registry :extra-bundle-file]
+            "../../.github/custom-search-parameters-test/custom-search-parameters.json"))
+
 (def ^:private parsing-context
   (ig/init-key
    :blaze.fhir/parsing-context
@@ -370,6 +378,17 @@
           [:rest 0 :resource 0 :supportedProfile count] := 1
           [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical "url-084829|version-093738")))))
 
+(deftest custom-search-param-test
+  (testing "the search param is advertised under its code and not its name"
+    (with-handler [handler custom-search-param-config]
+      (given (:body @(handler {}))
+        [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+        [:rest 0 :resource 0 :searchParam (search-param "marital-status") :type]
+        := #fhir/code "token"
+        [:rest 0 :resource 0 :searchParam (search-param "marital-status") :definition]
+        := #fhir/canonical "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status"
+        [:rest 0 :resource 0 :searchParam (search-param "PatientMaritalStatus")] := nil))))
+
 (def ^:private observation-read-interaction-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :resource-patterns]
             [#:blaze.rest-api.resource-pattern
@@ -378,9 +397,6 @@
                {:read
                 #:blaze.rest-api.interaction
                  {:handler (fn [_])}}}]))
-
-(defn- search-param [name]
-  (fn [params] (some #(when (= name (-> % :name :value)) %) params)))
 
 (deftest observation-read-interaction-test
   (with-handler [handler observation-read-interaction-config]

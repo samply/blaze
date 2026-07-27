@@ -109,12 +109,12 @@
         (into
          []
          (comp
-          (remove (comp #{"_id" "_lastUpdated" "_profile" "_security" "_source" "_tag" "_list" "_has"} :name))
+          (remove (comp #{"_id" "_lastUpdated" "_profile" "_security" "_source" "_tag" "_list" "_has"} :code))
           (map
-           (fn [{:keys [name url type]}]
+           (fn [{:keys [code url type]}]
              (cond->
               {:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
-               :name (type/string name)
+               :name (type/string code)
                :type (type/code type)}
                url
                (assoc :definition (type/canonical url))
