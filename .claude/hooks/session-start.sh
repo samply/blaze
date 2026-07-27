@@ -40,7 +40,7 @@ JAVA_VERSION="25"
 
 # Versions pinned to match CI (.github/workflows/build.yml).
 # renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
-CLOJURE_CLI_VERSION="1.12.5.1654"
+CLOJURE_CLI_VERSION="1.12.5.1664"
 # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
 CLJ_KONDO_VERSION="2026.07.24"
 # renovate: datasource=github-releases depName=weavejester/cljfmt
