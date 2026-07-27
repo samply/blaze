@@ -262,9 +262,7 @@
             futures (mapv
                      (fn [column-family]
                        (ac/supply-async
-                        #(let [iter (p/-new-iterator snapshot column-family)]
-                           (Thread/sleep (long (rand-int 10)))
-                           (close iter))
+                        #(close (p/-new-iterator snapshot column-family))
                         executor))
                      (flatten (repeat 10000 [:a :b :c])))]
 

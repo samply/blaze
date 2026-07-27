@@ -8,9 +8,6 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.kv :as kv]
-   [blaze.db.kv.protocols :as kv-p]
-   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
@@ -23,7 +20,7 @@
    [blaze.interaction.read]
    [blaze.interaction.search-type]
    [blaze.interaction.search.util :as search-util]
-   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.interaction.test-util :refer [with-tx-in-between wrap-error]]
    [blaze.interaction.transaction]
    [blaze.interaction.update]
    [blaze.interaction.util-spec]
@@ -48,7 +45,6 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
-(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 
@@ -589,19 +585,14 @@
                     :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z")))))
 
           (testing "and content changing transaction in between"
-            (with-redefs [kv/put!
-                          (fn [store entries]
-                            (Thread/sleep 20)
-                            (kv-p/-put store entries))]
-              (with-handler [handler node]
-                [[[:put {:fhir/type :fhir/Patient :id "0"
-                         :gender #fhir/code "female"}]]]
+            (with-handler [handler node]
+              [[[:put {:fhir/type :fhir/Patient :id "0"
+                       :gender #fhir/code "female"}]]]
 
-                ;; don't wait for the transaction to be finished because the handler
-                ;; call should see the first version of the patient
-                @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
-                                              :gender #fhir/code "male"}]])
-
+              ;; the transaction isn't indexed before the handler call, so that
+              ;; the handler sees the first version of the patient
+              (with-tx-in-between [node [[:put {:fhir/type :fhir/Patient :id "0"
+                                                :gender #fhir/code "male"}]]]
                 (let [{:keys [status body]
                        {[{:keys [resource response]}] :entry} :body}
                       @(handler
@@ -1434,19 +1425,14 @@
               [:issue 0 :diagnostics] := #fhir/string "Precondition `W/\"1\"` failed on `Patient/0`."))))
 
       (testing "and content changing transaction in between"
-        (with-redefs [kv/put!
-                      (fn [store entries]
-                        (Thread/sleep 20)
-                        (kv-p/-put store entries))]
-          (with-handler [handler node]
-            [[[:create {:fhir/type :fhir/Patient :id "0"
-                        :gender #fhir/code "female"}]]]
+        (with-handler [handler node]
+          [[[:create {:fhir/type :fhir/Patient :id "0"
+                      :gender #fhir/code "female"}]]]
 
-            ;; don't wait for the transaction to be finished because the handler
-            ;; call should see the first version of the patient
-            @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
-                                          :gender #fhir/code "male"}]])
-
+          ;; the transaction isn't indexed before the handler call, so that the
+          ;; handler sees the first version of the patient
+          (with-tx-in-between [node [[:put {:fhir/type :fhir/Patient :id "0"
+                                            :gender #fhir/code "male"}]]]
             (let [{:keys [status body]}
                   @(handler
                     {:body
@@ -1470,10 +1456,10 @@
                   :fhir/type := :fhir/OperationOutcome
                   [:issue 0 :severity] := #fhir/code "error"
                   [:issue 0 :code] := #fhir/code "conflict"
-                  [:issue 0 :diagnostics] := #fhir/string "Precondition `W/\"1\"` failed on `Patient/0`.")))
+                  [:issue 0 :diagnostics] := #fhir/string "Precondition `W/\"1\"` failed on `Patient/0`."))))
 
-            (testing "we did not retry to the error transaction is 3"
-              (is (= 3 (:error-t @(:state node))))))))))
+          (testing "we did not retry to the error transaction is 3"
+            (is (= 3 (:error-t @(:state node)))))))))
 
   (testing "on duplicate resources"
     (with-handler [handler]
@@ -2185,19 +2171,14 @@
                 [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]")))))
 
       (testing "and content changing transaction in between"
-        (with-redefs [kv/put!
-                      (fn [store entries]
-                        (Thread/sleep 20)
-                        (kv-p/-put store entries))]
-          (with-handler [handler node]
-            [[[:create {:fhir/type :fhir/Patient :id "0"
-                        :gender #fhir/code "female"}]]]
+        (with-handler [handler node]
+          [[[:create {:fhir/type :fhir/Patient :id "0"
+                      :gender #fhir/code "female"}]]]
 
-            ;; don't wait for the transaction to be finished because the handler
-            ;; call should see the first version of the patient
-            @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
-                                          :gender #fhir/code "male"}]])
-
+          ;; the transaction isn't indexed before the handler call, so that the
+          ;; handler sees the first version of the patient
+          (with-tx-in-between [node [[:put {:fhir/type :fhir/Patient :id "0"
+                                            :gender #fhir/code "male"}]]]
             (let [{:keys [status] {[{:keys [response]}] :entry} :body}
                   @(handler
                     {:body
@@ -2227,10 +2208,10 @@
                     [:issue 0 :severity] := #fhir/code "error"
                     [:issue 0 :code] := #fhir/code "conflict"
                     [:issue 0 :diagnostics] := #fhir/string "Precondition `W/\"1\"` failed on `Patient/0`."
-                    [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]"))))
+                    [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]")))))
 
-            (testing "we did not retry to the error transaction is 3"
-              (is (= 3 (:error-t @(:state node))))))))))
+          (testing "we did not retry to the error transaction is 3"
+            (is (= 3 (:error-t @(:state node)))))))))
 
   (testing "without return preference"
     (with-handler [handler]
@@ -2294,19 +2275,14 @@
               :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))
 
       (testing "and content changing transaction in between"
-        (with-redefs [kv/put!
-                      (fn [store entries]
-                        (Thread/sleep 20)
-                        (kv-p/-put store entries))]
-          (with-handler [handler node]
-            [[[:create {:fhir/type :fhir/Patient :id "0"
-                        :birthDate #fhir/date #system/date "2020"}]]]
+        (with-handler [handler node]
+          [[[:create {:fhir/type :fhir/Patient :id "0"
+                      :birthDate #fhir/date #system/date "2020"}]]]
 
-            ;; don't wait for the transaction to be finished because the handler
-            ;; call should see the first version of the patient
-            @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
-                                          :birthDate #fhir/date #system/date "2021"}]])
-
+          ;; the transaction isn't indexed before the handler call, so that the
+          ;; handler sees the first version of the patient
+          (with-tx-in-between [node [[:put {:fhir/type :fhir/Patient :id "0"
+                                            :birthDate #fhir/date #system/date "2021"}]]]
             (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
                   @(handler
                     {:body

@@ -684,10 +684,11 @@
         job-util/job-type := :test))))
 
 (deftest error-in-on-next-handler-test
-  (with-redefs [js/on-start (fn [_ _] (throw (Exception.)))]
-    (with-system [{:blaze/keys [job-scheduler]} config]
+  (let [called (promise)]
+    (with-redefs [js/on-start (fn [_ _] (deliver called ::called) (throw (Exception.)))]
+      (with-system [{:blaze/keys [job-scheduler]} config]
 
-      @(js/create-job job-scheduler (ready-job "test"))
+        @(js/create-job job-scheduler (ready-job "test"))
 
-      ;; we only wait here to be sure that on-start is called and the TaskSubscriber fails
-      (is (nil? (Thread/sleep 100))))))
+        ;; the throwing on-start makes the TaskSubscriber fail
+        (is (= ::called (deref called 10000 ::timeout)))))))

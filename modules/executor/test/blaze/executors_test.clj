@@ -13,6 +13,16 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(defn- await-execution!
+  "Executes a task on `executor` that delivers a promise.
+
+  Returns `::executed` if the task was executed within 10 seconds and
+  `::timeout` otherwise."
+  [executor]
+  (let [executed (promise)]
+    (ex/execute! executor #(deliver executed ::executed))
+    (deref executed 10000 ::timeout)))
+
 (deftest executor-test
   (are [x] (false? (ex/executor? x))
     nil
@@ -30,10 +40,7 @@
   (is (true? (ex/executor-service? (ex/single-thread-executor)))))
 
 (deftest execute-test
-  (let [state (atom 0)]
-    (ex/execute! (ex/single-thread-executor) #(reset! state 1))
-    (Thread/sleep 10)
-    (is (= 1 @state))))
+  (is (= ::executed (await-execution! (ex/single-thread-executor)))))
 
 (deftest shutdown-test
   (testing "a newly created executor isn't shut down"
@@ -57,31 +64,15 @@
     (is (true? (ex/await-termination executor 1 TimeUnit/SECONDS)))))
 
 (deftest cpu-bound-pool-test
-  (let [pool (ex/cpu-bound-pool "name-%d")
-        state (atom 0)]
-    (ex/execute! pool #(reset! state 1))
-    (Thread/sleep 10)
-    (is (= 1 @state))))
+  (is (= ::executed (await-execution! (ex/cpu-bound-pool "name-%d")))))
 
 (deftest io-pool-test
-  (let [pool (ex/io-pool 1 "name-%d")
-        state (atom 0)]
-    (ex/execute! pool #(reset! state 1))
-    (Thread/sleep 10)
-    (is (= 1 @state))))
+  (is (= ::executed (await-execution! (ex/io-pool 1 "name-%d")))))
 
 (deftest scheduled-pool-test
-  (let [pool (ex/scheduled-pool 1 "name-%d")
-        state (atom 0)]
-    (ex/execute! pool #(reset! state 1))
-    (Thread/sleep 10)
-    (is (= 1 @state))))
+  (is (= ::executed (await-execution! (ex/scheduled-pool 1 "name-%d")))))
 
 (deftest single-thread-executor-test
   (is (ex/single-thread-executor))
 
-  (let [executor (ex/single-thread-executor "foo")
-        state (atom 0)]
-    (ex/execute! executor #(reset! state 1))
-    (Thread/sleep 10)
-    (is (= 1 @state))))
+  (is (= ::executed (await-execution! (ex/single-thread-executor "foo")))))
