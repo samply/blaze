@@ -268,16 +268,22 @@
   (with-system [{collector ::tx-indexer/duration-seconds} {::tx-indexer/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
+(defn- tx-result-after-indexing
+  "Returns a CompletableFuture of the result of the transaction with `t`,
+  fetching it only after `t` was either indexed or indexing failed.
+
+  That way the result is already available when `node/tx-result` is called."
+  [node t]
+  (-> (d/sync node t)
+      (ac/then-compose (fn [_] (node/tx-result node t)))))
+
 (deftest transact-test
-  (testing "with slow transaction result fetching"
+  (testing "with transaction result fetching after indexing has completed"
     (testing "create"
       (testing "one Patient"
         (with-system [{:blaze.db/keys [node]} config]
           @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
-               (ac/then-compose
-                (fn [t]
-                  (Thread/sleep 100)
-                  (node/tx-result node t))))
+               (ac/then-compose (partial tx-result-after-indexing node)))
 
           (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
             :fhir/type := :fhir/Patient
@@ -290,10 +296,7 @@
         (with-system [{:blaze.db/keys [node]} resource-store-failing-on-get-config]
           (try
             @(-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                 (ac/then-compose
-                  (fn [t]
-                    (Thread/sleep 100)
-                    (node/tx-result node t))))
+                 (ac/then-compose (partial tx-result-after-indexing node)))
             (catch Exception e
               (given (ex-data (ex-cause e))
                 ::anom/category := ::anom/fault))))))
@@ -316,10 +319,7 @@
           (with-system [{:blaze.db/keys [node]} config]
             (given-failed-future
              (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                 (ac/then-compose
-                  (fn [t]
-                    (Thread/sleep 100)
-                    (node/tx-result node t))))
+                 (ac/then-compose (partial tx-result-after-indexing node)))
               ::anom/category := ::anom/fault
               ::x ::y)))))))
 

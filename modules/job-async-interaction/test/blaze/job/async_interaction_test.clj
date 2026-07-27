@@ -1,6 +1,6 @@
 (ns blaze.job.async-interaction-test
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api-spec]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
@@ -19,6 +19,7 @@
    [blaze.fhir.writing-context]
    [blaze.handler.fhir.util-spec]
    [blaze.job-scheduler :as js]
+   [blaze.job-scheduler.protocols :as p]
    [blaze.job.async-interaction :as job-async]
    [blaze.job.async-interaction-spec]
    [blaze.job.test-util :as jtu]
@@ -316,12 +317,25 @@
 (derive :blaze.db.main/node :blaze.db/node)
 (derive :blaze.db.admin/node :blaze.db/node)
 
-(defmethod ig/init-key ::batch-handler [_ _]
+(defmethod ig/init-key ::batch-handler [_ {:keys [cancelled-promise]}]
   (fn [{:blaze/keys [cancelled?]}]
-    (Thread/sleep 100)
+    ;; if a cancellation is expected, wait until it was handled in order to make
+    ;; the interleaving with the cancellation deterministic
+    (when cancelled-promise @cancelled-promise)
     (if-let [anom (cancelled?)]
       (ac/completed-future anom)
       (ac/completed-future (ring/response {:fhir/type :fhir/Observation})))))
+
+(defmethod ig/init-key ::cancellation-signaling-job-handler [_ {:keys [handler cancelled-promise]}]
+  (reify p/JobHandler
+    (-on-start [_ job]
+      (p/-on-start handler job))
+    (-on-resume [_ job]
+      (p/-on-resume handler job))
+    (-on-cancel [_ job]
+      (do-sync [job (p/-on-cancel handler job)]
+        (deliver cancelled-promise ::cancelled)
+        job))))
 
 (defn- processing-duration [job]
   (-> (job-util/output-value job job-async/output-uri "processing-duration")
@@ -425,28 +439,41 @@
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))
 
+(defn- cancellation-signalling-config
+  "Config in which the batch handler waits until the cancellation of the job was
+  handled, so that the batch handler will always see the cancellation."
+  [cancelled-promise]
+  (-> (assoc-in config [::batch-handler :cancelled-promise] cancelled-promise)
+      (assoc-in [:blaze/job-scheduler :handlers :blaze.job/async-interaction]
+                (ig/ref ::cancellation-signaling-job-handler))
+      (assoc ::cancellation-signaling-job-handler
+             {:handler (ig/ref :blaze.job/async-interaction)
+              :cancelled-promise cancelled-promise})))
+
 (deftest cancellation-test
-  (with-system [{:blaze/keys [job-scheduler] :as system} config]
+  (let [cancelled-promise (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system}
+                  (cancellation-signalling-config cancelled-promise)]
 
-    @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
-                    (job-async/request-bundle "0" "GET" "Observation"))
+      @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
+                      (job-async/request-bundle "0" "GET" "Observation"))
 
-    @(jtu/pull-job system :in-progress/started)
+      @(jtu/pull-job system :in-progress/started)
 
-    @(js/cancel-job job-scheduler (job-id job-scheduler))
+      @(js/cancel-job job-scheduler (job-id job-scheduler))
 
-    (testing "the job has finished cancellation"
-      (given @(jtu/pull-job system :cancelled/finished)
-        :fhir/type := :fhir/Task
-        job-util/job-number := "1"
-        jtu/combined-status := :cancelled/finished
-        :authoredOn := #fhir/dateTime #system/date-time "2024-05-30T10:26:00"))
+      (testing "the job has finished cancellation"
+        (given @(jtu/pull-job system :cancelled/finished)
+          :fhir/type := :fhir/Task
+          job-util/job-number := "1"
+          jtu/combined-status := :cancelled/finished
+          :authoredOn := #fhir/dateTime #system/date-time "2024-05-30T10:26:00"))
 
-    (testing "job history"
-      (given @(jtu/pull-job-history system)
-        count := 4
+      (testing "job history"
+        (given @(jtu/pull-job-history system)
+          count := 4
 
-        [0 jtu/combined-status] := :ready
-        [1 jtu/combined-status] := :in-progress/started
-        [2 jtu/combined-status] := :cancelled/requested
-        [3 jtu/combined-status] := :cancelled/finished))))
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :cancelled/requested
+          [3 jtu/combined-status] := :cancelled/finished)))))
