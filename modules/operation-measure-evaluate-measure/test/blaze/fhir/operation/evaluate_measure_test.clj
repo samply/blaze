@@ -1067,13 +1067,9 @@
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::evaluate-measure/keys [executor] :as system}
-        (ig/init {::evaluate-measure/executor {}})]
-
-    ;; will produce a timeout, because the function runs 11 seconds
-    (ex/execute! executor #(Thread/sleep 11000))
-
-    ;; ensure that the function is called before the scheduler is halted
-    (Thread/sleep 100)
+        (ig/init {::evaluate-measure/executor {}})
+        ;; blocks until released, so halting the system produces a timeout
+        release! (tu/submit-blocking-task! #(ex/execute! executor %))]
 
     (ig/halt! system)
 
@@ -1081,4 +1077,7 @@
     (is (ex/shutdown? executor))
 
     ;; but it isn't terminated yet
-    (is (not (ex/terminated? executor)))))
+    (is (not (ex/terminated? executor)))
+
+    ;; release the blocking task, so its thread is freed
+    (release!)))

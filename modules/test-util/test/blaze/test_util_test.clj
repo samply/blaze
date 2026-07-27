@@ -100,6 +100,22 @@
       (is (str/includes? output "msg-171406"))
       (is (str/includes? output "msg-171432")))))
 
+(deftest submit-blocking-task!-test
+  (let [thread (promise)
+        release! (tu/submit-blocking-task!
+                  (fn [task]
+                    (deliver thread (doto (Thread. ^Runnable task)
+                                      (.setDaemon true)
+                                      (.start)))))]
+
+    (testing "the task is still running after the submit returned"
+      (is (.isAlive ^Thread @thread)))
+
+    (testing "the release function finishes the task"
+      (release!)
+      (.join ^Thread @thread 1000)
+      (is (not (.isAlive ^Thread @thread))))))
+
 (deftest permutations-test
   (testing "empty coll"
     (is (= [[]] (tu/permutations []))))

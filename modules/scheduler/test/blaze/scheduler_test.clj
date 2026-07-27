@@ -45,14 +45,11 @@
       (is (sched/cancel future false)))))
 
 (deftest shutdown-timeout-test
-  (let [{:blaze/keys [scheduler] :as system} (ig/init {:blaze/scheduler {}})]
-
-    ;; will produce a timeout, because the function runs 11 seconds
-    (sched/schedule-at-fixed-rate scheduler #(Thread/sleep 11000)
-                                  (time/millis 0) (time/millis 100))
-
-    ;; ensure that the function is called before the scheduler is halted
-    (Thread/sleep 100)
+  (let [{:blaze/keys [scheduler] :as system} (ig/init {:blaze/scheduler {}})
+        ;; blocks until released, so halting the system produces a timeout
+        release! (tu/submit-blocking-task!
+                  #(sched/schedule-at-fixed-rate scheduler % (time/millis 0)
+                                                 (time/millis 100)))]
 
     (ig/halt! system)
 
@@ -60,4 +57,7 @@
     (is (ex/shutdown? scheduler))
 
     ;; but it isn't terminated yet
-    (is (not (ex/terminated? scheduler)))))
+    (is (not (ex/terminated? scheduler)))
+
+    ;; release the blocking task, so its thread is freed
+    (release!)))

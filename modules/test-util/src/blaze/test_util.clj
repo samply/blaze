@@ -9,7 +9,8 @@
    [taoensso.timbre :as log])
   (:import
    [java.nio ByteBuffer]
-   [java.util Arrays Locale]))
+   [java.util Arrays Locale]
+   [java.util.concurrent CountDownLatch]))
 
 (set! *warn-on-reflection* true)
 
@@ -87,6 +88,24 @@
    :locale :jvm-default
    :timezone :utc}
   :output-fn output-fn})
+
+(defn submit-blocking-task!
+  "Submits a blocking task by calling `submit-fn` with it, returning a no-arg
+  release function after that task has started to run.
+
+  The task blocks until the returned release function is called. That way the
+  executor the task runs on doesn't terminate, so its termination timeout can be
+  tested. Call the release function after the timeout has happened, so the task
+  finishes and its thread is freed."
+  [submit-fn]
+  (let [started (CountDownLatch. 1)
+        release (CountDownLatch. 1)]
+    (submit-fn
+     (fn []
+       (.countDown started)
+       (.await release)))
+    (.await started)
+    #(.countDown release)))
 
 (defn permutations [coll]
   (if (empty? coll)
