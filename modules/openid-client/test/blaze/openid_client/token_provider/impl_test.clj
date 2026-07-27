@@ -2,6 +2,7 @@
   (:require
    [blaze.openid-client.token-provider.impl :as impl]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -24,11 +25,11 @@
 
   (testing "state with expires-at within 5 minutes"
     (is (true? (impl/should-refresh? {:token "my-token"
-                                      :expires-at (time/plus (time/instant) (time/minutes 4))}))))
+                                      :expires-at (time/plus (bt/instant) (time/minutes 4))}))))
 
   (testing "state with expires-at more than 5 minutes away"
     (is (false? (impl/should-refresh? {:token "my-token"
-                                       :expires-at (time/plus (time/instant) (time/minutes 6))})))))
+                                       :expires-at (time/plus (bt/instant) (time/minutes 6))})))))
 
 (deftest token-test
   (testing "nil state returns unavailable anomaly"

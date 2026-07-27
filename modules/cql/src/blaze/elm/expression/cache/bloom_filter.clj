@@ -7,7 +7,7 @@
    [blaze.elm.expression.cache.codec :as codec]
    [blaze.elm.expression.cache.codec.form :as form]
    [blaze.elm.resource :as cr]
-   [java-time.api :as time]
+   [blaze.time :as bt]
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log])
   (:import
@@ -71,7 +71,7 @@
       []
       (comp (map (partial cr/mk-resource batch-db))
             xform
-            (filter (partial expr/eval {:db batch-db :now (time/offset-date-time)} expression))
+            (filter (partial expr/eval {:db batch-db :now (bt/offset-date-time)} expression))
             (map :id))
       (d/type-list db "Patient")))))
 

@@ -18,6 +18,7 @@
    [blaze.job.disk-perf.spec]
    [blaze.job.util :as job-util]
    [blaze.module :as m]
+   [blaze.time :as bt]
    [blaze.util :as u :refer [conj-vec]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -156,7 +157,7 @@
                                     (fn [_ value] value) (type/unsignedInt percent))))
 
 (defn- instant [clock]
-  (.atOffset (time/instant clock) ZoneOffset/UTC))
+  (.atOffset (bt/instant clock) ZoneOffset/UTC))
 
 (defn- elapsed [clock job]
   (-> (time/duration (-> job :meta :lastUpdated :value) (instant clock))

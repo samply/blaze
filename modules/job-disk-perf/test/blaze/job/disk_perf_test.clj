@@ -28,6 +28,7 @@
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -193,7 +194,7 @@
 
 (deftest job-test
   (testing "with all parameters"
-    (let [job (job-disk-perf/job (time/offset-date-time)
+    (let [job (job-disk-perf/job (bt/offset-date-time)
                                  {:database "index"
                                   :file-size 4M
                                   :phase-duration 30M
@@ -224,7 +225,7 @@
           [3 :value] := #fhir/positiveInt 8))))
 
   (testing "without parameters"
-    (let [job (job-disk-perf/job (time/offset-date-time) {})]
+    (let [job (job-disk-perf/job (bt/offset-date-time) {})]
       (is (nil? (:input job))))))
 
 (deftest params-spec-test
@@ -259,7 +260,7 @@
   (testing "success"
     (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
-      @(js/create-job job-scheduler (job-disk-perf/job (time/offset-date-time) tiny-params))
+      @(js/create-job job-scheduler (job-disk-perf/job (bt/offset-date-time) tiny-params))
 
       (testing "the job is completed"
         (let [job @(jtu/pull-job system :completed)]
@@ -345,7 +346,7 @@
   (testing "with default parameters for max concurrency"
     (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
-      @(js/create-job job-scheduler (job-disk-perf/job (time/offset-date-time)
+      @(js/create-job job-scheduler (job-disk-perf/job (bt/offset-date-time)
                                                        (dissoc tiny-params :max-concurrency)))
 
       (testing "the job is completed with a sweep up to the default of 32"
@@ -360,7 +361,7 @@
     (with-system [{:blaze/keys [job-scheduler] :as system}
                   (assoc-in (config (new-tmp-dir!)) [:blaze.job/disk-perf :dirs] {})]
 
-      @(js/create-job job-scheduler (job-disk-perf/job (time/offset-date-time) tiny-params))
+      @(js/create-job job-scheduler (job-disk-perf/job (bt/offset-date-time) tiny-params))
 
       (testing "the job has failed"
         (given @(jtu/pull-job system :failed)
@@ -370,7 +371,7 @@
   (testing "unknown database"
     (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
-      @(js/create-job job-scheduler (job-disk-perf/job (time/offset-date-time)
+      @(js/create-job job-scheduler (job-disk-perf/job (bt/offset-date-time)
                                                        (assoc tiny-params :database "resource")))
 
       (testing "the job has failed"
@@ -386,7 +387,7 @@
     (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
       @(js/create-job job-scheduler
-                      (-> (job-disk-perf/job (time/offset-date-time) tiny-params)
+                      (-> (job-disk-perf/job (bt/offset-date-time) tiny-params)
                           (assoc-in [:input 0 :value :value] #fhir/decimal 100M)))
 
       (testing "the job has failed"
@@ -398,7 +399,7 @@
     (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
       @(js/create-job job-scheduler
-                      (-> (job-disk-perf/job (time/offset-date-time) tiny-params)
+                      (-> (job-disk-perf/job (bt/offset-date-time) tiny-params)
                           (assoc-in [:input 1 :value :value] #fhir/decimal 0M)))
 
       (testing "the job has failed"
@@ -410,7 +411,7 @@
     (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
       @(js/create-job job-scheduler
-                      (-> (job-disk-perf/job (time/offset-date-time) tiny-params)
+                      (-> (job-disk-perf/job (bt/offset-date-time) tiny-params)
                           (assoc-in [:input 2 :value] #fhir/positiveInt 1025)))
 
       (testing "the job has failed"
@@ -445,7 +446,7 @@
 
     (let [{:keys [id]} @(js/create-job
                          job-scheduler
-                         (job-disk-perf/job (time/offset-date-time)
+                         (job-disk-perf/job (bt/offset-date-time)
                                             (assoc tiny-params :phase-duration 10M)))]
 
       (testing "the job is running"
@@ -473,7 +474,7 @@
 
     (let [{:keys [id]} @(js/create-job
                          job-scheduler
-                         (job-disk-perf/job (time/offset-date-time)
+                         (job-disk-perf/job (bt/offset-date-time)
                                             (assoc tiny-params :phase-duration 10M)))]
 
       (testing "the job is running"

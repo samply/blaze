@@ -28,13 +28,13 @@
    [blaze.fhir.test-util :refer [run-all!]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :refer [given-thrown satisfies-prop]]
+   [blaze.time :as bt]
    [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.properties :as prop]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
@@ -321,7 +321,7 @@
               expr (c/compile compile-context elm)
               eval-context
               {:db db
-               :now (time/offset-date-time)}]
+               :now (bt/offset-date-time)}]
 
           (testing "has no Observation at the beginning"
             (let [[expr bloom-filters] (c/attach-cache expr cache)]
@@ -370,7 +370,7 @@
               expr (c/compile compile-context elm)
               eval-context
               {:db db
-               :now (time/offset-date-time)}]
+               :now (bt/offset-date-time)}]
 
           (testing "has no Observation at the beginning"
             (is (false? (expr/eval eval-context expr patient))))

@@ -18,11 +18,11 @@
    [blaze.page-id-cipher.spec]
    [blaze.spec]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
    [taoensso.timbre :as log])
@@ -1029,7 +1029,7 @@
 
     (Thread/sleep 2000)
     (let [handler (wrap-middleware handler node page-id-cipher)
-          after-init (time/instant system-clock)]
+          after-init (bt/instant system-clock)]
 
       (Thread/sleep 2000)
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"

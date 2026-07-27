@@ -1,10 +1,11 @@
 (ns blaze.openid-client.token-provider.impl
   (:require
    [blaze.anomaly :as ba]
+   [blaze.time :as bt]
    [java-time.api :as time]))
 
 (defn- expires-within-5-min? [expires-at]
-  (time/before? expires-at (time/plus (time/instant) (time/minutes 5))))
+  (time/before? expires-at (time/plus (bt/instant) (time/minutes 5))))
 
 (defn should-refresh? [state]
   (or (nil? state)

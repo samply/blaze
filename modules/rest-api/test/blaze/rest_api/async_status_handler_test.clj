@@ -15,9 +15,9 @@
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.async-status-handler]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.ring]
    [taoensso.timbre :as log]))
@@ -86,7 +86,7 @@
 (deftest async-status-handler-test
   (testing "with ready job"
     (with-handler [handler]
-      [[[:put (assoc (ready-job (time/offset-date-time) "0" 0) :id "0")]
+      [[[:put (assoc (ready-job (bt/offset-date-time) "0" 0) :id "0")]
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]]]
 
       (let [{:keys [status headers]}
@@ -99,7 +99,7 @@
 
   (testing "with in-progress job"
     (with-handler [handler]
-      [[[:put (assoc (in-progress-job (time/offset-date-time) "0" 0) :id "0")]
+      [[[:put (assoc (in-progress-job (bt/offset-date-time) "0" 0) :id "0")]
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]]]
 
       (let [{:keys [status headers]}
@@ -112,7 +112,7 @@
 
   (testing "with completed job"
     (with-handler [handler]
-      [[[:put (assoc (completed-job (time/offset-date-time) "0" 0 "1") :id "0")]
+      [[[:put (assoc (completed-job (bt/offset-date-time) "0" 0 "1") :id "0")]
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]
         [:put {:fhir/type :fhir/Bundle
                :id "1"
@@ -134,7 +134,7 @@
 
   (testing "with completed compact job"
     (with-handler [handler]
-      [[[:put (assoc (completed-compact-job (time/offset-date-time)) :id "0")]]]
+      [[[:put (assoc (completed-compact-job (bt/offset-date-time)) :id "0")]]]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]
@@ -149,7 +149,7 @@
 
   (testing "with completed job providing a response resource"
     (with-handler [handler]
-      [[[:put (assoc (completed-fake-job (time/offset-date-time)) :id "0")]]]
+      [[[:put (assoc (completed-fake-job (bt/offset-date-time)) :id "0")]]]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]
@@ -166,7 +166,7 @@
 
   (testing "with failed job"
     (with-handler [handler]
-      [[[:put (assoc (failed-job (time/offset-date-time) "0" 0 "msg-181242") :id "0")]
+      [[[:put (assoc (failed-job (bt/offset-date-time) "0" 0 "msg-181242") :id "0")]
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]]]
 
       (let [{:keys [status body]}
@@ -185,7 +185,7 @@
 
   (testing "with cancelled job"
     (with-handler [handler]
-      [[[:put (assoc (cancelled-job (time/offset-date-time) "0" 0) :id "0")]
+      [[[:put (assoc (cancelled-job (bt/offset-date-time) "0" 0) :id "0")]
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]]]
 
       (let [{:keys [status body]}

@@ -22,6 +22,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
    [blaze.module :as m]
+   [blaze.time :as bt]
    [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [java-time.api :as time]
@@ -436,7 +437,7 @@
     :as context} measure
    {:keys [report-type subject-ref] in-parameters :parameters}]
   (let [subject-type (subject-type measure)
-        now (time/offset-date-time clock)
+        now (bt/offset-date-time clock)
         timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
               (compile-primary-library db terminology-service measure {})]

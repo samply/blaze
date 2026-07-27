@@ -15,10 +15,10 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
@@ -156,7 +156,7 @@
   (let [{:keys [expression-defs function-defs]} (compile-library system library)]
     (cond->
      {:db (d/db node)
-      :now (time/offset-date-time fixed-clock)
+      :now (bt/offset-date-time fixed-clock)
       :interrupted? (constantly nil)
       :expression-defs expression-defs
       :executor executor}

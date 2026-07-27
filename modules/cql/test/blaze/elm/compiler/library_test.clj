@@ -16,10 +16,10 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -480,7 +480,7 @@
             (testing "the whole exists expression optimizes to false"
               (let [db (d/db node)]
                 (given (->> (library/eval-unfiltered {:db db
-                                                      :now (time/offset-date-time)}
+                                                      :now (bt/offset-date-time)}
                                                      expression-defs)
                             (library/resolve-all-refs)
                             (library/optimize db))
@@ -537,7 +537,7 @@
               (testing "the whole exists expression optimizes to false"
                 (let [db (d/db node)]
                   (given (->> (library/eval-unfiltered {:db db
-                                                        :now (time/offset-date-time)}
+                                                        :now (bt/offset-date-time)}
                                                        expression-defs)
                               (library/resolve-all-refs)
                               (library/optimize db))
@@ -590,7 +590,7 @@
               (testing "the first query optimizes away"
                 (let [db (d/db node)]
                   (given (->> (library/eval-unfiltered {:db db
-                                                        :now (time/offset-date-time)}
+                                                        :now (bt/offset-date-time)}
                                                        expression-defs)
                               (library/resolve-all-refs)
                               (library/optimize db))
