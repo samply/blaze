@@ -28,6 +28,7 @@
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.test-util :refer [advance-clock!]]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.terminology-service :as ts]
    [blaze.test-util :as tu :refer [satisfies-prop]]
@@ -1759,8 +1760,8 @@
     (with-open [batch-db (d/new-batch-db (d/db node))]
       (is (ba/anomaly? (d/as-of batch-db 0))))))
 
-(def system-clock-config
-  (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
+(def mock-clock-config
+  (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/mock-clock)))
 
 (def step-clock-config
   (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/step-clock)))
@@ -10523,13 +10524,12 @@
         (is (coll/empty? (d/instance-history (d/db node) "Patient" "0" 0))))))
 
   (testing "using since"
-    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
-                       system-clock-config]
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [mock-clock]}
+                       mock-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (Thread/sleep 2000)
-      (let [since (bt/instant system-clock)
-            _ (Thread/sleep 2000)
+      (let [since (advance-clock! mock-clock)
+            _ (advance-clock! mock-clock)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                          :active #fhir/boolean true}]])]
 
@@ -10670,13 +10670,12 @@
           [0 :id] := "1"))))
 
   (testing "using since"
-    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
-                       system-clock-config]
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [mock-clock]}
+                       mock-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (Thread/sleep 200)
-      (let [since (bt/instant system-clock)
-            _ (Thread/sleep 200)
+      (let [since (advance-clock! mock-clock)
+            _ (advance-clock! mock-clock)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 
         (testing "has one history entry"
@@ -10830,13 +10829,12 @@
           [0 :id] := "1"))))
 
   (testing "using since"
-    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
-                       system-clock-config]
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [mock-clock]}
+                       mock-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (Thread/sleep 200)
-      (let [since (bt/instant system-clock)
-            _ (Thread/sleep 200)
+      (let [since (advance-clock! mock-clock)
+            _ (advance-clock! mock-clock)
             db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
 
         (testing "has one history entry"

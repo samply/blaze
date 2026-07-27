@@ -4,7 +4,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.tx-log :as tx-log]
-   [blaze.fhir.test-util :refer [link-url]]
+   [blaze.fhir.test-util :refer [advance-clock! link-url]]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.search.util :as search-util]
@@ -18,7 +18,6 @@
    [blaze.page-id-cipher.spec]
    [blaze.spec]
    [blaze.test-util :as tu]
-   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -1011,27 +1010,26 @@
         (testing "the bundle contains 10,000 entries"
           (is (= 10000 (count (:entry body)))))))))
 
-(def ^:private system-clock-config
-  (-> (assoc config :blaze.test/system-clock {})
+(def ^:private mock-clock-config
+  (-> (assoc config :blaze.test/mock-clock {})
       (assoc-in [::tx-log/local :clock]
-                (ig/ref :blaze.test/system-clock))
+                (ig/ref :blaze.test/mock-clock))
       (assoc-in [:blaze.operation.patient/everything :clock]
-                (ig/ref :blaze.test/system-clock))))
+                (ig/ref :blaze.test/mock-clock))))
 
 (deftest since-test
   (with-system-data [{node :blaze.db/node
                       page-id-cipher :blaze.test/page-id-cipher
                       handler :blaze.operation.patient/everything
-                      system-clock :blaze.test/system-clock} system-clock-config]
+                      mock-clock :blaze.test/mock-clock} mock-clock-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/Observation :id "0"
              :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-    (Thread/sleep 2000)
     (let [handler (wrap-middleware handler node page-id-cipher)
-          after-init (bt/instant system-clock)]
+          after-init (advance-clock! mock-clock)]
 
-      (Thread/sleep 2000)
+      (advance-clock! mock-clock)
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
                                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
 

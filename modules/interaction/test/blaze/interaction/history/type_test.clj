@@ -10,7 +10,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-cache :as rc]
    [blaze.db.tx-log :as-alias tx-log]
-   [blaze.fhir.test-util :refer [link-url]]
+   [blaze.fhir.test-util :refer [advance-clock! link-url]]
    [blaze.interaction.history.type]
    [blaze.interaction.history.util-spec]
    [blaze.interaction.search.util :as search-util]
@@ -23,7 +23,6 @@
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
-   [blaze.time :as bt]
    [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -160,9 +159,9 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def system-clock-config
-  (-> (assoc config :blaze.test/system-clock {})
-      (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/system-clock))))
+(def mock-clock-config
+  (-> (assoc config :blaze.test/mock-clock {})
+      (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/mock-clock))))
 
 (defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
@@ -449,16 +448,15 @@
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node]
-                        :blaze.test/keys [system-clock page-id-cipher]
+                        :blaze.test/keys [mock-clock page-id-cipher]
                         handler :blaze.interaction.history/type}
-                       system-clock-config]
+                       mock-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
-      (Thread/sleep 2000)
-      (let [after-init (bt/instant system-clock)
+      (let [after-init (advance-clock! mock-clock)
             handler (wrap-middleware handler node page-id-cipher)]
 
-        (Thread/sleep 2000)
+        (advance-clock! mock-clock)
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                   :gender #fhir/code "female"}]])
 

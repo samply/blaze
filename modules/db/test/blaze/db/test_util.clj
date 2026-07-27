@@ -62,7 +62,7 @@
    {:column-families {}}
 
    :blaze.test/fixed-clock {}
-   :blaze.test/system-clock {}
+   :blaze.test/mock-clock {}
    :blaze.test/step-clock {}
 
    :blaze.db/tx-cache
