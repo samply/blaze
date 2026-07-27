@@ -25,7 +25,7 @@ env:
   BLAZECTL_CHECKSUM: bb2127c23d3a523e5fd02b3fa84decee27eb5ec32f8726ce1f3f29b49182ff5f
 
   # renovate: datasource=github-releases depName=clojure/brew-install versioning=loose
-  CLOJURE_CLI_VERSION: 1.12.5.1654
+  CLOJURE_CLI_VERSION: 1.12.5.1664
 
   # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
   VALIDATOR_VERSION: 6.9.12
