@@ -37,7 +37,9 @@
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -510,20 +512,42 @@
             [2 resources-processed] := #fhir/unsignedInt 10000
             [3 resources-processed] := #fhir/unsignedInt 10000))))))
 
-(defn- blocking-re-index [lock-1 lock-2 re-index]
+(defn- gate
+  "Returns a closed gate."
+  []
+  (ac/future))
+
+(defn- open! [gate]
+  (ac/complete! gate true))
+
+(defn- await-gate
+  "Returns a future that completes as soon as `gate` is open, failing after 10
+  seconds so that a job waiting on `gate` will never hang forever."
+  [gate]
+  (ac/or-timeout! gate 10 TimeUnit/SECONDS))
+
+(defn- gated-re-index
+  "Returns a mock of `re-index` that starts re-indexing not before `gate-1`
+  (first call) or `gate-2` (subsequent calls) is open.
+
+  Waits without blocking a thread because blocking a thread of the common
+  ForkJoinPool would stall all other asynchronous work, including the polling
+  of `blaze.job.test-util/pull-job`."
+  [gate-1 gate-2 re-index]
   (fn
     ([db search-param-url]
-     (when (deref lock-1 10000 nil)
-       (re-index db search-param-url)))
+     (-> (await-gate gate-1)
+         (ac/then-compose-async (fn [_] (re-index db search-param-url)))))
     ([db search-param-url start-type start-id]
-     (when (deref lock-2 10000 nil)
-       (re-index db search-param-url start-type start-id)))))
+     (-> (await-gate gate-2)
+         (ac/then-compose-async
+          (fn [_] (re-index db search-param-url start-type start-id)))))))
 
 (deftest job-execution-with-pause-test
   (testing "resume from started state"
-    (let [lock (promise)]
+    (let [gate (gate)]
       (log/set-min-level! :info)
-      (with-redefs [d/re-index (blocking-re-index lock lock d/re-index)]
+      (with-redefs [d/re-index (gated-re-index gate gate d/re-index)]
         (with-system-data [{:blaze/keys [job-scheduler] :as system} never-increment-config]
           [(gen-tx-data 10001)]
 
@@ -536,7 +560,7 @@
             job-util/job-number := "1"
             jtu/combined-status := :on-hold/paused)
 
-          (deliver lock true)
+          (open! gate)
 
           (given @(js/resume-job job-scheduler (job-id job-scheduler))
             :fhir/type := :fhir/Task
@@ -579,9 +603,9 @@
               [4 resources-processed] := #fhir/unsignedInt 10001))))))
 
   (testing "resume from incremented state"
-    (let [lock-1 (deliver (promise) true)
-          lock-2 (promise)]
-      (with-redefs [d/re-index (blocking-re-index lock-1 lock-2 d/re-index)]
+    (let [gate-1 (ac/completed-future true)
+          gate-2 (gate)]
+      (with-redefs [d/re-index (gated-re-index gate-1 gate-2 d/re-index)]
         (with-system-data [{:blaze/keys [job-scheduler] :as system} config]
           [(gen-tx-data 20001)]
 
@@ -594,7 +618,7 @@
             job-util/job-number := "1"
             jtu/combined-status := :on-hold/paused)
 
-          (deliver lock-2 true)
+          (open! gate-2)
 
           (given @(js/resume-job job-scheduler (job-id job-scheduler))
             :fhir/type := :fhir/Task
