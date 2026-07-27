@@ -20,9 +20,9 @@
   (:import
    [java.lang AutoCloseable]
    [java.nio ByteBuffer]
-   [java.util ArrayList]
+   [java.util ArrayList List]
    [org.rocksdb
-    ColumnFamilyHandle Env LRUCache Priority Range ReadOptions RocksDB
+    ColumnFamilyHandle Env FlushOptions LRUCache Priority Range ReadOptions RocksDB
     RocksDBException RocksIterator SizeApproximationFlag Slice Snapshot Statistics StatsLevel WriteBatch
     WriteOptions]))
 
@@ -174,6 +174,19 @@
   [store column-family]
   (p/-drop-column-family store column-family))
 
+(defn flush!
+  "Flushes the memtables of all column families of `store` into SST files.
+
+  Additionally an optional `column-family` key can be supplied in order to flush
+  only the memtables of that column family.
+
+  Blocks until the flush is finished. Returns an anomaly if the optional column
+  family doesn't exist."
+  ([store]
+   (p/-flush store))
+  ([store column-family]
+   (p/-flush store column-family)))
+
 (defn- range [[start end]]
   (Range. (Slice. ^bytes (bs/to-byte-array start))
           (Slice. ^bytes (bs/to-byte-array end))))
@@ -186,6 +199,10 @@
 (defn- estimate-scan-size [^RocksDB db cfh key-range]
   (-> (.getApproximateSizes db cfh [(range key-range)] approximation-flags)
       (aget 0)))
+
+(defn- flush-cfhs! [^RocksDB db cfhs]
+  (with-open [opts (doto (FlushOptions.) (.setWaitForFlush true))]
+    (.flush db opts ^List (vec cfhs))))
 
 (deftype RocksKvStore [^RocksDB db path ^WriteOptions write-opts cfhs]
   kv-p/KvStore
@@ -291,6 +308,13 @@
   (-drop-column-family [_ column-family]
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (.dropColumnFamily db cfh)))
+
+  (-flush [_]
+    (flush-cfhs! db (vals cfhs)))
+
+  (-flush [_ column-family]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (flush-cfhs! db [cfh])))
 
   AutoCloseable
   (close [_]

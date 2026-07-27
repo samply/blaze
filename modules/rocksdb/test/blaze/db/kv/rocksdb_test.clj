@@ -767,11 +767,14 @@
 (deftest tables-test
   (testing "default column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+      ;; write less than the write buffer size of 64 MiB so that RocksDB
+      ;; doesn't flush the memtable on its own
       (run!
        #(kv/put! db [[:default (int-ba %) (apply ba (range 10000))]])
-       (range 10000 20000))
+       (range 10000 15000))
 
-      (Thread/sleep 1000)
+      ;; flush the memtable so that all data ends up in a single SST file
+      (rocksdb/flush! db)
 
       (is (pos-int? (rocksdb/long-property db "rocksdb.estimate-live-data-size")))
       (is (pos-int? (rocksdb/agg-long-property db "rocksdb.estimate-live-data-size")))
@@ -780,21 +783,24 @@
         count := 1
         [0 :comparator-name] := "leveldb.BytewiseComparator"
         [0 :compression-name] := "LZ4"
-        [0 :data-size] := 2168082
-        [0 :index-size] := 86351
-        [0 :num-data-blocks] := 6631
-        [0 :num-entries] := 6631
+        [0 :data-size] := 1634745
+        [0 :index-size] := 64938
+        [0 :num-data-blocks] := 5000
+        [0 :num-entries] := 5000
         [0 :top-level-index-size] := 0
-        [0 :total-raw-key-size] := 66310
-        [0 :total-raw-value-size] := 66310000)))
+        [0 :total-raw-key-size] := 50000
+        [0 :total-raw-value-size] := 50000000)))
 
   (testing "with column-family"
     (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
+      ;; write less than the write buffer size of 64 MiB so that RocksDB
+      ;; doesn't flush the memtable on its own
       (run!
        #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
-       (range 10000 20000))
+       (range 10000 15000))
 
-      (Thread/sleep 1000)
+      ;; flush the memtable so that all data ends up in a single SST file
+      (rocksdb/flush! db :a)
 
       (is (zero? (rocksdb/long-property db :default "rocksdb.estimate-live-data-size")))
       (is (pos-int? (rocksdb/long-property db :a "rocksdb.estimate-live-data-size")))
@@ -804,13 +810,13 @@
         count := 1
         [0 :comparator-name] := "leveldb.BytewiseComparator"
         [0 :compression-name] := "LZ4"
-        [0 :data-size] := 2168082
-        [0 :index-size] := 86351
-        [0 :num-data-blocks] := 6631
-        [0 :num-entries] := 6631
+        [0 :data-size] := 1634745
+        [0 :index-size] := 64938
+        [0 :num-data-blocks] := 5000
+        [0 :num-entries] := 5000
         [0 :top-level-index-size] := 0
-        [0 :total-raw-key-size] := 66310
-        [0 :total-raw-value-size] := 66310000)))
+        [0 :total-raw-key-size] := 50000
+        [0 :total-raw-value-size] := 50000000)))
 
   (testing "with unknown column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -858,3 +864,31 @@
       (given (rocksdb/drop-column-family! db :column-family-191453)
         ::anom/category := ::anom/not-found
         ::anom/message := "Column family `column-family-191453` not found."))))
+
+(deftest flush-test
+  (testing "all column-families"
+    (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
+      (kv/put! db [[:default (ba 0x00) (ba 0x00)]
+                   [:a (ba 0x00) (ba 0x00)]])
+
+      (is (nil? (rocksdb/flush! db)))
+
+      (is (= "1" (rocksdb/property db :default "rocksdb.num-files-at-level0")))
+      (is (= "1" (rocksdb/property db :a "rocksdb.num-files-at-level0")))))
+
+  (testing "with column-family"
+    (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
+      (kv/put! db [[:default (ba 0x00) (ba 0x00)]
+                   [:a (ba 0x00) (ba 0x00)]])
+
+      (testing "flushes only the given column-family"
+        (is (nil? (rocksdb/flush! db :a)))
+
+        (is (= "0" (rocksdb/property db :default "rocksdb.num-files-at-level0")))
+        (is (= "1" (rocksdb/property db :a "rocksdb.num-files-at-level0"))))))
+
+  (testing "with unknown column-family"
+    (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+      (given (rocksdb/flush! db :column-family-104507)
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Column family `column-family-104507` not found."))))
