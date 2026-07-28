@@ -77,7 +77,7 @@
   "Returns the value of the first valid `__page-id` query param or nil
   otherwise.
 
-  Values have to be valid FHIR id's."
+  Values have to be valid FHIR ids."
   {:arglists '([query-params])}
   [{v "__page-id"}]
   (some #(when (s/valid? :blaze.resource/id %) %) (u/to-seq v)))
@@ -93,12 +93,12 @@
 
 (defn page-id-stack
   "Returns the value of the `__page-id-stack` query param as a vector of the
-  start-id's of the ancestor pages, oldest first.
+  start-ids of the ancestor pages, oldest first.
 
   An empty string represents the first page (which has no start-id). In the
-  system-level search, the start-id's are qualified with the resource type in
+  system-level search, the start-ids are qualified with the resource type in
   the form `Type/id`. The param is only set internally inside encrypted page
-  id's. Returns an empty vector if absent or if any entry is invalid."
+  ids. Returns an empty vector if absent or if any entry is invalid."
   {:arglists '([query-params])}
   [{v "__page-id-stack"}]
   (let [stack (vec (u/to-seq v))]
@@ -157,7 +157,7 @@
 (defn instance-url
   "Returns the URL of an instance (resource) like `[base]/[type]/[id]`."
   [context type id]
-  ;; URLs are build by hand here, because id's do not need to be URL encoded
+  ;; URLs are build by hand here, because ids do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (type-url context type) "/" id))
 
@@ -165,7 +165,7 @@
   "Returns the URL of a versioned instance (resource) like
   `[base]/[type]/[id]/_history/[vid]`."
   [context type id vid]
-  ;; URLs are build by hand here, because id's do not need to be URL encoded
+  ;; URLs are build by hand here, because ids do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (instance-url context type id) "/_history/" vid))
 

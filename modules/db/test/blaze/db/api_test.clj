@@ -3683,7 +3683,7 @@
 (deftest ^:slow type-query-id-property-test
   (log/set-min-level! :warn)
 
-  (testing "random id's"
+  (testing "random ids"
     (satisfies-prop 50
       (prop/for-all [ids (gen/set (s/gen :blaze.resource/id) {:min-elements 1 :max-elements 1000})]
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -3855,7 +3855,7 @@
   (log/set-min-level! :warn)
 
   (testing "sorting by _id"
-    (testing "random id's"
+    (testing "random ids"
       (satisfies-prop 100
         (prop/for-all [ids (gen/set (s/gen :blaze.resource/id) {:min-elements 1 :max-elements 100})]
           (with-system-data [{:blaze.db/keys [node]} config]

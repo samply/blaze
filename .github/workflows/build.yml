@@ -1286,7 +1286,7 @@ jobs:
     - name: Download Observations using _elements=subject
       run: .github/scripts/download-observations-elements.sh
 
-    - name: Download Observations of all Encounters using ID's
+    - name: Download Observations of all Encounters using IDs
       run: .github/scripts/download-observations-of-all-encounters.sh
 
     - name: Search Patient _lastUpdated

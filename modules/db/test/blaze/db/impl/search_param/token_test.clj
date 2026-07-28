@@ -84,7 +84,7 @@
              :id "id-161849"}
             hash (hash/generate observation)]
 
-        (testing "id's don't need to be indexed"
+        (testing "ids don't need to be indexed"
           (is (coll/empty? (search-param/index-entries
                             (sr/get search-param-registry "_id" "Observation")
                             [] hash observation))))))

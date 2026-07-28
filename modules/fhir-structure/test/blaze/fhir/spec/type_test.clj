@@ -2077,7 +2077,7 @@
     (is (interned? (type/code {:extension [] :value "code-123745"})
                    (type/code "code-123745")))
 
-    (testing "instances with id's are not interned"
+    (testing "instances with ids are not interned"
       (is (not-interned? #fhir/code{:id "id-171649" :value "code-123745"}
                          #fhir/code{:id "id-171649" :value "code-123745"})))
 
@@ -3242,7 +3242,7 @@
     (is (= :fhir/CodeableConcept (:fhir/type #fhir/CodeableConcept{}))))
 
   (testing "interning"
-    (testing "instances with id's are not interned"
+    (testing "instances with ids are not interned"
       (satisfies-prop 100
         (prop/for-all [x (fg/codeable-concept :id fg/id-value)]
           (not-interned? x (recreate type/codeable-concept x)))))
@@ -3313,7 +3313,7 @@
     (is (= :fhir/Coding (:fhir/type #fhir/Coding{}))))
 
   (testing "interning"
-    (testing "instances with id's are not interned"
+    (testing "instances with ids are not interned"
       (satisfies-prop 100
         (prop/for-all [x (fg/coding :id fg/id-value)]
           (not-interned? x (recreate type/coding x)))))
@@ -3932,7 +3932,7 @@
           :url "foo"
           :value #fhir/code "bar"}))
 
-    (testing "instances with code values but id's are not interned"
+    (testing "instances with code values but ids are not interned"
       (are [x y] (not-interned? x y)
         #fhir/Extension{:id "foo" :url "bar" :value #fhir/code "baz"}
         #fhir/Extension{:id "foo" :url "bar" :value #fhir/code "baz"}))

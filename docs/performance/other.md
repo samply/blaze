@@ -35,7 +35,7 @@ resulting in 35 GiB of gzip'ed JSON files.
 
 ### Test System
 
-Dell PowerEdge R630 with 32 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSD's.
+Dell PowerEdge R630 with 32 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSDs.
 
 ### Start Script
 
@@ -127,7 +127,7 @@ The size of the database directory after the import was 234 GiB or about 1,43 kB
 
 ### Test System
 
-Dell PowerEdge R630 with 8 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSD's.
+Dell PowerEdge R630 with 8 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSDs.
 
 ### Upload Method
 
@@ -148,7 +148,7 @@ Status Codes     [code:count]             200:1258
 
 ### Test System
 
-Dell PowerEdge R630 with 12 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSD's.
+Dell PowerEdge R630 with 12 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSDs.
 
 ### Upload Method
 
