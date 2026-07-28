@@ -18,6 +18,7 @@
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-id-cipher :as page-id-cipher]
+   [blaze.page-id-cipher-spec]
    [blaze.page-id-cipher.spec]
    [blaze.scheduler.spec]
    [blaze.scheduler.test-util :as stu]
@@ -274,14 +275,15 @@
 
 (deftest subscriber-error-test
   (testing "an error cancels the subscription"
-    (let [cancelled (promise)
-          subscription (reify Flow$Subscription
-                         (request [_ _])
-                         (cancel [_] (deliver cancelled true)))
-          subscriber (page-id-cipher/->DocumentReferenceSubscriber
-                      nil (atom nil) nil)]
-      (flow/on-subscribe! subscriber subscription)
+    (with-system [{:blaze.db.admin/keys [node]} config]
+      (let [cancelled (promise)
+            subscription (reify Flow$Subscription
+                           (request [_ _])
+                           (cancel [_] (deliver cancelled true)))
+            subscriber (page-id-cipher/->DocumentReferenceSubscriber
+                        node (atom nil) nil)]
+        (flow/on-subscribe! subscriber subscription)
 
-      (.onError ^Flow$Subscriber subscriber (Exception. "msg-160655"))
+        (.onError ^Flow$Subscriber subscriber (Exception. "msg-160655"))
 
-      (is (true? (deref cancelled 100 ::timeout))))))
+        (is (true? (deref cancelled 100 ::timeout)))))))
