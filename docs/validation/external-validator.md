@@ -169,8 +169,6 @@ services:
       TX_SERVER: "http://terminology-server:8080/fhir"
     ports:
     - "8084:8080"
-    volumes:
-    - "./fhir-settings.json:/app/fhir-settings.json:ro"
     depends_on:
       terminology-server:
         condition: service_healthy
@@ -200,21 +198,8 @@ volumes:
   blaze-terminology-data:
 ```
 
-The MII FHIR Validator reads its terminology configuration from a
-`fhir-settings.json` file, pointing it at the terminology server:
-
-```json
-{
-  "servers": [
-    {
-      "url": "http://terminology-server:8080/fhir",
-      "type": "fhir",
-      "authenticationType": "none",
-      "allowHttp": true
-    }
-  ]
-}
-```
+The MII FHIR Validator derives its terminology configuration from `TX_SERVER` at
+startup, so it needs no further configuration.
 
 > [!NOTE]
 > The SNOMED CT release file has to be uncompressed into the `sct-release`
@@ -223,8 +208,8 @@ The MII FHIR Validator reads its terminology configuration from a
 > providing the SNOMED CT release.
 >
 > To use an [Ontoserver][4] or another terminology server instead of a second
-> Blaze instance, drop the `terminology-server` service and point both
-> `TX_SERVER` and the `url` in `fhir-settings.json` at that server.
+> Blaze instance, drop the `terminology-server` service and point `TX_SERVER` at
+> that server.
 
 With this setup, sending a resource to `http://localhost:8080/fhir` triggers
 validation against the configured implementation guides. Non-conforming resources

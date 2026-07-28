@@ -1,0 +1,23 @@
+{
+  "resourceType": "Patient",
+  "meta": {
+    "profile": [
+      "http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+    ]
+  },
+  "identifier": [
+    {
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "999-99-9999"
+    }
+  ],
+  "name": [
+    {
+      "family": "Tester",
+      "given": [
+        "Valid"
+      ]
+    }
+  ],
+  "gender": "female"
+}

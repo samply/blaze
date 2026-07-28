@@ -2084,7 +2084,7 @@ jobs:
       run: .github/scripts/check-total-number-of-resources.sh 345
 
     - name: Check Number of Invalid Resources
-      run: .github/integration-test-kds/check-invalid-resources.sh 67
+      run: .github/scripts/check-invalid-resources.sh 67
 
     - name: Download MedicationStatement Resources with ATC Code B01AC06
       run: .github/scripts/download-resources-query.sh MedicationStatement "medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
@@ -2097,6 +2097,107 @@ jobs:
 
     - name: Run Observation Quality Report
       run: .github/integration-test-kds/evaluate-measure.sh quality-report-observation 53
+
+  integration-test-extern-validator:
+    if: github.event_name != 'push' || github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+
+    strategy:
+      matrix:
+        # Each failure mode needs its own Blaze process because
+        # VALIDATOR_FAILURE_MODE is read once at startup.
+        failure-mode:
+        - tag-only
+        - tag-outcome
+        - reject
+      fail-fast: false
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    - name: Install Blazectl
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
+    - name: Login to GHCR
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
+
+    - name: Download SNOMED CT Release
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: ${{ secrets.SCT_INT_20250701_DOWNLOAD_TOKEN }}
+        filename: SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip
+
+    - name: Unzip SNOMED CT Release
+      run: unzip ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip -d .github/integration-test-extern-validator
+
+    - name: Install All US Core Terminology Resources
+      run: make -C .github/integration-test-extern-validator install
+
+    - name: Run Blaze
+      env:
+        VALIDATOR_FAILURE_MODE: ${{ matrix.failure-mode }}
+      run: docker compose -f .github/integration-test-extern-validator/docker-compose.yml up --wait
+
+    - name: Docker Logs
+      run: docker compose -f .github/integration-test-extern-validator/docker-compose.yml logs -t
+
+    - name: Check Capability Statement of the Data Server
+      run: .github/scripts/check-capability-statement-no-auth.sh
+
+    - name: Check $versions Operation of the Data Server
+      run: .github/scripts/check-versions.sh
+
+    - name: Check Capability Statement of the Terminology Server
+      run: .github/scripts/check-capability-statement-no-auth.sh http://localhost:8082/fhir
+
+    - name: Check SNOMED CT Version
+      run: .github/scripts/check-sct-version-no-auth.sh http://snomed.info/sct/900000000000207008/version/20250701 http://localhost:8082/fhir
+
+    # The external validator resolves the ValueSet bindings of the US Core
+    # profiles against the terminology server. Without the code systems and
+    # value sets of the base FHIR and US Core packages it answers every binding
+    # with "code system not found", which would flag resources as invalid for
+    # reasons that have nothing to do with Blaze.
+    - name: Upload US Core Terminology Resources into the Terminology Server
+      run: .github/value-set-expand/upload-all.sh http://localhost:8082/fhir .github/integration-test-extern-validator/node_modules
+
+    - name: Check Reject Mode
+      if: ${{ matrix.failure-mode == 'reject' }}
+      run: .github/integration-test-extern-validator/check-reject-mode.sh
+
+    - name: Create Synthea Subset
+      if: ${{ matrix.failure-mode != 'reject' }}
+      run: .github/integration-test-extern-validator/create-synthea-subset.sh
+
+    - name: Load Data
+      if: ${{ matrix.failure-mode != 'reject' }}
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload synthea-subset
+
+    # With the terminology of the base FHIR and US Core packages in place, the
+    # Synthea data validates cleanly against US Core 3.1.1, so no resource may
+    # be tagged as invalid here. The tagging itself is checked in the next step
+    # on a resource that is known to be invalid.
+    - name: Check Invalid Resources are Tagged Correctly
+      if: ${{ matrix.failure-mode != 'reject' }}
+      run: .github/scripts/check-invalid-resources.sh 0 ${{ matrix.failure-mode }}
+
+    - name: Check Tag Mode
+      if: ${{ matrix.failure-mode != 'reject' }}
+      run: .github/integration-test-extern-validator/check-tag-mode.sh ${{ matrix.failure-mode }}
 
   integration-test-extern-terminology:
     if: github.event_name != 'push' || github.ref_type == 'tag'
@@ -3424,6 +3525,7 @@ jobs:
     - integration-test
     - integration-test-synthea-1000
     - integration-test-kds
+    - integration-test-extern-validator
     - integration-test-extern-terminology
     - integration-test-patient-purge
     - integration-test-value-set-expand
