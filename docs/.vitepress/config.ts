@@ -244,8 +244,9 @@ export default defineConfig({
         text: "Performance",
         items: [
           { text: "CQL", link: "/performance/cql" },
-          { text: "Disk I/O", link: "/performance/disk-perf" },
           { text: "FHIR Search", link: "/performance/fhir-search" },
+          { text: "Load Testing", link: "/performance/load-testing" },
+          { text: "Disk I/O", link: "/performance/disk-perf" },
           { text: "Import", link: "/performance/import" },
           {
             text: "Terminology Service",
