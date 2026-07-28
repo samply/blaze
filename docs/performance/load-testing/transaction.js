@@ -6,6 +6,7 @@ import { fail } from 'k6';
 const base = __ENV.BASE;
 const duration = __ENV.DURATION || 60;
 const system = __ENV.SYSTEM;
+const warmup = __ENV.WARMUP || 1000;
 
 if (!system) {
 	fail('SYSTEM env var is required, e.g. SYSTEM=LEA47');
@@ -46,6 +47,16 @@ const params = {
 	},
 	tags: {
 		name: 'transaction'
+	}
+};
+
+const countParams = {
+	headers: {
+		'Accept': 'application/fhir+json'
+	},
+	responseType: 'text',
+	tags: {
+		name: 'count'
 	}
 };
 
@@ -134,10 +145,45 @@ function createBundle() {
 	});
 }
 
+function postBundle() {
+	return http.post(base, createBundle(), params);
+}
+
+function patientCount() {
+	const resp = http.get(`${base}/Patient?_summary=count`, countParams);
+
+	if (resp.status !== 200) fail(`non 200 response code ${resp.status} while counting patients`);
+
+	return resp.json().total;
+}
+
+// Executes a number of transactions before the measured scenarios start so that
+// the JIT compiler, the resource caches and the index column families are warm.
+// Otherwise the c1 scenario, which runs first, would measure a cold system and
+// so wouldn't be comparable to the later, higher-concurrency scenarios.
+export function setup() {
+	// The transaction test creates resources itself, so its throughput depends on
+	// how much data the server already holds. Require an essentially empty server
+	// so runs stay comparable across systems and repetitions.
+	const count = patientCount();
+
+	if (count !== 0) fail(`the server has to be empty but contains ${count} patients`);
+
+	console.log(`warmup with ${warmup} transactions...`);
+
+	for (let i = 0; i < warmup; i++) {
+		const resp = postBundle();
+
+		if (resp.status !== 200) fail(`non 200 response code ${resp.status} during warmup`);
+	}
+
+	console.log('warmup finished');
+}
+
 export default function() {
 	exec.vu.tags['vus_active'] = exec.instance.vusActive;
 
-	const resp = http.post(base, createBundle(), params);
+	const resp = postBundle();
 
 	if (resp.status !== 200) fail(`non 200 response code ${resp.status}`);
 

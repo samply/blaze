@@ -507,6 +507,14 @@
             </ModuleState>
           </value>
         </entry>
+        <entry key="scheduler-test-util">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="scheduler-test-util" />
+            </ModuleState>
+          </value>
+        </entry>
         <entry key="server">
           <value>
             <ModuleState>

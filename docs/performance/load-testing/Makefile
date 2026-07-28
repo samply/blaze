@@ -6,7 +6,7 @@ data/patient-graph.csv: patient-graph.js
 
 # Systems the transaction test was run on. Each has its own committed
 # data/transaction-<system>.csv.
-TRANSACTION_SYSTEMS := LEA47 LEA79
+TRANSACTION_SYSTEMS := LEA47 LEA79 A5N46
 
 data/transaction-%.csv: transaction.js
 	SYSTEM=$* k6 run transaction.js
