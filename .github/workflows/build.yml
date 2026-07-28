@@ -998,13 +998,16 @@ jobs:
         - graph
         - cql
 
-        exclude:
-        - variant: distributed
-          feature: delete-history
-        - variant: distributed
-          feature: patient-purge
-        - variant: distributed
-          feature: graph
+        # The feature toggles are independent of the storage backend, so the
+        # distributed variant, which runs on a paid runner, only tests the full
+        # feature set. Only the nightly build tests all features on it.
+        exclude: >-
+          ${{ github.event_name == 'schedule' && fromJSON('[]') ||
+          fromJSON('[{"variant":"distributed","feature":"none"},
+          {"variant":"distributed","feature":"delete-history"},
+          {"variant":"distributed","feature":"patient-purge"},
+          {"variant":"distributed","feature":"graph"},
+          {"variant":"distributed","feature":"cql"}]') }}
 
       fail-fast: false
 
