@@ -1,5 +1,6 @@
 (ns blaze.page-id-cipher-test
   (:require
+   [blaze.async.flow :as flow]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.node :as node]
@@ -16,7 +17,7 @@
    [blaze.fhir.writing-context]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
-   [blaze.page-id-cipher]
+   [blaze.page-id-cipher :as page-id-cipher]
    [blaze.page-id-cipher.spec]
    [blaze.scheduler.spec]
    [blaze.scheduler.test-util :as stu]
@@ -31,7 +32,12 @@
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [com.google.crypto.tink Aead]
+   [java.nio.charset StandardCharsets]
+   [java.security GeneralSecurityException]
+   [java.util.concurrent Flow$Subscriber Flow$Subscription]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -202,22 +208,80 @@
     (with-system [{:blaze/keys [page-id-cipher]} config]
       (is (s/valid? :blaze/page-id-cipher page-id-cipher)))))
 
+(defn- rotate-keys!
+  "Triggers one key rotation on `manual-scheduler` and returns the state of
+  `page-id-cipher` after the rotated key set was published back into it.
+
+  Returns ::timeout if that didn't happen within 10 seconds."
+  [{:keys [state]} manual-scheduler]
+  ;; the rotated key set is published back into the cipher state asynchronously
+  (let [rotated-state-promise (promise)]
+    (add-watch state ::rotated
+               (fn [_ _ _ new-state] (deliver rotated-state-promise new-state)))
+    (stu/tick! manual-scheduler)
+    (let [rotated-state (deref rotated-state-promise 10000 ::timeout)]
+      (remove-watch state ::rotated)
+      rotated-state)))
+
 (deftest key-rotation-test
   (with-system [{:blaze/keys [page-id-cipher]
                  :blaze.test/keys [manual-scheduler]} config]
-    ;; the rotated key set is published back into the cipher state asynchronously
-    (let [rotated-state (promise)]
-      (add-watch (:state page-id-cipher) ::rotated
-                 (fn [_ _ _ new-state] (deliver rotated-state new-state)))
+    (let [state (rotate-keys! page-id-cipher manual-scheduler)]
+      (is (not= ::timeout state))
 
-      (stu/tick! manual-scheduler)
+      (given (datafy/datafy (:key-set-handle state))
+        count := 2
+        [0 :primary] := true
+        [0 :status] := :key.status/enabled
+        [1 :primary] := false
+        [1 :status] := :key.status/enabled))))
 
-      (let [state (deref rotated-state 10000 ::timeout)]
-        (is (not= ::timeout state))
+(defn- encrypt
+  ([cipher plaintext]
+   (encrypt cipher plaintext "associated-data"))
+  ([^Aead cipher ^String plaintext ^String associated-data]
+   (.encrypt cipher (.getBytes plaintext StandardCharsets/UTF_8)
+             (.getBytes associated-data StandardCharsets/UTF_8))))
 
-        (given (datafy/datafy (:key-set-handle state))
-          count := 2
-          [0 :primary] := true
-          [0 :status] := :key.status/enabled
-          [1 :primary] := false
-          [1 :status] := :key.status/enabled)))))
+(defn- decrypt
+  ([cipher ciphertext]
+   (decrypt cipher ciphertext "associated-data"))
+  ([^Aead cipher ^bytes ciphertext ^String associated-data]
+   (-> (.decrypt cipher ciphertext
+                 (.getBytes associated-data StandardCharsets/UTF_8))
+       (String. StandardCharsets/UTF_8))))
+
+(deftest encrypt-decrypt-test
+  (testing "a value encrypted can be decrypted again"
+    (with-system [{:blaze/keys [page-id-cipher]} config]
+      (let [ciphertext (encrypt page-id-cipher "plaintext")]
+        (is (= "plaintext" (decrypt page-id-cipher ciphertext))))))
+
+  (testing "decryption with different associated data fails"
+    (with-system [{:blaze/keys [page-id-cipher]} config]
+      (let [ciphertext (encrypt page-id-cipher "plaintext" "associated-data")]
+        (is (thrown? GeneralSecurityException
+                     (decrypt page-id-cipher ciphertext "other"))))))
+
+  (testing "a value encrypted before a key rotation can still be decrypted after it"
+    (with-system [{:blaze/keys [page-id-cipher]
+                   :blaze.test/keys [manual-scheduler]} config]
+      (let [ciphertext (encrypt page-id-cipher "plaintext")]
+
+        (is (not= ::timeout (rotate-keys! page-id-cipher manual-scheduler)))
+
+        (is (= "plaintext" (decrypt page-id-cipher ciphertext)))))))
+
+(deftest subscriber-error-test
+  (testing "an error cancels the subscription"
+    (let [cancelled (promise)
+          subscription (reify Flow$Subscription
+                         (request [_ _])
+                         (cancel [_] (deliver cancelled true)))
+          subscriber (page-id-cipher/->DocumentReferenceSubscriber
+                      nil (atom nil) nil)]
+      (flow/on-subscribe! subscriber subscription)
+
+      (.onError ^Flow$Subscriber subscriber (Exception. "msg-160655"))
+
+      (is (true? (deref cancelled 100 ::timeout))))))
