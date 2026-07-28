@@ -31,12 +31,12 @@
      (math/log (- 1 p))))
 
 (deftest collision-test
-  (testing "when generating 1,000 LUID's per millisecond"
+  (testing "when generating 1,000 LUIDs per millisecond"
     (testing "it takes between 310,000 and 320,000 occasions to reach"
       (testing "a 90% probability of a collision"
         (is (< 310000 (n 0.9 (p 1000 36)) 320000)))))
 
-  (testing "when generating 10,000 LUID's per millisecond"
+  (testing "when generating 10,000 LUIDs per millisecond"
     (testing "it takes between 3100 and 3200 occasions to reach"
       (testing "a 90% probability of a collision"
         (is (< 3100 (n 0.9 (p 10000 36)) 3200))))))
@@ -49,7 +49,7 @@
       n)))
 
 (deftest generator-test
-  (testing "first 2 LUID's"
+  (testing "first 2 LUIDs"
     (let [gen (luid/generator clock (fixed-random 0))]
       (is (= (luid/head gen) (luid/luid clock (fixed-random 0))))
       (is (= (luid/head (luid/next gen)) (luid/luid clock (fixed-random 1))))))

@@ -1,10 +1,10 @@
 (ns blaze.middleware.fhir.decrypt-page-id
   "Contains functionality around encrypting/decrypting query parameters into
-  page id's that are used in paging URL's.
+  page ids that are used in paging URLs.
 
-  The middleware `wrap-decrypt-page-id` will decrypt the page id's into query
+  The middleware `wrap-decrypt-page-id` will decrypt the page ids into query
   parameters, while the `encrypt` function will encrypt query params into page
-  id's."
+  ids."
   (:require
    [blaze.anomaly :as ba :refer [if-ok try-one]]
    [blaze.async.comp :as ac]

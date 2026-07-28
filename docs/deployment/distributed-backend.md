@@ -10,7 +10,7 @@ As described in the [Architecture](../architecture.md) section, Blaze roughly co
 
 The `docs/deployment/distributed` directory contains a Docker Compose file with an example system consisting of all components needed in a distributed setup. 
 
-Please be aware that we **don't recommend** to run Blaze on a single server using our example setup. You most likely will run the individual components in a [Kubernetes][11] Cluster or on separate VM's. The main purpose of this setup is to explain the components and their configuration in detail. Your production setup will and has to differ from this example in order to accomplish your high-availability, security and scalability goals.
+Please be aware that we **don't recommend** to run Blaze on a single server using our example setup. You most likely will run the individual components in a [Kubernetes][11] Cluster or on separate VMs. The main purpose of this setup is to explain the components and their configuration in detail. Your production setup will and has to differ from this example in order to accomplish your high-availability, security and scalability goals.
 
 You will need about 32 GB of RAM to be able to run the example smoothly. You can start it by going into the `docs/deployment/distributed` directory and run:
 

@@ -153,7 +153,7 @@
   (link "previous" (page-link-url-fn token clauses offset)))
 
 (def ^:private ^:const max-page-id-stack-size
-  "Upper bound on the number of ancestor page start-id's carried in the
+  "Upper bound on the number of ancestor page start-ids carried in the
   `__page-id-stack` of a paging link. Keeps the encrypted page id (and thus the
   paging URL) small enough; beyond it, the previous link is no longer offered
   and the always present first link is used instead."

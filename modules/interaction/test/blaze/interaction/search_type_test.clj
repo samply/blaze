@@ -1386,7 +1386,7 @@
             :fhir/type := :fhir/Patient
             :id := "0")))))
 
-  (testing "multiple id's"
+  (testing "multiple ids"
     (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]

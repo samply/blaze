@@ -86,7 +86,7 @@ The ELM expression are compiled into instances of the `blaze.elm.compiler.core/E
 * it will be calculated based on a database with a particular t
 * that t will be assigned to the Bloom filter
 * the calculation will evaluate the expression for each patent of the database
-* the ID's of Patients for which the expression returns true will be put into the Bloom filter
+* the IDs of Patients for which the expression returns true will be put into the Bloom filter
 
 ## Or Expressions
 
