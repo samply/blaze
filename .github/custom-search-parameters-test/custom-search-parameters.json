@@ -9,7 +9,7 @@
         "id": "marital-status",
         "url": "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status",
         "version": "0.1.0",
-        "name": "marital-status",
+        "name": "PatientMaritalStatus",
         "status": "active",
         "code": "marital-status",
         "base": [

@@ -2994,6 +2994,9 @@ jobs:
     - name: Docker Logs Blaze
       run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml logs blaze
 
+    - name: Check Capability Statement
+      run: .github/custom-search-parameters-test/check-capability-statement.sh
+
     - name: Create Patient
       run: .github/custom-search-parameters-test/create-patient.sh
 
