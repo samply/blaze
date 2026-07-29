@@ -87,6 +87,23 @@
   (.writeFieldName generator field-name)
   (.writeString generator ^String value))
 
+(defn- write-values!
+  "Writes all `values` of a collection.
+
+  If the property has a declared type, all values share the same handler.
+  Otherwise the collection is polymorphic - like `contained`, which can hold
+  resources of different types - so the handler is resolved for each value
+  individually. Writing all values with the handler of the first one would
+  silently drop fields that don't exist on that type."
+  [type-handlers gen ^PropertyHandler property-handler handler values]
+  (if (.-type property-handler)
+    (run! #(handler type-handlers gen %) values)
+    (run!
+     #(if-some [value-handler (type-handlers (:fhir/type %))]
+        (value-handler type-handlers gen %)
+        (throw (IllegalArgumentException. (format "Value `%s` is no FHIR type." %))))
+     values)))
+
 (defn- write-field!
   [type-handlers ^JsonGenerator gen ^PropertyHandler property-handler value]
   (if (sequential? value)
@@ -95,7 +112,7 @@
         (if-some [handler (type-handlers type)]
           (do (.writeFieldName gen (.normal (field-name property-handler type)))
               (.writeStartArray gen)
-              (run! #(handler type-handlers gen %) value)
+              (write-values! type-handlers gen property-handler handler value)
               (.writeEndArray gen))
           (Primitive/serializeJsonPrimitiveList value gen (field-name property-handler type)))))
     (if-some [type (or (.-type property-handler) (:fhir/type value))]

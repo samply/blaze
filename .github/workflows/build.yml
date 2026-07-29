@@ -1081,6 +1081,9 @@ jobs:
     - name: Check Resource Totals
       run: .github/scripts/check-resource-totals.sh
 
+    - name: Check Contained Resources
+      run: .github/scripts/check-contained-resources.sh
+
     - name: Count Resources
       run: blazectl count-resources --server http://localhost:8080/fhir
 

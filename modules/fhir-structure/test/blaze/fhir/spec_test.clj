@@ -729,6 +729,71 @@
        :entry
        [{:resource {:resourceType "Patient" :id "0"}}]}))
 
+  (testing "contained resources of the same type"
+    (are [resource json] (= json (write-read-json resource))
+      {:fhir/type :fhir/Patient :id "0"
+       :contained
+       [{:fhir/type :fhir/Organization :id "org-1" :name #fhir/string "Acme"}
+        {:fhir/type :fhir/Organization :id "org-2" :name #fhir/string "Foo"}]}
+      {:resourceType "Patient" :id "0"
+       :contained
+       [{:resourceType "Organization" :id "org-1" :name "Acme"}
+        {:resourceType "Organization" :id "org-2" :name "Foo"}]}))
+
+  ;; Each contained resource has to be written according to its own type. Using
+  ;; the type of the first contained resource for all of them would silently
+  ;; drop fields that don't exist on that type.
+  (testing "contained resources of different types"
+    (are [resource json] (= json (write-read-json resource))
+      {:fhir/type :fhir/Patient :id "0"
+       :contained
+       [{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}
+        {:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}]}
+      {:resourceType "Patient" :id "0"
+       :contained
+       [{:resourceType "Organization" :id "org" :name "Acme"}
+        {:resourceType "Practitioner" :id "prac" :gender "female"}]})
+
+    (testing "in reverse order"
+      (are [resource json] (= json (write-read-json resource))
+        {:fhir/type :fhir/Patient :id "0"
+         :contained
+         [{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}
+          {:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}]}
+        {:resourceType "Patient" :id "0"
+         :contained
+         [{:resourceType "Practitioner" :id "prac" :gender "female"}
+          {:resourceType "Organization" :id "org" :name "Acme"}]}))
+
+    (testing "an OperationOutcome next to other contained resources"
+      (are [resource json] (= json (write-read-json resource))
+        {:fhir/type :fhir/ExplanationOfBenefit :id "0"
+         :contained
+         [{:fhir/type :fhir/ServiceRequest :id "referral"
+           :status #fhir/code "completed" :intent #fhir/code "order"}
+          {:fhir/type :fhir/Coverage :id "coverage" :status #fhir/code "active"}
+          {:fhir/type :fhir/OperationOutcome :id "outcome"
+           :issue
+           [{:fhir/type :fhir.OperationOutcome/issue
+             :severity #fhir/code "error" :code #fhir/code "processing"}]}]}
+        {:resourceType "ExplanationOfBenefit" :id "0"
+         :contained
+         [{:resourceType "ServiceRequest" :id "referral"
+           :status "completed" :intent "order"}
+          {:resourceType "Coverage" :id "coverage" :status "active"}
+          {:resourceType "OperationOutcome" :id "outcome"
+           :issue [{:severity "error" :code "processing"}]}]})))
+
+  (testing "a contained value without a FHIR type"
+    (given (ba/try-anomaly
+            (write-read-json
+             {:fhir/type :fhir/Patient :id "0"
+              :contained
+              [{:fhir/type :fhir/Organization :id "org"}
+               "foo"]}))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Value `foo` is no FHIR type."))
+
   (testing "Observation with code"
     (are [resource json] (= json (write-read-json resource))
       {:fhir/type :fhir/Observation
@@ -840,6 +905,42 @@
          :entry
          [{:fhir/type :fhir.Bundle/entry
            :resource {:fhir/type :fhir/Patient :id "0"}}]}))
+
+    (testing "contained resources of the same type"
+      (are [resource] (= resource (write-parse-cbor resource))
+        {:fhir/type :fhir/Patient :id "0"
+         :contained
+         [{:fhir/type :fhir/Organization :id "org-1" :name #fhir/string "Acme"}
+          {:fhir/type :fhir/Organization :id "org-2" :name #fhir/string "Foo"}]}))
+
+    ;; Each contained resource has to be written according to its own type. Using
+    ;; the type of the first contained resource for all of them would silently
+    ;; drop fields that don't exist on that type.
+    (testing "contained resources of different types"
+      (are [resource] (= resource (write-parse-cbor resource))
+        {:fhir/type :fhir/Patient :id "0"
+         :contained
+         [{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}
+          {:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}]})
+
+      (testing "in reverse order"
+        (are [resource] (= resource (write-parse-cbor resource))
+          {:fhir/type :fhir/Patient :id "0"
+           :contained
+           [{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}
+            {:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}]}))
+
+      (testing "an OperationOutcome next to other contained resources"
+        (are [resource] (= resource (write-parse-cbor resource))
+          {:fhir/type :fhir/ExplanationOfBenefit :id "0"
+           :contained
+           [{:fhir/type :fhir/ServiceRequest :id "referral"
+             :status #fhir/code "completed" :intent #fhir/code "order"}
+            {:fhir/type :fhir/Coverage :id "coverage" :status #fhir/code "active"}
+            {:fhir/type :fhir/OperationOutcome :id "outcome"
+             :issue
+             [{:fhir/type :fhir.OperationOutcome/issue
+               :severity #fhir/code "error" :code #fhir/code "processing"}]}]})))
 
     (testing "Observation with code"
       (are [resource] (= resource (write-parse-cbor resource))
