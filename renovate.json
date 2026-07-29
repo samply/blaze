@@ -15,6 +15,33 @@
       ]
     },
     {
+      "description": [
+        "Renovate resolves npm registries from a global npmrc state that concurrent lookups share, so the unscoped registry in modules/frontend-e2e/test-data/.npmrc can leak into unrelated lookups (e.g. prettier) and fail them with no-result. Pin every npm dependency to an explicit registry to bypass npmrc-based resolution; later rules override this default for package files served from other registries."
+      ],
+      "matchDatasources": [
+        "npm"
+      ],
+      "registryUrls": [
+        "https://registry.npmjs.org"
+      ]
+    },
+    {
+      "matchFileNames": [
+        "modules/frontend-e2e/test-data/**"
+      ],
+      "registryUrls": [
+        "https://packages.simplifier.net"
+      ]
+    },
+    {
+      "matchFileNames": [
+        ".github/value-set-expand/**"
+      ],
+      "registryUrls": [
+        "https://gitlab.com/api/v4/packages/npm/"
+      ]
+    },
+    {
       "groupName": "jackson",
       "matchPackageNames": [
         "/com.fasterxml.jackson/"
