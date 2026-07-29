@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import ChartFrame from "./ChartFrame.vue";
 import { categories, num, rows, series } from "./data";
 import {
   axis,
   bar,
-  FONT_SIZE,
+  gutter,
   HEIGHT,
+  place,
+  type PlacedTick,
   scale,
-  textWidth,
   tick,
-  TITLE_FONT_SIZE,
+  ticks,
   WIDTH,
 } from "./plot";
 
@@ -73,10 +75,7 @@ const yAxis = computed(() => {
 });
 
 const yTicks = computed(() =>
-  yAxis.value.ticks.map((value) => ({
-    value,
-    label: tick(value, props.ySuffix),
-  })),
+  ticks(yAxis.value, (value) => tick(value, props.ySuffix)),
 );
 
 // A single series carries its name as a subtitle rather than as a one-entry
@@ -85,36 +84,31 @@ const subtitle = computed(() =>
   props.series.length === 1 ? props.series[0] : null,
 );
 
-const legend = computed(() =>
-  props.series.length > 1
-    ? props.series.map((name, i) => ({ name, index: i }))
-    : [],
-);
-
-const plot = computed(() => {
-  const top = subtitle.value ? 46 : 30;
-  const left =
-    (props.yLabel ? 26 : 8) +
-    Math.max(...yTicks.value.map((tick) => textWidth(tick.label))) +
-    8;
-  const bottom = HEIGHT - (props.xLabel ? 50 : 26);
-  return { top, left, right: WIDTH - 16, bottom };
-});
+const plot = computed(() => ({
+  top: subtitle.value ? 46 : 30,
+  left: gutter(yTicks.value, props.yLabel),
+  right: WIDTH - 16,
+  bottom: HEIGHT - (props.xLabel ? 50 : 26),
+}));
 
 const y = computed(() =>
   scale(yAxis.value, plot.value.bottom, plot.value.top),
 );
 
+const baseline = computed(() => y.value(Math.max(yAxis.value.min, 0)));
+
+const color = (index: number) =>
+  `var(--blaze-chart-bar-${names.value.length}-${index + 1})`;
+
 const bars = computed(() => {
-  const { left, right, bottom } = plot.value;
+  const { left, right } = plot.value;
   const slot = (right - left) / data.value.categories.length;
   const width = Math.min(MAX_BAR_WIDTH, (slot * CLUSTER_WIDTH) / names.value.length);
   const cluster = width * names.value.length;
-  const baseline = y.value(Math.max(yAxis.value.min, 0));
   return data.value.values.flatMap((values, seriesIndex) =>
     values.map((value, categoryIndex) => ({
       key: `${seriesIndex}-${categoryIndex}`,
-      series: seriesIndex,
+      color: color(seriesIndex),
       path: bar(
         left +
           slot * categoryIndex +
@@ -122,7 +116,7 @@ const bars = computed(() => {
           width * seriesIndex +
           BAR_GAP / 2,
         Math.max(1, width - BAR_GAP),
-        baseline,
+        baseline.value,
         y.value(value),
       ),
       label: `${data.value.categories[categoryIndex]} · ${names.value[seriesIndex]}: ${tick(value, props.ySuffix)}`,
@@ -130,17 +124,26 @@ const bars = computed(() => {
   );
 });
 
-const xTicks = computed(() => {
+// The categories sit at the centre of their slot, so they are placed here
+// rather than by a scale.
+const xTicks = computed<PlacedTick[]>(() => {
   const { left, right } = plot.value;
   const slot = (right - left) / data.value.categories.length;
   return data.value.categories.map((label, i) => ({
     label,
-    x: left + slot * (i + 0.5),
+    pos: left + slot * (i + 0.5),
   }));
 });
 
-const color = (index: number) =>
-  `var(--blaze-chart-bar-${names.value.length}-${index + 1})`;
+const legend = computed(() =>
+  props.series.length > 1
+    ? props.series.map((name, index) => ({
+        name,
+        color: color(index),
+        shape: "rect" as const,
+      }))
+    : [],
+);
 
 const description = computed(() =>
   [
@@ -157,116 +160,22 @@ const description = computed(() =>
 </script>
 
 <template>
-  <figure class="blaze-chart">
-    <svg
-      :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
-      role="img"
-      :aria-label="description"
-    >
-      <desc>{{ description }}</desc>
-
-      <text
-        class="blaze-chart-title"
-        :x="(plot.left + plot.right) / 2"
-        y="20"
-        :font-size="TITLE_FONT_SIZE"
-      >
-        {{ title }}
-      </text>
-      <text
-        v-if="subtitle"
-        class="blaze-chart-subtitle"
-        :x="(plot.left + plot.right) / 2"
-        y="38"
-        :font-size="FONT_SIZE"
-      >
-        {{ subtitle }}
-      </text>
-
-      <g class="blaze-chart-grid">
-        <line
-          v-for="t in yTicks"
-          :key="t.value"
-          :x1="plot.left"
-          :x2="plot.right"
-          :y1="y(t.value)"
-          :y2="y(t.value)"
-        />
-      </g>
-
-      <g class="blaze-chart-tick" :font-size="FONT_SIZE">
-        <text
-          v-for="t in yTicks"
-          :key="t.value"
-          :x="plot.left - 8"
-          :y="y(t.value)"
-          text-anchor="end"
-          dominant-baseline="middle"
-        >
-          {{ t.label }}
-        </text>
-        <text
-          v-for="t in xTicks"
-          :key="t.label"
-          :x="t.x"
-          :y="plot.bottom + 18"
-          text-anchor="middle"
-        >
-          {{ t.label }}
-        </text>
-      </g>
-
-      <line
-        class="blaze-chart-axis"
-        :x1="plot.left"
-        :x2="plot.right"
-        :y1="y(Math.max(yAxis.min, 0))"
-        :y2="y(Math.max(yAxis.min, 0))"
-      />
-
-      <path
-        v-for="b in bars"
-        :key="b.key"
-        :d="b.path"
-        :fill="color(b.series)"
-      >
-        <title>{{ b.label }}</title>
-      </path>
-
-      <text
-        v-if="yLabel"
-        class="blaze-chart-label"
-        :font-size="FONT_SIZE"
-        text-anchor="middle"
-        :transform="`translate(14 ${(plot.top + plot.bottom) / 2}) rotate(-90)`"
-      >
-        {{ yLabel }}
-      </text>
-      <text
-        v-if="xLabel"
-        class="blaze-chart-label"
-        :font-size="FONT_SIZE"
-        text-anchor="middle"
-        :x="(plot.left + plot.right) / 2"
-        :y="HEIGHT - 10"
-      >
-        {{ xLabel }}
-      </text>
-
-      <g
-        v-if="legend.length > 0"
-        class="blaze-chart-legend"
-        :font-size="FONT_SIZE"
-      >
-        <g
-          v-for="entry in legend"
-          :key="entry.name"
-          :transform="`translate(${plot.left + 14} ${plot.top + 10 + entry.index * 19})`"
-        >
-          <rect width="13" height="13" rx="2" :fill="color(entry.index)" />
-          <text x="19" y="10">{{ entry.name }}</text>
-        </g>
-      </g>
-    </svg>
-  </figure>
+  <ChartFrame
+    :title="title"
+    :subtitle="subtitle"
+    :description="description"
+    :plot="plot"
+    :x-ticks="xTicks"
+    :y-ticks="place(yTicks, y)"
+    :x-grid="false"
+    :baseline="baseline"
+    :left-axis="false"
+    :x-label="xLabel"
+    :y-label="yLabel"
+    :legend="legend"
+  >
+    <path v-for="b in bars" :key="b.key" :d="b.path" :fill="b.color">
+      <title>{{ b.label }}</title>
+    </path>
+  </ChartFrame>
 </template>

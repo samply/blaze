@@ -4,11 +4,11 @@
 
 The following system was used for the performance evaluation:
 
-| System | Provider | CPU         | Cores |     RAM | SSD                        |
-|--------|----------|-------------|------:|--------:|----------------------------|
-| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB                       |
-| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 2 TB Intel P5600 over vSAN |
-| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 2 TB Huawei OceanDisk 300P |
+| System | Provider | CPU         | Cores |     RAM | SSD                           |
+|--------|----------|-------------|------:|--------:|-------------------------------|
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB Samsung 990 Pro          |
+| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 3.2 TB Intel P5600 over vSAN  |
+| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 12.8 TB Huawei OceanDisk 300P |
 
 All systems were configured according to the [Production Configuration](../production-configuration.md) guide.
 

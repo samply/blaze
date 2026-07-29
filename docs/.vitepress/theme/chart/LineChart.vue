@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import ChartFrame from "./ChartFrame.vue";
+import LineSeries from "./LineSeries.vue";
 import { num, rows } from "./data";
 import {
   axis,
-  FONT_SIZE,
+  type Curve,
+  gutter,
   HEIGHT,
   logAxis,
+  place,
   scale,
-  textWidth,
   tick,
-  TITLE_FONT_SIZE,
+  ticks,
   WIDTH,
 } from "./plot";
 
@@ -58,10 +61,6 @@ const props = withDefaults(
     y2Max: null,
   },
 );
-
-// Radius of a data point marker. It carries a surface-colored ring, so points
-// of different series stay readable where the curves cross.
-const MARKER_RADIUS = 4;
 
 const data = computed(() => {
   const all = rows(props.src);
@@ -119,17 +118,16 @@ const y2Axis = computed(() => {
   );
 });
 
-const plot = computed(() => {
-  const width = (values: number[]) =>
-    Math.max(...values.map((value) => textWidth(tick(value))));
-  return {
-    top: 30,
-    left: (props.yLabel ? 26 : 8) + width(yAxis.value.ticks) + 8,
-    right:
-      WIDTH - (props.y2Label ? 26 : 8) - width(y2Axis.value.ticks) - 8,
-    bottom: HEIGHT - (props.xLabel ? 50 : 26),
-  };
-});
+const xAxisTicks = computed(() => ticks(xAxis.value));
+const yTicks = computed(() => ticks(yAxis.value));
+const y2Ticks = computed(() => ticks(y2Axis.value));
+
+const plot = computed(() => ({
+  top: 30,
+  left: gutter(yTicks.value, props.yLabel),
+  right: WIDTH - gutter(y2Ticks.value, props.y2Label),
+  bottom: HEIGHT - (props.xLabel ? 50 : 26),
+}));
 
 const x = computed(() =>
   scale(xAxis.value, plot.value.left, plot.value.right, props.xLog),
@@ -139,23 +137,17 @@ const y2 = computed(() =>
   scale(y2Axis.value, plot.value.bottom, plot.value.top),
 );
 
-const curves = computed(() => {
+const curves = computed<Curve[]>(() => {
   const of = (
-    points: { x: number; y: number }[][],
+    series: { x: number; y: number }[][],
     names: string[],
     project: (value: number) => number,
     color: (index: number) => string,
     unit: string,
   ) =>
-    points.map((points, index) => ({
+    series.map((points, index) => ({
       name: names[index] ?? `Series ${index + 1}`,
       color: color(index),
-      path: points
-        .map(
-          (point, i) =>
-            `${i === 0 ? "M" : "L"}${x.value(point.x)} ${project(point.y)}`,
-        )
-        .join(""),
       points: points.map((point) => ({
         cx: x.value(point.x),
         cy: project(point.y),
@@ -174,6 +166,14 @@ const curves = computed(() => {
   ];
 });
 
+const legend = computed(() =>
+  curves.value.map((curve) => ({
+    name: curve.name,
+    color: curve.color,
+    shape: "line" as const,
+  })),
+);
+
 const description = computed(() =>
   [
     `Line chart. ${props.title}.`,
@@ -185,163 +185,19 @@ const description = computed(() =>
 </script>
 
 <template>
-  <figure class="blaze-chart">
-    <svg
-      :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
-      role="img"
-      :aria-label="description"
-    >
-      <desc>{{ description }}</desc>
-
-      <text
-        class="blaze-chart-title"
-        :x="(plot.left + plot.right) / 2"
-        y="20"
-        :font-size="TITLE_FONT_SIZE"
-      >
-        {{ title }}
-      </text>
-
-      <g class="blaze-chart-grid">
-        <line
-          v-for="t in yAxis.ticks"
-          :key="`y${t}`"
-          :x1="plot.left"
-          :x2="plot.right"
-          :y1="y(t)"
-          :y2="y(t)"
-        />
-        <line
-          v-for="t in xAxis.ticks"
-          :key="`x${t}`"
-          :x1="x(t)"
-          :x2="x(t)"
-          :y1="plot.top"
-          :y2="plot.bottom"
-        />
-      </g>
-
-      <g class="blaze-chart-tick" :font-size="FONT_SIZE">
-        <text
-          v-for="t in yAxis.ticks"
-          :key="`y${t}`"
-          :x="plot.left - 8"
-          :y="y(t)"
-          text-anchor="end"
-          dominant-baseline="middle"
-        >
-          {{ tick(t) }}
-        </text>
-        <text
-          v-for="t in y2Axis.ticks"
-          :key="`y2${t}`"
-          :x="plot.right + 8"
-          :y="y2(t)"
-          text-anchor="start"
-          dominant-baseline="middle"
-        >
-          {{ tick(t) }}
-        </text>
-        <text
-          v-for="t in xAxis.ticks"
-          :key="`x${t}`"
-          :x="x(t)"
-          :y="plot.bottom + 18"
-          text-anchor="middle"
-        >
-          {{ tick(t) }}
-        </text>
-      </g>
-
-      <g class="blaze-chart-axis">
-        <line
-          :x1="plot.left"
-          :x2="plot.right"
-          :y1="plot.bottom"
-          :y2="plot.bottom"
-        />
-        <line
-          :x1="plot.left"
-          :x2="plot.left"
-          :y1="plot.top"
-          :y2="plot.bottom"
-        />
-        <line
-          :x1="plot.right"
-          :x2="plot.right"
-          :y1="plot.top"
-          :y2="plot.bottom"
-        />
-      </g>
-
-      <g v-for="curve in curves" :key="curve.name">
-        <path class="blaze-chart-line" :d="curve.path" :stroke="curve.color" />
-        <circle
-          v-for="(point, i) in curve.points"
-          :key="i"
-          class="blaze-chart-marker"
-          :cx="point.cx"
-          :cy="point.cy"
-          :r="MARKER_RADIUS"
-          :fill="curve.color"
-        >
-          <title>{{ point.label }}</title>
-        </circle>
-      </g>
-
-      <text
-        v-if="yLabel"
-        class="blaze-chart-label"
-        :font-size="FONT_SIZE"
-        text-anchor="middle"
-        :transform="`translate(14 ${(plot.top + plot.bottom) / 2}) rotate(-90)`"
-      >
-        {{ yLabel }}
-      </text>
-      <text
-        v-if="y2Label"
-        class="blaze-chart-label"
-        :font-size="FONT_SIZE"
-        text-anchor="middle"
-        :transform="`translate(${WIDTH - 10} ${(plot.top + plot.bottom) / 2}) rotate(90)`"
-      >
-        {{ y2Label }}
-      </text>
-      <text
-        v-if="xLabel"
-        class="blaze-chart-label"
-        :font-size="FONT_SIZE"
-        text-anchor="middle"
-        :x="(plot.left + plot.right) / 2"
-        :y="HEIGHT - 10"
-      >
-        {{ xLabel }}
-      </text>
-
-      <g class="blaze-chart-legend" :font-size="FONT_SIZE">
-        <g
-          v-for="(curve, index) in curves"
-          :key="curve.name"
-          :transform="`translate(${plot.left + 14} ${plot.top + 10 + index * 19})`"
-        >
-          <line
-            class="blaze-chart-line"
-            x1="0"
-            y1="6"
-            x2="16"
-            y2="6"
-            :stroke="curve.color"
-          />
-          <circle
-            class="blaze-chart-marker"
-            cx="8"
-            cy="6"
-            :r="MARKER_RADIUS"
-            :fill="curve.color"
-          />
-          <text x="24" y="7">{{ curve.name }}</text>
-        </g>
-      </g>
-    </svg>
-  </figure>
+  <ChartFrame
+    :title="title"
+    :description="description"
+    :plot="plot"
+    :x-ticks="place(xAxisTicks, x)"
+    :y-ticks="place(yTicks, y)"
+    :y2-ticks="place(y2Ticks, y2)"
+    right-axis
+    :x-label="xLabel"
+    :y-label="yLabel"
+    :y2-label="y2Label"
+    :legend="legend"
+  >
+    <LineSeries :curves="curves" />
+  </ChartFrame>
 </template>

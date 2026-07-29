@@ -12,6 +12,10 @@ export const FONT_SIZE = 12;
 /** Font size of the chart title, in user units. */
 export const TITLE_FONT_SIZE = 14;
 
+// Radius of a data point marker. It carries a surface-colored ring, so points
+// of different series stay readable where the curves cross.
+export const MARKER_RADIUS = 4;
+
 // There is no text measurement at build time, so label widths are estimated
 // from the character count. 0.55 em is the average advance of the site font at
 // the sizes used here.
@@ -105,6 +109,99 @@ export function tick(value: number, suffix = ""): string {
   const text =
     Number.isInteger(value) ? String(value) : String(parseFloat(value.toFixed(3)));
   return suffix ? `${text} ${suffix}` : text;
+}
+
+/**
+ * A tick of an axis, labelled but not yet placed.
+ *
+ * Labels come first because the gutter an axis needs is measured from them,
+ * while the scale that places a tick is only known once that gutter is.
+ */
+export interface Tick {
+  value: number;
+  label: string;
+}
+
+/** A tick placed on an axis, at `pos` user units along it. */
+export interface PlacedTick {
+  pos: number;
+  label: string;
+}
+
+/**
+ * Returns the ticks of `axis`, labelled by `format`.
+ *
+ * Passing the formatter in here is what keeps a chart from having to format the
+ * same tick twice — once to measure it and once to draw it.
+ */
+export function ticks(
+  axis: Axis,
+  format: (value: number) => string = (value) => tick(value),
+): Tick[] {
+  return axis.ticks.map((value) => ({ value, label: format(value) }));
+}
+
+/** Places `ticks` along an axis with `scale`. */
+export function place(
+  ticks: Tick[],
+  scale: (value: number) => number,
+): PlacedTick[] {
+  return ticks.map(({ value, label }) => ({ pos: scale(value), label }));
+}
+
+/**
+ * Returns the width to reserve between the edge of the chart and a vertical
+ * axis carrying `ticks`, leaving room for a rotated axis `label` if there is
+ * one.
+ */
+export function gutter(ticks: Tick[], label?: string | null): number {
+  return (
+    (label ? 26 : 8) + Math.max(...ticks.map((tick) => textWidth(tick.label))) + 8
+  );
+}
+
+/** The rectangle a chart draws its data into, in user units. */
+export interface Plot {
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+}
+
+/** A point of a curve, carrying the label of its marker tooltip. */
+export interface Point {
+  cx: number;
+  cy: number;
+  label: string;
+}
+
+/** A line series of a chart. */
+export interface Curve {
+  name: string;
+  color: string;
+  /** A dashed curve reads as a reference, not as a measurement. */
+  dashed?: boolean;
+  points: Point[];
+}
+
+/** Returns the path through `points`. */
+export function linePath(points: Point[]): string {
+  return points
+    .map((point, i) => `${i === 0 ? "M" : "L"}${point.cx} ${point.cy}`)
+    .join("");
+}
+
+/**
+ * An entry of a chart legend.
+ *
+ * The `shape` is the mark the entry stands for — a line for a curve, a swatch
+ * for a bar.
+ */
+export interface LegendEntry {
+  name: string;
+  color: string;
+  shape: "line" | "rect";
+  dashed?: boolean;
 }
 
 /** Returns a function projecting a value of `axis` onto `[from, to]`. */
