@@ -37,6 +37,12 @@
   --blaze-chart-line-y2-1: #e2691f;
   --blaze-chart-line-y2-2: #b8500f;
   --blaze-chart-line-y2-3: #7d3409;
+
+  /*
+   * A reference curve is not a measurement, so it stays out of the hues that
+   * carry data and is drawn in a neutral gray instead.
+   */
+  --blaze-chart-line-reference: #6b7280;
 }
 
 .dark {
@@ -58,6 +64,8 @@
   --blaze-chart-line-y2-1: #ffba8c;
   --blaze-chart-line-y2-2: #e8763f;
   --blaze-chart-line-y2-3: #c0561a;
+
+  --blaze-chart-line-reference: #9ca3af;
 }
 
 /*
@@ -122,6 +130,60 @@
 .blaze-chart-marker {
   stroke: var(--vp-c-bg);
   stroke-width: 2;
+}
+
+/* Dashes tell a reference curve apart from a measured one at a glance. */
+.blaze-chart-line-dashed {
+  stroke-dasharray: 6 5;
+}
+
+/*
+ * Key figures of a measurement, shown as a row of tiles above its charts, the
+ * way the admin UI shows them above the same charts. The hairline gap between
+ * the tiles is the grid background showing through.
+ */
+.blaze-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1px;
+  margin: 24px 0;
+  padding: 0;
+  background-color: var(--vp-c-divider);
+  border-top: 1px solid var(--vp-c-divider);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.blaze-stats > div {
+  background-color: var(--vp-c-bg);
+  padding: 16px;
+}
+
+.blaze-stats dt {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.blaze-stats dd {
+  margin: 4px 0 0;
+  color: var(--vp-c-text-1);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The note of a value — its rating or the concurrency it was reached at — is
+ * spaced by a margin rather than by a blank, which the template compiler would
+ * collapse away.
+ */
+.blaze-stats dd span {
+  margin-left: 6px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  font-weight: 400;
 }
 
 @media print {

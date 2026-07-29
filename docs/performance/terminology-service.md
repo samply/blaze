@@ -4,9 +4,9 @@
 
 The following system was used for performance evaluation:
 
-| System | Provider | CPU         | Cores |     RAM |  SSD |
-|--------|----------|-------------|------:|--------:|-----:|
-| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB |
+| System | Provider | CPU         | Cores |     RAM | SSD                  |
+|--------|----------|-------------|------:|--------:|----------------------|
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB Samsung 990 Pro |
 
 ## Methods
 

@@ -12,6 +12,7 @@
 const RAW = import.meta.glob<string>(
   [
     "../../../performance/cql/*.txt",
+    "../../../performance/disk-perf/*.json",
     "../../../performance/fhir-search/chart-data/*.txt",
     "../../../performance/load-testing/data/*.csv",
     "../../../performance/terminology-service/data/*.csv",
@@ -65,6 +66,17 @@ export function num(row: Row, col: number): number {
   return parseFloat(match[0]);
 }
 
+/** Returns the content of the data file `src`, given relative to `docs/performance`. */
+export function content(src: string): string {
+  const content = FILES[src];
+  if (content === undefined) {
+    throw new Error(
+      `unknown chart data file: ${src}\nknown files:\n  ${Object.keys(FILES).sort().join("\n  ")}`,
+    );
+  }
+  return content;
+}
+
 /**
  * Parses the data file `src`, given relative to `docs/performance`.
  *
@@ -73,14 +85,8 @@ export function num(row: Row, col: number): number {
  * for the `.csv` k6 results.
  */
 export function rows(src: string): Row[] {
-  const content = FILES[src];
-  if (content === undefined) {
-    throw new Error(
-      `unknown chart data file: ${src}\nknown files:\n  ${Object.keys(FILES).sort().join("\n  ")}`,
-    );
-  }
   const separator = src.endsWith(".csv") ? "," : "|";
-  return content
+  return content(src)
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !line.startsWith("#"))

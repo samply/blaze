@@ -16,6 +16,12 @@
   const plotHeight = height - margin.top - margin.bottom;
 
   // the reference curve of a good local NVMe SSD the score is computed against
+  //
+  // source of truth are `reference-iops-per-reader` and
+  // `reference-max-concurrency` in `blaze.job.disk-perf.score`; the server, the
+  // admin UI and the docs are separate build units, so the values can't be
+  // shared and have to be kept in sync by hand — the docs carry them in
+  // `docs/.vitepress/theme/chart/disk-perf.ts`
   const referenceIopsPerReader = 10000;
   const referenceMaxConcurrency = 32;
 

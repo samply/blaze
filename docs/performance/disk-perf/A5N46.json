@@ -1,0 +1,449 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "seq-write-throughput",
+      "valueQuantity": {
+        "value": 3375001802,
+        "unit": "By/s",
+        "system": "http://unitsofmeasure.org",
+        "code": "By/s"
+      }
+    },
+    {
+      "name": "rand-read",
+      "part": [
+        {
+          "name": "concurrency",
+          "valuePositiveInt": 1
+        },
+        {
+          "name": "iops",
+          "valueQuantity": {
+            "value": 18752.7,
+            "unit": "/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "/s"
+          }
+        },
+        {
+          "name": "throughput",
+          "valueQuantity": {
+            "value": 307244095,
+            "unit": "By/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "By/s"
+          }
+        },
+        {
+          "name": "latency-p50",
+          "valueQuantity": {
+            "value": 55.1,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p95",
+          "valueQuantity": {
+            "value": 55.1,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p99",
+          "valueQuantity": {
+            "value": 55.1,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-max",
+          "valueQuantity": {
+            "value": 961.5,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rand-read",
+      "part": [
+        {
+          "name": "concurrency",
+          "valuePositiveInt": 2
+        },
+        {
+          "name": "iops",
+          "valueQuantity": {
+            "value": 41698.4,
+            "unit": "/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "/s"
+          }
+        },
+        {
+          "name": "throughput",
+          "valueQuantity": {
+            "value": 683186375,
+            "unit": "By/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "By/s"
+          }
+        },
+        {
+          "name": "latency-p50",
+          "valueQuantity": {
+            "value": 46.3,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p95",
+          "valueQuantity": {
+            "value": 55.1,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p99",
+          "valueQuantity": {
+            "value": 65.5,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-max",
+          "valueQuantity": {
+            "value": 1143.5,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rand-read",
+      "part": [
+        {
+          "name": "concurrency",
+          "valuePositiveInt": 4
+        },
+        {
+          "name": "iops",
+          "valueQuantity": {
+            "value": 82205.9,
+            "unit": "/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "/s"
+          }
+        },
+        {
+          "name": "throughput",
+          "valueQuantity": {
+            "value": 1346861046,
+            "unit": "By/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "By/s"
+          }
+        },
+        {
+          "name": "latency-p50",
+          "valueQuantity": {
+            "value": 46.3,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p95",
+          "valueQuantity": {
+            "value": 60.1,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p99",
+          "valueQuantity": {
+            "value": 71.5,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-max",
+          "valueQuantity": {
+            "value": 1048.6,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rand-read",
+      "part": [
+        {
+          "name": "concurrency",
+          "valuePositiveInt": 8
+        },
+        {
+          "name": "iops",
+          "valueQuantity": {
+            "value": 153608.9,
+            "unit": "/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "/s"
+          }
+        },
+        {
+          "name": "throughput",
+          "valueQuantity": {
+            "value": 2516728716,
+            "unit": "By/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "By/s"
+          }
+        },
+        {
+          "name": "latency-p50",
+          "valueQuantity": {
+            "value": 46.3,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p95",
+          "valueQuantity": {
+            "value": 71.5,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p99",
+          "valueQuantity": {
+            "value": 85.0,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-max",
+          "valueQuantity": {
+            "value": 2719.7,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rand-read",
+      "part": [
+        {
+          "name": "concurrency",
+          "valuePositiveInt": 16
+        },
+        {
+          "name": "iops",
+          "valueQuantity": {
+            "value": 265228.0,
+            "unit": "/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "/s"
+          }
+        },
+        {
+          "name": "throughput",
+          "valueQuantity": {
+            "value": 4345494747,
+            "unit": "By/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "By/s"
+          }
+        },
+        {
+          "name": "latency-p50",
+          "valueQuantity": {
+            "value": 55.1,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p95",
+          "valueQuantity": {
+            "value": 92.7,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p99",
+          "valueQuantity": {
+            "value": 120.2,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-max",
+          "valueQuantity": {
+            "value": 2719.7,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rand-read",
+      "part": [
+        {
+          "name": "concurrency",
+          "valuePositiveInt": 32
+        },
+        {
+          "name": "iops",
+          "valueQuantity": {
+            "value": 386086.1,
+            "unit": "/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "/s"
+          }
+        },
+        {
+          "name": "throughput",
+          "valueQuantity": {
+            "value": 6325634007,
+            "unit": "By/s",
+            "system": "http://unitsofmeasure.org",
+            "code": "By/s"
+          }
+        },
+        {
+          "name": "latency-p50",
+          "valueQuantity": {
+            "value": 71.5,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p95",
+          "valueQuantity": {
+            "value": 155.9,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-p99",
+          "valueQuantity": {
+            "value": 202.1,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        },
+        {
+          "name": "latency-max",
+          "valueQuantity": {
+            "value": 2287.0,
+            "unit": "us",
+            "system": "http://unitsofmeasure.org",
+            "code": "us"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fsync-rate",
+      "valueQuantity": {
+        "value": 177.6,
+        "unit": "/s",
+        "system": "http://unitsofmeasure.org",
+        "code": "/s"
+      }
+    },
+    {
+      "name": "fsync-latency-p50",
+      "valueQuantity": {
+        "value": 5439.3,
+        "unit": "us",
+        "system": "http://unitsofmeasure.org",
+        "code": "us"
+      }
+    },
+    {
+      "name": "fsync-latency-p95",
+      "valueQuantity": {
+        "value": 7692.4,
+        "unit": "us",
+        "system": "http://unitsofmeasure.org",
+        "code": "us"
+      }
+    },
+    {
+      "name": "fsync-latency-p99",
+      "valueQuantity": {
+        "value": 7692.4,
+        "unit": "us",
+        "system": "http://unitsofmeasure.org",
+        "code": "us"
+      }
+    },
+    {
+      "name": "direct-io",
+      "valueBoolean": true
+    },
+    {
+      "name": "score",
+      "valueDecimal": 64.9
+    },
+    {
+      "name": "rating",
+      "valueCode": "good"
+    },
+    {
+      "name": "processing-duration",
+      "valueQuantity": {
+        "value": 211.49770278,
+        "unit": "s",
+        "system": "http://unitsofmeasure.org",
+        "code": "s"
+      }
+    }
+  ]
+}

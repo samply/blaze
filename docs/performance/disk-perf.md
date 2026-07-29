@@ -34,7 +34,7 @@ Each per-level read output carries the number of concurrent readers of its run i
 
 ### Score
 
-In addition to the raw numbers, the job outputs a score between 0 and 100. The random read sub-score compares the IOPS of every run of the concurrency sweep against the reference curve of a good local NVMe SSD — 10,000 IOPS per reader, corresponding to a 100 µs read, capped at 320,000 IOPS at 32 readers — and combines the per-level results as a geometric mean with equal weights, so both the low-concurrency latency regime and the high-concurrency throughput regime count. Sequential writes are normalized against 1 GB/s and fsyncs against 1,000 per second. The three sub-scores are combined as a weighted geometric mean with random reads weighted at one half and sequential writes and fsyncs at one quarter each, because random reads dominate Blaze's interactive query load. The geometric mean ensures that one collapsed dimension collapses the whole score.
+In addition to the raw numbers, the job outputs a score between 0 and 100. The random read sub-score compares the IOPS of every run of the concurrency sweep against the reference curve of a good local NVMe SSD — 10,000 IOPS per reader, corresponding to a 100 µs read, capped at 320,000 IOPS at 32 readers — and combines the per-level results as a geometric mean with equal weights, so both the low-concurrency latency regime and the high-concurrency throughput regime count. Sequential writes are normalized against 1 GB/s (10⁹ bytes per second, or 954 MiB/s in the binary units the measured throughputs are given in) and fsyncs against 1,000 per second. The three sub-scores are combined as a weighted geometric mean with random reads weighted at one half and sequential writes and fsyncs at one quarter each, because random reads dominate Blaze's interactive query load. The geometric mean ensures that one collapsed dimension collapses the whole score.
 
 Because every level of the sweep contributes to the score, scores are only comparable between runs with the same `max-concurrency`.
 
@@ -49,34 +49,47 @@ If `direct-io` is false, the filesystem doesn't support bypassing the page cache
 
 ### Example Results
 
-The measurement was run on the following systems, which are also used in the [CQL](cql.md) and [FHIR Search](fhir-search.md) performance evaluations:
+The measurement was run on the following systems, which are also used in the [CQL](cql.md), [FHIR Search](fhir-search.md) and [Load Testing](load-testing.md) performance evaluations:
 
-| System | Provider | CPU         | Cores |     RAM | SSD                         |
-|--------|----------|-------------|------:|--------:|-----------------------------|
-| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 2 TB Intel P5600 over vSAN  |
-| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 2 TB Huawei OceanDisk 300P  |
+| System | Provider | CPU         | Cores |     RAM | SSD                           |
+|--------|----------|-------------|------:|--------:|-------------------------------|
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB Samsung 990 Pro          |
+| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 3.2 TB Intel P5600 over vSAN  |
+| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 12.8 TB Huawei OceanDisk 300P |
 
-All systems were configured according to the [Production Configuration](../production-configuration.md) guide.
+All systems were configured according to the [Production Configuration](../production-configuration.md) guide. Every measurement ran on an otherwise idle server with the default parameters: a 4 GiB test file, 30 s per phase and a maximum concurrency of 32.
 
-::: info
-The read values below were measured with a fixed concurrency of 8 readers, before the benchmark swept the concurrency. A current run reports them for every level of the sweep.
-:::
+#### A5N46
 
-| Output               |      LEA47 |     LEA79 |
-|----------------------|-----------:|----------:|
-| seq-write-throughput |   411 MB/s | 10.5 GB/s |
-| read-iops            |   18.9 k/s | 111.6 k/s |
-| read-throughput      |   309 MB/s | 1.83 GB/s |
-| read-latency-p50     |   404.3 µs |   71.5 µs |
-| read-latency-p95     |   571.7 µs |   77.9 µs |
-| read-latency-p99     |   679.9 µs |   85.0 µs |
-| read-latency-max     | 21757.4 µs |  220.4 µs |
-| fsync-rate           |   478.8 /s | 129.1 k/s |
-| fsync-latency-p50    |  2097.2 µs |    7.5 µs |
-| fsync-latency-p95    |  2287.0 µs |    8.2 µs |
-| fsync-latency-p99    |  2965.8 µs |   10.6 µs |
-| direct-io            |       true |      true |
-| score                |       31.7 |     100.0 |
-| rating               | acceptable | excellent |
+<DiskPerfStats src="disk-perf/A5N46.json" />
 
-Both systems support direct I/O, so the random read numbers reflect the disks themselves. LEA79 reaches the maximum score with all three dimensions well above the reference values — its fsync rate of over 100 k/s indicates a write cache that can acknowledge syncs almost immediately. LEA47 stays acceptable because both random reads and sequential writes fall well below the reference values — the Intel P5600 itself is a fast NVMe SSD, but it is accessed over vSAN, which adds network latency to every I/O operation.
+<DiskPerfChart src="disk-perf/A5N46.json" title="Random Read IOPS (A5N46)" />
+
+<DiskPerfChart src="disk-perf/A5N46.json" metric="latency"
+  title="Random Read Latency (A5N46)" />
+
+A5N46 has the fastest random reads of the three: a single reader reaches 18.8 k IOPS at a median latency of 55 µs, and the sweep scales almost linearly to 386 k IOPS at 32 readers, staying above the reference curve at every level. That last part is by construction: the reference curve is modelled on this very drive, set deliberately below its measured numbers so that other good local NVMe SSDs clear it as well. Its fsync rate of 178/s at a median fsync latency of 5.4 ms is by far the weakest of the three, though — the drive acknowledges a sync only once the data has reached the flash instead of from a write cache. Because every transaction has to sync its write-ahead log entries, that is what limits the [transaction load test](load-testing.md#transaction) on this system to about 100 transactions/s despite the fast reads.
+
+#### LEA47
+
+<DiskPerfStats src="disk-perf/LEA47.json" />
+
+<DiskPerfChart src="disk-perf/LEA47.json" title="Random Read IOPS (LEA47)" />
+
+<DiskPerfChart src="disk-perf/LEA47.json" metric="latency"
+  title="Random Read Latency (LEA47)" />
+
+The Intel P5600 itself is a fast NVMe SSD, but LEA47 accesses it over vSAN, which adds network latency to every I/O operation: a single reader reaches only 2.2 k IOPS at a median latency of 441 µs, less than a quarter of the reference. The IOPS still scale linearly with the concurrency while the latency stays flat over the whole sweep, so it is the round-trip, not the drive, that the reads wait for. Together with 460 MiB/s of sequential write throughput and 484 fsyncs/s at a median latency of 1.9 ms, that ends at an acceptable score of 33.5 — the system works, but larger deployments will be limited by disk I/O.
+
+#### LEA79
+
+<DiskPerfStats src="disk-perf/LEA79.json" />
+
+<DiskPerfChart src="disk-perf/LEA79.json" title="Random Read IOPS (LEA79)" />
+
+<DiskPerfChart src="disk-perf/LEA79.json" metric="latency"
+  title="Random Read Latency (LEA79)" />
+
+LEA79 reaches the maximum score with all three dimensions above the reference values. The random reads scale linearly to 440 k IOPS at 32 readers, above the reference of 320 k, at a median latency that stays between 65 µs and 72 µs over the whole sweep. Sequential writes reach 10.7 GiB/s, and the fsync rate of 122 k/s at a median latency of 8.2 µs indicates a write cache that can acknowledge syncs almost immediately, which is why the same [transaction load test](load-testing.md#transaction) sustains over 5000 transactions/s here.
+
+All three systems support direct I/O, so the random read numbers reflect the disks themselves.
