@@ -555,28 +555,6 @@
   "webAuthnPolicyPasswordlessAcceptableAaguids" : [ ],
   "webAuthnPolicyPasswordlessExtraOrigins" : [ ],
   "users" : [ {
-    "id" : "b0ef6edd-d503-4c74-a5ac-587fc56ea8ec",
-    "username" : "admin",
-    "emailVerified" : false,
-    "createdTimestamp" : 1619179992044,
-    "enabled" : true,
-    "totp" : false,
-    "credentials" : [ {
-      "id" : "a364bc10-e50d-46e7-9a4b-a2e81cfb97ef",
-      "type" : "password",
-      "createdDate" : 1619179992264,
-      "secretData" : "{\"value\":\"HFaSOho+7v2/pNE05AzCJs+MGKga2UuZFpCJwrEwyRWXq8xhYI+QZlsrsvkXbg8yye0ajxvKMhoQ8StOIw92hQ==\",\"salt\":\"0FxKxt+bGWwoWSZptMOXlw==\",\"additionalParameters\":{}}",
-      "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
-    } ],
-    "disableableCredentialTypes" : [ ],
-    "requiredActions" : [ ],
-    "realmRoles" : [ "offline_access", "uma_authorization", "admin" ],
-    "clientRoles" : {
-      "account" : [ "view-profile", "manage-account" ]
-    },
-    "notBefore" : 0,
-    "groups" : [ ]
-  }, {
     "id" : "18fb5db1-ebae-4824-ba72-a412330fe026",
     "username" : "john",
     "firstName" : "John",
