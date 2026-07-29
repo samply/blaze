@@ -384,6 +384,12 @@ The heap usage percentage (1–99) at or above which metrics are logged at WARN 
 | -&NoBreak;Dhttp.proxyHost | -       | v0.11 | The hostname of the proxy server for outbound HTTP requests. |
 | -&NoBreak;Dhttp.proxyPort | 80      | v0.11 | The port of the proxy server.                                |
 
+Please note that `http.proxyHost` has to be a plain hostname like `proxy.example.com`, not a URL. Example usage with Docker:
+
+```sh
+docker run -e JAVA_TOOL_OPTIONS="-Dhttp.proxyHost=proxy.example.com -Dhttp.proxyPort=8080" samply/blaze
+```
+
 #### `USE_SYSTEM_CA_CERTS`
 
 This feature is inherited from the [eclipse-temurin][7] base image. When set to `true`, the backend will process CA certificates placed in the `/certificates` directory inside the container. Certificates should be in PEM format with a `.crt` file extension. They will be added to both the JVM truststore and the system CA store, and used for all HTTP clients.
