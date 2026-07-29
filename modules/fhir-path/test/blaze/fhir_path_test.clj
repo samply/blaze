@@ -7,6 +7,7 @@
    [blaze.fhir-path-spec]
    [blaze.fhir.test-util]
    [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
@@ -667,3 +668,30 @@
       "'1' + Patient.id" ["10"]
       "Patient.id + {}" []
       "{} + Patient.id" [])))
+
+;; union-paths
+
+(deftest union-paths-test
+  (testing "single path is returned as a one-element vector"
+    (is (= ["Patient.gender"] (fhir-path/union-paths "Patient.gender"))))
+
+  (testing "two-way union is split"
+    (is (= ["CapabilityStatement.url" "ValueSet.url"]
+           (fhir-path/union-paths "CapabilityStatement.url | ValueSet.url"))))
+
+  (testing "three-way union is split"
+    (is (= ["CapabilityStatement.url" "ValueSet.url" "StructureDefinition.url"]
+           (fhir-path/union-paths
+            "CapabilityStatement.url | ValueSet.url | StructureDefinition.url"))))
+
+  (testing "whitespace around branches is trimmed"
+    (is (= ["A.url" "B.url"]
+           (fhir-path/union-paths "   A.url    |   B.url   "))))
+
+  (testing "parse error is returned as anomaly"
+    (given (fhir-path/union-paths "Patient.")
+      ::anom/category := ::anom/fault
+      :expression := "Patient."))
+
+  (testing "non-union expression is not split on inner dots"
+    (is (= ["Patient.name.given"] (fhir-path/union-paths "Patient.name.given")))))

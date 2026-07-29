@@ -1,5 +1,6 @@
 {:config-paths
- ["../../../.clj-kondo/root"]
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"]
 
  :linters
  {:a

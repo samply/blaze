@@ -148,7 +148,7 @@
   (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
     (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
-  (-postprocess-matches [_ _ _ _])
+  (-postprocess-matches [_ _ _ _ _])
 
   (-index-values [_ _ _]
     []))

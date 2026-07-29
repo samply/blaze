@@ -44,6 +44,11 @@
   :ret (s/or :compartments (s/coll-of (s/tuple string? :blaze.resource/id))
              :anomaly ::anom/anomaly))
 
+(s/fdef sr/expression-type
+  :args (s/cat :expression-types (s/map-of string? keyword?)
+               :expr string?)
+  :ret (s/nilable keyword?))
+
 (s/fdef sr/compartment-resources
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :compartment-type :fhir.resource/type

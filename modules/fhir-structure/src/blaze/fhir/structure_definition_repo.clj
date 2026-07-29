@@ -4,9 +4,17 @@
    [blaze.fhir.structure-definition-repo.protocols :as p]
    [blaze.fhir.structure-definition-repo.spec]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [integrant.core :as ig]
    [jsonista.core :as j]
    [taoensso.timbre :as log]))
+
+(defn- read-bundle
+  "Reads a bundle from classpath named `resource-name`."
+  [resource-name]
+  (log/trace (format "Read FHIR bundle `%s`." resource-name))
+  (with-open [rdr (io/reader (io/resource resource-name))]
+    (j/read-value rdr j/keyword-keys-object-mapper)))
 
 (defn primitive-types
   "Returns a list of all StructureDefinition resources of FHIR R4 primitive
@@ -39,13 +47,38 @@
        path))
    elements))
 
-(defn code-expressions
-  "Returns a set of FHIRPath expressions that evaluate to a primitive code type
-  on R4 resources."
+(defn- single-type-code [element]
+  (let [types (:type element)]
+    (when (= 1 (count types))
+      (:code (first types)))))
+
+(defn- publication-status-binding? [element]
+  (str/includes? (get-in element [:binding :valueSet] "") "publication-status"))
+
+(defn- canonical-url-paths
+  "Returns a set of element paths whose single type is `uri`, whose resource has
+  both a `.version` element and a `.status` element bound to the
+  `publication-status` value set (the FHIR canonical/metadata-resource pattern).
+
+  These are the `.url` paths of conformance and knowledge resources, e.g.
+  `CapabilityStatement.url`, `ValueSet.url`."
   [repo]
   (into
    #{}
-   (mapcat (comp (partial single-type-paths "code") :element :snapshot))
+   (keep
+    (fn [{:keys [id snapshot]}]
+      (let [by-path (into {} (map (juxt :path identity)) (:element snapshot))
+            url-path (str id ".url")
+            url-el (get by-path url-path)
+            ;; every? boolean guards against nil from missing elements
+            ;; or unexpected types: all four conditions must be truthy
+            ;; for the url-path to be a canonical-url.
+            canonical? (every? boolean
+                               [url-el
+                                (= "uri" (single-type-code url-el))
+                                (get by-path (str id ".version"))
+                                (publication-status-binding? (get by-path (str id ".status")))])]
+        (when canonical? url-path))))
    (resources repo)))
 
 (defn- complex-type-canonical-sub-paths
@@ -59,10 +92,67 @@
           [id (mapv (fn [p] (subs p (inc (count id)))) canonical-paths)]))))
    (complex-types repo)))
 
+(defn- abstract-base-resources
+  []
+  (filter (comp #{"Resource" "DomainResource"} :id)
+          (map :resource
+               (:entry (read-bundle "blaze/fhir/4.0.1/profiles-resources.json")))))
+
+(defn- element-kind
+  "Returns the kind keyword (:code, :canonical, or :canonical-url) for an
+  element based on its path and type in the canonical-url set."
+  [canonical-url-set {:keys [path] :as element}]
+  (or (when (contains? canonical-url-set path) :canonical-url)
+      (case (single-type-code element)
+        "code" :code
+        "canonical" :canonical
+        nil)))
+
+(defn- element-canonical-sub-paths
+  "Returns canonical sub-path entries for an element if its type is a complex
+  type with canonical sub-paths."
+  [complex-canonical {:keys [path type]}]
+  (when-let [sub-paths (get complex-canonical (:code (first type)))]
+    (map (fn [sub] [(str path "." sub) :canonical])
+         sub-paths)))
+
+(defn- resource-element-entries
+  "Returns all categorized [path kind] entries for a resource."
+  [canonical-url-set complex-canonical resource include-direct?]
+  (mapcat
+   (fn [el]
+     (concat
+      (when include-direct?
+        (when-let [kind (element-kind canonical-url-set el)]
+          [[(:path el) kind]]))
+      (element-canonical-sub-paths complex-canonical el)))
+   (:element (:snapshot resource))))
+
+(defn expression-types
+  "Returns a map from FHIRPath expression to a keyword categorizing the
+  expression's static result type on R4 resources.
+
+  Categories are
+    :code - primitive `code` type (e.g. `Observation.status`)
+    :canonical - primitive `canonical` type (e.g. `Resource.meta.profile`)
+    :canonical-url - `.url` of a conformance/knowledge resource
+                     (e.g. `ValueSet.url`), companion to `.version` indexing
+
+  Paths not in any of the categories above are absent from the map."
+  [repo]
+  (let [canonical-url-set (canonical-url-paths repo)
+        complex-canonical (complex-type-canonical-sub-paths repo)]
+    (into {}
+          (concat
+           (mapcat #(resource-element-entries canonical-url-set complex-canonical % true)
+                   (resources repo))
+           (mapcat #(resource-element-entries canonical-url-set complex-canonical % false)
+                   (abstract-base-resources))))))
+
 (defn- register-all!
   "Register specs for all FHIR data types and resources.
 
-  That specs are used to conform and unform resources from JSON/XML to the
+  These specs are used to conform and unform resources from JSON/XML to the
   internal format."
   [repo]
   (log/trace "Register primitive types")
@@ -73,39 +163,6 @@
 
   (log/trace "Register resources")
   (si/register (mapcat si/struct-def->spec-def (resources repo))))
-
-(defn- read-bundle
-  "Reads a bundle from classpath named `resource-name`."
-  [resource-name]
-  (log/trace (format "Read FHIR bundle `%s`." resource-name))
-  (with-open [rdr (io/reader (io/resource resource-name))]
-    (j/read-value rdr j/keyword-keys-object-mapper)))
-
-(defn- abstract-base-resources
-  []
-  (filter (comp #{"Resource" "DomainResource"} :id)
-          (map :resource
-               (:entry (read-bundle "blaze/fhir/4.0.1/profiles-resources.json")))))
-
-(defn canonical-expressions
-  "Returns a set of FHIRPath expressions that evaluate to a primitive canonical type
-  on R4 resources, including nested paths through complex types."
-  [repo]
-  (let [complex-canonical (complex-type-canonical-sub-paths repo)
-        all-resources (concat (resources repo) (abstract-base-resources))]
-    (into
-     #{}
-     (mapcat
-      (fn [{:keys [snapshot]}]
-        (mapcat
-         (fn [{:keys [path type]}]
-           (if (and (= 1 (count type))
-                    (= "canonical" (:code (first type))))
-             [path]
-             (when-let [sub-paths (get complex-canonical (:code (first type)))]
-               (map #(str path "." %) sub-paths))))
-         (:element snapshot))))
-     all-resources)))
 
 (def ^:private repo
   (reify p/StructureDefinitionRepo
