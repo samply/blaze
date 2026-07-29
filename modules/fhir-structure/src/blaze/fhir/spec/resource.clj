@@ -13,7 +13,7 @@
 
   A locator is a list of path segments already parsed in order to report the
   location of an error. Path segments are either strings of field names or
-  indices of arrays. The lists are build in reverse were the path grows at the
+  indices of arrays. The lists are built in reverse where the path grows at the
   front. In case of an error, the locator list is reversed.
 
   A type-handler in this namespace is a function of two arities. On arity-0 the

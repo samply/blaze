@@ -1114,9 +1114,9 @@
 (defmacro mem-size-test
   "The length of the body has to be multiples of three. The first element is the
   JSON representation of a value of `type`, while the following elements are two
-  memory sizes. The first one is for heap sizes smaller than 32 GiB were the
+  memory sizes. The first one is for heap sizes smaller than 32 GiB where the
   reference size is 4 bytes, while the second one is for heap sizes larger than
-  32 GiB, were the reference size is 8 byte."
+  32 GiB, where the reference size is 8 byte."
   [type & body]
   `(are [x# size#] (= (Base/memSize (write-parse-json ~type x#))
                       (mem/total-size (write-parse-json ~type x#)
@@ -1127,9 +1127,9 @@
 (defmacro primitive-mem-size-test
   "The length of the body has to be multiples of three. The first element is the
   JSON representation of a value of `type`, while the following elements are two
-  memory sizes. The first one is for heap sizes smaller than 32 GiB were the
+  memory sizes. The first one is for heap sizes smaller than 32 GiB where the
   reference size is 4 bytes, while the second one is for heap sizes larger than
-  32 GiB, were the reference size is 8 byte."
+  32 GiB, where the reference size is 8 byte."
   [& body]
   `(are [x# size#] (= (Base/memSize x#) (mem/total-size x# x#) size#)
      ~@(select-size body)))

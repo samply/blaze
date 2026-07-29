@@ -19,7 +19,7 @@ ETag: W/"23"
 
 The delete interaction is idempotent: deleting a resource that doesn't exist or was already deleted also returns a `204 No Content`.
 
-Because Blaze keeps a history of all resource versions, the version of the resource past the deletion will be still accessible in it's [history](history-instance.md). However past versions can be deleted themself via the [delete history](delete-history.md) interaction. A [read](read.md) of a deleted resource returns a `410 Gone`.
+Because Blaze keeps a history of all resource versions, the version of the resource past the deletion will be still accessible in its [history](history-instance.md). However, past versions can be deleted themselves via the [delete history](delete-history.md) interaction. A [read](read.md) of a deleted resource returns a `410 Gone`.
 
 By default, Blaze enforces referential integrity while deleting resources. So resources that are referred by other resources can't be deleted without deleting the other resources first. In that case Blaze returns a `409 Conflict` with an `OperationOutcome`. That behaviour can be changed by setting the [environment variable](../../deployment/environment-variables.md) `ENFORCE_REFERENTIAL_INTEGRITY` to `false`.
 

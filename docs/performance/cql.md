@@ -79,7 +79,7 @@ The second bar chart shows the results for the 100k-fh dataset which differs by 
   y-label="Patients/s" :y-col="8" :y-max="4800"
   :series="['2.5 % hits', '60 % hits', '100 % hits']" />
 
-The third bar chart shows the results for the 1M dataset. For the two bigger systems LEA47 and LEA58, the relative performance measured in patients per second is identical to the performance Blaze shows at the smaller datasets with only 100 k patients. However the same can't be said for the two smaller systems LEA25 and LEA36, were the relative performance suffers due to memory limitations of that systems. 
+The third bar chart shows the results for the 1M dataset. For the two bigger systems LEA47 and LEA58, the relative performance measured in patients per second is identical to the performance Blaze shows at the smaller datasets with only 100 k patients. However, the same can't be said for the two smaller systems LEA25 and LEA36, where the relative performance suffers due to memory limitations of those systems. 
 
 ### Data
 
@@ -171,7 +171,7 @@ The first chart shows the results for the 100k dataset. It shows the number of p
   y-label="Patients/s" :y-col="9" :y-max="4500"
   :series="['10 % hits', '50 % hits', '100 % hits']" />
 
-The second chart shows the results for the 1M dataset. Here the performance of the 10 % hits query is identical to that of the the 100k dataset. That can be explained because Bloom filter don't need much memory. However the two smaller systems LEA25 and LEA36 show a degradation in the performance of the queries with larger number of hits. Here the memory limitations show while going into the actual database storage layer. 
+The second chart shows the results for the 1M dataset. Here the performance of the 10 % hits query is identical to that of the the 100k dataset. That can be explained because Bloom filter don't need much memory. However, the two smaller systems LEA25 and LEA36 show a degradation in the performance of the queries with larger number of hits. Here the memory limitations show while going into the actual database storage layer. 
 
 ### Data
 
@@ -258,7 +258,7 @@ The second chart shows the results for the 100k-fh dataset. For the 100k-fh data
   y-label="Patients/s" :y-col="7" :y-max="5100"
   :series="['0.4 % hits', '95 % hits']" />
 
-The third chart shows the results for the 1M dataset. As with the Code Value Search queries the performance for the query with low number of hits is the same across all system sizes, because Bloom filters don't need much memory. However the same can't be said for the query with 95 % hits. Here the LEA25 and LEA36 systems are clearly too small.
+The third chart shows the results for the 1M dataset. As with the Code Value Search queries the performance for the query with low number of hits is the same across all system sizes, because Bloom filters don't need much memory. However, the same can't be said for the query with 95 % hits. Here the LEA25 and LEA36 systems are clearly too small.
 
 ### Data
 
@@ -351,7 +351,7 @@ cql/search.sh condition-ten-rare
 
 ## Ten Code Search – ValueSet
 
-In this section, CQL queries for selecting patients which have conditions with one of 10 codes are analyzed. The same codes as in section Ten Code Search are used. However instead of multiple retrieve expressions, a single retrieve expression with a value set is used.
+In this section, CQL queries for selecting patients which have conditions with one of 10 codes are analyzed. The same codes as in section Ten Code Search are used. However, instead of multiple retrieve expressions, a single retrieve expression with a value set is used.
 
 ### Data
 

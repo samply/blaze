@@ -49,8 +49,8 @@
     (ba/incorrect "Content-Type header expected, but is missing.")))
 
 (defn wrap-query
-  "Middleware to slurp a GraphQL query from the body according the content-type
-  header.
+  "Middleware to slurp a GraphQL query from the body according to the
+  content-type header.
 
   Updates the :body key in the request map with a map consisting of at least a
   :query key. If the content-type is `application/graphql` the body string is

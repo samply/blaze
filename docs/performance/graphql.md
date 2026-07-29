@@ -6,7 +6,7 @@ In this section, GraphQL for selecting Observation resources with a certain code
 
 ### Download of Resources
 
-All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+All measurements are done after Blaze is in a steady state with all resources to download in its resource cache in order to cancel out resource load times from disk or file system cache.
 
 Download is done using the following `curl` command:
 

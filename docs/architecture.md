@@ -8,7 +8,7 @@ Blaze consists of four services, the nginx ingress, the frontend, the backend an
 
 ## Ingress
 
-The main role of the ingress is to provide TLS termination for the Blaze frontend and backend which is not available for the individual services. In the above shown diagram, the ingress provides routes for the browser going exclusively to the frontend component, direct API routes which can be used by API clients like [blazectl][10] and routes for the auth provider. However the ingress doesn't have to be implemented using nginx. Other reverse proxies like Apache, Envoy or Traefik can also be used. Furthermore separate ingress services can be used for the frontend, backend and auth provider.
+The main role of the ingress is to provide TLS termination for the Blaze frontend and backend which is not available for the individual services. In the above shown diagram, the ingress provides routes for the browser going exclusively to the frontend component, direct API routes which can be used by API clients like [blazectl][10] and routes for the auth provider. However, the ingress doesn't have to be implemented using nginx. Other reverse proxies like Apache, Envoy or Traefik can also be used. Furthermore separate ingress services can be used for the frontend, backend and auth provider.
 
 ## Frontend
 
@@ -46,7 +46,7 @@ The Resource Store holds all versions of all resources by their content hash. Th
 
 In the standalone deployment scenario, the Resource Store is embedded and backed by RocksDB for the same reason why the Transaction Log uses RocksDB. Again other implementations are possible.
 
-In the distributed case a [Cassandra][5] database is used. However adapters for any suitable central key-value store could be implemented. Even relational databases like Postgres would be possible. Cassandra was chosen as first implementation, because it can be deployed in a cluster, so that it will scale and be highly available.
+In the distributed case a [Cassandra][5] database is used. However, adapters for any suitable central key-value store could be implemented. Even relational databases like Postgres would be possible. Cassandra was chosen as the first implementation, because it can be deployed in a cluster, so that it will scale and be highly available.
 
 ### Database Node
 

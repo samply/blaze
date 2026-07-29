@@ -360,7 +360,7 @@ The `conditional-delete` command is used to delete possibly multiple resources b
 | type           | yes      | string    | resource type                                    |
 | clauses        | no       | string    | clauses to use to search for resources to delete |
 | check-refs     | no       | boolean   | use referential integrity checks                 |
-| allow-multiple | no       | boolean   | allow to delete multiple resources               |
+| allow-multiple | no       | boolean   | allow deleting multiple resources                |
 
 ### Delete History
 

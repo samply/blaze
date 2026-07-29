@@ -1,6 +1,6 @@
 # Transaction
 
-The transaction interaction allows to submit a set of actions to be performed inside a single transaction. Blaze supports the full set of ACID (atomicity, consistency, isolation, durability) properties. Transactions are always performed atomically and in isolation. Actions from other individual requests or actions from batch interactions will not interleave with any actions from a transaction interaction.
+The transaction interaction allows submitting a set of actions to be performed inside a single transaction. Blaze supports the full set of ACID (atomicity, consistency, isolation, durability) properties. Transactions are always performed atomically and in isolation. Actions from other individual requests or actions from batch interactions will not interleave with any actions from a transaction interaction.
 
 ```
 POST [base]
@@ -45,7 +45,7 @@ On success, Blaze returns a `200 OK` with a Bundle of type `transaction-response
 }
 ```
 
-By default, response entries of writes don't contain the resources themself. Setting the `Prefer` header to `return=representation` will return the created or updated resources under `Bundle.entry.resource`.
+By default, response entries of writes don't contain the resources themselves. Setting the `Prefer` header to `return=representation` will return the created or updated resources under `Bundle.entry.resource`.
 
 ## Handling Errors
 
@@ -53,6 +53,6 @@ Transactions are processed atomically: if any entry fails, no changes are applie
 
 ## Conditional Create
 
-It's possible to use conditional create in transaction requests. However references to already existing resources, currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
+It's possible to use conditional create in transaction requests. However, references to already existing resources currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
 
 [1]: <https://hl7.org/fhir/bundle.html#references>

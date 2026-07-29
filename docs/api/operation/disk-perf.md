@@ -50,7 +50,7 @@ All parameters are optional.
 
 ### Response
 
-The response will be always async according the [Asynchronous Interaction Request Pattern][2] from FHIR R5. Polling the async status endpoint of a finished measurement returns a batch-response Bundle whose entry contains the out parameters as Parameters resource. The same results are also available as outputs of the underlying Task resource. See the [Disk I/O Performance][3] documentation for how to interpret them.
+The response will be always async according to the [Asynchronous Interaction Request Pattern][2] from FHIR R5. Polling the async status endpoint of a finished measurement returns a batch-response Bundle whose entry contains the out parameters as Parameters resource. The same results are also available as outputs of the underlying Task resource. See the [Disk I/O Performance][3] documentation for how to interpret them.
 
 ### Example
 

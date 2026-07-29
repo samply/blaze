@@ -557,7 +557,7 @@
             {:fhir/type :fhir/Patient :id "foo"})
       count := 0))
 
-  ;; HACK: normally multiple items should throw an error. However in R4 many
+  ;; HACK: normally multiple items should throw an error. However, in R4 many
   ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
   ;; Please remove that hack for R5.
   (testing "multiple items are filtered"
@@ -593,7 +593,7 @@
             {:fhir/type :fhir/Patient :id "foo"})
       count := 0))
 
-  ;; HACK: normally multiple items should throw an error. However in R4 many
+  ;; HACK: normally multiple items should throw an error. However, in R4 many
   ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
   ;; Please remove that hack for R5.
   (testing "multiple items are filtered"
