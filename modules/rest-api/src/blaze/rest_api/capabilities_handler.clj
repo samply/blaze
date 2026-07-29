@@ -189,6 +189,10 @@
      :rest
      [(cond->
        {:fhir/type :fhir.CapabilityStatement/rest
+        :extension
+        [#fhir/Extension
+          {:url "http://hl7.org/fhir/StructureDefinition/cqf-supportedCqlVersion"
+           :value #fhir/string "1.4.1"}]
         :mode #fhir/code "server"
         :resource
         (into
