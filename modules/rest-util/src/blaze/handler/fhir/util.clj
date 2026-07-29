@@ -157,7 +157,7 @@
 (defn instance-url
   "Returns the URL of an instance (resource) like `[base]/[type]/[id]`."
   [context type id]
-  ;; URLs are build by hand here, because ids do not need to be URL encoded
+  ;; URLs are built by hand here, because ids do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (type-url context type) "/" id))
 
@@ -165,7 +165,7 @@
   "Returns the URL of a versioned instance (resource) like
   `[base]/[type]/[id]/_history/[vid]`."
   [context type id vid]
-  ;; URLs are build by hand here, because ids do not need to be URL encoded
+  ;; URLs are built by hand here, because ids do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (instance-url context type id) "/_history/" vid))
 

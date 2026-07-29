@@ -4,7 +4,7 @@ Blaze can be deployed in three different storage variants: in-memory, standalone
 
 The distributed storage variant should be used for production setups that require high- availability and/or horizontal read scalability. 
 
-As described in the [Architecture](../architecture.md) section, Blaze roughly consists of three components, the Blaze Node itself, a Transaction Log and a Resource Store. With the standalone storage variant, both the Transaction Log and the Resource Store are embedded inside the Blaze process. However using the distributed storage variant, the Transaction Log and the Resource Store are extern to Blaze and allow more than one Blaze Node to run. Being able to run more than one Blaze Node enables high availability and horizontal read scalability.
+As described in the [Architecture](../architecture.md) section, Blaze roughly consists of three components, the Blaze Node itself, a Transaction Log and a Resource Store. With the standalone storage variant, both the Transaction Log and the Resource Store are embedded inside the Blaze process. However, using the distributed storage variant, the Transaction Log and the Resource Store are external to Blaze and allow more than one Blaze Node to run. Being able to run more than one Blaze Node enables high availability and horizontal read scalability.
 
 ## Docker Compose Example
 

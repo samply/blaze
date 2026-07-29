@@ -28,7 +28,7 @@
 (defn add-history "Adds a random value to the history." [_ _]
   {:type :invoke :f :add :value (str (random-uuid))})
 
-(defn reset-history "Resets the history to only it's first value." [_ _]
+(defn reset-history "Resets the history to only its first value." [_ _]
   {:type :invoke :f :reset :value nil})
 
 (defrecord History [values]

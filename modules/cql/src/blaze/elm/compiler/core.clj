@@ -240,7 +240,7 @@
   "Compiles `expression` in `context`.
 
   Context consists of:
-  * :library - the library in it's ELM form
+  * :library - the library in its ELM form
   * :node - the database node"
   {:arglists '([context expression])}
   (fn [_ {:keys [type] :as expr}]

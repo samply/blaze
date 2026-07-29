@@ -40,7 +40,7 @@ ValueSets can be created on-the-fly by using the [ValueSet Compose Language (VCL
 
 ## Graph Cache
 
-For stored FHIR code systems, a graph will be build before operations like \$validate-code are executed. Building those graph is quite expensive. I order to prevent Blaze to build a graph each time an operation is executed, a graph cache is used. The environment variable `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` allows to set the number of concepts, the graph cache should hold. The default is 100,000.
+For stored FHIR code systems, a graph will be built before operations like \$validate-code are executed. Building those graphs is quite expensive. In order to prevent Blaze from building a graph each time an operation is executed, a graph cache is used. The environment variable `TERMINOLOGY_SERVICE_GRAPH_CACHE_SIZE` allows setting the number of concepts the graph cache should hold. The default is 100,000.
 
 ## Memory Requirements
 

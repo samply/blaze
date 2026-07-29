@@ -58,7 +58,7 @@ Search for `Resource.meta.profile` is supported using the `_profile` search para
 
 ## Token in Modifier
 
-The `in` modifier works only in case either the external or the internal terminology service is enabled. More informations are available in the  [Terminology Service](../../terminology-service.md) section.
+The `in` modifier works only in case either the external or the internal terminology service is enabled. More information is available in the [Terminology Service](../../terminology-service.md) section.
 
 ## Date Search
 

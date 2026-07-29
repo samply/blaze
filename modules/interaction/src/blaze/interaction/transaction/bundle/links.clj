@@ -78,7 +78,7 @@
           (str/join "/" (subvec parts 0 (- (count parts) 2))))))))
 
 (defn resolve-entry-links
-  "Resolves all links in `entries` according the transaction processing rules."
+  "Resolves all links in `entries` according to the transaction processing rules."
   [entries]
   (let [index (index-resources-by-full-url entries)]
     (mapv

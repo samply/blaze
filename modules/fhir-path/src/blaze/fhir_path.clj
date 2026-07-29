@@ -185,7 +185,7 @@
             coll
             [])
 
-        ;; HACK: normally multiple items should throw an error. However in R4 many
+        ;; HACK: normally multiple items should throw an error. However, in R4 many
         ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
         ;; Please remove that hack for R5.
         (filterv #(identical? type-specifier (:fhir/type %)) coll)))))
@@ -261,7 +261,7 @@
           coll
           [])
 
-      ;; HACK: normally multiple items should throw an error. However in R4 many
+      ;; HACK: normally multiple items should throw an error. However, in R4 many
       ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
       ;; Please remove that hack for R5.
       (filterv #(identical? type-specifier (:fhir/type %)) coll))))

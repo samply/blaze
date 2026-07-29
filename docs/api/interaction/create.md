@@ -50,6 +50,6 @@ The outcome depends on the number of resources matching the search:
 
 The search and the potential creation are executed in the same transaction, so conditional creates are safe against concurrent requests. An empty `If-None-Exist` header or one containing only ignorable search parameters like `_sort` results in a normal, unconditional create.
 
-Conditional create can also be used in [transaction](transaction.md) and [batch](batch.md) requests via `Bundle.entry.request.ifNoneExist`. However references to already existing resources, currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
+Conditional create can also be used in [transaction](transaction.md) and [batch](batch.md) requests via `Bundle.entry.request.ifNoneExist`. However, references to already existing resources currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
 
 [1]: <https://hl7.org/fhir/http.html#ccreate>

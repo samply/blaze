@@ -38,7 +38,7 @@ POST [base]/$compact
 
 ### Response
 
-The response will be always async according the [Asynchronous Interaction Request Pattern][2] from FHIR R5.
+The response will be always async according to the [Asynchronous Interaction Request Pattern][2] from FHIR R5.
 
 ## Using blazectl
 

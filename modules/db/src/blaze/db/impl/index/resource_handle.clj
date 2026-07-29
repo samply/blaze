@@ -4,7 +4,7 @@
   version.
 
   The implementation of the resource handle is done in Java. It's created via
-  the `resource-handle!` function. The access of it's data is performed via
+  the `resource-handle!` function. The access of its data is performed via
   keyword lookup. The relevant properties are:
 
   * :fhir/type - the FHIR type like :fhir/Patient

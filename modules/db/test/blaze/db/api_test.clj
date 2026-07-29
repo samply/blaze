@@ -2084,7 +2084,7 @@
         (testing "is not deleted"
           (is (not (d/deleted? resource-handle)))))))
 
-  (testing "doesn't find a resource handle mit prefix of it's id"
+  (testing "doesn't find a resource handle with prefix of its id"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "00"}]]]
 

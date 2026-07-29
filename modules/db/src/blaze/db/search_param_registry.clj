@@ -248,8 +248,9 @@
 (defn- build-url-index
   "Builds an index from url to search-param.
 
-  Ensures that non-composite search params are build first so that composite
-  search params will find it's components in the already partial build index."
+  Ensures that non-composite search params are built first so that composite
+  search params will find their components in the already partially built
+  index."
   [context entries]
   (when-ok [non-composite (build-url-index* (assoc context :index {})
                                             remove-composite entries)]

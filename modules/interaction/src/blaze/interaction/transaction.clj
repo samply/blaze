@@ -217,7 +217,7 @@
         (handle-close db))))
 
 (defmulti process-entries
-  "Processes `entries` according the batch or transaction rules.
+  "Processes `entries` according to the batch or transaction rules.
 
   In case of a batch bundle, returns a CompletableFuture that will complete with
   the response entries.
