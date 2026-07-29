@@ -151,6 +151,8 @@
         :fhirVersion := #fhir/code "4.0.1"
         :format := [#fhir/code "application/fhir+json"
                     #fhir/code "application/fhir+xml"]
+        [:rest 0 :extension 0 :url] := "http://hl7.org/fhir/StructureDefinition/cqf-supportedCqlVersion"
+        [:rest 0 :extension 0 :value] := #fhir/string "1.4.1"
         [:rest 0 :searchParam 0 :name] := #fhir/string "_id"
         [:rest 0 :searchParam 0 :type] := #fhir/code "token"
         [:rest 0 :searchParam 0 :definition] := #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-id"
@@ -204,7 +206,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"1bc8d67f\"" "W/\"1bc8d67f\", \"foo\""]]
+      (doseq [if-none-match ["W/\"3f64b9c8\"" "W/\"3f64b9c8\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -213,7 +215,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"1bc8d67f\"" (get headers "ETag"))))))))
+            (is (= "W/\"3f64b9c8\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]
