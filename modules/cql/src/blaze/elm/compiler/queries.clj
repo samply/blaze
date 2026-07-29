@@ -47,6 +47,10 @@
       (comp (map cr/handle)
             (d/matcher-transducer db matcher)
             (map #(cr/mk-resource db %))))
+    (-resolve-refs [this _]
+      this)
+    (-resolve-params [this _]
+      this)
     (-form [_]
       `(~'matcher ~(d/matcher-clauses matcher)))))
 

@@ -891,11 +891,14 @@
 
      (testing-ternary-form ~elm-constructor)))
 
-(defmacro testing-equals-hash-code [elm]
-  `(testing "equals/hashCode"
-     (let [expr-1# (dynamic-compile ~elm)
-           expr-2# (dynamic-compile ~elm)]
-       (is (= 1 (count (set [expr-1# expr-2#])))))))
+(defmacro testing-equals-hash-code
+  ([elm]
+   `(testing-equals-hash-code dynamic-compile-ctx ~elm))
+  ([ctx elm]
+   `(testing "equals/hashCode"
+      (let [expr-1# (c/compile ~ctx ~elm)
+            expr-2# (c/compile ~ctx ~elm)]
+        (is (= 1 (count (set [expr-1# expr-2#]))))))))
 
 (defn resource [db type id]
   (cr/mk-resource db (d/resource-handle db type id)))

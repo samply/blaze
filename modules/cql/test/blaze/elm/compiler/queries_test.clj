@@ -93,6 +93,8 @@
           (testing "eval"
             (is (= [1 2] (core/-eval expr {} nil nil))))
 
+          (ctu/testing-equals-hash-code {} elm)
+
           (testing "form"
             (has-form expr '(sorted-vector-query distinct [2 1 1] asc)))))
 
@@ -126,6 +128,8 @@
         (testing "eval"
           (is (= [1 1] (core/-eval expr {} nil nil))))
 
+        (ctu/testing-equals-hash-code {} elm)
+
         (testing "form"
           (has-form expr '(vector-query (map (fn [S] (alias-ref S))) [1 1])))))
 
@@ -138,6 +142,8 @@
 
         (testing "eval"
           (is (= [1] (into [] (core/-eval expr {} nil nil)))))
+
+        (ctu/testing-equals-hash-code {:optimizations #{:first}} elm)
 
         (testing "form"
           (has-form expr '(eduction-query distinct [1 1])))))
@@ -766,6 +772,10 @@
             [0 :fhir/type] := (keyword "fhir" medication-type)
             [0 :id] := "0"))
 
+        (ctu/testing-constant-resolve-refs expr)
+
+        (ctu/testing-constant-resolve-params expr)
+
         (testing "form"
           (has-form expr
             (list 'eduction-query
@@ -794,9 +804,12 @@
 ;; The AliasRef expression allows for the reference of a specific source within
 ;; the scope of a query.
 (deftest compile-alias-ref-test
-  (let [expr (c/compile {} {:type "AliasRef" :name "foo"})]
+  (let [elm {:type "AliasRef" :name "foo"}
+        expr (c/compile {} elm)]
     (testing "eval"
       (is (= ::result (core/-eval expr {} nil {"foo" ::result}))))
+
+    (ctu/testing-equals-hash-code {} elm)
 
     (testing "form"
       (has-form expr '(alias-ref foo)))))
@@ -809,7 +822,10 @@
 ;; resolve the identifier, only throwing an error at compile-time (or run-time
 ;; for an interpretive system) if the identifier reference cannot be resolved.
 (deftest compile-identifier-ref-test
-  (let [expr (c/compile {} {:type "IdentifierRef" :name "foo"})]
+  (let [elm {:type "IdentifierRef" :name "foo"}
+        expr (c/compile {} elm)]
+
+    (ctu/testing-equals-hash-code {} elm)
 
     (testing "form"
       (has-form expr '(:foo default)))))
