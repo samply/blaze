@@ -9,7 +9,8 @@
    [clojure.datafy :as datafy]
    [clojure.string :as str])
   (:import
-   [com.google.crypto.tink Aead KeyStatus KeysetHandle KeysetHandle$Entry Parameters RegistryConfiguration]
+   [com.google.crypto.tink Aead InsecureSecretKeyAccess KeyStatus KeysetHandle
+    KeysetHandle$Entry Parameters RegistryConfiguration TinkProtoKeysetFormat]
    [com.google.crypto.tink.aead AeadConfig PredefinedAeadParameters]))
 
 (set! *warn-on-reflection* true)
@@ -81,6 +82,20 @@
   It encrypts with the primary key and decrypts with all keys of the key set."
   [key-set-handle]
   (.getPrimitive ^KeysetHandle key-set-handle (RegistryConfiguration/get) Aead))
+
+(defn serialize-key-set
+  "Serializes the key set `handle` into the binary Tink keyset format."
+  [handle]
+  (TinkProtoKeysetFormat/serializeKeyset ^KeysetHandle handle
+                                         (InsecureSecretKeyAccess/get)
+                                         (RegistryConfiguration/get)))
+
+(defn parse-key-set
+  "Parses `bytes` in the binary Tink keyset format into a key set handle."
+  [bytes]
+  (TinkProtoKeysetFormat/parseKeyset ^bytes bytes
+                                     (InsecureSecretKeyAccess/get)
+                                     (RegistryConfiguration/get)))
 
 (extend-protocol p/Datafiable
   KeysetHandle

@@ -95,7 +95,7 @@
    [java-time.api :as time]
    [taoensso.timbre :as log])
   (:import
-   [com.google.crypto.tink Aead InsecureSecretKeyAccess TinkProtoKeysetFormat]
+   [com.google.crypto.tink Aead]
    [java.util Base64]
    [java.util.concurrent Flow$Subscriber]))
 
@@ -118,7 +118,7 @@
 
 (defn- encode-key-set-handle [key-set-handle]
   (-> key-set-handle
-      (TinkProtoKeysetFormat/serializeKeyset (InsecureSecretKeyAccess/get))
+      (impl/serialize-key-set)
       (b64-encode)))
 
 (defn- key-set-attachment [key-set-handle]
@@ -168,16 +168,13 @@
 (defn- b64-decode [s]
   (.decode (Base64/getDecoder) ^String s))
 
-(defn- parse-key-set [data]
-  (-> (b64-decode data)
-      (TinkProtoKeysetFormat/parseKeyset (InsecureSecretKeyAccess/get))))
-
 (defn- decode-key-set-handle
   "Returns the key set handle decoded from the first attachment of
   `key-set-resource`."
   {:arglists '([key-set-resource])}
   [{[{{:keys [data]} :attachment}] :content}]
-  (parse-key-set (:value data)))
+  (-> (b64-decode (:value data))
+      (impl/parse-key-set)))
 
 (defn- decode-state
   "Returns the cipher state decoded from `key-set-resource`: the key set handle
