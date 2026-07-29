@@ -1,9 +1,6 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import { onMount } from 'svelte';
-  import { fade, slide } from 'svelte/transition';
-
   import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
   import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 
@@ -18,17 +15,9 @@
   import MetadataButton from './metadata-button.svelte';
   import CodeSystemOperationDropdown from '../CodeSystem/operation-dropdown.svelte';
   import ValueSetOperationDropdown from '../ValueSet/operation-dropdown.svelte';
+  import LoadingIndicator from '$lib/loading-indicator.svelte';
 
   let { data, params }: PageProps = $props();
-
-  let duration = $state(0);
-
-  onMount(() => {
-    const interval = setInterval(() => {
-      duration = Date.now() - data.streamed.start;
-    }, 100);
-    return () => clearInterval(interval);
-  });
 </script>
 
 <svelte:head>
@@ -56,22 +45,7 @@
 <main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
   <SearchForm searchParams={data.searchParams} type={params.type} />
   {#await data.streamed.bundle}
-    {#if duration > 300}
-      <div
-        in:fade|global={{ duration: 200 }}
-        out:slide|global={{ duration: 200 }}
-        class="text-center px-4 py-5 sm:px-6 text-gray-700 dark:text-gray-300"
-      >
-        <code>
-          loading...
-          {(duration / 1000).toLocaleString(undefined, {
-            minimumFractionDigits: 1,
-            maximumFractionDigits: 1
-          })}
-          s
-        </code>
-      </div>
-    {/if}
+    <LoadingIndicator start={data.streamed.start} />
   {:then bundleWithDuration}
     {@const bundle = bundleWithDuration.bundle}
 
