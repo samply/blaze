@@ -5,3 +5,5 @@
 /template
 /node_modules
 validator_cli.jar
+/publisher.jar
+/Requirements-fromNarrative.json
