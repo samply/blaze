@@ -10,7 +10,7 @@ The following system was used for the performance evaluation:
 | LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 3.2 TB Intel P5600 over vSAN  |
 | LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 12.8 TB Huawei OceanDisk 300P |
 
-All systems were configured according to the [Production Configuration](../production-configuration.md) guide.
+All systems were configured according to the [Production Configuration](../production-configuration.md) guide. Deviating from it, all runs on all systems use a `DB_RESOURCE_STORE_KV_THREADS` of 64 instead of the default of 4. That variable sizes the thread pool the resource store uses to read and write resources and so caps how many resources can be written to the resource database at the same time. RocksDB merges concurrent writers into [group commits][3]: the writers waiting at any moment are batched into a single write-ahead log write followed by a single fsync, so the cost of that fsync — which dominates a write on systems with slow syncs — is shared by the whole group. With only four threads, at most four resources can join a group, whereas 64 threads allow much larger groups and so a considerably higher write throughput.
 
 ## Datasets
 
@@ -68,7 +68,7 @@ This write test measures the throughput and latency of small [FHIR transactions]
 
 The [`transaction.js`](load-testing/transaction.js) script repeatedly `POST`s a small transaction bundle to the FHIR base URL. Each bundle creates one Patient and one Observation, where the Observation references the Patient via a bundle-internal URN, so reference resolution is exercised as well. The Patient's birthDate and the Observation's systolic blood pressure are randomized per transaction, so the date and quantity search-param indices see a realistic spread of values instead of a single repeated entry. New resources are created on every request, so the database grows over the course of the run.
 
-All runs start from an empty database and grow it with every request, so there is no fixed dataset. The test was run on three systems to show how strongly transaction throughput depends on disk performance (see [Disk Performance](disk-perf.md)): LEA79 stores its data on a local NVMe disk with an fsync latency of a few microseconds, while LEA47 accesses its disk over vSAN with an fsync latency of about 2 ms.
+All runs start from an empty database and grow it with every request, so there is no fixed dataset. The test was run on three systems to show how strongly transaction throughput depends on disk performance (see [Disk Performance](disk-perf.md)): LEA79 stores its data on a local NVMe disk with an fsync latency of a few microseconds, LEA47 accesses its disk over vSAN with an fsync latency of about 2 ms, and A5N46 uses a local consumer NVMe SSD that acknowledges a sync only once the data has reached the flash, at about 5 ms.
 
 ### Results
 
@@ -88,13 +88,13 @@ All runs start from an empty database and grow it with every request, so there i
 | LEA79  |  16 |  5291 |   2.79 |    3.16 |    3.39 |
 | LEA79  |  32 |  5310 |   5.95 |    6.63 |    7.15 |
 | LEA79  |  64 |  5617 |  11.62 |   12.96 |   15.64 |
-| A5N46  |   1 | 90.43 |  10.53 |   13.67 |   14.24 |
-| A5N46  |   2 | 103.9 |  19.30 |   26.53 |   27.35 |
-| A5N46  |   4 | 94.87 |  38.95 |   53.17 |   53.84 |
-| A5N46  |   8 | 97.82 |  77.84 |  104.55 |  105.95 |
-| A5N46  |  16 | 99.38 | 156.16 |  207.66 |  210.53 |
-| A5N46  |  32 | 124.9 | 100.05 |  679.26 |  793.54 |
-| A5N46  |  64 | 119.8 | 341.45 | 1776.94 | 2232.24 |
+| A5N46  |   1 | 87.70 |  10.60 |   14.11 |   15.09 |
+| A5N46  |   2 | 106.1 |  19.28 |   26.66 |   27.55 |
+| A5N46  |   4 | 93.97 |  39.17 |   53.71 |   54.47 |
+| A5N46  |   8 | 95.05 |  78.22 |  105.84 |  106.86 |
+| A5N46  |  16 | 96.95 | 156.61 |  209.35 |  212.69 |
+| A5N46  |  32 | 145.7 |  81.68 |  569.79 |  693.27 |
+| A5N46  |  64 | 162.6 | 244.23 | 1430.35 | 1780.56 |
 
 At high concurrency LEA47 plateaus around 450 transactions/s — close to its measured fsync rate of 479/s — because every transaction must durably persist its write to disk before responding, whereas LEA79 sustains over 5000 transactions/s.
 
@@ -118,3 +118,4 @@ A5N46:
 
 [1]: <https://k6.io>
 [2]: <https://www.hl7.org/fhir/http.html#transaction>
+[3]: <https://github.com/facebook/rocksdb/wiki/WAL-Performance>
