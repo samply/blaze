@@ -3,7 +3,11 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.log]
    [blaze.spec]
-   [clojure.string :as str]))
+   [clojure.string :as str])
+  (:import
+   [java.net URI]))
+
+(set! *warn-on-reflection* true)
 
 (defn coerce-base-url [s]
   (cond-> s (str/ends-with? s "/") (subs 0 (dec (count s)))))
@@ -64,6 +68,23 @@
     (if (valid-db-block-sizes i)
       i
       (ba/incorrect (format "Invalid DB block size %d. Must be one of %s." i (str/join ", " (sort valid-db-block-sizes)))))))
+
+(defn- url-host [url]
+  (try
+    (.getHost (URI. url))
+    (catch Exception _)))
+
+(defn validate-proxy-host
+  "Validates `host`, the value of the `http.proxyHost` JVM system property.
+
+  Returns `host` if it is a hostname or nil, or an anomaly if it is a URL."
+  [host]
+  (if (some-> host (str/includes? "://"))
+    (ba/incorrect
+     (if-let [hostname (url-host host)]
+       (format "Invalid http.proxyHost JVM system property value `%s`. Use the hostname `%s` instead of a URL." host hostname)
+       (format "Invalid http.proxyHost JVM system property value `%s`. Use a hostname instead of a URL." host)))
+    host))
 
 (defn get-blank [m k default]
   (let [v (get m k)]

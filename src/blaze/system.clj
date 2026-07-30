@@ -221,7 +221,8 @@
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
   (log/set-min-level! (keyword (str/lower-case level)))
-  (if-ok [{:keys [bind-map settings]}
+  (if-ok [_ (ce/validate-proxy-host (System/getProperty "http.proxyHost"))
+          {:keys [bind-map settings]}
           (ce/bindings-and-settings
            env
            'base-url ["BASE_URL" ce/coerce-base-url "http://localhost:8080"]

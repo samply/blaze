@@ -1,5 +1,6 @@
 (ns blaze.system-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.parsing-context]
@@ -38,6 +39,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [are deftest testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [ring.core.protocols :as rp]
@@ -120,6 +122,16 @@
       "FOO_PASS"
       "PASS_FOO"
       "FOO_PASS_BAR")))
+
+(deftest init-proxy-host-test
+  (testing "init! returns an anomaly if http.proxyHost is a URL"
+    (System/setProperty "http.proxyHost" "https://proxy.example.com")
+    (try
+      (given (ba/try-anomaly (system/init! {}))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid http.proxyHost JVM system property value `https://proxy.example.com`. Use the hostname `proxy.example.com` instead of a URL.")
+      (finally
+        (System/clearProperty "http.proxyHost")))))
 
 (deftest merge-features-test
   (testing "vector"

@@ -1,9 +1,10 @@
 (ns blaze.coerce-env-test
   (:require
    [blaze.coerce-env :as ce]
+   [blaze.coerce-env-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest]]
+   [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
@@ -109,3 +110,21 @@
     (given (ce/bindings-and-settings {"VALIDATOR_FAILURE_MODE" "foo"} 'validator-failure-mode conf)
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid validator failure mode `foo`. Must be one of tag-only, tag-outcome or reject.")))
+
+(deftest validate-proxy-host-test
+  (testing "unset property is valid"
+    (is (nil? (ce/validate-proxy-host nil))))
+
+  (testing "hostname is valid"
+    (is (= "proxy.example.com" (ce/validate-proxy-host "proxy.example.com"))))
+
+  (testing "URL is rejected"
+    (given (ce/validate-proxy-host "https://proxy.example.com")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid http.proxyHost JVM system property value `https://proxy.example.com`. Use the hostname `proxy.example.com` instead of a URL."))
+
+  (testing "URL without extractable hostname is rejected"
+    (doseq [value ["https://proxy example.com" "https://"]]
+      (given (ce/validate-proxy-host value)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (format "Invalid http.proxyHost JVM system property value `%s`. Use a hostname instead of a URL." value)))))
