@@ -24,7 +24,6 @@
    [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log])
   (:import
@@ -137,7 +136,7 @@
           (or (tail-tx-data current-state offset)
               (stored-tx-data kv-store offset))
           (when wait?
-            (deref signal (time/as timeout :millis) nil)
+            (deref signal (bt/as-millis timeout) nil)
             (recur @state false)))))))
 
 (defn- last-t

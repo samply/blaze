@@ -30,7 +30,7 @@
    [taoensso.timbre :as log])
   (:import
    [java.nio.charset StandardCharsets]
-   [java.time Clock Duration]
+   [java.time Clock]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -409,7 +409,7 @@
 
 (defn- timeout-eclipsed-msg [timeout]
   (format "Timeout of %d millis eclipsed while evaluating."
-          (.toMillis ^Duration timeout)))
+          (bt/as-millis timeout)))
 
 (defn- attach-cache* [cache context [name {:keys [expression] :as expr}]]
   (let [[expression bloom-filters] (c/attach-cache expression cache)]
@@ -423,7 +423,7 @@
    expression-defs))
 
 (defn timeout-eclipsed-fn [clock now timeout]
-  (let [timeout-instant (time/instant (time/plus now timeout))]
+  (let [timeout-instant (bt/to-instant (bt/plus now timeout))]
     #(when-not (.isBefore (.instant ^Clock clock) timeout-instant)
        (ba/interrupted
         (timeout-eclipsed-msg timeout)

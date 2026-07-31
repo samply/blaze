@@ -8,6 +8,7 @@
    [blaze.elm.protocols :as p]
    [blaze.fhir.spec.type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.time :as bt]
    [blaze.util :refer [str]]
    [java-time.api :as time])
   (:import
@@ -417,21 +418,26 @@
   DateDate
   (add [this other]
     (if (instance? Period other)
-      (catch-date-time-error (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000))))
+      (catch-date-time-error
+       (-> (bt/plus-unit this (:months other) ChronoUnit/MONTHS)
+           (bt/plus-unit (quot (:millis other) 86400000) ChronoUnit/DAYS)))
       (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   DateTimeDate
   (add [this other]
     (if (instance? Period other)
-      (catch-date-time-error (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000))))
+      (catch-date-time-error
+       (-> (bt/plus-unit this (:months other) ChronoUnit/MONTHS)
+           (bt/plus-unit (quot (:millis other) 86400000) ChronoUnit/DAYS)))
       (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   LocalDateTime
   (add [this other]
     (if (instance? Period other)
-      (time/plus this (time/months (:months other)) (time/nanos (* (:millis other) 1000000)))
+      (-> (bt/plus-unit this (:months other) ChronoUnit/MONTHS)
+          (bt/plus-unit (* (:millis other) 1000000) ChronoUnit/NANOS))
       (throw (ex-info (str "Invalid RHS adding to LocalDateTime. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
@@ -512,10 +518,8 @@
   (subtract [this other]
     (if (instance? Period other)
       (catch-date-time-error
-       (time/minus
-        this
-        (time/months (:months other))
-        (time/days (quot (:millis other) 86400000))))
+       (-> (bt/plus-unit this (- (:months other)) ChronoUnit/MONTHS)
+           (bt/plus-unit (- (quot (:millis other) 86400000)) ChronoUnit/DAYS)))
       (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
@@ -523,10 +527,8 @@
   (subtract [this other]
     (if (instance? Period other)
       (catch-date-time-error
-       (time/minus
-        this
-        (time/months (:months other))
-        (time/days (quot (:millis other) 86400000))))
+       (-> (bt/plus-unit this (- (:months other)) ChronoUnit/MONTHS)
+           (bt/plus-unit (- (quot (:millis other) 86400000)) ChronoUnit/DAYS)))
       (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
