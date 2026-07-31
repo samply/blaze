@@ -523,7 +523,15 @@
       "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
       "2020-01-02T03:04:05.006000Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
       "2020-01-02T03:04:05.006-01:00" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours -1))
-      "2020-01-02T03:04:05.006+01:00" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))))
+      "2020-01-02T03:04:05.006+01:00" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))
+
+      ;; offsets with a non-zero minute part
+      "2020-01-02T03:04+05:30" (system/date-time 2020 1 2 3 4 0 0 (ZoneOffset/ofHoursMinutes 5 30))
+      "2020-01-02T03:04-05:30" (system/date-time 2020 1 2 3 4 0 0 (ZoneOffset/ofHoursMinutes -5 -30))
+      "2020-01-02T03:04:05+05:45" (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHoursMinutes 5 45))
+      "2020-01-02T03:04:05-09:30" (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHoursMinutes -9 -30))
+      "2020-01-02T03:04:05.006+05:30" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHoursMinutes 5 30))
+      "2020-01-02T03:04:05.006-05:30" (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHoursMinutes -5 -30))))
 
   (testing "invalid"
     (are [s] (ba/incorrect? (st/with-instrument-disabled (system/parse-date-time s)))

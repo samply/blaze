@@ -192,7 +192,9 @@ public interface DateTime extends JavaSystemType, Temporal {
             int hour = parseInt(s, idx + 1, idx + 3);
             int minute = parseInt(s, idx + 4, idx + 6);
             if (s.length() == idx + 6) {
-                return ZoneOffset.ofHoursMinutes(c == '+' ? hour : -hour, minute);
+                return c == '+'
+                        ? ZoneOffset.ofHoursMinutes(hour, minute)
+                        : ZoneOffset.ofHoursMinutes(-hour, -minute);
             } else {
                 throw new DateTimeParseException("Text cannot be parsed to a DateTime.", s, idx + 6);
             }
