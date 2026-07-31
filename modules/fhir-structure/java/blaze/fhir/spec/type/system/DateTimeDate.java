@@ -1,7 +1,9 @@
 package blaze.fhir.spec.type.system;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -191,6 +193,17 @@ public final class DateTimeDate implements DateTime, Comparable<DateTimeDate> {
     public int hashCode() {
         int yearValue = year;
         return (yearValue & 0xFFFFF800) ^ ((yearValue << 11) + ((int) month << 6) + ((int) day));
+    }
+
+    @Override
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var buffer = new DateBuffer(10);
+        buffer.appendYear(year);
+        buffer.appendDash();
+        buffer.appendMonth(month);
+        buffer.appendDash();
+        buffer.appendDay(day);
+        buffer.writeTo(generator);
     }
 
     @Override

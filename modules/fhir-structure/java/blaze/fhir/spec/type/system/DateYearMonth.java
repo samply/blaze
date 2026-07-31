@@ -201,6 +201,15 @@ public final class DateYearMonth implements Date, Comparable<DateYearMonth> {
     }
 
     @Override
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var buffer = new DateBuffer(7);
+        buffer.appendYear(year);
+        buffer.appendDash();
+        buffer.appendMonth(month);
+        buffer.writeTo(generator);
+    }
+
+    @Override
     public String toString() {
         int absYear = Math.abs(year);
         StringBuilder buf = new StringBuilder(9);
@@ -214,9 +223,4 @@ public final class DateYearMonth implements Date, Comparable<DateYearMonth> {
                 .toString();
     }
 
-    public void writeTo(JsonGenerator generator) throws IOException {
-        var appendable = new AsciiByteArrayAppendable(7);
-        appendable.append(toString());
-        generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
-    }
 }

@@ -338,6 +338,17 @@ public final class DateDate implements Date, Comparable<DateDate> {
     }
 
     @Override
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var buffer = new DateBuffer(10);
+        buffer.appendYear(year);
+        buffer.appendDash();
+        buffer.appendMonth(month);
+        buffer.appendDash();
+        buffer.appendDay(day);
+        buffer.writeTo(generator);
+    }
+
+    @Override
     public String toString() {
         int yearValue = year;
         int monthValue = month;
@@ -356,9 +367,4 @@ public final class DateDate implements Date, Comparable<DateDate> {
                 .toString();
     }
 
-    public void writeTo(JsonGenerator generator) throws IOException {
-        var appendable = new AsciiByteArrayAppendable(10);
-        appendable.append(toString());
-        generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
-    }
 }

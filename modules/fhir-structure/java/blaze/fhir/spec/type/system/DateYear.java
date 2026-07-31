@@ -138,6 +138,13 @@ public final class DateYear implements Date, Comparable<DateYear> {
     }
 
     @Override
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var buffer = new DateBuffer(4);
+        buffer.appendYear(year);
+        buffer.writeTo(generator);
+    }
+
+    @Override
     public String toString() {
         int absYear = Math.abs(year);
         StringBuilder buf = new StringBuilder(6);
@@ -149,9 +156,4 @@ public final class DateYear implements Date, Comparable<DateYear> {
         return buf.toString();
     }
 
-    public void writeTo(JsonGenerator generator) throws IOException {
-        var appendable = new AsciiByteArrayAppendable(4);
-        appendable.append(toString());
-        generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
-    }
 }

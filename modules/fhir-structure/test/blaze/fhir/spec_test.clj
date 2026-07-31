@@ -1837,7 +1837,22 @@
                           (type/date {:id id
                                       :extension
                                       [(type/extension {:url extension-url})]
-                                      :value value})))))))))
+                                      :value value})))))))
+
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [value fg/date-value]
+          (= {:resourceType "Patient" :birthDate (str value)}
+             (write-read-json {:fhir/type :fhir/Patient :birthDate (type/date value)}))))
+
+      (testing "examples"
+        (are [value] (= {:resourceType "Patient" :birthDate value}
+                        (write-read-json
+                         {:fhir/type :fhir/Patient
+                          :birthDate (type/date (system/parse-date value))}))
+          "0001" "0009" "0099" "0999" "1000" "9999"
+          "2020-01" "2020-09" "2020-10" "2020-12"
+          "2020-01-01" "2020-01-09" "2020-01-10" "2020-01-29" "2020-01-31")))))
 
 (deftest ^:mem-size fhir-date-mem-size-test
   (satisfies-prop 100
@@ -1896,7 +1911,23 @@
                           (type/dateTime {:id id
                                           :extension
                                           [(type/extension {:url extension-url})]
-                                          :value value})))))))))
+                                          :value value})))))))
+
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [value (fg/dateTime-value)]
+          (= {:resourceType "Patient" :deceasedDateTime (DateTime/toString value)}
+             (write-read-json {:fhir/type :fhir/Patient :deceased (type/dateTime value)}))))
+
+      (testing "examples"
+        (are [value] (= {:resourceType "Patient" :deceasedDateTime value}
+                        (write-read-json
+                         {:fhir/type :fhir/Patient
+                          :deceased (type/dateTime (system/parse-date-time value))}))
+          "0001" "0009" "0099" "0999" "1000" "9999"
+          "2020-01" "2020-09" "2020-10" "2020-12"
+          "2020-01-01" "2020-01-09" "2020-01-10" "2020-01-29" "2020-01-31"
+          "2020-01-01T00:00:00" "2020-01-01T00:00:00+01:00")))))
 
 (deftest ^:mem-size fhir-dateTime-mem-size-test
   (satisfies-prop 100

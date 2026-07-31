@@ -1,7 +1,9 @@
 package blaze.fhir.spec.type.system;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
+import java.io.IOException;
 import java.time.DateTimeException;
 import java.time.YearMonth;
 import java.time.chrono.IsoChronology;
@@ -199,9 +201,18 @@ public final class DateTimeYearMonth implements DateTime, Comparable<DateTimeYea
     }
 
     @Override
+    public void writeTo(JsonGenerator generator) throws IOException {
+        var buffer = new DateBuffer(7);
+        buffer.appendYear(year);
+        buffer.appendDash();
+        buffer.appendMonth(month);
+        buffer.writeTo(generator);
+    }
+
+    @Override
     public String toString() {
         int absYear = Math.abs(year);
-        StringBuilder buf = new StringBuilder(9);
+        StringBuilder buf = new StringBuilder(7);
         if (absYear < 1000) {
             buf.append(year + 10000).deleteCharAt(0);
         } else {

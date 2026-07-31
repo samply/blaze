@@ -250,6 +250,7 @@ public interface DateTime extends JavaSystemType, Temporal {
 
     static void writeTo(Temporal value, JsonGenerator generator) throws IOException {
         switch (value) {
+            case DateTime dateTime -> dateTime.writeTo(generator);
             case LocalDateTime dateTime -> {
                 var appendable = new AsciiByteArrayAppendable(29);
                 LOCAL_DATE_TIME.formatTo(dateTime, appendable);
@@ -263,6 +264,12 @@ public interface DateTime extends JavaSystemType, Temporal {
             default -> generator.writeString(value.toString());
         }
     }
+
+    /**
+     * Writes the ASCII representation of this value, in the same form
+     * {@link #toString()} returns it.
+     */
+    void writeTo(JsonGenerator generator) throws IOException;
 
     default Keyword type() {
         return TYPE;
