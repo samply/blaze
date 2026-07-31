@@ -250,25 +250,25 @@ public final class ParameterDefinition extends AbstractElement implements Comple
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (name != null) {
-            name.serializeAsJsonProperty(generator, FIELD_NAME_NAME);
+            name.serializeJsonField(generator, FIELD_NAME_NAME);
         }
         if (use != null) {
-            use.serializeAsJsonProperty(generator, FIELD_NAME_USE);
+            use.serializeJsonField(generator, FIELD_NAME_USE);
         }
         if (min != null) {
-            min.serializeAsJsonProperty(generator, FIELD_NAME_MIN);
+            min.serializeJsonField(generator, FIELD_NAME_MIN);
         }
         if (max != null) {
-            max.serializeAsJsonProperty(generator, FIELD_NAME_MAX);
+            max.serializeJsonField(generator, FIELD_NAME_MAX);
         }
         if (documentation != null) {
-            documentation.serializeAsJsonProperty(generator, FIELD_NAME_DOCUMENTATION);
+            documentation.serializeJsonField(generator, FIELD_NAME_DOCUMENTATION);
         }
         if (type != null) {
-            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
+            type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (profile != null) {
-            profile.serializeAsJsonProperty(generator, FIELD_NAME_PROFILE);
+            profile.serializeJsonField(generator, FIELD_NAME_PROFILE);
         }
         generator.writeEndObject();
     }

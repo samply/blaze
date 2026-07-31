@@ -118,8 +118,20 @@ public final class Integer extends PrimitiveElement {
     }
 
     @Override
+    public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
+        if (!isValueNull) {
+            generator.writeFieldName(fieldName.normal());
+            generator.writeNumber(value);
+        }
+        if (extensionData.isNotEmpty()) {
+            generator.writeFieldName(fieldName.extended());
+            serializeJsonPrimitiveExtension(generator);
+        }
+    }
+
+    @Override
     public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
-        if (hasValue()) {
+        if (!isValueNull) {
             generator.writeNumber(value);
         } else {
             generator.writeNull();

@@ -139,10 +139,10 @@ public final class Narrative extends AbstractElement implements Complex, Extensi
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (status != null) {
-            status.serializeAsJsonProperty(generator, FIELD_NAME_STATUS);
+            status.serializeJsonField(generator, FIELD_NAME_STATUS);
         }
         if (div != null) {
-            div.serializeAsJsonProperty(generator, FIELD_NAME_DIV);
+            div.serializeJsonField(generator, FIELD_NAME_DIV);
         }
         generator.writeEndObject();
     }

@@ -223,19 +223,19 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (system != null) {
-            system.serializeAsJsonProperty(generator, FIELD_NAME_SYSTEM);
+            system.serializeJsonField(generator, FIELD_NAME_SYSTEM);
         }
         if (version != null) {
-            version.serializeAsJsonProperty(generator, FIELD_NAME_VERSION);
+            version.serializeJsonField(generator, FIELD_NAME_VERSION);
         }
         if (code != null) {
-            code.serializeAsJsonProperty(generator, FIELD_NAME_CODE);
+            code.serializeJsonField(generator, FIELD_NAME_CODE);
         }
         if (display != null) {
-            display.serializeAsJsonProperty(generator, FIELD_NAME_DISPLAY);
+            display.serializeJsonField(generator, FIELD_NAME_DISPLAY);
         }
         if (userSelected != null) {
-            userSelected.serializeAsJsonProperty(generator, FIELD_NAME_USER_SELECTED);
+            userSelected.serializeJsonField(generator, FIELD_NAME_USER_SELECTED);
         }
         generator.writeEndObject();
     }

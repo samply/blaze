@@ -28,7 +28,7 @@ public final class PrimitivePropertyHandler extends PropertyHandler {
         if (value instanceof Sequential) {
             Primitive.serializeJsonPrimitiveList((List<?>) value, generator, fieldName);
         } else if (value instanceof Primitive primitive) {
-            primitive.serializeAsJsonProperty(generator, fieldName);
+            primitive.serializeJsonField(generator, fieldName);
         } else {
             throw new IllegalArgumentException("Value `%s` is no FHIR type.".formatted(value));
         }

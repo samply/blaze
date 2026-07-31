@@ -399,16 +399,16 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (sequence != null) {
-            sequence.serializeAsJsonProperty(generator, FIELD_NAME_SEQUENCE);
+            sequence.serializeJsonField(generator, FIELD_NAME_SEQUENCE);
         }
         if (text != null) {
-            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
+            text.serializeJsonField(generator, FIELD_NAME_TEXT);
         }
         if (!additionalInstruction.isEmpty()) {
             serializeJsonComplexList(additionalInstruction, generator, FIELD_NAME_ADDITIONAL_INSTRUCTION.normal());
         }
         if (patientInstruction != null) {
-            patientInstruction.serializeAsJsonProperty(generator, FIELD_NAME_PATIENT_INSTRUCTION);
+            patientInstruction.serializeJsonField(generator, FIELD_NAME_PATIENT_INSTRUCTION);
         }
         if (timing != null) {
             timing.serializeJsonField(generator, FIELD_NAME_TIMING);
@@ -416,7 +416,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         if (asNeeded != null) {
             switch (asNeeded) {
                 case Boolean asNeededBoolean ->
-                        asNeededBoolean.serializeAsJsonProperty(generator, FIELD_NAME_AS_NEEDED_BOOLEAN);
+                        asNeededBoolean.serializeJsonField(generator, FIELD_NAME_AS_NEEDED_BOOLEAN);
                 case CodeableConcept asNeededCodeableConcept ->
                         asNeededCodeableConcept.serializeJsonField(generator, FIELD_NAME_AS_NEEDED_CODEABLE_CONCEPT);
                 default -> {

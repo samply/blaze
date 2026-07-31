@@ -258,7 +258,7 @@ public final class Signature extends AbstractElement implements Complex, Extensi
             serializeJsonComplexList(type, generator, FIELD_NAME_TYPE.normal());
         }
         if (when != null) {
-            when.serializeAsJsonProperty(generator, FIELD_NAME_WHEN);
+            when.serializeJsonField(generator, FIELD_NAME_WHEN);
         }
         if (who != null) {
             who.serializeJsonField(generator, FIELD_NAME_WHO);
@@ -267,13 +267,13 @@ public final class Signature extends AbstractElement implements Complex, Extensi
             onBehalfOf.serializeJsonField(generator, FIELD_NAME_ON_BEHALF_OF);
         }
         if (targetFormat != null) {
-            targetFormat.serializeAsJsonProperty(generator, FIELD_NAME_TARGET_FORMAT);
+            targetFormat.serializeJsonField(generator, FIELD_NAME_TARGET_FORMAT);
         }
         if (sigFormat != null) {
-            sigFormat.serializeAsJsonProperty(generator, FIELD_NAME_SIG_FORMAT);
+            sigFormat.serializeJsonField(generator, FIELD_NAME_SIG_FORMAT);
         }
         if (data != null) {
-            data.serializeAsJsonProperty(generator, FIELD_NAME_DATA);
+            data.serializeJsonField(generator, FIELD_NAME_DATA);
         }
         generator.writeEndObject();
     }

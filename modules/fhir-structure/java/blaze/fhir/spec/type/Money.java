@@ -140,10 +140,10 @@ public final class Money extends AbstractElement implements Complex, ExtensionVa
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (value != null) {
-            value.serializeAsJsonProperty(generator, FIELD_NAME_VALUE);
+            value.serializeJsonField(generator, FIELD_NAME_VALUE);
         }
         if (currency != null) {
-            currency.serializeAsJsonProperty(generator, FIELD_NAME_CURRENCY);
+            currency.serializeJsonField(generator, FIELD_NAME_CURRENCY);
         }
         generator.writeEndObject();
     }

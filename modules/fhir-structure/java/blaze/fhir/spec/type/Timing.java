@@ -642,34 +642,34 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
                 }
             }
             if (count != null) {
-                count.serializeAsJsonProperty(generator, FIELD_NAME_COUNT);
+                count.serializeJsonField(generator, FIELD_NAME_COUNT);
             }
             if (countMax != null) {
-                countMax.serializeAsJsonProperty(generator, FIELD_NAME_COUNT_MAX);
+                countMax.serializeJsonField(generator, FIELD_NAME_COUNT_MAX);
             }
             if (duration != null) {
-                duration.serializeAsJsonProperty(generator, FIELD_NAME_DURATION);
+                duration.serializeJsonField(generator, FIELD_NAME_DURATION);
             }
             if (durationMax != null) {
-                durationMax.serializeAsJsonProperty(generator, FIELD_NAME_DURATION_MAX);
+                durationMax.serializeJsonField(generator, FIELD_NAME_DURATION_MAX);
             }
             if (durationUnit != null) {
-                durationUnit.serializeAsJsonProperty(generator, FIELD_NAME_DURATION_UNIT);
+                durationUnit.serializeJsonField(generator, FIELD_NAME_DURATION_UNIT);
             }
             if (frequency != null) {
-                frequency.serializeAsJsonProperty(generator, FIELD_NAME_FREQUENCY);
+                frequency.serializeJsonField(generator, FIELD_NAME_FREQUENCY);
             }
             if (frequencyMax != null) {
-                frequencyMax.serializeAsJsonProperty(generator, FIELD_NAME_FREQUENCY_MAX);
+                frequencyMax.serializeJsonField(generator, FIELD_NAME_FREQUENCY_MAX);
             }
             if (period != null) {
-                period.serializeAsJsonProperty(generator, FIELD_NAME_PERIOD);
+                period.serializeJsonField(generator, FIELD_NAME_PERIOD);
             }
             if (periodMax != null) {
-                periodMax.serializeAsJsonProperty(generator, FIELD_NAME_PERIOD_MAX);
+                periodMax.serializeJsonField(generator, FIELD_NAME_PERIOD_MAX);
             }
             if (periodUnit != null) {
-                periodUnit.serializeAsJsonProperty(generator, FIELD_NAME_PERIOD_UNIT);
+                periodUnit.serializeJsonField(generator, FIELD_NAME_PERIOD_UNIT);
             }
             if (!dayOfWeek.isEmpty()) {
                 Primitive.serializeJsonPrimitiveList(dayOfWeek, generator, FIELD_NAME_DAY_OF_WEEK);
@@ -681,7 +681,7 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
                 Primitive.serializeJsonPrimitiveList(when, generator, FIELD_NAME_WHEN);
             }
             if (offset != null) {
-                offset.serializeAsJsonProperty(generator, FIELD_NAME_OFFSET);
+                offset.serializeJsonField(generator, FIELD_NAME_OFFSET);
             }
             generator.writeEndObject();
         }

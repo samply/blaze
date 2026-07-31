@@ -137,10 +137,10 @@ public final class Contributor extends AbstractElement implements Complex, Exten
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (type != null) {
-            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
+            type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (name != null) {
-            name.serializeAsJsonProperty(generator, FIELD_NAME_NAME);
+            name.serializeJsonField(generator, FIELD_NAME_NAME);
         }
         if (!contact.isEmpty()) {
             serializeJsonComplexList(contact, generator, FIELD_NAME_CONTACT);

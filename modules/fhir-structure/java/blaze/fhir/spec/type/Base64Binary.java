@@ -90,8 +90,20 @@ public final class Base64Binary extends PrimitiveElement implements IObj {
     }
 
     @Override
+    public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
+        if (value != null) {
+            generator.writeFieldName(fieldName.normal());
+            generator.writeString(value);
+        }
+        if (extensionData.isNotEmpty()) {
+            generator.writeFieldName(fieldName.extended());
+            serializeJsonPrimitiveExtension(generator);
+        }
+    }
+
+    @Override
     public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
-        if (hasValue()) {
+        if (value != null) {
             generator.writeString(value);
         } else {
             generator.writeNull();

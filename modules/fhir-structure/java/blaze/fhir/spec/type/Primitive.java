@@ -83,20 +83,4 @@ public interface Primitive extends ExtensionValue {
     }
 
     void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException;
-
-    default void serializeAsJsonProperty(JsonGenerator generator, FieldName fieldName) throws IOException {
-        if (hasValue()) {
-            generator.writeFieldName(fieldName.normal());
-            serializeJsonPrimitiveValue(generator);
-        }
-        if (isExtended()) {
-            generator.writeFieldName(fieldName.extended());
-            serializeJsonPrimitiveExtension(generator);
-        }
-    }
-
-    @Override
-    default void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
-        serializeAsJsonProperty(generator, fieldName);
-    }
 }

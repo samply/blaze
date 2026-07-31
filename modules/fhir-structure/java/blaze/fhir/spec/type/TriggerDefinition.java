@@ -216,10 +216,10 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (type != null) {
-            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
+            type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (name != null) {
-            name.serializeAsJsonProperty(generator, FIELD_NAME_NAME);
+            name.serializeJsonField(generator, FIELD_NAME_NAME);
         }
         if (timing != null) {
             switch (timing) {
@@ -228,9 +228,9 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
                 case Reference timingReference ->
                         timingReference.serializeJsonField(generator, FIELD_NAME_TIMING_REFERENCE);
                 case Date timingDate ->
-                        timingDate.serializeAsJsonProperty(generator, FIELD_NAME_TIMING_DATE);
+                        timingDate.serializeJsonField(generator, FIELD_NAME_TIMING_DATE);
                 case DateTime timingDateTime ->
-                        timingDateTime.serializeAsJsonProperty(generator, FIELD_NAME_TIMING_DATE_TIME);
+                        timingDateTime.serializeJsonField(generator, FIELD_NAME_TIMING_DATE_TIME);
                 default -> {
                 }
             }

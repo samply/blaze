@@ -53,6 +53,15 @@ public final class Uuid extends PrimitiveElement {
         return maybeIntern(ExtensionData.fromMap(m), value == null ? null : UUID.fromString(value.substring(9)));
     }
 
+    @Override
+    public boolean hasValue() {
+        return value != null;
+    }
+
+    /**
+     * Note: builds the {@code urn:uuid:} representation on each call. Use
+     * {@link #hasValue()} to test for the presence of a value.
+     */
     public String value() {
         return value == null ? null : "urn:uuid:" + value;
     }
@@ -92,8 +101,20 @@ public final class Uuid extends PrimitiveElement {
     }
 
     @Override
+    public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
+        if (value != null) {
+            generator.writeFieldName(fieldName.normal());
+            generator.writeString(value());
+        }
+        if (extensionData.isNotEmpty()) {
+            generator.writeFieldName(fieldName.extended());
+            serializeJsonPrimitiveExtension(generator);
+        }
+    }
+
+    @Override
     public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
-        if (hasValue()) {
+        if (value != null) {
             generator.writeString(value());
         } else {
             generator.writeNull();

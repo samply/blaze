@@ -162,19 +162,19 @@ public sealed abstract class AbstractQuantity extends AbstractElement implements
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (value != null) {
-            value.serializeAsJsonProperty(generator, FIELD_NAME_VALUE);
+            value.serializeJsonField(generator, FIELD_NAME_VALUE);
         }
         if (comparator != null) {
-            comparator.serializeAsJsonProperty(generator, FIELD_NAME_COMPARATOR);
+            comparator.serializeJsonField(generator, FIELD_NAME_COMPARATOR);
         }
         if (unit != null) {
-            unit.serializeAsJsonProperty(generator, FIELD_NAME_UNIT);
+            unit.serializeJsonField(generator, FIELD_NAME_UNIT);
         }
         if (system != null) {
-            system.serializeAsJsonProperty(generator, FIELD_NAME_SYSTEM);
+            system.serializeJsonField(generator, FIELD_NAME_SYSTEM);
         }
         if (code != null) {
-            code.serializeAsJsonProperty(generator, FIELD_NAME_CODE);
+            code.serializeJsonField(generator, FIELD_NAME_CODE);
         }
         generator.writeEndObject();
     }

@@ -169,8 +169,20 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         }
 
         @Override
+        public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
+            if (value != null) {
+                generator.writeFieldName(fieldName.normal());
+                generator.writeString(value);
+            }
+            if (extensionData.isNotEmpty()) {
+                generator.writeFieldName(fieldName.extended());
+                serializeJsonPrimitiveExtension(generator);
+            }
+        }
+
+        @Override
         public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
-            if (hasValue()) {
+            if (value != null) {
                 generator.writeString(value);
             } else {
                 generator.writeNull();
@@ -220,6 +232,11 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         }
 
         @Override
+        public boolean hasValue() {
+            return value != null;
+        }
+
+        @Override
         public java.lang.String value() {
             return value == null ? null : value.getValue();
         }
@@ -248,8 +265,20 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         }
 
         @Override
+        public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
+            if (value != null) {
+                generator.writeFieldName(fieldName.normal());
+                generator.writeString(value);
+            }
+            if (extensionData.isNotEmpty()) {
+                generator.writeFieldName(fieldName.extended());
+                serializeJsonPrimitiveExtension(generator);
+            }
+        }
+
+        @Override
         public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
-            if (hasValue()) {
+            if (value != null) {
                 generator.writeString(value);
             } else {
                 generator.writeNull();

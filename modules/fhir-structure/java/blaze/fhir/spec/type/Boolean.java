@@ -99,8 +99,20 @@ public final class Boolean extends PrimitiveElement {
     }
 
     @Override
+    public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
+        if (value != null) {
+            generator.writeFieldName(fieldName.normal());
+            generator.writeBoolean(value);
+        }
+        if (extensionData.isNotEmpty()) {
+            generator.writeFieldName(fieldName.extended());
+            serializeJsonPrimitiveExtension(generator);
+        }
+    }
+
+    @Override
     public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
-        if (hasValue()) {
+        if (value != null) {
             generator.writeBoolean(value);
         } else {
             generator.writeNull();

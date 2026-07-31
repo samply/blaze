@@ -272,28 +272,28 @@ public final class Attachment extends AbstractElement implements Complex, Extens
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (contentType != null) {
-            contentType.serializeAsJsonProperty(generator, FIELD_NAME_CONTENT_TYPE);
+            contentType.serializeJsonField(generator, FIELD_NAME_CONTENT_TYPE);
         }
         if (language != null) {
-            language.serializeAsJsonProperty(generator, FIELD_NAME_LANGUAGE);
+            language.serializeJsonField(generator, FIELD_NAME_LANGUAGE);
         }
         if (data != null) {
-            data.serializeAsJsonProperty(generator, FIELD_NAME_DATA);
+            data.serializeJsonField(generator, FIELD_NAME_DATA);
         }
         if (url != null) {
-            url.serializeAsJsonProperty(generator, FIELD_NAME_URL);
+            url.serializeJsonField(generator, FIELD_NAME_URL);
         }
         if (size != null) {
-            size.serializeAsJsonProperty(generator, FIELD_NAME_SIZE);
+            size.serializeJsonField(generator, FIELD_NAME_SIZE);
         }
         if (hash != null) {
-            hash.serializeAsJsonProperty(generator, FIELD_NAME_HASH);
+            hash.serializeJsonField(generator, FIELD_NAME_HASH);
         }
         if (title != null) {
-            title.serializeAsJsonProperty(generator, FIELD_NAME_TITLE);
+            title.serializeJsonField(generator, FIELD_NAME_TITLE);
         }
         if (creation != null) {
-            creation.serializeAsJsonProperty(generator, FIELD_NAME_CREATION);
+            creation.serializeJsonField(generator, FIELD_NAME_CREATION);
         }
         generator.writeEndObject();
     }

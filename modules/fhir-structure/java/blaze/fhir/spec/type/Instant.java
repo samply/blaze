@@ -95,6 +95,18 @@ public final class Instant extends PrimitiveElement {
     }
 
     @Override
+    public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
+        if (value != null) {
+            generator.writeFieldName(fieldName.normal());
+            DateTime.writeTo(value, generator);
+        }
+        if (extensionData.isNotEmpty()) {
+            generator.writeFieldName(fieldName.extended());
+            serializeJsonPrimitiveExtension(generator);
+        }
+    }
+
+    @Override
     public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
         if (value == null) {
             generator.writeNull();

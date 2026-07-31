@@ -162,16 +162,16 @@ public final class Reference extends AbstractElement implements Complex, Extensi
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (reference != null) {
-            reference.serializeAsJsonProperty(generator, FIELD_NAME_REFERENCE);
+            reference.serializeJsonField(generator, FIELD_NAME_REFERENCE);
         }
         if (type != null) {
-            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
+            type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (identifier != null) {
             identifier.serializeJsonField(generator, FIELD_NAME_IDENTIFIER);
         }
         if (display != null) {
-            display.serializeAsJsonProperty(generator, FIELD_NAME_DISPLAY);
+            display.serializeJsonField(generator, FIELD_NAME_DISPLAY);
         }
         generator.writeEndObject();
     }

@@ -1261,6 +1261,65 @@
 (defn- copy-str [^String s]
   (String. (.getBytes s StandardCharsets/UTF_8) StandardCharsets/UTF_8))
 
+(def ^:private primitive-values
+  "One value of each primitive type, together with the `Extension.value[x]`
+  field name it's written as and its expected JSON representation.
+
+  The types `string` and `uri` appear twice, because both have an interned
+  implementation that is used for values of at most four characters."
+  [[:valueBase64Binary #fhir/base64Binary"MTA1NjE0Cg==" "MTA1NjE0Cg=="]
+   [:valueBoolean #fhir/boolean true true]
+   [:valueCanonical #fhir/canonical"canonical-160512" "canonical-160512"]
+   [:valueCode #fhir/code"code-160520" "code-160520"]
+   [:valueDate #fhir/date #system/date"2024-02-14" "2024-02-14"]
+   [:valueDateTime #fhir/dateTime #system/date-time"2024-02-14T16:05:37Z"
+    "2024-02-14T16:05:37Z"]
+   [:valueDecimal #fhir/decimal 1M 1]
+   [:valueId #fhir/id"id-160603" "id-160603"]
+   [:valueInstant (type/instant (OffsetDateTime/of 2024 2 14 16 6 11 0 ZoneOffset/UTC))
+    "2024-02-14T16:06:11Z"]
+   [:valueInteger #fhir/integer 160619 160619]
+   [:valueMarkdown #fhir/markdown"markdown-160627" "markdown-160627"]
+   [:valueOid #fhir/oid"urn:oid:1.2.3" "urn:oid:1.2.3"]
+   [:valuePositiveInt #fhir/positiveInt 160641 160641]
+   [:valueString #fhir/string"string-160649" "string-160649"]
+   [:valueString #fhir/string"abcd" "abcd"]
+   [:valueTime #fhir/time #system/time"16:07:03" "16:07:03"]
+   [:valueUnsignedInt #fhir/unsignedInt 160711 160711]
+   [:valueUri #fhir/uri"uri-160719" "uri-160719"]
+   [:valueUri #fhir/uri"abcd" "abcd"]
+   [:valueUrl #fhir/url"url-160727" "url-160727"]
+   [:valueUuid #fhir/uuid"urn:uuid:935eb22d-cf35-4351-ae71-e517e49ebcbc"
+    "urn:uuid:935eb22d-cf35-4351-ae71-e517e49ebcbc"]])
+
+(defn- extended-field-name [field-name]
+  (keyword (str "_" (name field-name))))
+
+(deftest primitive-json-property-test
+  (testing "every primitive type writes its value and its extensions as two
+            separate properties"
+    (doseq [[field-name value json] primitive-values
+            :let [extended-field-name (extended-field-name field-name)
+                  extension {:id "id-161022"}
+                  no-value (empty value)]]
+      (testing (name field-name)
+        (testing "value only"
+          (is (= {field-name json}
+                 (write-read-json (type/extension {:value value})))))
+
+        (testing "value and extension"
+          (is (= {field-name json extended-field-name extension}
+                 (write-read-json
+                  (type/extension {:value (assoc value :id "id-161022")})))))
+
+        (testing "extension only"
+          (is (= {extended-field-name extension}
+                 (write-read-json
+                  (type/extension {:value (assoc no-value :id "id-161022")})))))
+
+        (testing "neither value nor extension"
+          (is (= {} (write-read-json (type/extension {:value no-value})))))))))
+
 (deftest fhir-boolean-test
   (testing "parsing"
     (testing "XML"

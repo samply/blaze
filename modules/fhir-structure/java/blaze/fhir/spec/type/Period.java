@@ -157,10 +157,10 @@ public final class Period extends AbstractElement implements Complex, ExtensionV
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (start != null) {
-            start.serializeAsJsonProperty(generator, FIELD_NAME_START);
+            start.serializeJsonField(generator, FIELD_NAME_START);
         }
         if (end != null) {
-            end.serializeAsJsonProperty(generator, FIELD_NAME_END);
+            end.serializeJsonField(generator, FIELD_NAME_END);
         }
         generator.writeEndObject();
     }

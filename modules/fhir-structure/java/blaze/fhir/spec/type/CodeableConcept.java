@@ -167,7 +167,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
             serializeJsonComplexList(coding, generator, FIELD_NAME_CODING);
         }
         if (text != null) {
-            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
+            text.serializeJsonField(generator, FIELD_NAME_TEXT);
         }
         generator.writeEndObject();
     }

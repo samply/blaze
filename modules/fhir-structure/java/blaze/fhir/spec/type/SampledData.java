@@ -254,22 +254,22 @@ public final class SampledData extends AbstractElement implements Complex, Exten
             origin.serializeJsonField(generator, FIELD_NAME_ORIGIN);
         }
         if (period != null) {
-            period.serializeAsJsonProperty(generator, FIELD_NAME_PERIOD);
+            period.serializeJsonField(generator, FIELD_NAME_PERIOD);
         }
         if (factor != null) {
-            factor.serializeAsJsonProperty(generator, FIELD_NAME_FACTOR);
+            factor.serializeJsonField(generator, FIELD_NAME_FACTOR);
         }
         if (lowerLimit != null) {
-            lowerLimit.serializeAsJsonProperty(generator, FIELD_NAME_LOWER_LIMIT);
+            lowerLimit.serializeJsonField(generator, FIELD_NAME_LOWER_LIMIT);
         }
         if (upperLimit != null) {
-            upperLimit.serializeAsJsonProperty(generator, FIELD_NAME_UPPER_LIMIT);
+            upperLimit.serializeJsonField(generator, FIELD_NAME_UPPER_LIMIT);
         }
         if (dimensions != null) {
-            dimensions.serializeAsJsonProperty(generator, FIELD_NAME_DIMENSIONS);
+            dimensions.serializeJsonField(generator, FIELD_NAME_DIMENSIONS);
         }
         if (data != null) {
-            data.serializeAsJsonProperty(generator, FIELD_NAME_DATA);
+            data.serializeJsonField(generator, FIELD_NAME_DATA);
         }
         generator.writeEndObject();
     }

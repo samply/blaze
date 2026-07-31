@@ -224,16 +224,16 @@ public final class Identifier extends AbstractElement implements Complex, Extens
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (use != null) {
-            use.serializeAsJsonProperty(generator, FIELD_NAME_USE);
+            use.serializeJsonField(generator, FIELD_NAME_USE);
         }
         if (type != null) {
             type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (system != null) {
-            system.serializeAsJsonProperty(generator, FIELD_NAME_SYSTEM);
+            system.serializeJsonField(generator, FIELD_NAME_SYSTEM);
         }
         if (value != null) {
-            value.serializeAsJsonProperty(generator, FIELD_NAME_VALUE);
+            value.serializeJsonField(generator, FIELD_NAME_VALUE);
         }
         if (period != null) {
             period.serializeJsonField(generator, FIELD_NAME_PERIOD);

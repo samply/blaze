@@ -126,7 +126,7 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (name != null) {
-            name.serializeAsJsonProperty(generator, FIELD_NAME_NAME);
+            name.serializeJsonField(generator, FIELD_NAME_NAME);
         }
         if (!telecom.isEmpty()) {
             serializeJsonComplexList(telecom, generator, FIELD_NAME_TELECOM);

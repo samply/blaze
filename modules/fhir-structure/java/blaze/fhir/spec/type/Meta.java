@@ -263,13 +263,13 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (versionId != null) {
-            versionId.serializeAsJsonProperty(generator, FIELD_NAME_VERSION_ID);
+            versionId.serializeJsonField(generator, FIELD_NAME_VERSION_ID);
         }
         if (lastUpdated != null) {
-            lastUpdated.serializeAsJsonProperty(generator, FIELD_NAME_LAST_UPDATED);
+            lastUpdated.serializeJsonField(generator, FIELD_NAME_LAST_UPDATED);
         }
         if (source != null) {
-            source.serializeAsJsonProperty(generator, FIELD_NAME_SOURCE);
+            source.serializeJsonField(generator, FIELD_NAME_SOURCE);
         }
         if (!profile.isEmpty()) {
             Primitive.serializeJsonPrimitiveList(profile, generator, FIELD_NAME_PROFILE);

@@ -194,25 +194,25 @@ public final class RelatedArtifact extends AbstractElement implements Complex, E
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (type != null) {
-            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
+            type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (label != null) {
-            label.serializeAsJsonProperty(generator, FIELD_NAME_LABEL);
+            label.serializeJsonField(generator, FIELD_NAME_LABEL);
         }
         if (display != null) {
-            display.serializeAsJsonProperty(generator, FIELD_NAME_DISPLAY);
+            display.serializeJsonField(generator, FIELD_NAME_DISPLAY);
         }
         if (citation != null) {
-            citation.serializeAsJsonProperty(generator, FIELD_NAME_CITATION);
+            citation.serializeJsonField(generator, FIELD_NAME_CITATION);
         }
         if (url != null) {
-            url.serializeAsJsonProperty(generator, FIELD_NAME_URL);
+            url.serializeJsonField(generator, FIELD_NAME_URL);
         }
         if (document != null) {
             document.serializeJsonField(generator, FIELD_NAME_DOCUMENT);
         }
         if (resource != null) {
-            resource.serializeAsJsonProperty(generator, FIELD_NAME_RESOURCE);
+            resource.serializeJsonField(generator, FIELD_NAME_RESOURCE);
         }
         generator.writeEndObject();
     }

@@ -271,7 +271,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (type != null) {
-            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
+            type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (profile != null && !profile.isEmpty()) {
             serializeJsonPrimitiveList(profile, generator, FIELD_NAME_PROFILE);
@@ -296,7 +296,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             serializeJsonComplexList(dateFilter, generator, FIELD_NAME_DATE_FILTER);
         }
         if (limit != null) {
-            limit.serializeAsJsonProperty(generator, FIELD_NAME_LIMIT);
+            limit.serializeJsonField(generator, FIELD_NAME_LIMIT);
         }
         if (sort != null && !sort.isEmpty()) {
             serializeJsonComplexList(sort, generator, FIELD_NAME_SORT.normal());
@@ -562,13 +562,13 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             generator.writeStartObject();
             serializeJsonBase(generator);
             if (path != null) {
-                path.serializeAsJsonProperty(generator, FIELD_NAME_PATH);
+                path.serializeJsonField(generator, FIELD_NAME_PATH);
             }
             if (searchParam != null) {
-                searchParam.serializeAsJsonProperty(generator, FIELD_NAME_SEARCH_PARAM);
+                searchParam.serializeJsonField(generator, FIELD_NAME_SEARCH_PARAM);
             }
             if (valueSet != null) {
-                valueSet.serializeAsJsonProperty(generator, FIELD_NAME_VALUE_SET);
+                valueSet.serializeJsonField(generator, FIELD_NAME_VALUE_SET);
             }
             if (code != null && !code.isEmpty()) {
                 serializeJsonComplexList(code, generator, FIELD_NAME_CODE);
@@ -776,10 +776,10 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             generator.writeStartObject();
             serializeJsonBase(generator);
             if (path != null) {
-                path.serializeAsJsonProperty(generator, FIELD_NAME_PATH);
+                path.serializeJsonField(generator, FIELD_NAME_PATH);
             }
             if (searchParam != null) {
-                searchParam.serializeAsJsonProperty(generator, FIELD_NAME_SEARCH_PARAM);
+                searchParam.serializeJsonField(generator, FIELD_NAME_SEARCH_PARAM);
             }
             if (value != null) {
                 value.serializeJsonField(generator, value.fieldNameExtensionValue());
@@ -963,10 +963,10 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             generator.writeStartObject();
             serializeJsonBase(generator);
             if (path != null) {
-                path.serializeAsJsonProperty(generator, FIELD_NAME_PATH);
+                path.serializeJsonField(generator, FIELD_NAME_PATH);
             }
             if (direction != null) {
-                direction.serializeAsJsonProperty(generator, FIELD_NAME_DIRECTION);
+                direction.serializeJsonField(generator, FIELD_NAME_DIRECTION);
             }
             generator.writeEndObject();
         }

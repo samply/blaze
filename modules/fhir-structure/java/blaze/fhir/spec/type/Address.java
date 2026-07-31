@@ -320,31 +320,31 @@ public final class Address extends AbstractElement implements Complex, Extension
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (use != null) {
-            use.serializeAsJsonProperty(generator, FIELD_NAME_USE);
+            use.serializeJsonField(generator, FIELD_NAME_USE);
         }
         if (type != null) {
-            type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
+            type.serializeJsonField(generator, FIELD_NAME_TYPE);
         }
         if (text != null) {
-            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
+            text.serializeJsonField(generator, FIELD_NAME_TEXT);
         }
         if (!line.isEmpty()) {
             Primitive.serializeJsonPrimitiveList(line, generator, FIELD_NAME_LINE);
         }
         if (city != null) {
-            city.serializeAsJsonProperty(generator, FIELD_NAME_CITY);
+            city.serializeJsonField(generator, FIELD_NAME_CITY);
         }
         if (district != null) {
-            district.serializeAsJsonProperty(generator, FIELD_NAME_DISTRICT);
+            district.serializeJsonField(generator, FIELD_NAME_DISTRICT);
         }
         if (state != null) {
-            state.serializeAsJsonProperty(generator, FIELD_NAME_STATE);
+            state.serializeJsonField(generator, FIELD_NAME_STATE);
         }
         if (postalCode != null) {
-            postalCode.serializeAsJsonProperty(generator, FIELD_NAME_POSTAL_CODE);
+            postalCode.serializeJsonField(generator, FIELD_NAME_POSTAL_CODE);
         }
         if (country != null) {
-            country.serializeAsJsonProperty(generator, FIELD_NAME_COUNTRY);
+            country.serializeJsonField(generator, FIELD_NAME_COUNTRY);
         }
         if (period != null) {
             period.serializeJsonField(generator, FIELD_NAME_PERIOD);

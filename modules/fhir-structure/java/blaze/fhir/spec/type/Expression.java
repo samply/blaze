@@ -167,19 +167,19 @@ public final class Expression extends AbstractElement implements Complex, Extens
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (description != null) {
-            description.serializeAsJsonProperty(generator, FIELD_NAME_DESCRIPTION);
+            description.serializeJsonField(generator, FIELD_NAME_DESCRIPTION);
         }
         if (name != null) {
-            name.serializeAsJsonProperty(generator, FIELD_NAME_NAME);
+            name.serializeJsonField(generator, FIELD_NAME_NAME);
         }
         if (language != null) {
-            language.serializeAsJsonProperty(generator, FIELD_NAME_LANGUAGE);
+            language.serializeJsonField(generator, FIELD_NAME_LANGUAGE);
         }
         if (expression != null) {
-            expression.serializeAsJsonProperty(generator, FIELD_NAME_EXPRESSION);
+            expression.serializeJsonField(generator, FIELD_NAME_EXPRESSION);
         }
         if (reference != null) {
-            reference.serializeAsJsonProperty(generator, FIELD_NAME_REFERENCE);
+            reference.serializeJsonField(generator, FIELD_NAME_REFERENCE);
         }
         generator.writeEndObject();
     }

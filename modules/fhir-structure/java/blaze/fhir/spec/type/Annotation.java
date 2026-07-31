@@ -140,16 +140,16 @@ public final class Annotation extends AbstractElement implements Complex, Extens
                 case Reference authorReference ->
                         authorReference.serializeJsonField(generator, FIELD_NAME_AUTHOR_REFERENCE);
                 case String authorString ->
-                        authorString.serializeAsJsonProperty(generator, FIELD_NAME_AUTHOR_STRING);
+                        authorString.serializeJsonField(generator, FIELD_NAME_AUTHOR_STRING);
                 default -> {
                 }
             }
         }
         if (time != null) {
-            time.serializeAsJsonProperty(generator, FIELD_NAME_TIME);
+            time.serializeJsonField(generator, FIELD_NAME_TIME);
         }
         if (text != null) {
-            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
+            text.serializeJsonField(generator, FIELD_NAME_TEXT);
         }
         generator.writeEndObject();
     }

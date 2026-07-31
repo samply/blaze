@@ -202,16 +202,16 @@ public final class ContactPoint extends AbstractElement implements Complex, Exte
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (system != null) {
-            system.serializeAsJsonProperty(generator, FIELD_NAME_SYSTEM);
+            system.serializeJsonField(generator, FIELD_NAME_SYSTEM);
         }
         if (value != null) {
-            value.serializeAsJsonProperty(generator, FIELD_NAME_VALUE);
+            value.serializeJsonField(generator, FIELD_NAME_VALUE);
         }
         if (use != null) {
-            use.serializeAsJsonProperty(generator, FIELD_NAME_USE);
+            use.serializeJsonField(generator, FIELD_NAME_USE);
         }
         if (rank != null) {
-            rank.serializeAsJsonProperty(generator, FIELD_NAME_RANK);
+            rank.serializeJsonField(generator, FIELD_NAME_RANK);
         }
         if (period != null) {
             period.serializeJsonField(generator, FIELD_NAME_PERIOD);

@@ -258,13 +258,13 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (use != null) {
-            use.serializeAsJsonProperty(generator, FIELD_NAME_USE);
+            use.serializeJsonField(generator, FIELD_NAME_USE);
         }
         if (text != null) {
-            text.serializeAsJsonProperty(generator, FIELD_NAME_TEXT);
+            text.serializeJsonField(generator, FIELD_NAME_TEXT);
         }
         if (family != null) {
-            family.serializeAsJsonProperty(generator, FIELD_NAME_FAMILY);
+            family.serializeJsonField(generator, FIELD_NAME_FAMILY);
         }
         if (!given.isEmpty()) {
             serializeJsonPrimitiveList(given, generator, FIELD_NAME_GIVEN);

@@ -115,10 +115,10 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
         generator.writeStartObject();
         serializeJsonBase(generator);
         if (mode != null) {
-            mode.serializeAsJsonProperty(generator, FIELD_NAME_MODE);
+            mode.serializeJsonField(generator, FIELD_NAME_MODE);
         }
         if (score != null) {
-            score.serializeAsJsonProperty(generator, FIELD_NAME_SCORE);
+            score.serializeJsonField(generator, FIELD_NAME_SCORE);
         }
         generator.writeEndObject();
     }
