@@ -114,6 +114,10 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
         return Lists.nullToEmpty(m.valAt(key));
     }
 
+    static <T> List<T> typedListFrom(IPersistentMap m, Keyword key, Class<T> type) {
+        return Lists.typedNullToEmpty(m.valAt(key), type);
+    }
+
     static boolean isInterned(Base x) {
         return x == null || x.isInterned();
     }

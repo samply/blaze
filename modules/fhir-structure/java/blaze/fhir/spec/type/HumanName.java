@@ -137,7 +137,7 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
 
     public static HumanName create(IPersistentMap m) {
         return new HumanName(ExtensionData.fromMap(m), (Code) m.valAt(USE), (String) m.valAt(TEXT),
-                (String) m.valAt(FAMILY), Base.listFrom(m, GIVEN), Base.listFrom(m, PREFIX), Base.listFrom(m, SUFFIX),
+                (String) m.valAt(FAMILY), Base.typedListFrom(m, GIVEN, String.class), Base.listFrom(m, PREFIX), Base.listFrom(m, SUFFIX),
                 (Period) m.valAt(PERIOD));
     }
 

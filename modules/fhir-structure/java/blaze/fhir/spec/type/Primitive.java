@@ -23,20 +23,37 @@ public interface Primitive extends ExtensionValue {
 
     Keyword[] FIELDS = {ID, EXTENSION, VALUE};
 
-    static void serializeJsonPrimitiveList(List<? extends Primitive> values, JsonGenerator generator, FieldName fieldName) throws IOException {
-        if (values.stream().anyMatch(Primitive::hasValue)) {
+    /**
+     * Writes all `values` as property `fieldName`, the values themselves and
+     * their extensions in a separate `_fieldName` property.
+     * <p>
+     * Checks the type of all values and whether any of them has a value or is
+     * extended in one pass, because a list is usually short and both properties
+     * have to be known before anything is written.
+     */
+    static void serializeJsonPrimitiveList(List<?> values, JsonGenerator generator, FieldName fieldName) throws IOException {
+        boolean hasValue = false;
+        boolean isExtended = false;
+        for (Object value : values) {
+            if (!(value instanceof Primitive primitive)) {
+                throw new IllegalArgumentException("Value `%s` is no FHIR type.".formatted(value));
+            }
+            hasValue |= primitive.hasValue();
+            isExtended |= primitive.isExtended();
+        }
+        if (hasValue) {
             generator.writeFieldName(fieldName.normal());
             generator.writeStartArray();
-            for (Primitive value : values) {
-                value.serializeJsonPrimitiveValue(generator);
+            for (Object value : values) {
+                ((Primitive) value).serializeJsonPrimitiveValue(generator);
             }
             generator.writeEndArray();
         }
-        if (values.stream().anyMatch(Primitive::isExtended)) {
+        if (isExtended) {
             generator.writeFieldName(fieldName.extended());
             generator.writeStartArray();
-            for (Primitive value : values) {
-                value.serializeJsonPrimitiveExtension(generator);
+            for (Object value : values) {
+                ((Primitive) value).serializeJsonPrimitiveExtension(generator);
             }
             generator.writeEndArray();
         }

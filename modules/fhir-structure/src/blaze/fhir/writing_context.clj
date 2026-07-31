@@ -14,9 +14,12 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
-   [blaze ReducibleArray]
-   [blaze.fhir.spec.type Base Complex FieldName Primitive]
-   [com.fasterxml.jackson.core JsonGenerator SerializableString]))
+   [blaze.fhir.spec.type FieldName]
+   [blaze.fhir.writing ComplexPropertyHandler ComplexTypeHandler
+    MapPropertyHandler MapTypeHandler PolymorphicPropertyHandler
+    PrimitivePropertyHandler PropertyHandler ResourcePropertyHandler
+    ResourceTypeHandler StringPropertyHandler TypeHandler]
+   [clojure.lang Keyword]))
 
 (set! *warn-on-reflection* true)
 
@@ -24,116 +27,11 @@
   (let [parts (cons "fhir" (seq (str/split type #"\.")))]
     (keyword (str/join "." (butlast parts)) (last parts))))
 
-(deftype PropertyHandler [key field-name polymorphic type])
-
-(defn- polymorphic-field-names [base-field-name element-types]
-  (into
-   {}
-   (map
-    (fn [{:keys [code]}]
-      [(keyword "fhir" code)
-       (FieldName/of (str base-field-name (su/capital code)))]))
-   element-types))
-
-(defn- property-handler-definitions
-  "Takes `element-definition` and returns possibly multiple
-  property handler definitions, one for each polymorphic type.
-
-  An element handler definition contains:
-   * field-name - the name of the JSON property
-   * polymorphic - true/false"
-  {:arglists '([parent-type element-definition])}
-  [parent-type
-   {:keys [path] content-reference :contentReference element-types :type}]
-  (if content-reference
-    (let [base-field-name (res/base-field-name parent-type path false)
-          field-name (FieldName/of base-field-name)]
-      (PropertyHandler.
-       (keyword base-field-name)
-       (fn [_type] field-name)
-       false
-       (fhir-type-keyword (subs content-reference 1))))
-    (let [polymorphic (< 1 (count element-types))
-          first-type-code (:code (first element-types))
-          element-type (and (= 1 (count element-types))
-                            (#{"BackboneElement" "Element"} first-type-code))
-          complex-type (and (= 1 (count element-types))
-                            (Character/isUpperCase ^char (first first-type-code))
-                            (not (#{"BackboneElement" "Element" "Resource"} first-type-code)))
-          base-field-name (res/base-field-name parent-type path polymorphic)]
-      (PropertyHandler.
-       (keyword base-field-name)
-       (if polymorphic
-         (polymorphic-field-names base-field-name element-types)
-         (let [field-name (FieldName/of base-field-name)]
-           (fn [_type] field-name)))
-       polymorphic
-       (if complex-type
-         (keyword "fhir" first-type-code)
-         (if element-type
-           (fhir-type-keyword path)
-           (when (= "http://hl7.org/fhirpath/System.String" first-type-code)
-             :system/string)))))))
-
-(defn- create-property-handlers
-  "Returns a map of JSON property names to property handlers."
-  [type element-definitions]
-  (ReducibleArray. (map (partial property-handler-definitions type) element-definitions)))
-
-(defn- field-name ^FieldName [^PropertyHandler property-handler type]
-  ((.-field-name property-handler) type))
-
-(defn- write-system-string-field [^JsonGenerator generator ^SerializableString field-name value]
-  (.writeFieldName generator field-name)
-  (.writeString generator ^String value))
-
-(defn- write-values!
-  "Writes all `values` of a collection.
-
-  If the property has a declared type, all values share the same handler.
-  Otherwise the collection is polymorphic - like `contained`, which can hold
-  resources of different types - so the handler is resolved for each value
-  individually. Writing all values with the handler of the first one would
-  silently drop fields that don't exist on that type."
-  [type-handlers gen ^PropertyHandler property-handler handler values]
-  (if (.-type property-handler)
-    (run! #(handler type-handlers gen %) values)
-    (run!
-     #(if-some [value-handler (type-handlers (:fhir/type %))]
-        (value-handler type-handlers gen %)
-        (throw (IllegalArgumentException. (format "Value `%s` is no FHIR type." %))))
-     values)))
-
-(defn- write-field!
-  [type-handlers ^JsonGenerator gen ^PropertyHandler property-handler value]
-  (if (sequential? value)
-    (when-some [first-value (first value)]
-      (when-some [type (or (.-type property-handler) (:fhir/type first-value))]
-        (if-some [handler (type-handlers type)]
-          (do (.writeFieldName gen (.normal (field-name property-handler type)))
-              (.writeStartArray gen)
-              (write-values! type-handlers gen property-handler handler value)
-              (.writeEndArray gen))
-          (Primitive/serializeJsonPrimitiveList value gen (field-name property-handler type)))))
-    (if-some [type (or (.-type property-handler) (:fhir/type value))]
-      (if-some [handler (type-handlers type)]
-        (do (.writeFieldName gen (.normal (field-name property-handler type)))
-            (handler type-handlers gen value))
-        (if (identical? :system/string type)
-          (write-system-string-field gen (.normal (field-name property-handler type)) value)
-          (.serializeJsonField ^Base value gen (field-name property-handler type))))
-      (throw (IllegalArgumentException. (format "Value `%s` is no FHIR type." value))))))
-
-(defn- write-fields! [type-handlers property-handlers gen m]
-  (when-not (map? m)
-    (throw (IllegalArgumentException. (format "Value `%s` is no FHIR type." m))))
-  (run!
-   (fn [property-handler]
-     (when-some [value (m (.-key ^PropertyHandler property-handler))]
-       (write-field! type-handlers gen property-handler value)))
-   property-handlers))
-
 (def ^:private complex-types
+  "Names of all complex types with a Java implementation.
+
+  Values of those types write themselves, while all other types are represented
+  as maps and are written by a `MapTypeHandler`."
   #{"Address" "Age" "Annotation" "Attachment" "Bundle.entry.search"
     "CodeableConcept" "Coding" "ContactDetail" "ContactPoint" "Contributor"
     "Count" "DataRequirement" "DataRequirement.codeFilter"
@@ -143,6 +41,61 @@
     "Quantity" "Range" "Ratio" "Reference" "RelatedArtifact" "SampledData"
     "Signature" "Timing" "Timing.repeat" "TriggerDefinition" "UsageContext"})
 
+(defn- complex-property-handler
+  "Creates a property handler for the complex type with name `type-name`."
+  [key type-name base-field-name]
+  (let [field-name (.normal (FieldName/of base-field-name))]
+    (if (complex-types type-name)
+      (ComplexPropertyHandler. key field-name)
+      (MapPropertyHandler. key (fhir-type-keyword type-name) field-name))))
+
+(defn- polymorphic-property-handler [key base-field-name element-types]
+  (PolymorphicPropertyHandler.
+   key
+   (into-array Keyword (map (fn [{:keys [code]}] (keyword "fhir" code)) element-types))
+   (into-array FieldName (map (fn [{:keys [code]}] (FieldName/of (str base-field-name (su/capital code)))) element-types))))
+
+(defn- create-property-handler
+  "Takes `element-definition` and returns a property handler."
+  {:arglists '([parent-type element-definition])}
+  [parent-type
+   {:keys [path] content-reference :contentReference element-types :type}]
+  (if content-reference
+    (let [base-field-name (res/base-field-name parent-type path false)]
+      (complex-property-handler
+       (keyword base-field-name)
+       (subs content-reference 1)
+       base-field-name))
+    (let [polymorphic (< 1 (count element-types))
+          first-type-code (:code (first element-types))
+          element-type (and (= 1 (count element-types))
+                            (#{"BackboneElement" "Element"} first-type-code))
+          base-field-name (res/base-field-name parent-type path polymorphic)
+          key (keyword base-field-name)]
+      (condp = first-type-code
+        "Resource"
+        (ResourcePropertyHandler. key (.normal (FieldName/of base-field-name)))
+
+        "http://hl7.org/fhirpath/System.String"
+        (StringPropertyHandler. key (.normal (FieldName/of base-field-name)))
+
+        (if polymorphic
+          (polymorphic-property-handler key base-field-name element-types)
+
+          (if (Character/isUpperCase ^char (first first-type-code))
+            (complex-property-handler
+             key
+             (if element-type path first-type-code)
+             base-field-name)
+            (PrimitivePropertyHandler.
+             key
+             (FieldName/of base-field-name))))))))
+
+(defn- create-property-handlers
+  "Returns an array of property handlers, one for each element definition."
+  [type element-definitions]
+  (into-array PropertyHandler (map (partial create-property-handler type) element-definitions)))
+
 (defn- create-type-handler
   "Creates a handler for `type` using `element-definitions`.
 
@@ -151,21 +104,11 @@
   element definitions."
   [kind type element-definitions]
   (if (complex-types type)
-    (fn complex-java-type-handler [_type-handlers gen value]
-      (.serializeAsJsonValue ^Complex value gen))
+    ComplexTypeHandler/INSTANCE
     (let [property-handlers (create-property-handlers type element-definitions)]
-      (condp = kind
-        :resource
-        (fn resource-handler [type-handlers ^JsonGenerator gen resource]
-          (.writeStartObject gen)
-          (.writeStringField gen "resourceType" type)
-          (write-fields! type-handlers property-handlers gen resource)
-          (.writeEndObject gen))
-        :complex-type
-        (fn complex-type-handler [type-handlers ^JsonGenerator gen value]
-          (.writeStartObject gen)
-          (write-fields! type-handlers property-handlers gen value)
-          (.writeEndObject gen))))))
+      (case kind
+        :resource (ResourceTypeHandler. type property-handlers)
+        :complex-type (MapTypeHandler. property-handlers)))))
 
 (defn create-type-handlers
   "Creates a map of keyword type names to type-handlers from the snapshot
@@ -188,12 +131,26 @@
    {}
    (into complex-types resources)))
 
+(defn- link-type-handlers!
+  "Resolves the type handlers all property handlers of `type-handlers` need at
+  write time.
+
+  Has to happen after all type handlers are created, because type handlers can
+  reference each other recursively."
+  [type-handlers]
+  (run!
+   (fn [[_ type-handler]]
+     (.link ^TypeHandler type-handler type-handlers))
+   type-handlers)
+  type-handlers)
+
 (defmethod m/pre-init-spec :blaze.fhir/writing-context [_]
   (s/keys :req-un [:blaze.fhir/structure-definition-repo]))
 
 (defmethod ig/init-key :blaze.fhir/writing-context
   [_ {:keys [structure-definition-repo]}]
   (log/info "Init writing context")
-  (ba/throw-when
-   (build-context (sdr/complex-types structure-definition-repo)
-                  (sdr/resources structure-definition-repo))))
+  (-> (build-context (sdr/complex-types structure-definition-repo)
+                     (sdr/resources structure-definition-repo))
+      (ba/throw-when)
+      (link-type-handlers!)))

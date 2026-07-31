@@ -51,6 +51,7 @@
    [cognitect.anomalies :as anom])
   (:import
    [blaze.fhir.spec.type Lists]
+   [blaze.fhir.writing TypeHandler]
    [clojure.lang PersistentArrayMap RT]
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
    [com.fasterxml.jackson.core.exc InputCoercionException]
@@ -1230,7 +1231,7 @@
   (if-some [type (:fhir/type value)]
     (if-some [handler (get type-handlers type)]
       (with-open [gen (.createGenerator json-factory ^OutputStream out)]
-        (handler type-handlers gen value))
+        (.write ^TypeHandler handler gen value))
       (unsupported-type-anom (name type)))
     (ba/incorrect "Missing type.")))
 
@@ -1259,6 +1260,6 @@
   (if-some [type (:fhir/type value)]
     (if-some [handler (get type-handlers type)]
       (with-open [gen (.createGenerator cbor-factory ^OutputStream out)]
-        (handler type-handlers gen value))
+        (.write ^TypeHandler handler gen value))
       (unsupported-type-anom (name type)))
     (ba/incorrect "Missing type.")))

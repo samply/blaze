@@ -50,4 +50,19 @@ public final class Lists {
         }
         return typed;
     }
+
+    @SuppressWarnings("unchecked")
+    public static <T> List<T> typedNullToEmpty(Object list, Class<T> type) {
+        if (list == null) return PersistentVector.EMPTY;
+        List<T> typed = (List<T>) list;
+        for (T e : typed) {
+            if (e == null) {
+                throw new IllegalArgumentException("null element in list");
+            }
+            if (!type.isInstance(e)) {
+                throw new IllegalArgumentException("wrong type in list");
+            }
+        }
+        return typed;
+    }
 }

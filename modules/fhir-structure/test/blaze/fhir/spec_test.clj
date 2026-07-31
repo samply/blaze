@@ -719,6 +719,12 @@
       {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
       {:resourceType "Patient" :multipleBirthInteger 2}))
 
+  (testing "Patient with a multipleBirth value of a type not allowed there"
+    (given (ba/try-anomaly (write-json {:fhir/type :fhir/Patient
+                                        :multipleBirth #fhir/string "foo"}))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Unsupported type `:fhir/string` for polymorphic property `multipleBirth`."))
+
   (testing "Bundle with Patient"
     (are [resource json] (= json (write-read-json resource))
       {:fhir/type :fhir/Bundle
@@ -793,6 +799,17 @@
                "foo"]}))
       ::anom/category := ::anom/fault
       ::anom/message := "Value `foo` is no FHIR type."))
+
+  (testing "a value in a primitive list that is no FHIR type"
+    (given (ba/try-anomaly
+            (write-json
+             {:fhir/type :fhir/OperationOutcome
+              :issue
+              [{:fhir/type :fhir.OperationOutcome/issue
+                :severity #fhir/code "error" :code #fhir/code "processing"
+                :expression [#fhir/string "Patient.name" "Patient.gender"]}]}))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Value `Patient.gender` is no FHIR type."))
 
   (testing "Observation with code"
     (are [resource json] (= json (write-read-json resource))

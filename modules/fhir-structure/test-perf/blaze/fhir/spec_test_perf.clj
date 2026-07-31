@@ -6,7 +6,9 @@
    [blaze.fhir.writing-context]
    [blaze.test-util]
    [criterium.core :as criterium]
-   [integrant.core :as ig]))
+   [integrant.core :as ig])
+  (:import
+   [java.io OutputStream]))
 
 (def ^:private parsing-context
   (ig/init-key
@@ -21,8 +23,19 @@
 (def kds-bundle-filename
   "../../.github/test-data/kds-testdata-2024.0.1/resources/Bundle-mii-exa-test-data-bundle.json")
 
-(defn- bench-write-json [x]
-  (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (fhir-spec/write-json-as-bytes writing-context x) {}))))))
+(defn- bench-write-json
+  "Benchmarks writing `x` into an output stream, like the output middleware
+  does.
+
+  Unlike `bench-write-json`, this doesn't include growing and copying the byte
+  array the value is written into, which is a considerable part of the time for
+  large values like whole bundles."
+  [x]
+  (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (fhir-spec/write-json writing-context (OutputStream/nullOutputStream) x) {}))))))
+
+(defn- profile-write-json [n x]
+  (dotimes [_ n]
+    (fhir-spec/write-json writing-context (OutputStream/nullOutputStream) x)))
 
 (defn- read-json [type x]
   (fhir-spec/parse-json parsing-context type x))
@@ -31,10 +44,10 @@
   (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (read-json type x) {}))))))
 
 (comment
-  ;; 0,154 µs <> 0,155 µs
+  ;; 0,098 µs <> 0,100 µs
   (bench-write-json #fhir/HumanName{:family #fhir/string "Doe" :given [#fhir/string "John"]})
 
-  ;; 0,131 µs <> 0,131 µs
+  ;; 0,129 µs <> 0,130 µs
   (bench-write-json
    #fhir/CodeableConcept
     {:coding
@@ -42,7 +55,7 @@
        {:system #fhir/uri-interned "http://loinc.org"
         :code #fhir/code "17861-6"}]})
 
-  ;; 1,976 µs <> 1,977 µs
+  ;; 1,185 µs <> 1,191 µs
   (bench-write-json
    {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
     :meta #fhir/Meta
@@ -72,10 +85,10 @@
              :system #fhir/uri-interned "http://unitsofmeasure.org"
              :code #fhir/code "kg/m2"}})
 
-  ;; 2,233 µs <> 2,240 µs
+  ;; 1,452 µs <> 1,457 µs
   (bench-write-json
    {:fhir/type :fhir.Bundle/entry
-    :fullUrl "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
+    :fullUrl #fhir/uri "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
     :resource
     {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
      :meta #fhir/Meta
@@ -106,8 +119,9 @@
               :code #fhir/code "kg/m2"}}
     :search #fhir.Bundle.entry/search{:mode #fhir/code "match"}})
 
-  ;; 538,660 µs <> 539,236 µs
+  ;; 315,054 µs <> 316,061 µs
   (bench-write-json (read-json "Bundle" (slurp kds-bundle-filename)))
+  (profile-write-json 100000 (read-json "Bundle" (slurp kds-bundle-filename)))
 
   ;; Read Performance
 
