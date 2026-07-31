@@ -143,7 +143,7 @@ public final class DateTimeYear implements DateTime, Comparable<DateTimeYear> {
 
     @Override
     public void writeTo(JsonGenerator generator) throws IOException {
-        var buffer = new DateBuffer(4);
+        var buffer = new DateTimeBuffer(4);
         buffer.appendYear(year);
         buffer.writeTo(generator);
     }

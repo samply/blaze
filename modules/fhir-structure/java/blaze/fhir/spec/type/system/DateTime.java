@@ -252,14 +252,15 @@ public interface DateTime extends JavaSystemType, Temporal {
         switch (value) {
             case DateTime dateTime -> dateTime.writeTo(generator);
             case LocalDateTime dateTime -> {
-                var appendable = new AsciiByteArrayAppendable(29);
-                LOCAL_DATE_TIME.formatTo(dateTime, appendable);
-                generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
+                var buffer = new DateTimeBuffer(DateTimeBuffer.SIZE_LOCAL_DATE_TIME);
+                buffer.appendLocalDateTime(dateTime);
+                buffer.writeTo(generator);
             }
             case OffsetDateTime dateTime -> {
-                var appendable = new AsciiByteArrayAppendable(35);
-                DATE_TIME.formatTo(dateTime, appendable);
-                generator.writeRawUTF8String(appendable.toByteArray(), 0, appendable.length());
+                var buffer = new DateTimeBuffer(DateTimeBuffer.SIZE_OFFSET_DATE_TIME);
+                buffer.appendLocalDateTime(dateTime.toLocalDateTime());
+                buffer.appendOffset(dateTime.getOffset());
+                buffer.writeTo(generator);
             }
             default -> generator.writeString(value.toString());
         }

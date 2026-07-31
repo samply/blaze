@@ -37,7 +37,8 @@
    [blaze.fhir.spec.type.system DateTime Times]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [com.google.common.hash Hashing]
-   [java.nio.charset StandardCharsets]))
+   [java.nio.charset StandardCharsets]
+   [java.time OffsetDateTime ZoneOffset]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
@@ -1927,7 +1928,34 @@
           "0001" "0009" "0099" "0999" "1000" "9999"
           "2020-01" "2020-09" "2020-10" "2020-12"
           "2020-01-01" "2020-01-09" "2020-01-10" "2020-01-29" "2020-01-31"
-          "2020-01-01T00:00:00" "2020-01-01T00:00:00+01:00")))))
+          "2020-01-01T00:00:00" "2020-01-01T09:08:07" "2020-01-01T23:59:59"
+          "2020-01-01T00:00:00.1" "2020-01-01T00:00:00.12"
+          "2020-01-01T00:00:00.123456789" "2020-01-01T00:00:00.000000001"
+          "2020-01-01T00:00:00Z" "2020-01-01T00:00:00+01:00"
+          "2020-01-01T00:00:00-05:00" "2020-01-01T00:00:00+14:00"
+          "2020-01-01T00:00:00+05:30" "2020-01-01T00:00:00-05:30"
+          "2020-01-01T00:00:00-09:30" "2020-01-01T00:00:00+05:45"
+          "2020-01-01T00:00:00.123456789+01:00")
+
+        (testing "not in canonical form"
+          (are [value json] (= {:resourceType "Patient" :deceasedDateTime json}
+                               (write-read-json
+                                {:fhir/type :fhir/Patient
+                                 :deceased (type/dateTime (system/parse-date-time value))}))
+            "2020-01-01T00:00:00+00:00" "2020-01-01T00:00:00Z"
+            "2020-01-01T00:00:00.120" "2020-01-01T00:00:00.12"
+            "2020-01-01T00:00:00.100000000" "2020-01-01T00:00:00.1"))
+
+        (testing "offset with seconds"
+          (is (= {:resourceType "Patient"
+                  :deceasedDateTime "2020-01-01T00:00:00.123456789+01:02:03"}
+                 (write-read-json
+                  {:fhir/type :fhir/Patient
+                   :deceased
+                   (type/dateTime
+                    (OffsetDateTime/of
+                     2020 1 1 0 0 0 123456789
+                     (ZoneOffset/ofHoursMinutesSeconds 1 2 3)))}))))))))
 
 (deftest ^:mem-size fhir-dateTime-mem-size-test
   (satisfies-prop 100

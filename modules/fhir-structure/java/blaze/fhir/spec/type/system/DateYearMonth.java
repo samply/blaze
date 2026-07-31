@@ -202,7 +202,7 @@ public final class DateYearMonth implements Date, Comparable<DateYearMonth> {
 
     @Override
     public void writeTo(JsonGenerator generator) throws IOException {
-        var buffer = new DateBuffer(7);
+        var buffer = new DateTimeBuffer(7);
         buffer.appendYear(year);
         buffer.appendDash();
         buffer.appendMonth(month);

@@ -197,7 +197,7 @@ public final class DateTimeDate implements DateTime, Comparable<DateTimeDate> {
 
     @Override
     public void writeTo(JsonGenerator generator) throws IOException {
-        var buffer = new DateBuffer(10);
+        var buffer = new DateTimeBuffer(10);
         buffer.appendYear(year);
         buffer.appendDash();
         buffer.appendMonth(month);
