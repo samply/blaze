@@ -95,14 +95,17 @@ public final class DateTime extends PrimitiveElement {
 
     @Override
     public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
-        if (value != null) {
-            generator.writeFieldName(fieldName.normal());
-            blaze.fhir.spec.type.system.DateTime.writeTo(value, generator);
+        if (hasValue()) {
+            serializeJsonPrimitiveValue(generator, fieldName);
         }
-        if (extensionData.isNotEmpty()) {
-            generator.writeFieldName(fieldName.extended());
-            serializeJsonPrimitiveExtension(generator);
+        if (isExtended()) {
+            serializeJsonPrimitiveExtension(generator, fieldName);
         }
+    }
+
+    private void serializeJsonPrimitiveValue(JsonGenerator generator, FieldName fieldName) throws IOException {
+        generator.writeFieldName(fieldName.normal());
+        blaze.fhir.spec.type.system.DateTime.writeTo(value, generator);
     }
 
     @Override

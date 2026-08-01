@@ -79,14 +79,17 @@ public final class Integer64 extends PrimitiveElement {
 
     @Override
     public void serializeJsonField(JsonGenerator generator, FieldName fieldName) throws IOException {
-        if (value != null) {
-            generator.writeFieldName(fieldName.normal());
-            generator.writeNumber(value);
+        if (hasValue()) {
+            serializeJsonPrimitiveValue(generator, fieldName);
         }
-        if (extensionData.isNotEmpty()) {
-            generator.writeFieldName(fieldName.extended());
-            serializeJsonPrimitiveExtension(generator);
+        if (isExtended()) {
+            serializeJsonPrimitiveExtension(generator, fieldName);
         }
+    }
+
+    private void serializeJsonPrimitiveValue(JsonGenerator generator, FieldName fieldName) throws IOException {
+        generator.writeFieldName(fieldName.normal());
+        generator.writeNumber(value);
     }
 
     @Override

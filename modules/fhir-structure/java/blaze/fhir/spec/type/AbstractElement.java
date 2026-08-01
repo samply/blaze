@@ -46,6 +46,12 @@ abstract class AbstractElement implements Element {
         extensionData.serializeJson(generator);
     }
 
+    /**
+     * Writes the extensions as JSON object, or {@code null} if there are none.
+     * <p>
+     * Used for the elements of a `_fieldName` array, where every element has to
+     * be written, even if it has no extensions.
+     */
     @Override
     public void serializeJsonPrimitiveExtension(JsonGenerator generator) throws IOException {
         if (extensionData.isNotEmpty()) {
@@ -55,5 +61,15 @@ abstract class AbstractElement implements Element {
         } else {
             generator.writeNull();
         }
+    }
+
+    /**
+     * Writes the extensions as `_fieldName` property.
+     */
+    public void serializeJsonPrimitiveExtension(JsonGenerator generator, FieldName fieldName) throws IOException {
+        generator.writeFieldName(fieldName.extended());
+        generator.writeStartObject();
+        serializeJsonBase(generator);
+        generator.writeEndObject();
     }
 }
