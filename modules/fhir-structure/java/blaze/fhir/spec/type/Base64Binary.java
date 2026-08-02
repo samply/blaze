@@ -68,7 +68,7 @@ public final class Base64Binary extends PrimitiveElement implements IObj {
 
     @Override
     public Base64Binary empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

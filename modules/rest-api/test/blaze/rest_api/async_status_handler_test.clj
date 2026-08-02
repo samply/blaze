@@ -63,18 +63,18 @@
 ;; a fake job type providing a response resource for the completed job
 (defmethod job-util/response-resource :fake-134216
   [_]
-  {:fhir/type :fhir/Parameters
-   :parameter
-   [{:fhir/type :fhir.Parameters/parameter
-     :name #fhir/string "score"
-     :value #fhir/decimal 53.0M}]})
+  #fhir/map{:fhir/type :fhir/Parameters
+            :parameter
+            [#fhir/map{:fhir/type :fhir.Parameters/parameter
+                       :name #fhir/string "score"
+                       :value #fhir/decimal 53.0M}]})
 
 (defn- completed-fake-job [authored-on]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "completed"
-   :intent #fhir/code "order"
-   :code (job-util/type-codeable-concept "fake-134216" "Fake Job")
-   :authoredOn (type/dateTime authored-on)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "completed"
+                  :intent #fhir/code "order"
+                  :code (job-util/type-codeable-concept "fake-134216" "Fake Job")
+                  :authoredOn (type/dateTime authored-on)}))
 
 (defn- failed-job [authored-on bundle-id t error-msg]
   (-> (job-async/job authored-on bundle-id t)
@@ -114,14 +114,14 @@
     (with-handler [handler]
       [[[:put (assoc (completed-job (bt/offset-date-time) "0" 0 "1") :id "0")]
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]
-        [:put {:fhir/type :fhir/Bundle
-               :id "1"
-               :type #fhir/code "batch-response"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :resource
-                 {:fhir/type :fhir/Observation
-                  :id "0"}}]}]]]
+        [:put #fhir/map{:fhir/type :fhir/Bundle
+                        :id "1"
+                        :type #fhir/code "batch-response"
+                        :entry
+                        [#fhir/map{:fhir/type :fhir.Bundle/entry
+                                   :resource
+                                   #fhir/map{:fhir/type :fhir/Observation
+                                             :id "0"}}]}]]]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]

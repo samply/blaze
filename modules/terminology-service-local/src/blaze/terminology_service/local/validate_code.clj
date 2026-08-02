@@ -104,5 +104,5 @@
    "version" (some-> version type/string)
    "display" (some-> display type/string)
    "inactive" (some-> inactive type/boolean)
-   "issues" {:fhir/type :fhir/OperationOutcome :issue issues}
+   "issues" (type/fhir-map {:fhir/type :fhir/OperationOutcome :issue issues})
    "codeableConcept" codeable-concept))

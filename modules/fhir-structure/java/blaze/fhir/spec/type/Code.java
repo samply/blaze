@@ -89,7 +89,7 @@ public final class Code extends PrimitiveElement {
 
     @Override
     public Code empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

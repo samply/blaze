@@ -151,8 +151,8 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         }
 
         @Override
-        public Normal empty() {
-            return EMPTY;
+        public String empty() {
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override
@@ -250,8 +250,8 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         }
 
         @Override
-        public Interned empty() {
-            return EMPTY;
+        public String empty() {
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override

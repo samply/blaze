@@ -56,7 +56,7 @@ public final class Integer64 extends PrimitiveElement {
 
     @Override
     public Integer64 empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

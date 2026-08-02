@@ -12,7 +12,6 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.parsing-context.spec]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.writing-context.spec]
    [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -75,7 +74,14 @@
         (recur map hashes resources))
       (persistent! map))))
 
-(deftype KvResourceStore [kv-store parsing-context entry-freezer executor]
+(def ^:private entry-freezer
+  (map
+   (fn [[hash resource]]
+     (let [content (fhir-spec/write-cbor resource)]
+       (prom/observe! resource-bytes (alength ^bytes content))
+       [:default (hash/to-byte-array hash) content]))))
+
+(deftype KvResourceStore [kv-store parsing-context executor]
   rs/ResourceStore
   (-get [_ key]
     (get-and-parse-async kv-store parsing-context executor key))
@@ -93,21 +99,12 @@
      executor)))
 
 (defmethod m/pre-init-spec ::rs/kv [_]
-  (s/keys :req-un [:blaze.db/kv-store :blaze.fhir/parsing-context
-                   :blaze.fhir/writing-context ::executor]))
-
-(defn- entry-freezer [writing-context]
-  (map
-   (fn [[hash resource]]
-     (let [content (fhir-spec/write-cbor writing-context resource)]
-       (prom/observe! resource-bytes (alength ^bytes content))
-       [:default (hash/to-byte-array hash) content]))))
+  (s/keys :req-un [:blaze.db/kv-store :blaze.fhir/parsing-context ::executor]))
 
 (defmethod ig/init-key ::rs/kv
-  [_ {:keys [kv-store parsing-context writing-context executor]}]
+  [_ {:keys [kv-store parsing-context executor]}]
   (log/info "Open key-value store backed resource store.")
-  (->KvResourceStore kv-store parsing-context (entry-freezer writing-context)
-                     executor))
+  (->KvResourceStore kv-store parsing-context executor))
 
 (derive ::rs/kv :blaze.db/resource-store)
 

@@ -65,13 +65,13 @@
 
 (defn- library-entry [query]
   {:resource
-   {:fhir/type :fhir/Library
-    :id "1"
-    :url #fhir/uri "0"
-    :content
-    [(type/attachment
-      {:contentType #fhir/code "text/cql"
-       :data (type/base64Binary (b64-encode query))})]}
+   (type/fhir-map {:fhir/type :fhir/Library
+                   :id "1"
+                   :url #fhir/uri "0"
+                   :content
+                   [(type/attachment
+                     {:contentType #fhir/code "text/cql"
+                      :data (type/base64Binary (b64-encode query))})]})
    :request
    {:method #fhir/code "PUT"
     :url #fhir/uri "Library/1"}})
@@ -261,31 +261,31 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
-        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
-        [:put {:fhir/type :fhir/Patient :id "2"}]]
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content library-encounter)]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]
+       [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content library-encounter)]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      :executor executor :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :extension
-                       [#fhir/Extension
-                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                          :value #fhir/code "Encounter"}]
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :extension
+                                                     [#fhir/Extension
+                                                       {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                                                        :value #fhir/code "Encounter"}]
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")
+                                                                      :criteria (cql-expression "InInitialPopulation")})]})]})]
 
         (testing "population report"
           (let [params {:period [#system/date "2000" #system/date "2100"]
@@ -317,50 +317,50 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
-        [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
-        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
-        [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
-        [:put {:fhir/type :fhir/Encounter :id "2-0" :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]
-        [:put {:fhir/type :fhir/Encounter :id "2-1" :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]
-        [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code "female"}]
-        [:put {:fhir/type :fhir/Encounter :id "3-0" :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]
-        [:put {:fhir/type :fhir/Encounter :id "3-1" :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]
-        [:put {:fhir/type :fhir/Encounter :id "3-2" :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]]
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content library-patient-encounter)]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "2-0" :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "2-1" :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "3" :gender #fhir/code "female"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "3-0" :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "3-1" :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "3-2" :subject #fhir/Reference{:reference #fhir/string "Patient/3"}}]]
+       [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content library-patient-encounter)]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      :executor executor :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :code #fhir/CodeableConcept{:text #fhir/string "group-1"}
-                       :extension
-                       [#fhir/Extension
-                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                          :value #fhir/code "boolean"}]
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]
-                       :stratifier
-                       [{:fhir/type :fhir.Measure.group/stratifier
-                         :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-                         :criteria (cql-expression "Gender")}]}
-                      {:fhir/type :fhir.Measure/group
-                       :code #fhir/CodeableConcept{:text #fhir/string "group-2"}
-                       :extension
-                       [#fhir/Extension
-                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                          :value #fhir/code "Encounter"}]
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "AllEncounters")}]}]}]
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :code #fhir/CodeableConcept{:text #fhir/string "group-1"}
+                                                     :extension
+                                                     [#fhir/Extension
+                                                       {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                                                        :value #fhir/code "boolean"}]
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")
+                                                                      :criteria (cql-expression "InInitialPopulation")})]
+                                                     :stratifier
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                                                                      :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                                                                      :criteria (cql-expression "Gender")})]})
+                                     (type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :code #fhir/CodeableConcept{:text #fhir/string "group-2"}
+                                                     :extension
+                                                     [#fhir/Extension
+                                                       {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                                                        :value #fhir/code "Encounter"}]
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")
+                                                                      :criteria (cql-expression "AllEncounters")})]})]})]
 
         (testing "population report"
           (let [params {:period [#system/date "2000" #system/date "2100"]
@@ -435,22 +435,22 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content "library Test
-                                           define Error: (")]}]]]
+      [[[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content "library Test
+                                           define Error: (")]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      :blaze/base-url "" ::reitit/router router
                      :executor executor :terminology-service local}
             measure-id "measure-id-133021"
-            measure {:fhir/type :fhir/Measure :id measure-id
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")}]}]}
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id measure-id
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")})]})]})
             params {:period [#system/date "2000" #system/date "2020"]
                     :report-type "population"}]
 
@@ -465,21 +465,21 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content (library-gender true))]}]]]
+      [[[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content (library-gender true))]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      :blaze/base-url "" ::reitit/router router
                      :executor executor :terminology-service local}
             measure-id "measure-id-133021"
-            measure {:fhir/type :fhir/Measure :id measure-id
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")}]}]}
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id measure-id
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")})]})]})
             params {:period [#system/date "2000" #system/date "2020"]
                     :report-type "population"}]
 
@@ -494,9 +494,9 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content (library-gender true))]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+       [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content (library-gender true))]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn
@@ -504,14 +504,14 @@
                      :executor executor :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
             measure-id "measure-id-132321"
-            measure {:fhir/type :fhir/Measure :id measure-id
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id measure-id
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")
+                                                                      :criteria (cql-expression "InInitialPopulation")})]})]})
             params {:period [#system/date "2000" #system/date "2020"]}]
 
         (doseq [report-type ["population" "subject-list"]
@@ -526,9 +526,9 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content (library-gender true))]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+       [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content (library-gender true))]})]]]
 
       (doseq [cancelled? [(ba/interrupted "The evaluation was cancelled.") nil]]
         (let [db (d/db node)
@@ -537,14 +537,14 @@
                        :executor executor :terminology-service local
                        :blaze/base-url "" ::reitit/router router}
               measure-id "measure-id-132321"
-              measure {:fhir/type :fhir/Measure :id measure-id
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              measure (type/fhir-map {:fhir/type :fhir/Measure :id measure-id
+                                      :library [#fhir/canonical "0"]
+                                      :group
+                                      [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                       :population
+                                                       [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                        :code (population-concept "initial-population")
+                                                                        :criteria (cql-expression "InInitialPopulation")})]})]})
               params {:period [#system/date "2000" #system/date "2020"]}]
 
           (doseq [report-type ["population" "subject-list"]
@@ -563,14 +563,14 @@
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
           ::ts/keys [local]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
-          [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
-          [:put {:fhir/type :fhir/Patient :id "2"}]]
-         [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-                 :content [(library-content library-encounter)]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]
+         [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                                :content [(library-content library-encounter)]})]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
@@ -578,18 +578,18 @@
                        (constantly (ba/interrupted "msg-114556"))
                        :executor executor :terminology-service local
                        :blaze/base-url "" ::reitit/router router}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :extension
-                         [#fhir/Extension
-                           {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                            :value #fhir/code "Encounter"}]
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                      :library [#fhir/canonical "0"]
+                                      :group
+                                      [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                       :extension
+                                                       [#fhir/Extension
+                                                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                                                          :value #fhir/code "Encounter"}]
+                                                       :population
+                                                       [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                        :code (population-concept "initial-population")
+                                                                        :criteria (cql-expression "InInitialPopulation")})]})]})
               params {:period [#system/date "2000" #system/date "2020"]}]
 
           (doseq [report-type ["population" "subject-list"]
@@ -606,23 +606,23 @@
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
           ::ts/keys [local]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-                 :content [(library-content library)]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                                :content [(library-content library)]})]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :executor executor :terminology-service local
                        :blaze/base-url "" ::reitit/router router}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :url #fhir/uri "measure-155437"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                      :url #fhir/uri "measure-155437"
+                                      :library [#fhir/canonical "0"]
+                                      :group
+                                      [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                       :population
+                                                       [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                        :code (population-concept "initial-population")
+                                                                        :criteria (cql-expression "InInitialPopulation")})]})]})
               params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref subject-ref}]
@@ -644,27 +644,27 @@
         (with-system-data
           [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
             ::ts/keys [local]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
-            [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-                   :content [(library-content library)]}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+            [:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                                  :content [(library-content library)]})]]]
 
           (let [db (d/db node)
                 context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                          :executor executor :terminology-service local
                          :blaze/base-url "" ::reitit/router router}
-                measure {:fhir/type :fhir/Measure :id "0"
-                         :url #fhir/uri "measure-155502"
-                         :library [#fhir/canonical "0"]
-                         :group
-                         [{:fhir/type :fhir.Measure/group
-                           :population
-                           [{:fhir/type :fhir.Measure.group/population
-                             :code (population-concept "initial-population")
-                             :criteria (cql-expression "InInitialPopulation")}]
-                           :stratifier
-                           [{:fhir/type :fhir.Measure.group/stratifier
-                             :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-                             :criteria (cql-expression "Gender")}]}]}
+                measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                        :url #fhir/uri "measure-155502"
+                                        :library [#fhir/canonical "0"]
+                                        :group
+                                        [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                         :population
+                                                         [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                          :code (population-concept "initial-population")
+                                                                          :criteria (cql-expression "InInitialPopulation")})]
+                                                         :stratifier
+                                                         [(type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                                                                          :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                                                                          :criteria (cql-expression "Gender")})]})]})
                 params {:period [#system/date "2000" #system/date "2020"]
                         :report-type "subject"
                         :subject-ref "0"}]
@@ -688,21 +688,21 @@
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
           ::ts/keys [local]} config]
-        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-                 :content [(library-content (library-gender true))]}]]]
+        [[[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                                :content [(library-content (library-gender true))]})]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router
                        :executor executor :terminology-service local}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                      :library [#fhir/canonical "0"]
+                                      :group
+                                      [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                       :population
+                                                       [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                        :code (population-concept "initial-population")
+                                                                        :criteria (cql-expression "InInitialPopulation")})]})]})
               params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref ["Observation" "0"]}]
@@ -715,21 +715,21 @@
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
           ::ts/keys [local]} config]
-        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-                 :content [(library-content (library-gender true))]}]]]
+        [[[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                                :content [(library-content (library-gender true))]})]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router
                        :executor executor :terminology-service local}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                      :library [#fhir/canonical "0"]
+                                      :group
+                                      [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                       :population
+                                                       [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                        :code (population-concept "initial-population")
+                                                                        :criteria (cql-expression "InInitialPopulation")})]})]})
               params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
@@ -742,23 +742,23 @@
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
           ::ts/keys [local]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-                 :content [(library-content (library-gender true))]}]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                                :content [(library-content (library-gender true))]})]]
          [[:delete "Patient" "0"]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router
                        :executor executor :terminology-service local}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                      :library [#fhir/canonical "0"]
+                                      :group
+                                      [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                       :population
+                                                       [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                        :code (population-concept "initial-population")
+                                                                        :criteria (cql-expression "InInitialPopulation")})]})]})
               params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
@@ -781,18 +781,18 @@
   (extension-finder (canonical/old-url "StructureDefinition/bloom-filter-ratio")))
 
 (defn- patient-condition-tx-ops [id]
-  (cond-> [[:put {:fhir/type :fhir/Patient :id (str id)}]]
+  (cond-> [[:put (type/fhir-map {:fhir/type :fhir/Patient :id (str id)})]]
     (even? id)
-    (conj [:put {:fhir/type :fhir/Condition :id (str id)
-                 :subject (type/reference {:reference (type/string (str "Patient/" id))})}])))
+    (conj [:put (type/fhir-map {:fhir/type :fhir/Condition :id (str id)
+                                :subject (type/reference {:reference (type/string (str "Patient/" id))})})])))
 
 (defn- patient-medication-tx-ops [id]
-  (cond-> [[:put {:fhir/type :fhir/Patient :id (str id)
-                  :gender (if (even? id) #fhir/code "female" #fhir/code "male")}]]
+  (cond-> [[:put (type/fhir-map {:fhir/type :fhir/Patient :id (str id)
+                                 :gender (if (even? id) #fhir/code "female" #fhir/code "male")})]]
     (zero? (rem id 4))
-    (conj [:put {:fhir/type :fhir/MedicationStatement :id (str id)
-                 :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
-                 :subject (type/reference {:reference (type/string (str "Patient/" id))})}])))
+    (conj [:put (type/fhir-map {:fhir/type :fhir/MedicationStatement :id (str id)
+                                :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
+                                :subject (type/reference {:reference (type/string (str "Patient/" id))})})])))
 
 (deftest evaluate-measure-cache-test
   (testing "Condition"
@@ -803,22 +803,22 @@
         manual-executor :blaze.test/manual-executor
         ::ts/keys [local]} config]
       [(into [] (mapcat patient-condition-tx-ops) (range 2000))
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content library-exists-condition)]}]]]
+       [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content library-exists-condition)]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      ::expr/cache cache :executor executor
                      :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")
+                                                                      :criteria (cql-expression "InInitialPopulation")})]})]})]
 
         (testing "without bloom filter because it's not available yet"
           (let [params {:period [#system/date "2000" #system/date "2100"]
@@ -857,25 +857,25 @@
         :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         manual-executor :blaze.test/manual-executor
         ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Medication :id "0"
-               :code #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/atc" :code #fhir/code "L01AX03"}]}}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Medication :id "0"
+                        :code #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/atc" :code #fhir/code "L01AX03"}]}}]]
        (into [] (mapcat patient-medication-tx-ops) (range 2000))
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content library-medication)]}]]]
+       [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content library-medication)]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      ::expr/cache cache :executor executor
                      :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")
+                                                                      :criteria (cql-expression "InInitialPopulation")})]})]})]
 
         (testing "without bloom filter because it's not available yet"
           (let [params {:period [#system/date "2000" #system/date "2100"]
@@ -909,22 +909,22 @@
         manual-executor :blaze.test/manual-executor
         ::ts/keys [local]} config]
       [(into [] (mapcat patient-condition-tx-ops) (range 2000))
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content library-exists-condition)]}]]]
+       [[:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                              :content [(library-content library-exists-condition)]})]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                      ::expr/cache cache :executor executor
                      :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}
+            measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                    :library [#fhir/canonical "0"]
+                                    :group
+                                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                     :population
+                                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                      :code (population-concept "initial-population")
+                                                                      :criteria (cql-expression "InInitialPopulation")})]})]})
             params {:period [#system/date "2000" #system/date "2100"]
                     :report-type "population"}]
 
@@ -1325,24 +1325,24 @@
   (with-system-data
     [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
       ::ts/keys [local]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
-      [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
-      [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
-      [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-             :content [(library-content library-gender-parameter)]}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
+      [:put (type/fhir-map {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+                            :content [(library-content library-gender-parameter)]})]]]
 
     (let [db (d/db node)
           context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                    :blaze/base-url "" ::reitit/router router
                    :executor executor :terminology-service local}
-          measure {:fhir/type :fhir/Measure :id "0"
-                   :library [#fhir/canonical "0"]
-                   :group
-                   [{:fhir/type :fhir.Measure/group
-                     :population
-                     [{:fhir/type :fhir.Measure.group/population
-                       :code (population-concept "initial-population")
-                       :criteria (cql-expression "InInitialPopulation")}]}]}
+          measure (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                  :library [#fhir/canonical "0"]
+                                  :group
+                                  [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                   :population
+                                                   [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                    :code (population-concept "initial-population")
+                                                                    :criteria (cql-expression "InInitialPopulation")})]})]})
           params {:period [#system/date "2000" #system/date "2020"]
                   :report-type "population"}]
 

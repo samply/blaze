@@ -148,7 +148,7 @@ public final class RelatedArtifact extends AbstractElement implements Complex, E
 
     @Override
     public RelatedArtifact empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

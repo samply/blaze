@@ -172,14 +172,14 @@
 
     (testing "String"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-105600"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-105600"}]}]]]
 
         (let [context
               {:library
@@ -294,14 +294,14 @@
 
     (testing "Code"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-105600"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-105600"}]}]]]
 
         (let [context
               {:library
@@ -325,14 +325,14 @@
 
     (testing "Concept"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-105600"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-105600"}]}]]]
 
         (let [context
               {:library
@@ -436,36 +436,36 @@
 
     (testing "String"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-105600"}]}]
-          [:put {:fhir/type :fhir/CodeSystem :id "1"
-                 :url #fhir/uri "system-191928"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "value-set-135750"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}]}}]
-          [:put {:fhir/type :fhir/ValueSet :id "1"
-                 :url #fhir/uri "value-set-191950"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}
-                   {:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-191928"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-105600"}]}]
+          [:put #fhir/map{:fhir/type :fhir/CodeSystem :id "1"
+                          :url #fhir/uri "system-191928"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}]}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                          :url #fhir/uri "value-set-135750"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"}]}}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "1"
+                          :url #fhir/uri "value-set-191950"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"}
+                                     #fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-191928"}]}}]]]
 
         (let [context
               {:library
@@ -580,21 +580,21 @@
 
     (testing "Code"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-105600"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "value-set-135750"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-105600"}]}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                          :url #fhir/uri "value-set-135750"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"}]}}]]]
 
         (let [context
               {:library
@@ -621,21 +621,21 @@
 
     (testing "Concept"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-105600"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "value-set-135750"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-105600"}]}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                          :url #fhir/uri "value-set-135750"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"}]}}]]]
 
         (let [context
               {:library

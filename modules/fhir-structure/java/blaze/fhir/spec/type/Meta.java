@@ -143,7 +143,7 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
 
     public static Meta create(IPersistentMap m) {
         return maybeIntern(ExtensionData.fromMap(m), (Id) m.valAt(VERSION_ID), (Instant) m.valAt(LAST_UPDATED),
-                (Uri) m.valAt(SOURCE), Base.listFrom(m, PROFILE), Base.listFrom(m, SECURITY), Base.listFrom(m, TAG));
+                (Uri) m.valAt(SOURCE), Base.typedListFrom(m, PROFILE, Canonical.class), Base.typedListFrom(m, SECURITY, Coding.class), Base.typedListFrom(m, TAG, Coding.class));
     }
 
     @Override
@@ -219,7 +219,7 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
 
     @Override
     public Meta empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -236,11 +236,11 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
         if (key == SOURCE)
             return maybeIntern(extensionData, versionId, lastUpdated, (Uri) val, profile, security, tag);
         if (key == PROFILE)
-            return maybeIntern(extensionData, versionId, lastUpdated, source, Lists.nullToEmpty(val), security, tag);
+            return maybeIntern(extensionData, versionId, lastUpdated, source, Lists.typedNullToEmpty(val, Canonical.class), security, tag);
         if (key == SECURITY)
-            return maybeIntern(extensionData, versionId, lastUpdated, source, profile, Lists.nullToEmpty(val), tag);
+            return maybeIntern(extensionData, versionId, lastUpdated, source, profile, Lists.typedNullToEmpty(val, Coding.class), tag);
         if (key == TAG)
-            return maybeIntern(extensionData, versionId, lastUpdated, source, profile, security, Lists.nullToEmpty(val));
+            return maybeIntern(extensionData, versionId, lastUpdated, source, profile, security, Lists.typedNullToEmpty(val, Coding.class));
         if (key == EXTENSION)
             return maybeIntern(extensionData.withExtension(val), versionId, lastUpdated, source, profile, security, tag);
         if (key == ID)

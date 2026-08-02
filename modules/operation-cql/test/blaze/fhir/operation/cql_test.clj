@@ -167,7 +167,7 @@
               {:request-method :post
                :body
                (fu/parameters
-                "data" {:fhir/type :fhir/Bundle})})]
+                "data" #fhir/map{:fhir/type :fhir/Bundle})})]
 
         (is (= 400 status))
 
@@ -184,7 +184,7 @@
               {:request-method :post
                :body
                (fu/parameters
-                "dataEndpoint" {:fhir/type :fhir/Endpoint})})]
+                "dataEndpoint" #fhir/map{:fhir/type :fhir/Endpoint})})]
 
         (is (= 400 status))
 
@@ -201,7 +201,7 @@
               {:request-method :post
                :body
                (fu/parameters
-                "contentEndpoint" {:fhir/type :fhir/Endpoint})})]
+                "contentEndpoint" #fhir/map{:fhir/type :fhir/Endpoint})})]
 
         (is (= 400 status))
 
@@ -218,7 +218,7 @@
               {:request-method :post
                :body
                (fu/parameters
-                "terminologyEndpoint" {:fhir/type :fhir/Endpoint})})]
+                "terminologyEndpoint" #fhir/map{:fhir/type :fhir/Endpoint})})]
 
         (is (= 400 status))
 
@@ -460,8 +460,8 @@
 
   (testing "returns all patients"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]
-        [:create {:fhir/type :fhir/Patient :id "1"}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:create #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -480,11 +480,11 @@
 
   (testing "returns the id and bith date of all patients"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :birthDate #fhir/date #system/date "2020-02-08"}]
-        [:create {:fhir/type :fhir/Patient :id "1"
-                  :birthDate #fhir/date #system/date "2022-04-01"}]
-        [:create {:fhir/type :fhir/Patient :id "2"}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                           :birthDate #fhir/date #system/date "2020-02-08"}]
+        [:create #fhir/map{:fhir/type :fhir/Patient :id "1"
+                           :birthDate #fhir/date #system/date "2022-04-01"}]
+        [:create #fhir/map{:fhir/type :fhir/Patient :id "2"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -507,24 +507,24 @@
 
   (testing "returns the id, first code and subject.reference of all observations"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]
-        [:create {:fhir/type :fhir/Patient :id "1"}]
-        [:create {:fhir/type :fhir/Observation :id "0"
-                  :code
-                  #fhir/CodeableConcept
-                   {:coding
-                    [#fhir/Coding
-                      {:system #fhir/uri "system-121531"
-                       :code #fhir/code "code-121534"}]}
-                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:create {:fhir/type :fhir/Observation :id "1"
-                  :code
-                  #fhir/CodeableConcept
-                   {:coding
-                    [#fhir/Coding
-                      {:system #fhir/uri "system-121531"
-                       :code #fhir/code "code-122509"}]}
-                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:create #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "0"
+                           :code
+                           #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                               {:system #fhir/uri "system-121531"
+                                :code #fhir/code "code-121534"}]}
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "1"
+                           :code
+                           #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                               {:system #fhir/uri "system-121531"
+                                :code #fhir/code "code-122509"}]}
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -548,14 +548,14 @@
 
   (testing "returns the id and patient identifier of all observations"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :identifier [#fhir/Identifier{:value #fhir/string "identifier-151139"}]}]
-        [:create {:fhir/type :fhir/Patient :id "1"
-                  :identifier [#fhir/Identifier{:value #fhir/string "identifier-151151"}]}]
-        [:create {:fhir/type :fhir/Observation :id "0"
-                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:create {:fhir/type :fhir/Observation :id "1"
-                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                           :identifier [#fhir/Identifier{:value #fhir/string "identifier-151139"}]}]
+        [:create #fhir/map{:fhir/type :fhir/Patient :id "1"
+                           :identifier [#fhir/Identifier{:value #fhir/string "identifier-151151"}]}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "0"
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "1"
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -577,12 +577,12 @@
 
   (testing "returns the id of observations of male patients"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
-        [:create {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
-        [:create {:fhir/type :fhir/Observation :id "0"
-                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:create {:fhir/type :fhir/Observation :id "1"
-                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+        [:create #fhir/map{:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "0"
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "1"
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -603,20 +603,20 @@
 
   (testing "returns observations with a particular code"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Observation :id "0"
-                  :code
-                  #fhir/CodeableConcept
-                   {:coding
-                    [#fhir/Coding
-                      {:system #fhir/uri "system-121531"
-                       :code #fhir/code "code-121534"}]}}]
-        [:create {:fhir/type :fhir/Observation :id "1"
-                  :code
-                  #fhir/CodeableConcept
-                   {:coding
-                    [#fhir/Coding
-                      {:system #fhir/uri "system-121531"
-                       :code #fhir/code "code-125112"}]}}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Observation :id "0"
+                           :code
+                           #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                               {:system #fhir/uri "system-121531"
+                                :code #fhir/code "code-121534"}]}}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "1"
+                           :code
+                           #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                               {:system #fhir/uri "system-121531"
+                                :code #fhir/code "code-125112"}]}}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -705,7 +705,7 @@
 
   (testing "errors on deleted subject"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status body]}
@@ -726,8 +726,8 @@
 
   (testing "calculates the patients age"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :birthDate #fhir/date #system/date "1960"}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                           :birthDate #fhir/date #system/date "1960"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -746,8 +746,8 @@
 
   (testing "calculates the patients age at a certain year"
     (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"
-                  :birthDate #fhir/date #system/date "1960"}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                           :birthDate #fhir/date #system/date "1960"}]]]
 
       (let [{:keys [status body]}
             @(handler

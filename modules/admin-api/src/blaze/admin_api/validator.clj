@@ -155,10 +155,10 @@
       (.setAssumeValidRestReferences false))))
 
 (defn- issue [^ValidationMessage message]
-  (cond-> {:fhir/type :fhir.OperationOutcome/issue
-           :severity (type/code (.toCode (.getLevel message)))
-           :code (type/code (.toCode (.getType message)))
-           :diagnostics (type/string (.getMessage message))}
+  (cond-> (type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                          :severity (type/code (.toCode (.getLevel message)))
+                          :code (type/code (.toCode (.getType message)))
+                          :diagnostics (type/string (.getMessage message))})
     (.getLocation message)
     (assoc :expression [(type/string (.getLocation message))])))
 
@@ -170,8 +170,8 @@
     (.validate validator nil ^List messages
                (ByteArrayInputStream. (.getBytes source StandardCharsets/UTF_8))
                Manager$FhirFormat/JSON)
-    {:fhir/type :fhir/OperationOutcome
-     :issue (mapv issue messages)}))
+    (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                    :issue (mapv issue messages)})))
 
 (defmethod ig/init-key :blaze.admin-api/validator
   [_ _]

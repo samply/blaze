@@ -107,7 +107,7 @@ public final class Money extends AbstractElement implements Complex, ExtensionVa
 
     @Override
     public Money empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.fhir.spec.references :as fsr]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.util :as handler-util]
    [blaze.job.async-interaction :as job-async]
@@ -38,23 +39,23 @@
                (let [resource (job-util/response-resource job)]
                  (ac/completed-future
                   (ring/response
-                   {:fhir/type :fhir/Bundle
-                    :type #fhir/code "batch-response"
-                    :entry
-                    [(cond-> {:fhir/type :fhir.Bundle/entry
-                              :response {:fhir/type :fhir.Bundle.entry/response
-                                         :status #fhir/string "200"}}
-                       resource
-                       (assoc :resource resource))]}))))
+                   (type/fhir-map {:fhir/type :fhir/Bundle
+                                   :type #fhir/code "batch-response"
+                                   :entry
+                                   [(cond-> #fhir/map{:fhir/type :fhir.Bundle/entry
+                                                      :response #fhir/map{:fhir/type :fhir.Bundle.entry/response
+                                                                          :status #fhir/string "200"}}
+                                      resource
+                                      (assoc :resource resource))]})))))
              "failed"
              (ac/completed-future
               (ring/response
-               {:fhir/type :fhir/Bundle
-                :type #fhir/code "batch-response"
-                :entry
-                [{:fhir/type :fhir.Bundle/entry
-                  :response (handler-util/bundle-error-response
-                             (job-util/error job))}]}))))))))
+               (type/fhir-map {:fhir/type :fhir/Bundle
+                               :type #fhir/code "batch-response"
+                               :entry
+                               [(type/fhir-map {:fhir/type :fhir.Bundle/entry
+                                                :response (handler-util/bundle-error-response
+                                                           (job-util/error job))})]})))))))))
 
 (defmethod ig/init-key ::rest-api/async-status-handler
   [_ _]

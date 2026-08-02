@@ -309,7 +309,7 @@
     (testing "with caching expressions"
       (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
                           executor :blaze.test/manual-executor} exists-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)
               patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
@@ -338,8 +338,8 @@
                 [0 ::bloom-filter/patient-count] := 0)
               (is (false? (expr/eval eval-context expr patient)))))
 
-          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          (let [tx-op [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
                 db-after @(d/transact node [tx-op])]
 
             (testing "has an Observation after transaction"
@@ -358,7 +358,7 @@
 
     (testing "without caching expressions"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)
               patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
@@ -375,8 +375,8 @@
           (testing "has no Observation at the beginning"
             (is (false? (expr/eval eval-context expr patient))))
 
-          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          (let [tx-op [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
                 db-after @(d/transact node [tx-op])]
 
             (testing "has an Observation after transaction"

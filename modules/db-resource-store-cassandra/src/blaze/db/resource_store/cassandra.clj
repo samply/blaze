@@ -9,7 +9,6 @@
    [blaze.db.resource-store.cassandra.statement :as statement]
    [blaze.fhir.parsing-context.spec]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.writing-context.spec]
    [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -80,8 +79,8 @@
 (defn- execute-multi-get [session parsing-context get-statement get-quorum-statement keys]
   (mapv #(ac/->completable-future (execute-get session parsing-context get-statement get-quorum-statement %)) keys))
 
-(defn- bind-put [writing-context statement hash resource]
-  (let [content (bb/wrap (fhir-spec/write-cbor writing-context resource))]
+(defn- bind-put [statement hash resource]
+  (let [content (bb/wrap (fhir-spec/write-cbor resource))]
     (prom/observe! resource-bytes (.capacity content))
     (cass/bind statement (str hash) content)))
 
@@ -92,16 +91,16 @@
          :fhir/type type
          :blaze.resource/id id))
 
-(defn- execute-put* [session writing-context statement [hash resource]]
-  (-> (execute session "put" (bind-put writing-context statement hash resource))
+(defn- execute-put* [session statement [hash resource]]
+  (-> (execute session "put" (bind-put statement hash resource))
       (ac/exceptionally (partial map-execute-put-error hash resource))))
 
-(defn- execute-put [session writing-context statement entry]
-  (ac/retry #(execute-put* session writing-context statement entry)
+(defn- execute-put [session statement entry]
+  (ac/retry #(execute-put* session statement entry)
             "resource-store-cassandra-put" 5))
 
-(defn- execute-multi-put [session writing-context statement entries]
-  (map #(ac/->completable-future (execute-put session writing-context statement %)) entries))
+(defn- execute-multi-put [session statement entries]
+  (map #(ac/->completable-future (execute-put session statement %)) entries))
 
 (defn- zipmap-found [hashes resources]
   (loop [map (transient {})
@@ -113,8 +112,8 @@
         (recur map hashes resources))
       (persistent! map))))
 
-(deftype CassandraResourceStore [session parsing-context writing-context
-                                 get-statement get-quorum-statement put-statement]
+(deftype CassandraResourceStore [session parsing-context get-statement
+                                 get-quorum-statement put-statement]
   rs/ResourceStore
   (-get [_ [_ hash :as key]]
     (log/trace "get resource with hash:" hash)
@@ -128,15 +127,14 @@
 
   (-put [_ entries]
     (log/trace "put" (count entries) "entries")
-    (ac/all-of (execute-multi-put session writing-context put-statement entries)))
+    (ac/all-of (execute-multi-put session put-statement entries)))
 
   AutoCloseable
   (close [_]
     (cass/close session)))
 
 (defmethod m/pre-init-spec ::rs/cassandra [_]
-  (s/keys :req-un [:blaze.fhir/parsing-context
-                   :blaze.fhir/writing-context]
+  (s/keys :req-un [:blaze.fhir/parsing-context]
           :opt-un [::cass/contact-points ::cass/key-space
                    ::cass/username ::cass/password
                    ::cass/put-consistency-level
@@ -149,14 +147,13 @@
        (cass/format-config config)))
 
 (defmethod ig/init-key ::rs/cassandra
-  [_ {:keys [parsing-context writing-context put-consistency-level]
+  [_ {:keys [parsing-context put-consistency-level]
       :or {put-consistency-level "TWO"} :as config}]
-  (log/info (init-msg (dissoc config :parsing-context :writing-context)))
+  (log/info (init-msg (dissoc config :parsing-context)))
   (let [session (cass/session config)]
     (->CassandraResourceStore
      session
      parsing-context
-     writing-context
      (cass/prepare session statement/get-statement)
      (cass/prepare session statement/get-quorum-statement)
      (cass/prepare session (statement/put-statement put-consistency-level)))))

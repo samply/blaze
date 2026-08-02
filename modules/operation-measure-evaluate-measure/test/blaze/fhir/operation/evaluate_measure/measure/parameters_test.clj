@@ -23,7 +23,7 @@
 
     (testing "empty parameters"
       (is (= {"A" 1} (parameters/effective-parameters
-                      {"A" 1} {:fhir/type :fhir/Parameters})))))
+                      {"A" 1} #fhir/map{:fhir/type :fhir/Parameters})))))
 
   (testing "supplied parameters override defaults by name"
     (is (= {"Gender" "female"}
@@ -111,11 +111,11 @@
   (testing "a resource-valued parameter results in an anomaly"
     (given (parameters/effective-parameters
             {"R" nil}
-            {:fhir/type :fhir/Parameters
-             :parameter
-             [{:fhir/type :fhir.Parameters/parameter
-               :name #fhir/string "R"
-               :resource {:fhir/type :fhir/Patient :id "0"}}]})
+            #fhir/map{:fhir/type :fhir/Parameters
+                      :parameter
+                      [#fhir/map{:fhir/type :fhir.Parameters/parameter
+                                 :name #fhir/string "R"
+                                 :resource #fhir/map{:fhir/type :fhir/Patient :id "0"}}]})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported type `Patient` of parameter `R`."
       :fhir/issue := "not-supported"

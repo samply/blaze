@@ -16,7 +16,6 @@
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
-   [blaze.fhir.writing-context]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.alpha.spec :as s2]
    [clojure.data.xml :as xml]
@@ -86,19 +85,14 @@
   ([type source variant]
    (fhir-spec/parse-cbor rs-context type source variant)))
 
-(def ^:private writing-context
-  (ig/init-key
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}))
-
 (defn- write-json [x]
-  (fhir-spec/write-json-as-bytes writing-context x))
+  (fhir-spec/write-json-as-bytes x))
 
 (defn- write-cbor [x]
-  (fhir-spec/write-cbor writing-context x))
+  (fhir-spec/write-cbor x))
 
 (defn- write-read-json [x]
-  (read-json (fhir-spec/write-json-as-string writing-context x)))
+  (read-json (fhir-spec/write-json-as-string x)))
 
 (defn- write-parse-json
   ([data]
@@ -112,22 +106,22 @@
 (deftest resource-test
   (testing "valid"
     (are [x] (s2/valid? :fhir/Resource x)
-      {:fhir/type :fhir/Condition :id "id-204446"
-       :meta
-       #fhir/Meta
-        {:versionId #fhir/id "1"
-         :profile [#fhir/canonical "url-164445"]}
-       :code
-       #fhir/CodeableConcept
-        {:coding
-         [#fhir/Coding
-           {:system #fhir/uri "system-204435"
-            :code #fhir/code "code-204441"}]}
-       :subject #fhir/Reference{:reference #fhir/string "Patient/id-145552"}
-       :onset #fhir/dateTime #system/date-time "2020-01-30"}
+      #fhir/map{:fhir/type :fhir/Condition :id "id-204446"
+                :meta
+                #fhir/Meta
+                 {:versionId #fhir/id "1"
+                  :profile [#fhir/canonical "url-164445"]}
+                :code
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri "system-204435"
+                     :code #fhir/code "code-204441"}]}
+                :subject #fhir/Reference{:reference #fhir/string "Patient/id-145552"}
+                :onset #fhir/dateTime #system/date-time "2020-01-30"}
 
-      {:fhir/type :fhir/Patient :id "0"
-       :birthDate #fhir/date{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}})))
+      #fhir/map{:fhir/type :fhir/Patient :id "0"
+                :birthDate #fhir/date{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}})))
 
 (deftest primitive-val-test
   (are [x] (fhir-spec/primitive-val? x)
@@ -137,7 +131,7 @@
 
   (are [x] (not (fhir-spec/primitive-val? x))
     #fhir/Coding{}
-    {:fhir/type :fhir.CodeSystem/concept}))
+    #fhir/map{:fhir/type :fhir.CodeSystem/concept}))
 
 (deftest resource-id-test
   (are [s] (s/valid? :blaze.resource/id s)
@@ -560,19 +554,19 @@
         :fhir/type := :fhir/Patient))
 
     (testing "stays the same"
-      (is (= {:fhir/type :fhir/Patient}
+      (is (= #fhir/map{:fhir/type :fhir/Patient}
              (write-parse-json {:resourceType "Patient"})))))
 
   (testing "deceasedBoolean on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased #fhir/boolean true}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/boolean true}
            (write-parse-json {:resourceType "Patient" :deceasedBoolean true}))))
 
   (testing "deceasedDateTime on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}
            (write-parse-json {:resourceType "Patient" :deceasedDateTime "2020"}))))
 
   (testing "multipleBirthInteger on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
            (write-parse-json {:resourceType "Patient" :multipleBirthInteger 2}))))
 
   (testing "with unknown property"
@@ -589,49 +583,49 @@
       :id := "id-220105"))
 
   (testing "Observation with code"
-    (is (= {:fhir/type :fhir/Observation
-            :code
-            #fhir/CodeableConcept
-             {:coding
-              [#fhir/Coding
-                {:system #fhir/uri "http://loinc.org"
-                 :code #fhir/code "39156-5"}]}}
+    (is (= #fhir/map{:fhir/type :fhir/Observation
+                     :code
+                     #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "39156-5"}]}}
            (write-parse-json
             {:resourceType "Observation"
              :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}))))
 
   (testing "Observation with valueTime"
-    (is (= {:fhir/type :fhir/Observation
-            :value #fhir/time #system/time "16:26:42"}
+    (is (= #fhir/map{:fhir/type :fhir/Observation
+                     :value #fhir/time #system/time "16:26:42"}
            (write-parse-json
             {:resourceType "Observation"
              :valueTime "16:26:42"}))))
 
   (testing "Observation with valueTime with id"
-    (is (= {:fhir/type :fhir/Observation
-            :value #fhir/time{:id "foo" :value #system/time "16:26:42"}}
+    (is (= #fhir/map{:fhir/type :fhir/Observation
+                     :value #fhir/time{:id "foo" :value #system/time "16:26:42"}}
            (write-parse-json
             {:resourceType "Observation"
              :valueTime "16:26:42"
              :_valueTime {:id "foo"}}))))
 
   (testing "Observation with valueTime with extension"
-    (is (= {:fhir/type :fhir/Observation
-            :value #fhir/time{:extension [#fhir/Extension{:url "foo"}] :value #system/time "16:26:42"}}
+    (is (= #fhir/map{:fhir/type :fhir/Observation
+                     :value #fhir/time{:extension [#fhir/Extension{:url "foo"}] :value #system/time "16:26:42"}}
            (write-parse-json
             {:resourceType "Observation"
              :valueTime "16:26:42"
              :_valueTime {:extension {:url "foo"}}}))))
 
   (testing "questionnaire resource with item groups"
-    (is (= {:fhir/type :fhir/Questionnaire
-            :item
-            [{:fhir/type :fhir.Questionnaire/item
-              :type #fhir/code "group"
-              :item
-              [{:fhir/type :fhir.Questionnaire/item
-                :type #fhir/code "string"
-                :text #fhir/string "foo"}]}]}
+    (is (= #fhir/map{:fhir/type :fhir/Questionnaire
+                     :item
+                     [#fhir/map{:fhir/type :fhir.Questionnaire/item
+                                :type #fhir/code "group"
+                                :item
+                                [#fhir/map{:fhir/type :fhir.Questionnaire/item
+                                           :type #fhir/code "string"
+                                           :text #fhir/string "foo"}]}]}
            (write-parse-json
             {:resourceType "Questionnaire"
              :item
@@ -641,12 +635,12 @@
                  :text "foo"}]}]}))))
 
   (testing "location resource with position"
-    (is (= {:fhir/type :fhir/Location
-            :position
-            {:fhir/type :fhir.Location/position
-             :latitude #fhir/decimal 0M
-             :longitude #fhir/decimal 0M
-             :altitude #fhir/decimal 0M}}
+    (is (= #fhir/map{:fhir/type :fhir/Location
+                     :position
+                     #fhir/map{:fhir/type :fhir.Location/position
+                               :latitude #fhir/decimal 0M
+                               :longitude #fhir/decimal 0M
+                               :altitude #fhir/decimal 0M}}
            (write-parse-json
             {:resourceType "Location"
              :position {:latitude 0
@@ -660,31 +654,20 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing type."))
 
-    (testing "backbone elements don't need types"
+    ;; every value writes itself now, so a nested plain map has no way to know
+    ;; how to do that
+    (testing "in a backbone element"
       (testing "cardinality single"
-        (testing "no keys"
-          (are [resource json] (= json (write-read-json resource))
-            {:fhir/type :fhir.Bundle/entry :response {}}
-            {:response {}}))
-
-        (testing "one unknown key"
-          (are [resource json] (= json (write-read-json resource))
-            {:fhir/type :fhir/Bundle
-             :entry [{:fhir/type :fhir.Bundle/entry :request {:foo "bar"}}]}
-            {:resourceType "Bundle"
-             :entry [{:request {}}]}))
-
-        (testing "one known key"
-          (are [resource json] (= json (write-read-json resource))
-            {:fhir/type :fhir/Bundle
-             :entry [{:fhir/type :fhir.Bundle/entry :request {:url #fhir/uri "bar"}}]}
-            {:resourceType "Bundle"
-             :entry [{:request {:url "bar"}}]})))
+        (given (ba/try-anomaly
+                (write-json #fhir/map{:fhir/type :fhir.Bundle/entry :response {}}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Value `{}` is no FHIR type."))
 
       (testing "cardinality many"
-        (are [resource json] (= json (write-read-json resource))
-          {:fhir/type :fhir/Bundle :entry [{}]}
-          {:resourceType "Bundle" :entry [{}]})))
+        (given (ba/try-anomaly
+                (write-json #fhir/map{:fhir/type :fhir/Bundle :entry [{}]}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Value `{}` is no FHIR type.")))
 
     (testing "elements don't need types"
       (testing "DataRequirement.codeFilter"
@@ -702,46 +685,46 @@
 
   (testing "Patient with deceasedBoolean"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :deceased #fhir/boolean true}
+      #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/boolean true}
       {:resourceType "Patient" :deceasedBoolean true}))
 
   (testing "Patient with deceasedDateTime"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}
+      #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}
       {:resourceType "Patient" :deceasedDateTime "2020"}))
 
   (testing "Patient with multipleBirthBoolean"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :multipleBirth #fhir/boolean false}
+      #fhir/map{:fhir/type :fhir/Patient :multipleBirth #fhir/boolean false}
       {:resourceType "Patient" :multipleBirthBoolean false}))
 
   (testing "Patient with multipleBirthInteger"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
+      #fhir/map{:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
       {:resourceType "Patient" :multipleBirthInteger 2}))
 
   (testing "Patient with a multipleBirth value of a type not allowed there"
-    (given (ba/try-anomaly (write-json {:fhir/type :fhir/Patient
-                                        :multipleBirth #fhir/string "foo"}))
+    (given (ba/try-anomaly (write-json #fhir/map{:fhir/type :fhir/Patient
+                                                 :multipleBirth #fhir/string "foo"}))
       ::anom/category := ::anom/fault
       ::anom/message := "Unsupported type `:fhir/string` for polymorphic property `multipleBirth`."))
 
   (testing "Bundle with Patient"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Bundle
-       :entry
-       [{:fhir/type :fhir.Bundle/entry
-         :resource {:fhir/type :fhir/Patient :id "0"}}]}
+      #fhir/map{:fhir/type :fhir/Bundle
+                :entry
+                [#fhir/map{:fhir/type :fhir.Bundle/entry
+                           :resource #fhir/map{:fhir/type :fhir/Patient :id "0"}}]}
       {:resourceType "Bundle"
        :entry
        [{:resource {:resourceType "Patient" :id "0"}}]}))
 
   (testing "contained resources of the same type"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :id "0"
-       :contained
-       [{:fhir/type :fhir/Organization :id "org-1" :name #fhir/string "Acme"}
-        {:fhir/type :fhir/Organization :id "org-2" :name #fhir/string "Foo"}]}
+      #fhir/map{:fhir/type :fhir/Patient :id "0"
+                :contained
+                [#fhir/map{:fhir/type :fhir/Organization :id "org-1" :name #fhir/string "Acme"}
+                 #fhir/map{:fhir/type :fhir/Organization :id "org-2" :name #fhir/string "Foo"}]}
       {:resourceType "Patient" :id "0"
        :contained
        [{:resourceType "Organization" :id "org-1" :name "Acme"}
@@ -752,10 +735,10 @@
   ;; drop fields that don't exist on that type.
   (testing "contained resources of different types"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Patient :id "0"
-       :contained
-       [{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}
-        {:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}]}
+      #fhir/map{:fhir/type :fhir/Patient :id "0"
+                :contained
+                [#fhir/map{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}
+                 #fhir/map{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}]}
       {:resourceType "Patient" :id "0"
        :contained
        [{:resourceType "Organization" :id "org" :name "Acme"}
@@ -763,10 +746,10 @@
 
     (testing "in reverse order"
       (are [resource json] (= json (write-read-json resource))
-        {:fhir/type :fhir/Patient :id "0"
-         :contained
-         [{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}
-          {:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}]}
+        #fhir/map{:fhir/type :fhir/Patient :id "0"
+                  :contained
+                  [#fhir/map{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}
+                   #fhir/map{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}]}
         {:resourceType "Patient" :id "0"
          :contained
          [{:resourceType "Practitioner" :id "prac" :gender "female"}
@@ -774,15 +757,15 @@
 
     (testing "an OperationOutcome next to other contained resources"
       (are [resource json] (= json (write-read-json resource))
-        {:fhir/type :fhir/ExplanationOfBenefit :id "0"
-         :contained
-         [{:fhir/type :fhir/ServiceRequest :id "referral"
-           :status #fhir/code "completed" :intent #fhir/code "order"}
-          {:fhir/type :fhir/Coverage :id "coverage" :status #fhir/code "active"}
-          {:fhir/type :fhir/OperationOutcome :id "outcome"
-           :issue
-           [{:fhir/type :fhir.OperationOutcome/issue
-             :severity #fhir/code "error" :code #fhir/code "processing"}]}]}
+        #fhir/map{:fhir/type :fhir/ExplanationOfBenefit :id "0"
+                  :contained
+                  [#fhir/map{:fhir/type :fhir/ServiceRequest :id "referral"
+                             :status #fhir/code "completed" :intent #fhir/code "order"}
+                   #fhir/map{:fhir/type :fhir/Coverage :id "coverage" :status #fhir/code "active"}
+                   #fhir/map{:fhir/type :fhir/OperationOutcome :id "outcome"
+                             :issue
+                             [#fhir/map{:fhir/type :fhir.OperationOutcome/issue
+                                        :severity #fhir/code "error" :code #fhir/code "processing"}]}]}
         {:resourceType "ExplanationOfBenefit" :id "0"
          :contained
          [{:resourceType "ServiceRequest" :id "referral"
@@ -791,24 +774,14 @@
           {:resourceType "OperationOutcome" :id "outcome"
            :issue [{:severity "error" :code "processing"}]}]})))
 
-  (testing "a contained value without a FHIR type"
-    (given (ba/try-anomaly
-            (write-read-json
-             {:fhir/type :fhir/Patient :id "0"
-              :contained
-              [{:fhir/type :fhir/Organization :id "org"}
-               "foo"]}))
-      ::anom/category := ::anom/fault
-      ::anom/message := "Value `foo` is no FHIR type."))
-
   (testing "a value in a primitive list that is no FHIR type"
     (given (ba/try-anomaly
             (write-json
-             {:fhir/type :fhir/OperationOutcome
-              :issue
-              [{:fhir/type :fhir.OperationOutcome/issue
-                :severity #fhir/code "error" :code #fhir/code "processing"
-                :expression [#fhir/string "Patient.name" "Patient.gender"]}]}))
+             #fhir/map{:fhir/type :fhir/OperationOutcome
+                       :issue
+                       [#fhir/map{:fhir/type :fhir.OperationOutcome/issue
+                                  :severity #fhir/code "error" :code #fhir/code "processing"
+                                  :expression [#fhir/string "Patient.name" "Patient.gender"]}]}))
       ::anom/category := ::anom/fault
       ::anom/message := "Value `Patient.gender` is no FHIR type."))
 
@@ -816,69 +789,69 @@
     (testing "a list in a single-valued property"
       (given (ba/try-anomaly
               (write-json
-               {:fhir/type :fhir/Patient :id "0"
-                :maritalStatus [#fhir/CodeableConcept{:text #fhir/string "text-125230"}]}))
+               #fhir/map{:fhir/type :fhir/Patient :id "0"
+                         :maritalStatus [#fhir/CodeableConcept{:text #fhir/string "text-125230"}]}))
         ::anom/category := ::anom/fault
         ::anom/message := "Expected a single value in property `maritalStatus` but got a list."))
 
     (testing "a single value in a repeating property"
       (given (ba/try-anomaly
               (write-json
-               {:fhir/type :fhir/Patient :id "0"
-                :name #fhir/HumanName{:family #fhir/string "family-125314"}}))
+               #fhir/map{:fhir/type :fhir/Patient :id "0"
+                         :name #fhir/HumanName{:family #fhir/string "family-125314"}}))
         ::anom/category := ::anom/fault
         ::anom/message := "Expected a list of values in property `name` but got a single value."))
 
     (testing "a value that is no FHIR type at all"
       (testing "in a single-valued property"
         (given (ba/try-anomaly
-                (write-json {:fhir/type :fhir/Patient :id "0" :maritalStatus "foo"}))
+                (write-json #fhir/map{:fhir/type :fhir/Patient :id "0" :maritalStatus "foo"}))
           ::anom/category := ::anom/fault
           ::anom/message := "Value `foo` is no FHIR type."))
 
       (testing "in a repeating property"
         (given (ba/try-anomaly
-                (write-json {:fhir/type :fhir/Patient :id "0" :name "foo"}))
+                (write-json #fhir/map{:fhir/type :fhir/Patient :id "0" :name "foo"}))
           ::anom/category := ::anom/fault
           ::anom/message := "Value `foo` is no FHIR type."))))
 
   (testing "a map property with the wrong cardinality"
     (testing "a list in a single-valued property"
       (given (ba/try-anomaly
-              (write-json {:fhir/type :fhir.Bundle/entry :response [{}]}))
+              (write-json #fhir/map{:fhir/type :fhir.Bundle/entry :response [{}]}))
         ::anom/category := ::anom/fault
         ::anom/message := "Expected a single value in property `response` but got a list."))
 
     (testing "a single value in a repeating property"
       (given (ba/try-anomaly
               (write-json
-               {:fhir/type :fhir/Bundle
-                :entry {:fhir/type :fhir.Bundle/entry :response {}}}))
+               #fhir/map{:fhir/type :fhir/Bundle
+                         :entry #fhir/map{:fhir/type :fhir.Bundle/entry :response {}}}))
         ::anom/category := ::anom/fault
         ::anom/message := "Expected a list of values in property `entry` but got a single value."))
 
     (testing "a value that is no FHIR type at all"
       (testing "in a single-valued property"
         (given (ba/try-anomaly
-                (write-json {:fhir/type :fhir.Bundle/entry :response "foo"}))
+                (write-json #fhir/map{:fhir/type :fhir.Bundle/entry :response "foo"}))
           ::anom/category := ::anom/fault
           ::anom/message := "Value `foo` is no FHIR type."))
 
       (testing "in a repeating property"
         (given (ba/try-anomaly
-                (write-json {:fhir/type :fhir/Bundle :entry "foo"}))
+                (write-json #fhir/map{:fhir/type :fhir/Bundle :entry "foo"}))
           ::anom/category := ::anom/fault
           ::anom/message := "Value `foo` is no FHIR type."))))
 
   (testing "Observation with code"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Observation
-       :code
-       #fhir/CodeableConcept
-        {:coding
-         [#fhir/Coding
-           {:system #fhir/uri "http://loinc.org"
-            :code #fhir/code "39156-5"}]}}
+      #fhir/map{:fhir/type :fhir/Observation
+                :code
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri "http://loinc.org"
+                     :code #fhir/code "39156-5"}]}}
       {:resourceType "Observation"
        :code
        {:coding
@@ -887,13 +860,13 @@
 
   (testing "Observation with valueQuantity"
     (are [resource json] (= json (write-read-json resource))
-      {:fhir/type :fhir/Observation
-       :value
-       #fhir/Quantity
-        {:value #fhir/decimal 36.6M
-         :unit #fhir/string "kg/m^2"
-         :system #fhir/uri "http://unitsofmeasure.org"
-         :code #fhir/code "kg/m2"}}
+      #fhir/map{:fhir/type :fhir/Observation
+                :value
+                #fhir/Quantity
+                 {:value #fhir/decimal 36.6M
+                  :unit #fhir/string "kg/m^2"
+                  :system #fhir/uri "http://unitsofmeasure.org"
+                  :code #fhir/code "kg/m2"}}
       {:resourceType "Observation"
        :valueQuantity
        {:value 36.6
@@ -921,28 +894,28 @@
   (testing "Patient"
     (testing "without properties"
       (is (= (write-parse-cbor "Patient" {:resourceType "Patient"})
-             {:fhir/type :fhir/Patient})))
+             #fhir/map{:fhir/type :fhir/Patient})))
 
     (testing "with one unknown property"
       (testing "string"
         (is (= (write-parse-cbor "Patient" {:resourceType "Patient" :unknown "foo"})
-               {:fhir/type :fhir/Patient})))
+               #fhir/map{:fhir/type :fhir/Patient})))
 
       (testing "object"
         (is (= (write-parse-cbor "Patient" {:resourceType "Patient" :unknown {}})
-               {:fhir/type :fhir/Patient}))
+               #fhir/map{:fhir/type :fhir/Patient}))
 
         (testing "with children"
           (is (= (write-parse-cbor "Patient" {:resourceType "Patient" :unknown {:foo "bar"}})
-                 {:fhir/type :fhir/Patient}))))
+                 #fhir/map{:fhir/type :fhir/Patient}))))
 
       (testing "array"
         (is (= (write-parse-cbor "Patient" {:resourceType "Patient" :unknown []})
-               {:fhir/type :fhir/Patient}))
+               #fhir/map{:fhir/type :fhir/Patient}))
 
         (testing "with children"
           (is (= (write-parse-cbor "Patient" {:resourceType "Patient" :unknown ["foo" "bar"]})
-                 {:fhir/type :fhir/Patient})))))))
+                 #fhir/map{:fhir/type :fhir/Patient})))))))
 
 (deftest write-cbor-test
   (testing "without resource type"
@@ -961,92 +934,92 @@
 
     (testing "Patient with deceasedBoolean"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Patient :deceased #fhir/boolean true}))
+        #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/boolean true}))
 
     (testing "Patient with deceasedDateTime"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}))
+        #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}))
 
     (testing "Patient with multipleBirthBoolean"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Patient :multipleBirth #fhir/boolean false}))
+        #fhir/map{:fhir/type :fhir/Patient :multipleBirth #fhir/boolean false}))
 
     (testing "Patient with multipleBirthInteger"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}))
+        #fhir/map{:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}))
 
     (testing "Bundle with Patient"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Bundle
-         :entry
-         [{:fhir/type :fhir.Bundle/entry
-           :resource {:fhir/type :fhir/Patient :id "0"}}]}))
+        #fhir/map{:fhir/type :fhir/Bundle
+                  :entry
+                  [#fhir/map{:fhir/type :fhir.Bundle/entry
+                             :resource #fhir/map{:fhir/type :fhir/Patient :id "0"}}]}))
 
     (testing "contained resources of the same type"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Patient :id "0"
-         :contained
-         [{:fhir/type :fhir/Organization :id "org-1" :name #fhir/string "Acme"}
-          {:fhir/type :fhir/Organization :id "org-2" :name #fhir/string "Foo"}]}))
+        #fhir/map{:fhir/type :fhir/Patient :id "0"
+                  :contained
+                  [#fhir/map{:fhir/type :fhir/Organization :id "org-1" :name #fhir/string "Acme"}
+                   #fhir/map{:fhir/type :fhir/Organization :id "org-2" :name #fhir/string "Foo"}]}))
 
     ;; Each contained resource has to be written according to its own type. Using
     ;; the type of the first contained resource for all of them would silently
     ;; drop fields that don't exist on that type.
     (testing "contained resources of different types"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Patient :id "0"
-         :contained
-         [{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}
-          {:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}]})
+        #fhir/map{:fhir/type :fhir/Patient :id "0"
+                  :contained
+                  [#fhir/map{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}
+                   #fhir/map{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}]})
 
       (testing "in reverse order"
         (are [resource] (= resource (write-parse-cbor resource))
-          {:fhir/type :fhir/Patient :id "0"
-           :contained
-           [{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}
-            {:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}]}))
+          #fhir/map{:fhir/type :fhir/Patient :id "0"
+                    :contained
+                    [#fhir/map{:fhir/type :fhir/Practitioner :id "prac" :gender #fhir/code "female"}
+                     #fhir/map{:fhir/type :fhir/Organization :id "org" :name #fhir/string "Acme"}]}))
 
       (testing "an OperationOutcome next to other contained resources"
         (are [resource] (= resource (write-parse-cbor resource))
-          {:fhir/type :fhir/ExplanationOfBenefit :id "0"
-           :contained
-           [{:fhir/type :fhir/ServiceRequest :id "referral"
-             :status #fhir/code "completed" :intent #fhir/code "order"}
-            {:fhir/type :fhir/Coverage :id "coverage" :status #fhir/code "active"}
-            {:fhir/type :fhir/OperationOutcome :id "outcome"
-             :issue
-             [{:fhir/type :fhir.OperationOutcome/issue
-               :severity #fhir/code "error" :code #fhir/code "processing"}]}]})))
+          #fhir/map{:fhir/type :fhir/ExplanationOfBenefit :id "0"
+                    :contained
+                    [#fhir/map{:fhir/type :fhir/ServiceRequest :id "referral"
+                               :status #fhir/code "completed" :intent #fhir/code "order"}
+                     #fhir/map{:fhir/type :fhir/Coverage :id "coverage" :status #fhir/code "active"}
+                     #fhir/map{:fhir/type :fhir/OperationOutcome :id "outcome"
+                               :issue
+                               [#fhir/map{:fhir/type :fhir.OperationOutcome/issue
+                                          :severity #fhir/code "error" :code #fhir/code "processing"}]}]})))
 
     (testing "Observation with code"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Observation
-         :code
-         #fhir/CodeableConcept
-          {:coding
-           [#fhir/Coding
-             {:system #fhir/uri "http://loinc.org"
-              :code #fhir/code "39156-5"}]}}))
+        #fhir/map{:fhir/type :fhir/Observation
+                  :code
+                  #fhir/CodeableConcept
+                   {:coding
+                    [#fhir/Coding
+                      {:system #fhir/uri "http://loinc.org"
+                       :code #fhir/code "39156-5"}]}}))
 
     (testing "Observation with valueQuantity"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Observation
-         :value
-         #fhir/Quantity
-          {:value #fhir/decimal 36.6M
-           :unit #fhir/string "kg/m^2"
-           :system #fhir/uri "http://unitsofmeasure.org"
-           :code #fhir/code "kg/m2"}}))
+        #fhir/map{:fhir/type :fhir/Observation
+                  :value
+                  #fhir/Quantity
+                   {:value #fhir/decimal 36.6M
+                    :unit #fhir/string "kg/m^2"
+                    :system #fhir/uri "http://unitsofmeasure.org"
+                    :code #fhir/code "kg/m2"}}))
 
     (testing "Observation with valueTime"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Observation
-         :value #fhir/time #system/time "00:00"}))
+        #fhir/map{:fhir/type :fhir/Observation
+                  :value #fhir/time #system/time "00:00"}))
 
     (testing "Observation with valueTime with id"
       (are [resource] (= resource (write-parse-cbor resource))
-        {:fhir/type :fhir/Observation
-         :value #fhir/time{:id "foo" :value #system/time "00:00"}}))))
+        #fhir/map{:fhir/type :fhir/Observation
+                  :value #fhir/time{:id "foo" :value #system/time "00:00"}}))))
 
 (defn- conform-xml [sexp]
   (fhir-spec/conform-xml (prxml/sexp-as-element sexp)))
@@ -1097,33 +1070,33 @@
         :fhir/type := :fhir/Patient))
 
     (testing "stays the same"
-      (is (= {:fhir/type :fhir/Patient}
+      (is (= #fhir/map{:fhir/type :fhir/Patient}
              (conform-xml [::f/Patient])))))
 
   (testing "patient resource with id"
-    (is (= {:fhir/type :fhir/Patient :id "0"}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :id "0"}
            (conform-xml [::f/Patient [::f/id {:value "0"}]]))))
 
   (testing "deceasedBoolean on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased #fhir/boolean true}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/boolean true}
            (conform-xml [::f/Patient [::f/deceasedBoolean {:value "true"}]]))))
 
   (testing "deceasedDateTime on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/dateTime #system/date-time "2020"}
            (conform-xml [::f/Patient [::f/deceasedDateTime {:value "2020"}]]))))
 
   (testing "multipleBirthInteger on Patient will be remapped"
-    (is (= {:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :multipleBirth #fhir/integer 2}
            (conform-xml [::f/Patient [::f/multipleBirthInteger {:value "2"}]]))))
 
   (testing "Observation with code"
-    (is (= {:fhir/type :fhir/Observation
-            :code
-            #fhir/CodeableConcept
-             {:coding
-              [#fhir/Coding
-                {:system #fhir/uri "http://loinc.org"
-                 :code #fhir/code "39156-5"}]}}
+    (is (= #fhir/map{:fhir/type :fhir/Observation
+                     :code
+                     #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri "http://loinc.org"
+                          :code #fhir/code "39156-5"}]}}
            (conform-xml
             [::f/Observation
              [::f/code
@@ -1132,18 +1105,18 @@
                [::f/code {:value "39156-5"}]]]]))))
 
   (testing "Patient with gender extension"
-    (is (= {:fhir/type :fhir/Patient
-            :gender
-            #fhir/code
-             {:extension
-              [#fhir/Extension
-                {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                 :value
-                 #fhir/Coding
-                  {:system #fhir/uri "http://fhir.de/CodeSystem/gender-amtlich-de"
-                   :code #fhir/code "D"
-                   :display #fhir/string "divers"}}]
-              :value "other"}}
+    (is (= #fhir/map{:fhir/type :fhir/Patient
+                     :gender
+                     #fhir/code
+                      {:extension
+                       [#fhir/Extension
+                         {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                          :value
+                          #fhir/Coding
+                           {:system #fhir/uri "http://fhir.de/CodeSystem/gender-amtlich-de"
+                            :code #fhir/code "D"
+                            :display #fhir/string "divers"}}]
+                       :value "other"}}
            (conform-xml
             [:Patient
              [:gender
@@ -1155,18 +1128,18 @@
                 [:display {:value "divers"}]]]]]))))
 
   (testing "patient resource with mixed character content"
-    (is (= {:fhir/type :fhir/Patient :id "0"}
+    (is (= #fhir/map{:fhir/type :fhir/Patient :id "0"}
            (conform-xml [::f/Patient "" [::f/id {:value "0"}]]))))
 
   (testing "questionnaire resource with item groups"
-    (is (= {:fhir/type :fhir/Questionnaire
-            :item
-            [{:fhir/type :fhir.Questionnaire/item
-              :type #fhir/code "group"
-              :item
-              [{:fhir/type :fhir.Questionnaire/item
-                :type #fhir/code "string"
-                :text #fhir/string "foo"}]}]}
+    (is (= #fhir/map{:fhir/type :fhir/Questionnaire
+                     :item
+                     [#fhir/map{:fhir/type :fhir.Questionnaire/item
+                                :type #fhir/code "group"
+                                :item
+                                [#fhir/map{:fhir/type :fhir.Questionnaire/item
+                                           :type #fhir/code "string"
+                                           :text #fhir/string "foo"}]}]}
            (conform-xml
             [::f/Questionnaire
              [::f/item
@@ -1218,18 +1191,18 @@
                 [::f/code {:value "D"}]
                 [::f/display {:value "divers"}]]]]])
            (fhir-spec/unform-xml
-            {:fhir/type :fhir/Patient
-             :gender
-             #fhir/code
-              {:extension
-               [#fhir/Extension
-                 {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                  :value
-                  #fhir/Coding
-                   {:system #fhir/uri "http://fhir.de/CodeSystem/gender-amtlich-de"
-                    :code #fhir/code "D"
-                    :display #fhir/string "divers"}}]
-               :value "other"}}))))
+            #fhir/map{:fhir/type :fhir/Patient
+                      :gender
+                      #fhir/code
+                       {:extension
+                        [#fhir/Extension
+                          {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                           :value
+                           #fhir/Coding
+                            {:system #fhir/uri "http://fhir.de/CodeSystem/gender-amtlich-de"
+                             :code #fhir/code "D"
+                             :display #fhir/string "divers"}}]
+                        :value "other"}}))))
 
   (testing "Patient with Narrative"
     (let [xml (sexp [::f/Patient {:xmlns "http://hl7.org/fhir"}
@@ -1961,13 +1934,13 @@
       (satisfies-prop 1000
         (prop/for-all [value fg/date-value]
           (= {:resourceType "Patient" :birthDate (str value)}
-             (write-read-json {:fhir/type :fhir/Patient :birthDate (type/date value)}))))
+             (write-read-json (type/fhir-map {:fhir/type :fhir/Patient :birthDate (type/date value)})))))
 
       (testing "examples"
         (are [value] (= {:resourceType "Patient" :birthDate value}
                         (write-read-json
-                         {:fhir/type :fhir/Patient
-                          :birthDate (type/date (system/parse-date value))}))
+                         (type/fhir-map {:fhir/type :fhir/Patient
+                                         :birthDate (type/date (system/parse-date value))})))
           "0001" "0009" "0099" "0999" "1000" "9999"
           "2020-01" "2020-09" "2020-10" "2020-12"
           "2020-01-01" "2020-01-09" "2020-01-10" "2020-01-29" "2020-01-31")))))
@@ -2035,13 +2008,13 @@
       (satisfies-prop 1000
         (prop/for-all [value (fg/dateTime-value)]
           (= {:resourceType "Patient" :deceasedDateTime (DateTime/toString value)}
-             (write-read-json {:fhir/type :fhir/Patient :deceased (type/dateTime value)}))))
+             (write-read-json (type/fhir-map {:fhir/type :fhir/Patient :deceased (type/dateTime value)})))))
 
       (testing "examples"
         (are [value] (= {:resourceType "Patient" :deceasedDateTime value}
                         (write-read-json
-                         {:fhir/type :fhir/Patient
-                          :deceased (type/dateTime (system/parse-date-time value))}))
+                         (type/fhir-map {:fhir/type :fhir/Patient
+                                         :deceased (type/dateTime (system/parse-date-time value))})))
           "0001" "0009" "0099" "0999" "1000" "9999"
           "2020-01" "2020-09" "2020-10" "2020-12"
           "2020-01-01" "2020-01-09" "2020-01-10" "2020-01-29" "2020-01-31"
@@ -2057,8 +2030,8 @@
         (testing "not in canonical form"
           (are [value json] (= {:resourceType "Patient" :deceasedDateTime json}
                                (write-read-json
-                                {:fhir/type :fhir/Patient
-                                 :deceased (type/dateTime (system/parse-date-time value))}))
+                                (type/fhir-map {:fhir/type :fhir/Patient
+                                                :deceased (type/dateTime (system/parse-date-time value))})))
             "2020-01-01T00:00:00+00:00" "2020-01-01T00:00:00Z"
             "2020-01-01T00:00:00.120" "2020-01-01T00:00:00.12"
             "2020-01-01T00:00:00.100000000" "2020-01-01T00:00:00.1"))
@@ -2067,12 +2040,12 @@
           (is (= {:resourceType "Patient"
                   :deceasedDateTime "2020-01-01T00:00:00.123456789+01:02:03"}
                  (write-read-json
-                  {:fhir/type :fhir/Patient
-                   :deceased
-                   (type/dateTime
-                    (OffsetDateTime/of
-                     2020 1 1 0 0 0 123456789
-                     (ZoneOffset/ofHoursMinutesSeconds 1 2 3)))}))))))))
+                  (type/fhir-map {:fhir/type :fhir/Patient
+                                  :deceased
+                                  (type/dateTime
+                                   (OffsetDateTime/of
+                                    2020 1 1 0 0 0 123456789
+                                    (ZoneOffset/ofHoursMinutesSeconds 1 2 3)))})))))))))
 
 (deftest ^:mem-size fhir-dateTime-mem-size-test
   (satisfies-prop 100
@@ -6611,11 +6584,11 @@
 
   (testing "writing"
     (testing "JSON"
-      (is (= (write-read-json {:fhir/type :fhir.Bundle/entry})
+      (is (= (write-read-json #fhir/map{:fhir/type :fhir.Bundle/entry})
              {}))
       (is (= (write-read-json
-              {:fhir/type :fhir.Bundle/entry
-               :fullUrl #fhir/uri "uri-155734"})
+              #fhir/map{:fhir/type :fhir.Bundle/entry
+                        :fullUrl #fhir/uri "uri-155734"})
              {:fullUrl "uri-155734"}))))
 
   (testing "references"
@@ -6768,21 +6741,21 @@
 
   (testing "writing"
     (testing "JSON"
-      (is (= (write-read-json {:fhir/type :fhir/Bundle})
+      (is (= (write-read-json #fhir/map{:fhir/type :fhir/Bundle})
              {:resourceType "Bundle"}))
 
       (is (= (write-read-json
-              {:fhir/type :fhir/Bundle
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :fullUrl #fhir/uri "url-104116"}]})
+              #fhir/map{:fhir/type :fhir/Bundle
+                        :entry
+                        [#fhir/map{:fhir/type :fhir.Bundle/entry
+                                   :fullUrl #fhir/uri "url-104116"}]})
              {:resourceType "Bundle" :entry [{:fullUrl "url-104116"}]}))
 
       (is (= (write-read-json
-              {:fhir/type :fhir/Bundle
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :resource {:fhir/type :fhir/Patient}}]})
+              #fhir/map{:fhir/type :fhir/Bundle
+                        :entry
+                        [#fhir/map{:fhir/type :fhir.Bundle/entry
+                                   :resource #fhir/map{:fhir/type :fhir/Patient}}]})
              {:resourceType "Bundle" :entry [{:resource {:resourceType "Patient"}}]}))))
 
   (testing "hash-into"
@@ -6826,16 +6799,16 @@
     (testing "JSON"
       (are [json fhir] (= fhir (write-parse-json "CapabilityStatement" json))
         {:resourceType "CapabilityStatement"}
-        {:fhir/type :fhir/CapabilityStatement}
+        #fhir/map{:fhir/type :fhir/CapabilityStatement}
 
         {:resourceType "CapabilityStatement"
          :rest [{:searchParam [{:name "name-151346"}]}]}
-        {:fhir/type :fhir/CapabilityStatement
-         :rest
-         [{:fhir/type :fhir.CapabilityStatement/rest
-           :searchParam
-           [{:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
-             :name #fhir/string "name-151346"}]}]}))
+        #fhir/map{:fhir/type :fhir/CapabilityStatement
+                  :rest
+                  [#fhir/map{:fhir/type :fhir.CapabilityStatement/rest
+                             :searchParam
+                             [#fhir/map{:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
+                                        :name #fhir/string "name-151346"}]}]}))
 
     (testing "XML"
       (is (= (conform-xml
@@ -6843,22 +6816,22 @@
                [::f/rest
                 [::f/searchParam
                  [::f/name {:value "name-151346"}]]]])
-             {:fhir/type :fhir/CapabilityStatement
-              :rest
-              [{:fhir/type :fhir.CapabilityStatement/rest
-                :searchParam
-                [{:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
-                  :name #fhir/string "name-151346"}]}]}))))
+             #fhir/map{:fhir/type :fhir/CapabilityStatement
+                       :rest
+                       [#fhir/map{:fhir/type :fhir.CapabilityStatement/rest
+                                  :searchParam
+                                  [#fhir/map{:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
+                                             :name #fhir/string "name-151346"}]}]}))))
 
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
-              {:fhir/type :fhir/CapabilityStatement
-               :rest
-               [{:fhir/type :fhir.CapabilityStatement/rest
-                 :searchParam
-                 [{:fhir/type :fhir.CapabilityStatement.rest/searchParam
-                   :name #fhir/string "name-151346"}]}]})
+              #fhir/map{:fhir/type :fhir/CapabilityStatement
+                        :rest
+                        [#fhir/map{:fhir/type :fhir.CapabilityStatement/rest
+                                   :searchParam
+                                   [#fhir/map{:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
+                                              :name #fhir/string "name-151346"}]}]})
              {:resourceType "CapabilityStatement"
               :rest
               [{:searchParam
@@ -6871,12 +6844,12 @@
                 [::f/searchParam
                  [::f/name {:value "name-151346"}]]]])
              (fhir-spec/unform-xml
-              {:fhir/type :fhir/CapabilityStatement
-               :rest
-               [{:fhir/type :fhir.CapabilityStatement/rest
-                 :searchParam
-                 [{:fhir/type :fhir.CapabilityStatement.rest/searchParam
-                   :name #fhir/string "name-151346"}]}]})))))
+              #fhir/map{:fhir/type :fhir/CapabilityStatement
+                        :rest
+                        [#fhir/map{:fhir/type :fhir.CapabilityStatement/rest
+                                   :searchParam
+                                   [#fhir/map{:fhir/type :fhir.CapabilityStatement.rest.resource/searchParam
+                                              :name #fhir/string "name-151346"}]}]})))))
 
   (testing "hash-into"
     (satisfies-prop 20
@@ -6915,18 +6888,18 @@
     (testing "JSON"
       (are [json fhir] (= fhir (write-parse-json "Claim" json))
         {:resourceType "Claim"}
-        {:fhir/type :fhir/Claim}
+        #fhir/map{:fhir/type :fhir/Claim}
 
         {:resourceType "Claim"
          :total {:value 1.0M :currency "EUR"}}
-        {:fhir/type :fhir/Claim
-         :total #fhir/Money{:value #fhir/decimal 1.0M :currency #fhir/code"EUR"}})))
+        #fhir/map{:fhir/type :fhir/Claim
+                  :total #fhir/Money{:value #fhir/decimal 1.0M :currency #fhir/code"EUR"}})))
 
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
-              {:fhir/type :fhir/Claim
-               :total #fhir/Money{:value #fhir/decimal 1.0M :currency #fhir/code"EUR"}})
+              #fhir/map{:fhir/type :fhir/Claim
+                        :total #fhir/Money{:value #fhir/decimal 1.0M :currency #fhir/code"EUR"}})
              {:resourceType "Claim"
               :total {:value 1.0 :currency "EUR"}}))))
 
@@ -7000,15 +6973,15 @@
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
-              {:fhir/type :fhir/Condition
-               :onset #fhir/Age{:value #fhir/decimal 23M :code #fhir/code "a"}})
+              #fhir/map{:fhir/type :fhir/Condition
+                        :onset #fhir/Age{:value #fhir/decimal 23M :code #fhir/code "a"}})
              {:resourceType "Condition"
               :onsetAge {:value 23 :code "a"}}))))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      {:fhir/type :fhir/Condition
-       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
+      #fhir/map{:fhir/type :fhir/Condition
+                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
       [["Patient" "0"]]))
 
   (testing "hash-into"
@@ -7049,14 +7022,14 @@
       (are [json fhir] (= fhir (write-parse-json "Consent" json))
         {:resourceType "Consent"
          :policyRule {}}
-        {:fhir/type :fhir/Consent
-         :policyRule #fhir/CodeableConcept{}})))
+        #fhir/map{:fhir/type :fhir/Consent
+                  :policyRule #fhir/CodeableConcept{}})))
 
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
-              {:fhir/type :fhir/Consent
-               :policyRule #fhir/CodeableConcept{}})
+              #fhir/map{:fhir/type :fhir/Consent
+                        :policyRule #fhir/CodeableConcept{}})
              {:resourceType "Consent"
               :policyRule {}}))))
 
@@ -7156,12 +7129,12 @@
 (deftest list-test
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      {:fhir/type :fhir/List
-       :entry
-       [{:fhir/type :fhir.List/entry
-         :item #fhir/Reference{:reference #fhir/string "Patient/0"}}
-        {:fhir/type :fhir.List/entry
-         :item #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
+      #fhir/map{:fhir/type :fhir/List
+                :entry
+                [#fhir/map{:fhir/type :fhir.List/entry
+                           :item #fhir/Reference{:reference #fhir/string "Patient/0"}}
+                 #fhir/map{:fhir/type :fhir.List/entry
+                           :item #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
       [["Patient" "0"]
        ["Patient" "1"]])))
 
@@ -7211,16 +7184,16 @@
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
-              {:fhir/type :fhir/Observation
-               :value #fhir/string{:id "id-201526" :value "value-201533"}})
+              #fhir/map{:fhir/type :fhir/Observation
+                        :value #fhir/string{:id "id-201526" :value "value-201533"}})
              {:resourceType "Observation"
               :valueString "value-201533"
               :_valueString {:id "id-201526"}}))))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      {:fhir/type :fhir/Observation
-       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
+      #fhir/map{:fhir/type :fhir/Observation
+                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
       [["Patient" "0"]]))
 
   (testing "hash-into"
@@ -7311,26 +7284,26 @@
 
   (testing "writing"
     (testing "JSON"
-      (is (= (write-read-json {:fhir/type :fhir/Patient})
+      (is (= (write-read-json #fhir/map{:fhir/type :fhir/Patient})
              {:resourceType "Patient"}))
       (is (= (write-read-json
-              {:fhir/type :fhir/Patient
-               :gender #fhir/code "female"
-               :active #fhir/boolean true})
+              #fhir/map{:fhir/type :fhir/Patient
+                        :gender #fhir/code "female"
+                        :active #fhir/boolean true})
              {:resourceType "Patient" :active true :gender "female"}))
 
-      (given (ba/try-anomaly (write-read-json {:fhir/type :fhir/Patient
-                                               :multipleBirth 1}))
+      (given (ba/try-anomaly (write-read-json #fhir/map{:fhir/type :fhir/Patient
+                                                        :multipleBirth 1}))
         ::anom/category := ::anom/fault
         ::anom/message := "Value `1` is no FHIR type.")
 
-      (given (ba/try-anomaly (write-read-json {:fhir/type :fhir/Patient
-                                               :active true}))
+      (given (ba/try-anomaly (write-read-json #fhir/map{:fhir/type :fhir/Patient
+                                                        :active true}))
         ::anom/category := ::anom/fault
         ::anom/message := "Value `true` is no FHIR type.")
 
-      (given (ba/try-anomaly (write-read-json {:fhir/type :fhir/Patient
-                                               :contact "contact-175759"}))
+      (given (ba/try-anomaly (write-read-json #fhir/map{:fhir/type :fhir/Patient
+                                                        :contact "contact-175759"}))
         ::anom/category := ::anom/fault
         ::anom/message := "Value `contact-175759` is no FHIR type.")))
 
@@ -7375,25 +7348,25 @@
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      {:fhir/type :fhir/Procedure
-       :instantiatesCanonical
-       [#fhir/uri
-         {:extension
-          [#fhir/Extension
-            {:value #fhir/Reference{:reference #fhir/string "Procedure/153904"}}]}
-        #fhir/uri
-         {:extension
-          [#fhir/Extension
-            {:value #fhir/Reference{:reference #fhir/string "Condition/153931"}}]}]
-       :instantiatesUri
-       [#fhir/uri
-         {:extension
-          [#fhir/Extension
-            {:value #fhir/Reference{:reference #fhir/string "Patient/153540"}}]}
-        #fhir/uri
-         {:extension
-          [#fhir/Extension
-            {:value #fhir/Reference{:reference #fhir/string "Observation/153628"}}]}]}
+      #fhir/map{:fhir/type :fhir/Procedure
+                :instantiatesCanonical
+                [#fhir/uri
+                  {:extension
+                   [#fhir/Extension
+                     {:value #fhir/Reference{:reference #fhir/string "Procedure/153904"}}]}
+                 #fhir/uri
+                  {:extension
+                   [#fhir/Extension
+                     {:value #fhir/Reference{:reference #fhir/string "Condition/153931"}}]}]
+                :instantiatesUri
+                [#fhir/uri
+                  {:extension
+                   [#fhir/Extension
+                     {:value #fhir/Reference{:reference #fhir/string "Patient/153540"}}]}
+                 #fhir/uri
+                  {:extension
+                   [#fhir/Extension
+                     {:value #fhir/Reference{:reference #fhir/string "Observation/153628"}}]}]}
       [["Procedure" "153904"]
        ["Condition" "153931"]
        ["Patient" "153540"]
@@ -7411,10 +7384,10 @@
 (deftest provenance-test
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      {:fhir/type :fhir/Provenance
-       :target
-       [#fhir/Reference{:reference #fhir/string "Patient/204750"}
-        #fhir/Reference{:reference #fhir/string "Observation/204754"}]}
+      #fhir/map{:fhir/type :fhir/Provenance
+                :target
+                [#fhir/Reference{:reference #fhir/string "Patient/204750"}
+                 #fhir/Reference{:reference #fhir/string "Observation/204754"}]}
       [["Patient" "204750"]
        ["Observation" "204754"]])))
 
@@ -7454,10 +7427,10 @@
         {:resourceType "Task"
          :output
          [{:valueReference {:reference "bar"}}]}
-        {:fhir/type :fhir/Task
-         :output
-         [{:fhir/type :fhir.Task/output
-           :value #fhir/Reference{:reference #fhir/string "bar"}}]})
+        #fhir/map{:fhir/type :fhir/Task
+                  :output
+                  [#fhir/map{:fhir/type :fhir.Task/output
+                             :value #fhir/Reference{:reference #fhir/string "bar"}}]})
 
       (testing "bare value properties are result in an error"
         (given (write-parse-json "Task" {:resourceType "Task"
@@ -7472,10 +7445,10 @@
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
-              {:fhir/type :fhir/Task
-               :input
-               [{:fhir/type :fhir.Task/input
-                 :value #fhir/code "code-173329"}]})
+              #fhir/map{:fhir/type :fhir/Task
+                        :input
+                        [#fhir/map{:fhir/type :fhir.Task/input
+                                   :value #fhir/code "code-173329"}]})
              {:resourceType "Task"
               :input [{:valueCode "code-173329"}]}))))
 
@@ -7545,11 +7518,11 @@
   (testing "writing"
     (testing "JSON"
       (is (= (write-read-json
-              {:fhir/type :fhir/Parameters
-               :parameter
-               [{:fhir/type :fhir.Parameters/parameter
-                 :name #fhir/string "return"
-                 :value #fhir/integer 2}]})
+              #fhir/map{:fhir/type :fhir/Parameters
+                        :parameter
+                        [#fhir/map{:fhir/type :fhir.Parameters/parameter
+                                   :name #fhir/string "return"
+                                   :value #fhir/integer 2}]})
              {:resourceType "Parameters"
               :parameter
               [{:name "return"

@@ -115,7 +115,7 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
 
     public static TriggerDefinition create(IPersistentMap m) {
         return new TriggerDefinition(ExtensionData.fromMap(m), (Code) m.valAt(TYPE), (String) m.valAt(NAME),
-                (Element) m.valAt(TIMING), Base.listFrom(m, DATA), (Expression) m.valAt(CONDITION));
+                (Element) m.valAt(TIMING), Base.typedListFrom(m, DATA, DataRequirement.class), (Expression) m.valAt(CONDITION));
     }
 
     public Code type() {
@@ -173,7 +173,7 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
 
     @Override
     public TriggerDefinition empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -182,7 +182,6 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public TriggerDefinition assoc(Object key, Object val) {
         if (key == TYPE)
             return new TriggerDefinition(extensionData, (Code) val, name, timing, data, condition);
@@ -191,7 +190,7 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
         if (key == TIMING)
             return new TriggerDefinition(extensionData, type, name, (Element) val, data, condition);
         if (key == DATA)
-            return new TriggerDefinition(extensionData, type, name, timing, (List<DataRequirement>) val, condition);
+            return new TriggerDefinition(extensionData, type, name, timing, Lists.typedNullToEmpty(val, DataRequirement.class), condition);
         if (key == CONDITION)
             return new TriggerDefinition(extensionData, type, name, timing, data, (Expression) val);
         if (key == EXTENSION)

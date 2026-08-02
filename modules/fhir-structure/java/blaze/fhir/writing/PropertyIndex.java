@@ -15,17 +15,17 @@ public final class PropertyIndex {
     private final int[] indices;
     private final int mask;
 
-    public PropertyIndex(PropertyHandler[] propertyHandlers) {
+    public PropertyIndex(Keyword[] propertyKeys) {
         int capacity = 4;
-        while (capacity < propertyHandlers.length * 2) {
+        while (capacity < propertyKeys.length * 2) {
             capacity <<= 1;
         }
         this.keys = new Keyword[capacity];
         this.indices = new int[capacity];
         this.mask = capacity - 1;
 
-        for (int index = 0; index < propertyHandlers.length; index++) {
-            var key = propertyHandlers[index].key;
+        for (int index = 0; index < propertyKeys.length; index++) {
+            var key = propertyKeys[index];
             int i = key.hasheq() & mask;
             while (keys[i] != null) {
                 if (keys[i] == key) {

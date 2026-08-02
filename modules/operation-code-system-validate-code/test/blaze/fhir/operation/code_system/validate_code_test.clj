@@ -135,12 +135,12 @@
 
   (testing "successful validation by id"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "id-162245"
-               :url #fhir/uri "system-115910"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-162245"
+                        :url #fhir/uri "system-115910"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]]]
 
       (testing "and code"
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
@@ -211,12 +211,12 @@
 
   (testing "successful validation by url"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]]]
 
       (testing "and code"
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
@@ -253,18 +253,18 @@
 
   (testing "optional parameters"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "version-160100"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"
-                 :display #fhir/string "display-160200"
-                 :designation
-                 [{:fhir/type :fhir.CodeSystem.concept/designation
-                   :language #fhir/code "en"
-                   :value #fhir/string "designation-112200"}]}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "version-160100"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"
+                                   :display #fhir/string "display-160200"
+                                   :designation
+                                   [#fhir/map{:fhir/type :fhir.CodeSystem.concept/designation
+                                              :language #fhir/code "en"
+                                              :value #fhir/string "designation-112200"}]}]}]]]
 
       (testing "version"
         (let [{:keys [status body]}

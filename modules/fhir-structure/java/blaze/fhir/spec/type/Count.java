@@ -56,7 +56,7 @@ public final class Count extends AbstractQuantity {
 
     @Override
     public Count empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

@@ -95,12 +95,12 @@
 
 (defn- query-plan-outcome [{:blaze/keys [db]} query]
   (let [plan (d/explain-query db query)]
-    {:fhir/type :fhir/OperationOutcome
-     :issue
-     [{:fhir/type :fhir.OperationOutcome/issue
-       :severity #fhir/code "information"
-       :code #fhir/code "informational"
-       :diagnostics (type/string (query-plan/render plan))}]}))
+    (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                    :issue
+                    [(type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                                     :severity #fhir/code "information"
+                                     :code #fhir/code "informational"
+                                     :diagnostics (type/string (query-plan/render plan))})]})))
 
 (defn- query-plan-entry [context query]
   (search-util/outcome-entry context (query-plan-outcome context query)))

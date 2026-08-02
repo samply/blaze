@@ -320,7 +320,7 @@
     (testing "returns results with a self link lacking the unknown search parameter"
       (testing "where the unknown search parameter is the only one"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
           (testing "normal result"
             (let [{:keys [status body]}
@@ -379,9 +379,9 @@
 
       (testing "with another search parameter"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Patient :id "1"
-                   :active #fhir/boolean true}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+            [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                            :active #fhir/boolean true}]]]
 
           (testing "normal result"
             (let [{:keys [status body]}
@@ -455,7 +455,7 @@
     (testing "returns results with a self link lacking the unknown search parameter"
       (testing "where the unknown search parameter is the only one"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
           (testing "normal result"
             (let [{:keys [status body]}
@@ -513,9 +513,9 @@
 
       (testing "with another search parameter"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Patient :id "1"
-                   :active #fhir/boolean true}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+            [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                            :active #fhir/boolean true}]]]
 
           (testing "normal result"
             (let [{:keys [status body]}
@@ -680,18 +680,18 @@
 
 (deftest handler-two-locations-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Location :id "0"
-             :name #fhir/string "London"
-             :position
-             {:fhir/type :fhir.Location/position
-              :latitude #fhir/decimal 51.50722M
-              :longitude #fhir/decimal -0.12750M}}]
-      [:put {:fhir/type :fhir/Location :id "1"
-             :name #fhir/string "Leipzig"
-             :position
-             {:fhir/type :fhir.Location/position
-              :latitude #fhir/decimal 51.3397M
-              :longitude #fhir/decimal 12.3731M}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Location :id "0"
+                      :name #fhir/string "London"
+                      :position
+                      #fhir/map{:fhir/type :fhir.Location/position
+                                :latitude #fhir/decimal 51.50722M
+                                :longitude #fhir/decimal -0.12750M}}]
+      [:put #fhir/map{:fhir/type :fhir/Location :id "1"
+                      :name #fhir/string "Leipzig"
+                      :position
+                      #fhir/map{:fhir/type :fhir.Location/position
+                                :latitude #fhir/decimal 51.3397M
+                                :longitude #fhir/decimal 12.3731M}}]]]
 
     (testing "Returns all existing resources of type"
       (doseq [params [{} {"_summary" "false"}]]
@@ -784,8 +784,8 @@
 
 (deftest handler-one-patient-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"
-             :multipleBirth #fhir/boolean true}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                      :multipleBirth #fhir/boolean true}]]]
 
     (testing "Returns all existing resources of type"
       (doseq [params [{} {"_summary" "false"}]]
@@ -914,8 +914,8 @@
 
 (deftest handler-two-patients-test
   (with-handler [handler node page-id-cipher]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
     (testing "search for all patients with _count=1"
       (let [{:keys [body]}
@@ -997,7 +997,7 @@
             (is (= 1 (count (:entry body))))))))
 
     (testing "adding a third patient doesn't influence the paging"
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "2"}]])
+      @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]])
 
       (testing "following the next link"
         (let [{:keys [body]}
@@ -1027,9 +1027,9 @@
 
 (deftest handler-three-patients-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1" :active #fhir/boolean true}]
-      [:put {:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1" :active #fhir/boolean true}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]]]
 
     (testing "search for active patients with _summary=count"
       (testing "with strict handling"
@@ -1237,10 +1237,10 @@
 
 (deftest handler-four-patients-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1" :active #fhir/boolean true}]
-      [:put {:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]
-      [:put {:fhir/type :fhir/Patient :id "3" :active #fhir/boolean true}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1" :active #fhir/boolean true}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "2" :active #fhir/boolean true}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "3" :active #fhir/boolean true}]]]
 
     (testing "on normal request"
       (testing "search for active patients with _count=1"
@@ -1350,8 +1350,8 @@
 
 (deftest handler-id-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1388,11 +1388,11 @@
 
   (testing "multiple ids"
     (with-handler [handler _ page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Patient :id "2"}]
-        [:put {:fhir/type :fhir/Patient :id "3"}]
-        [:put {:fhir/type :fhir/Patient :id "4"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "3"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "4"}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -1495,8 +1495,8 @@
 
   (testing "with additional _profile search param"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-095443"]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-095443"]}}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1533,7 +1533,7 @@
 
   (testing "with additional _sort search param"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1570,7 +1570,7 @@
 
   (testing "with additional _profile and _sort search param matching no patient"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status body]}
@@ -1598,7 +1598,7 @@
 
 (deftest handler-lastUpdated-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
     (testing "the resource is created at EPOCH"
       (doseq [handling ["strict" "lenient"]]
@@ -1644,7 +1644,7 @@
 
   (testing "deleted resources are not found"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
       (doseq [handling ["strict" "lenient"]]
@@ -1663,9 +1663,9 @@
 
 (deftest handler-id-sort-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-     [[:put {:fhir/type :fhir/Patient :id "2"}]]
-     [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+     [[:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]
+     [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
     (testing "ascending"
       (doseq [handling ["strict" "lenient"]]
@@ -1722,9 +1722,9 @@
 
 (deftest handler-lastUpdated-sort-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-     [[:put {:fhir/type :fhir/Patient :id "1"}]]
-     [[:put {:fhir/type :fhir/Patient :id "2"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+     [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]
+     [[:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]]
 
     (testing "ascending"
       (doseq [handling ["strict" "lenient"]]
@@ -1804,10 +1804,10 @@
 
 (deftest handler-profile-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
       [:put
-       {:fhir/type :fhir/Patient :id "1"
-        :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511"]}}]]]
+       #fhir/map{:fhir/type :fhir/Patient :id "1"
+                 :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511"]}}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1841,10 +1841,10 @@
 
 (deftest handler-tag-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
       [:put
-       {:fhir/type :fhir/Patient :id "1"
-        :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code "code-085510"}]}}]]]
+       #fhir/map{:fhir/type :fhir/Patient :id "1"
+                 :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code "code-085510"}]}}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1879,14 +1879,14 @@
 (deftest handler-profile-below-search-test
   (with-handler [handler]
     [[[:put
-       {:fhir/type :fhir/Patient :id "0"
-        :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511|1.1"]}}]
+       #fhir/map{:fhir/type :fhir/Patient :id "0"
+                 :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511|1.1"]}}]
       [:put
-       {:fhir/type :fhir/Patient :id "1"
-        :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511|1.2"]}}]
+       #fhir/map{:fhir/type :fhir/Patient :id "1"
+                 :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511|1.2"]}}]
       [:put
-       {:fhir/type :fhir/Patient :id "2"
-        :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511|2.1"]}}]]]
+       #fhir/map{:fhir/type :fhir/Patient :id "2"
+                 :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-151511|2.1"]}}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -1950,14 +1950,14 @@
 
 (deftest handler-list-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1"}]
-      [:put {:fhir/type :fhir/List :id "0"
-             :entry
-             [{:fhir/type :fhir.List/entry
-               :item
-               #fhir/Reference
-                {:reference #fhir/string "Patient/0"}}]}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+      [:put #fhir/map{:fhir/type :fhir/List :id "0"
+                      :entry
+                      [#fhir/map{:fhir/type :fhir.List/entry
+                                 :item
+                                 #fhir/Reference
+                                  {:reference #fhir/string "Patient/0"}}]}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -1990,24 +1990,24 @@
 
 (deftest handler-value-quantity-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Observation :id "0"
-             :value
-             #fhir/Quantity
-              {:value #fhir/decimal 65M
-               :code #fhir/code "kg"
-               :system #fhir/uri "http://unitsofmeasure.org"}}]
-      [:put {:fhir/type :fhir/Observation :id "1"
-             :value
-             #fhir/Quantity
-              {:value #fhir/decimal 75M
-               :code #fhir/code "kg"
-               :system #fhir/uri "http://unitsofmeasure.org"}}]
-      [:put {:fhir/type :fhir/Observation :id "2"
-             :value
-             #fhir/Quantity
-              {:value #fhir/decimal 100M
-               :code #fhir/code "kg"
-               :system #fhir/uri "http://unitsofmeasure.org"}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                      :value
+                      #fhir/Quantity
+                       {:value #fhir/decimal 65M
+                        :code #fhir/code "kg"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                      :value
+                      #fhir/Quantity
+                       {:value #fhir/decimal 75M
+                        :code #fhir/code "kg"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                      :value
+                      #fhir/Quantity
+                       {:value #fhir/decimal 100M
+                        :code #fhir/code "kg"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}]]]
 
     (doseq [handling ["strict" "lenient"]
             value ["ge70" " ge70" "ge70 " "ge 70" " ge 70 "]]
@@ -2045,47 +2045,47 @@
 
 (deftest handler-has-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1"}]
-      [:put {:fhir/type :fhir/Observation :id "0"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://loinc.org"
-                  :code #fhir/code "8480-6"}]}
-             :value
-             #fhir/Quantity
-              {:value #fhir/decimal 130M
-               :code #fhir/code "mm[Hg]"
-               :system #fhir/uri "http://unitsofmeasure.org"}}]
-      [:put {:fhir/type :fhir/Observation :id "1"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://loinc.org"
-                  :code #fhir/code "8480-6"}]}
-             :value
-             #fhir/Quantity
-              {:value #fhir/decimal 150M
-               :code #fhir/code "mm[Hg]"
-               :system #fhir/uri "http://unitsofmeasure.org"}}]
-      [:put {:fhir/type :fhir/Observation :id "2"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://loinc.org"
-                  :code #fhir/code "8480-6"}]}
-             :value
-             #fhir/Quantity
-              {:value #fhir/decimal 100M
-               :code #fhir/code "mm[Hg]"
-               :system #fhir/uri "http://unitsofmeasure.org"}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://loinc.org"
+                           :code #fhir/code "8480-6"}]}
+                      :value
+                      #fhir/Quantity
+                       {:value #fhir/decimal 130M
+                        :code #fhir/code "mm[Hg]"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://loinc.org"
+                           :code #fhir/code "8480-6"}]}
+                      :value
+                      #fhir/Quantity
+                       {:value #fhir/decimal 150M
+                        :code #fhir/code "mm[Hg]"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://loinc.org"
+                           :code #fhir/code "8480-6"}]}
+                      :value
+                      #fhir/Quantity
+                       {:value #fhir/decimal 100M
+                        :code #fhir/code "mm[Hg]"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2118,10 +2118,10 @@
 
 (deftest handler-patient-identifier-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"
-             :identifier [#fhir/Identifier{:value #fhir/string "0"}]}]
-      [:put {:fhir/type :fhir/Patient :id "1"
-             :identifier [#fhir/Identifier{:value #fhir/string "1"}]}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                      :identifier [#fhir/Identifier{:value #fhir/string "0"}]}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                      :identifier [#fhir/Identifier{:value #fhir/string "1"}]}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2153,31 +2153,31 @@
 
 (deftest handler-patient-language-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"
-             :communication
-             [{:fhir/type :fhir.Patient/communication
-               :language
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "urn:ietf:bcp:47"
-                    :code #fhir/code "de"}]}}
-              {:fhir/type :fhir.Patient/communication
-               :language
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "urn:ietf:bcp:47"
-                    :code #fhir/code "en"}]}}]}]
-      [:put {:fhir/type :fhir/Patient :id "1"
-             :communication
-             [{:fhir/type :fhir.Patient/communication
-               :language
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "urn:ietf:bcp:47"
-                    :code #fhir/code "de"}]}}]}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                      :communication
+                      [#fhir/map{:fhir/type :fhir.Patient/communication
+                                 :language
+                                 #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                     {:system #fhir/uri "urn:ietf:bcp:47"
+                                      :code #fhir/code "de"}]}}
+                       #fhir/map{:fhir/type :fhir.Patient/communication
+                                 :language
+                                 #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                     {:system #fhir/uri "urn:ietf:bcp:47"
+                                      :code #fhir/code "en"}]}}]}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                      :communication
+                      [#fhir/map{:fhir/type :fhir.Patient/communication
+                                 :language
+                                 #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                     {:system #fhir/uri "urn:ietf:bcp:47"
+                                      :code #fhir/code "de"}]}}]}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2208,8 +2208,8 @@
 
 (deftest handler-library-title-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Library :id "0" :title #fhir/string "ab"}]
-      [:put {:fhir/type :fhir/Library :id "1" :title #fhir/string "b"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Library :id "0" :title #fhir/string "ab"}]
+      [:put #fhir/map{:fhir/type :fhir/Library :id "1" :title #fhir/string "b"}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2240,10 +2240,10 @@
 
 (deftest handler-measure-report-measure-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/MeasureReport :id "0"
-             :measure #fhir/canonical "http://server.com/Measure/0"}]]
-     [[:put {:fhir/type :fhir/MeasureReport :id "1"
-             :measure #fhir/canonical "http://server.com/Measure/1"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/MeasureReport :id "0"
+                      :measure #fhir/canonical "http://server.com/Measure/0"}]]
+     [[:put #fhir/map{:fhir/type :fhir/MeasureReport :id "1"
+                      :measure #fhir/canonical "http://server.com/Measure/1"}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2276,24 +2276,24 @@
 
 (deftest handler-list-item-search-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/List :id "id-123058"
-             :entry
-             [{:fhir/type :fhir.List/entry
-               :item
-               #fhir/Reference
-                {:identifier
-                 #fhir/Identifier
-                  {:system #fhir/uri "system-122917"
-                   :value #fhir/string "value-122931"}}}]}]
-      [:put {:fhir/type :fhir/List :id "id-143814"
-             :entry
-             [{:fhir/type :fhir.List/entry
-               :item
-               #fhir/Reference
-                {:identifier
-                 #fhir/Identifier
-                  {:system #fhir/uri "system-122917"
-                   :value #fhir/string "value-143818"}}}]}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/List :id "id-123058"
+                      :entry
+                      [#fhir/map{:fhir/type :fhir.List/entry
+                                 :item
+                                 #fhir/Reference
+                                  {:identifier
+                                   #fhir/Identifier
+                                    {:system #fhir/uri "system-122917"
+                                     :value #fhir/string "value-122931"}}}]}]
+      [:put #fhir/map{:fhir/type :fhir/List :id "id-143814"
+                      :entry
+                      [#fhir/map{:fhir/type :fhir.List/entry
+                                 :item
+                                 #fhir/Reference
+                                  {:identifier
+                                   #fhir/Identifier
+                                    {:system #fhir/uri "system-122917"
+                                     :value #fhir/string "value-143818"}}}]}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2326,58 +2326,58 @@
 
 (deftest handler-observation-combo-code-value-quantity-search-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Observation :id "id-121049"
-             :component
-             [{:fhir/type :fhir.Observation/component
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://loinc.org"
-                    :code #fhir/code "8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 140M
-                 :system #fhir/uri "http://unitsofmeasure.org"
-                 :code #fhir/code "mm[Hg]"}}
-              {:fhir/type :fhir.Observation/component
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://loinc.org"
-                    :code #fhir/code "8462-4"}]}
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 90M
-                 :system #fhir/uri "http://unitsofmeasure.org"
-                 :code #fhir/code "mm[Hg]"}}]}]]
-     [[:put {:fhir/type :fhir/Observation :id "id-123130"
-             :component
-             [{:fhir/type :fhir.Observation/component
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://loinc.org"
-                    :code #fhir/code "8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 150M
-                 :system #fhir/uri "http://unitsofmeasure.org"
-                 :code #fhir/code "mm[Hg]"}}
-              {:fhir/type :fhir.Observation/component
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://loinc.org"
-                    :code #fhir/code "8462-4"}]}
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 100M
-                 :system #fhir/uri "http://unitsofmeasure.org"
-                 :code #fhir/code "mm[Hg]"}}]}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Observation :id "id-121049"
+                      :component
+                      [#fhir/map{:fhir/type :fhir.Observation/component
+                                 :code
+                                 #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                     {:system #fhir/uri "http://loinc.org"
+                                      :code #fhir/code "8480-6"}]}
+                                 :value
+                                 #fhir/Quantity
+                                  {:value #fhir/decimal 140M
+                                   :system #fhir/uri "http://unitsofmeasure.org"
+                                   :code #fhir/code "mm[Hg]"}}
+                       #fhir/map{:fhir/type :fhir.Observation/component
+                                 :code
+                                 #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                     {:system #fhir/uri "http://loinc.org"
+                                      :code #fhir/code "8462-4"}]}
+                                 :value
+                                 #fhir/Quantity
+                                  {:value #fhir/decimal 90M
+                                   :system #fhir/uri "http://unitsofmeasure.org"
+                                   :code #fhir/code "mm[Hg]"}}]}]]
+     [[:put #fhir/map{:fhir/type :fhir/Observation :id "id-123130"
+                      :component
+                      [#fhir/map{:fhir/type :fhir.Observation/component
+                                 :code
+                                 #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                     {:system #fhir/uri "http://loinc.org"
+                                      :code #fhir/code "8480-6"}]}
+                                 :value
+                                 #fhir/Quantity
+                                  {:value #fhir/decimal 150M
+                                   :system #fhir/uri "http://unitsofmeasure.org"
+                                   :code #fhir/code "mm[Hg]"}}
+                       #fhir/map{:fhir/type :fhir.Observation/component
+                                 :code
+                                 #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                     {:system #fhir/uri "http://loinc.org"
+                                      :code #fhir/code "8462-4"}]}
+                                 :value
+                                 #fhir/Quantity
+                                  {:value #fhir/decimal 100M
+                                   :system #fhir/uri "http://unitsofmeasure.org"
+                                   :code #fhir/code "mm[Hg]"}}]}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status body]}
@@ -2415,13 +2415,13 @@
 
 (deftest handler-duplicate-or-search-parameters-have-no-effect-#293-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Condition :id "0"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/icd-10-gm"
-                  :code #fhir/code "C71.4"}]}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Condition :id "0"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                           :code #fhir/code "C71.4"}]}}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2454,24 +2454,24 @@
 
 (deftest handler-paging-works-with-or-search-parameters-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Condition :id "0"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:code #fhir/code "0"}]}}]
-      [:put {:fhir/type :fhir/Condition :id "2"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:code #fhir/code "0"}]}}]
-      [:put {:fhir/type :fhir/Condition :id "1"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:code #fhir/code "1"}]}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Condition :id "0"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:code #fhir/code "0"}]}}]
+      [:put #fhir/map{:fhir/type :fhir/Condition :id "2"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:code #fhir/code "0"}]}}]
+      [:put #fhir/map{:fhir/type :fhir/Condition :id "1"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:code #fhir/code "1"}]}}]]]
 
     (doseq [handling ["strict" "lenient"]]
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2498,39 +2498,39 @@
 
 (deftest handler-forward-chaining-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Encounter
-             :id "0"
-             :diagnosis
-             [{:fhir/type :fhir.Encounter/diagnosis
-               :condition
-               #fhir/Reference{:reference #fhir/string "Condition/0"}}
-              {:fhir/type :fhir.Encounter/diagnosis
-               :condition
-               #fhir/Reference{:reference #fhir/string "Condition/2"}}]}]
-      [:put {:fhir/type :fhir/Encounter
-             :id "1"
-             :diagnosis
-             [{:fhir/type :fhir.Encounter/diagnosis
-               :condition
-               #fhir/Reference{:reference #fhir/string "Condition/1"}}]}]
-      [:put {:fhir/type :fhir/Condition
-             :id "0"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding{:code #fhir/code "foo"}]}}]
-      [:put {:fhir/type :fhir/Condition
-             :id "1"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding{:code #fhir/code "bar"}]}}]
-      [:put {:fhir/type :fhir/Condition
-             :id "2"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding{:code #fhir/code "foo"}]}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Encounter
+                      :id "0"
+                      :diagnosis
+                      [#fhir/map{:fhir/type :fhir.Encounter/diagnosis
+                                 :condition
+                                 #fhir/Reference{:reference #fhir/string "Condition/0"}}
+                       #fhir/map{:fhir/type :fhir.Encounter/diagnosis
+                                 :condition
+                                 #fhir/Reference{:reference #fhir/string "Condition/2"}}]}]
+      [:put #fhir/map{:fhir/type :fhir/Encounter
+                      :id "1"
+                      :diagnosis
+                      [#fhir/map{:fhir/type :fhir.Encounter/diagnosis
+                                 :condition
+                                 #fhir/Reference{:reference #fhir/string "Condition/1"}}]}]
+      [:put #fhir/map{:fhir/type :fhir/Condition
+                      :id "0"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding{:code #fhir/code "foo"}]}}]
+      [:put #fhir/map{:fhir/type :fhir/Condition
+                      :id "1"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding{:code #fhir/code "bar"}]}}]
+      [:put #fhir/map{:fhir/type :fhir/Condition
+                      :id "2"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding{:code #fhir/code "foo"}]}}]]]
 
     (testing "success"
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -2570,71 +2570,71 @@
 
 (deftest handler-token-in-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-             :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-             :content #fhir/code "fragment"
-             :concept
-             [{:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C69-C72"}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C69"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C69-C72"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C71"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C69-C72"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C69.4"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C69"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C71.4"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C71"}]}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C73-C75"}
-              {:fhir/type :fhir.CodeSystem/concept
-               :code #fhir/code "C73"
-               :property
-               [{:fhir/type :fhir.CodeSystem.concept/property
-                 :code #fhir/code "parent"
-                 :value #fhir/code "C73-C75"}]}]}]]
-     [[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Condition :id "0"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-                  :code #fhir/code "C71.4"}]}}]
-      [:put {:fhir/type :fhir/Condition :id "1"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-      [:put {:fhir/type :fhir/Condition :id "2"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-                  :code #fhir/code "C69.4"}]}}]
-      [:put {:fhir/type :fhir/Condition :id "3"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
-                  :code #fhir/code "C73"}]}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                      :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                      :content #fhir/code "fragment"
+                      :concept
+                      [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code "C69-C72"}
+                       #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code "C69"
+                                 :property
+                                 [#fhir/map{:fhir/type :fhir.CodeSystem.concept/property
+                                            :code #fhir/code "parent"
+                                            :value #fhir/code "C69-C72"}]}
+                       #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code "C71"
+                                 :property
+                                 [#fhir/map{:fhir/type :fhir.CodeSystem.concept/property
+                                            :code #fhir/code "parent"
+                                            :value #fhir/code "C69-C72"}]}
+                       #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code "C69.4"
+                                 :property
+                                 [#fhir/map{:fhir/type :fhir.CodeSystem.concept/property
+                                            :code #fhir/code "parent"
+                                            :value #fhir/code "C69"}]}
+                       #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code "C71.4"
+                                 :property
+                                 [#fhir/map{:fhir/type :fhir.CodeSystem.concept/property
+                                            :code #fhir/code "parent"
+                                            :value #fhir/code "C71"}]}
+                       #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code "C73-C75"}
+                       #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code "C73"
+                                 :property
+                                 [#fhir/map{:fhir/type :fhir.CodeSystem.concept/property
+                                            :code #fhir/code "parent"
+                                            :value #fhir/code "C73-C75"}]}]}]]
+     [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Condition :id "0"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                           :code #fhir/code "C71.4"}]}}]
+      [:put #fhir/map{:fhir/type :fhir/Condition :id "1"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put #fhir/map{:fhir/type :fhir/Condition :id "2"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                           :code #fhir/code "C69.4"}]}}]
+      [:put #fhir/map{:fhir/type :fhir/Condition :id "3"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                           :code #fhir/code "C73"}]}}]]]
 
     (testing "success"
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -2664,9 +2664,9 @@
 (deftest handler-include-resources-test
   (testing "direct include"
     (with-handler [handler _ page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -2714,9 +2714,9 @@
 
     (testing "with non-matching target type"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2745,11 +2745,11 @@
 
     (testing "includes don't appear twice"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2790,9 +2790,9 @@
 
     (testing "a match that is also an include is removed from the includes"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
-          [:put {:fhir/type :fhir/Observation :id "1"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2823,12 +2823,12 @@
 
     (testing "two includes"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Encounter :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :encounter #fhir/Reference{:reference #fhir/string "Encounter/1"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :encounter #fhir/Reference{:reference #fhir/string "Encounter/1"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2871,12 +2871,12 @@
 
     (testing "with paging"
       (with-handler [handler _ page-id-cipher]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Patient :id "2"}]
-          [:put {:fhir/type :fhir/Observation :id "3"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "3"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/2"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -2967,15 +2967,15 @@
 
   (testing "iterative include"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
-               :medication
-               #fhir/Reference
-                {:reference #fhir/string "Medication/0"}}]
-        [:put {:fhir/type :fhir/Medication :id "0"
-               :manufacturer
-               #fhir/Reference
-                {:reference #fhir/string "Organization/0"}}]
-        [:put {:fhir/type :fhir/Organization :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/MedicationStatement :id "0"
+                        :medication
+                        #fhir/Reference
+                         {:reference #fhir/string "Medication/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Medication :id "0"
+                        :manufacturer
+                        #fhir/Reference
+                         {:reference #fhir/string "Organization/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Organization :id "0"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -3019,15 +3019,15 @@
 
   (testing "revinclude and iterative include"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Practitioner :id "0"}]
-        [:put {:fhir/type :fhir/PractitionerRole :id "0"
-               :organization
-               #fhir/Reference
-                {:reference #fhir/string "Organization/0"}
-               :practitioner
-               #fhir/Reference
-                {:reference #fhir/string "Practitioner/0"}}]
-        [:put {:fhir/type :fhir/Organization :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Practitioner :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/PractitionerRole :id "0"
+                        :organization
+                        #fhir/Reference
+                         {:reference #fhir/string "Organization/0"}
+                        :practitioner
+                        #fhir/Reference
+                         {:reference #fhir/string "Practitioner/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Organization :id "0"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -3072,10 +3072,10 @@
   (testing "too many resources"
     (with-handler [handler]
       [(into
-        [[:put {:fhir/type :fhir/Patient :id "0"}]]
+        [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [i]
-               [:put {:fhir/type :fhir/Observation :id (str i)
-                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
+               [:put (type/fhir-map {:fhir/type :fhir/Observation :id (str i)
+                                     :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})]))
         (range 10001))]
 
       (let [{:keys [status body]}
@@ -3096,7 +3096,7 @@
     (with-redefs [search-include/add-includes
                   (constantly (ba/conflict "msg-133007"))]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -3113,15 +3113,15 @@
 
   (testing "too many resources with page size lowering"
     (with-handler [handler _ page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]
        (mapv (fn [i]
-               [:put {:fhir/type :fhir/Observation :id (str i)
-                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}])
+               [:put (type/fhir-map {:fhir/type :fhir/Observation :id (str i)
+                                     :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})])
              (range 5000))
        (mapv (fn [i]
-               [:put {:fhir/type :fhir/Observation :id (str i)
-                      :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}])
+               [:put (type/fhir-map {:fhir/type :fhir/Observation :id (str i)
+                                     :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})])
              (range 5000 10001))]
 
       (let [{:keys [status body]}
@@ -3207,15 +3207,15 @@
 
   (testing "non-iterative include doesn't work iterative"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
-               :medication
-               #fhir/Reference
-                {:reference #fhir/string "Medication/0"}}]
-        [:put {:fhir/type :fhir/Medication :id "0"
-               :manufacturer
-               #fhir/Reference
-                {:reference #fhir/string "Organization/0"}}]
-        [:put {:fhir/type :fhir/Organization :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/MedicationStatement :id "0"
+                        :medication
+                        #fhir/Reference
+                         {:reference #fhir/string "Medication/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Medication :id "0"
+                        :manufacturer
+                        #fhir/Reference
+                         {:reference #fhir/string "Organization/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Organization :id "0"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -3252,9 +3252,9 @@
 
   (testing "revinclude"
     (with-handler [handler _ page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -3300,11 +3300,11 @@
 
     (testing "two revincludes"
       (with-handler [handler _ page-id-cipher]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Condition :id "2"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Condition :id "2"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -3373,13 +3373,13 @@
 
 (deftest handler-elements-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Observation :id "0"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :value #fhir/string "foo"}]
-      [:put {:fhir/type :fhir/Observation :id "1"
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :value #fhir/string "foo"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :value #fhir/string "foo"}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :value #fhir/string "foo"}]]]
 
     (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
           @(handler
@@ -3431,7 +3431,7 @@
 (deftest handler-missing-resource-contents-test
   (with-redefs [rc/get (fn [_ _] (ac/completed-future nil))]
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]}
             @(handler {})]
@@ -3451,7 +3451,7 @@
       (ac/completed-future
        (when (= :fhir/Patient (first key)) (ba/busy "msg-181758"))))]
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]}
             @(handler {})]
@@ -3468,7 +3468,7 @@
   (testing "an anomaly returned by d/execute-query is propagated as an error response"
     (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141022"))]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler {:params {"_id" "0"}})]
@@ -3483,22 +3483,22 @@
 (deftest handler-procedure-non-resolving-patient-reference-test
   (testing "procedure with non-resolving patient reference"
     (with-handler-non-ref [handler page-id-cipher]
-      [[[:put {:fhir/type :fhir/Procedure :id "0"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://snomed.info/sct"
-                    :code #fhir/code "243141005"}]}
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Procedure :id "1"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://snomed.info/sct"
-                    :code #fhir/code "243141005"}]}
-               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Procedure :id "0"
+                        :code
+                        #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                            {:system #fhir/uri "http://snomed.info/sct"
+                             :code #fhir/code "243141005"}]}
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Procedure :id "1"
+                        :code
+                        #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                            {:system #fhir/uri "http://snomed.info/sct"
+                             :code #fhir/code "243141005"}]}
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]]
 
       (testing "all procedures are found"
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -3572,16 +3572,16 @@
 
 (deftest handler-query-stats-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Observation :id "0"
-             :status #fhir/code "final"
-             :code #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "http://loinc.org"
-                        :code #fhir/code "94564-2"}]}
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-             :effective #fhir/dateTime #system/date-time "2025"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                      :status #fhir/code "final"
+                      :code #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "http://loinc.org"
+                                 :code #fhir/code "94564-2"}]}
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                      :effective #fhir/dateTime #system/date-time "2025"}]]]
 
     (testing "no search param"
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -3876,9 +3876,9 @@
 
 (deftest handler-previous-paging-test
   (with-handler [handler _ page-id-cipher]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1"}]
-      [:put {:fhir/type :fhir/Patient :id "2"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+      [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]]
 
     (testing "the first page has no previous link"
       (let [{:keys [body]} @(handler {:params {"_count" "1"}})]
@@ -3972,9 +3972,9 @@
 (deftest handler-previous-paging-cap-test
   (testing "the page id stack is capped to the newest 10 entries"
     (with-handler [handler _ page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Patient :id "2"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]]
 
       (let [stack (mapv #(str "p" %) (range 10))
             {:keys [body]}

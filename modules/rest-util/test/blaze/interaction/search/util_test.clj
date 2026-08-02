@@ -32,7 +32,7 @@
    ::reitit/router router})
 
 (deftest match-entry-test
-  (given-thrown (search-util/match-entry {} {:fhir/type :fhir/Patient :id "0"})
+  (given-thrown (search-util/match-entry {} #fhir/map{:fhir/type :fhir/Patient :id "0"})
     [::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze/base-url))
     [::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% ::reitit/router)))
 
@@ -40,7 +40,7 @@
     [::s/problems 0 :path] := [:resource]
     [::s/problems 0 :via] := [:fhir/Resource :fhir/Resource])
 
-  (given (search-util/match-entry context {:fhir/type :fhir/Patient :id "0"})
+  (given (search-util/match-entry context #fhir/map{:fhir/type :fhir/Patient :id "0"})
     :fhir/type := :fhir.Bundle/entry
     :fullUrl := #fhir/uri "/Patient/0"
     [:resource :fhir/type] := :fhir/Patient
@@ -48,7 +48,7 @@
     [:search :mode] := #fhir/code "match"
     [:search :extension] :? empty?)
 
-  (let [resource (with-meta {:fhir/type :fhir/Patient :id "0"}
+  (let [resource (with-meta #fhir/map{:fhir/type :fhir/Patient :id "0"}
                    {::sp/match-extension [#fhir/Extension{:url "url-135131"}]})]
     (given (search-util/match-entry context resource)
       :fhir/type := :fhir.Bundle/entry
@@ -59,7 +59,7 @@
       [:search :extension] := [#fhir/Extension{:url "url-135131"}])))
 
 (deftest include-entry-test
-  (given-thrown (search-util/include-entry {} {:fhir/type :fhir/Patient :id "0"})
+  (given-thrown (search-util/include-entry {} #fhir/map{:fhir/type :fhir/Patient :id "0"})
     [::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze/base-url))
     [::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% ::reitit/router)))
 
@@ -67,7 +67,7 @@
     [::s/problems 0 :path] := [:resource]
     [::s/problems 0 :via] := [:fhir/Resource :fhir/Resource])
 
-  (given (search-util/include-entry context {:fhir/type :fhir/Patient :id "0"})
+  (given (search-util/include-entry context #fhir/map{:fhir/type :fhir/Patient :id "0"})
     :fhir/type := :fhir.Bundle/entry
     :fullUrl := #fhir/uri "/Patient/0"
     [:resource :fhir/type] := :fhir/Patient
@@ -75,7 +75,7 @@
     [:search :mode] #fhir/code "include"))
 
 (deftest outcome-entry-test
-  (given-thrown (search-util/outcome-entry {} {:fhir/type :fhir/Patient :id "0"})
+  (given-thrown (search-util/outcome-entry {} #fhir/map{:fhir/type :fhir/Patient :id "0"})
     [::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze/base-url))
     [::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% ::reitit/router)))
 
@@ -83,11 +83,11 @@
     [::s/problems 0 :path] := [:resource]
     [::s/problems 0 :via] := [:fhir/OperationOutcome :fhir/OperationOutcome])
 
-  (given-thrown (search-util/outcome-entry context {:fhir/type :fhir/Patient})
+  (given-thrown (search-util/outcome-entry context #fhir/map{:fhir/type :fhir/Patient})
     [::s/problems 0 :path] := [:resource]
     [::s/problems 0 :via] := [:fhir/OperationOutcome :fhir/OperationOutcome])
 
-  (given (search-util/outcome-entry context {:fhir/type :fhir/OperationOutcome})
+  (given (search-util/outcome-entry context #fhir/map{:fhir/type :fhir/OperationOutcome})
     :fhir/type := :fhir.Bundle/entry
     [:resource :fhir/type] := :fhir/OperationOutcome
     [:search :mode] #fhir/code "outcome"))
@@ -111,15 +111,15 @@
       (satisfies-prop 10
         (prop/for-all [relation gen/string url gen/string]
           (= (link relation url)
-             {:fhir/type :fhir.Bundle/link
-              :relation (type/string relation)
-              :url (type/uri url)})))))
+             (type/fhir-map {:fhir/type :fhir.Bundle/link
+                             :relation (type/string relation)
+                             :url (type/uri url)}))))))
 
   (testing "FHIR v6.0.0-ballot3"
     (with-system [{::search-util/keys [link]} {::search-util/link {:fhir/version "6.0.0-ballot3"}}]
       (satisfies-prop 10
         (prop/for-all [relation gen/string url gen/string]
           (= (link relation url)
-             {:fhir/type :fhir.Bundle/link
-              :relation (type/code relation)
-              :url (type/uri url)}))))))
+             (type/fhir-map {:fhir/type :fhir.Bundle/link
+                             :relation (type/code relation)
+                             :url (type/uri url)})))))))

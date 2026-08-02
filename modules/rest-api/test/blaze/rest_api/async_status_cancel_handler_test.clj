@@ -118,14 +118,14 @@
     (with-handler [handler]
       [[[:put (assoc (completed-job (bt/offset-date-time) "0" 0 "1") :id "0")]
         [:put (job-async/request-bundle "0" "GET" "Observation/0")]
-        [:put {:fhir/type :fhir/Bundle
-               :id "1"
-               :type #fhir/code "batch-response"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :resource
-                 {:fhir/type :fhir/Observation
-                  :id "0"}}]}]]]
+        [:put #fhir/map{:fhir/type :fhir/Bundle
+                        :id "1"
+                        :type #fhir/code "batch-response"
+                        :entry
+                        [#fhir/map{:fhir/type :fhir.Bundle/entry
+                                   :resource
+                                   #fhir/map{:fhir/type :fhir/Observation
+                                             :id "0"}}]}]]]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]

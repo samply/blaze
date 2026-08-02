@@ -26,10 +26,10 @@
   (doseq [system (canonical/urls "sid/JobNumber")]
     (is (= "174731"
            (job-util/job-number
-            {:fhir/type :fhir/Task
-             :identifier
-             [(type/identifier {:system (type/uri system)
-                                :value #fhir/string "174731"})]})))))
+            (type/fhir-map {:fhir/type :fhir/Task
+                            :identifier
+                            [(type/identifier {:system (type/uri system)
+                                               :value #fhir/string "174731"})]}))))))
 
 (deftest code-value-test
   (testing "matches by system value"
@@ -56,22 +56,22 @@
   (doseq [system (canonical/urls "CodeSystem/JobType")]
     (is (= :type-140532
            (job-util/job-type
-            {:fhir/type :fhir/Task
-             :code (jtu/concept system "type-140532")})))))
+            (type/fhir-map {:fhir/type :fhir/Task
+                            :code (jtu/concept system "type-140532")}))))))
 
 (deftest status-reason-test
   (doseq [system (canonical/urls "CodeSystem/JobStatusReason")]
     (is (= "reason-175220"
            (job-util/status-reason
-            {:fhir/type :fhir/Task
-             :statusReason (jtu/concept system "reason-175220")})))))
+            (type/fhir-map {:fhir/type :fhir/Task
+                            :statusReason (jtu/concept system "reason-175220")}))))))
 
 (deftest cancelled-sub-status-test
   (doseq [system (canonical/urls "CodeSystem/JobCancelledSubStatus")]
     (is (= "sub-status-161316"
            (job-util/cancelled-sub-status
-            {:fhir/type :fhir/Task
-             :businessStatus (jtu/concept system "sub-status-161316")})))))
+            (type/fhir-map {:fhir/type :fhir/Task
+                            :businessStatus (jtu/concept system "sub-status-161316")}))))))
 
 (deftest status-reason-emits-both-codings-test
   (testing "the predefined status reasons carry both systems, current first"
@@ -101,88 +101,88 @@
 
 (deftest input-value-test
   (is (= (job-util/input-value
-          {:fhir/type :fhir/Task
-           :input
-           [{:fhir/type :fhir.Task/input
-             :type (jtu/concept "foo" "other")
-             :value #fhir/string "other"}
-            {:fhir/type :fhir.Task/input
-             :type (jtu/concept "foo" "bar")
-             :value #fhir/code "baz"}]}
+          (type/fhir-map {:fhir/type :fhir/Task
+                          :input
+                          [(type/fhir-map {:fhir/type :fhir.Task/input
+                                           :type (jtu/concept "foo" "other")
+                                           :value #fhir/string "other"})
+                           (type/fhir-map {:fhir/type :fhir.Task/input
+                                           :type (jtu/concept "foo" "bar")
+                                           :value #fhir/code "baz"})]})
           "foo" "bar")
          #fhir/code "baz")))
 
 (deftest output-value-test
   (is (= (job-util/output-value
-          {:fhir/type :fhir/Task
-           :output
-           [(job-util/task-output "foo" "other" #fhir/string "other")
-            (job-util/task-output "foo" "bar" #fhir/code "baz")]}
+          (type/fhir-map {:fhir/type :fhir/Task
+                          :output
+                          [(job-util/task-output "foo" "other" #fhir/string "other")
+                           (job-util/task-output "foo" "bar" #fhir/code "baz")]})
           "foo" "bar")
          #fhir/code "baz"))
 
   (testing "with default output system"
     (is (= (job-util/output-value
-            {:fhir/type :fhir/Task
-             :output
-             [(job-util/task-output "foo" "other" #fhir/string "other")
-              (job-util/task-output "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput" "bar" #fhir/code "baz")]}
+            (type/fhir-map {:fhir/type :fhir/Task
+                            :output
+                            [(job-util/task-output "foo" "other" #fhir/string "other")
+                             (job-util/task-output "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput" "bar" #fhir/code "baz")]})
             "bar")
            #fhir/code "baz"))))
 
 (deftest outputs-test
   (is (= (job-util/outputs
-          {:fhir/type :fhir/Task
-           :output
-           [(job-util/task-output "foo" "other" #fhir/string "other")
-            (job-util/task-output "foo" "bar" #fhir/code "baz")
-            (job-util/task-output "foo" "bar" #fhir/code "qux")]}
+          (type/fhir-map {:fhir/type :fhir/Task
+                          :output
+                          [(job-util/task-output "foo" "other" #fhir/string "other")
+                           (job-util/task-output "foo" "bar" #fhir/code "baz")
+                           (job-util/task-output "foo" "bar" #fhir/code "qux")]})
           "foo" "bar")
          [(job-util/task-output "foo" "bar" #fhir/code "baz")
           (job-util/task-output "foo" "bar" #fhir/code "qux")]))
 
   (testing "without matching outputs"
-    (is (= (job-util/outputs {:fhir/type :fhir/Task} "foo" "bar") []))))
+    (is (= (job-util/outputs #fhir/map{:fhir/type :fhir/Task} "foo" "bar") []))))
 
 (deftest error-msg-test
   (is (= (job-util/error-msg
-          {:fhir/type :fhir/Task
-           :output
-           [(job-util/task-output "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput" "error" #fhir/string "msg-175657")]})
+          (type/fhir-map {:fhir/type :fhir/Task
+                          :output
+                          [(job-util/task-output "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput" "error" #fhir/string "msg-175657")]}))
          "msg-175657")))
 
 (deftest update-output-value-test
   (is (= (job-util/update-output-value
-          {:fhir/type :fhir/Task
-           :output
-           [(job-util/task-output "foo" "other" #fhir/string "other")
-            (job-util/task-output "foo" "bar" #fhir/integer 1)]}
+          (type/fhir-map {:fhir/type :fhir/Task
+                          :output
+                          [(job-util/task-output "foo" "other" #fhir/string "other")
+                           (job-util/task-output "foo" "bar" #fhir/integer 1)]})
           "foo" "bar"
           (fn [value x]
             (type/integer (+ (:value value) x)))
           1)
-         {:fhir/type :fhir/Task
-          :output
-          [(job-util/task-output "foo" "other" #fhir/string "other")
-           (job-util/task-output "foo" "bar" #fhir/integer 2)]})))
+         (type/fhir-map {:fhir/type :fhir/Task
+                         :output
+                         [(job-util/task-output "foo" "other" #fhir/string "other")
+                          (job-util/task-output "foo" "bar" #fhir/integer 2)]}))))
 
 (deftest remove-output-test
   (is (= (job-util/remove-output
-          {:fhir/type :fhir/Task
-           :output
-           [(job-util/task-output "foo" "other" #fhir/string "other")
-            (job-util/task-output "foo" "bar" #fhir/integer 1)]}
+          (type/fhir-map {:fhir/type :fhir/Task
+                          :output
+                          [(job-util/task-output "foo" "other" #fhir/string "other")
+                           (job-util/task-output "foo" "bar" #fhir/integer 1)]})
           "foo" "bar")
-         {:fhir/type :fhir/Task
-          :output
-          [(job-util/task-output "foo" "other" #fhir/string "other")]})))
+         (type/fhir-map {:fhir/type :fhir/Task
+                         :output
+                         [(job-util/task-output "foo" "other" #fhir/string "other")]}))))
 
 (defn- start-job [job]
   (assoc job :status #fhir/code "in-progress"))
 
 (deftest pull-job-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-    [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
     (given @(mtu/assoc-thread-name (job-util/pull-job node "0"))
       [meta :thread-name] :? mtu/common-pool-thread?
@@ -191,7 +191,7 @@
 
 (deftest update-job-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-    [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
     (let [job @(job-util/pull-job node "0")]
 
@@ -208,7 +208,7 @@
 
   (testing "lost updates are detected"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
       (let [job @(job-util/pull-job node "0")]
 
@@ -232,7 +232,7 @@
   (testing "without other resources"
     (testing "with no argument"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
 
@@ -242,7 +242,7 @@
 
     (testing "with one argument"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
 
@@ -252,7 +252,7 @@
 
     (testing "with two arguments"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
         (let [job @(job-util/pull-job node "0")]
 
@@ -261,11 +261,11 @@
 
   (testing "with one Bundle"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
       (let [job @(job-util/pull-job node "0")]
 
-        (given @(job-util/update-job+ node job [{:fhir/type :fhir/Bundle :id "0"}]
+        (given @(job-util/update-job+ node job [#fhir/map{:fhir/type :fhir/Bundle :id "0"}]
                                       job-util/fail-job (ba/fault "msg-181135"))
           :status := #fhir/code "failed"
           job-util/error := (ba/fault "msg-181135"))
@@ -283,7 +283,7 @@
 (deftest update-job-with-retry-test
   (testing "retry"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
       (given @(job-util/update-job-with-retry node 1 "0" start-job*)
         [:meta :versionId] := #fhir/id "2"
@@ -296,7 +296,7 @@
 
   (testing "referential integrity problem"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
       (given-failed-future (job-util/update-job-with-retry node 1 "0" add-unknown-bundle-reference)
         ::anom/category := ::anom/conflict
@@ -323,7 +323,7 @@
 (deftest update-job-with-retry-concurrent-test
   (testing "single status change"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Task :id "0"}]]]
 
       (let [futures (repeatedly 5 #(start-job-with-retry node "0"))]
         @(ac/all-of futures)
@@ -335,7 +335,7 @@
   (testing "multiple counter increments"
     (testing "are all sucessful"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put (-> {:fhir/type :fhir/Task :id "0"}
+        [[[:put (-> #fhir/map{:fhir/type :fhir/Task :id "0"}
                     (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
 
         (let [futures (repeatedly 5 #(increment-count-with-retry node 4 "0"))]
@@ -346,7 +346,7 @@
 
     (testing "at least one fails"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put (-> {:fhir/type :fhir/Task :id "0"}
+        [[[:put (-> #fhir/map{:fhir/type :fhir/Task :id "0"}
                     (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
 
         (given-failed-future (ac/all-of (repeatedly 50 #(increment-count-with-retry node 2 "0")))
@@ -360,7 +360,7 @@
 
 (deftest fail-job-test
   (testing "without message"
-    (given (job-util/fail-job {:fhir/type :fhir/Task} (ba/fault))
+    (given (job-util/fail-job #fhir/map{:fhir/type :fhir/Task} (ba/fault))
       job-util/error-msg := "empty error message")))
 
 (deftest async-status-url-test
@@ -369,17 +369,17 @@
            (job-util/async-status-url
             {:context-path "/fhir"}
             {:blaze/base-url "http://localhost:8080"}
-            {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"}))))
+            #fhir/map{:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"}))))
 
   (testing "without context path"
     (is (= "http://localhost:8080/__async-status/AAAAAAAAAAAAAAAA"
            (job-util/async-status-url
             {}
             {:blaze/base-url "http://localhost:8080"}
-            {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})))))
+            #fhir/map{:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})))))
 
 (deftest response-resource-test
   (testing "job types without an implementation have no response resource"
     (is (nil? (job-util/response-resource
-               {:fhir/type :fhir/Task
-                :code (job-util/type-codeable-concept "foo" "Foo")})))))
+               (type/fhir-map {:fhir/type :fhir/Task
+                               :code (job-util/type-codeable-concept "foo" "Foo")}))))))

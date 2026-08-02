@@ -6,7 +6,6 @@
    [blaze.fhir.spec-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.middleware.fhir.output-spec]
    [blaze.module.test-util.ring :refer [call]]
@@ -34,30 +33,22 @@
    :blaze.fhir/parsing-context
    {:structure-definition-repo structure-definition-repo}))
 
-(def ^:private writing-context
-  (ig/init-key
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}))
-
 (defn- resource-handler-200 [resource]
   (wrap-output
    (fn [_ respond _]
-     (respond (ring/response resource)))
-   writing-context))
+     (respond (ring/response resource)))))
 
 (def ^:private resource-handler-200-with-patient
   "A handler which just returns a patient."
   (wrap-output
    (fn [_ respond _]
-     (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))
-   writing-context))
+     (respond (ring/response #fhir/map{:fhir/type :fhir/Patient :id "0"})))))
 
 (def ^:private resource-handler-304
   "A handler which returns a 304 Not Modified response."
   (wrap-output
    (fn [_ respond _]
-     (respond (ring/status 304)))
-   writing-context))
+     (respond (ring/status 304)))))
 
 (defn- binary-resource-handler-200
   "A handler which uses the binary middleware and
@@ -67,18 +58,16 @@
    (fn [_ respond _]
      (respond
       (ring/response
-       (cond-> {:fhir/type :fhir/Binary}
+       (cond-> #fhir/map{:fhir/type :fhir/Binary}
          data (assoc :data (type/base64Binary data))
-         content-type (assoc :contentType (type/code content-type))))))
-   writing-context))
+         content-type (assoc :contentType (type/code content-type))))))))
 
 (def ^:private binary-resource-handler-200-no-body
   "A handler which uses the binary middleware and
   returns a response with 200 and no body."
   (wrap-binary-output
    (fn [_ respond _]
-     (respond (ring/status 200)))
-   writing-context))
+     (respond (ring/status 200)))))
 
 (defn- parse-json [body]
   (let [out (ByteArrayOutputStream.)]
@@ -91,7 +80,7 @@
       (given (call resource-handler-200-with-patient {})
         :status := 200
         [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
-        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
+        [:body parse-json] := #fhir/map{:fhir/type :fhir/Patient :id "0"})
 
       (testing "not modified"
         (given (call resource-handler-304 {})
@@ -106,7 +95,7 @@
         (given (call resource-handler-200-with-patient {:headers {"accept" accept}})
           :status := 200
           [:headers "Content-Type"] := content-type
-          [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
+          [:body parse-json] := #fhir/map{:fhir/type :fhir/Patient :id "0"}))))
 
   (testing "possible accept headers"
     (doseq [[accept content-type] [["application/fhir+json" "application/fhir+json;charset=utf-8"]
@@ -116,7 +105,7 @@
       (given (call resource-handler-200-with-patient {:headers {"accept" accept}})
         :status := 200
         [:headers "Content-Type"] := content-type
-        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})))
+        [:body parse-json] := #fhir/map{:fhir/type :fhir/Patient :id "0"})))
 
   (testing "_format overrides"
     (doseq [[accept format content-type] [["application/fhir+xml" "application/fhir+json" "application/fhir+json;charset=utf-8"]
@@ -132,7 +121,7 @@
                     :query-params {"_format" format}})
         :status := 200
         [:headers "Content-Type"] := content-type
-        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
+        [:body parse-json] := #fhir/map{:fhir/type :fhir/Patient :id "0"}))))
 
 (defn- parse-xml [body]
   (let [out (ByteArrayOutputStream.)]
@@ -158,7 +147,7 @@
       (given (call resource-handler-200-with-patient {:headers {"accept" accept}})
         :status := 200
         [:headers "Content-Type"] := content-type
-        [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})))
+        [:body parse-xml] := #fhir/map{:fhir/type :fhir/Patient :id "0"})))
 
   (testing "_format overrides"
     (doseq [[accept format content-type] [["application/fhir+json" "application/fhir+xml" "application/fhir+xml;charset=utf-8"]
@@ -174,7 +163,7 @@
                     :query-params {"_format" format}})
         :status := 200
         [:headers "Content-Type"] := content-type
-        [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})))
+        [:body parse-xml] := #fhir/map{:fhir/type :fhir/Patient :id "0"})))
 
   (testing "not modified"
     (given (call resource-handler-304 {:headers {"accept" "application/fhir+xml"}})
@@ -183,7 +172,7 @@
       :body := nil))
 
   (testing "failing XML emit"
-    (given (call (resource-handler-200 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
+    (given (call (resource-handler-200 #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
       :status := 200
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
       [:body parse-xml :fhir/type] := :fhir/Patient
@@ -194,8 +183,8 @@
     (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {}})
       :status := 200
       [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
-      [:body parse-json] := {:fhir/type :fhir/Binary
-                             :data #fhir/base64Binary "MTA1NjE0Cg=="}))
+      [:body parse-json] := #fhir/map{:fhir/type :fhir/Binary
+                                      :data #fhir/base64Binary "MTA1NjE0Cg=="}))
 
   (testing "explicitly requesting the binary data to be wrapped inside a FHIR-resource (both as JSON and as XML)"
     (doseq [[accept-header content-type body-parser]
@@ -204,9 +193,9 @@
       (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" accept-header}})
         :status := 200
         [:headers "Content-Type"] := content-type
-        [:body body-parser] := {:fhir/type :fhir/Binary
-                                :contentType #fhir/code "text/plain"
-                                :data #fhir/base64Binary "MTA1NjE0Cg=="})))
+        [:body body-parser] := #fhir/map{:fhir/type :fhir/Binary
+                                         :contentType #fhir/code "text/plain"
+                                         :data #fhir/base64Binary "MTA1NjE0Cg=="})))
 
   (testing "explicitly requesting raw binary data"
     (testing "with valid data"

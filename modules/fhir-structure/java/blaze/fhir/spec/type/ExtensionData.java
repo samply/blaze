@@ -52,13 +52,21 @@ public final class ExtensionData {
     private static ExtensionData maybeIntern(String id, List<Extension> extension, IPersistentMap meta) {
         if (id == null && (meta == null || meta.count() == 0)) {
             if (extension.isEmpty()) return EMPTY;
-            if (Base.areAllInterned(extension)) return INTERNER.intern(extension);
+            if (Base.areAllInternedExt(extension)) return INTERNER.intern(extension);
         }
         return new ExtensionData(id, extension, meta);
     }
 
     static ExtensionData fromMap(IPersistentMap m) {
-        return maybeIntern((String) m.valAt(ID), Base.listFrom(m, EXTENSION), null);
+        return maybeIntern((String) m.valAt(ID), Base.typedListFrom(m, EXTENSION, Extension.class), null);
+    }
+
+    /**
+     * Creates an {@link ExtensionData} from the values of the {@code id} and
+     * {@code extension} properties, both of which may be {@code null}.
+     */
+    static ExtensionData of(Object id, Object extension) {
+        return maybeIntern((String) id, Lists.typedNullToEmpty(extension, Extension.class), null);
     }
 
     Object valAt(Object key, Object notFound) {
@@ -72,7 +80,7 @@ public final class ExtensionData {
     }
 
     boolean isInterned() {
-        return this == EMPTY || id == null && Base.areAllInterned(extension) && (meta == null || meta.count() == 0);
+        return this == EMPTY || id == null && Base.areAllInternedExt(extension) && (meta == null || meta.count() == 0);
     }
 
     Stream<PersistentVector> references() {
@@ -89,7 +97,7 @@ public final class ExtensionData {
     }
 
     ExtensionData withExtension(Object extension) {
-        return maybeIntern(id, Lists.nullToEmpty(extension), meta);
+        return maybeIntern(id, Lists.typedNullToEmpty(extension, Extension.class), meta);
     }
 
     ExtensionData withMeta(IPersistentMap meta) {

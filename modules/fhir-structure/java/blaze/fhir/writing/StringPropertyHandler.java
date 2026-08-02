@@ -22,7 +22,7 @@ public final class StringPropertyHandler extends PropertyHandler {
     }
 
     @Override
-    void writeValue(JsonGenerator generator, Object value) throws IOException {
+    public void writeValue(JsonGenerator generator, Object value) throws IOException {
         generator.writeFieldName(fieldName);
         generator.writeString((String) value);
     }

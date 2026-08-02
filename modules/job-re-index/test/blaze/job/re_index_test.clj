@@ -19,7 +19,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
    [blaze.job.re-index]
    [blaze.job.test-util :as jtu]
@@ -168,7 +167,6 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -187,9 +185,6 @@
     :fail-on-unknown-property false
     :include-summary-only true
     :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}
 
    :blaze/scheduler {}
 
@@ -259,28 +254,28 @@
      (let [~binding-form system#] ~@body)))
 
 (def job
-  {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"]}
-   :status #fhir/code "ready"
-   :intent #fhir/code "order"
-   :code #fhir/CodeableConcept
-          {:coding
-           [#fhir/Coding
-             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-              :code #fhir/code "re-index"
-              :display #fhir/string "(Re)Index a Search Parameter"}]}})
+  #fhir/map{:fhir/type :fhir/Task
+            :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"]}
+            :status #fhir/code "ready"
+            :intent #fhir/code "order"
+            :code #fhir/CodeableConcept
+                   {:coding
+                    [#fhir/Coding
+                      {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+                       :code #fhir/code "re-index"
+                       :display #fhir/string "(Re)Index a Search Parameter"}]}})
 
 (def job-clinical-code
   (assoc
    job
    :input
-   [{:fhir/type :fhir.Task/input
-     :type #fhir/CodeableConcept
-            {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
-                :code #fhir/code "search-param-url"}]}
-     :value #fhir/canonical "http://hl7.org/fhir/SearchParameter/clinical-code"}]))
+   [#fhir/map{:fhir/type :fhir.Task/input
+              :type #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                        {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
+                         :code #fhir/code "search-param-url"}]}
+              :value #fhir/canonical "http://hl7.org/fhir/SearchParameter/clinical-code"}]))
 
 (def job-missing-search-param
   job)
@@ -289,13 +284,13 @@
   (assoc
    job
    :input
-   [{:fhir/type :fhir.Task/input
-     :type (type/codeable-concept
-            {:coding
-             [(type/coding
-               {:system (type/uri param-system)
-                :code #fhir/code "search-param-url"})]})
-     :value #fhir/canonical "unknown"}]))
+   [(type/fhir-map {:fhir/type :fhir.Task/input
+                    :type (type/codeable-concept
+                           {:coding
+                            [(type/coding
+                              {:system (type/uri param-system)
+                               :code #fhir/code "search-param-url"})]})
+                    :value #fhir/canonical "unknown"})]))
 
 (defn- output-value [job code]
   (job-util/output-value job "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput" code))
@@ -318,10 +313,10 @@
 (defn gen-tx-data [n]
   (mapv
    (fn [id]
-     [:put {:fhir/type :fhir/Observation :id (format "%05d" id)
-            :code #fhir/CodeableConcept
-                   {:coding
-                    [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}}])
+     [:put (type/fhir-map {:fhir/type :fhir/Observation :id (format "%05d" id)
+                           :code #fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}})])
    (range n)))
 
 (deftest simple-job-execution-test

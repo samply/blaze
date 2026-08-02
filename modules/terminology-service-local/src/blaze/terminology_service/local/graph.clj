@@ -22,14 +22,14 @@
   (keep #(when (= direction (:value (:code %))) (:value (:value %))) properties))
 
 (defn- child-property [code]
-  {:fhir/type :fhir.CodeSystem.concept/property
-   :code #fhir/code "child"
-   :value (type/code code)})
+  (type/fhir-map {:fhir/type :fhir.CodeSystem.concept/property
+                  :code #fhir/code "child"
+                  :value (type/code code)}))
 
 (defn- parent-property [code]
-  {:fhir/type :fhir.CodeSystem.concept/property
-   :code #fhir/code "parent"
-   :value (type/code code)})
+  (type/fhir-map {:fhir/type :fhir.CodeSystem.concept/property
+                  :code #fhir/code "parent"
+                  :value (type/code code)}))
 
 (defn- ensure-child-property
   "Ensures that `child-prop` exists for all parents with `parent-codes`."

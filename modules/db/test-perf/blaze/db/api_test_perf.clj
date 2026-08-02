@@ -13,7 +13,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.log]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service.not-available]
@@ -68,7 +67,6 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -94,10 +92,7 @@
    {:structure-definition-repo structure-definition-repo
     :fail-on-unknown-property false
     :include-summary-only true
-    :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}})
+    :use-regex false}})
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
@@ -113,25 +108,25 @@
   (with-system [{:blaze.db/keys [node]} config]
     ;;  58.8 µs / 1.76 µs - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
     (criterium/bench
-     @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))))
+     @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]))))
 
 (defn- observation-tx-data
   ([version]
    (into [] (map (partial observation-tx-data version)) (range 10)))
   ([version id]
-   [:put {:fhir/type :fhir/Observation :id (str id)
-          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-          :method (type/codeable-concept {:text (type/string (str version))})
-          :code
-          #fhir/CodeableConcept
-           {:coding
-            [#fhir/Coding
-              {:system #fhir/uri-interned "system-191514"
-               :code #fhir/code "code-191518"}]}}]))
+   [:put (type/fhir-map {:fhir/type :fhir/Observation :id (str id)
+                         :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                         :method (type/codeable-concept {:text (type/string (str version))})
+                         :code
+                         #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                             {:system #fhir/uri-interned "system-191514"
+                              :code #fhir/code "code-191518"}]}})]))
 
 (deftest type-test
   (with-system-data [{:blaze.db/keys [node]} config]
-    (into [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    (into [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
           (map observation-tx-data)
           (range 2))
 

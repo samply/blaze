@@ -4,6 +4,7 @@
    [blaze.db.impl.index.resource-handle]
    [blaze.db.impl.index.resource-handle-spec]
    [blaze.fhir.hash :as hash]
+   [blaze.fhir.spec.type :as type]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as sg]
@@ -21,7 +22,7 @@
 (defn- resource-handle [type id t]
   (let [fhir-type (keyword "fhir" type)]
     (ResourceHandle. fhir-type (codec/tid type) id t
-                     (hash/generate {:fhir/type fhir-type :id id}) 0 nil)))
+                     (hash/generate (type/fhir-map {:fhir/type fhir-type :id id})) 0 nil)))
 
 (deftest state->num-changes-test
   (are [state num-changes] (= num-changes (ResourceHandle/numChanges state))

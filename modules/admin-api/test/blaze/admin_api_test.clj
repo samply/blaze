@@ -20,7 +20,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [run-all! structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
@@ -167,7 +166,6 @@
      ::rs/kv
      {:kv-store (ig/ref :blaze.db/resource-kv-store)
       :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-      :writing-context (ig/ref :blaze.fhir/writing-context)
       :executor (ig/ref ::rs-kv/executor)}
 
      [::kv/rocksdb :blaze.db/resource-kv-store]
@@ -207,9 +205,6 @@
       :include-summary-only true
       :use-regex false}
 
-     :blaze.fhir/writing-context
-     {:structure-definition-repo structure-definition-repo}
-
      ::rocksdb/block-cache {:size-in-mb 1}
 
      :blaze/admin-api
@@ -217,7 +212,6 @@
       :admin-node (ig/ref :blaze.db.admin/node)
       :validator (ig/ref :blaze.admin-api/validator)
       :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
-      :writing-context (ig/ref :blaze.fhir/writing-context)
       :job-scheduler (ig/ref :blaze/job-scheduler)
       :read-job-handler (ig/ref :blaze.interaction/read)
       :history-job-handler (ig/ref :blaze.interaction.history/instance)
@@ -262,8 +256,7 @@
      :blaze.test/fixed-rng-fn {}
      :blaze.test/page-id-cipher {}
 
-     :blaze.test/json-writer
-     {:writing-context (ig/ref :blaze.fhir/writing-context)}}))
+     :blaze.test/json-writer {}}))
 
 (deftest init-test
   (testing "nil config"
@@ -280,13 +273,12 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :validator))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "missing admin-node"
     (given-failed-system (update (config!) :blaze/admin-api dissoc :admin-node)
@@ -305,12 +297,6 @@
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
-
-  (testing "missing writing-context"
-    (given-failed-system (update (config!) :blaze/admin-api dissoc :writing-context)
-      :key := :blaze/admin-api
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
   (testing "missing job-scheduler"
     (given-failed-system (update (config!) :blaze/admin-api dissoc :job-scheduler)
@@ -367,13 +353,6 @@
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/parsing-context]
-      [:cause-data ::s/problems 0 :val] := ::invalid))
-
-  (testing "invalid writing context"
-    (given-failed-system (assoc-in (config!) [:blaze/admin-api :writing-context] ::invalid)
-      :key := :blaze/admin-api
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid settings"
@@ -754,16 +733,16 @@
   (with-handler [handler system] (config!)
     (-> (fn [pat-id]
           (into
-           [[:put {:fhir/type :fhir/Patient :id (str pat-id)}]]
+           [[:put (type/fhir-map {:fhir/type :fhir/Patient :id (str pat-id)})]]
            (map (fn [obs-id]
-                  [:put {:fhir/type :fhir/Observation :id (str obs-id)
-                         :code
-                         #fhir/CodeableConcept
-                          {:coding
-                           [#fhir/Coding
-                             {:system #fhir/uri "system-192253"
-                              :code #fhir/code "code-192300"}]}
-                         :subject (type/reference {:reference (type/string (str "Patient/" pat-id))})}]))
+                  [:put (type/fhir-map {:fhir/type :fhir/Observation :id (str obs-id)
+                                        :code
+                                        #fhir/CodeableConcept
+                                         {:coding
+                                          [#fhir/Coding
+                                            {:system #fhir/uri "system-192253"
+                                             :code #fhir/code "code-192300"}]}
+                                        :subject (type/reference {:reference (type/string (str "Patient/" pat-id))})})]))
            (range 120)))
         (mapv (range 100)))
 
@@ -794,88 +773,88 @@
         [:body "msg"] := "The column family `foo` in database `index` was not found."))))
 
 (defn- re-index-job [base]
-  {:fhir/type :fhir/Task
-   :meta (type/meta {:profile [(type/canonical (str base "/StructureDefinition/ReIndexJob"))]})
-   :status #fhir/code "draft"
-   :intent #fhir/code "order"
-   :code (type/codeable-concept
-          {:coding
-           [(type/coding
-             {:system (type/uri (str base "/CodeSystem/JobType"))
-              :code #fhir/code "re-index"
-              :display #fhir/string "(Re)Index a Search Parameter"})]})
-   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
-   :input
-   [{:fhir/type :fhir.Task/input
-     :type (type/codeable-concept
-            {:coding
-             [(type/coding
-               {:system (type/uri (str base "/CodeSystem/ReIndexJobParameter"))
-                :code #fhir/code "search-param-url"})]})
-     :value #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-profile"}]})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :meta (type/meta {:profile [(type/canonical (str base "/StructureDefinition/ReIndexJob"))]})
+                  :status #fhir/code "draft"
+                  :intent #fhir/code "order"
+                  :code (type/codeable-concept
+                         {:coding
+                          [(type/coding
+                            {:system (type/uri (str base "/CodeSystem/JobType"))
+                             :code #fhir/code "re-index"
+                             :display #fhir/string "(Re)Index a Search Parameter"})]})
+                  :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
+                  :input
+                  [(type/fhir-map {:fhir/type :fhir.Task/input
+                                   :type (type/codeable-concept
+                                          {:coding
+                                           [(type/coding
+                                             {:system (type/uri (str base "/CodeSystem/ReIndexJobParameter"))
+                                              :code #fhir/code "search-param-url"})]})
+                                   :value #fhir/canonical "http://hl7.org/fhir/SearchParameter/Resource-profile"})]}))
 
 (defn- compact-job [base]
-  {:fhir/type :fhir/Task
-   :meta (type/meta {:profile [(type/canonical (str base "/StructureDefinition/CompactJob"))]})
-   :status #fhir/code "draft"
-   :intent #fhir/code "order"
-   :code (type/codeable-concept
-          {:coding
-           [(type/coding
-             {:system (type/uri (str base "/CodeSystem/JobType"))
-              :code #fhir/code "compact"
-              :display #fhir/string "Compact a Database Column Family"})]})
-   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
-   :input
-   [{:fhir/type :fhir.Task/input
-     :type (type/codeable-concept
-            {:coding
-             [(type/coding
-               {:system (type/uri (str base "/CodeSystem/CompactJobParameter"))
-                :code #fhir/code "database"})]})
-     :value #fhir/code "index"}
-    {:fhir/type :fhir.Task/input
-     :type (type/codeable-concept
-            {:coding
-             [(type/coding
-               {:system (type/uri (str base "/CodeSystem/CompactJobParameter"))
-                :code #fhir/code "column-family"})]})
-     :value #fhir/code "search-param-value-index"}]})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :meta (type/meta {:profile [(type/canonical (str base "/StructureDefinition/CompactJob"))]})
+                  :status #fhir/code "draft"
+                  :intent #fhir/code "order"
+                  :code (type/codeable-concept
+                         {:coding
+                          [(type/coding
+                            {:system (type/uri (str base "/CodeSystem/JobType"))
+                             :code #fhir/code "compact"
+                             :display #fhir/string "Compact a Database Column Family"})]})
+                  :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
+                  :input
+                  [(type/fhir-map {:fhir/type :fhir.Task/input
+                                   :type (type/codeable-concept
+                                          {:coding
+                                           [(type/coding
+                                             {:system (type/uri (str base "/CodeSystem/CompactJobParameter"))
+                                              :code #fhir/code "database"})]})
+                                   :value #fhir/code "index"})
+                   (type/fhir-map {:fhir/type :fhir.Task/input
+                                   :type (type/codeable-concept
+                                          {:coding
+                                           [(type/coding
+                                             {:system (type/uri (str base "/CodeSystem/CompactJobParameter"))
+                                              :code #fhir/code "column-family"})]})
+                                   :value #fhir/code "search-param-value-index"})]}))
 
 (defn- disk-perf-input [code value]
-  {:fhir/type :fhir.Task/input
-   :type (type/codeable-concept
-          {:coding
-           [(type/coding
-             {:system (type/uri (str canonical/base "/CodeSystem/DiskPerfJobParameter"))
-              :code (type/code code)})]})
-   :value value})
+  (type/fhir-map {:fhir/type :fhir.Task/input
+                  :type (type/codeable-concept
+                         {:coding
+                          [(type/coding
+                            {:system (type/uri (str canonical/base "/CodeSystem/DiskPerfJobParameter"))
+                             :code (type/code code)})]})
+                  :value value}))
 
 ;; the disk-perf job type never existed in IG version 0.1.0, so it carries only
 ;; the current canonical
 (def ^:private disk-perf-job
-  {:fhir/type :fhir/Task
-   :meta (type/meta {:profile [(type/canonical (str canonical/base "/StructureDefinition/DiskPerfJob"))]})
-   :status #fhir/code "draft"
-   :intent #fhir/code "order"
-   :code (type/codeable-concept
-          {:coding
-           [(type/coding
-             {:system (type/uri (str canonical/base "/CodeSystem/JobType"))
-              :code #fhir/code "disk-perf"
-              :display #fhir/string "Measure Disk Performance"})]})
-   :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
-   :input
-   [(disk-perf-input "database" #fhir/code "index")
-    (disk-perf-input "file-size" #fhir/Quantity{:value #fhir/decimal 4M
-                                                :unit #fhir/string "GiBy"
-                                                :system #fhir/uri "http://unitsofmeasure.org"
-                                                :code #fhir/code "GiBy"})
-    (disk-perf-input "phase-duration" #fhir/Quantity{:value #fhir/decimal 30M
-                                                     :unit #fhir/string "s"
-                                                     :system #fhir/uri "http://unitsofmeasure.org"
-                                                     :code #fhir/code "s"})
-    (disk-perf-input "max-concurrency" #fhir/positiveInt 32)]})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :meta (type/meta {:profile [(type/canonical (str canonical/base "/StructureDefinition/DiskPerfJob"))]})
+                  :status #fhir/code "draft"
+                  :intent #fhir/code "order"
+                  :code (type/codeable-concept
+                         {:coding
+                          [(type/coding
+                            {:system (type/uri (str canonical/base "/CodeSystem/JobType"))
+                             :code #fhir/code "disk-perf"
+                             :display #fhir/string "Measure Disk Performance"})]})
+                  :authoredOn #fhir/dateTime #system/date-time "2024-04-13T10:05:20.927Z"
+                  :input
+                  [(disk-perf-input "database" #fhir/code "index")
+                   (disk-perf-input "file-size" #fhir/Quantity{:value #fhir/decimal 4M
+                                                               :unit #fhir/string "GiBy"
+                                                               :system #fhir/uri "http://unitsofmeasure.org"
+                                                               :code #fhir/code "GiBy"})
+                   (disk-perf-input "phase-duration" #fhir/Quantity{:value #fhir/decimal 30M
+                                                                    :unit #fhir/string "s"
+                                                                    :system #fhir/uri "http://unitsofmeasure.org"
+                                                                    :code #fhir/code "s"})
+                   (disk-perf-input "max-concurrency" #fhir/positiveInt 32)]}))
 
 ;; a re-index job carrying both canonicals in every sliced element, as a fully
 ;; migrated client (or Blaze's own normalization) produces it
@@ -903,9 +882,9 @@
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
                :body (json-writer
-                      {:fhir/type :fhir/Task
-                       :status #fhir/code "draft"
-                       :intent #fhir/code "order"})})]
+                      #fhir/map{:fhir/type :fhir/Task
+                                :status #fhir/code "draft"
+                                :intent #fhir/code "order"})})]
 
         (is (= 400 status))
 
@@ -923,10 +902,10 @@
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
                :body (json-writer
-                      {:fhir/type :fhir/Task
-                       :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/Foo"]}
-                       :status #fhir/code "draft"
-                       :intent #fhir/code "order"})})]
+                      #fhir/map{:fhir/type :fhir/Task
+                                :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/Foo"]}
+                                :status #fhir/code "draft"
+                                :intent #fhir/code "order"})})]
 
         (is (= 400 status))
 

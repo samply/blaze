@@ -62,35 +62,35 @@
 
 (deftest cql-definition-names-test
   (are [measure names] (= names (u/expression-names measure))
-    {:fhir/type :fhir/Measure :id "0"
-     :url #fhir/uri "measure-155502"
-     :library [#fhir/canonical "0"]
-     :group
-     [{:fhir/type :fhir.Measure/group
-       :population
-       [{:fhir/type :fhir.Measure.group/population
-         :criteria (cql-expression "InInitialPopulation")}]
-       :stratifier
-       [{:fhir/type :fhir.Measure.group/stratifier
-         :criteria (cql-expression "Gender")}]}]}
+    (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                    :url #fhir/uri "measure-155502"
+                    :library [#fhir/canonical "0"]
+                    :group
+                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                     :population
+                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                      :criteria (cql-expression "InInitialPopulation")})]
+                                     :stratifier
+                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                                                      :criteria (cql-expression "Gender")})]})]})
     #{"InInitialPopulation"
       "Gender"}
 
-    {:fhir/type :fhir/Measure :id "0"
-     :url #fhir/uri "measure-155502"
-     :library [#fhir/canonical "0"]
-     :group
-     [{:fhir/type :fhir.Measure/group
-       :population
-       [{:fhir/type :fhir.Measure.group/population
-         :criteria (cql-expression "InInitialPopulation")}]
-       :stratifier
-       [{:fhir/type :fhir.Measure.group/stratifier
-         :component
-         [{:fhir/type :fhir.Measure.group.stratifier/component
-           :criteria (cql-expression "AgeClass")}
-          {:fhir/type :fhir.Measure.group.stratifier/component
-           :criteria (cql-expression "Gender")}]}]}]}
+    (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                    :url #fhir/uri "measure-155502"
+                    :library [#fhir/canonical "0"]
+                    :group
+                    [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                     :population
+                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                      :criteria (cql-expression "InInitialPopulation")})]
+                                     :stratifier
+                                     [(type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                                                      :component
+                                                      [(type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                                                       :criteria (cql-expression "AgeClass")})
+                                                       (type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                                                       :criteria (cql-expression "Gender")})]})]})]})
     #{"InInitialPopulation"
       "AgeClass"
       "Gender"}))

@@ -14,6 +14,10 @@
   :args (s/cat :x #(instance? Primitive %))
   :ret xml/element?)
 
+(s/fdef type/fhir-map
+  :args (s/cat :m map?)
+  :ret map?)
+
 (s/fdef type/references
   :args (s/cat :x any?)
   :ret (s/coll-of :blaze.fhir/literal-ref-tuple))

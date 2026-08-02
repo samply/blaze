@@ -94,7 +94,7 @@ public final class UnsignedInt extends PrimitiveElement {
 
     @Override
     public UnsignedInt empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

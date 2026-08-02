@@ -20,6 +20,7 @@
    [blaze.db.impl.search-param.token]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
+   [blaze.fhir.spec.type :as type]
    [blaze.util :refer [str]]))
 
 (defn validate-modifier
@@ -127,8 +128,8 @@
     fhir-path/Resolver
     (-resolve [_ uri]
       (when-let [[type id] (some-> uri fsr/split-literal-ref)]
-        {:fhir/type (keyword "fhir" type)
-         :id id}))))
+        (type/fhir-map {:fhir/type (keyword "fhir" type)
+                        :id id})))))
 
 (defn compartment-ids
   "Returns reducible collection of all ids of compartments `resource` is part-of

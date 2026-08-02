@@ -224,7 +224,7 @@ public final class Attachment extends AbstractElement implements Complex, Extens
 
     @Override
     public Attachment empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

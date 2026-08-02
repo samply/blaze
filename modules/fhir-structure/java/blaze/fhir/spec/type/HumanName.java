@@ -137,7 +137,7 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
 
     public static HumanName create(IPersistentMap m) {
         return new HumanName(ExtensionData.fromMap(m), (Code) m.valAt(USE), (String) m.valAt(TEXT),
-                (String) m.valAt(FAMILY), Base.typedListFrom(m, GIVEN, String.class), Base.listFrom(m, PREFIX), Base.listFrom(m, SUFFIX),
+                (String) m.valAt(FAMILY), Base.typedListFrom(m, GIVEN, String.class), Base.typedListFrom(m, PREFIX, String.class), Base.typedListFrom(m, SUFFIX, String.class),
                 (Period) m.valAt(PERIOD));
     }
 
@@ -216,7 +216,7 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
 
     @Override
     public HumanName empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -230,11 +230,11 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
         if (key == TEXT) return new HumanName(extensionData, use, (String) val, family, given, prefix, suffix, period);
         if (key == FAMILY) return new HumanName(extensionData, use, text, (String) val, given, prefix, suffix, period);
         if (key == GIVEN)
-            return new HumanName(extensionData, use, text, family, Lists.nullToEmpty(val), prefix, suffix, period);
+            return new HumanName(extensionData, use, text, family, Lists.typedNullToEmpty(val, String.class), prefix, suffix, period);
         if (key == PREFIX)
-            return new HumanName(extensionData, use, text, family, given, Lists.nullToEmpty(val), suffix, period);
+            return new HumanName(extensionData, use, text, family, given, Lists.typedNullToEmpty(val, String.class), suffix, period);
         if (key == SUFFIX)
-            return new HumanName(extensionData, use, text, family, given, prefix, Lists.nullToEmpty(val), period);
+            return new HumanName(extensionData, use, text, family, given, prefix, Lists.typedNullToEmpty(val, String.class), period);
         if (key == PERIOD) return new HumanName(extensionData, use, text, family, given, prefix, suffix, (Period) val);
         if (key == EXTENSION)
             return new HumanName(extensionData.withExtension(val), use, text, family, given, prefix, suffix, period);

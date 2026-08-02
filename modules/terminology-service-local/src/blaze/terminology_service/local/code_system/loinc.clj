@@ -23,7 +23,7 @@
 (defmethod c/find :loinc
   [{:loinc/keys [context]} _ & [version]]
   (if (or (nil? version) (= version context/version))
-    (ac/completed-future (assoc (first (:code-systems context)) :loinc/context context))
+    (ac/completed-future (assoc (c/open (first (:code-systems context))) :loinc/context context))
     (ac/completed-future (ba/not-found (code-system-not-found-msg version)))))
 
 (defn- remove-properties [concept]

@@ -33,7 +33,7 @@
 
 (deftest resource-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-    [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
     (let [resource (resource (d/db node) "Patient" "0")]
 

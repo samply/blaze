@@ -96,7 +96,7 @@ public final class Integer extends PrimitiveElement {
 
     @Override
     public Integer empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

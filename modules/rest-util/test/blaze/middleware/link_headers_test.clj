@@ -19,12 +19,12 @@
   (ac/completed-future (ring/response bundle)))
 
 (defn- bundle-link [{:keys [relation url]}]
-  {:fhir/type :fhir.Bundle/link
-   :relation (type/string relation)
-   :url (type/uri url)})
+  (type/fhir-map {:fhir/type :fhir.Bundle/link
+                  :relation (type/string relation)
+                  :url (type/uri url)}))
 
 (defn- bundle [& links]
-  (cond-> {:fhir/type :fhir/Bundle}
+  (cond-> #fhir/map{:fhir/type :fhir/Bundle}
     (seq links)
     (assoc :link (mapv bundle-link links))))
 

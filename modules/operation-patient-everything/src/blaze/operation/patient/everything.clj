@@ -67,10 +67,10 @@
 (defn- bundle [context request resources start end page-size next-offset since]
   (let [entries (mapv (partial search-util/match-entry request) resources)]
     (cond->
-     {:fhir/type :fhir/Bundle
-      :id (m/luid context)
-      :type #fhir/code "searchset"
-      :entry entries}
+     (type/fhir-map {:fhir/type :fhir/Bundle
+                     :id (m/luid context)
+                     :type #fhir/code "searchset"
+                     :entry entries})
 
       (some? next-offset)
       (assoc :link [(next-link context request start end page-size next-offset since)])

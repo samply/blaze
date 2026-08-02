@@ -34,7 +34,7 @@
   (testing "on empty database"
     (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (testing "with empty if-match header"
-        (given (iu/update-tx-op (d/db node) {:fhir/type :fhir/Patient :id "0"} "" nil)
+        (given (iu/update-tx-op (d/db node) #fhir/map{:fhir/type :fhir/Patient :id "0"} "" nil)
           ::anom/category := ::anom/conflict
           ::anom/message := "Empty precondition failed on `Patient/0`."
           :http/status := 412))
@@ -42,28 +42,28 @@
       (testing "with invalid if-match header"
         (satisfies-prop 1000
           (prop/for-all [if-match (gen/such-that (complement str/blank?) gen/string)]
-            (let [anom (iu/update-tx-op (d/db node) {:fhir/type :fhir/Patient :id "0"} if-match nil)]
+            (let [anom (iu/update-tx-op (d/db node) #fhir/map{:fhir/type :fhir/Patient :id "0"} if-match nil)]
               (and (= ::anom/conflict (::anom/category anom))
                    (= (format "Precondition `%s` failed on `Patient/0`." if-match) (::anom/message anom))
                    (= 412 (:http/status anom)))))))
 
       (testing "without preconditions"
-        (is (= (iu/update-tx-op (d/db node) {:fhir/type :fhir/Patient :id "0"} nil nil)
-               [:put {:fhir/type :fhir/Patient :id "0"}])))
+        (is (= (iu/update-tx-op (d/db node) #fhir/map{:fhir/type :fhir/Patient :id "0"} nil nil)
+               [:put #fhir/map{:fhir/type :fhir/Patient :id "0"}])))
 
       (testing "with some precondition"
         (satisfies-prop 10
           (prop/for-all [ts (gen/vector (gen/choose 1 10) 1 3)]
-            (is (= (iu/update-tx-op (d/db node) {:fhir/type :fhir/Patient :id "0"} (str/join "," (map (partial format "W/\"%d\"") ts)) nil)
-                   [:put {:fhir/type :fhir/Patient :id "0"} (into [:if-match] ts)])))))))
+            (is (= (iu/update-tx-op (d/db node) #fhir/map{:fhir/type :fhir/Patient :id "0"} (str/join "," (map (partial format "W/\"%d\"") ts)) nil)
+                   [:put #fhir/map{:fhir/type :fhir/Patient :id "0"} (into [:if-match] ts)])))))))
 
   (testing "with an existing, identical patient; the other patient is there in order to show that the t depends only on the matching patient"
-    (let [male-patient {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}
+    (let [male-patient #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}
           hash (hash/generate male-patient)]
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
          [[:put male-patient]]
-         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+         [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
         (testing "without preconditions"
           (testing "generates a keep op with the hash of the current patient version"

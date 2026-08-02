@@ -1045,8 +1045,8 @@
         define InInitialPopulation:
           exists [Observation: Code '788-0' from loinc]")]
       (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :code (codeable-concept "http://loinc.org" "788-0")}]]]
+        [[[:put (type/fhir-map {:fhir/type :fhir/Observation :id "0"
+                                :code (codeable-concept "http://loinc.org" "788-0")})]]]
 
         (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
@@ -1100,16 +1100,16 @@
         define InInitialPopulation:
           exists [Condition: vs]")]
         (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
-          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                   :url #fhir/uri "http://system-115910"
-                   :content #fhir/code "complete"
-                   :concept
-                   [{:fhir/type :fhir.CodeSystem/concept
-                     :code #fhir/code "code-115927"}
-                    {:fhir/type :fhir.CodeSystem/concept
-                     :code #fhir/code "code-140541"}]}]]
-           [[:put {:fhir/type :fhir/Condition :id "0"
-                   :code (codeable-concept "http://system-115910" "code-115927")}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                            :url #fhir/uri "http://system-115910"
+                            :content #fhir/code "complete"
+                            :concept
+                            [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                       :code #fhir/code "code-115927"}
+                             #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                       :code #fhir/code "code-140541"}]}]]
+           [[:put (type/fhir-map {:fhir/type :fhir/Condition :id "0"
+                                  :code (codeable-concept "http://system-115910" "code-115927")})]]]
 
           (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
             (given expression-defs
@@ -1137,8 +1137,8 @@
         define InInitialPopulation:
           exists [Observation: body_weight] O where O.value < 3.3 'kg'")]
       (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :code (codeable-concept "http://loinc.org" "29463-7")}]]]
+        [[[:put (type/fhir-map {:fhir/type :fhir/Observation :id "0"
+                                :code (codeable-concept "http://loinc.org" "29463-7")})]]]
 
         (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs
@@ -1242,24 +1242,24 @@
         define InInitialPopulation:
           Patient.gender in FemaleAdministrativeSex")]
       (with-system-data [system api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "urn:oid:2.16.840.1.113883.3.560.100.2"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "http://hl7.org/fhir/administrative-gender"
-                    :concept
-                    [{:fhir/type :fhir.ValueSet.compose.include/concept
-                      :code #fhir/code "female"}]}]}
-                 :expansion
-                 {:fhir/type :fhir.ValueSet/expansion
-                  :identifier #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
-                  :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
-                  :contains
-                  [{:fhir/type :fhir.ValueSet.expansion/contains
-                    :system #fhir/uri "http://hl7.org/fhir/administrative-gender"
-                    :code #fhir/code "female"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                          :url #fhir/uri "urn:oid:2.16.840.1.113883.3.560.100.2"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "http://hl7.org/fhir/administrative-gender"
+                                               :concept
+                                               [#fhir/map{:fhir/type :fhir.ValueSet.compose.include/concept
+                                                          :code #fhir/code "female"}]}]}
+                          :expansion
+                          #fhir/map{:fhir/type :fhir.ValueSet/expansion
+                                    :identifier #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
+                                    :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+                                    :contains
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.expansion/contains
+                                               :system #fhir/uri "http://hl7.org/fhir/administrative-gender"
+                                               :code #fhir/code "female"}]}}]]]
 
         (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
           (given expression-defs

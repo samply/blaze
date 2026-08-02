@@ -40,16 +40,16 @@
 
 (defn population-tx-ops [list-id handles]
   [[:create
-    {:fhir/type :fhir/List
-     :id list-id
-     :status #fhir/code "current"
-     :mode #fhir/code "working"
-     :entry
-     (mapv
-      (fn [{:keys [population-handle]}]
-        {:fhir/type :fhir.List/entry
-         :item (resource-reference population-handle)})
-      handles)}]])
+    (type/fhir-map {:fhir/type :fhir/List
+                    :id list-id
+                    :status #fhir/code "current"
+                    :mode #fhir/code "working"
+                    :entry
+                    (mapv
+                     (fn [{:keys [population-handle]}]
+                       (type/fhir-map {:fhir/type :fhir.List/entry
+                                       :item (resource-reference population-handle)}))
+                     handles)})]])
 
 (defn- merge-result*
   "Merges `result` into the return value of the reduction `ret`."

@@ -67,7 +67,7 @@ public final class Oid extends PrimitiveElement {
 
     @Override
     public Oid empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

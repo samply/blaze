@@ -1,6 +1,16 @@
 (ns blaze.terminology-service.local.code-system.core
   (:refer-clojure :exclude [find]))
 
+(defn open
+  "Returns the FHIR value `x` as plain map, so that internal keys can be
+  attached to it.
+
+  A FHIR value only holds the properties of its type, so `assoc` would drop
+  anything else. Values opened this way are used inside the terminology service
+  only and are never serialized."
+  [x]
+  (into {} x))
+
 (defmulti resolve-version
   {:arglists '([context url version])}
   (fn [context url & _]

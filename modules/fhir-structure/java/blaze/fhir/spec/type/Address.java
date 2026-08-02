@@ -172,7 +172,7 @@ public final class Address extends AbstractElement implements Complex, Extension
 
     public static Address create(IPersistentMap m) {
         return new Address(ExtensionData.fromMap(m), (Code) m.valAt(USE), (Code) m.valAt(TYPE), (String) m.valAt(TEXT),
-                Base.listFrom(m, LINE), (String) m.valAt(CITY), (String) m.valAt(DISTRICT), (String) m.valAt(STATE),
+                Base.typedListFrom(m, LINE, String.class), (String) m.valAt(CITY), (String) m.valAt(DISTRICT), (String) m.valAt(STATE),
                 (String) m.valAt(POSTAL_CODE), (String) m.valAt(COUNTRY), (Period) m.valAt(PERIOD));
     }
 
@@ -268,7 +268,7 @@ public final class Address extends AbstractElement implements Complex, Extension
 
     @Override
     public Address empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -285,7 +285,7 @@ public final class Address extends AbstractElement implements Complex, Extension
         if (key == TEXT)
             return new Address(extensionData, use, type, (String) val, line, city, district, state, postalCode, country, period);
         if (key == LINE)
-            return new Address(extensionData, use, type, text, Lists.nullToEmpty(val), city, district, state, postalCode, country, period);
+            return new Address(extensionData, use, type, text, Lists.typedNullToEmpty(val, String.class), city, district, state, postalCode, country, period);
         if (key == CITY)
             return new Address(extensionData, use, type, text, line, (String) val, district, state, postalCode, country, period);
         if (key == DISTRICT)

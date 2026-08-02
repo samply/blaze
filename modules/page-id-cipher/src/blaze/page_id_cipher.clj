@@ -125,19 +125,19 @@
   (type/attachment {:data (type/base64Binary (encode-key-set-handle key-set-handle))}))
 
 (defn- key-set-content [key-set-handle]
-  {:fhir/type :fhir.DocumentReference/content
-   :attachment (key-set-attachment key-set-handle)})
+  (type/fhir-map {:fhir/type :fhir.DocumentReference/content
+                  :attachment (key-set-attachment key-set-handle)}))
 
 (defn- key-set-resource
   "Returns a new key set `DocumentReference` resource with a freshly generated
   key set as first attachment."
   [context]
-  {:fhir/type :fhir/DocumentReference
-   :id (m/luid context)
-   :identifier [(type/identifier {:value (type/string key-set-identifier)})]
-   :status #fhir/code "current"
-   :content
-   [(key-set-content (impl/gen-new-key-set-handle))]})
+  (type/fhir-map {:fhir/type :fhir/DocumentReference
+                  :id (m/luid context)
+                  :identifier [(type/identifier {:value (type/string key-set-identifier)})]
+                  :status #fhir/code "current"
+                  :content
+                  [(key-set-content (impl/gen-new-key-set-handle))]}))
 
 (defn- key-set-resource-create-op
   "Returns a transaction operator creating a new key set resource, conditional

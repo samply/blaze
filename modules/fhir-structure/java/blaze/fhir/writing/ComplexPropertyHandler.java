@@ -1,5 +1,6 @@
 package blaze.fhir.writing;
 
+import blaze.fhir.spec.type.Base;
 import blaze.fhir.spec.type.Complex;
 import clojure.lang.Keyword;
 import clojure.lang.Sequential;
@@ -28,7 +29,7 @@ public final class ComplexPropertyHandler extends PropertyHandler {
     }
 
     @Override
-    void writeValue(JsonGenerator generator, Object value) throws IOException {
+    public void writeValue(JsonGenerator generator, Object value) throws IOException {
         if (!(value instanceof Complex complex)) {
             throw invalidValue(value);
         }
@@ -43,6 +44,6 @@ public final class ComplexPropertyHandler extends PropertyHandler {
      * check it has to do anyway for the cast.
      */
     private IllegalArgumentException invalidValue(Object value) {
-        return value instanceof Sequential ? singleValueExpected() : noFhirType(value);
+        return value instanceof Sequential ? singleValueExpected() : Base.noFhirType(value);
     }
 }

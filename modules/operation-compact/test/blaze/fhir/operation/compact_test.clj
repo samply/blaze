@@ -83,7 +83,7 @@
 (deftest handler-test
   (testing "wrong resource type"
     (with-handler [handler]
-      (let [{:keys [status body]} @(handler {:body {:fhir/type :fhir/Patient}})]
+      (let [{:keys [status body]} @(handler {:body #fhir/map{:fhir/type :fhir/Patient}})]
 
         (is (= 400 status))
 
@@ -95,7 +95,7 @@
 
   (testing "Missing database parameter"
     (with-handler [handler]
-      (let [{:keys [status body]} @(handler {:body {:fhir/type :fhir/Parameters}})]
+      (let [{:keys [status body]} @(handler {:body #fhir/map{:fhir/type :fhir/Parameters}})]
 
         (is (= 400 status))
 

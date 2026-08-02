@@ -1,5 +1,5 @@
 (ns blaze.fhir.util
-  (:refer-clojure :exclude [str])
+  (:refer-clojure :exclude [select-keys str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.fhir.spec.type :as type]
@@ -7,25 +7,39 @@
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
-   [blaze.fhir.spec.type Base]
+   [blaze.fhir.spec.type Base ResourceMap]
    [com.google.common.base CaseFormat]
    [java.util Comparator]))
 
 (set! *warn-on-reflection* true)
 
+(defn select-keys
+  "Like `clojure.core/select-keys` but preserves the type of `m`.
+
+  `clojure.core/select-keys` seeds its accumulator with a literal empty map, so
+  its result is always a plain map, which would neither hash nor serialize like
+  the FHIR value it was taken from. Seeding with `(empty m)` instead is
+  type-preserving for every FHIR type and still works for plain maps."
+  [m ks]
+  (-> (reduce (fn [r k] (if-some [v (get m k)] (assoc r k v) r)) (empty m) ks)
+      (with-meta (meta m))))
+
 (declare parameter*)
 
 (defn- parameter** [name value]
-  [{:fhir/type :fhir.Parameters/parameter
-    :name (type/string name)
+  ;; the key of the value depends on its shape, so this can't be a literal
+  [(type/fhir-map
+    {:fhir/type :fhir.Parameters/parameter
+     :name (type/string name)
 
-    ;; TODO: improve resource detection
-    (cond (instance? Base value) :value
-          (sequential? value) :part
-          :else :resource)
-    (if (sequential? value)
-      (into [] (mapcat parameter*) (partition 2 value))
-      value)}])
+     ;; TODO: improve resource detection
+     (cond (sequential? value) :part
+           (instance? ResourceMap value) :resource
+           (instance? Base value) :value
+           :else :resource)
+     (if (sequential? value)
+       (into [] (mapcat parameter*) (partition 2 value))
+       value)})])
 
 (defn- parameter* [[name value]]
   (cond
@@ -63,8 +77,8 @@
 
   A `nil` value is skipped."
   [& nvs]
-  {:fhir/type :fhir/Parameters
-   :parameter (into [] (mapcat parameter*) (partition 2 nvs))})
+  (type/fhir-map {:fhir/type :fhir/Parameters
+                  :parameter (into [] (mapcat parameter*) (partition 2 nvs))}))
 
 (def subsetted
   "SUBSETTED Coding"
@@ -245,4 +259,4 @@
 
 (defn validate-query-params [parameter-specs query-params]
   (when-ok [params (validate-query-params* parameter-specs query-params)]
-    {:fhir/type :fhir/Parameters :parameter params}))
+    (type/fhir-map {:fhir/type :fhir/Parameters :parameter params})))

@@ -18,7 +18,7 @@
     (identical? :blaze.preference.return/minimal return-preference)
     (ac/completed-future nil)
     (identical? :blaze.preference.return/OperationOutcome return-preference)
-    (ac/completed-future {:fhir/type :fhir/OperationOutcome})
+    (ac/completed-future #fhir/map{:fhir/type :fhir/OperationOutcome})
     :else
     (d/pull db new-handle)))
 

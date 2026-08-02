@@ -38,7 +38,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (def bootstrap-servers "bootstrap-servers-182741")
-(def patient-0 {:fhir/type :fhir/Patient :id "0"})
+(def patient-0 #fhir/map{:fhir/type :fhir/Patient :id "0"})
 (def patient-hash-0 (hash/generate patient-0))
 (def tx-cmd {:op "create" :type "Patient" :id "0" :hash patient-hash-0})
 

@@ -89,7 +89,7 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
     }
 
     public static Timing create(IPersistentMap m) {
-        return new Timing(ExtensionData.fromMap(m), Base.listFrom(m, MODIFIER_EXTENSION), Base.listFrom(m, EVENT),
+        return new Timing(ExtensionData.fromMap(m), Base.typedListFrom(m, MODIFIER_EXTENSION, Extension.class), Base.typedListFrom(m, EVENT, DateTime.class),
                 (Repeat) m.valAt(REPEAT), (CodeableConcept) m.valAt(CODE));
     }
 
@@ -141,7 +141,7 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
 
     @Override
     public Timing empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -151,10 +151,10 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
 
     @Override
     public Timing assoc(Object key, Object val) {
-        if (key == EVENT) return new Timing(extensionData, modifierExtension, Lists.nullToEmpty(val), repeat, code);
+        if (key == EVENT) return new Timing(extensionData, modifierExtension, Lists.typedNullToEmpty(val, DateTime.class), repeat, code);
         if (key == REPEAT) return new Timing(extensionData, modifierExtension, event, (Repeat) val, code);
         if (key == CODE) return new Timing(extensionData, modifierExtension, event, repeat, (CodeableConcept) val);
-        if (key == MODIFIER_EXTENSION) return new Timing(extensionData, Lists.nullToEmpty(val), event, repeat, code);
+        if (key == MODIFIER_EXTENSION) return new Timing(extensionData, Lists.typedNullToEmpty(val, Extension.class), event, repeat, code);
         if (key == EXTENSION)
             return new Timing(extensionData.withExtension(val), modifierExtension, event, repeat, code);
         if (key == ID) return new Timing(extensionData.withId(val), modifierExtension, event, repeat, code);
@@ -479,7 +479,7 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
                     (PositiveInt) m.valAt(COUNT_MAX), (Decimal) m.valAt(DURATION), (Decimal) m.valAt(DURATION_MAX),
                     (Code) m.valAt(DURATION_UNIT), (PositiveInt) m.valAt(FREQUENCY), (PositiveInt) m.valAt(FREQUENCY_MAX),
                     (Decimal) m.valAt(PERIOD), (Decimal) m.valAt(PERIOD_MAX), (Code) m.valAt(PERIOD_UNIT),
-                    Base.listFrom(m, DAY_OF_WEEK), Base.listFrom(m, TIME_OF_DAY), Base.listFrom(m, WHEN),
+                    Base.typedListFrom(m, DAY_OF_WEEK, Code.class), Base.typedListFrom(m, TIME_OF_DAY, Time.class), Base.typedListFrom(m, WHEN, Code.class),
                     (UnsignedInt) m.valAt(OFFSET));
         }
 
@@ -554,7 +554,7 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
 
         @Override
         public Repeat empty() {
-            return EMPTY;
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override
@@ -598,14 +598,14 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
                     durationUnit, frequency, frequencyMax, period, periodMax, (Code) val, dayOfWeek, timeOfDay, when,
                     offset);
             if (key == DAY_OF_WEEK) return new Repeat(extensionData, bounds, count, countMax, duration, durationMax,
-                    durationUnit, frequency, frequencyMax, period, periodMax, periodUnit, Lists.nullToEmpty(val),
+                    durationUnit, frequency, frequencyMax, period, periodMax, periodUnit, Lists.typedNullToEmpty(val, Code.class),
                     timeOfDay, when, offset);
             if (key == TIME_OF_DAY) return new Repeat(extensionData, bounds, count, countMax, duration, durationMax,
                     durationUnit, frequency, frequencyMax, period, periodMax, periodUnit, dayOfWeek,
-                    Lists.nullToEmpty(val), when, offset);
+                    Lists.typedNullToEmpty(val, Time.class), when, offset);
             if (key == WHEN) return new Repeat(extensionData, bounds, count, countMax, duration, durationMax,
                     durationUnit, frequency, frequencyMax, period, periodMax, periodUnit, dayOfWeek, timeOfDay,
-                    Lists.nullToEmpty(val), offset);
+                    Lists.typedNullToEmpty(val, Code.class), offset);
             if (key == OFFSET) return new Repeat(extensionData, bounds, count, countMax, duration, durationMax,
                     durationUnit, frequency, frequencyMax, period, periodMax, periodUnit, dayOfWeek, timeOfDay, when,
                     (UnsignedInt) val);

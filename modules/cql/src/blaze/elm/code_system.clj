@@ -22,9 +22,9 @@
 (defn code-system
   {:arglists '([terminology-service code-system-def])}
   [terminology-service {system :id :keys [version]}]
-  (let [url-param {:fhir/type :fhir.Parameters/parameter
-                   :name #fhir/string "url"
-                   :value (type/uri system)}]
+  (let [url-param (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                                  :name #fhir/string "url"
+                                  :value (type/uri system)})]
     (reify
       ILookup
       (valAt [code-system key]
@@ -58,8 +58,8 @@
         (tu/extract-result
          (ts/code-system-validate-code
           terminology-service
-           {:fhir/type :fhir/Parameters
-            :parameter [url-param (tu/code-param code)]})
+           (type/fhir-map {:fhir/type :fhir/Parameters
+                           :parameter [url-param (tu/code-param code)]}))
          (fn [cause-msg]
            (format
             "Error while testing that the code `%s` is in CodeSystem `%s`. Cause: %s"
@@ -68,9 +68,9 @@
         (tu/extract-result
          (ts/code-system-validate-code
           terminology-service
-           {:fhir/type :fhir/Parameters
-            :parameter
-            [url-param (tu/code-param (:code code))]})
+           (type/fhir-map {:fhir/type :fhir/Parameters
+                           :parameter
+                           [url-param (tu/code-param (:code code))]}))
          (fn [cause-msg]
            (format
             "Error while testing that the %s is in CodeSystem `%s`. Cause: %s"
@@ -79,8 +79,8 @@
         (tu/extract-result
          (ts/code-system-validate-code
           terminology-service
-           {:fhir/type :fhir/Parameters
-            :parameter [url-param (tu/codeable-concept-param concept)]})
+           (type/fhir-map {:fhir/type :fhir/Parameters
+                           :parameter [url-param (tu/codeable-concept-param concept)]}))
          (fn [cause-msg]
            (format
             "Error while testing that the %s is in CodeSystem `%s`. Cause: %s"

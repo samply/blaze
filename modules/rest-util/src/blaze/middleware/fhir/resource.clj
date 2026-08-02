@@ -138,9 +138,9 @@
 (defn- resource-request-binary-data [content-type {:keys [body] :as request}]
   (if body
     (assoc request :body
-           {:fhir/type :fhir/Binary
-            :contentType (type/code content-type)
-            :data (type/base64Binary (encode-binary-data body))})
+           (type/fhir-map {:fhir/type :fhir/Binary
+                           :contentType (type/code content-type)
+                           :data (type/base64Binary (encode-binary-data body))}))
     (ba/incorrect "Missing HTTP body.")))
 
 (defn- binary-resource-request [parsing-context request]

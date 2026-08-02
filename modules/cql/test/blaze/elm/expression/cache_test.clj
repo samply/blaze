@@ -176,7 +176,7 @@
 (deftest with-max-t-test
   (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
                       executor :blaze.test/manual-executor} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
     (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
@@ -272,9 +272,9 @@
   (testing "one Bloom filter on database with one patient"
     (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
                         executor :blaze.test/manual-executor} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
@@ -289,9 +289,9 @@
   (testing "two Bloom filters on database with one patient"
     (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
                         executor :blaze.test/manual-executor} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
       (create-bloom-filter! (compile-exists-expr node "Condition") cache executor)
@@ -313,15 +313,15 @@
     (with-system-data [{::expr/keys [cache] :blaze.db/keys [node]
                         executor :blaze.test/manual-executor}
                        (assoc-in config [::expr/cache :refresh] (time/millis 1))]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]
-                         [:put {:fhir/type :fhir/Observation :id "1"
-                                :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
+      @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+                         [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                                         :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
 
       (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
 
@@ -336,9 +336,9 @@
   (testing "an old Bloom filter is loaded from the store even if the t was increased in the meantime"
     (with-system-data [{::expr/keys [cache] :blaze.db/keys [node]
                         executor :blaze.test/manual-executor} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (testing "creates the Bloom filter with t=1"
         (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)
@@ -351,9 +351,9 @@
       (.invalidateAll (.synchronous ^AsyncLoadingCache (:mem-cache cache)))
 
       ;; advances the database
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]
-                         [:put {:fhir/type :fhir/Observation :id "1"
-                                :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
+      @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+                         [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                                         :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
 
       (testing "doesn't create a new Bloom filter because the old one is still in the store"
         (create-bloom-filter! (compile-exists-expr node "Observation") cache executor)

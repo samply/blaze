@@ -78,7 +78,7 @@ public final class Uuid extends PrimitiveElement {
 
     @Override
     public Uuid empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

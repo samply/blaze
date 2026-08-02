@@ -76,11 +76,11 @@
           :sct/module-id :? some?))
 
       (testing "with invalid version returns anomaly"
-        (let [bad-cs {:fhir/type :fhir/CodeSystem
-                      :url #fhir/uri "http://snomed.info/sct"
-                      :version #fhir/string "invalid"
-                      :content #fhir/code "not-present"
-                      :status #fhir/code "active"}]
+        (let [bad-cs #fhir/map{:fhir/type :fhir/CodeSystem
+                               :url #fhir/uri "http://snomed.info/sct"
+                               :version #fhir/string "invalid"
+                               :content #fhir/code "not-present"
+                               :status #fhir/code "active"}]
           (given (c/enhance ctx bad-cs)
             ::anom/category := ::anom/incorrect))))))
 

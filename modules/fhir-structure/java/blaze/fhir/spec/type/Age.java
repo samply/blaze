@@ -56,7 +56,7 @@ public final class Age extends AbstractQuantity {
 
     @Override
     public Age empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

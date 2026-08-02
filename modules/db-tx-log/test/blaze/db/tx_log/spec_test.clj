@@ -21,8 +21,8 @@
     1
     0xFFFFFFFFFFFFFF))
 
-(def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
-(def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
+(def patient-hash-0 (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"}))
+(def observation-hash-0 (hash/generate #fhir/map{:fhir/type :fhir/Observation :id "0"}))
 
 (deftest tx-cmd-test
   (testing "valid"

@@ -187,13 +187,13 @@
   #{"above" "below" "code-text" "contains" "identifier" "missing" "not-in" "text" "text-advanced"})
 
 (defn- url-param [url]
-  {:fhir/type :fhir.Parameters/parameter
-   :name #fhir/string "url"
-   :value (type/uri url)})
+  (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                  :name #fhir/string "url"
+                  :value (type/uri url)}))
 
 (defn- parameters [url]
-  {:fhir/type :fhir/Parameters
-   :parameter [(url-param url)]})
+  (type/fhir-map {:fhir/type :fhir/Parameters
+                  :parameter [(url-param url)]}))
 
 (defn- compile-concept [{:keys [system code]}]
   (codec/v-hash (str (:value system) "|" (:value code))))

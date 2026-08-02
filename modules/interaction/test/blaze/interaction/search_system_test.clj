@@ -230,8 +230,8 @@
 
   (testing "with one patient"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :multipleBirth #fhir/boolean true}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :multipleBirth #fhir/boolean true}]]]
 
       (testing "Returns all existing resources"
         (doseq [params [{} {"_summary" "false"}]]
@@ -371,8 +371,8 @@
 
   (testing "with two patients"
     (with-handler [handler node page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "search for all patients with _count=1"
         (let [{:keys [status body]}
@@ -432,7 +432,7 @@
             (is (= 1 (count (:entry body)))))))
 
       (testing "adding a third patient doesn't influence the paging"
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "2"}]])
+        @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]])
 
         (testing "following the next link"
           (let [{:keys [body]}
@@ -459,7 +459,7 @@
   (testing "with unknown search parameter"
     (testing "with strict handling"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (doseq [params [{"foo" "bar"} {"foo" "bar" "_summary" "count"}]]
           (let [{:keys [status body]}
@@ -477,7 +477,7 @@
 
     (testing "with lenient handling"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (testing "normal result"
           (let [{:keys [status body]}
@@ -513,11 +513,11 @@
 
   (testing "with _tag search parameter"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]]]
 
       (doseq [headers [{} {"prefer" "handling=strict"}]]
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -575,16 +575,16 @@
 
   (testing "with _list search parameter"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Observation :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "1"}]
-        [:put {:fhir/type :fhir/List :id "0"
-               :entry
-               [{:fhir/type :fhir.List/entry
-                 :item #fhir/Reference{:reference #fhir/string "Patient/0"}}
-                {:fhir/type :fhir.List/entry
-                 :item #fhir/Reference{:reference #fhir/string "Observation/0"}}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/List :id "0"
+                        :entry
+                        [#fhir/map{:fhir/type :fhir.List/entry
+                                   :item #fhir/Reference{:reference #fhir/string "Patient/0"}}
+                         #fhir/map{:fhir/type :fhir.List/entry
+                                   :item #fhir/Reference{:reference #fhir/string "Observation/0"}}]}]]]
 
       (doseq [headers [{} {"prefer" "handling=strict"}]]
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -624,26 +624,26 @@
 
   (testing "with _has search parameter"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Group :id "0"}]
-        [:put {:fhir/type :fhir/Group :id "1"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://loinc.org"
-                    :code #fhir/code "8480-6"}]}}]
-        [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference #fhir/string "Group/0"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "http://loinc.org"
-                    :code #fhir/code "8480-6"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Group :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Group :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                        :code
+                        #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                            {:system #fhir/uri "http://loinc.org"
+                             :code #fhir/code "8480-6"}]}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                        :subject #fhir/Reference{:reference #fhir/string "Group/0"}
+                        :code
+                        #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                            {:system #fhir/uri "http://loinc.org"
+                             :code #fhir/code "8480-6"}]}}]]]
 
       (doseq [headers [{} {"prefer" "handling=strict"}]]
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -683,9 +683,9 @@
 
   (testing "with _elements search parameter"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code "male"
-               :birthDate #fhir/date #system/date "2024"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :gender #fhir/code "male"
+                        :birthDate #fhir/date #system/date "2024"}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {:params {"_elements" "gender"}})]
@@ -706,13 +706,13 @@
 
   (testing "paging with _tag search parameter"
     (with-handler [handler _ page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
-        [:put {:fhir/type :fhir/Patient :id "1"
-               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
-        [:put {:fhir/type :fhir/Patient :id "2"
-               :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
-        [:put {:fhir/type :fhir/Patient :id "3"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                        :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2"
+                        :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "3"}]]]
 
       (testing "search for tagged resources with _count=1"
         (let [{:keys [status body]}
@@ -847,10 +847,10 @@
 
     (testing "_include"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
               @(handler
@@ -883,10 +883,10 @@
 
     (testing "_revinclude"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                          :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-190657" :code #fhir/code "code-190711"}]}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
               @(handler
@@ -919,9 +919,9 @@
 
     (testing "_include without search clauses"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler {:params {"_include" "Observation:subject"}})]
@@ -945,7 +945,7 @@
   (testing "missing resource contents"
     (with-redefs [rc/get (fn [_ _] (ac/completed-future nil))]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler {})]
@@ -962,7 +962,7 @@
   (testing "an anomaly returned by d/execute-query is propagated as an error response"
     (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-104114"))]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler {:params {"_id" "0"}})]

@@ -26,49 +26,49 @@
     (testing "with references"
       (given (tx/prepare-ops
               context
-              [[:create {:fhir/type :fhir/Observation :id "0"
-                         :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
+              [[:create #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
         [0 0 :op] := "create"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
         [0 0 :hash] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [0 0 :refs] := [["Patient" "0"]]
         [1 0 0] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
-        [1 0 1] := {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})
+        [1 0 1] := #fhir/map{:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})
 
       (testing "with extended reference.reference"
         (given (tx/prepare-ops
                 context
                 [[:create
-                  {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference
-                             {:reference #fhir/string
-                                          {:extension [#fhir/Extension{:url "foo"}]
-                                           :value "Patient/190740"}}}]])
+                  #fhir/map{:fhir/type :fhir/Observation :id "0"
+                            :subject #fhir/Reference
+                                      {:reference #fhir/string
+                                                   {:extension [#fhir/Extension{:url "foo"}]
+                                                    :value "Patient/190740"}}}]])
           [0 0 :refs] := [["Patient" "190740"]])
 
         (testing "without value"
           (given (tx/prepare-ops
                   context
                   [[:create
-                    {:fhir/type :fhir/Observation :id "0"
-                     :subject #fhir/Reference
-                               {:reference #fhir/string
-                                            {:extension [#fhir/Extension{:url "foo"}]}}}]])
+                    #fhir/map{:fhir/type :fhir/Observation :id "0"
+                              :subject #fhir/Reference
+                                        {:reference #fhir/string
+                                                     {:extension [#fhir/Extension{:url "foo"}]}}}]])
             [0 0 :refs] :? empty?)))
 
       (testing "with disabled referential integrity check"
         (given (tx/prepare-ops
                 {:blaze.db/enforce-referential-integrity false}
-                [[:create {:fhir/type :fhir/Observation :id "0"
-                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
+                [[:create #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
           [0 0 :refs] :? empty?)))
 
     (testing "conditional"
       (given (tx/prepare-ops
               context
-              [[:create {:fhir/type :fhir/Patient :id "id-220036"}
+              [[:create #fhir/map{:fhir/type :fhir/Patient :id "id-220036"}
                 [["identifier" "115508"]]]])
         [0 0 :op] := "create"
         [0 0 :type] := "Patient"
@@ -76,38 +76,38 @@
         [0 0 :if-none-exist] := [["identifier" "115508"]])))
 
   (testing "put"
-    (given (tx/prepare-ops context [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (given (tx/prepare-ops context [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]])
       [0 0 :op] := "put"
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"
       [0 0 :hash] := #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
       [1 0 0] := #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
-      [1 0 1] := {:fhir/type :fhir/Patient :id "0"})
+      [1 0 1] := #fhir/map{:fhir/type :fhir/Patient :id "0"})
 
     (testing "with references"
       (given (tx/prepare-ops
               context
-              [[:put {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
+              [[:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
         [0 0 :op] := "put"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
         [0 0 :hash] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [0 0 :refs] := [["Patient" "0"]]
         [1 0 0] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
-        [1 0 1] := {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})
+        [1 0 1] := #fhir/map{:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})
 
       (testing "with disabled referential integrity check"
         (given (tx/prepare-ops {:blaze.db/enforce-referential-integrity false}
-                               [[:put {:fhir/type :fhir/Observation :id "0"
-                                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
+                               [[:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
           [0 0 :refs] :? empty?)))
 
     (testing "with matches"
       (satisfies-prop 100
         (prop/for-all [if-match (gen/vector (s/gen :blaze.db/t) 1 10)]
-          (let [tx-op [:put {:fhir/type :fhir/Patient :id "0"} (into [:if-match] if-match)]]
+          (let [tx-op [:put #fhir/map{:fhir/type :fhir/Patient :id "0"} (into [:if-match] if-match)]]
             (= if-match (:if-match (ffirst (tx/prepare-ops context [tx-op])))))))))
 
   (testing "keep"

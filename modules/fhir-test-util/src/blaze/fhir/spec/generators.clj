@@ -881,7 +881,7 @@
        (gen/fmap type/bundle-entry-search)))
 
 (defn- fhir-type [fhir-type gen]
-  (gen/fmap #(assoc % :fhir/type fhir-type) gen))
+  (gen/fmap #(type/fhir-map (assoc % :fhir/type fhir-type)) gen))
 
 (defn bundle-entry
   [& {:keys [id extension fullUrl resource]

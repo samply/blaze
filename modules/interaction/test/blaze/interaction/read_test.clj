@@ -79,7 +79,7 @@
 
   (testing "returns Gone on deleted resource"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status body headers]}
@@ -102,7 +102,7 @@
   (testing "returns Internal Server Error on missing resource content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler {:path-params {:id "0"}})]
@@ -117,7 +117,7 @@
 
   (testing "returns existing resource"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}
             @(handler {:path-params {:id "0"}})]

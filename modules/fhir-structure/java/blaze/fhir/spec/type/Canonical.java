@@ -89,7 +89,7 @@ public final class Canonical extends PrimitiveElement {
 
     @Override
     public Canonical empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

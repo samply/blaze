@@ -18,7 +18,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler-spec]
    [blaze.job-scheduler.protocols :as p]
@@ -229,7 +228,6 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -248,9 +246,6 @@
     :fail-on-unknown-property false
     :include-summary-only true
     :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}
 
    :blaze/scheduler {}
 
@@ -318,27 +313,27 @@
        :code (type/code type)})]}))
 
 (defn- ready-job [type]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "ready"
-   :code (job-type type)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "ready"
+                  :code (job-type type)}))
 
 (defn bundle-referencing-job [bundle-id]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "ready"
-   :code (job-type "async-interaction")
-   :input
-   [{:fhir/type :fhir.Task/input
-     :type #fhir/CodeableConcept
-            {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
-                :code #fhir/code "bundle"}]}
-     :value (type/reference {:reference (type/string (str "Bundle/" bundle-id))})}]})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "ready"
+                  :code (job-type "async-interaction")
+                  :input
+                  [(type/fhir-map {:fhir/type :fhir.Task/input
+                                   :type #fhir/CodeableConcept
+                                          {:coding
+                                           [#fhir/Coding
+                                             {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
+                                              :code #fhir/code "bundle"}]}
+                                   :value (type/reference {:reference (type/string (str "Bundle/" bundle-id))})})]}))
 
 (defn bundle [id]
-  {:fhir/type :fhir/Bundle
-   :id id
-   :type #fhir/code "batch"})
+  (type/fhir-map {:fhir/type :fhir/Bundle
+                  :id id
+                  :type #fhir/code "batch"}))
 
 (def ^:private job-id "AAAAAAAAAAAAAAAB")
 
@@ -457,32 +452,32 @@
             :type := #fhir/code "batch"))))))
 
 (defn- in-progress-job [type]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "in-progress"
-   :statusReason job-util/started-status-reason
-   :code (job-type type)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "in-progress"
+                  :statusReason job-util/started-status-reason
+                  :code (job-type type)}))
 
 (defn- completed-job [type]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "completed"
-   :code (job-type type)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "completed"
+                  :code (job-type type)}))
 
 (defn- failed-job [type]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "failed"
-   :code (job-type type)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "failed"
+                  :code (job-type type)}))
 
 (defn- cancellation-requested-job [type]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "cancelled"
-   :businessStatus job-util/cancellation-requested-sub-status
-   :code (job-type type)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "cancelled"
+                  :businessStatus job-util/cancellation-requested-sub-status
+                  :code (job-type type)}))
 
 (defn- cancellation-finished-job [type]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "cancelled"
-   :businessStatus job-util/cancellation-finished-sub-status
-   :code (job-type type)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "cancelled"
+                  :businessStatus job-util/cancellation-finished-sub-status
+                  :code (job-type type)}))
 
 (deftest cancel-job-test
   (testing "works while job is in-progress"
@@ -606,9 +601,9 @@
         ::anom/message := (format "Can't pause job `%s` because it isn't in-progress. It's status is `completed`." job-id)))))
 
 (defn- on-hold-job [type]
-  {:fhir/type :fhir/Task
-   :status #fhir/code "on-hold"
-   :code (job-type type)})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :status #fhir/code "on-hold"
+                  :code (job-type type)}))
 
 (deftest resume-job-test
   (testing "works while job is on-hold"

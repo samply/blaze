@@ -134,7 +134,7 @@ public final class RatioRange extends AbstractElement implements Complex, Extens
 
     @Override
     public RatioRange empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

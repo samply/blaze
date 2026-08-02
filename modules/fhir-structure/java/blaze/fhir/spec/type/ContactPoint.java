@@ -166,7 +166,7 @@ public final class ContactPoint extends AbstractElement implements Complex, Exte
 
     @Override
     public ContactPoint empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

@@ -16,7 +16,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.references-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.handler.fhir.util-spec]
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler.protocols :as p]
@@ -197,7 +196,6 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -216,9 +214,6 @@
     :fail-on-unknown-property false
     :include-summary-only true
     :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}
 
    :blaze/scheduler {}
 
@@ -325,7 +320,7 @@
     (when cancelled-promise @cancelled-promise)
     (if-let [anom (cancelled?)]
       (ac/completed-future anom)
-      (ac/completed-future (ring/response {:fhir/type :fhir/Observation})))))
+      (ac/completed-future (ring/response #fhir/map{:fhir/type :fhir/Observation})))))
 
 (defmethod ig/init-key ::cancellation-signaling-job-handler [_ {:keys [handler cancelled-promise]}]
   (reify p/JobHandler
@@ -406,14 +401,14 @@
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
       @(js/create-job
         job-scheduler
-        {:fhir/type :fhir/Task
-         :status #fhir/code "ready"
-         :code #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-                    :code #fhir/code "async-interaction"
-                    :display #fhir/string "Asynchronous Interaction Request"}]}})
+        #fhir/map{:fhir/type :fhir/Task
+                  :status #fhir/code "ready"
+                  :code #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                            {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+                             :code #fhir/code "async-interaction"
+                             :display #fhir/string "Asynchronous Interaction Request"}]}})
 
       (testing "the job is failed"
         (given @(jtu/pull-job system :failed)

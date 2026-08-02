@@ -26,18 +26,18 @@
 (defn job
   "Creates a async interaction job resource."
   [authored-on bundle-id t]
-  {:fhir/type :fhir/Task
-   :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/AsyncInteractionJob"))})
-   :status #fhir/code "ready"
-   :intent #fhir/code "order"
-   :code (job-util/type-codeable-concept "async-interaction" "Asynchronous Interaction Request")
-   :authoredOn (type/dateTime authored-on)
-   :input
-   [(u/request-bundle-input (str "Bundle/" bundle-id))
-    {:fhir/type :fhir.Task/input
-     :type (type/codeable-concept
-            {:coding (canonical/codings "CodeSystem/AsyncInteractionJobParameter" "t")})
-     :value (type/unsignedInt t)}]})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/AsyncInteractionJob"))})
+                  :status #fhir/code "ready"
+                  :intent #fhir/code "order"
+                  :code (job-util/type-codeable-concept "async-interaction" "Asynchronous Interaction Request")
+                  :authoredOn (type/dateTime authored-on)
+                  :input
+                  [(u/request-bundle-input (str "Bundle/" bundle-id))
+                   (type/fhir-map {:fhir/type :fhir.Task/input
+                                   :type (type/codeable-concept
+                                          {:coding (canonical/codings "CodeSystem/AsyncInteractionJobParameter" "t")})
+                                   :value (type/unsignedInt t)})]}))
 
 (defn- return-preference-extensions [return-preference]
   (canonical/extensions "StructureDefinition/return-preference"
@@ -47,21 +47,21 @@
   ([id method url]
    (request-bundle id method url nil {}))
   ([id method url resource {return-preference :blaze.preference/return}]
-   {:fhir/type :fhir/Bundle
-    :id id
-    :type #fhir/code "batch"
-    :entry
-    [(cond->
-      {:fhir/type :fhir.Bundle/entry
-       :request
-       (cond->
-        {:fhir/type :fhir.Bundle.entry/request
-         :method (type/code method)
-         :url (type/uri url)}
-         return-preference
-         (assoc :extension (return-preference-extensions return-preference)))}
-       resource
-       (assoc :resource resource))]}))
+   (type/fhir-map {:fhir/type :fhir/Bundle
+                   :id id
+                   :type #fhir/code "batch"
+                   :entry
+                   [(cond->
+                     (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                                     :request
+                                     (cond->
+                                      (type/fhir-map {:fhir/type :fhir.Bundle.entry/request
+                                                      :method (type/code method)
+                                                      :url (type/uri url)})
+                                       return-preference
+                                       (assoc :extension (return-preference-extensions return-preference)))})
+                      resource
+                      (assoc :resource resource))]})))
 
 (defn- start-job [job]
   (assoc
@@ -78,10 +78,10 @@
   (-> (job-util/output-value job output-uri "bundle") :reference :value))
 
 (defn- response-bundle [context entries]
-  {:fhir/type :fhir/Bundle
-   :id (m/luid context)
-   :type #fhir/code "batch-response"
-   :entry entries})
+  (type/fhir-map {:fhir/type :fhir/Bundle
+                  :id (m/luid context)
+                  :type #fhir/code "batch-response"
+                  :entry entries}))
 
 (defn- process-batch-entries
   [{:keys [main-node db-sync-timeout] ::keys [running-jobs] :as context}

@@ -106,11 +106,11 @@
                (when-let [{:keys [start-node-id] :as graph} (compile compiled-graph-cache graph-def)]
                  (do-sync [resources (process-start-node db graph start-node-id resource-handle)]
                    (ring/response
-                    {:fhir/type :fhir/Bundle
-                     :id (m/luid context)
-                     :type #fhir/code "searchset"
-                     :total (type/unsignedInt (count resources))
-                     :entry (mapv (partial search-util/match-entry request) resources)}))))))
+                    (type/fhir-map {:fhir/type :fhir/Bundle
+                                    :id (m/luid context)
+                                    :type #fhir/code "searchset"
+                                    :total (type/unsignedInt (count resources))
+                                    :entry (mapv (partial search-util/match-entry request) resources)})))))))
         (ac/completed-future (ba/incorrect "Missing param `graph`")))
       ac/completed-future)))
 

@@ -26,15 +26,15 @@
       (= hash (hash/from-hex (str hash))))))
 
 (deftest equals-test
-  (let [hash (hash/generate {:fhir/type :fhir/Patient :id "0"})]
+  (let [hash (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"})]
     (is (.equals hash hash))))
 
 (deftest hashCode-test
-  (is (= 1473621365 (.hashCode (hash/generate {:fhir/type :fhir/Patient :id "0"})))))
+  (is (= 1473621365 (.hashCode (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"})))))
 
 (deftest str-test
   (is (= "C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
-         (str (hash/generate {:fhir/type :fhir/Patient :id "0"})))))
+         (str (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"})))))
 
 (deftest byte-array-test
   (satisfies-prop 10000
@@ -80,14 +80,14 @@
 
 (deftest generate-test
   (testing "hashes are stable"
-    (is (= (hash/generate {:fhir/type :fhir/Patient :id "0"})
-           (hash/generate {:fhir/type :fhir/Patient :id "0"}))))
+    (is (= (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"})
+           (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"}))))
 
   (testing "hashes from different resource types are different"
-    (is (not= (hash/generate {:fhir/type :fhir/Patient :id "0"})
-              (hash/generate {:fhir/type :fhir/Observation :id "0"})))))
+    (is (not= (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"})
+              (hash/generate #fhir/map{:fhir/type :fhir/Observation :id "0"})))))
 
 (deftest print-test
-  (is (= (pr-str (hash/generate {:fhir/type :fhir/Patient :id "0"}))
+  (is (= (pr-str (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"}))
          (pr-str #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F")
          "#blaze/hash\"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F\"")))

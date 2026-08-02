@@ -53,24 +53,24 @@
 
 (defn write-json
   "Writes `value` to output stream `out` closing it if done."
-  [context out value]
-  (res/write-json context out value))
+  [out value]
+  (res/write-json out value))
 
 (defn write-json-as-bytes
-  [context value]
+  [value]
   (let [out (ByteArrayOutputStream.)]
-    (when-ok [_ (write-json context out value)]
+    (when-ok [_ (write-json out value)]
       (.toByteArray out))))
 
 (defn write-json-as-string
-  [context value]
-  (when-ok [bytes (write-json-as-bytes context value)]
+  [value]
+  (when-ok [bytes (write-json-as-bytes value)]
     (String. ^bytes bytes StandardCharsets/UTF_8)))
 
 (defn write-cbor
-  [context x]
+  [x]
   (let [out (ByteArrayOutputStream.)]
-    (when-ok [_ (res/write-cbor context out x)]
+    (when-ok [_ (res/write-cbor out x)]
       (.toByteArray out))))
 
 (defn unform-xml

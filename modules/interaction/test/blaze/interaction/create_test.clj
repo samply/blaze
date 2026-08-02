@@ -153,7 +153,7 @@
         (let [{:keys [status body]}
               @(handler
                 {::reitit/match patient-match
-                 :body {:fhir/type :fhir/Observation}})]
+                 :body #fhir/map{:fhir/type :fhir/Observation}})]
 
           (is (= 400 status))
 
@@ -170,8 +170,8 @@
         (let [{:keys [status body]}
               @(handler
                 {::reitit/match observation-match
-                 :body {:fhir/type :fhir/Observation :id "0"
-                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
+                 :body #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
 
           (is (= 409 status))
 
@@ -187,7 +187,7 @@
           (let [{:keys [status body]}
                 @(handler
                   {::reitit/match patient-match
-                   :body {:fhir/type :fhir/Patient}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient}})]
 
             (is (= 500 status))
 
@@ -203,7 +203,7 @@
         (let [{:keys [status headers body]}
               @(handler
                 {::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -229,8 +229,8 @@
           (let [{:keys [status body]}
                 @(handler
                   {::reitit/match patient-match
-                   :body {:fhir/type :fhir/Patient
-                          :meta #fhir/Meta{:source #fhir/uri "source-110438"}}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient
+                                   :meta #fhir/Meta{:source #fhir/uri "source-110438"}}})]
 
             (is (= 201 status))
 
@@ -247,8 +247,8 @@
             (let [{:keys [status]}
                   @(handler
                     {::reitit/match patient-match
-                     :body {:fhir/type :fhir/Patient
-                            :meta #fhir/Meta{:versionId #fhir/id "1"}}})]
+                     :body #fhir/map{:fhir/type :fhir/Patient
+                                     :meta #fhir/Meta{:versionId #fhir/id "1"}}})]
 
               (is (= 201 status)))))))
 
@@ -258,7 +258,7 @@
               @(handler
                 {::reitit/match patient-match
                  :headers {"prefer" "return=minimal"}
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -281,7 +281,7 @@
               @(handler
                 {::reitit/match patient-match
                  :headers {"prefer" "return=representation"}
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -308,7 +308,7 @@
               @(handler
                 {::reitit/match patient-match
                  :headers {"prefer" "return=OperationOutcome"}
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -332,7 +332,7 @@
               @(handler
                 {::reitit/match patient-match
                  :headers {"if-none-exist" ""}
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (testing "a unconditional create is executed"
             (is (= 201 status))))))
@@ -343,7 +343,7 @@
               @(handler
                 {::reitit/match patient-match
                  :headers {"if-none-exist" "_sort=a"}
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (testing "a unconditional create is executed"
             (is (= 201 status))))))
@@ -355,37 +355,37 @@
                 @(handler
                   {::reitit/match patient-match
                    :headers {"if-none-exist" "identifier=212154"}
-                   :body {:fhir/type :fhir/Patient}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient}})]
 
             (testing "the patient is created"
               (is (= 201 status))))))
 
       (testing "on non-matching patient"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :identifier
-                   [#fhir/Identifier{:value #fhir/string "094808"}]}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                            :identifier
+                            [#fhir/Identifier{:value #fhir/string "094808"}]}]]]
 
           (let [{:keys [status]}
                 @(handler
                   {::reitit/match patient-match
                    :headers {"if-none-exist" "identifier=212154"}
-                   :body {:fhir/type :fhir/Patient}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient}})]
 
             (testing "the patient is created"
               (is (= 201 status)))))))
 
     (testing "with matching patient"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier
-                 [#fhir/Identifier{:value #fhir/string "095156"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                          :identifier
+                          [#fhir/Identifier{:value #fhir/string "095156"}]}]]]
 
         (let [{:keys [status body]}
               @(handler
                 {::reitit/match patient-match
                  :headers {"if-none-exist" "identifier=095156"}
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (testing "the existing patient is returned"
             (is (= 200 status))
@@ -396,16 +396,16 @@
 
     (testing "with multiple matching patients"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date #system/date "2020"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :birthDate #fhir/date #system/date "2020"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                          :birthDate #fhir/date #system/date "2020"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                          :birthDate #fhir/date #system/date "2020"}]]]
 
         (let [{:keys [status body]}
               @(handler
                 {::reitit/match patient-match
                  :headers {"if-none-exist" "birthdate=2020"}
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (testing "a precondition failure is returned"
             (is (= 412 status))
@@ -422,8 +422,8 @@
       (let [{:keys [status headers body]}
             @((-> handler wrap-defaults wrap-error)
               {::reitit/match observation-match
-               :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
+               :body #fhir/map{:fhir/type :fhir/Observation :id "0"
+                               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
 
         (is (= 201 status))
 
@@ -450,17 +450,17 @@
       (let [{:keys [status headers body]}
             @(handler
               {::reitit/match bundle-match
-               :body {:fhir/type :fhir/Bundle
-                      :type #fhir/code "collection"
-                      :entry
-                      [{:fhir/type :fhir.Bundle/entry
-                        :resource
-                        {:fhir/type :fhir/Observation
-                         :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
-                        :request
-                        {:fhir/type :fhir.Bundle.entry/request
-                         :method #fhir/code "POST"
-                         :url #fhir/uri "Observation"}}]}})]
+               :body #fhir/map{:fhir/type :fhir/Bundle
+                               :type #fhir/code "collection"
+                               :entry
+                               [#fhir/map{:fhir/type :fhir.Bundle/entry
+                                          :resource
+                                          #fhir/map{:fhir/type :fhir/Observation
+                                                    :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}
+                                          :request
+                                          #fhir/map{:fhir/type :fhir.Bundle.entry/request
+                                                    :method #fhir/code "POST"
+                                                    :url #fhir/uri "Observation"}}]}})]
 
         (is (= 201 status))
 
@@ -511,7 +511,7 @@
             @(handler
               {::reitit/match patient-match
                :headers {"prefer" "return=representation"}
-               :body {:fhir/type :fhir/Patient}})]
+               :body #fhir/map{:fhir/type :fhir/Patient}})]
 
         (is (= 201 status))
 
@@ -524,7 +524,7 @@
       (let [{:keys [status body]}
             @(handler
               {::reitit/match patient-match
-               :body {:fhir/type :fhir/Patient}})]
+               :body #fhir/map{:fhir/type :fhir/Patient}})]
 
         (is (= 400 status))
 

@@ -1,5 +1,6 @@
 package blaze.fhir.writing;
 
+import blaze.fhir.spec.type.Base;
 import blaze.fhir.spec.type.FieldName;
 import blaze.fhir.spec.type.Primitive;
 import clojure.lang.Keyword;
@@ -24,13 +25,13 @@ public final class PrimitivePropertyHandler extends PropertyHandler {
     }
 
     @Override
-    void writeValue(JsonGenerator generator, Object value) throws IOException {
+    public void writeValue(JsonGenerator generator, Object value) throws IOException {
         if (value instanceof Sequential) {
             Primitive.serializeJsonPrimitiveList((List<?>) value, generator, fieldName);
         } else if (value instanceof Primitive primitive) {
             primitive.serializeJsonField(generator, fieldName);
         } else {
-            throw noFhirType(value);
+            throw Base.noFhirType(value);
         }
     }
 }

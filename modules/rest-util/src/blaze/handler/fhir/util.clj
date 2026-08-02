@@ -346,26 +346,26 @@
      location "Location"}
     :headers}]
   (cond->
-   {:fhir/type :fhir.Bundle/entry
-    :response
-    (cond->
-     {:fhir/type :fhir.Bundle.entry/response
-      :status (type/string (str status))}
+   (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                   :response
+                   (cond->
+                    (type/fhir-map {:fhir/type :fhir.Bundle.entry/response
+                                    :status (type/string (str status))})
 
-      location
-      (assoc :location (type/uri location))
+                     location
+                     (assoc :location (type/uri location))
 
-      etag
-      (assoc :etag (type/string etag))
+                     etag
+                     (assoc :etag (type/string etag))
 
-      last-modified
-      (assoc :lastModified (convert-http-date last-modified)))}
+                     last-modified
+                     (assoc :lastModified (convert-http-date last-modified)))})
 
     body
     (assoc :resource body)))
 
 (defn- response-entry [response]
-  {:fhir/type :fhir.Bundle/entry :response response})
+  (type/fhir-map {:fhir/type :fhir.Bundle/entry :response response}))
 
 (defn- with-entry-location* [issues idx]
   (mapv #(assoc % :expression [(type/string (format "Bundle.entry[%d]" idx))]) issues))

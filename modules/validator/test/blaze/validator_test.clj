@@ -20,6 +20,6 @@
   (let [validator (reify p/Validator
                     (-validate [_ resource]
                       (ac/completed-future (assoc resource :id "validated"))))]
-    (given @(validator/validate validator {:fhir/type :fhir/Patient :id "0"})
+    (given @(validator/validate validator #fhir/map{:fhir/type :fhir/Patient :id "0"})
       :fhir/type := :fhir/Patient
       :id := "validated")))

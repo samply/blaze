@@ -187,7 +187,7 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
 
     @Override
     public Coding empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

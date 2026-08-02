@@ -71,18 +71,20 @@
       (find-fully-specified-name code)))
 
 (defn- fully-specified-name-designation [term]
-  {:language #fhir/code "en"
-   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
-                     :code #fhir/code "900000000000003001"
-                     :display #fhir/string-interned "Fully specified name"}
-   :value (type/string term)})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.compose.include.concept/designation
+                  :language #fhir/code "en"
+                  :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
+                                    :code #fhir/code "900000000000003001"
+                                    :display #fhir/string-interned "Fully specified name"}
+                  :value (type/string term)}))
 
 (defn- synonym-designation [[_id [language-code term]]]
-  {:language (type/code language-code)
-   :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
-                     :code #fhir/code "900000000000013009"
-                     :display #fhir/string-interned "Synonym"}
-   :value (type/string term)})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.compose.include.concept/designation
+                  :language (type/code language-code)
+                  :use #fhir/Coding{:system #fhir/uri-interned "http://snomed.info/sct"
+                                    :code #fhir/code "900000000000013009"
+                                    :display #fhir/string-interned "Synonym"}
+                  :value (type/string term)}))
 
 (defn- assoc-designations [concept find-fully-specified-name find-synonyms code]
   (let [fsn (find-fully-specified-name code)
@@ -112,7 +114,7 @@
   (when-ok [[module-id version] (sct-u/module-version (:value version))]
     (let [module-ids (context/find-all-module-ids module-dependency-index
                                                   module-id version)]
-      (assoc code-system :sct/context context
+      (assoc (c/open code-system) :sct/context context
              :sct/module-id module-id :sct/version version
              :sct/search-index search-index
              :sct/module-ids module-ids))))

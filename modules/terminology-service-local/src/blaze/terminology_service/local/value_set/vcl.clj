@@ -23,18 +23,18 @@
 (extend-protocol p/Datafiable
   ValueSet
   (datafy [value-set]
-    (cond-> {:fhir/type :fhir/ValueSet}
+    (cond-> #fhir/map{:fhir/type :fhir/ValueSet}
       (.hasCompose value-set)
       (assoc :compose (datafy/datafy (.getCompose value-set)))))
   ValueSet$ValueSetComposeComponent
   (datafy [compose]
-    (cond-> {:fhir/type :fhir.ValueSet/compose
-             :include (mapv datafy/datafy (.getInclude compose))}
+    (cond-> (type/fhir-map {:fhir/type :fhir.ValueSet/compose
+                            :include (mapv datafy/datafy (.getInclude compose))})
       (.hasExclude compose)
       (assoc :exclude (mapv datafy/datafy (.getExclude compose)))))
   ValueSet$ConceptSetComponent
   (datafy [component]
-    (cond-> {:fhir/type :fhir.ValueSet.compose/include}
+    (cond-> #fhir/map{:fhir/type :fhir.ValueSet.compose/include}
       (.hasSystem component)
       (assoc :system (type/uri (.getSystem component)))
       (.hasConcept component)
@@ -43,14 +43,14 @@
       (assoc :filter (mapv datafy/datafy (.getFilter component)))))
   ValueSet$ConceptReferenceComponent
   (datafy [component]
-    {:fhir/type :fhir.ValueSet.compose.include/concept
-     :code (type/code (.getCode component))})
+    (type/fhir-map {:fhir/type :fhir.ValueSet.compose.include/concept
+                    :code (type/code (.getCode component))}))
   ValueSet$ConceptSetFilterComponent
   (datafy [component]
-    {:fhir/type :fhir.ValueSet.compose.include/filter
-     :property (type/code (.getProperty component))
-     :op (type/code (.toCode (.getOp component)))
-     :value (type/string (.getValue component))}))
+    (type/fhir-map {:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property (type/code (.getProperty component))
+                    :op (type/code (.toCode (.getOp component)))
+                    :value (type/string (.getValue component))})))
 
 (defn- parse-expr* [expr]
   (ba/try-one VCLParser$VCLParseException ::anom/incorrect (VCLParser/parse expr)))

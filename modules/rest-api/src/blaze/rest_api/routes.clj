@@ -69,10 +69,9 @@
   {:name :output
    :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
               (condp = response-type
-                :json (fn [handler _writing-context]
-                        ((output/wrap-output opts) handler))
+                :json (output/wrap-output opts)
                 :binary fhir-output/wrap-binary-output
-                :none (fn [handler _writing-context] handler)
+                :none identity
                 fhir-output/wrap-output))})
 
 (def ^:private wrap-error
@@ -350,15 +349,14 @@
      capabilities-handler
      admin-handler
      page-id-cipher
-     parsing-context
-     writing-context]
+     parsing-context]
     :or {context-path ""}
     :as config}]
   (cond->
    [""
     {:middleware
      (cond-> [wrap-observe-request-duration wrap-params
-              [wrap-output writing-context] wrap-error
+              wrap-output wrap-error
               [wrap-forwarded base-url] wrap-sync]
        (seq auth-backends)
        (conj wrap-auth-guard))

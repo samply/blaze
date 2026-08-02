@@ -204,7 +204,7 @@ public final class ParameterDefinition extends AbstractElement implements Comple
 
     @Override
     public ParameterDefinition empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

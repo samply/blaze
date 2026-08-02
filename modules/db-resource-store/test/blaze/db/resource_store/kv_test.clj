@@ -18,7 +18,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.metrics.spec]
    [blaze.module.test-util :as mtu :refer [given-failed-future given-failed-system with-system]]
    [blaze.test-util :as tu]
@@ -53,7 +52,6 @@
   {::rs/kv
    {:kv-store (ig/ref ::kv/mem)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
    ::kv/mem {:column-families {}}
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
@@ -61,8 +59,6 @@
     :fail-on-unknown-property false
     :include-summary-only true
     :use-regex false}
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}
    ::rs-kv/executor {}})
 
 (deftest init-test
@@ -78,20 +74,13 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "missing parsing-context"
     (given-failed-system (update config ::rs/kv dissoc :parsing-context)
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
-
-  (testing "missing writing-context"
-    (given-failed-system (update config ::rs/kv dissoc :writing-context)
-      :key := ::rs/kv
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
   (testing "missing executor"
     (given-failed-system (update config ::rs/kv dissoc :executor)
@@ -111,13 +100,6 @@
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/parsing-context]
-      [:cause-data ::s/problems 0 :val] := ::invalid))
-
-  (testing "invalid writing-context"
-    (given-failed-system (assoc-in config [::rs/kv :writing-context] ::invalid)
-      :key := ::rs/kv
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid executor"
@@ -163,7 +145,6 @@
    {::rs/kv
     {:kv-store (ig/ref ::failing-kv-store)
      :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-     :writing-context (ig/ref :blaze.fhir/writing-context)
      :executor (ig/ref ::rs-kv/executor)}
     ::failing-kv-store {:msg msg :hash hash}
     [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
@@ -171,19 +152,17 @@
      :fail-on-unknown-property false
      :include-summary-only true
      :use-regex false}
-    :blaze.fhir/writing-context
-    {:structure-definition-repo structure-definition-repo}
     ::rs-kv/executor {}}))
 
 (def ^:private error-msg "msg-154312")
 
-(defn- put! [kv-store writing-context hash content]
-  (kv/put! kv-store [[:default (hash/to-byte-array hash) (fhir-spec/write-cbor writing-context content)]]))
+(defn- put! [kv-store hash content]
+  (kv/put! kv-store [[:default (hash/to-byte-array hash) (fhir-spec/write-cbor content)]]))
 
 (deftest get-test
   (testing "success"
-    (with-system [{store ::rs/kv kv-store ::kv/mem :blaze.fhir/keys [writing-context]} config]
-      (put! kv-store writing-context (hash) {:fhir/type :fhir/Patient :id "0"})
+    (with-system [{store ::rs/kv kv-store ::kv/mem} config]
+      (put! kv-store (hash) #fhir/map{:fhir/type :fhir/Patient :id "0"})
 
       (given @(mtu/assoc-thread-name (rs/get store [:fhir/Patient (hash) :complete]))
         [meta :thread-name] :? mtu/common-pool-thread?
@@ -211,19 +190,19 @@
 (deftest multi-get-test
   (testing "success"
     (testing "with one hash"
-      (let [content {:fhir/type :fhir/Patient :id "0"}]
-        (with-system [{store ::rs/kv kv-store ::kv/mem :blaze.fhir/keys [writing-context]} config]
-          (put! kv-store writing-context (hash) content)
+      (let [content #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        (with-system [{store ::rs/kv kv-store ::kv/mem} config]
+          (put! kv-store (hash) content)
 
           (given @(mtu/assoc-thread-name (rs/multi-get store [[:fhir/Patient (hash) :complete]]))
             identity := {[:fhir/Patient (hash) :complete] content}))))
 
     (testing "with two hashes"
-      (let [content-0 {:fhir/type :fhir/Patient :id "0"}
-            content-1 {:fhir/type :fhir/Patient :id "1"}]
-        (with-system [{store ::rs/kv kv-store ::kv/mem :blaze.fhir/keys [writing-context]} config]
-          (put! kv-store writing-context (hash "0") content-0)
-          (put! kv-store writing-context (hash "1") content-1)
+      (let [content-0 #fhir/map{:fhir/type :fhir/Patient :id "0"}
+            content-1 #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        (with-system [{store ::rs/kv kv-store ::kv/mem} config]
+          (put! kv-store (hash "0") content-0)
+          (put! kv-store (hash "1") content-1)
 
           (testing "content matches"
             (given @(mtu/assoc-thread-name (rs/multi-get store [[:fhir/Patient (hash "0") :complete]
@@ -279,7 +258,7 @@
             ::anom/message := error-msg))))))
 
 (deftest put-test
-  (let [content {:fhir/type :fhir/Patient :id "0"}]
+  (let [content #fhir/map{:fhir/type :fhir/Patient :id "0"}]
     (with-system [{store ::rs/kv} config]
       @(rs/put! store {(hash) content})
 

@@ -8,6 +8,7 @@
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
    [blaze.fhir.spec.references-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util-spec]
    [blaze.job.async-interaction-spec]
    [blaze.job.async-interaction.util :as u]
@@ -36,7 +37,7 @@
 (deftest pull-request-bundle-test
   (testing "missing request bundle reference"
     (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      (given-failed-future (u/pull-request-bundle node {:fhir/type :fhir/Task})
+      (given-failed-future (u/pull-request-bundle node #fhir/map{:fhir/type :fhir/Task})
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing request bundle reference.")))
 
@@ -45,8 +46,8 @@
       (given-failed-future
        (u/pull-request-bundle
         node
-        {:fhir/type :fhir/Task
-         :input [(u/request-bundle-input "invalid-173750")]})
+        (type/fhir-map {:fhir/type :fhir/Task
+                        :input [(u/request-bundle-input "invalid-173750")]}))
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid request bundle reference `invalid-173750`.")))
 
@@ -55,23 +56,23 @@
       (given-failed-future
        (u/pull-request-bundle
         node
-        {:fhir/type :fhir/Task
-         :id "175832"
-         :input [(u/request-bundle-input "Bundle/175805")]})
+        (type/fhir-map {:fhir/type :fhir/Task
+                        :id "175832"
+                        :input [(u/request-bundle-input "Bundle/175805")]}))
         ::anom/category := ::anom/not-found
         ::anom/message := "Can't find the request bundle with id `175805` of job with id `175832`.")))
 
   (testing "request bundle deleted"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]
+      [[[:create #fhir/map{:fhir/type :fhir/Bundle :id "180302"}]]
        [[:delete "Bundle" "180302"]]]
 
       (given-failed-future
        (u/pull-request-bundle
         node
-        {:fhir/type :fhir/Task
-         :id "180340"
-         :input [(u/request-bundle-input "Bundle/180302")]})
+        (type/fhir-map {:fhir/type :fhir/Task
+                        :id "180340"
+                        :input [(u/request-bundle-input "Bundle/180302")]}))
         ::anom/category := ::anom/not-found
         ::anom/message := "The request bundle with id `180302` of job with id `180340` was deleted.")))
 
@@ -80,18 +81,18 @@
             [["current"
               (u/request-bundle-input "Bundle/180302")]
              ["legacy"
-              {:fhir/type :fhir.Task/input
-               :type #fhir/CodeableConcept
-                      {:coding
-                       [#fhir/Coding
-                         {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
-                          :code #fhir/code "bundle"}]}
-               :value #fhir/Reference{:reference #fhir/string "Bundle/180302"}}]]]
+              #fhir/map{:fhir/type :fhir.Task/input
+                        :type #fhir/CodeableConcept
+                               {:coding
+                                [#fhir/Coding
+                                  {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter"
+                                   :code #fhir/code "bundle"}]}
+                        :value #fhir/Reference{:reference #fhir/string "Bundle/180302"}}]]]
       (testing (str desc " parameter system")
         (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-          [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]]
+          [[[:create #fhir/map{:fhir/type :fhir/Bundle :id "180302"}]]]
 
-          (let [task {:fhir/type :fhir/Task :id "180340" :input [input]}]
+          (let [task (type/fhir-map {:fhir/type :fhir/Task :id "180340" :input [input]})]
             (given @(mtu/assoc-thread-name (u/pull-request-bundle node task))
               [meta :thread-name] :? mtu/common-pool-thread?
               :fhir/type := :fhir/Bundle

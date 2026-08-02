@@ -35,21 +35,21 @@
 (defn job
   "Creates a compact job resource."
   [authored-on {:keys [database column-family]}]
-  {:fhir/type :fhir/Task
-   :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/CompactJob"))})
-   :status #fhir/code "ready"
-   :intent #fhir/code "order"
-   :code (job-util/type-codeable-concept "compact" "Compact a Database Column Family")
-   :authoredOn (type/dateTime authored-on)
-   :input
-   [{:fhir/type :fhir.Task/input
-     :type (type/codeable-concept
-            {:coding (canonical/codings "CodeSystem/CompactJobParameter" "database")})
-     :value (type/code database)}
-    {:fhir/type :fhir.Task/input
-     :type (type/codeable-concept
-            {:coding (canonical/codings "CodeSystem/CompactJobParameter" "column-family")})
-     :value (type/code column-family)}]})
+  (type/fhir-map {:fhir/type :fhir/Task
+                  :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/CompactJob"))})
+                  :status #fhir/code "ready"
+                  :intent #fhir/code "order"
+                  :code (job-util/type-codeable-concept "compact" "Compact a Database Column Family")
+                  :authoredOn (type/dateTime authored-on)
+                  :input
+                  [(type/fhir-map {:fhir/type :fhir.Task/input
+                                   :type (type/codeable-concept
+                                          {:coding (canonical/codings "CodeSystem/CompactJobParameter" "database")})
+                                   :value (type/code database)})
+                   (type/fhir-map {:fhir/type :fhir.Task/input
+                                   :type (type/codeable-concept
+                                          {:coding (canonical/codings "CodeSystem/CompactJobParameter" "column-family")})
+                                   :value (type/code column-family)})]}))
 
 (defn- start-job [job]
   (assoc

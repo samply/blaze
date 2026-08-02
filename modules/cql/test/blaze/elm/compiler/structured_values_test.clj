@@ -245,8 +245,8 @@
                {:system #fhir/uri "foo"
                 :value #fhir/string "bar"}
               entity
-              {:fhir/type :fhir/Patient :id "0"
-               :identifier [identifier]}
+              (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                              :identifier [identifier]})
               elm #elm/scope-property ["R" "identifier"]
               expr (c/compile {:eval-context "Patient"} elm)]
 
@@ -277,8 +277,8 @@
                {:url "foo"
                 :value #fhir/string "bar"}
               entity
-              {:fhir/type :fhir/Patient :id "0"
-               :extension [extension]}
+              (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                              :extension [extension]})
               elm #elm/scope-property ["R" "extension"]
               expr (c/compile {:eval-context "Patient"} elm)]
 
@@ -305,8 +305,8 @@
 
       (testing "Patient.gender"
         (let [entity
-              {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code "male"}
+              #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :gender #fhir/code "male"}
               elm #elm/scope-property ["R" "gender"]
               expr (c/compile {:eval-context "Patient"} elm)]
 
@@ -334,8 +334,8 @@
       (testing "Patient.birthDate.value"
         (let [entity
               (fn [x]
-                {:fhir/type :fhir/Patient :id "0"
-                 :birthDate x})
+                (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                                :birthDate x}))
               elm #elm/scope-property ["R" "birthDate.value"]
               expr (c/compile {:eval-context "Patient"} elm)]
 
@@ -366,8 +366,8 @@
 
       (testing "Observation.value"
         (let [entity
-              {:fhir/type :fhir/Observation :id "0"
-               :value "value-114318"}
+              #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :value "value-114318"}
               elm #elm/scope-property ["R" "value"]
               expr (c/compile {:eval-context "Patient"} elm)]
 
@@ -403,8 +403,8 @@
              {:system #fhir/uri "foo"
               :value #fhir/string "bar"}
             source
-            {:fhir/type :fhir/Patient :id "0"
-             :identifier [identifier]}
+            (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                            :identifier [identifier]})
             expr (c/compile {:library library :eval-context "Patient"} elm)
             expr-def {:type "ExpressionDef"
                       :context "Patient"
@@ -438,8 +438,8 @@
             elm
             #elm/source-property [#elm/expression-ref "Patient" "gender"]
             source
-            {:fhir/type :fhir/Patient :id "0"
-             :gender #fhir/code "male"}
+            #fhir/map{:fhir/type :fhir/Patient :id "0"
+                      :gender #fhir/code "male"}
             expr (c/compile {:library library :eval-context "Patient"} elm)
             expr-def {:type "ExpressionDef"
                       :context "Patient"
@@ -473,8 +473,8 @@
             elm
             #elm/source-property [#elm/source-property [#elm/expression-ref "Patient" "gender"] "value"]
             source
-            {:fhir/type :fhir/Patient :id "0"
-             :gender #fhir/code "male"}
+            #fhir/map{:fhir/type :fhir/Patient :id "0"
+                      :gender #fhir/code "male"}
             expr (c/compile {:library library :eval-context "Patient"} elm)
             expr-def {:type "ExpressionDef"
                       :context "Patient"
@@ -509,8 +509,8 @@
             #elm/source-property [#elm/expression-ref "Patient" "birthDate.value"]
             source
             (fn [x]
-              {:fhir/type :fhir/Patient :id "0"
-               :birthDate x})
+              (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                              :birthDate x}))
             expr (c/compile {:library library :eval-context "Patient"} elm)]
 
         (testing "eval"
@@ -548,8 +548,8 @@
             elm
             #elm/source-property [#elm/expression-ref "Observation" "value"]
             source
-            {:fhir/type :fhir/Observation :id "0"
-             :value "value-114318"}
+            #fhir/map{:fhir/type :fhir/Observation :id "0"
+                      :value "value-114318"}
             expr (c/compile {:library library :eval-context "Patient"} elm)
             expr-def {:type "ExpressionDef"
                       :context "Patient"

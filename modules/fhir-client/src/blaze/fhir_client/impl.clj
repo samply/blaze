@@ -84,8 +84,8 @@
   (when-let [version-id (-> resource :meta :versionId :value)]
     (str "W/\"" version-id "\"")))
 
-(defn- generate-body [{:keys [writing-context]} resource]
-  (fhir-spec/write-json-as-bytes writing-context resource))
+(defn- generate-body [resource]
+  (fhir-spec/write-json-as-bytes resource))
 
 (defn- if-match [etag]
   {"if-match" etag})
@@ -96,7 +96,7 @@
    (merge
     {:accept :fhir+json
      :content-type :fhir+json
-     :body (generate-body opts resource)
+     :body (generate-body resource)
      :as :fhir
      :async? true}
     opts)
@@ -110,7 +110,7 @@
     {:accept :fhir+json
      :content-type :fhir+json
      :headers (some-> (etag resource) if-match)
-     :body (generate-body opts resource)
+     :body (generate-body resource)
      :as :fhir
      :async? true}
     opts)
@@ -136,7 +136,7 @@
    (merge
     {:accept :fhir+json
      :content-type :fhir+json
-     :body (generate-body opts resource)
+     :body (generate-body resource)
      :as :fhir
      :async? true}
     opts)
@@ -174,7 +174,7 @@
 (defn- new-file-byte-channel ^SeekableByteChannel [file]
   (byte-channel file StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE))
 
-(deftype Spitter [writing-context dir filename-fn filenames future
+(deftype Spitter [dir filename-fn filenames future
                   ^:volatile-mutable subscription]
   Flow$Subscriber
   (onSubscribe [_ s]
@@ -185,7 +185,7 @@
     (let [file (.resolve ^Path dir ^String (filename-fn x))]
       (swap! filenames conj (.toAbsolutePath file))
       (with-open [bc (new-file-byte-channel file)]
-        (.write bc (bb/wrap (fhir-spec/write-json-as-bytes writing-context x))))))
+        (.write bc (bb/wrap (fhir-spec/write-json-as-bytes x))))))
   (onError [_ e]
     (flow/cancel! subscription)
     (ac/complete-exceptionally! future e))
@@ -196,7 +196,7 @@
   (str (name type) "-" id ".json"))
 
 (defn spitter
-  ([writing-context dir future]
-   (spitter writing-context dir type-id-filename-fn future))
-  ([writing-context dir filename-fn future]
-   (->Spitter writing-context dir filename-fn (atom []) future nil)))
+  ([dir future]
+   (spitter dir type-id-filename-fn future))
+  ([dir filename-fn future]
+   (->Spitter dir filename-fn (atom []) future nil)))

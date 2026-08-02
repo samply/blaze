@@ -141,7 +141,7 @@ public final class Signature extends AbstractElement implements Complex, Extensi
     }
 
     public static Signature create(IPersistentMap m) {
-        return new Signature(ExtensionData.fromMap(m), Base.listFrom(m, TYPE), (Instant) m.valAt(WHEN),
+        return new Signature(ExtensionData.fromMap(m), Base.typedListFrom(m, TYPE, Coding.class), (Instant) m.valAt(WHEN),
                 (Reference) m.valAt(WHO), (Reference) m.valAt(ON_BEHALF_OF), (Code) m.valAt(TARGET_FORMAT),
                 (Code) m.valAt(SIG_FORMAT), (Base64Binary) m.valAt(DATA));
     }
@@ -217,7 +217,7 @@ public final class Signature extends AbstractElement implements Complex, Extensi
 
     @Override
     public Signature empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -227,7 +227,7 @@ public final class Signature extends AbstractElement implements Complex, Extensi
 
     @Override
     public Signature assoc(Object key, Object val) {
-        if (key == TYPE) return new Signature(extensionData, Lists.nullToEmpty(val), when, who, onBehalfOf, targetFormat, sigFormat, data);
+        if (key == TYPE) return new Signature(extensionData, Lists.typedNullToEmpty(val, Coding.class), when, who, onBehalfOf, targetFormat, sigFormat, data);
         if (key == WHEN) return new Signature(extensionData, type, (Instant) val, who, onBehalfOf, targetFormat, sigFormat, data);
         if (key == WHO) return new Signature(extensionData, type, when, (Reference) val, onBehalfOf, targetFormat, sigFormat, data);
         if (key == ON_BEHALF_OF) return new Signature(extensionData, type, when, who, (Reference) val, targetFormat, sigFormat, data);

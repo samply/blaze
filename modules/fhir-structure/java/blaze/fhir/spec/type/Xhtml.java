@@ -67,7 +67,7 @@ public final class Xhtml extends PrimitiveElement {
 
     @Override
     public Xhtml empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

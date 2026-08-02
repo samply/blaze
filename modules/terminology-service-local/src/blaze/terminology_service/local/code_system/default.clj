@@ -14,7 +14,6 @@
    [blaze.terminology-service.local.code-system.filter.regex]
    [blaze.terminology-service.local.graph :as graph]
    [blaze.terminology-service.local.search-index :as search-index]
-   [blaze.util :refer [conj-vec]]
    [clojure.string :as str])
   (:import
    [com.github.benmanes.caffeine.cache Cache]))
@@ -58,13 +57,13 @@
          (do-sync [code-systems (d/pull-many db (vec handles))]
            (if-let [{:keys [content] :as code-system} (first (fu/sort-by-priority code-systems))]
              (if (required-content (:value content))
-               (assoc code-system :default/graph (get-graph graph-cache code-system))
+               (assoc (c/open code-system) :default/graph (get-graph graph-cache code-system))
                (code-system-not-required-content-anom code-system required-content))
              (ba/not-found (not-found-msg url version))))))))
 
 (defmethod c/enhance :default
   [_ {concepts :concept :as code-system}]
-  (assoc code-system :default/graph (build-graph-with-index concepts)))
+  (assoc (c/open code-system) :default/graph (build-graph-with-index concepts)))
 
 (defn- inactive? [{properties :property}]
   (some
@@ -81,23 +80,13 @@
      (and (= "notSelectable" (:value code)) (:value value)))
    properties))
 
-(defn- definition-property [definition]
-  {:fhir/type :fhir.ValueSet.expansion.contains/property
-   :code #fhir/code "definition"
-   :value definition})
-
 (defn- create-contains
-  [{:keys [include-designations properties]}
-   url
-   {:keys [code display definition] :as concept}]
-  (let [normal-properties (remove #{"definition"} properties)]
-    (cond-> {:system url :code code}
-      display (assoc :display display)
-      (inactive? concept) (assoc :inactive #fhir/boolean true)
-      (not-selectable? concept) (assoc :abstract #fhir/boolean true)
-      include-designations (assoc :designation (:designation concept))
-      (seq normal-properties) (assoc :property (filterv (comp (set normal-properties) :value :code) (:property concept)))
-      (and definition (some #{"definition"} properties)) (update :property conj-vec (definition-property definition)))))
+  [{:keys [include-designations]} url {:keys [code display] :as concept}]
+  (cond-> {:system url :code code}
+    display (assoc :display display)
+    (inactive? concept) (assoc :inactive #fhir/boolean true)
+    (not-selectable? concept) (assoc :abstract #fhir/boolean true)
+    include-designations (assoc :designation (:designation concept))))
 
 (defn- xf [params {:keys [url]}]
   (map
@@ -172,7 +161,7 @@
   [{:keys [url version] {:keys [concepts]} :default/graph}
    {{:keys [code]} :clause}]
   (when-let [concept (concepts code)]
-    (cond-> (assoc concept :system url)
+    (cond-> (assoc (c/open concept) :system url)
       version (assoc :version version)
       (inactive? concept) (assoc :inactive #fhir/boolean true))))
 
@@ -180,6 +169,6 @@
   [{:keys [url version] :as code-system} filter {{:keys [code]} :clause}]
   (when-ok [concept (filter/find-concept code-system filter code)]
     (when concept
-      (cond-> (assoc concept :system url)
+      (cond-> (assoc (c/open concept) :system url)
         version (assoc :version version)
         (inactive? concept) (assoc :inactive #fhir/boolean true)))))

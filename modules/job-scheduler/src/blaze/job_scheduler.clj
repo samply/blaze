@@ -129,10 +129,10 @@
            (d/pull node handle)
            (-> (d/transact node
                            [[:create
-                             {:fhir/type :fhir/Observation
-                              :id (m/luid context)
-                              :identifier [#fhir/Identifier{:value #fhir/string "job-number"}]
-                              :value #fhir/integer 0}
+                             (type/fhir-map {:fhir/type :fhir/Observation
+                                             :id (m/luid context)
+                                             :identifier [#fhir/Identifier{:value #fhir/string "job-number"}]
+                                             :value #fhir/integer 0})
                              [["identifier" "job-number"]]]])
                (ac/then-compose (partial current-job-number-observation context))))))))
 

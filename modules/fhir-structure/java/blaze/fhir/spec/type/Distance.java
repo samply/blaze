@@ -56,7 +56,7 @@ public final class Distance extends AbstractQuantity {
 
     @Override
     public Distance empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

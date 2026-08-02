@@ -137,10 +137,10 @@
   (update job :output #(mapv (partial update-output-value* system code f x) %)))
 
 (defn task-output [system code value]
-  {:fhir/type :fhir.Task/output
-   :type (type/codeable-concept
-          {:coding (canonical/system-codings system code)})
-   :value value})
+  (type/fhir-map {:fhir/type :fhir.Task/output
+                  :type (type/codeable-concept
+                         {:coding (canonical/system-codings system code)})
+                  :value value}))
 
 (defn- remove-output* [system code]
   (remove #(= code (code-value system (:type %)))))

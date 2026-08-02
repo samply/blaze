@@ -20,17 +20,17 @@
       (UcumEssenceService. stream))))
 
 (def ^:private code-system
-  {:fhir/type :fhir/CodeSystem
-   :meta cs-u/read-only-meta
-   :url #fhir/uri-interned "http://unitsofmeasure.org"
-   :version #fhir/string "2013.10.21"
-   :name #fhir/string "UCUM"
-   :title #fhir/string "Unified Code for Units of Measure (UCUM)"
-   :status #fhir/code "active"
-   :experimental #fhir/boolean false
-   :date #fhir/dateTime #system/date-time "2013-10-21"
-   :caseSensitive #fhir/boolean true
-   :content #fhir/code "not-present"})
+  (type/fhir-map {:fhir/type :fhir/CodeSystem
+                  :meta cs-u/read-only-meta
+                  :url #fhir/uri-interned "http://unitsofmeasure.org"
+                  :version #fhir/string "2013.10.21"
+                  :name #fhir/string "UCUM"
+                  :title #fhir/string "Unified Code for Units of Measure (UCUM)"
+                  :status #fhir/code "active"
+                  :experimental #fhir/boolean false
+                  :date #fhir/dateTime #system/date-time "2013-10-21"
+                  :caseSensitive #fhir/boolean true
+                  :content #fhir/code "not-present"}))
 
 (defmethod c/find :ucum
   [& _]

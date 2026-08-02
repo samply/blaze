@@ -5,6 +5,7 @@
    [blaze.anomaly :as ba]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir-path-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
@@ -43,31 +44,31 @@
 (deftest path-selection-test
   (testing "Resource.id"
     (are [x] (= x (first (eval "Resource.id"
-                               {:fhir/type :fhir/Patient
-                                :id x})))
+                               (type/fhir-map {:fhir/type :fhir/Patient
+                                               :id x}))))
       "id-161533"
       "id-161537"))
 
   (testing "Patient.id"
     (are [x] (= x (first (eval "Patient.id"
-                               {:fhir/type :fhir/Patient
-                                :id x})))
+                               (type/fhir-map {:fhir/type :fhir/Patient
+                                               :id x}))))
       "id-161533"
       "id-161537"))
 
   (testing "Patient.active"
     (are [x] (= x (first (eval "Patient.active"
-                               {:fhir/type :fhir/Patient
-                                :id "foo"
-                                :active x})))
+                               (type/fhir-map {:fhir/type :fhir/Patient
+                                               :id "foo"
+                                               :active x}))))
       #fhir/boolean true
       #fhir/boolean false))
 
   (testing "(Observation.value as boolean)"
     (are [x] (= x (first (eval "(Observation.value as boolean)"
-                               {:fhir/type :fhir/Observation
-                                :id "foo"
-                                :value x})))
+                               (type/fhir-map {:fhir/type :fhir/Observation
+                                               :id "foo"
+                                               :value x}))))
       #fhir/boolean true
       #fhir/boolean false)))
 
@@ -105,59 +106,59 @@
   (testing "string concatenation"
     (testing "with no given name"
       (is (empty? (eval "Patient.name.family + ', ' + Patient.name.given"
-                        {:fhir/type :fhir/Patient
-                         :id "foo"
-                         :name [#fhir/HumanName{:family #fhir/string "Doe"}]}))))
+                        #fhir/map{:fhir/type :fhir/Patient
+                                  :id "foo"
+                                  :name [#fhir/HumanName{:family #fhir/string "Doe"}]}))))
 
     (testing "with one given name"
       (is (= (eval "Patient.name.family + ', ' + Patient.name.given"
-                   {:fhir/type :fhir/Patient
-                    :id "foo"
-                    :name [#fhir/HumanName{:family #fhir/string "Doe" :given [#fhir/string "John"]}]})
+                   #fhir/map{:fhir/type :fhir/Patient
+                             :id "foo"
+                             :name [#fhir/HumanName{:family #fhir/string "Doe" :given [#fhir/string "John"]}]})
              ["Doe, John"])))
 
     (testing "with two given names"
       (given (eval "Patient.name.family + ', ' + Patient.name.given"
-                   {:fhir/type :fhir/Patient
-                    :id "foo"
-                    :name [#fhir/HumanName{:family #fhir/string "Doe" :given [#fhir/string "John" #fhir/string "Foo"]}]})
+                   #fhir/map{:fhir/type :fhir/Patient
+                             :id "foo"
+                             :name [#fhir/HumanName{:family #fhir/string "Doe" :given [#fhir/string "John" #fhir/string "Foo"]}]})
         ::anom/category := ::anom/incorrect
         ::anom/message := "unable to evaluate `[#fhir/string-interned \"John\" #fhir/string-interned \"Foo\"]` as singleton"))
 
     (testing "with non-convertible type"
       (given (eval "Patient.name.family + ', ' + Patient.name"
-                   {:fhir/type :fhir/Patient
-                    :id "foo"
-                    :name [#fhir/HumanName{:family #fhir/string "Doe"}]})
+                   #fhir/map{:fhir/type :fhir/Patient
+                             :id "foo"
+                             :name [#fhir/HumanName{:family #fhir/string "Doe"}]})
         ::anom/category := ::anom/incorrect
         ::anom/message := "unable to evaluate `[#fhir/HumanName{:family #fhir/string-interned \"Doe\"}]` as singleton")))
 
   (testing "and expression"
     (testing "with one telecom"
       (given (eval "Patient.active and Patient.gender and Patient.telecom"
-                   {:fhir/type :fhir/Patient
-                    :id "foo"
-                    :active #fhir/boolean true
-                    :gender #fhir/code "female"
-                    :telecom
-                    [#fhir/ContactPoint
-                      {:value #fhir/string "foo"
-                       :use #fhir/code "home"}]})
+                   #fhir/map{:fhir/type :fhir/Patient
+                             :id "foo"
+                             :active #fhir/boolean true
+                             :gender #fhir/code "female"
+                             :telecom
+                             [#fhir/ContactPoint
+                               {:value #fhir/string "foo"
+                                :use #fhir/code "home"}]})
         identity := [true]))
 
     (testing "with two telecoms"
       (given (eval "Patient.active and Patient.gender and Patient.telecom"
-                   {:fhir/type :fhir/Patient
-                    :id "foo"
-                    :active #fhir/boolean true
-                    :gender #fhir/code "female"
-                    :telecom
-                    [#fhir/ContactPoint
-                      {:value #fhir/string "foo"
-                       :use #fhir/code "home"}
-                     #fhir/ContactPoint
-                      {:value #fhir/string "bar"
-                       :use #fhir/code "work"}]})
+                   #fhir/map{:fhir/type :fhir/Patient
+                             :id "foo"
+                             :active #fhir/boolean true
+                             :gender #fhir/code "female"
+                             :telecom
+                             [#fhir/ContactPoint
+                               {:value #fhir/string "foo"
+                                :use #fhir/code "home"}
+                              #fhir/ContactPoint
+                               {:value #fhir/string "bar"
+                                :use #fhir/code "work"}]})
         ::anom/category := ::anom/incorrect
         ::anom/message := "unable to evaluate `[#fhir/ContactPoint{:value #fhir/string-interned \"foo\" :use #fhir/code \"home\"} #fhir/ContactPoint{:value #fhir/string-interned \"bar\" :use #fhir/code \"work\"}]` as singleton"))))
 
@@ -170,36 +171,36 @@
             fhir-path/Resolver
             (-resolve [_ uri]
               (when (= "reference-180039" uri)
-                {:fhir/type :fhir/Patient
-                 :id "id-164737"})))]
+                #fhir/map{:fhir/type :fhir/Patient
+                          :id "id-164737"})))]
       (given (eval
               "Specimen.subject.where(resolve() is Patient)"
               resolver
-              {:fhir/type :fhir/Specimen :id "foo"
-               :subject #fhir/Reference{:reference #fhir/string "reference-180039"}})
+              #fhir/map{:fhir/type :fhir/Specimen :id "foo"
+                        :subject #fhir/Reference{:reference #fhir/string "reference-180039"}})
         [0 :reference] := #fhir/string "reference-180039")))
 
   (testing "Specimen with display only reference"
     (given (eval
             "Specimen.subject.where(resolve() is Patient)"
             resolver
-            {:fhir/type :fhir/Specimen :id "foo"
-             :subject #fhir/Reference{:display #fhir/string "foo"}})
+            #fhir/map{:fhir/type :fhir/Specimen :id "foo"
+                      :subject #fhir/Reference{:display #fhir/string "foo"}})
       count := 0))
 
   (testing "Resolving on unsupported data type is skipped"
     (given (eval
             "Patient.gender.where(resolve())"
             resolver
-            {:fhir/type :fhir/Patient :id "foo"
-             :gender #fhir/code "unknown"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :gender #fhir/code "unknown"})
       count := 0))
 
   (testing "Resolving string"
     (given (eval
             "Patient.id.where(resolve())"
             resolver
-            {:fhir/type :fhir/Patient :id "foo"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"})
       count := 0)))
 
 ;; 5.1. Existence
@@ -207,11 +208,11 @@
 ;; 5.1.2. exists([criteria : expression]) : Boolean
 (deftest exists-function-test
   (are [patient res] (= [res] (eval "Patient.deceased.exists()" patient))
-    {:fhir/type :fhir/Patient} false
-    {:fhir/type :fhir/Patient :deceased #fhir/boolean true} true
-    {:fhir/type :fhir/Patient :deceased #fhir/boolean false} true)
+    #fhir/map{:fhir/type :fhir/Patient} false
+    #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/boolean true} true
+    #fhir/map{:fhir/type :fhir/Patient :deceased #fhir/boolean false} true)
 
-  (given (eval "Patient.identifier.exists(use = 'official')" {:fhir/type :fhir/Patient})
+  (given (eval "Patient.identifier.exists(use = 'official')" #fhir/map{:fhir/type :fhir/Patient})
     ::anom/category := ::anom/unsupported
     ::anom/message := "unsupported `exists` function with criteria"))
 
@@ -227,24 +228,24 @@
   (testing "returns one matching item"
     (given (eval
             "Patient.telecom.where(use = 'home')"
-            {:fhir/type :fhir/Patient
-             :id "id-162953"
-             :telecom
-             [#fhir/ContactPoint{:value #fhir/string "value-170758"
-                                 :use #fhir/code "home"}]})
+            #fhir/map{:fhir/type :fhir/Patient
+                      :id "id-162953"
+                      :telecom
+                      [#fhir/ContactPoint{:value #fhir/string "value-170758"
+                                          :use #fhir/code "home"}]})
       [0 :use] := #fhir/code "home"
       [0 :value] := #fhir/string "value-170758"))
 
   (testing "returns two matching items"
     (given (eval
             "Patient.telecom.where(use = 'home')"
-            {:fhir/type :fhir/Patient
-             :id "id-162953"
-             :telecom
-             [#fhir/ContactPoint{:value #fhir/string "value-170758"
-                                 :use #fhir/code "home"}
-              #fhir/ContactPoint{:value #fhir/string "value-145928"
-                                 :use #fhir/code "home"}]})
+            #fhir/map{:fhir/type :fhir/Patient
+                      :id "id-162953"
+                      :telecom
+                      [#fhir/ContactPoint{:value #fhir/string "value-170758"
+                                          :use #fhir/code "home"}
+                       #fhir/ContactPoint{:value #fhir/string "value-145928"
+                                          :use #fhir/code "home"}]})
       [0 :use] := #fhir/code "home"
       [0 :value] := #fhir/string "value-170758"
       [1 :use] := #fhir/code "home"
@@ -253,47 +254,47 @@
   (testing "returns empty collection on non-matching item"
     (given (eval
             "Patient.telecom.where(use = 'work')"
-            {:fhir/type :fhir/Patient
-             :id "id-162953"
-             :telecom
-             [#fhir/ContactPoint{:value #fhir/string "value-170758"
-                                 :use #fhir/code "home"}]})
+            #fhir/map{:fhir/type :fhir/Patient
+                      :id "id-162953"
+                      :telecom
+                      [#fhir/ContactPoint{:value #fhir/string "value-170758"
+                                          :use #fhir/code "home"}]})
       count := 0))
 
   (testing "returns empty collection on empty criteria result"
     (given (eval
             "Patient.telecom.where({})"
-            {:fhir/type :fhir/Patient
-             :id "id-162953"
-             :telecom
-             [#fhir/ContactPoint{:value #fhir/string "value-170758"
-                                 :use #fhir/code "home"}]})
+            #fhir/map{:fhir/type :fhir/Patient
+                      :id "id-162953"
+                      :telecom
+                      [#fhir/ContactPoint{:value #fhir/string "value-170758"
+                                          :use #fhir/code "home"}]})
       count := 0))
 
   (testing "returns empty collection on empty input"
     (given (eval
             "Patient.telecom.where(use = 'home')"
-            {:fhir/type :fhir/Patient
-             :id "id-162953"})
+            #fhir/map{:fhir/type :fhir/Patient
+                      :id "id-162953"})
       count := 0))
 
   (testing "return error on multiple criteria result"
     (given (eval
             "Patient.address.where(line)"
-            {:fhir/type :fhir/Patient
-             :id "id-162953"
-             :address [#fhir/Address{:line [#fhir/string "a" #fhir/string "b"]}]})
+            #fhir/map{:fhir/type :fhir/Patient
+                      :id "id-162953"
+                      :address [#fhir/Address{:line [#fhir/string "a" #fhir/string "b"]}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "multiple result items `[#fhir/string-interned \"a\" #fhir/string-interned \"b\"]` while evaluating where function criteria"))
 
   (testing "return error on non-boolean criteria result"
     (given (eval
             "Patient.telecom.where(use)"
-            {:fhir/type :fhir/Patient
-             :id "id-162953"
-             :telecom
-             [#fhir/ContactPoint{:value #fhir/string "value-170758"
-                                 :use #fhir/code "home"}]})
+            #fhir/map{:fhir/type :fhir/Patient
+                      :id "id-162953"
+                      :telecom
+                      [#fhir/ContactPoint{:value #fhir/string "value-170758"
+                                          :use #fhir/code "home"}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "non-boolean result `#fhir/code \"home\"` of type `:fhir/code` while evaluating where function criteria")))
 
@@ -302,12 +303,12 @@
   (testing "returns two matching items"
     (given (eval
             "Observation.component.value.ofType(Quantity)"
-            {:fhir/type :fhir/Observation
-             :component
-             [{:fhir/type :fhir.Observation/component
-               :value #fhir/Quantity{:value #fhir/decimal 150M}}
-              {:fhir/type :fhir.Observation/component
-               :value #fhir/Quantity{:value #fhir/decimal 100M}}]})
+            #fhir/map{:fhir/type :fhir/Observation
+                      :component
+                      [#fhir/map{:fhir/type :fhir.Observation/component
+                                 :value #fhir/Quantity{:value #fhir/decimal 150M}}
+                       #fhir/map{:fhir/type :fhir.Observation/component
+                                 :value #fhir/Quantity{:value #fhir/decimal 100M}}]})
       [0 :value] := #fhir/decimal 150M
       [1 :value] := #fhir/decimal 100M))
 
@@ -326,42 +327,42 @@
 ;; 5.3.1. [ index : Integer ] : collection
 (deftest indexer-test
   (are [resource expr result] (= result (eval expr resource))
-    {:fhir/type :fhir/Patient
-     :name
-     [#fhir/HumanName{:family #fhir/string "Doe"}
-      #fhir/HumanName{:family #fhir/string "Bolton"}]}
+    #fhir/map{:fhir/type :fhir/Patient
+              :name
+              [#fhir/HumanName{:family #fhir/string "Doe"}
+               #fhir/HumanName{:family #fhir/string "Bolton"}]}
     "Patient.name[0]"
     [#fhir/HumanName{:family #fhir/string "Doe"}]
 
-    {:fhir/type :fhir/Patient
-     :name
-     [#fhir/HumanName{:family #fhir/string "Doe"}
-      #fhir/HumanName{:family #fhir/string "Bolton"}]}
+    #fhir/map{:fhir/type :fhir/Patient
+              :name
+              [#fhir/HumanName{:family #fhir/string "Doe"}
+               #fhir/HumanName{:family #fhir/string "Bolton"}]}
     "Patient.name[1]"
     [#fhir/HumanName{:family #fhir/string "Bolton"}]
 
-    {:fhir/type :fhir/Patient
-     :name
-     [#fhir/HumanName{:family #fhir/string "Doe"}
-      #fhir/HumanName{:family #fhir/string "Bolton"}]}
+    #fhir/map{:fhir/type :fhir/Patient
+              :name
+              [#fhir/HumanName{:family #fhir/string "Doe"}
+               #fhir/HumanName{:family #fhir/string "Bolton"}]}
     "Patient.name[2]"
     []
 
-    {:fhir/type :fhir/Patient}
+    #fhir/map{:fhir/type :fhir/Patient}
     "Patient.name[0]"
     []))
 
 ;; 5.3.3. first() : collection
 (deftest first-test
   (are [resource expr result] (= result (eval expr resource))
-    {:fhir/type :fhir/Patient
-     :name
-     [#fhir/HumanName{:family #fhir/string "Doe"}
-      #fhir/HumanName{:family #fhir/string "Bolton"}]}
+    #fhir/map{:fhir/type :fhir/Patient
+              :name
+              [#fhir/HumanName{:family #fhir/string "Doe"}
+               #fhir/HumanName{:family #fhir/string "Bolton"}]}
     "Patient.name.first()"
     [#fhir/HumanName{:family #fhir/string "Doe"}]
 
-    {:fhir/type :fhir/Patient}
+    #fhir/map{:fhir/type :fhir/Patient}
     "Patient.name.first()"
     []))
 
@@ -370,10 +371,10 @@
 ;; 5.4.1. union(other : collection)
 (deftest union-test
   (let [patient
-        {:fhir/type :fhir/Patient :id "foo"
-         :name
-         [#fhir/HumanName{:family #fhir/string "Doe"}
-          #fhir/HumanName{:family #fhir/string "Bolton"}]}]
+        #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                  :name
+                  [#fhir/HumanName{:family #fhir/string "Doe"}
+                   #fhir/HumanName{:family #fhir/string "Bolton"}]}]
     (are [expr res] (= (set res) (set (eval expr patient)))
       "{} | {}" []
       "1 | {}" [1]
@@ -387,10 +388,10 @@
 
   (given (eval
           "Patient.gender | Patient.birthDate"
-          {:fhir/type :fhir/Patient
-           :id "id-162953"
-           :gender #fhir/code "female"
-           :birthDate #fhir/date #system/date "2020"})
+          #fhir/map{:fhir/type :fhir/Patient
+                    :id "id-162953"
+                    :gender #fhir/code "female"
+                    :birthDate #fhir/date #system/date "2020"})
     identity := [#fhir/code "female" #fhir/date #system/date "2020"]))
 
 ;; 6. Operations
@@ -403,48 +404,48 @@
     (testing "both empty"
       (given (eval
               "{} = {}"
-              {:fhir/type :fhir/Patient
-               :id "foo"})
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "foo"})
         count := 0))
 
     (testing "left empty"
       (given (eval
               "{} = Patient.id"
-              {:fhir/type :fhir/Patient
-               :id "foo"})
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "foo"})
         count := 0))
 
     (testing "right empty"
       (given (eval
               "Patient.id = {}"
-              {:fhir/type :fhir/Patient
-               :id "foo"})
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "foo"})
         count := 0)))
 
   (testing "string comparison"
     (given (eval "Patient.id = 'foo'"
-                 {:fhir/type :fhir/Patient
-                  :id "foo"})
+                 #fhir/map{:fhir/type :fhir/Patient
+                           :id "foo"})
       identity := [true])
 
     (given (eval "Patient.id = 'bar'"
-                 {:fhir/type :fhir/Patient
-                  :id "foo"})
+                 #fhir/map{:fhir/type :fhir/Patient
+                           :id "foo"})
       identity := [false]))
 
   (testing "collections of different sizes are not equal"
     (given (eval "Patient.name.given = Patient.name.family"
-                 {:fhir/type :fhir/Patient :id "foo"
-                  :name
-                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]
-                                   :family #fhir/string "Doe"}]})
+                 #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                           :name
+                           [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]
+                                            :family #fhir/string "Doe"}]})
       identity := [false]))
 
   (testing "collections with multiple matching items are equal"
     (given (eval "Patient.name.given = Patient.name.given"
-                 {:fhir/type :fhir/Patient :id "foo"
-                  :name
-                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]}]})
+                 #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                           :name
+                           [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]}]})
       identity := [true])))
 
 ;; 6.1.3. != (Not Equals)
@@ -453,48 +454,48 @@
     (testing "both empty"
       (given (eval
               "{} != {}"
-              {:fhir/type :fhir/Patient
-               :id "foo"})
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "foo"})
         count := 0))
 
     (testing "left empty"
       (given (eval
               "{} != Patient.id"
-              {:fhir/type :fhir/Patient
-               :id "foo"})
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "foo"})
         count := 0))
 
     (testing "right empty"
       (given (eval
               "Patient.id != {}"
-              {:fhir/type :fhir/Patient
-               :id "foo"})
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "foo"})
         count := 0))
 
     (testing "string comparison"
       (given (eval "Patient.id != 'bar'"
-                   {:fhir/type :fhir/Patient
-                    :id "foo"})
+                   #fhir/map{:fhir/type :fhir/Patient
+                             :id "foo"})
         identity := [true])
 
       (given (eval "Patient.id != 'foo'"
-                   {:fhir/type :fhir/Patient
-                    :id "foo"})
+                   #fhir/map{:fhir/type :fhir/Patient
+                             :id "foo"})
         identity := [false])))
 
   (testing "collections of different sizes return false"
     (given (eval "Patient.name.given != Patient.name.family"
-                 {:fhir/type :fhir/Patient :id "foo"
-                  :name
-                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]
-                                   :family #fhir/string "Doe"}]})
+                 #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                           :name
+                           [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]
+                                            :family #fhir/string "Doe"}]})
       identity := [false]))
 
   (testing "collections with multiple matching items are equal"
     (given (eval "Patient.name.given != Patient.name.given"
-                 {:fhir/type :fhir/Patient :id "foo"
-                  :name
-                  [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]}]})
+                 #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                           :name
+                           [#fhir/HumanName{:given [#fhir/string "John" #fhir/string "Jim"]}]})
       identity := [false])))
 
 ;; 6.3. Types
@@ -504,30 +505,30 @@
   (testing "single item with matching type returns true"
     (given (eval
             "Patient.birthDate is date"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date #system/date "2020"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :birthDate #fhir/date #system/date "2020"})
       identity := [true]))
 
   (testing "single item with non-matching type returns false"
     (given (eval
             "Patient.birthDate is string"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date #system/date "2020"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :birthDate #fhir/date #system/date "2020"})
       identity := [false]))
 
   (testing "empty collection returns empty collection"
     (given (eval
             "Patient.birthDate is string"
-            {:fhir/type :fhir/Patient :id "foo"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"})
       count := 0))
 
   (testing "multiple item returns an error"
     (given (eval
             "Patient.identifier is string"
-            {:fhir/type :fhir/Patient :id "id-162953"
-             :identifier
-             [#fhir/Identifier{:value #fhir/string "value-163922"}
-              #fhir/Identifier{:value #fhir/string "value-163928"}]})
+            #fhir/map{:fhir/type :fhir/Patient :id "id-162953"
+                      :identifier
+                      [#fhir/Identifier{:value #fhir/string "value-163922"}
+                       #fhir/Identifier{:value #fhir/string "value-163928"}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "is type specifier with more than one item at the left side `[#fhir/Identifier{:value #fhir/string \"value-163922\"} #fhir/Identifier{:value #fhir/string \"value-163928\"}]`"))
 
@@ -541,21 +542,21 @@
   (testing "single item with matching type returns the item"
     (given (eval
             "Patient.birthDate as date"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date #system/date "2020"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :birthDate #fhir/date #system/date "2020"})
       identity := [#fhir/date #system/date "2020"]))
 
   (testing "single item with non-matching type returns an empty collection"
     (given (eval
             "Patient.birthDate as string"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date #system/date "2020"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :birthDate #fhir/date #system/date "2020"})
       count := 0))
 
   (testing "empty collection returns empty collection"
     (given (eval
             "Patient.birthDate as string"
-            {:fhir/type :fhir/Patient :id "foo"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"})
       count := 0))
 
   ;; HACK: normally multiple items should throw an error. However, in R4 many
@@ -564,10 +565,10 @@
   (testing "multiple items are filtered"
     (given (eval
             "Patient.identifier as Identifier"
-            {:fhir/type :fhir/Patient :id "id-162953"
-             :identifier
-             [#fhir/Identifier{:value #fhir/string "value-163922"}
-              #fhir/Identifier{:value #fhir/string "value-163928"}]})
+            #fhir/map{:fhir/type :fhir/Patient :id "id-162953"
+                      :identifier
+                      [#fhir/Identifier{:value #fhir/string "value-163922"}
+                       #fhir/Identifier{:value #fhir/string "value-163928"}]})
       count := 2
       [0] := #fhir/Identifier{:value #fhir/string "value-163922"}
       [1] := #fhir/Identifier{:value #fhir/string "value-163928"})))
@@ -577,21 +578,21 @@
   (testing "single item with matching type returns the item"
     (given (eval
             "Patient.birthDate.as(date)"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date #system/date "2020"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :birthDate #fhir/date #system/date "2020"})
       identity := [#fhir/date #system/date "2020"]))
 
   (testing "single item with non-matching type returns an empty collection"
     (given (eval
             "Patient.birthDate.as(string)"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date #system/date "2020"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :birthDate #fhir/date #system/date "2020"})
       count := 0))
 
   (testing "empty collection returns empty collection"
     (given (eval
             "Patient.birthDate.as(string)"
-            {:fhir/type :fhir/Patient :id "foo"})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"})
       count := 0))
 
   ;; HACK: normally multiple items should throw an error. However, in R4 many
@@ -600,10 +601,10 @@
   (testing "multiple items are filtered"
     (given (eval
             "Patient.identifier.as(Identifier)"
-            {:fhir/type :fhir/Patient :id "id-162953"
-             :identifier
-             [#fhir/Identifier{:value #fhir/string "value-163922"}
-              #fhir/Identifier{:value #fhir/string "value-163928"}]})
+            #fhir/map{:fhir/type :fhir/Patient :id "id-162953"
+                      :identifier
+                      [#fhir/Identifier{:value #fhir/string "value-163922"}
+                       #fhir/Identifier{:value #fhir/string "value-163928"}]})
       count := 2
       [0] := #fhir/Identifier{:value #fhir/string "value-163922"}
       [1] := #fhir/Identifier{:value #fhir/string "value-163928"}))
@@ -622,9 +623,9 @@
 
 ;; 6.5.1. and
 (deftest and-test
-  (let [patient {:fhir/type :fhir/Patient
-                 :gender #fhir/code "male"
-                 :birthDate #fhir/date #system/date "2020"}]
+  (let [patient #fhir/map{:fhir/type :fhir/Patient
+                          :gender #fhir/code "male"
+                          :birthDate #fhir/date #system/date "2020"}]
     (are [expr pred] (pred (first (eval expr patient)))
       "Patient.gender = 'male' and Patient.birthDate = @2020" true?
       "Patient.gender = 'male' and Patient.birthDate = @2021" false?
@@ -633,13 +634,13 @@
 
   (testing "true and empty is empty"
     (is (empty? (eval "Patient.active and Patient.name.given"
-                      {:fhir/type :fhir/Patient :id "foo"
-                       :active #fhir/boolean true}))))
+                      #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                                :active #fhir/boolean true}))))
 
   (testing "empty and true is empty"
     (is (empty? (eval "Patient.name.given and Patient.active"
-                      {:fhir/type :fhir/Patient :id "foo"
-                       :active #fhir/boolean true})))))
+                      #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                                :active #fhir/boolean true})))))
 
 ;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
 
@@ -647,14 +648,14 @@
   (testing "missing url returns empty collection"
     (given (eval
             "Patient.extension().value"
-            {:fhir/type :fhir/Patient :id "foo"
-             :extension [#fhir/Extension{:url "url-145553" :value #fhir/string "value-145600"}]})
+            #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                      :extension [#fhir/Extension{:url "url-145553" :value #fhir/string "value-145600"}]})
       count := 0))
 
   (given (eval
           "Patient.extension('url-145553').value"
-          {:fhir/type :fhir/Patient :id "foo"
-           :extension [#fhir/Extension{:url "url-145553" :value #fhir/string "value-145600"}]})
+          #fhir/map{:fhir/type :fhir/Patient :id "foo"
+                    :extension [#fhir/Extension{:url "url-145553" :value #fhir/string "value-145600"}]})
     identity := [#fhir/string "value-145600"]))
 
 ;; 6.6. Math
@@ -663,7 +664,7 @@
 
 (deftest plus-test
   (testing "string"
-    (are [expr result] (= result (eval expr {:fhir/type :fhir/Patient :id "0"}))
+    (are [expr result] (= result (eval expr #fhir/map{:fhir/type :fhir/Patient :id "0"}))
       "Patient.id + '1'" ["01"]
       "'1' + Patient.id" ["10"]
       "Patient.id + {}" []

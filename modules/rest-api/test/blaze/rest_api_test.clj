@@ -8,7 +8,6 @@
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.structure-definition-repo.protocols :as sdrp]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.job-scheduler]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.output-spec]
@@ -48,7 +47,6 @@
    :blaze/rest-api
    {:base-url "http://localhost:8080"
     :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :structure-definition-repo structure-definition-repo
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
@@ -93,11 +91,8 @@
    :blaze.test/page-id-cipher {}
    :blaze.test/json-parser
    {:parsing-context (ig/ref :blaze.fhir.parsing-context/default)}
-   :blaze.test/json-writer
-   {:writing-context (ig/ref :blaze.fhir/writing-context)}
+   :blaze.test/json-writer {}
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
-   {:structure-definition-repo structure-definition-repo}
-   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}))
 
 (deftest init-test
@@ -113,30 +108,23 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
-      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
-      [:cause-data ::s/problems 11 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
-      [:cause-data ::s/problems 12 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 13 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 8 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
+      [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
+      [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
+      [:cause-data ::s/problems 11 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:cause-data ::s/problems 12 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
   (testing "missing parsing-context"
     (given-failed-system (update config :blaze/rest-api dissoc :parsing-context)
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
-
-  (testing "missing writing-context"
-    (given-failed-system (update config :blaze/rest-api dissoc :writing-context)
-      :key := :blaze/rest-api
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
   (testing "missing structure-definition-repo"
     (given-failed-system (update config :blaze/rest-api dissoc :structure-definition-repo)
@@ -349,7 +337,7 @@
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-writer]} config]
     (given (call rest-api {:request-method :post :uri ""
                            :headers {"content-type" "application/fhir+json"}
-                           :body (json-writer {:fhir/type :fhir/Bundle})})
+                           :body (json-writer #fhir/map{:fhir/type :fhir/Bundle})})
       :status := 200)))
 
 (deftest search-type-test

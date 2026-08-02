@@ -1,6 +1,7 @@
 (ns blaze.job.canonical.impl-test
   (:require
    [blaze.fhir.canonical :as canonical]
+   [blaze.fhir.spec.type :as type]
    [blaze.job.canonical.impl :as impl]
    [blaze.job.canonical.impl-spec]
    [blaze.job.test-util :as jtu]
@@ -56,10 +57,10 @@
     (let [j (assoc (jtu/job canonical/base)
                    :statusReason (jtu/concept (str canonical/base "/CodeSystem/JobStatusReason") "paused")
                    :businessStatus (jtu/concept (str canonical/base "/CodeSystem/JobCancelledSubStatus") "requested")
-                   :output [{:fhir/type :fhir.Task/output
-                             :type (jtu/concept (str canonical/base "/CodeSystem/JobOutput") "error")}
-                            {:fhir/type :fhir.Task/output
-                             :value #fhir/string "no-type"}])]
+                   :output [(type/fhir-map {:fhir/type :fhir.Task/output
+                                            :type (jtu/concept (str canonical/base "/CodeSystem/JobOutput") "error")})
+                            #fhir/map{:fhir/type :fhir.Task/output
+                                      :value #fhir/string "no-type"}])]
       (given (impl/downgrade j)
         [:statusReason :coding count] := 2
         [:statusReason :coding 1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason"

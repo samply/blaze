@@ -126,7 +126,7 @@
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Observation}})]
+                 :body #fhir/map{:fhir/type :fhir/Observation}})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -145,7 +145,7 @@
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient}})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -164,8 +164,8 @@
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient :id "0"
-                        :meta (type/meta {:tag [fu/subsetted]})}})]
+                 :body (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                                       :meta (type/meta {:tag [fu/subsetted]})})})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -182,7 +182,7 @@
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient :id "1"}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient :id "1"}})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -204,25 +204,25 @@
                     {:path-params {:id "0"}
                      ::reitit/match patient-match
                      :headers {"if-match" if-match}
-                     :body {:fhir/type :fhir/Patient :id "0"}})]
+                     :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
               (= 412 status))))))
 
     (testing "optimistic locking failure"
       (testing "with different content"
         (with-handler [handler]
-          [[[:create {:fhir/type :fhir/Patient :id "0"
-                      :gender #fhir/code "female"}]]
-           [[:put {:fhir/type :fhir/Patient :id "0"
-                   :gender #fhir/code "male"}]]]
+          [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                               :gender #fhir/code "female"}]]
+           [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                            :gender #fhir/code "male"}]]]
 
           (let [{:keys [status body]}
                 @(handler
                   {:path-params {:id "0"}
                    ::reitit/match patient-match
                    :headers {"if-match" "W/\"1\""}
-                   :body {:fhir/type :fhir/Patient :id "0"
-                          :gender #fhir/code "female"}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                   :gender #fhir/code "female"}})]
 
             (testing "returns error"
               (is (= 412 status))
@@ -235,18 +235,18 @@
 
       (testing "with identical content"
         (with-handler [handler]
-          [[[:create {:fhir/type :fhir/Patient :id "0"
-                      :gender #fhir/code "male"}]]
-           [[:put {:fhir/type :fhir/Patient :id "0"
-                   :gender #fhir/code "female"}]]]
+          [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                               :gender #fhir/code "male"}]]
+           [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                            :gender #fhir/code "female"}]]]
 
           (let [{:keys [status body]}
                 @(handler
                   {:path-params {:id "0"}
                    ::reitit/match patient-match
                    :headers {"if-match" "W/\"1\""}
-                   :body {:fhir/type :fhir/Patient :id "0"
-                          :gender #fhir/code "female"}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                   :gender #fhir/code "female"}})]
 
             (testing "returns error"
               (is (= 412 status))
@@ -259,20 +259,20 @@
 
         (testing "and content changing transaction in between"
           (with-handler [handler node]
-            [[[:create {:fhir/type :fhir/Patient :id "0"
-                        :gender #fhir/code "female"}]]]
+            [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                 :gender #fhir/code "female"}]]]
 
             ;; the transaction isn't indexed before the handler call, so that
             ;; the handler sees the first version of the patient
-            (with-tx-in-between [node [[:put {:fhir/type :fhir/Patient :id "0"
-                                              :gender #fhir/code "male"}]]]
+            (with-tx-in-between [node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                                       :gender #fhir/code "male"}]]]
               (let [{:keys [status body]}
                     @(handler
                       {:path-params {:id "0"}
                        ::reitit/match patient-match
                        :headers {"if-match" "W/\"1\""}
-                       :body {:fhir/type :fhir/Patient :id "0"
-                              :gender #fhir/code "female"}})]
+                       :body #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                       :gender #fhir/code "female"}})]
 
                 (testing "returns error"
                   (is (= 412 status))
@@ -292,8 +292,8 @@
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match observation-match
-                 :body {:fhir/type :fhir/Observation :id "0"
-                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
+                 :body #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
 
           (testing "returns error"
             (is (= 409 status))
@@ -311,7 +311,7 @@
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
           (is (= 500 status))
 
@@ -328,7 +328,7 @@
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
           (testing "Returns 201"
             (is (= 201 status)))
@@ -359,7 +359,7 @@
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
                  :headers {"prefer" "return=minimal"}
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
           (testing "Returns 201"
             (is (= 201 status)))
@@ -386,7 +386,7 @@
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
                  :headers {"prefer" "return=representation"}
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+                 :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
           (testing "Returns 201"
             (is (= 201 status)))
@@ -412,7 +412,7 @@
     (testing "with no Prefer header"
       (doseq [if-match [nil "W/\"2\"" "W/\"1\",W/\"2\""]]
         (with-handler [handler]
-          [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+          [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
            [[:delete "Patient" "0"]]]
 
           (let [{:keys [status headers body]}
@@ -420,7 +420,7 @@
                   {:path-params {:id "0"}
                    ::reitit/match patient-match
                    :headers {"if-match" if-match}
-                   :body {:fhir/type :fhir/Patient :id "0"}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
             (testing "Returns 201"
               (is (= 201 status)))
@@ -448,15 +448,15 @@
     (testing "with no Prefer header"
       (doseq [if-match [nil "W/\"1\"" "W/\"1\",W/\"2\""]]
         (with-handler [handler]
-          [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+          [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
           (let [{:keys [status headers body]}
                 @(handler
                   {:path-params {:id "0"}
                    ::reitit/match patient-match
                    :headers {"if-match" if-match}
-                   :body {:fhir/type :fhir/Patient :id "0"
-                          :birthDate #fhir/date #system/date "2020"}})]
+                   :body #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                   :birthDate #fhir/date #system/date "2020"}})]
 
             (testing "Returns 200"
               (is (= 200 status)))
@@ -478,18 +478,18 @@
   (testing "on update of an existing resource with identical content"
     (doseq [if-match [nil "W/\"1\"" "W/\"1\",W/\"2\""]]
       (with-handler [handler]
-        [[[:create {:fhir/type :fhir/Patient :id "0"
-                    :birthDate #fhir/date #system/date "2020"}]]]
+        [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                             :birthDate #fhir/date #system/date "2020"}]]]
 
         (let [{:keys [status headers body]}
               @(handler
                 {:path-params {:id "0"}
                  ::reitit/match patient-match
                  :headers {"if-match" if-match}
-                 :body {:fhir/type :fhir/Patient :id "0"
-                        :meta (type/meta {:versionId #fhir/id "1"
-                                          :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
-                        :birthDate #fhir/date #system/date "2020"}})]
+                 :body (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                                       :meta (type/meta {:versionId #fhir/id "1"
+                                                         :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
+                                       :birthDate #fhir/date #system/date "2020"})})]
 
           (testing "Returns 200"
             (is (= 200 status)))
@@ -511,22 +511,22 @@
     (testing "and content changing transaction in between"
       (doseq [if-match [nil "W/\"1\",W/\"2\""]]
         (with-handler [handler node]
-          [[[:create {:fhir/type :fhir/Patient :id "0"
-                      :birthDate #fhir/date #system/date "2020"}]]]
+          [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"
+                               :birthDate #fhir/date #system/date "2020"}]]]
 
           ;; the transaction isn't indexed before the handler call, so that the
           ;; handler sees the first version of the patient
-          (with-tx-in-between [node [[:put {:fhir/type :fhir/Patient :id "0"
-                                            :birthDate #fhir/date #system/date "2021"}]]]
+          (with-tx-in-between [node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                                     :birthDate #fhir/date #system/date "2021"}]]]
             (let [{:keys [status headers body]}
                   @(handler
                     {:path-params {:id "0"}
                      ::reitit/match patient-match
                      :headers {"if-match" if-match}
-                     :body {:fhir/type :fhir/Patient :id "0"
-                            :meta (type/meta {:versionId #fhir/id "1"
-                                              :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
-                            :birthDate #fhir/date #system/date "2020"}})]
+                     :body (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                                           :meta (type/meta {:versionId #fhir/id "1"
+                                                             :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})
+                                           :birthDate #fhir/date #system/date "2020"})})]
 
               (testing "Returns 200"
                 (is (= 200 status)))
@@ -553,8 +553,8 @@
             @(handler
               {:path-params {:id "0"}
                ::reitit/match observation-match
-               :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
+               :body #fhir/map{:fhir/type :fhir/Observation :id "0"
+                               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}})]
 
         (testing "Returns 201"
           (is (= 201 status)))
@@ -583,14 +583,14 @@
       (testing "*"
         (testing "with existing resource"
           (with-handler [handler]
-            [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler
                     {:path-params {:id "0"}
                      ::reitit/match patient-match
                      :headers {"if-none-match" "*"}
-                     :body {:fhir/type :fhir/Patient :id "0"}})]
+                     :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
               (testing "returns error"
                 (is (= 412 status))
@@ -609,14 +609,14 @@
                     {:path-params {:id "0"}
                      ::reitit/match patient-match
                      :headers {"if-none-match" "*"}
-                     :body {:fhir/type :fhir/Patient :id "0"}})]
+                     :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
               (testing "Returns 201"
                 (is (= 201 status))))))
 
         (testing "with deleted resource"
           (with-handler [handler]
-            [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+            [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
              [[:delete "Patient" "0"]]]
 
             (let [{:keys [status body]}
@@ -624,7 +624,7 @@
                     {:path-params {:id "0"}
                      ::reitit/match patient-match
                      :headers {"if-none-match" "*"}
-                     :body {:fhir/type :fhir/Patient :id "0"}})]
+                     :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
               (testing "returns error"
                 (is (= 412 status))
@@ -638,14 +638,14 @@
       (testing "W/\"1\""
         (testing "with existing resource"
           (with-handler [handler]
-            [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler
                     {:path-params {:id "0"}
                      ::reitit/match patient-match
                      :headers {"if-none-match" "W/\"1\""}
-                     :body {:fhir/type :fhir/Patient :id "0"}})]
+                     :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
               (testing "returns error"
                 (is (= 412 status))
@@ -659,14 +659,14 @@
       (testing "W/\"2\""
         (testing "with existing resource"
           (with-handler [handler]
-            [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status]}
                   @(handler
                     {:path-params {:id "0"}
                      ::reitit/match patient-match
                      :headers {"if-none-match" "W/\"2\""}
-                     :body {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}})]
+                     :body #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}})]
 
               (testing "Returns 200"
                 (is (= 200 status))))))))))
@@ -701,7 +701,7 @@
               {:path-params {:id "0"}
                ::reitit/match patient-match
                :headers {"prefer" "return=representation"}
-               :body {:fhir/type :fhir/Patient :id "0"}})]
+               :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
         (is (= 201 status))
 
@@ -715,7 +715,7 @@
             @(handler
               {:path-params {:id "0"}
                ::reitit/match patient-match
-               :body {:fhir/type :fhir/Patient :id "0"}})]
+               :body #fhir/map{:fhir/type :fhir/Patient :id "0"}})]
 
         (is (= 400 status))
 

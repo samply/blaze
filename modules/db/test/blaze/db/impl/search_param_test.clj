@@ -115,8 +115,8 @@
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient _profile"
       (let [patient
-            {:fhir/type :fhir/Patient :id "id-140855"
-             :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-141443"]}}
+            #fhir/map{:fhir/type :fhir/Patient :id "id-140855"
+                      :meta #fhir/Meta{:profile [#fhir/canonical "profile-uri-141443"]}}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
@@ -140,8 +140,8 @@
             :v-hash := (codec/v-hash "profile-uri-141443")))))
 
     (testing "Specimen patient will not indexed because we don't support resolving in FHIRPath"
-      (let [specimen {:fhir/type :fhir/Specimen :id "id-150810"
-                      :subject #fhir/Reference{:reference #fhir/string "reference-150829"}}
+      (let [specimen #fhir/map{:fhir/type :fhir/Specimen :id "id-150810"
+                               :subject #fhir/Reference{:reference #fhir/string "reference-150829"}}
             hash (hash/generate specimen)]
         (is
          (empty?
@@ -150,9 +150,9 @@
            [] hash specimen)))))
 
     (testing "ActivityDefinition url"
-      (let [resource {:fhir/type :fhir/ActivityDefinition
-                      :id "id-111846"
-                      :url #fhir/uri "url-111854"}
+      (let [resource #fhir/map{:fhir/type :fhir/ActivityDefinition
+                               :id "id-111846"
+                               :url #fhir/uri "url-111854"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
@@ -177,10 +177,10 @@
 
     (testing "List item"
       (testing "with literal reference"
-        (let [resource {:fhir/type :fhir/List :id "id-121825"
-                        :entry
-                        [{:fhir/type :fhir.List/entry
-                          :item #fhir/Reference{:reference #fhir/string "Patient/0"}}]}
+        (let [resource #fhir/map{:fhir/type :fhir/List :id "id-121825"
+                                 :entry
+                                 [#fhir/map{:fhir/type :fhir.List/entry
+                                            :item #fhir/Reference{:reference #fhir/string "Patient/0"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -238,15 +238,15 @@
                                        (codec/id-byte-string "0"))))))
 
       (testing "with identifier reference"
-        (let [resource {:fhir/type :fhir/List :id "id-123058"
-                        :entry
-                        [{:fhir/type :fhir.List/entry
-                          :item
-                          #fhir/Reference
-                           {:identifier
-                            #fhir/Identifier
-                             {:system #fhir/uri "system-122917"
-                              :value #fhir/string "value-122931"}}}]}
+        (let [resource #fhir/map{:fhir/type :fhir/List :id "id-123058"
+                                 :entry
+                                 [#fhir/map{:fhir/type :fhir.List/entry
+                                            :item
+                                            #fhir/Reference
+                                             {:identifier
+                                              #fhir/Identifier
+                                               {:system #fhir/uri "system-122917"
+                                                :value #fhir/string "value-122931"}}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -302,12 +302,12 @@
               :v-hash := (codec/v-hash "system-122917|value-122931")))))
 
       (testing "with literal absolute URL reference"
-        (let [resource {:fhir/type :fhir/List :id "id-121825"
-                        :entry
-                        [{:fhir/type :fhir.List/entry
-                          :item
-                          #fhir/Reference
-                           {:reference #fhir/string "http://foo.com/bar-141221"}}]}
+        (let [resource #fhir/map{:fhir/type :fhir/List :id "id-121825"
+                                 :entry
+                                 [#fhir/map{:fhir/type :fhir.List/entry
+                                            :item
+                                            #fhir/Reference
+                                             {:reference #fhir/string "http://foo.com/bar-141221"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1]]
               (index-entries
@@ -331,9 +331,9 @@
               :v-hash := (codec/v-hash "http://foo.com/bar-141221"))))))
 
     (testing "Encounter rank"
-      (let [resource {:fhir/type :fhir/Encounter :id "id-094518"
-                      :diagnosis [{:fhir/type :fhir.Encounter/diagnosis
-                                   :rank #fhir/positiveInt 94656}]}
+      (let [resource #fhir/map{:fhir/type :fhir/Encounter :id "id-094518"
+                               :diagnosis [#fhir/map{:fhir/type :fhir.Encounter/diagnosis
+                                                     :rank #fhir/positiveInt 94656}]}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
@@ -364,8 +364,8 @@
             :v-hash := (codec/number (BigDecimal/valueOf 94656))))))
 
     (testing "Appointment priority"
-      (let [resource {:fhir/type :fhir/Appointment :id "id-102236"
-                      :priority #fhir/unsignedInt 102229}
+      (let [resource #fhir/map{:fhir/type :fhir/Appointment :id "id-102236"
+                               :priority #fhir/unsignedInt 102229}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries

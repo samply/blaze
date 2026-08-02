@@ -84,16 +84,14 @@
            ac/completed-future)))))
 
 (defmethod m/pre-init-spec ::ts/extern [_]
-  (s/keys :req-un [::base-uri :blaze/http-client :blaze.fhir/parsing-context
-                   :blaze.fhir/writing-context]
+  (s/keys :req-un [::base-uri :blaze/http-client :blaze.fhir/parsing-context]
           :opt-un [:blaze.openid-client/token-provider]))
 
 (defmethod ig/init-key ::ts/extern
-  [_ {:keys [base-uri http-client parsing-context writing-context token-provider]}]
+  [_ {:keys [base-uri http-client parsing-context token-provider]}]
   (log/info (str "Init terminology server connection: " base-uri))
   (let [http-opts {:http-client http-client
-                   :parsing-context parsing-context
-                   :writing-context writing-context}
+                   :parsing-context parsing-context}
         code-system-validate-code-cache (code-system-validate-code-cache base-uri http-opts token-provider)
         value-set-validate-code-cache (value-set-validate-code-cache base-uri http-opts token-provider)]
     (reify p/TerminologyService

@@ -35,10 +35,10 @@
 (deftest might-contain-test
   (testing "Bloom filter created on the same database state"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:node node :eval-context "Patient"} elm)
@@ -55,14 +55,14 @@
 
   (testing "Bloom filter older than the last change in the patient's compartment"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:node node :eval-context "Patient"} elm)
             bloom-filter (bloom-filter/create node expr)]
 
-        @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
-                                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
+        @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
 
         (testing "the Bloom filter can't be trusted for Patient 0 anymore"
           (let [db (d/db node)
@@ -71,9 +71,9 @@
 
   (testing "Bloom filter newer than the database of the resource"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:node node :eval-context "Patient"} elm)
@@ -100,9 +100,9 @@
 
   (testing "with one Patient with one Observation"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:node node :eval-context "Patient"} elm)]
@@ -115,10 +115,10 @@
 
   (testing "with two Patients on of which has one Observation"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:node node :eval-context "Patient"} elm)]
@@ -148,9 +148,9 @@
             expr (c/compile {:node node :eval-context "Patient"} elm)
             bloom-filter (bloom-filter/create node expr)]
 
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Observation :id "0"
-                                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
+        @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                           [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
 
         (given (bloom-filter/recreate node bloom-filter expr)
           ::bloom-filter/t := 1
@@ -160,15 +160,15 @@
 
   (testing "with one additional Patient with one Observation added"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
             expr (c/compile {:node node :eval-context "Patient"} elm)
             bloom-filter (bloom-filter/create node expr)]
 
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]
-                           [:put {:fhir/type :fhir/Observation :id "1"
-                                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
+        @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+                           [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                                           :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
 
         (given (bloom-filter/recreate node bloom-filter expr)
           ::bloom-filter/t := 2

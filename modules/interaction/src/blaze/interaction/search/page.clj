@@ -186,21 +186,21 @@
   "Generate a special bundle if the search results in zero matches to avoid
   generating a token for the first link, we don't need in this case."
   [context clauses]
-  {:fhir/type :fhir/Bundle
-   :id (m/luid context)
-   :type #fhir/code "searchset"
-   :total #fhir/unsignedInt 0
-   :link [(self-link context clauses)]})
+  (type/fhir-map {:fhir/type :fhir/Bundle
+                  :id (m/luid context)
+                  :type #fhir/code "searchset"
+                  :total #fhir/unsignedInt 0
+                  :link [(self-link context clauses)]}))
 
 (defn normal-bundle
   [{{{route-name :name} :data} ::reitit/match :as context} token
    {:keys [entries total clauses]}]
   (cond->
-   {:fhir/type :fhir/Bundle
-    :id (m/luid context)
-    :type #fhir/code "searchset"
-    :entry entries
-    :link [(first-link context token clauses)]}
+   (type/fhir-map {:fhir/type :fhir/Bundle
+                   :id (m/luid context)
+                   :type #fhir/code "searchset"
+                   :entry entries
+                   :link [(first-link context token clauses)]})
     (not= "page" (some-> route-name name))
     (update :link conj (self-link context clauses))
     total
@@ -208,11 +208,11 @@
 
 (defn summary-response [context total clauses]
   (ring/response
-   {:fhir/type :fhir/Bundle
-    :id (m/luid context)
-    :type #fhir/code "searchset"
-    :total (type/unsignedInt total)
-    :link [(self-link context clauses)]}))
+   (type/fhir-map {:fhir/type :fhir/Bundle
+                   :id (m/luid context)
+                   :type #fhir/code "searchset"
+                   :total (type/unsignedInt total)
+                   :link [(self-link context clauses)]})))
 
 (defn match-xf [context]
   (map (partial search-util/match-entry context)))

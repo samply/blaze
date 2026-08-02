@@ -51,7 +51,6 @@
                     blaze.fhir.operation.value-set.validate-code
                     blaze.fhir.parsing-context
                     blaze.fhir.structure-definition-repo
-                    blaze.fhir.writing-context
                     blaze.handler.app
                     blaze.handler.health
                     blaze.http-client

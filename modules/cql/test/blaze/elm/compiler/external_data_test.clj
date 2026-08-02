@@ -74,7 +74,7 @@
   (testing "Patient context"
     (testing "Patient"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
               {:node node
@@ -114,9 +114,9 @@
 
     (testing "Observation"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [context
               {:node node
@@ -149,17 +149,17 @@
 
       (testing "with one code"
         (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "1"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "system-192253"
-                        :code #fhir/code "code-192300"}]}
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                            :code
+                            #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "system-192253"
+                                 :code #fhir/code "code-192300"}]}
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -224,25 +224,25 @@
 
       (testing "with two codes"
         (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "1"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "system-192253"
-                        :code #fhir/code "code-192300"}]}
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "2"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "system-192253"
-                        :code #fhir/code "code-140541"}]}
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                            :code
+                            #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "system-192253"
+                                 :code #fhir/code "code-192300"}]}
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                            :code
+                            #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "system-192253"
+                                 :code #fhir/code "code-140541"}]}
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -294,25 +294,25 @@
 
       (testing "with one concept"
         (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "1"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "system-192253"
-                        :code #fhir/code "code-192300"}]}
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "2"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "system-192253"
-                        :code #fhir/code "code-140541"}]}
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                            :code
+                            #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "system-192253"
+                                 :code #fhir/code "code-192300"}]}
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                            :code
+                            #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "system-192253"
+                                 :code #fhir/code "code-140541"}]}
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -366,33 +366,33 @@
 
       (testing "with value set reference"
         (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                   :url #fhir/uri "http://system-115910"
-                   :content #fhir/code "complete"
-                   :concept
-                   [{:fhir/type :fhir.CodeSystem/concept
-                     :code #fhir/code "code-115927"}
-                    {:fhir/type :fhir.CodeSystem/concept
-                     :code #fhir/code "code-140541"}]}]]
-           [[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "1"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "http://system-115910"
-                        :code #fhir/code "code-115927"}]}
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "2"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri "http://system-115910"
-                        :code #fhir/code "code-140541"}]}
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                            :url #fhir/uri "http://system-115910"
+                            :content #fhir/code "complete"
+                            :concept
+                            [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                       :code #fhir/code "code-115927"}
+                             #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                       :code #fhir/code "code-140541"}]}]]
+           [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                            :code
+                            #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "http://system-115910"
+                                 :code #fhir/code "code-115927"}]}
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+            [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                            :code
+                            #fhir/CodeableConcept
+                             {:coding
+                              [#fhir/Coding
+                                {:system #fhir/uri "http://system-115910"
+                                 :code #fhir/code "code-140541"}]}
+                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -464,18 +464,18 @@
   (testing "Specimen context"
     (testing "Patient"
       (with-system-data [{:blaze.db/keys [node]} (assoc-in api-stub/mem-node-config [:blaze.db/node :enforce-referential-integrity] false)]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Specimen :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Specimen :id "1"}]
-          [:put {:fhir/type :fhir/Group :id "0"}]
-          [:put {:fhir/type :fhir/Specimen :id "2"
-                 :subject #fhir/Reference{:reference #fhir/string "Group/0"}}]
-          [:put {:fhir/type :fhir/Specimen :id "3"
-                 :subject #fhir/Reference{:reference #fhir/string "invalid"}}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Specimen :id "4"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Specimen :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Specimen :id "1"}]
+          [:put #fhir/map{:fhir/type :fhir/Group :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Specimen :id "2"
+                          :subject #fhir/Reference{:reference #fhir/string "Group/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Specimen :id "3"
+                          :subject #fhir/Reference{:reference #fhir/string "invalid"}}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+          [:put #fhir/map{:fhir/type :fhir/Specimen :id "4"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]
          [[:delete "Patient" "1"]]]
 
         (let [context
@@ -525,13 +525,13 @@
   (testing "Unfiltered context"
     (testing "Medication"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Medication :id "0"
-                 :code
-                 #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                     {:system #fhir/uri "system-225806"
-                      :code #fhir/code "code-225809"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Medication :id "0"
+                          :code
+                          #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                              {:system #fhir/uri "system-225806"
+                               :code #fhir/code "code-225809"}]}}]]]
 
         (let [context
               {:node node
@@ -574,33 +574,33 @@
 
     (testing "with value set reference"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "http://system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-140541"}]}]]
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :code
-                 #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                     {:system #fhir/uri "http://system-115910"
-                      :code #fhir/code "code-115927"}]}
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Observation :id "2"
-                 :code
-                 #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                     {:system #fhir/uri "http://system-115910"
-                      :code #fhir/code "code-140541"}]}
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "http://system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-140541"}]}]]
+         [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                          :code
+                          #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                              {:system #fhir/uri "http://system-115910"
+                               :code #fhir/code "code-115927"}]}
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                          :code
+                          #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                              {:system #fhir/uri "http://system-115910"
+                               :code #fhir/code "code-140541"}]}
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [context
               {:node node
@@ -677,9 +677,9 @@
   (testing "with related context"
     (testing "without code"
       (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [library (t/translate
                        "library test
@@ -726,15 +726,15 @@
 
     (testing "with pre-compiled database query"
       (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :code
-                 #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                     {:system #fhir/uri "system-133620"
-                      :code #fhir/code "code-133657"}]}
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :code
+                          #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                              {:system #fhir/uri "system-133620"
+                               :code #fhir/code "code-133657"}]}
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [library (t/translate
                        "library test
@@ -784,23 +784,23 @@
 
     (testing "with pre-compiled database query"
       (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "http://system-133620"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-133657"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-140541"}]}]]
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :code
-                 #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                     {:system #fhir/uri "http://system-133620"
-                      :code #fhir/code "code-133657"}]}
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "http://system-133620"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-133657"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-140541"}]}]]
+         [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :code
+                          #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                              {:system #fhir/uri "http://system-133620"
+                               :code #fhir/code "code-133657"}]}
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [library (t/translate
                        "library test
@@ -914,7 +914,7 @@
   (testing "an anomaly returned by d/execute-query is propagated as a thrown anomaly"
     (testing "compartment-query-expr -eval (Patient context with codes)"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
               {:node node
@@ -940,7 +940,7 @@
 
     (testing "context-expr -eval (Patient context, Encounter data-type, no codes)"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
               {:node node
@@ -958,7 +958,7 @@
 
     (testing "type-query-expr -eval (Unfiltered context with codes)"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
               {:node node
@@ -983,7 +983,7 @@
 
     (testing "compartment-query-expr -optimize (Patient context with codes)"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
               {:node node

@@ -28,24 +28,24 @@
 
 (deftest code-system-lookup-test
   (with-system [{terminology-service ::ts/not-available} config]
-    (given-failed-future (ts/code-system-lookup terminology-service {:fhir/type :fhir/Parameters})
+    (given-failed-future (ts/code-system-lookup terminology-service #fhir/map{:fhir/type :fhir/Parameters})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service.")))
 
 (deftest code-system-validate-code-test
   (with-system [{terminology-service ::ts/not-available} config]
-    (given-failed-future (ts/code-system-validate-code terminology-service {:fhir/type :fhir/Parameters})
+    (given-failed-future (ts/code-system-validate-code terminology-service #fhir/map{:fhir/type :fhir/Parameters})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service.")))
 
 (deftest expand-value-set-test
   (with-system [{terminology-service ::ts/not-available} config]
-    (given-failed-future (ts/expand-value-set terminology-service {:fhir/type :fhir/Parameters})
+    (given-failed-future (ts/expand-value-set terminology-service #fhir/map{:fhir/type :fhir/Parameters})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service.")))
 
 (deftest value-set-validate-code-test
   (with-system [{terminology-service ::ts/not-available} config]
-    (given-failed-future (ts/value-set-validate-code terminology-service {:fhir/type :fhir/Parameters})
+    (given-failed-future (ts/value-set-validate-code terminology-service #fhir/map{:fhir/type :fhir/Parameters})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Terminology operations are not supported. Please enable either the external or the internal terminology service.")))

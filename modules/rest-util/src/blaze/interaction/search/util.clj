@@ -22,23 +22,23 @@
 
 (defn match-entry [context resource]
   (let [match-extension (-> resource meta ::sp/match-extension)]
-    {:fhir/type :fhir.Bundle/entry
-     :fullUrl (full-url context resource)
-     :resource resource
-     :search (cond-> match
-               match-extension
-               (assoc :extension match-extension))}))
+    (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                    :fullUrl (full-url context resource)
+                    :resource resource
+                    :search (cond-> match
+                              match-extension
+                              (assoc :extension match-extension))})))
 
 (defn include-entry [context resource]
-  {:fhir/type :fhir.Bundle/entry
-   :fullUrl (full-url context resource)
-   :resource resource
-   :search include})
+  (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                  :fullUrl (full-url context resource)
+                  :resource resource
+                  :search include}))
 
 (defn outcome-entry [_ resource]
-  {:fhir/type :fhir.Bundle/entry
-   :resource resource
-   :search outcome})
+  (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                  :resource resource
+                  :search outcome}))
 
 (defmethod m/pre-init-spec ::link [_]
   (s/keys :req [:fhir/version]))
@@ -52,10 +52,10 @@
   (condp = version
     "4.0.1"
     (fn link [relation url]
-      {:fhir/type :fhir.Bundle/link
-       :relation (type/string-interned relation)
-       :url (type/uri url)})
+      (type/fhir-map {:fhir/type :fhir.Bundle/link
+                      :relation (type/string-interned relation)
+                      :url (type/uri url)}))
     (fn link [relation url]
-      {:fhir/type :fhir.Bundle/link
-       :relation (type/code relation)
-       :url (type/uri url)})))
+      (type/fhir-map {:fhir/type :fhir.Bundle/link
+                      :relation (type/code relation)
+                      :url (type/uri url)}))))

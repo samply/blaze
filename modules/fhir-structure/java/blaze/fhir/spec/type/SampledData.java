@@ -205,7 +205,7 @@ public final class SampledData extends AbstractElement implements Complex, Exten
 
     @Override
     public SampledData empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

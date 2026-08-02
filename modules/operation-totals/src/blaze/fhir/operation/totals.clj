@@ -15,13 +15,13 @@
 (defn- parameter [db type]
   (let [total (d/type-total db type)]
     (when (pos? total)
-      {:fhir/type :fhir.Parameters/parameter
-       :name (type/string type)
-       :value (type/unsignedInt total)})))
+      (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                      :name (type/string type)
+                      :value (type/unsignedInt total)}))))
 
 (defn- parameters [db types]
-  {:fhir/type :fhir/Parameters
-   :parameter (into [] (keep (partial parameter db)) types)})
+  (type/fhir-map {:fhir/type :fhir/Parameters
+                  :parameter (into [] (keep (partial parameter db)) types)}))
 
 (defn- handler [types]
   (fn [{:blaze/keys [db]}]

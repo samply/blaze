@@ -17,10 +17,10 @@
 
 (deftest system-query-execute-test
   (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"
-             :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-131647" :code #fhir/code "code-131652"}]}}]
-      [:put {:fhir/type :fhir/Observation :id "0"
-             :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-131647" :code #fhir/code "code-131652"}]}}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                      :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-131647" :code #fhir/code "code-131652"}]}}]
+      [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                      :meta #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "system-131647" :code #fhir/code "code-131652"}]}}]]]
 
     ;; the clauses are taken from a query compiled over all types, while the
     ;; queries under test are restricted to a subset of types in order to test

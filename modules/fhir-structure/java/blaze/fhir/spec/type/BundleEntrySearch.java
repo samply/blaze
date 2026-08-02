@@ -88,7 +88,7 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
 
     @Override
     public BundleEntrySearch empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

@@ -21,7 +21,7 @@
 
 (deftest not-in-vs-test
   (given (issue/not-in-vs
-          {:fhir/type :fhir/ValueSet}
+          #fhir/map{:fhir/type :fhir/ValueSet}
           {:code "code-135027"})
     [:severity] := #fhir/code "error"
     [:code] := #fhir/code "code-invalid"
@@ -33,46 +33,46 @@
     (testing "with code only"
       (testing "without value set URL"
         (given (issue/not-in-vs
-                {:fhir/type :fhir/ValueSet}
+                #fhir/map{:fhir/type :fhir/ValueSet}
                 {:code "code-135027"})
           [:details :text] := #fhir/string "The provided code `code-135027` was not found in the provided value set."))
 
       (testing "with value set URL"
         (given (issue/not-in-vs
-                {:fhir/type :fhir/ValueSet
-                 :url #fhir/uri "value-set-135606"}
+                #fhir/map{:fhir/type :fhir/ValueSet
+                          :url #fhir/uri "value-set-135606"}
                 {:code "code-135027"})
           [:details :text] := #fhir/string "The provided code `code-135027` was not found in the value set `value-set-135606`."))
 
       (testing "with value set URL and version"
         (given (issue/not-in-vs
-                {:fhir/type :fhir/ValueSet
-                 :url #fhir/uri "value-set-135606"
-                 :version #fhir/string "version-135642"}
+                #fhir/map{:fhir/type :fhir/ValueSet
+                          :url #fhir/uri "value-set-135606"
+                          :version #fhir/string "version-135642"}
                 {:code "code-135027"})
           [:details :text] := #fhir/string "The provided code `code-135027` was not found in the value set `value-set-135606|version-135642`.")))
 
     (testing "with code and system"
       (testing "without value set URL"
         (given (issue/not-in-vs
-                {:fhir/type :fhir/ValueSet}
+                #fhir/map{:fhir/type :fhir/ValueSet}
                 {:code "code-135027"
                  :system "system-135913"})
           [:details :text] := #fhir/string "The provided code `system-135913#code-135027` was not found in the provided value set."))
 
       (testing "with value set URL"
         (given (issue/not-in-vs
-                {:fhir/type :fhir/ValueSet
-                 :url #fhir/uri "value-set-135606"}
+                #fhir/map{:fhir/type :fhir/ValueSet
+                          :url #fhir/uri "value-set-135606"}
                 {:code "code-135027"
                  :system "system-135913"})
           [:details :text] := #fhir/string "The provided code `system-135913#code-135027` was not found in the value set `value-set-135606`."))
 
       (testing "with value set URL and version"
         (given (issue/not-in-vs
-                {:fhir/type :fhir/ValueSet
-                 :url #fhir/uri "value-set-135606"
-                 :version #fhir/string "version-135642"}
+                #fhir/map{:fhir/type :fhir/ValueSet
+                          :url #fhir/uri "value-set-135606"
+                          :version #fhir/string "version-135642"}
                 {:code "code-135027"
                  :system "system-135913"})
           [:details :text] := #fhir/string "The provided code `system-135913#code-135027` was not found in the value set `value-set-135606|version-135642`.")))))

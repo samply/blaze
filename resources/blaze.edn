@@ -26,7 +26,6 @@
   {:base-url #blaze/var base-url
    :node #blaze/ref :blaze.db.main/node
    :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
-   :writing-context #blaze/ref :blaze.fhir/writing-context
    :admin-node #blaze/ref :blaze.db.admin/node
    :search-system-handler #blaze/ref :blaze.interaction/search-system
    :transaction-handler #blaze/ref :blaze.interaction/transaction
@@ -268,7 +267,6 @@
   ;;
   :blaze.fhir.operation.graphql/handler
   {:node #blaze/ref :blaze.db.main/node
-   :writing-context #blaze/ref :blaze.fhir/writing-context
    :executor #blaze/ref :blaze.fhir.operation.graphql/executor}
 
   :blaze.fhir.operation.graphql/executor
@@ -304,7 +302,6 @@
    :admin-node #blaze/ref :blaze.db.admin/node
    :validator #blaze/ref :blaze.admin-api/validator
    :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
-   :writing-context #blaze/ref :blaze.fhir/writing-context
    :job-scheduler #blaze/ref :blaze/job-scheduler
    :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
    :read-job-handler #blaze/ref :blaze.interaction/read
@@ -520,9 +517,6 @@
    :include-summary-only true
    :use-regex false}
 
-  :blaze.fhir/writing-context
-  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
-
   :blaze.fhir/structure-definition-repo {}}
 
  :storage
@@ -623,7 +617,6 @@
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
     :parsing-context #blaze/ref :blaze.fhir.parsing-context/resource-store
-    :writing-context #blaze/ref :blaze.fhir/writing-context
     :executor #blaze/ref :blaze.db.resource-store.kv/executor}
 
    :blaze.db.resource-store.kv/executor
@@ -946,7 +939,6 @@
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
     :parsing-context #blaze/ref :blaze.fhir.parsing-context/resource-store
-    :writing-context #blaze/ref :blaze.fhir/writing-context
     :executor #blaze/ref :blaze.db.resource-store.kv/executor}
 
    :blaze.db.resource-store.kv/executor
@@ -1324,7 +1316,6 @@
    ;;
    :blaze.db.resource-store/cassandra
    {:parsing-context #blaze/ref :blaze.fhir.parsing-context/resource-store
-    :writing-context #blaze/ref :blaze.fhir/writing-context
     :contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
     :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
     :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
@@ -1584,8 +1575,7 @@
    {:blaze.terminology-service/extern
     {:base-uri #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_URL" string?]
      :http-client #blaze/ref :blaze.terminology-service.extern/http-client
-     :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
-     :writing-context #blaze/ref :blaze.fhir/writing-context}
+     :parsing-context #blaze/ref :blaze.fhir.parsing-context/default}
 
     [:blaze/http-client :blaze.terminology-service.extern/http-client]
     {:trust-store #blaze/cfg ["EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE" string?]
@@ -1634,8 +1624,7 @@
      :failure-mode #blaze/var validator-failure-mode
      :max-concurrency #blaze/cfg ["EXTERN_VALIDATOR_MAX_CONCURRENCY" pos-int? 4]
      :http-client #blaze/ref :blaze.validator.extern/http-client
-     :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
-     :writing-context #blaze/ref :blaze.fhir/writing-context}
+     :parsing-context #blaze/ref :blaze.fhir.parsing-context/default}
 
     [:blaze/http-client :blaze.validator.extern/http-client]
     {:trust-store #blaze/cfg ["EXTERN_VALIDATOR_CLIENT_TRUST_STORE" string?]

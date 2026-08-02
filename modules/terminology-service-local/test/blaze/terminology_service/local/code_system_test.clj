@@ -16,9 +16,9 @@
 (deftest list-test
   (testing "with one code system"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "id-160617"
-               :url #fhir/uri "system-192435"
-               :content #fhir/code "complete"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-160617"
+                        :url #fhir/uri "system-192435"
+                        :content #fhir/code "complete"}]]]
 
       (given @(cs/list (d/db node))
         count := 1
@@ -31,12 +31,12 @@
       (testing "which are identical"
         (testing "created in the same transaction"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :content #fhir/code "complete"}]
-              [:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :content #fhir/code "complete"}]
+              [:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the one with the higher id comes first"
               (given @(cs/list (d/db node))
@@ -48,12 +48,12 @@
 
         (testing "created in different transactions"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the newer one comes first"
               (given @(cs/list (d/db node))
@@ -66,14 +66,14 @@
       (testing "with different versions"
         (testing "major only"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "2"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "2"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the higher version comes first"
               (given @(cs/list (d/db node))
@@ -85,14 +85,14 @@
 
         (testing "same major but different numeric minor"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.10"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.2"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.10"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.2"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the higher version comes first"
               (given @(cs/list (d/db node))
@@ -104,14 +104,14 @@
 
         (testing "same major but different mixed minor"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.a"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.2"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.a"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.2"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -123,14 +123,14 @@
 
         (testing "major and major.minor"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "2"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.2"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "2"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.2"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -142,15 +142,15 @@
 
         (testing "active version comes before no version"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :status #fhir/code "active"
-                     :version #fhir/string "1.1"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.2"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :status #fhir/code "active"
+                              :version #fhir/string "1.1"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.2"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -162,16 +162,16 @@
 
         (testing "active version comes before draft version"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.1"
-                     :status #fhir/code "active"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.2"
-                     :status #fhir/code "draft"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.1"
+                              :status #fhir/code "active"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.2"
+                              :status #fhir/code "draft"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -183,16 +183,16 @@
 
         (testing "draft version comes before retired version"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-            [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.1"
-                     :status #fhir/code "draft"
-                     :content #fhir/code "complete"}]]
-             [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri "system-192435"
-                     :version #fhir/string "1.2"
-                     :status #fhir/code "retired"
-                     :content #fhir/code "complete"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-0"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.1"
+                              :status #fhir/code "draft"
+                              :content #fhir/code "complete"}]]
+             [[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-1"
+                              :url #fhir/uri "system-192435"
+                              :version #fhir/string "1.2"
+                              :status #fhir/code "retired"
+                              :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))

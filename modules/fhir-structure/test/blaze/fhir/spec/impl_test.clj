@@ -279,8 +279,8 @@
              :request :fhir.xml.Bundle.entry/request
              :response :fhir.xml.Bundle.entry/response})
            (s2/conformer
-            (fn [~'m] (assoc ~'m :fhir/type :fhir.Bundle/entry))
-            identity))))
+            (fn [~'m] (type/fhir-map (assoc ~'m :fhir/type :fhir.Bundle/entry)))
+            impl/plain-map))))
 
   (testing "XML representation of Bundle.entry.resource"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Bundle")))

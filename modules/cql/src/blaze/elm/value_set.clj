@@ -7,9 +7,9 @@
    [blaze.terminology-service :as ts]))
 
 (defn- system-param [system]
-  {:fhir/type :fhir.Parameters/parameter
-   :name #fhir/string "system"
-   :value (type/uri system)})
+  (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                  :name #fhir/string "system"
+                  :value (type/uri system)}))
 
 (defrecord ValueSetImpl [terminology-service url url-param infer-system-param]
   core/Expression
@@ -37,8 +37,8 @@
     (tu/extract-result
      (ts/value-set-validate-code
       terminology-service
-       {:fhir/type :fhir/Parameters
-        :parameter [url-param (tu/code-param code) infer-system-param]})
+       (type/fhir-map {:fhir/type :fhir/Parameters
+                       :parameter [url-param (tu/code-param code) infer-system-param]}))
      (fn [cause-msg]
        (format
         "Error while testing that the code `%s` is in ValueSet `%s`. Cause: %s"
@@ -47,9 +47,9 @@
     (tu/extract-result
      (ts/value-set-validate-code
       terminology-service
-       {:fhir/type :fhir/Parameters
-        :parameter
-        [url-param (tu/code-param (:code code)) (system-param (:system code))]})
+       (type/fhir-map {:fhir/type :fhir/Parameters
+                       :parameter
+                       [url-param (tu/code-param (:code code)) (system-param (:system code))]}))
      (fn [cause-msg]
        (format
         "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
@@ -58,8 +58,8 @@
     (tu/extract-result
      (ts/value-set-validate-code
       terminology-service
-       {:fhir/type :fhir/Parameters
-        :parameter [url-param (tu/codeable-concept-param concept)]})
+       (type/fhir-map {:fhir/type :fhir/Parameters
+                       :parameter [url-param (tu/codeable-concept-param concept)]}))
      (fn [cause-msg]
        (format
         "Error while testing that the %s is in ValueSet `%s`. Cause: %s"
@@ -82,9 +82,9 @@
 
 (defn value-set [terminology-service url]
   (->ValueSetImpl terminology-service url
-                  {:fhir/type :fhir.Parameters/parameter
-                   :name #fhir/string "url"
-                   :value (type/uri url)}
-                  {:fhir/type :fhir.Parameters/parameter
-                   :name #fhir/string "inferSystem"
-                   :value #fhir/boolean true}))
+                  (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                                  :name #fhir/string "url"
+                                  :value (type/uri url)})
+                  #fhir/map{:fhir/type :fhir.Parameters/parameter
+                            :name #fhir/string "inferSystem"
+                            :value #fhir/boolean true}))

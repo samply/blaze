@@ -24,8 +24,8 @@
   (assert (= "Patient" type))
   (assert (= blaze.jepsen.register-test/id id))
   (ac/completed-future
-   {:fhir/type :fhir/Patient
-    :multipleBirth (type/integer multiple-birth)}))
+   (type/fhir-map {:fhir/type :fhir/Patient
+                   :multipleBirth (type/integer multiple-birth)})))
 
 (deftest read-test
   (with-redefs [fhir-client/read fhir-client-read]

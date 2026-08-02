@@ -152,8 +152,8 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
         }
 
         @Override
-        public Normal empty() {
-            return EMPTY;
+        public Uri empty() {
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override
@@ -251,8 +251,8 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
         }
 
         @Override
-        public Interned empty() {
-            return EMPTY;
+        public Uri empty() {
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override

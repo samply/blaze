@@ -22,7 +22,7 @@
              {:status 202}
              {:context-path "/fhir"}
              {:blaze/base-url "http://localhost:8080"}
-             {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})
+             #fhir/map{:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})
             [:headers "Content-Location"])))))
 
 (deftest preference-test

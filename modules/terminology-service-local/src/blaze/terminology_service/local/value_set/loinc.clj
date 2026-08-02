@@ -12,21 +12,24 @@
 (def ^:const ^long value-set-prefix-length (count lc/value-set-prefix))
 
 (defn- build-value-set [id {{title :value} :title} value-set-concepts]
-  {:fhir/type :fhir/ValueSet
-   :name (type/string (str "LOINC_AnswerList_" (str/replace id "-" "_")))
-   :title (type/string (format "LOINC AnswerList %s (%s)" id title))
-   :status #fhir/code "active"
-   :copyright lc/copyright
-   :compose
-   {:fhir/type :fhir.ValueSet/compose
-    :include
-    [{:fhir/type :fhir.ValueSet.compose/include
-      :system #fhir/uri-interned "http://loinc.org"
-      :concept
-      (mapv
-       #(-> (assoc % :fhir/type :fhir.ValueSet.compose.include/concept)
-            (dissoc :system))
-       (value-set-concepts id))}]}})
+  (type/fhir-map {:fhir/type :fhir/ValueSet
+                  :name (type/string (str "LOINC_AnswerList_" (str/replace id "-" "_")))
+                  :title (type/string (format "LOINC AnswerList %s (%s)" id title))
+                  :status #fhir/code "active"
+                  :copyright lc/copyright
+                  :compose
+                  (type/fhir-map {:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [(type/fhir-map {:fhir/type :fhir.ValueSet.compose/include
+                                                   :system #fhir/uri-interned "http://loinc.org"
+                                                   :concept
+                                                   (mapv
+                                                    (fn [{:keys [code display]}]
+                                                      (type/fhir-map
+                                                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                                                        :code code
+                                                        :display display}))
+                                                    (value-set-concepts id))})]})}))
 
 (defmethod c/find :loinc
   [{{:keys [value-sets value-set-concepts]} :loinc/context} url & [_version]]

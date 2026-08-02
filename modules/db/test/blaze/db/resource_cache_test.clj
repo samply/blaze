@@ -14,7 +14,6 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
-   [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
@@ -34,13 +33,13 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def patient-0 {:fhir/type :fhir/Patient :id "0"})
-(def patient-1 {:fhir/type :fhir/Patient :id "1"})
-(def patient-2 {:fhir/type :fhir/Patient :id "2"})
-(def code-system-0 {:fhir/type :fhir/CodeSystem :id "0"
-                    :concept
-                    [{:fhir/type :fhir.CodeSystem/concept
-                      :code #fhir/code "foo"}]})
+(def patient-0 #fhir/map{:fhir/type :fhir/Patient :id "0"})
+(def patient-1 #fhir/map{:fhir/type :fhir/Patient :id "1"})
+(def patient-2 #fhir/map{:fhir/type :fhir/Patient :id "2"})
+(def code-system-0 #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                             :concept
+                             [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                        :code #fhir/code "foo"}]})
 
 (def patient-0-hash (hash/generate patient-0))
 (def patient-1-hash (hash/generate patient-1))
@@ -53,7 +52,6 @@
    ::rs/kv
    {:kv-store (ig/ref ::kv/mem)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
    ::rs-kv/executor {}
    ::kv/mem {:column-families {}}
@@ -61,9 +59,7 @@
    {:structure-definition-repo structure-definition-repo
     :fail-on-unknown-property false
     :include-summary-only true
-    :use-regex false}
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}})
+    :use-regex false}})
 
 (def ^:private zero-config
   "Creates a special version of a no-op cache."
@@ -112,8 +108,8 @@
           [:fhir/Patient patient-0-hash :complete] patient-0
           [:fhir/Patient patient-1-hash :complete] patient-1
           [:fhir/CodeSystem code-system-0-hash :complete] code-system-0
-          [:fhir/CodeSystem code-system-0-hash :summary] {:fhir/type :fhir/CodeSystem :id "0"
-                                                          :meta (type/meta {:tag [fu/subsetted]})}
+          [:fhir/CodeSystem code-system-0-hash :summary] (type/fhir-map {:fhir/type :fhir/CodeSystem :id "0"
+                                                                         :meta (type/meta {:tag [fu/subsetted]})})
           [:fhir/CodeSystem code-system-0-hash :complete] code-system-0))))
 
   (testing "not-found"
@@ -150,7 +146,7 @@
    {}
    (map
     (fn [i]
-      (let [patient {:fhir/type :fhir/Patient :id (str i)}]
+      (let [patient (type/fhir-map {:fhir/type :fhir/Patient :id (str i)})]
         [(hash/generate patient) patient])))
    (range n)))
 

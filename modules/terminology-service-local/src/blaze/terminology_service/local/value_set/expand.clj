@@ -42,14 +42,14 @@
     :else (cs/expand-complete code-system params)))
 
 (defn- used-codesystem-parameter [url version]
-  {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string "used-codesystem"
-   :value (type/uri-interned (cond-> url version (str "|" version)))})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.expansion/parameter
+                  :name #fhir/string "used-codesystem"
+                  :value (type/uri-interned (cond-> url version (str "|" version)))}))
 
 (defn- version-parameter [url version]
-  {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string "version"
-   :value (type/uri-interned (str url "|" version))})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.expansion/parameter
+                  :name #fhir/string "version"
+                  :value (type/uri-interned (str url "|" version))}))
 
 (defn- code-system-parameters [{{url :value} :url {version :value} :version}]
   (cond-> #{(used-codesystem-parameter url version)}
@@ -73,7 +73,10 @@
 (defn- include-value-sets [context value-sets]
   (let [futures (mapv #(expand-value-set-by-canonical context (:value %)) value-sets)]
     (do-sync [_ (ac/all-of futures)]
-      (transduce (map (comp #(select-keys % [:parameter :contains]) :expansion ac/join)) (partial merge-with into) futures))))
+      ;; plain `select-keys`, because the result is the internal accumulator
+      ;; `include-system` builds, not a FHIR value
+      (transduce (map (comp #(select-keys % [:parameter :contains]) :expansion ac/join))
+                 (partial merge-with into) futures))))
 
 (defn- include [context {:keys [system] value-sets :valueSet :as include}]
   (cond
@@ -94,29 +97,29 @@
   (into [] (comp (distinct) (remove (set excludes))) includes))
 
 (defn- count-parameter [count]
-  {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string "count"
-   :value (type/integer count)})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.expansion/parameter
+                  :name #fhir/string "count"
+                  :value (type/integer count)}))
 
 (defn- include-designations-parameter [include-designations]
-  {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string "includeDesignations"
-   :value (type/boolean include-designations)})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.expansion/parameter
+                  :name #fhir/string "includeDesignations"
+                  :value (type/boolean include-designations)}))
 
 (defn- active-only-parameter [active-only]
-  {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string "activeOnly"
-   :value (type/boolean active-only)})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.expansion/parameter
+                  :name #fhir/string "activeOnly"
+                  :value (type/boolean active-only)}))
 
 (defn- exclude-nested-parameter [exclude-nested]
-  {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string "excludeNested"
-   :value (type/boolean exclude-nested)})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.expansion/parameter
+                  :name #fhir/string "excludeNested"
+                  :value (type/boolean exclude-nested)}))
 
 (defn- filter-parameter [filter-text]
-  {:fhir/type :fhir.ValueSet.expansion/parameter
-   :name #fhir/string "filter"
-   :value (type/string filter-text)})
+  (type/fhir-map {:fhir/type :fhir.ValueSet.expansion/parameter
+                  :name #fhir/string "filter"
+                  :value (type/string filter-text)}))
 
 (defn- append-params
   [parameters {:keys [count include-designations active-only exclude-nested
@@ -128,27 +131,29 @@
     (some? exclude-nested) (conj (exclude-nested-parameter exclude-nested))
     filter (conj (filter-parameter filter))))
 
-(defn- append-property [property]
-  (cond-> {:fhir/type :fhir.ValueSet.expansion/property
-           :code (type/code property)}
-    (#{"status" "definition"} property)
-    (assoc :uri (type/uri-interned (str "http://hl7.org/fhir/concept-properties#" property)))))
+(defn- contains-value
+  "Turns the internally built `concept` into a `ValueSet.expansion.contains`
+  value.
 
-(defn- append-properties [properties]
-  (mapv append-property properties))
+  The code system implementations build their concepts as plain maps, because
+  they are collected in sets and compared with each other before they become
+  part of the expansion. Concepts taken from an already expanded value set are
+  contains values already."
+  [concept]
+  (if (:fhir/type concept)
+    concept
+    (type/fhir-map (assoc concept :fhir/type :fhir.ValueSet.expansion/contains))))
 
 (defn- expansion
-  [{:keys [clock] {:keys [properties count] :as params} :params} parameters
-   concepts]
+  [{:keys [clock] {:keys [count] :as params} :params} parameters concepts]
   (cond->
-   {:fhir/type :fhir.ValueSet/expansion
-    :identifier (type/uri (str "urn:uuid:" (random-uuid)))
-    :timestamp (type/dateTime (bt/offset-date-time clock))
-    :total (type/integer (clojure.core/count concepts))
-    :parameter (append-params parameters params)}
-    (seq properties) (assoc :property (append-properties properties))
-    (nil? count) (assoc :contains concepts)
-    (pos-int? count) (assoc :contains (into [] (take count) concepts))))
+   (type/fhir-map {:fhir/type :fhir.ValueSet/expansion
+                   :identifier (type/uri (str "urn:uuid:" (random-uuid)))
+                   :timestamp (type/dateTime (bt/offset-date-time clock))
+                   :total (type/integer (clojure.core/count concepts))
+                   :parameter (append-params parameters params)})
+    (nil? count) (assoc :contains (mapv contains-value concepts))
+    (pos-int? count) (assoc :contains (into [] (comp (take count) (map contains-value)) concepts))))
 
 (defn- expand-value-set**
   [{{:keys [include-definition] :or {include-definition false}} :params

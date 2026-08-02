@@ -67,7 +67,7 @@ public final class Url extends PrimitiveElement {
 
     @Override
     public Url empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

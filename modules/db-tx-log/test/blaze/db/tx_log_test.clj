@@ -17,7 +17,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
+(def patient-hash-0 (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"}))
 
 (deftest submit-test
   (let [tx-log (reify tx-log/TxLog

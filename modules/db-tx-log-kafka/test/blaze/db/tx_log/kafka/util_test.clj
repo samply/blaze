@@ -22,7 +22,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def hash-patient-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
+(def hash-patient-0 (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"}))
 
 (defn consumer-record [offset timestamp timestamp-type value]
   (ConsumerRecord. "tx" 0 ^long offset ^long timestamp

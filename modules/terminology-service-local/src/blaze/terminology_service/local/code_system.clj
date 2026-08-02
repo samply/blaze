@@ -51,7 +51,7 @@
      (group-by (comp :value :url) (filter-usable code-systems)))))
 
 (defn- assoc-graph [{concepts :concept :as code-system}]
-  (assoc code-system :default/graph (graph/build-graph concepts)))
+  (assoc (c/open code-system) :default/graph (graph/build-graph concepts)))
 
 (defn- find-in-tx-resources
   ([{:keys [tx-resources] ::cs/keys [required-content]

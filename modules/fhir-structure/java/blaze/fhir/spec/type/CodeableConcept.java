@@ -88,7 +88,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
     }
 
     public static CodeableConcept create(IPersistentMap m) {
-        return maybeIntern(ExtensionData.fromMap(m), Base.listFrom(m, CODING), (String) m.valAt(TEXT));
+        return maybeIntern(ExtensionData.fromMap(m), Base.typedListFrom(m, CODING, Coding.class), (String) m.valAt(TEXT));
     }
 
     @Override
@@ -132,7 +132,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
 
     @Override
     public CodeableConcept empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -142,7 +142,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
 
     @Override
     public CodeableConcept assoc(Object key, Object val) {
-        if (key == CODING) return maybeIntern(extensionData, Lists.nullToEmpty(val), text);
+        if (key == CODING) return maybeIntern(extensionData, Lists.typedNullToEmpty(val, Coding.class), text);
         if (key == TEXT) return maybeIntern(extensionData, coding, (String) val);
         if (key == EXTENSION) return maybeIntern(extensionData.withExtension(val), coding, text);
         if (key == ID) return maybeIntern(extensionData.withId(val), coding, text);

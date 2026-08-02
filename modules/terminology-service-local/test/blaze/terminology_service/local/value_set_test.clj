@@ -12,17 +12,17 @@
 
 (deftest extension-params-test
   (is (= (vs/extension-params
-          {:fhir/type :fhir/ValueSet
-           :compose
-           {:fhir/type :fhir.ValueSet/compose
-            :extension
-            [#fhir/Extension
-              {:url "http://hl7.org/fhir/tools/StructureDefinion/valueset-expansion-param"
-               :extension
-               [#fhir/Extension{:url "name" :value #fhir/code "displayLanguage"}
-                #fhir/Extension{:url "value" :value #fhir/code "en"}]}]}})
-         {:fhir/type :fhir/Parameters,
-          :parameter
-          [{:fhir/type :fhir.Parameters/parameter
-            :name #fhir/string "displayLanguage"
-            :value #fhir/code "en"}]})))
+          #fhir/map{:fhir/type :fhir/ValueSet
+                    :compose
+                    #fhir/map{:fhir/type :fhir.ValueSet/compose
+                              :extension
+                              [#fhir/Extension
+                                {:url "http://hl7.org/fhir/tools/StructureDefinion/valueset-expansion-param"
+                                 :extension
+                                 [#fhir/Extension{:url "name" :value #fhir/code "displayLanguage"}
+                                  #fhir/Extension{:url "value" :value #fhir/code "en"}]}]}})
+         #fhir/map{:fhir/type :fhir/Parameters,
+                   :parameter
+                   [#fhir/map{:fhir/type :fhir.Parameters/parameter
+                              :name #fhir/string "displayLanguage"
+                              :value #fhir/code "en"}]})))

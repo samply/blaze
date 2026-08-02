@@ -215,10 +215,10 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
     }
 
     public static Dosage create(IPersistentMap m) {
-        return new Dosage(ExtensionData.fromMap(m), Base.listFrom(m, MODIFIER_EXTENSION), (Integer) m.valAt(SEQUENCE),
-                (String) m.valAt(TEXT), Base.listFrom(m, ADDITIONAL_INSTRUCTION), (String) m.valAt(PATIENT_INSTRUCTION),
+        return new Dosage(ExtensionData.fromMap(m), Base.typedListFrom(m, MODIFIER_EXTENSION, Extension.class), (Integer) m.valAt(SEQUENCE),
+                (String) m.valAt(TEXT), Base.typedListFrom(m, ADDITIONAL_INSTRUCTION, CodeableConcept.class), (String) m.valAt(PATIENT_INSTRUCTION),
                 (Timing) m.valAt(TIMING), (Element) m.valAt(AS_NEEDED), (CodeableConcept) m.valAt(SITE),
-                (CodeableConcept) m.valAt(ROUTE), (CodeableConcept) m.valAt(METHOD), Base.listFrom(m, DOSE_AND_RATE),
+                (CodeableConcept) m.valAt(ROUTE), (CodeableConcept) m.valAt(METHOD), Base.typedListFrom(m, DOSE_AND_RATE, DoseAndRate.class),
                 (Ratio) m.valAt(MAX_DOSE_PER_PERIOD), (Quantity) m.valAt(MAX_DOSE_PER_ADMINISTRATION),
                 (Quantity) m.valAt(MAX_DOSE_PER_LIFETIME));
     }
@@ -339,7 +339,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
 
     @Override
     public Dosage empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -354,7 +354,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         if (key == TEXT)
             return new Dosage(extensionData, modifierExtension, sequence, (String) val, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
         if (key == ADDITIONAL_INSTRUCTION)
-            return new Dosage(extensionData, modifierExtension, sequence, text, Lists.nullToEmpty(val), patientInstruction, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
+            return new Dosage(extensionData, modifierExtension, sequence, text, Lists.typedNullToEmpty(val, CodeableConcept.class), patientInstruction, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
         if (key == PATIENT_INSTRUCTION)
             return new Dosage(extensionData, modifierExtension, sequence, text, additionalInstruction, (String) val, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
         if (key == TIMING)
@@ -368,7 +368,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         if (key == METHOD)
             return new Dosage(extensionData, modifierExtension, sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, (CodeableConcept) val, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
         if (key == DOSE_AND_RATE)
-            return new Dosage(extensionData, modifierExtension, sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, Lists.nullToEmpty(val), maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
+            return new Dosage(extensionData, modifierExtension, sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, Lists.typedNullToEmpty(val, DoseAndRate.class), maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
         if (key == MAX_DOSE_PER_PERIOD)
             return new Dosage(extensionData, modifierExtension, sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, doseAndRate, (Ratio) val, maxDosePerAdministration, maxDosePerLifetime);
         if (key == MAX_DOSE_PER_ADMINISTRATION)
@@ -376,7 +376,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         if (key == MAX_DOSE_PER_LIFETIME)
             return new Dosage(extensionData, modifierExtension, sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, (Quantity) val);
         if (key == MODIFIER_EXTENSION)
-            return new Dosage(extensionData, Lists.nullToEmpty(val), sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
+            return new Dosage(extensionData, Lists.typedNullToEmpty(val, Extension.class), sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
         if (key == EXTENSION)
             return new Dosage(extensionData.withExtension(val), modifierExtension, sequence, text, additionalInstruction, patientInstruction, timing, asNeeded, site, route, method, doseAndRate, maxDosePerPeriod, maxDosePerAdministration, maxDosePerLifetime);
         if (key == ID)
@@ -699,7 +699,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
 
         @Override
         public DoseAndRate empty() {
-            return EMPTY;
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override

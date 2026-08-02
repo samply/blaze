@@ -50,9 +50,9 @@
   (mapv
    (fn [{:fhir.issues/keys [severity code details diagnostics expression]}]
      (cond->
-      {:fhir/type :fhir.OperationOutcome/issue
-       :severity (or (some-> severity type/code) #fhir/code "error")
-       :code (or (some-> code type/code) (issue-code category))}
+      (type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                      :severity (or (some-> severity type/code) #fhir/code "error")
+                      :code (or (some-> code type/code) (issue-code category))})
        details
        (assoc :details details)
        diagnostics
@@ -70,9 +70,9 @@
     :blaze/keys [stacktrace]
     ::anom/keys [category message]}]
   (cond->
-   {:fhir/type :fhir.OperationOutcome/issue
-    :severity #fhir/code "error"
-    :code (or (some-> issue type/code) (issue-code category))}
+   (type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                   :severity #fhir/code "error"
+                   :code (or (some-> issue type/code) (issue-code category))})
     operation-outcome
     (assoc
      :details
@@ -97,10 +97,10 @@
   [{:fhir/keys [issues]
     ::anom/keys [category] :as anomaly}]
   (if issues
-    {:fhir/type :fhir/OperationOutcome
-     :issue (operation-outcome-issues issues category)}
-    {:fhir/type :fhir/OperationOutcome
-     :issue [(operation-outcome-issue anomaly)]}))
+    (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                    :issue (operation-outcome-issues issues category)})
+    (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                    :issue [(operation-outcome-issue anomaly)]})))
 
 (defn- category->status [category]
   (case category
@@ -194,18 +194,18 @@
   (error-response*
    error
    (fn [{::anom/keys [category] :http/keys [status] :as error}]
-     {:fhir/type :fhir.Bundle.entry/response
-      :status (type/string (str (or status (category->status category))))
-      :outcome (operation-outcome error)})))
+     (type/fhir-map {:fhir/type :fhir.Bundle.entry/response
+                     :status (type/string (str (or status (category->status category))))
+                     :outcome (operation-outcome error)}))))
 
 (def ^:private not-found-issue
-  {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code "error"
-   :code #fhir/code "not-found"})
+  #fhir/map{:fhir/type :fhir.OperationOutcome/issue
+            :severity #fhir/code "error"
+            :code #fhir/code "not-found"})
 
 (def ^:private not-found-outcome
-  {:fhir/type :fhir/OperationOutcome
-   :issue [not-found-issue]})
+  (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                  :issue [not-found-issue]}))
 
 (defn not-found-handler [_]
   (ring/not-found not-found-outcome))
@@ -215,14 +215,14 @@
           (str/upper-case (name request-method)) uri))
 
 (defn- method-not-allowed-issue [request]
-  {:fhir/type :fhir.OperationOutcome/issue
-   :severity #fhir/code "error"
-   :code #fhir/code "processing"
-   :diagnostics (type/string (method-not-allowed-msg request))})
+  (type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                  :severity #fhir/code "error"
+                  :code #fhir/code "processing"
+                  :diagnostics (type/string (method-not-allowed-msg request))}))
 
 (defn- method-not-allowed-outcome [request]
-  {:fhir/type :fhir/OperationOutcome
-   :issue [(method-not-allowed-issue request)]})
+  (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                  :issue [(method-not-allowed-issue request)]}))
 
 (defn method-not-allowed-handler [request]
   (-> (ring/response (method-not-allowed-outcome request))

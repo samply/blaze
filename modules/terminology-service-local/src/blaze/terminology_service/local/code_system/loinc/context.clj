@@ -22,74 +22,74 @@
 (def ^:const ^String parts (str resources "AccessoryFiles/PartFile/Part.csv"))
 
 (defn- code-system []
-  {:fhir/type :fhir/CodeSystem
-   :meta cs-u/read-only-meta
-   :url (type/uri-interned url)
-   :version (type/string version)
-   :name #fhir/string "LOINC"
-   :title #fhir/string "LOINC Code System"
-   :status #fhir/code "active"
-   :experimental #fhir/boolean false
-   :publisher #fhir/string "Regenstrief Institute, Inc."
-   :description #fhir/markdown "LOINC is a freely available international standard for tests, measurements, and observations"
-   :copyright copyright
-   :caseSensitive #fhir/boolean false
-   :valueSet #fhir/canonical "http://loinc.org/vs"
-   :hierarchyMeaning #fhir/code "is-a"
-   :compositional #fhir/boolean false
-   :versionNeeded #fhir/boolean false
-   :content #fhir/code "not-present"
-   :property
-   [{:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "COMPONENT"
-     :uri #fhir/uri-interned "http://loinc.org/property/COMPONENT"
-     :description #fhir/string "First major axis-component or analyte: Analyte Name, Analyte sub-class, Challenge"
-     :type #fhir/code "Coding"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "PROPERTY"
-     :uri #fhir/uri-interned "http://loinc.org/property/PROPERTY"
-     :description #fhir/string "Second major axis-property observed: Kind of Property (also called kind of quantity)"
-     :type #fhir/code "Coding"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "TIME_ASPCT"
-     :uri #fhir/uri-interned "http://loinc.org/property/TIME_ASPCT"
-     :description #fhir/string "Third major axis-timing of the measurement: Time Aspect (Point or moment in time vs. time interval)"
-     :type #fhir/code "Coding"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "SYSTEM"
-     :uri #fhir/uri-interned "http://loinc.org/property/SYSTEM"
-     :description #fhir/string "Fourth major axis-type of specimen or system: System (Sample) Type"
-     :type #fhir/code "Coding"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "SCALE_TYP"
-     :uri #fhir/uri-interned "http://loinc.org/property/SCALE_TYP"
-     :description #fhir/string "Fifth major axis-scale of measurement: Type of Scale"
-     :type #fhir/code "Coding"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "METHOD_TYP"
-     :uri #fhir/uri-interned "http://loinc.org/property/METHOD_TYP"
-     :description #fhir/string "Sixth major axis-method of measurement: Type of Method"
-     :type #fhir/code "Coding"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "CLASS"
-     :uri #fhir/uri-interned "http://loinc.org/property/CLASS"
-     :description #fhir/string "An arbitrary classification of terms for grouping related observations together"
-     :type #fhir/code "Coding"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "STATUS"
-     :uri #fhir/uri-interned "http://loinc.org/property/STATUS"
-     :description #fhir/string "Status of the term. Within LOINC, codes with STATUS=DEPRECATED are considered inactive. Current values: ACTIVE, TRIAL, DISCOURAGED, and DEPRECATED"
-     :type #fhir/code "string"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "CLASSTYPE"
-     :uri #fhir/uri-interned "http://loinc.org/property/CLASSTYPE"
-     :description #fhir/string "1=Laboratory class; 2=Clinical class; 3=Claims attachments; 4=Surveys"
-     :type #fhir/code "string"}
-    {:fhir/type :fhir.CodeSystem/property
-     :code #fhir/code "ORDER_OBS"
-     :uri #fhir/uri-interned "http://loinc.org/property/ORDER_OBS"
-     :description #fhir/string "Provides users with an idea of the intended use of the term by categorizing it as an order only, observation only, or both"
-     :type #fhir/code "string"}]})
+  (type/fhir-map {:fhir/type :fhir/CodeSystem
+                  :meta cs-u/read-only-meta
+                  :url (type/uri-interned url)
+                  :version (type/string version)
+                  :name #fhir/string "LOINC"
+                  :title #fhir/string "LOINC Code System"
+                  :status #fhir/code "active"
+                  :experimental #fhir/boolean false
+                  :publisher #fhir/string "Regenstrief Institute, Inc."
+                  :description #fhir/markdown "LOINC is a freely available international standard for tests, measurements, and observations"
+                  :copyright copyright
+                  :caseSensitive #fhir/boolean false
+                  :valueSet #fhir/canonical "http://loinc.org/vs"
+                  :hierarchyMeaning #fhir/code "is-a"
+                  :compositional #fhir/boolean false
+                  :versionNeeded #fhir/boolean false
+                  :content #fhir/code "not-present"
+                  :property
+                  [#fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "COMPONENT"
+                             :uri #fhir/uri-interned "http://loinc.org/property/COMPONENT"
+                             :description #fhir/string "First major axis-component or analyte: Analyte Name, Analyte sub-class, Challenge"
+                             :type #fhir/code "Coding"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "PROPERTY"
+                             :uri #fhir/uri-interned "http://loinc.org/property/PROPERTY"
+                             :description #fhir/string "Second major axis-property observed: Kind of Property (also called kind of quantity)"
+                             :type #fhir/code "Coding"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "TIME_ASPCT"
+                             :uri #fhir/uri-interned "http://loinc.org/property/TIME_ASPCT"
+                             :description #fhir/string "Third major axis-timing of the measurement: Time Aspect (Point or moment in time vs. time interval)"
+                             :type #fhir/code "Coding"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "SYSTEM"
+                             :uri #fhir/uri-interned "http://loinc.org/property/SYSTEM"
+                             :description #fhir/string "Fourth major axis-type of specimen or system: System (Sample) Type"
+                             :type #fhir/code "Coding"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "SCALE_TYP"
+                             :uri #fhir/uri-interned "http://loinc.org/property/SCALE_TYP"
+                             :description #fhir/string "Fifth major axis-scale of measurement: Type of Scale"
+                             :type #fhir/code "Coding"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "METHOD_TYP"
+                             :uri #fhir/uri-interned "http://loinc.org/property/METHOD_TYP"
+                             :description #fhir/string "Sixth major axis-method of measurement: Type of Method"
+                             :type #fhir/code "Coding"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "CLASS"
+                             :uri #fhir/uri-interned "http://loinc.org/property/CLASS"
+                             :description #fhir/string "An arbitrary classification of terms for grouping related observations together"
+                             :type #fhir/code "Coding"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "STATUS"
+                             :uri #fhir/uri-interned "http://loinc.org/property/STATUS"
+                             :description #fhir/string "Status of the term. Within LOINC, codes with STATUS=DEPRECATED are considered inactive. Current values: ACTIVE, TRIAL, DISCOURAGED, and DEPRECATED"
+                             :type #fhir/code "string"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "CLASSTYPE"
+                             :uri #fhir/uri-interned "http://loinc.org/property/CLASSTYPE"
+                             :description #fhir/string "1=Laboratory class; 2=Clinical class; 3=Claims attachments; 4=Surveys"
+                             :type #fhir/code "string"}
+                   #fhir/map{:fhir/type :fhir.CodeSystem/property
+                             :code #fhir/code "ORDER_OBS"
+                             :uri #fhir/uri-interned "http://loinc.org/property/ORDER_OBS"
+                             :description #fhir/string "Provides users with an idea of the intended use of the term by categorizing it as an order only, observation only, or both"
+                             :type #fhir/code "string"}]}))
 
 (defn- concept
   [code long-common-name component-pair property-pair time-pair system-pair

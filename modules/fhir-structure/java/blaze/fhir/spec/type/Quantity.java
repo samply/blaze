@@ -56,7 +56,7 @@ public final class Quantity extends AbstractQuantity {
 
     @Override
     public Quantity empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

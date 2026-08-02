@@ -91,64 +91,64 @@
                     :expression (type/string expr)}))
 
 (def stratifier-with-missing-expression
-  {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-   :criteria #fhir/Expression{:language #fhir/code "text/cql-identifier"}})
+  #fhir/map{:fhir/type :fhir.Measure.group/stratifier
+            :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+            :criteria #fhir/Expression{:language #fhir/code "text/cql-identifier"}})
 
 (def gender-stratifier
-  {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-   :criteria (cql-expression "Gender")})
+  (type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                  :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                  :criteria (cql-expression "Gender")}))
 
 (def observation-code-stratifier
-  {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string "code"}
-   :criteria (cql-expression "Code")})
+  (type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                  :code #fhir/CodeableConcept{:text #fhir/string "code"}
+                  :criteria (cql-expression "Code")}))
 
 (def observation-value-stratifier
-  {:fhir/type :fhir.Measure.group/stratifier
-   :code #fhir/CodeableConcept{:text #fhir/string "value"}
-   :criteria (cql-expression "QuantityValue")})
+  (type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                  :code #fhir/CodeableConcept{:text #fhir/string "value"}
+                  :criteria (cql-expression "QuantityValue")}))
 
 (def multi-component-stratifier-with-missing-expression
-  {:fhir/type :fhir.Measure.group/stratifier
-   :component
-   [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "age"}
-     :criteria #fhir/Expression{:language #fhir/code "text/cql-identifier"}}
-    {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-     :criteria (cql-expression "Gender")}]})
+  (type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                  :component
+                  [#fhir/map{:fhir/type :fhir.Measure.group.stratifier/component
+                             :code #fhir/CodeableConcept{:text #fhir/string "age"}
+                             :criteria #fhir/Expression{:language #fhir/code "text/cql-identifier"}}
+                   (type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                   :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                                   :criteria (cql-expression "Gender")})]}))
 
 (def age-gender-stratifier
-  {:fhir/type :fhir.Measure.group/stratifier
-   :component
-   [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "age"}
-     :criteria (cql-expression "Age")}
-    {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-     :criteria (cql-expression "Gender")}]})
+  (type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                  :component
+                  [(type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                   :code #fhir/CodeableConcept{:text #fhir/string "age"}
+                                   :criteria (cql-expression "Age")})
+                   (type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                   :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                                   :criteria (cql-expression "Gender")})]}))
 
 (def status-age-stratifier
-  {:fhir/type :fhir.Measure.group/stratifier
-   :component
-   [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "status"}
-     :criteria (cql-expression "Status")}
-    {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "age"}
-     :criteria (cql-expression "Age")}]})
+  (type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                  :component
+                  [(type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                   :code #fhir/CodeableConcept{:text #fhir/string "status"}
+                                   :criteria (cql-expression "Status")})
+                   (type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                   :code #fhir/CodeableConcept{:text #fhir/string "age"}
+                                   :criteria (cql-expression "Age")})]}))
 
 (def observation-value-age-stratifier
-  {:fhir/type :fhir.Measure.group/stratifier
-   :component
-   [{:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "value"}
-     :criteria (cql-expression "QuantityValue")}
-    {:fhir/type :fhir.Measure.group.stratifier/component
-     :code #fhir/CodeableConcept{:text #fhir/string "age"}
-     :criteria (cql-expression "Age")}]})
+  (type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                  :component
+                  [(type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                   :code #fhir/CodeableConcept{:text #fhir/string "value"}
+                                   :criteria (cql-expression "QuantityValue")})
+                   (type/fhir-map {:fhir/type :fhir.Measure.group.stratifier/component
+                                   :code #fhir/CodeableConcept{:text #fhir/string "age"}
+                                   :criteria (cql-expression "Age")})]}))
 
 (defn- context
   [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor] :as system}
@@ -172,10 +172,10 @@
   (testing "one component"
     (testing "gender"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
-          [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
-          [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code "male"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "3" :gender #fhir/code "male"}]]]
 
         (let [{:keys [db] :as context} (context system library-age-gender)
               handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
@@ -200,13 +200,13 @@
 
     (testing "CodeableConcept"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :code #fhir/CodeableConcept
-                        {:coding
-                         [#fhir/Coding{:system #fhir/uri "http://loinc.org"
-                                       :code #fhir/code "17861-6"}]}
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :code #fhir/CodeableConcept
+                                 {:coding
+                                  [#fhir/Coding{:system #fhir/uri "http://loinc.org"
+                                                :code #fhir/code "17861-6"}]}
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [{:keys [db] :as context} (context system library-observation-code)
               handles [{:population-handle (em-tu/resource db "Observation" "0")
@@ -227,20 +227,20 @@
 
     (testing "Quantity"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :value #fhir/Quantity
-                         {:value #fhir/decimal 1M
-                          :code #fhir/code "kg"}}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :value #fhir/Quantity
-                         {:value #fhir/decimal 2M}}]
-          [:put {:fhir/type :fhir/Observation :id "2"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :value #fhir/Quantity
-                         {:value #fhir/decimal 2M}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :value #fhir/Quantity
+                                  {:value #fhir/decimal 1M
+                                   :code #fhir/code "kg"}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :value #fhir/Quantity
+                                  {:value #fhir/decimal 2M}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :value #fhir/Quantity
+                                  {:value #fhir/decimal 2M}}]]]
 
         (let [{:keys [db] :as context} (context system library-observation-value-age)
               handles [{:population-handle (em-tu/resource db "Observation" "0")
@@ -287,16 +287,16 @@
   (testing "two components"
     (testing "subject-based measure"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :gender #fhir/code "male"
-                 :birthDate #fhir/date #system/date "1960"}]
-          [:put {:fhir/type :fhir/Patient :id "2"
-                 :gender #fhir/code "female"
-                 :birthDate #fhir/date #system/date "1960"}]
-          [:put {:fhir/type :fhir/Patient :id "3"
-                 :gender #fhir/code "male"
-                 :birthDate #fhir/date #system/date "1950"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                          :gender #fhir/code "male"
+                          :birthDate #fhir/date #system/date "1960"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "2"
+                          :gender #fhir/code "female"
+                          :birthDate #fhir/date #system/date "1960"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "3"
+                          :gender #fhir/code "male"
+                          :birthDate #fhir/date #system/date "1950"}]]]
 
         (let [{:keys [db] :as context} (context system library-age-gender)
               handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
@@ -312,27 +312,27 @@
 
     (testing "Encounter measure"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date #system/date "2000"}]
-          [:put {:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date #system/date "2001"}]
-          [:put {:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date #system/date "2003"}]
-          [:put {:fhir/type :fhir/Encounter :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-          [:put {:fhir/type :fhir/Encounter :id "1"
-                 :status #fhir/code "finished"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020"}}]
-          [:put {:fhir/type :fhir/Encounter :id "2"
-                 :status #fhir/code "planned"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
-                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2021"}}]
-          [:put {:fhir/type :fhir/Encounter :id "3"
-                 :status #fhir/code "finished"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2022"}}]
-          [:put {:fhir/type :fhir/Encounter :id "4"
-                 :status #fhir/code "finished"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
-                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2022"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date #system/date "2000"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date #system/date "2001"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date #system/date "2003"}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "1"
+                          :status #fhir/code "finished"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :period #fhir/Period{:start #fhir/dateTime #system/date-time "2020"}}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "2"
+                          :status #fhir/code "planned"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                          :period #fhir/Period{:start #fhir/dateTime #system/date-time "2021"}}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "3"
+                          :status #fhir/code "finished"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
+                          :period #fhir/Period{:start #fhir/dateTime #system/date-time "2022"}}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "4"
+                          :status #fhir/code "finished"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
+                          :period #fhir/Period{:start #fhir/dateTime #system/date-time "2022"}}]]]
 
         (let [{:keys [db] :as context} (context system library-encounter-status-age)
               handles [{:population-handle (em-tu/resource db "Encounter" "0")
@@ -360,18 +360,18 @@
 
     (testing "Quantity"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date #system/date "2000"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime #system/date-time "2020"
-                 :value #fhir/Quantity
-                         {:value #fhir/decimal 1M
-                          :code #fhir/code "kg"}}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :effective #fhir/dateTime #system/date-time "2021"
-                 :value #fhir/Quantity
-                         {:value #fhir/decimal 2M}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date #system/date "2000"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :effective #fhir/dateTime #system/date-time "2020"
+                          :value #fhir/Quantity
+                                  {:value #fhir/decimal 1M
+                                   :code #fhir/code "kg"}}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :effective #fhir/dateTime #system/date-time "2021"
+                          :value #fhir/Quantity
+                                  {:value #fhir/decimal 2M}}]]]
 
         (let [{:keys [db] :as context} (context system library-observation-value-age)
               handles [{:population-handle (em-tu/resource db "Observation" "0")

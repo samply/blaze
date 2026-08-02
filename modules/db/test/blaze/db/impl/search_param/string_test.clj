@@ -77,9 +77,9 @@
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient phonetic"
       (testing "missing family is not a problem"
-        (let [patient {:fhir/type :fhir/Patient
-                       :id "id-164114"
-                       :name [#fhir/HumanName{}]}
+        (let [patient #fhir/map{:fhir/type :fhir/Patient
+                                :id "id-164114"
+                                :name [#fhir/HumanName{}]}
               hash (hash/generate patient)]
 
           (is (empty? (index-entries
@@ -87,18 +87,18 @@
                        patient)))))
 
       (testing "unmappable char in family is not a problem"
-        (let [patient {:fhir/type :fhir/Patient
-                       :id "id-164114"
-                       :name [#fhir/HumanName{:family #fhir/string "Õ"}]}
+        (let [patient #fhir/map{:fhir/type :fhir/Patient
+                                :id "id-164114"
+                                :name [#fhir/HumanName{:family #fhir/string "Õ"}]}
               hash (hash/generate patient)]
 
           (is (empty? (index-entries
                        (phonetic-param search-param-registry) [] hash
                        patient)))))
 
-      (let [patient {:fhir/type :fhir/Patient
-                     :id "id-122929"
-                     :name [#fhir/HumanName{:family #fhir/string "family-102508"}]}
+      (let [patient #fhir/map{:fhir/type :fhir/Patient
+                              :id "id-122929"
+                              :name [#fhir/HumanName{:family #fhir/string "family-102508"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
@@ -121,11 +121,11 @@
             :v-hash := (codec/string (u/soundex "family-102508"))))))
 
     (testing "Patient address"
-      (let [patient {:fhir/type :fhir/Patient
-                     :id "id-122929"
-                     :address
-                     [#fhir/Address{:line [#fhir/string "line-120252"]
-                                    :city #fhir/string "city-105431"}]}
+      (let [patient #fhir/map{:fhir/type :fhir/Patient
+                              :id "id-122929"
+                              :address
+                              [#fhir/Address{:line [#fhir/string "line-120252"]
+                                             :city #fhir/string "city-105431"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
@@ -167,9 +167,9 @@
               :v-hash := (codec/string "city 105431"))))))
 
     (testing "ActivityDefinition description"
-      (let [resource {:fhir/type :fhir/ActivityDefinition
-                      :id "id-121344"
-                      :description #fhir/markdown "desc-121328"}
+      (let [resource #fhir/map{:fhir/type :fhir/ActivityDefinition
+                               :id "id-121344"
+                               :description #fhir/markdown "desc-121328"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
@@ -193,7 +193,7 @@
             :v-hash := (codec/string "desc 121328")))))
 
     (testing "FHIRPath evaluation problem"
-      (let [resource {:fhir/type :fhir/ActivityDefinition :id "foo"}
+      (let [resource #fhir/map{:fhir/type :fhir/ActivityDefinition :id "foo"}
             hash (hash/generate resource)]
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]

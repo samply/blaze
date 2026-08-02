@@ -56,7 +56,7 @@ public final class Duration extends AbstractQuantity {
 
     @Override
     public Duration empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

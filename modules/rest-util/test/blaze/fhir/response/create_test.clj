@@ -25,7 +25,7 @@
 
 (deftest build-response-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
     (let [db (d/db node)
           context (assoc context :blaze/db db)

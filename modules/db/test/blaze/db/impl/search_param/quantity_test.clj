@@ -194,14 +194,14 @@
     (testing "Observation value-quantity"
       (testing "with value, system and code"
         (let [observation
-              {:fhir/type :fhir/Observation
-               :id "id-155558"
-               :status #fhir/code "final"
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 140M
-                 :code #fhir/code "mm[Hg]"
-                 :system #fhir/uri "http://unitsofmeasure.org"}}
+              #fhir/map{:fhir/type :fhir/Observation
+                        :id "id-155558"
+                        :status #fhir/code "final"
+                        :value
+                        #fhir/Quantity
+                         {:value #fhir/decimal 140M
+                          :code #fhir/code "mm[Hg]"
+                          :system #fhir/uri "http://unitsofmeasure.org"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -258,13 +258,13 @@
 
       (testing "with value and unit"
         (let [observation
-              {:fhir/type :fhir/Observation
-               :id "id-155558"
-               :status #fhir/code "final"
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 140M
-                 :unit #fhir/string "mmHg"}}
+              #fhir/map{:fhir/type :fhir/Observation
+                        :id "id-155558"
+                        :status #fhir/code "final"
+                        :value
+                        #fhir/Quantity
+                         {:value #fhir/decimal 140M
+                          :unit #fhir/string "mmHg"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (index-entries
@@ -305,14 +305,14 @@
 
       (testing "with value, unit and code where unit equals code"
         (let [observation
-              {:fhir/type :fhir/Observation
-               :id "id-155558"
-               :status #fhir/code "final"
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 120M
-                 :unit #fhir/string "mm[Hg]"
-                 :code #fhir/code "mm[Hg]"}}
+              #fhir/map{:fhir/type :fhir/Observation
+                        :id "id-155558"
+                        :status #fhir/code "final"
+                        :value
+                        #fhir/Quantity
+                         {:value #fhir/decimal 120M
+                          :unit #fhir/string "mm[Hg]"
+                          :code #fhir/code "mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (index-entries
@@ -353,14 +353,14 @@
 
       (testing "with value, unit and code where unit differs from code"
         (let [observation
-              {:fhir/type :fhir/Observation
-               :id "id-155558"
-               :status #fhir/code "final"
-               :value
-               #fhir/Quantity
-                {:value #fhir/decimal 120M
-                 :unit #fhir/string "mmHg"
-                 :code #fhir/code "mm[Hg]"}}
+              #fhir/map{:fhir/type :fhir/Observation
+                        :id "id-155558"
+                        :status #fhir/code "final"
+                        :value
+                        #fhir/Quantity
+                         {:value #fhir/decimal 120M
+                          :unit #fhir/string "mmHg"
+                          :code #fhir/code "mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
@@ -417,13 +417,13 @@
 
       (testing "without Quantity value"
         (let [observation
-              {:fhir/type :fhir/Observation
-               :id "id-155558"
-               :status #fhir/code "final"
-               :value
-               #fhir/Quantity
-                {:code #fhir/code "mm[Hg]"
-                 :system #fhir/uri "http://unitsofmeasure.org"}}
+              #fhir/map{:fhir/type :fhir/Observation
+                        :id "id-155558"
+                        :status #fhir/code "final"
+                        :value
+                        #fhir/Quantity
+                         {:code #fhir/code "mm[Hg]"
+                          :system #fhir/uri "http://unitsofmeasure.org"}}
               hash (hash/generate observation)]
 
           (is (empty? (index-entries
@@ -432,9 +432,9 @@
 
       (testing "without value"
         (let [observation
-              {:fhir/type :fhir/Observation
-               :id "id-155558"
-               :status #fhir/code "final"}
+              #fhir/map{:fhir/type :fhir/Observation
+                        :id "id-155558"
+                        :status #fhir/code "final"}
               hash (hash/generate observation)]
 
           (is (empty? (index-entries
@@ -442,7 +442,7 @@
                        [] hash observation))))))
 
     (testing "FHIRPath evaluation problem"
-      (let [resource {:fhir/type :fhir/Observation :id "foo"}
+      (let [resource #fhir/map{:fhir/type :fhir/Observation :id "foo"}
             hash (hash/generate resource)]
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]

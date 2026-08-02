@@ -229,7 +229,7 @@
 
   (testing "with one patient"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {})]
@@ -282,13 +282,13 @@
 
   (testing "with one code system"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "version-170327"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "version-170327"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {::reitit/match code-system-match})]
@@ -395,8 +395,8 @@
 
   (testing "with two patients in one transaction"
     (with-handler [handler node page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {:params {"_count" "1"}})]
@@ -420,7 +420,7 @@
 
       (testing "calling the second page"
         (testing "updating the patient will not affect the second page"
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]))
+          @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]))
 
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
@@ -452,15 +452,15 @@
                         :blaze.test/keys [system-clock page-id-cipher]
                         handler :blaze.interaction.history/type}
                        system-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
       (Thread/sleep 2000)
       (let [after-init (bt/instant system-clock)
             handler (wrap-middleware handler node page-id-cipher)]
 
         (Thread/sleep 2000)
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                  :gender #fhir/code "female"}]])
+        @(d/transact node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                           :gender #fhir/code "female"}]])
 
         (testing "since after initialization"
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
@@ -479,7 +479,7 @@
   (testing "missing resource contents"
     (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler {})]

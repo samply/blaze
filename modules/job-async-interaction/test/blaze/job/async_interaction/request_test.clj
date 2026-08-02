@@ -72,7 +72,7 @@
                {:request-method :post
                 :uri "/context-path-164322/Measure/$evaluate-measure"
                 :headers {"prefer" "respond-async,return=representation"}
-                :body {:fhir/type :fhir/Parameters}
+                :body #fhir/map{:fhir/type :fhir/Parameters}
                 :blaze/job-scheduler job-scheduler
                 :blaze/db (d/db node)})
 
@@ -92,4 +92,4 @@
           [:entry 0 :request :extension 0 :value] := #fhir/code "representation"
           [:entry 0 :request :extension 1 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
           [:entry 0 :request :extension 1 :value] := #fhir/code "representation"
-          [:entry 0 :resource] := {:fhir/type :fhir/Parameters})))))
+          [:entry 0 :resource] := #fhir/map{:fhir/type :fhir/Parameters})))))

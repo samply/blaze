@@ -26,9 +26,9 @@
 (test/use-fixtures :each tu/fixture)
 
 (defn- body-parameter [name value]
-  {:fhir/type :fhir.Parameters/parameter
-   :name (type/string name)
-   :value value})
+  (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                  :name (type/string name)
+                  :value value}))
 
 (deftest init-test
   (testing "nil config"
@@ -133,30 +133,27 @@
 
   (testing "successful lookup by system and code"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "id-162245"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "version-152300"
-               :name #fhir/string "name-152300"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"
-                 :display #fhir/string "display-152300"
-                 :definition #fhir/string "definition-152300"
-                 :designation
-                 [{:fhir/type :fhir.CodeSystem.concept/designation
-                   :value #fhir/string "designation-en-value-152300"
-                   :language #fhir/code "en"}
-                  {:fhir/type :fhir.CodeSystem.concept/designation
-                   :value #fhir/string "designation-de-value-152300"
-                   :language #fhir/code "de"}]
-                 :property
-                 [{:fhir/type :fhir.CodeSystem.concept/property
-                   :code #fhir/code "prop-code-114800"
-                   :subproperty
-                   [{:fhir/type :fhir.CodeSystem.concept.property/subproperty
-                     :code #fhir/code "subprop-code-114800"
-                     :value #fhir/string "subprop-value-114800"}]}]}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-162245"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "version-152300"
+                        :name #fhir/string "name-152300"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"
+                                   :display #fhir/string "display-152300"
+                                   :definition #fhir/string "definition-152300"
+                                   :designation
+                                   [#fhir/map{:fhir/type :fhir.CodeSystem.concept/designation
+                                              :value #fhir/string "designation-en-value-152300"
+                                              :language #fhir/code "en"}
+                                    #fhir/map{:fhir/type :fhir.CodeSystem.concept/designation
+                                              :value #fhir/string "designation-de-value-152300"
+                                              :language #fhir/code "de"}]
+                                   :property
+                                   [#fhir/map{:fhir/type :fhir.CodeSystem.concept/property
+                                              :code #fhir/code "prop-code-114800"
+                                              :value #fhir/string "prop-value-114800"}]}]}]]]
 
       (testing "is found"
         (doseq [[code name] [["code-115927" "name-152300"]]]
@@ -221,14 +218,14 @@
 
   (testing "successful lookup by id"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "id-162245"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "version-152300"
-               :name #fhir/string "name-152300"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-162245"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "version-152300"
+                        :name #fhir/string "name-152300"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]]]
 
       (testing "and code"
         (let [{:keys [status body]}
@@ -282,13 +279,13 @@
 
   (testing "lookup by id on CodeSystem without version"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "id-162245"
-               :url #fhir/uri "system-115910"
-               :name #fhir/string "name-152300"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "id-162245"
+                        :url #fhir/uri "system-115910"
+                        :name #fhir/string "name-152300"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]]]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "id-162245"}

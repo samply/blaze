@@ -73,7 +73,7 @@ public final class Time extends PrimitiveElement {
 
     @Override
     public Time empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

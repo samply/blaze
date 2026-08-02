@@ -32,9 +32,9 @@
 (deftest type-list-test
   (testing "three patients, each in its own transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]
-       [[:put {:fhir/type :fhir/Patient :id "2"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]]
 
       (testing "descending returns all current resources, newest first"
         (given (list-desc node 0)
@@ -50,9 +50,9 @@
 
   (testing "only the current version of a resource is returned"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "0"
-               :active #fhir/boolean true}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :active #fhir/boolean true}]]]
 
       (testing "descending"
         (given (list-desc node 0)
@@ -64,8 +64,8 @@
 
   (testing "a deleted resource isn't returned"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]
        [[:delete "Patient" "1"]]]
 
       (testing "descending"
@@ -78,9 +78,9 @@
 
   (testing "ascending resumption fails when start-t is smaller than since-t"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]
-       [[:put {:fhir/type :fhir/Patient :id "2"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]]
 
       (let [db (d/db node)]
         (with-open [batch-db (batch-db/new-batch-db node (d/basis-t db) (d/t db)

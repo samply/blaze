@@ -103,7 +103,7 @@ public final class Annotation extends AbstractElement implements Complex, Extens
 
     @Override
     public Annotation empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

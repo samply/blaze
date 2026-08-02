@@ -60,7 +60,7 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
     }
 
     public static ContactDetail create(IPersistentMap m) {
-        return new ContactDetail(ExtensionData.fromMap(m), (String) m.valAt(NAME), Base.listFrom(m, TELECOM));
+        return new ContactDetail(ExtensionData.fromMap(m), (String) m.valAt(NAME), Base.typedListFrom(m, TELECOM, ContactPoint.class));
     }
 
     public String name() {
@@ -94,7 +94,7 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
 
     @Override
     public ContactDetail empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -105,7 +105,7 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
     @Override
     public ContactDetail assoc(Object key, Object val) {
         if (key == NAME) return new ContactDetail(extensionData, (String) val, telecom);
-        if (key == TELECOM) return new ContactDetail(extensionData, name, Lists.nullToEmpty(val));
+        if (key == TELECOM) return new ContactDetail(extensionData, name, Lists.typedNullToEmpty(val, ContactPoint.class));
         if (key == EXTENSION) return new ContactDetail(extensionData.withExtension(val), name, telecom);
         if (key == ID) return new ContactDetail(extensionData.withId(val), name, telecom);
         return this;

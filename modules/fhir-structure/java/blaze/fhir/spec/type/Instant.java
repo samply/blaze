@@ -73,7 +73,7 @@ public final class Instant extends PrimitiveElement {
 
     @Override
     public Instant empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

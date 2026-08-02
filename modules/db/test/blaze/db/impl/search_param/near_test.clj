@@ -153,7 +153,7 @@
 
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
-    (let [location {:fhir/type :fhir/Location :id "id-140855"}
+    (let [location #fhir/map{:fhir/type :fhir/Location :id "id-140855"}
           hash (hash/generate location)]
       (is (empty? (index-entries
                    (near-param search-param-registry) [] hash location))))))

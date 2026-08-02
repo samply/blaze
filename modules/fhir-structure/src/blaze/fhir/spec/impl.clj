@@ -661,13 +661,28 @@
                    `(conj-all ~tag (~key ~'m)))))))
            child-spec-defs))))))
 
+(defn plain-map
+  "Returns a plain map of the entries of the FHIR value `x`.
+
+  Used to unform a FHIR value back into the map shape the child specs of the XML
+  representation expect."
+  [x]
+  (into {} x))
+
 (defn- xml-schema-spec-form [kind key child-spec-defs]
-  (conj (seq (remap-choice-conformer-forms child-spec-defs))
-        `(s/conformer (fn [~'m] (assoc ~'m :fhir/type ~key)) identity)
-        (schema-spec-form :xml child-spec-defs)
-        `(s/conformer conform-xml
-                      ~(xml-unformer kind (keyword (name key)) child-spec-defs))
-        `s/and))
+  ;; the value is built last, after the choice properties have been remapped to
+  ;; their internal keys, because a FHIR value has no `deceasedBoolean` property.
+  ;; Unforming goes back to a plain map, because the child specs unform their
+  ;; values into XML elements.
+  (seq
+   (conj
+    (into [`s/and
+           `(s/conformer conform-xml
+                         ~(xml-unformer kind (keyword (name key)) child-spec-defs))
+           (schema-spec-form :xml child-spec-defs)]
+          (remap-choice-conformer-forms child-spec-defs))
+    `(s/conformer (fn [~'m] (type/fhir-map (assoc ~'m :fhir/type ~key)))
+                  plain-map))))
 
 (defn- special-xml-schema-spec-form [kind type-name child-spec-defs]
   (let [constructor-sym (symbol "blaze.fhir.spec.type" (su/pascal->kebab type-name))]

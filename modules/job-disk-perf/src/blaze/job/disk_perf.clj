@@ -54,9 +54,9 @@
     :code (type/code code)}))
 
 (defn- task-input [code value]
-  {:fhir/type :fhir.Task/input
-   :type (type/codeable-concept {:coding [(coding parameter-system code)]})
-   :value value})
+  (type/fhir-map {:fhir/type :fhir.Task/input
+                  :type (type/codeable-concept {:coding [(coding parameter-system code)]})
+                  :value value}))
 
 (defn job
   "Creates a disk performance job resource.
@@ -69,12 +69,12 @@
   edition."
   [authored-on {:keys [database file-size phase-duration max-concurrency]}]
   (cond->
-   {:fhir/type :fhir/Task
-    :meta (type/meta {:profile [(type/canonical (canonical/url "StructureDefinition/DiskPerfJob"))]})
-    :status #fhir/code "ready"
-    :intent #fhir/code "order"
-    :code (job-util/type-codeable-concept "disk-perf" "Measure Disk Performance")
-    :authoredOn (type/dateTime authored-on)}
+   (type/fhir-map {:fhir/type :fhir/Task
+                   :meta (type/meta {:profile [(type/canonical (canonical/url "StructureDefinition/DiskPerfJob"))]})
+                   :status #fhir/code "ready"
+                   :intent #fhir/code "order"
+                   :code (job-util/type-codeable-concept "disk-perf" "Measure Disk Performance")
+                   :authoredOn (type/dateTime authored-on)})
     database
     (update :input conj-vec (task-input "database" (type/code database)))
     file-size
@@ -132,9 +132,9 @@
     :code #fhir/code "s"})
 
 (defn- task-output [code value]
-  {:fhir/type :fhir.Task/output
-   :type (type/codeable-concept {:coding [(coding output-system code)]})
-   :value value})
+  (type/fhir-map {:fhir/type :fhir.Task/output
+                  :type (type/codeable-concept {:coding [(coding output-system code)]})
+                  :value value}))
 
 (defn- add-output [job code value]
   (update job :output conj (task-output code value)))

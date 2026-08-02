@@ -8,7 +8,6 @@
    [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
-   [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -33,14 +32,11 @@
 (def ^:private system
   (ig/init
    {:blaze.fhir/parsing-context
-    {:structure-definition-repo structure-definition-repo}
-    :blaze.fhir/writing-context
     {:structure-definition-repo structure-definition-repo}}))
 
 (defn- opts []
   {:http-client (HttpClientMock.)
-   :parsing-context (:blaze.fhir/parsing-context system)
-   :writing-context (:blaze.fhir/writing-context system)})
+   :parsing-context (:blaze.fhir/parsing-context system)})
 
 (deftest metadata-test
   (let [{:keys [^HttpClientMock http-client] :as opts} (opts)]
@@ -163,7 +159,7 @@
 (deftest create-test
   (testing "return location header value"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
-          resource {:fhir/type :fhir/Patient}]
+          resource #fhir/map{:fhir/type :fhir/Patient}]
 
       (-> (.onPost http-client "http://localhost:8080/fhir/Patient")
           (.doReturnStatus 201)
@@ -176,7 +172,7 @@
 (deftest update-test
   (testing "without meta versionId"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
-          resource {:fhir/type :fhir/Patient :id "0"}]
+          resource #fhir/map{:fhir/type :fhir/Patient :id "0"}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.with (empty-header-condition "If-Match"))
@@ -190,8 +186,8 @@
 
   (testing "with meta versionId"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
-          resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
+          resource #fhir/map{:fhir/type :fhir/Patient :id "0"
+                             :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -205,8 +201,8 @@
 
   (testing "stale update"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
-          resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
+          resource #fhir/map{:fhir/type :fhir/Patient :id "0"
+                             :meta #fhir/Meta{:versionId #fhir/id "180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -255,24 +251,24 @@
                                            "Patient" "0"
                                            opts)))))
 
-(defn- resource-matcher [bundle {:keys [writing-context]}]
-  (Matchers/is (fhir-spec/write-json-as-string writing-context bundle)))
+(defn- resource-matcher [bundle]
+  (Matchers/is (fhir-spec/write-json-as-string bundle)))
 
 (deftest transact-test
   (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
-        bundle {:fhir/type :fhir/Bundle
-                :type #fhir/code "transaction"
-                :entry
-                [{:fhir/type :fhir.Bundle/entry
-                  :resource
-                  {:fhir/type :fhir/Patient :id "0"}
-                  :request
-                  {:fhir/type :fhir.Bundle.entry/request
-                   :method #fhir/code "PUT"
-                   :url #fhir/uri "Patient/0"}}]}]
+        bundle #fhir/map{:fhir/type :fhir/Bundle
+                         :type #fhir/code "transaction"
+                         :entry
+                         [#fhir/map{:fhir/type :fhir.Bundle/entry
+                                    :resource
+                                    #fhir/map{:fhir/type :fhir/Patient :id "0"}
+                                    :request
+                                    #fhir/map{:fhir/type :fhir.Bundle.entry/request
+                                              :method #fhir/code "PUT"
+                                              :url #fhir/uri "Patient/0"}}]}]
 
     (-> (.onPost http-client "http://localhost:8080/fhir")
-        (.withBody (resource-matcher bundle opts))
+        (.withBody (resource-matcher bundle))
         (.doReturn (j/write-value-as-string {:resourceType "Bundle"}))
         (.withHeader "content-type" "application/fhir+json"))
 
@@ -319,7 +315,7 @@
           params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
 
       (-> (.onPost http-client "http://localhost:8080/fhir/ValueSet/$expand")
-          (.withBody (resource-matcher params opts))
+          (.withBody (resource-matcher params))
           (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
@@ -542,12 +538,12 @@
 
 (deftest spit-test
   (testing "success"
-    (let [{:keys [^HttpClientMock http-client writing-context] :as opts} (opts)
+    (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
           publisher (fhir-client/search-type-publisher
                      "http://localhost:8080/fhir" "Patient"
                      opts)
           processor (fhir-client/resource-processor)
-          future (fhir-client/spit writing-context temp-dir processor)]
+          future (fhir-client/spit temp-dir processor)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
@@ -562,12 +558,12 @@
       (is (= ["Patient-0.json"] (map #(str (.getFileName ^Path %)) @future)))))
 
   (testing "Server Error without JSON response"
-    (let [{:keys [^HttpClientMock http-client writing-context] :as opts} (opts)
+    (let [{:keys [^HttpClientMock http-client] :as opts} (opts)
           publisher (fhir-client/search-type-publisher
                      "http://localhost:8080/fhir" "Patient"
                      opts)
           processor (fhir-client/resource-processor)
-          future (fhir-client/spit writing-context temp-dir processor)]
+          future (fhir-client/spit temp-dir processor)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturnStatus 500))

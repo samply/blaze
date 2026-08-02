@@ -20,9 +20,9 @@
   (testing "one direct forward include"
     (testing "enforcing referential integrity"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
@@ -33,9 +33,9 @@
 
     (testing "not enforcing referential integrity"
       (with-system-data [{:blaze.db/keys [node]} non-ref-int-config]
-        [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]
-         [[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]
+         [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)
               include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
@@ -46,9 +46,9 @@
 
     (testing "with non-matching target type"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct
@@ -60,12 +60,12 @@
 
   (testing "two direct forward includes with the same type"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "1"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "2"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :encounter #fhir/Reference{:reference #fhir/string "Encounter/1"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "1"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "2"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                        :encounter #fhir/Reference{:reference #fhir/string "Encounter/1"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct
@@ -80,9 +80,9 @@
 
   (testing "one direct reverse include"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct
@@ -96,11 +96,11 @@
 
   (testing "direct forward include followed by iterate forward include"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Organization :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "0"
-               :managingOrganization #fhir/Reference{:reference #fhir/string "Organization/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Organization :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :managingOrganization #fhir/Reference{:reference #fhir/string "Organization/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct {:forward {"Observation" [{:code "patient"}]}}
@@ -113,11 +113,11 @@
 
   (testing "direct forward include followed by iterate reverse include"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Condition :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Condition :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}
@@ -130,11 +130,11 @@
 
   (testing "direct reverse include followed by iterate forward include"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Condition :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]
-        [:put {:fhir/type :fhir/Encounter :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Condition :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                        :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "0"}]]]
 
       (let [db (d/db node)
             include-defs {:direct {:reverse {"Patient" [{:source-type "Condition" :code "subject"}]}}
@@ -147,11 +147,11 @@
 
   (testing "direct reverse include followed by iterate reverse include"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Condition :id "0"
-               :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Condition :id "0"
+                        :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct {:reverse {"Patient" [{:source-type "Encounter" :code "subject"}]}}
@@ -165,9 +165,9 @@
   (testing "removes handles that are also matches"
     (testing "a forward include that is also a match"
       (with-system-data [{:blaze.db/keys [node]} non-ref-int-config]
-        [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
-          [:put {:fhir/type :fhir/Observation :id "1"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"}]]]
 
         (let [db (d/db node)
               include-defs {:direct {:forward {"Observation" [{:code "has-member"}]}}}
@@ -177,11 +177,11 @@
 
     (testing "keeps includes that are not matches"
       (with-system-data [{:blaze.db/keys [node]} non-ref-int-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
-          [:put {:fhir/type :fhir/Observation :id "1"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :hasMember [#fhir/Reference{:reference #fhir/string "Observation/1"}]}]
+          [:put #fhir/map{:fhir/type :fhir/Observation :id "1"}]]]
 
         (let [db (d/db node)
               include-defs {:direct {:forward {"Observation" [{:code "subject"} {:code "has-member"}]}}}

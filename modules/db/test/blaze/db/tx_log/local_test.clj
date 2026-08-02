@@ -41,8 +41,8 @@
    {:factory (CBORFactory.)
     :decode-key-fn true}))
 
-(def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
-(def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
+(def patient-hash-0 (hash/generate #fhir/map{:fhir/type :fhir/Patient :id "0"}))
+(def observation-hash-0 (hash/generate #fhir/map{:fhir/type :fhir/Observation :id "0"}))
 
 (defn invalid-cbor-content
   "`0xA1` is the start of a map with one entry."

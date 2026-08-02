@@ -38,12 +38,12 @@
 (defn- build-response [db type return-preference clauses]
   (if (= :blaze.preference.return/OperationOutcome return-preference)
     (ring/response
-     {:fhir/type :fhir/OperationOutcome
-      :issue
-      [{:fhir/type :fhir.OperationOutcome/issue
-        :severity #fhir/code "success"
-        :code #fhir/code "success"
-        :diagnostics (type/string (diagnostics db type clauses))}]})
+     (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                     :issue
+                     [(type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                                      :severity #fhir/code "success"
+                                      :code #fhir/code "success"
+                                      :diagnostics (type/string (diagnostics db type clauses))})]}))
     (ring/status 204)))
 
 (defmethod m/pre-init-spec :blaze.interaction/conditional-delete-type [_]

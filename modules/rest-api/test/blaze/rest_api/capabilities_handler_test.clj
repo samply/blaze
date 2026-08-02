@@ -206,7 +206,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"3f64b9c8\"" "W/\"3f64b9c8\", \"foo\""]]
+      (doseq [if-none-match ["W/\"2acb3e56\"" "W/\"2acb3e56\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -215,7 +215,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"3f64b9c8\"" (get headers "ETag"))))))))
+            (is (= "W/\"2acb3e56\"" (get headers "ETag"))))))))
 
   (testing "mode=terminology is ignored"
     (with-handler [handler minimal-config]
@@ -342,10 +342,10 @@
   (testing "with custom profiles"
     (with-handler [handler patient-read-interaction-config]
       [[[:create (patient-profile structure-definition-repo)]
-        [:create {:fhir/type :fhir/StructureDefinition :id "id-085034"
-                  :url #fhir/uri "url-084829"
-                  :type #fhir/uri "Patient"
-                  :derivation #fhir/code "constraint"}]]]
+        [:create #fhir/map{:fhir/type :fhir/StructureDefinition :id "id-085034"
+                           :url #fhir/uri "url-084829"
+                           :type #fhir/uri "Patient"
+                           :derivation #fhir/code "constraint"}]]]
 
       (given (:body @(handler {}))
         :fhir/type := :fhir/CapabilityStatement
@@ -369,11 +369,11 @@
 
     (testing "profile with version"
       (with-handler [handler patient-read-interaction-config]
-        [[[:create {:fhir/type :fhir/StructureDefinition :id "id-085034"
-                    :url #fhir/uri "url-084829"
-                    :version #fhir/string "version-093738"
-                    :type #fhir/uri "Patient"
-                    :derivation #fhir/code "constraint"}]]]
+        [[[:create #fhir/map{:fhir/type :fhir/StructureDefinition :id "id-085034"
+                             :url #fhir/uri "url-084829"
+                             :version #fhir/string "version-093738"
+                             :type #fhir/uri "Patient"
+                             :derivation #fhir/code "constraint"}]]]
 
         (given (:body @(handler {}))
           :fhir/type := :fhir/CapabilityStatement
@@ -506,7 +506,7 @@
     (given (:body @(handler {}))
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :operation count] := 1
-      [:rest 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest/operation
+      [:rest 0 :operation 0 :fhir/type] := :fhir.CapabilityStatement.rest.resource/operation
       [:rest 0 :operation 0 :name] := #fhir/string "totals"
       [:rest 0 :operation 0 :definition] :=
       #fhir/canonical "https://blaze-server.org/fhir/OperationDefinition/totals")))
@@ -570,11 +570,11 @@
 
   (testing "with one code system"
     (with-handler [handler terminology-service-config]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-192435"
-               :version #fhir/string "version-121451"
-               :status #fhir/code "active"
-               :content #fhir/code "complete"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-192435"
+                        :version #fhir/string "version-121451"
+                        :status #fhir/code "active"
+                        :content #fhir/code "complete"}]]]
 
       (given (:body @(handler {:blaze/base-url "base-url-131713"
                                :query-params {"mode" "terminology"}}))

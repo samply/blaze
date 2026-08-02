@@ -40,15 +40,15 @@
     :value value}))
 
 (defn stratum-count [[value populations]]
-  (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
-           :value (value-concept value)
-           :population
-           (mapv
-            (fn [[code count]]
-              {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
-               :code code
-               :count (type/integer count)})
-            populations)}
+  (cond-> (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+                          :value (value-concept value)
+                          :population
+                          (mapv
+                           (fn [[code count]]
+                             (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
+                                             :code code
+                                             :count (type/integer count)}))
+                           populations)})
 
     (identical? :fhir/Quantity (:fhir/type value))
     (assoc :extension [(stratum-value-extension value)])))
@@ -61,9 +61,9 @@
         (conj
          result
          (cond->
-          {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
-           :count (type/integer (count handles))
-           :subjectResults (u/list-reference list-id)}
+          (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
+                          :count (type/integer (count handles))
+                          :subjectResults (u/list-reference list-id)})
            code
            (assoc :code code)))
         ::luid/generator (luid/next generator)
@@ -85,9 +85,9 @@
   (update
    (stratum-subject-list-populations context populations)
    :result
-   #(cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
-             :value (value-concept value)
-             :population %}
+   #(cond-> (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+                            :value (value-concept value)
+                            :population %})
 
       (identical? :fhir/Quantity (:fhir/type value))
       (assoc :extension [(stratum-value-extension value)]))))
@@ -160,9 +160,9 @@
 (defn components [codes values]
   (mapv
    (fn [code value]
-     (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
-              :code code
-              :value (value-concept value)}
+     (cond-> (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
+                             :code code
+                             :value (value-concept value)})
 
        (identical? :fhir/Quantity (:fhir/type value))
        (assoc :extension [(stratum-component-value-extension value)])))
@@ -170,15 +170,15 @@
    values))
 
 (defn multi-component-stratum-count [codes [values populations]]
-  {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
-   :component (components codes values)
-   :population
-   (mapv
-    (fn [[code count]]
-      {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
-       :code code
-       :count (type/integer count)})
-    populations)})
+  (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+                  :component (components codes values)
+                  :population
+                  (mapv
+                   (fn [[code count]]
+                     (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
+                                     :code code
+                                     :count (type/integer count)}))
+                   populations)}))
 
 (defn multi-component-stratum-subject-list
   "Creates a stratum with multiple components with `codes` from `values` and
@@ -194,9 +194,9 @@
   (update
    (stratum-subject-list-populations context populations)
    :result
-   #(cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
-             :component (components codes values)
-             :population %}
+   #(cond-> (type/fhir-map {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+                            :component (components codes values)
+                            :population %})
 
       (identical? :fhir/Quantity (:fhir/type values))
       (assoc :extension [(stratum-value-extension values)]))))

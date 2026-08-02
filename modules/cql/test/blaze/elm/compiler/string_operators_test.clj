@@ -13,6 +13,7 @@
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.fhir.spec.type :as type]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]))
 
@@ -222,10 +223,10 @@
   (testing "retrieve"
     (doseq [count [0 1 2]]
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [(into [[:put {:fhir/type :fhir/Patient :id "0"}]]
+        [(into [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
                (map (fn [id]
-                      [:put {:fhir/type :fhir/Observation :id (str id)
-                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
+                      [:put (type/fhir-map {:fhir/type :fhir/Observation :id (str id)
+                                            :subject #fhir/Reference{:reference #fhir/string "Patient/0"}})]))
                (range count))]
 
         (let [context

@@ -23,9 +23,10 @@
     DataRequirement DataRequirement$CodeFilter DataRequirement$DateFilter DataRequirement$Sort
     Date DateTime Decimal Distance Dosage Dosage$DoseAndRate Duration Expression Extension HumanName Id
     Identifier Instant Markdown Meta Money Narrative Oid ParameterDefinition Period PositiveInt Primitive Quantity
+    BackboneElementMap DomainResourceMap ElementMap ResourceMap
     Range Ratio Reference RelatedArtifact SampledData Signature String$Interned
-    String$Normal Time Timing Timing$Repeat TriggerDefinition UnsignedInt Uri Uri$Interned
-    Uri$Normal Url UsageContext Uuid Xhtml]
+    String$Normal Time Timing Timing$Repeat TriggerDefinition TypeMetadata$Registry
+    UnsignedInt Uri Uri$Interned Uri$Normal Url UsageContext Uuid Xhtml]
    [clojure.lang IPersistentMap PersistentVector]
    [java.io Writer]
    [java.time LocalTime OffsetDateTime]))
@@ -656,3 +657,44 @@
   (UsageContext/create x))
 
 (def-print-method-complex "UsageContext")
+
+;; ---- Types Represented as Maps ---------------------------------------------
+
+(defn fhir-map
+  "Creates the FHIR value of the type given under `:fhir/type` in `m` from the
+  other entries of `m`.
+
+  Used as data reader of the `#fhir/map` tag and wherever a value of a type
+  without a Java implementation has to be built from a map that isn't a
+  literal.
+
+  Rejects keys without a property, because silently dropping a mistyped key of
+  a resource would also change its content hash."
+  [m]
+  (TypeMetadata$Registry/create m))
+
+(defn- print-map-entry [separate? ^Writer writer entry]
+  (when separate?
+    (.write writer " "))
+  (.write writer (str (key entry)))
+  (.write writer " ")
+  (print-method (val entry) writer)
+  true)
+
+(defmacro ^:private def-print-method-map [class]
+  `(do
+     (defmethod print-method ~class
+       [v# ~(with-meta 'w {:tag `Writer})]
+       (.write ~'w "#fhir/map{")
+       (reduce #(print-map-entry %1 ~'w %2) false v#)
+       (.write ~'w "}"))
+
+     (defmethod pprint/simple-dispatch ~class [x#]
+       (pprint/pprint-logical-block
+        :prefix "#fhir/map "
+        (pprint/write-out (into {} x#))))))
+
+(def-print-method-map ElementMap)
+(def-print-method-map BackboneElementMap)
+(def-print-method-map ResourceMap)
+(def-print-method-map DomainResourceMap)

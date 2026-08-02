@@ -73,7 +73,7 @@
 
   (testing "Returns No Content on successful deletion"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}
             @(handler
@@ -93,7 +93,7 @@
 
   (testing "Returns No Content on already deleted resource"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status headers body]}

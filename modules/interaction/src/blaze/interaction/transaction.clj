@@ -97,23 +97,23 @@
   [{:blaze/keys [db] :as context} type {:keys [id] :as handle}]
   (let [tx (d/tx db (:t handle))
         vid (str (:blaze.db/t tx))]
-    {:fhir/type :fhir.Bundle/entry
-     :response
-     {:fhir/type :fhir.Bundle.entry/response
-      :status #fhir/string "201"
-      :location (type/uri (location context type id vid))
-      :etag (type/string (str "W/\"" vid "\""))
-      :lastModified (handler-util/instant tx)}}))
+    (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                    :response
+                    (type/fhir-map {:fhir/type :fhir.Bundle.entry/response
+                                    :status #fhir/string "201"
+                                    :location (type/uri (location context type id vid))
+                                    :etag (type/string (str "W/\"" vid "\""))
+                                    :lastModified (handler-util/instant tx)})})))
 
 (defn- noop-entry [db handle]
   (let [tx (d/tx db (:t handle))
         vid (str (:blaze.db/t tx))]
-    {:fhir/type :fhir.Bundle/entry
-     :response
-     {:fhir/type :fhir.Bundle.entry/response
-      :status #fhir/string "200"
-      :etag (type/string (str "W/\"" vid "\""))
-      :lastModified (handler-util/instant tx)}}))
+    (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                    :response
+                    (type/fhir-map {:fhir/type :fhir.Bundle.entry/response
+                                    :status #fhir/string "200"
+                                    :etag (type/string (str "W/\"" vid "\""))
+                                    :lastModified (handler-util/instant tx)})})))
 
 (defn- conditional-clauses [if-none-exist]
   (when-not (str/blank? if-none-exist)
@@ -163,15 +163,15 @@
         vid (str (:blaze.db/t tx))
         created (and (not (iu/keep? tx-op))
                      (or (nil? old-handle) (identical? :delete (:op old-handle))))]
-    {:fhir/type :fhir.Bundle/entry
-     :response
-     (cond->
-      {:fhir/type :fhir.Bundle.entry/response
-       :status (type/string (if created "201" "200"))
-       :etag (type/string (str "W/\"" vid "\""))
-       :lastModified (handler-util/instant tx)}
-       created
-       (assoc :location (type/uri (location context type id vid))))}))
+    (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                    :response
+                    (cond->
+                     (type/fhir-map {:fhir/type :fhir.Bundle.entry/response
+                                     :status (type/string (if created "201" "200"))
+                                     :etag (type/string (str "W/\"" vid "\""))
+                                     :lastModified (handler-util/instant tx)})
+                      created
+                      (assoc :location (type/uri (location context type id vid))))})))
 
 (defmethod build-response-entry "PUT"
   [{:blaze/keys [db] return-preference :blaze.preference/return :as context}
@@ -188,12 +188,12 @@
   [{:blaze/keys [db]} _ _]
   (let [t (d/basis-t db)]
     (ac/completed-future
-     {:fhir/type :fhir.Bundle/entry
-      :response
-      {:fhir/type :fhir.Bundle.entry/response
-       :status #fhir/string "204"
-       :etag (type/string (str "W/\"" t "\""))
-       :lastModified (handler-util/instant (d/tx db t))}})))
+     (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                     :response
+                     (type/fhir-map {:fhir/type :fhir.Bundle.entry/response
+                                     :status #fhir/string "204"
+                                     :etag (type/string (str "W/\"" t "\""))
+                                     :lastModified (handler-util/instant (d/tx db t))})}))))
 
 (defmethod build-response-entry "GET" [context idx entry]
   (fhir-util/process-batch-entry context idx entry))
@@ -288,10 +288,10 @@
     (ac/completed-future (process-context* context request))))
 
 (defn- response-bundle [context type entries]
-  {:fhir/type :fhir/Bundle
-   :id (m/luid context)
-   :type (type/code (str (:value type) "-response"))
-   :entry entries})
+  (type/fhir-map {:fhir/type :fhir/Bundle
+                  :id (m/luid context)
+                  :type (type/code (str (:value type) "-response"))
+                  :entry entries}))
 
 (defmethod m/pre-init-spec :blaze.interaction/transaction [_]
   (s/keys :req-un [:blaze.db/node ::rest-api/batch-handler :blaze/clock :blaze/rng-fn

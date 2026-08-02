@@ -125,7 +125,7 @@ public final class Ratio extends AbstractElement implements Complex, ExtensionVa
 
     @Override
     public Ratio empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

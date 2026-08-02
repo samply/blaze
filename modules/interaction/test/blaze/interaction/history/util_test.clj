@@ -56,9 +56,9 @@
     (given (history-util/build-entry
             context
             (with-meta
-              {:fhir/type :fhir/Patient
-               :id "0"
-               :meta #fhir/Meta{:versionId #fhir/id "1"}}
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "0"
+                        :meta #fhir/Meta{:versionId #fhir/id "1"}}
               {:blaze.db/op :create
                :blaze.db/num-changes 1
                :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))
@@ -75,9 +75,9 @@
     (given (history-util/build-entry
             context
             (with-meta
-              {:fhir/type :fhir/Patient
-               :id "0"
-               :meta #fhir/Meta{:versionId #fhir/id "1"}}
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "0"
+                        :meta #fhir/Meta{:versionId #fhir/id "1"}}
               {:blaze.db/op :put
                :blaze.db/num-changes 1
                :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))
@@ -94,9 +94,9 @@
     (given (history-util/build-entry
             context
             (with-meta
-              {:fhir/type :fhir/Patient
-               :id "0"
-               :meta #fhir/Meta{:versionId #fhir/id "2"}}
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "0"
+                        :meta #fhir/Meta{:versionId #fhir/id "2"}}
               {:blaze.db/op :put
                :blaze.db/num-changes 2
                :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))
@@ -113,9 +113,9 @@
     (given (history-util/build-entry
             context
             (with-meta
-              {:fhir/type :fhir/Patient
-               :id "0"
-               :meta #fhir/Meta{:versionId #fhir/id "2"}}
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "0"
+                        :meta #fhir/Meta{:versionId #fhir/id "2"}}
               {:blaze.db/op :delete
                :blaze.db/num-changes 2
                :blaze.db/tx {:blaze.db/t 1 :blaze.db.tx/instant Instant/EPOCH}}))

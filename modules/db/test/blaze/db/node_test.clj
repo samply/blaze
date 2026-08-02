@@ -283,7 +283,7 @@
     (testing "create"
       (testing "one Patient"
         (with-system [{:blaze.db/keys [node]} config]
-          @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+          @(-> (node/submit-tx node [[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]])
                (ac/then-compose (partial tx-result-after-indexing node)))
 
           (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -296,7 +296,7 @@
       (testing "on get"
         (with-system [{:blaze.db/keys [node]} resource-store-failing-on-get-config]
           (try
-            @(-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+            @(-> (node/submit-tx node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]])
                  (ac/then-compose (partial tx-result-after-indexing node)))
             (catch Exception e
               (given (ex-data (ex-cause e))
@@ -311,7 +311,7 @@
         (testing "fetching the result immediately"
           (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put-config]
             (given-failed-future
-             (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+             (-> (node/submit-tx node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]])
                  (ac/then-compose (partial node/tx-result node)))
               ::anom/category := ::anom/fault
               ::x ::y)))
@@ -319,7 +319,7 @@
         (testing "wait before fetching the result"
           (with-system [{:blaze.db/keys [node]} config]
             (given-failed-future
-             (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+             (-> (node/submit-tx node [[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]])
                  (ac/then-compose (partial tx-result-after-indexing node)))
               ::anom/category := ::anom/fault
               ::x ::y)))))))

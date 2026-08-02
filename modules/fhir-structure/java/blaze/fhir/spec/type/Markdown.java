@@ -67,7 +67,7 @@ public final class Markdown extends PrimitiveElement {
 
     @Override
     public Markdown empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

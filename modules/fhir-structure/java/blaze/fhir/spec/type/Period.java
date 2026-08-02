@@ -125,7 +125,7 @@ public final class Period extends AbstractElement implements Complex, ExtensionV
 
     @Override
     public Period empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

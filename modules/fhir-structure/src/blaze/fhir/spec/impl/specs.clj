@@ -46,17 +46,24 @@
         specs (delay (update-vals spec-forms s/resolve-spec))]
     (reify
       sp/Spec
+      ;; Validates the properties without rebuilding the value, so that
+      ;; conforming a FHIR type yields that very type again.
+      ;;
+      ;; The conformed properties are deliberately discarded. Assoc'ing them
+      ;; back would flatten the value into a plain map, because a choice
+      ;; property conforms to a `MapEntry` of tag and value, which no typed
+      ;; field accepts. Nothing consumes the conformed value of a record spec
+      ;; anyway: `conform-xml` is the only caller of `s/conform` and it uses the
+      ;; `:fhir.xml` schema specs, and `unform*` is identity here.
       (conform* [_ x _ settings]
         (if (instance? class x)
-          (loop [ret (into {} x) [[k v] & ks] x]
+          (loop [[[k v] & ks] x]
             (if k
-              (if (some? v)
-                (let [conformed (if-let [sp (@specs k)] (sp/conform* sp v k settings) v)]
-                  (if (s/invalid? conformed)
-                    ::s/invalid
-                    (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks)))
-                (recur ret ks))
-              ret))
+              (if (or (nil? v) (nil? (@specs k))
+                      (not (s/invalid? (sp/conform* (@specs k) v k settings))))
+                (recur ks)
+                ::s/invalid)
+              x))
           ::s/invalid))
       (unform* [_ x] x)
       (explain* [_ _path _via _in _x _ _])

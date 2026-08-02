@@ -68,7 +68,7 @@
 
   (testing "with one patient"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]} @(handler {})]
 
@@ -82,8 +82,8 @@
 
   (testing "with two patients"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [{:keys [status body]} @(handler {})]
 
@@ -97,8 +97,8 @@
 
   (testing "with one patient and one observation"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"}]]]
 
       (let [{:keys [status body]} @(handler {})]
 

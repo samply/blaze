@@ -260,9 +260,9 @@
         (testing "where the unknown search parameter is the only one"
           (testing "normal result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -293,9 +293,9 @@
 
           (testing "summary result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -327,13 +327,13 @@
         (testing "with another search parameter"
           (testing "normal result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code "final"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-                [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code "preliminary"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :status #fhir/code "final"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                                :status #fhir/code "preliminary"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -361,13 +361,13 @@
 
           (testing "summary result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code "final"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-                [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code "preliminary"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :status #fhir/code "final"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                                :status #fhir/code "preliminary"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -398,9 +398,9 @@
         (testing "where the unknown search parameter is the only one"
           (testing "normal result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -430,9 +430,9 @@
 
           (testing "summary result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -463,13 +463,13 @@
         (testing "with another search parameter"
           (testing "normal result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code "final"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-                [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code "preliminary"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :status #fhir/code "final"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                                :status #fhir/code "preliminary"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -496,13 +496,13 @@
 
           (testing "summary result"
             (with-handler [handler]
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code "final"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-                [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code "preliminary"
-                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+              [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :status #fhir/code "final"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+                [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                                :status #fhir/code "preliminary"
+                                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -572,13 +572,13 @@
 
   (testing "with two Observations"
     (with-handler [handler _ page-id-cipher]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :status #fhir/code "final"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "1"
-               :status #fhir/code "preliminary"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :status #fhir/code "final"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                        :status #fhir/code "preliminary"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [request {:path-params {:id "0" :type "Observation"}}]
 
@@ -755,7 +755,7 @@
       (testing "normal result"
         (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141655"))]
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler {:path-params {:id "0" :type "Observation"}})]
@@ -770,7 +770,7 @@
       (testing "summary result"
         (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141802"))]
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler {:path-params {:id "0" :type "Observation"}
@@ -787,7 +787,7 @@
       (testing "normal result"
         (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-095512"))]
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler {:path-params {:id "0" :type "Observation"}
@@ -804,7 +804,7 @@
       (testing "summary result"
         (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-095548"))]
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler {:path-params {:id "0" :type "Observation"}
@@ -822,7 +822,7 @@
       (testing "normal result"
         (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-100015"))]
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler {:path-params {:id "0" :type "Observation"}
@@ -839,7 +839,7 @@
       (testing "summary result"
         (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-100043"))]
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
             (let [{:keys [status body]}
                   @(handler {:path-params {:id "0" :type "Observation"}

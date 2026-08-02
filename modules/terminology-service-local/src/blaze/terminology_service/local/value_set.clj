@@ -43,23 +43,23 @@
 (defn extension-params
   {:arglists '([value-set])}
   [{{extensions :extension} :compose}]
-  {:fhir/type :fhir/Parameters
-   :parameter
-   (into
-    []
-    (comp
-     (extension-filter "http://hl7.org/fhir/tools/StructureDefinion/valueset-expansion-param")
-     (map
-      (fn [{extensions :extension}]
-        (reduce
-         (fn [param {:keys [url value]}]
-           (condp = url
-             "name" (assoc param :name (type/string (:value value)))
-             "value" (assoc param :value value)
-             param))
-         {:fhir/type :fhir.Parameters/parameter}
-         extensions))))
-    extensions)})
+  (type/fhir-map {:fhir/type :fhir/Parameters
+                  :parameter
+                  (into
+                   []
+                   (comp
+                    (extension-filter "http://hl7.org/fhir/tools/StructureDefinion/valueset-expansion-param")
+                    (map
+                     (fn [{extensions :extension}]
+                       (reduce
+                        (fn [param {:keys [url value]}]
+                          (condp = url
+                            "name" (assoc param :name (type/string (:value value)))
+                            "value" (assoc param :value value)
+                            param))
+                        #fhir/map{:fhir/type :fhir.Parameters/parameter}
+                        extensions))))
+                   extensions)}))
 
 (defn display-language-param
   {:arglists '([value-set])}

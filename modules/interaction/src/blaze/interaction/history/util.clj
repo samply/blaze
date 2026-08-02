@@ -80,17 +80,17 @@
 
 (defn build-entry [context {:fhir/keys [type] :keys [id] :as resource}]
   (cond->
-   {:fhir/type :fhir.Bundle/entry
-    :fullUrl (type/uri (fhir-util/instance-url context (name type) id))
-    :request
-    {:fhir/type :fhir.Bundle.entry/request
-     :method (method resource)
-     :url (type/uri (url resource))}
-    :response
-    {:fhir/type :fhir.Bundle.entry/response
-     :status (status resource)
-     :etag (type/string (str "W/\"" (-> resource :meta :versionId :value) "\""))
-     :lastModified (-> resource meta :blaze.db/tx handler-util/instant)}}
+   (type/fhir-map {:fhir/type :fhir.Bundle/entry
+                   :fullUrl (type/uri (fhir-util/instance-url context (name type) id))
+                   :request
+                   (type/fhir-map {:fhir/type :fhir.Bundle.entry/request
+                                   :method (method resource)
+                                   :url (type/uri (url resource))})
+                   :response
+                   (type/fhir-map {:fhir/type :fhir.Bundle.entry/response
+                                   :status (status resource)
+                                   :etag (type/string (str "W/\"" (-> resource :meta :versionId :value) "\""))
+                                   :lastModified (-> resource meta :blaze.db/tx handler-util/instant)})})
     (-> resource meta :blaze.db/op #{:delete} not)
     (assoc :resource resource)))
 
@@ -102,11 +102,11 @@
                                        (type/string (str total)))})))
 
 (defn build-bundle [context total query-params]
-  {:fhir/type :fhir/Bundle
-   :id (m/luid context)
-   :type #fhir/code "history"
-   :total (total-value total)
-   :link [(self-link context query-params)]})
+  (type/fhir-map {:fhir/type :fhir/Bundle
+                  :id (m/luid context)
+                  :type #fhir/code "history"
+                  :total (total-value total)
+                  :link [(self-link context query-params)]}))
 
 (defn build-page [page-size handles]
   (let [handles (into [] (take (inc page-size)) handles)]

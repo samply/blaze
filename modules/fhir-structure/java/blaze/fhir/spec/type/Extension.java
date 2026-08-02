@@ -129,7 +129,7 @@ public final class Extension extends AbstractElement implements Complex {
 
     @Override
     public Extension empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

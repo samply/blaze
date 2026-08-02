@@ -142,9 +142,9 @@ public final class DataRequirement extends AbstractElement implements Complex, E
     }
 
     public static DataRequirement create(IPersistentMap m) {
-        return new DataRequirement(ExtensionData.fromMap(m), (Code) m.valAt(TYPE), Base.listFrom(m, PROFILE),
-                (Element) m.valAt(SUBJECT), Base.listFrom(m, MUST_SUPPORT), Base.listFrom(m, CODE_FILTER),
-                Base.listFrom(m, DATE_FILTER), (PositiveInt) m.valAt(LIMIT), Base.listFrom(m, SORT));
+        return new DataRequirement(ExtensionData.fromMap(m), (Code) m.valAt(TYPE), Base.typedListFrom(m, PROFILE, Canonical.class),
+                (Element) m.valAt(SUBJECT), Base.typedListFrom(m, MUST_SUPPORT, String.class), Base.typedListFrom(m, CODE_FILTER, CodeFilter.class),
+                Base.typedListFrom(m, DATE_FILTER, DateFilter.class), (PositiveInt) m.valAt(LIMIT), Base.typedListFrom(m, SORT, Sort.class));
     }
 
     public Code type() {
@@ -222,7 +222,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
     @Override
     public DataRequirement empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -230,25 +230,24 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         return new BaseIterator(this, FIELDS);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public DataRequirement assoc(Object key, Object val) {
         if (key == TYPE)
             return new DataRequirement(extensionData, (Code) val, profile, subject, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == PROFILE)
-            return new DataRequirement(extensionData, type, (List<Canonical>) val, subject, mustSupport, codeFilter, dateFilter, limit, sort);
+            return new DataRequirement(extensionData, type, Lists.typedNullToEmpty(val, Canonical.class), subject, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == SUBJECT)
             return new DataRequirement(extensionData, type, profile, (Element) val, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == MUST_SUPPORT)
-            return new DataRequirement(extensionData, type, profile, subject, (List<String>) val, codeFilter, dateFilter, limit, sort);
+            return new DataRequirement(extensionData, type, profile, subject, Lists.typedNullToEmpty(val, String.class), codeFilter, dateFilter, limit, sort);
         if (key == CODE_FILTER)
-            return new DataRequirement(extensionData, type, profile, subject, mustSupport, (List<CodeFilter>) val, dateFilter, limit, sort);
+            return new DataRequirement(extensionData, type, profile, subject, mustSupport, Lists.typedNullToEmpty(val, CodeFilter.class), dateFilter, limit, sort);
         if (key == DATE_FILTER)
-            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, (List<DateFilter>) val, limit, sort);
+            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, Lists.typedNullToEmpty(val, DateFilter.class), limit, sort);
         if (key == LIMIT)
             return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, dateFilter, (PositiveInt) val, sort);
         if (key == SORT)
-            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, dateFilter, limit, (List<Sort>) val);
+            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, dateFilter, limit, Lists.typedNullToEmpty(val, Sort.class));
         if (key == EXTENSION)
             return new DataRequirement(extensionData.withExtension(val), type, profile, subject, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == ID)
@@ -476,7 +475,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
         public static CodeFilter create(IPersistentMap m) {
             return new CodeFilter(ExtensionData.fromMap(m), (String) m.valAt(PATH), (String) m.valAt(SEARCH_PARAM),
-                    (Canonical) m.valAt(VALUE_SET), Base.listFrom(m, CODE));
+                    (Canonical) m.valAt(VALUE_SET), Base.typedListFrom(m, CODE, Coding.class));
         }
 
         public String path() {
@@ -527,7 +526,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
         @Override
         public CodeFilter empty() {
-            return EMPTY;
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override
@@ -544,7 +543,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             if (key == VALUE_SET)
                 return new CodeFilter(extensionData, path, searchParam, (Canonical) val, code);
             if (key == CODE)
-                return new CodeFilter(extensionData, path, searchParam, valueSet, Lists.nullToEmpty(val));
+                return new CodeFilter(extensionData, path, searchParam, valueSet, Lists.typedNullToEmpty(val, Coding.class));
             if (key == EXTENSION)
                 return new CodeFilter(extensionData.withExtension(val), path, searchParam, valueSet, code);
             if (key == ID)
@@ -743,7 +742,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
         @Override
         public DateFilter empty() {
-            return EMPTY;
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override
@@ -936,7 +935,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
         @Override
         public Sort empty() {
-            return EMPTY;
+            return meta() == null ? EMPTY : EMPTY.withMeta(meta());
         }
 
         @Override

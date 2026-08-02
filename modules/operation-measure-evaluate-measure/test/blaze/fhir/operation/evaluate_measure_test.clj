@@ -282,12 +282,12 @@
                          [#fhir/Attachment{:contentType #fhir/code "text/plain"}
                           cql-attachment]]]
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Measure :id "0"
-                     :url #fhir/uri "url-181501"
-                     :library [#fhir/canonical "library-url-094115"]}]
-              [:put {:fhir/type :fhir/Library :id "0"
-                     :url #fhir/uri "library-url-094115"
-                     :content content}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                              :url #fhir/uri "url-181501"
+                              :library [#fhir/canonical "library-url-094115"]}]
+              [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                                    :url #fhir/uri "library-url-094115"
+                                    :content content})]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -309,12 +309,12 @@
 
       (testing "as POST request"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri "url-181501"
-                   :library [#fhir/canonical "library-url-094115"]}]
-            [:put {:fhir/type :fhir/Library :id "0"
-                   :url #fhir/uri "library-url-094115"
-                   :content [cql-attachment]}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                            :url #fhir/uri "url-181501"
+                            :library [#fhir/canonical "library-url-094115"]}]
+            [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                                  :url #fhir/uri "library-url-094115"
+                                  :content [cql-attachment]})]]]
 
           (let [{:keys [status headers body]}
                 @(handler
@@ -358,7 +358,7 @@
 
   (testing "Returns Gone on Deleted Resource"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Measure :id "0"}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"}]]
        [[:delete "Measure" "0"]]]
 
       (let [{:keys [status body]}
@@ -377,7 +377,7 @@
 
   (testing "Returns Unprocessable Entity on Measure without Library"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Measure :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -395,8 +395,8 @@
 
   (testing "Returns Bad Request on Measure with Non-Existing Library"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Measure :id "0"
-               :library [#fhir/canonical "library-url-203737"]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                        :library [#fhir/canonical "library-url-203737"]}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -417,10 +417,10 @@
                          #fhir/canonical "Library/0"
                          #fhir/canonical "/Library/0"]]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Measure :id "0"
-                 :library [library-ref]}]
-          [:put {:fhir/type :fhir/Library :id "0"
-                 :url #fhir/uri "library-url-203737"}]]
+        [[[:put (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                                :library [library-ref]})]
+          [:put #fhir/map{:fhir/type :fhir/Library :id "0"
+                          :url #fhir/uri "library-url-203737"}]]
          [[:delete "Library" "0"]]]
 
         (let [{:keys [status body]}
@@ -440,7 +440,7 @@
   (testing "Returns Server Error on Missing Measure Content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Measure :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -468,12 +468,12 @@
 (deftest handler-report-persistence-disabled-test
   (testing "population report"
     (with-no-persistence-handler [handler node]
-      [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri "url-181501"
-               :library [#fhir/canonical "library-url-094115"]}]
-        [:put {:fhir/type :fhir/Library :id "0"
-               :url #fhir/uri "library-url-094115"
-               :content [cql-attachment]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                        :url #fhir/uri "url-181501"
+                        :library [#fhir/canonical "library-url-094115"]}]
+        [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                              :url #fhir/uri "library-url-094115"
+                              :content [cql-attachment]})]]]
 
       (let [{:keys [status headers body]}
             @(handler
@@ -503,12 +503,12 @@
 
   (testing "the return preference is ignored"
     (with-no-persistence-handler [handler node]
-      [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri "url-181501"
-               :library [#fhir/canonical "library-url-094115"]}]
-        [:put {:fhir/type :fhir/Library :id "0"
-               :url #fhir/uri "library-url-094115"
-               :content [cql-attachment]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                        :url #fhir/uri "url-181501"
+                        :library [#fhir/canonical "library-url-094115"]}]
+        [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                              :url #fhir/uri "library-url-094115"
+                              :content [cql-attachment]})]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -532,21 +532,21 @@
 
   (testing "subject-list report"
     (with-no-persistence-handler [handler node]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Patient :id "2"}]
-        [:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri "url-181501"
-               :library [#fhir/canonical "library-url-094115"]
-               :group
-               [{:fhir/type :fhir.Measure/group
-                 :population
-                 [{:fhir/type :fhir.Measure.group/population
-                   :code (population-concept "initial-population")
-                   :criteria (cql-expression "InInitialPopulation")}]}]}]
-        [:put {:fhir/type :fhir/Library :id "0"
-               :url #fhir/uri "library-url-094115"
-               :content [cql-attachment]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]
+        [:put (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                              :url #fhir/uri "url-181501"
+                              :library [#fhir/canonical "library-url-094115"]
+                              :group
+                              [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                               :population
+                                               [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                :code (population-concept "initial-population")
+                                                                :criteria (cql-expression "InInitialPopulation")})]})]})]
+        [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                              :url #fhir/uri "library-url-094115"
+                              :content [cql-attachment]})]]]
 
       (let [{:keys [status headers body]}
             @(handler
@@ -586,12 +586,12 @@
 
   (testing "GET request returns the report inline (unchanged)"
     (with-no-persistence-handler [handler node]
-      [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri "url-181501"
-               :library [#fhir/canonical "library-url-094115"]}]
-        [:put {:fhir/type :fhir/Library :id "0"
-               :url #fhir/uri "library-url-094115"
-               :content [cql-attachment]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                        :url #fhir/uri "url-181501"
+                        :library [#fhir/canonical "library-url-094115"]}]
+        [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                              :url #fhir/uri "library-url-094115"
+                              :content [cql-attachment]})]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -615,26 +615,26 @@
       (testing "Async"
         (with-handler [handler]
           [[[:put
-             {:fhir/type :fhir/Measure :id "0"
-              :url #fhir/uri "url-181501"
-              :library [#fhir/canonical "Library/0"]
-              :scoring (scoring-concept "cohort")
-              :group
-              [{:fhir/type :fhir.Measure/group
-                :population
-                [{:fhir/type :fhir.Measure.group/population
-                  :code (population-concept "initial-population")
-                  :criteria (cql-expression "InInitialPopulation")}]}]}]
+             (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                             :url #fhir/uri "url-181501"
+                             :library [#fhir/canonical "Library/0"]
+                             :scoring (scoring-concept "cohort")
+                             :group
+                             [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                              :population
+                                              [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                               :code (population-concept "initial-population")
+                                                               :criteria (cql-expression "InInitialPopulation")})]})]})]
             [:put
-             {:fhir/type :fhir/Library :id "0"
-              :url #fhir/uri "library-url-094115"
-              :content
-              [#fhir/Attachment
-                {:contentType #fhir/code "text/cql"
-                 :data #fhir/base64Binary "bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
+             #fhir/map{:fhir/type :fhir/Library :id "0"
+                       :url #fhir/uri "library-url-094115"
+                       :content
+                       [#fhir/Attachment
+                         {:contentType #fhir/code "text/cql"
+                          :data #fhir/base64Binary "bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
             [:put
-             {:fhir/type :fhir/Patient :id "0"
-              :gender #fhir/code "male"}]]]
+             #fhir/map{:fhir/type :fhir/Patient :id "0"
+                       :gender #fhir/code "male"}]]]
 
           (let [{:keys [status headers]}
                 @(handler
@@ -658,27 +658,27 @@
                 cancelled?  [nil (constantly nil)]]
           (with-handler [handler]
             [[[:put
-               {:fhir/type :fhir/Measure :id "0"
-                :url #fhir/uri "url-181501"
-                :library [library-ref]
-                :scoring (scoring-concept "cohort")
-                :group
-                [{:fhir/type :fhir.Measure/group
-                  :population
-                  [{:fhir/type :fhir.Measure.group/population
-                    :code (population-concept "initial-population")
-                    :criteria (cql-expression "InInitialPopulation")}]}]}]
+               (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                               :url #fhir/uri "url-181501"
+                               :library [library-ref]
+                               :scoring (scoring-concept "cohort")
+                               :group
+                               [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                                :population
+                                                [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                                 :code (population-concept "initial-population")
+                                                                 :criteria (cql-expression "InInitialPopulation")})]})]})]
               [:put
-               {:fhir/type :fhir/Library :id "0"
-                :url #fhir/uri "library-url-094115"
-                :content
-                [#fhir/Attachment
-                  {:contentType #fhir/code "text/cql"
-                   :data #fhir/base64Binary "bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
+               #fhir/map{:fhir/type :fhir/Library :id "0"
+                         :url #fhir/uri "library-url-094115"
+                         :content
+                         [#fhir/Attachment
+                           {:contentType #fhir/code "text/cql"
+                            :data #fhir/base64Binary "bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
               [:put
-               {:fhir/type :fhir/Patient
-                :id "0"
-                :gender #fhir/code "male"}]]]
+               #fhir/map{:fhir/type :fhir/Patient
+                         :id "0"
+                         :gender #fhir/code "male"}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -712,36 +712,36 @@
       (testing "cohort scoring with stratifiers"
         (with-handler [handler]
           [[[:put
-             {:fhir/type :fhir/Measure :id "0"
-              :url #fhir/uri "url-181501"
-              :library [#fhir/canonical "library-url-094115"]
-              :scoring (scoring-concept "cohort")
-              :group
-              [{:fhir/type :fhir.Measure/group
-                :population
-                [{:fhir/type :fhir.Measure.group/population
-                  :code (population-concept "initial-population")
-                  :criteria (cql-expression "InInitialPopulation")}]
-                :stratifier
-                [{:fhir/type :fhir.Measure.group/stratifier
-                  :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-                  :criteria (cql-expression "Gender")}]}]}]
+             (type/fhir-map {:fhir/type :fhir/Measure :id "0"
+                             :url #fhir/uri "url-181501"
+                             :library [#fhir/canonical "library-url-094115"]
+                             :scoring (scoring-concept "cohort")
+                             :group
+                             [(type/fhir-map {:fhir/type :fhir.Measure/group
+                                              :population
+                                              [(type/fhir-map {:fhir/type :fhir.Measure.group/population
+                                                               :code (population-concept "initial-population")
+                                                               :criteria (cql-expression "InInitialPopulation")})]
+                                              :stratifier
+                                              [(type/fhir-map {:fhir/type :fhir.Measure.group/stratifier
+                                                               :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                                                               :criteria (cql-expression "Gender")})]})]})]
             [:put
-             {:fhir/type :fhir/Library :id "0"
-              :url #fhir/uri "library-url-094115"
-              :content [cql-attachment]}]
+             (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                             :url #fhir/uri "library-url-094115"
+                             :content [cql-attachment]})]
             [:put
-             {:fhir/type :fhir/Patient
-              :id "0"
-              :gender #fhir/code "male"}]
+             #fhir/map{:fhir/type :fhir/Patient
+                       :id "0"
+                       :gender #fhir/code "male"}]
             [:put
-             {:fhir/type :fhir/Patient
-              :id "1"
-              :gender #fhir/code "female"}]
+             #fhir/map{:fhir/type :fhir/Patient
+                       :id "1"
+                       :gender #fhir/code "female"}]
             [:put
-             {:fhir/type :fhir/Patient
-              :id "2"
-              :gender #fhir/code "female"}]]]
+             #fhir/map{:fhir/type :fhir/Patient
+                       :id "2"
+                       :gender #fhir/code "female"}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -776,12 +776,12 @@
     (testing "as POST request"
       (testing "with no Prefer header"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri "url-181501"
-                   :library [#fhir/canonical "library-url-094115"]}]
-            [:put {:fhir/type :fhir/Library :id "0"
-                   :url #fhir/uri "library-url-094115"
-                   :content [cql-attachment]}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                            :url #fhir/uri "url-181501"
+                            :library [#fhir/canonical "library-url-094115"]}]
+            [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                                  :url #fhir/uri "library-url-094115"
+                                  :content [cql-attachment]})]]]
 
           (let [{:keys [status headers body]}
                 @(handler
@@ -809,12 +809,12 @@
 
             (testing "with return=minimal Prefer header"
               (with-handler [handler]
-                [[[:put {:fhir/type :fhir/Measure :id "0"
-                         :url #fhir/uri "url-181501"
-                         :library [#fhir/canonical "library-url-094115"]}]
-                  [:put {:fhir/type :fhir/Library :id "0"
-                         :url #fhir/uri "library-url-094115"
-                         :content [cql-attachment]}]]]
+                [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                                  :url #fhir/uri "url-181501"
+                                  :library [#fhir/canonical "library-url-094115"]}]
+                  [:put (type/fhir-map {:fhir/type :fhir/Library :id "0"
+                                        :url #fhir/uri "library-url-094115"
+                                        :content [cql-attachment]})]]]
 
                 (let [{:keys [status headers body]}
                       @(handler
@@ -908,9 +908,9 @@
     (testing "on Measure with Non-Existing Library"
       (testing "with URN canonical"
         (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri "url-181501"
-                   :library [#fhir/canonical "urn:uuid:98060091-4638-497d-ba99-7a0084ab17f6"]}]]]
+          [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                            :url #fhir/uri "url-181501"
+                            :library [#fhir/canonical "urn:uuid:98060091-4638-497d-ba99-7a0084ab17f6"]}]]]
 
           (let [{:keys [status body]}
                 @(handler
@@ -930,10 +930,10 @@
       (testing "with literal reference"
         (testing "with non Library type"
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]
-              [:put {:fhir/type :fhir/Measure :id "0"
-                     :url #fhir/uri "url-181501"
-                     :library [#fhir/canonical "Patient/0"]}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+              [:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                              :url #fhir/uri "url-181501"
+                              :library [#fhir/canonical "Patient/0"]}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -952,10 +952,10 @@
 
         (testing "with non existing id"
           (with-handler [handler]
-            [[[:put {:fhir/type :fhir/Library :id "0"}]
-              [:put {:fhir/type :fhir/Measure :id "0"
-                     :url #fhir/uri "url-181501"
-                     :library [#fhir/canonical "Library/1"]}]]]
+            [[[:put #fhir/map{:fhir/type :fhir/Library :id "0"}]
+              [:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                              :url #fhir/uri "url-181501"
+                              :library [#fhir/canonical "Library/1"]}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -974,11 +974,11 @@
 
     (testing "on Missing Content in Library"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Measure :id "0"
-                 :url #fhir/uri "url-182104"
-                 :library [#fhir/canonical "library-url-094115"]}]
-          [:put {:fhir/type :fhir/Library :id "0"
-                 :url #fhir/uri "library-url-094115"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                          :url #fhir/uri "url-182104"
+                          :library [#fhir/canonical "library-url-094115"]}]
+          [:put #fhir/map{:fhir/type :fhir/Library :id "0"
+                          :url #fhir/uri "library-url-094115"}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -997,13 +997,13 @@
 
     (testing "on Missing Data in Library Content"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Measure :id "0"
-                 :url #fhir/uri "url-182039"
-                 :library [#fhir/canonical "library-url-094115"]}]
-          [:put {:fhir/type :fhir/Library :id "0"
-                 :url #fhir/uri "library-url-094115"
-                 :content
-                 [#fhir/Attachment{:contentType #fhir/code "text/cql"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                          :url #fhir/uri "url-182039"
+                          :library [#fhir/canonical "library-url-094115"]}]
+          [:put #fhir/map{:fhir/type :fhir/Library :id "0"
+                          :url #fhir/uri "library-url-094115"
+                          :content
+                          [#fhir/Attachment{:contentType #fhir/code "text/cql"}]}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -1022,13 +1022,13 @@
 
     (testing "on non text/cql content type"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Measure :id "0"
-                 :url #fhir/uri "url-182051"
-                 :library [#fhir/canonical "library-url-094115"]}]
-          [:put {:fhir/type :fhir/Library :id "0"
-                 :url #fhir/uri "library-url-094115"
-                 :content
-                 [#fhir/Attachment{:contentType #fhir/code "text/plain"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                          :url #fhir/uri "url-182051"
+                          :library [#fhir/canonical "library-url-094115"]}]
+          [:put #fhir/map{:fhir/type :fhir/Library :id "0"
+                          :url #fhir/uri "library-url-094115"
+                          :content
+                          [#fhir/Attachment{:contentType #fhir/code "text/plain"}]}]]]
 
         (let [{:keys [status body]}
               @(handler
@@ -1047,8 +1047,8 @@
 
   (testing "Returns Unprocessable Entity on Measure without Library"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri "url-182126"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Measure :id "0"
+                        :url #fhir/uri "url-182126"}]]]
 
       (let [{:keys [status body]}
             @(handler

@@ -4,7 +4,6 @@
    [blaze.async.comp :as ac]
    [blaze.fhir-client.impl :as fhir-client]
    [blaze.fhir.parsing-context.spec]
-   [blaze.fhir.writing-context.spec]
    [blaze.http-client.spec]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.validator.extern.impl :as impl]
@@ -59,19 +58,16 @@
           (ac/when-complete (fn [_ _] (sem/release! semaphore)))))))
 
 (defmethod m/pre-init-spec :blaze.validator/extern [_]
-  (s/keys :req-un [::base-uri :blaze/http-client :blaze.fhir/parsing-context
-                   :blaze.fhir/writing-context]
+  (s/keys :req-un [::base-uri :blaze/http-client :blaze.fhir/parsing-context]
           :opt-un [::failure-mode ::max-concurrency]))
 
 (defmethod ig/init-key :blaze.validator/extern
-  [_ {:keys [base-uri http-client parsing-context writing-context failure-mode
-             max-concurrency]
+  [_ {:keys [base-uri http-client parsing-context failure-mode max-concurrency]
       :or {failure-mode :tag-outcome max-concurrency 4}}]
   (log/info "Init external validator connection:" base-uri "with failure mode"
             (name failure-mode) "and a max concurrency of" max-concurrency)
   (let [http-opts {:http-client http-client
-                   :parsing-context parsing-context
-                   :writing-context writing-context}
+                   :parsing-context parsing-context}
         validate-fn (-> (partial validate base-uri http-opts failure-mode)
                         (bounded max-concurrency))]
     (reify p/Validator

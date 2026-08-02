@@ -15,15 +15,15 @@
    [taoensso.timbre :as log]))
 
 (def ^:private code-system
-  {:fhir/type :fhir/CodeSystem
-   :meta cs-u/read-only-meta
-   :url #fhir/uri-interned "urn:ietf:bcp:13"
-   :version #fhir/string "1.0.0"
-   :name #fhir/string "BCP-13"
-   :title #fhir/string "BCP-13 Multipurpose Internet Mail Extensions (MIME) types"
-   :status #fhir/code "active"
-   :experimental #fhir/boolean false
-   :content #fhir/code "not-present"})
+  (type/fhir-map {:fhir/type :fhir/CodeSystem
+                  :meta cs-u/read-only-meta
+                  :url #fhir/uri-interned "urn:ietf:bcp:13"
+                  :version #fhir/string "1.0.0"
+                  :name #fhir/string "BCP-13"
+                  :title #fhir/string "BCP-13 Multipurpose Internet Mail Extensions (MIME) types"
+                  :status #fhir/code "active"
+                  :experimental #fhir/boolean false
+                  :content #fhir/code "not-present"}))
 
 (defmethod c/find :bcp-13
   [& _]

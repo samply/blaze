@@ -160,7 +160,7 @@
 (defn spit
   "Returns a CompletableFuture that will complete with a vector of all filenames
   written of all resources the `publisher` produces."
-  [writing-context dir publisher]
+  [dir publisher]
   (let [future (ac/future)]
-    (flow/subscribe! publisher (impl/spitter writing-context dir future))
+    (flow/subscribe! publisher (impl/spitter dir future))
     future))

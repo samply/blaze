@@ -125,19 +125,19 @@
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation code-value-quantity"
       (let [observation
-            {:fhir/type :fhir/Observation :id "id-155558"
-             :status #fhir/code "final"
-             :code
-             #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                 {:system #fhir/uri "http://loinc.org"
-                  :code #fhir/code "8480-6"}]}
-             :value
-             #fhir/Quantity
-              {:value #fhir/decimal 100M
-               :code #fhir/code "mm[Hg]"
-               :system #fhir/uri "http://unitsofmeasure.org"}}
+            #fhir/map{:fhir/type :fhir/Observation :id "id-155558"
+                      :status #fhir/code "final"
+                      :code
+                      #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                          {:system #fhir/uri "http://loinc.org"
+                           :code #fhir/code "8480-6"}]}
+                      :value
+                      #fhir/Quantity
+                       {:value #fhir/decimal 100M
+                        :code #fhir/code "mm[Hg]"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]
              [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]
@@ -255,7 +255,7 @@
 
     (testing "FHIRPath evaluation problem"
       (testing "code-value-quantity"
-        (let [resource {:fhir/type :fhir/Observation :id "foo"}
+        (let [resource #fhir/map{:fhir/type :fhir/Observation :id "foo"}
               hash (hash/generate resource)]
 
           (testing "on main-value"
@@ -304,7 +304,7 @@
                 ::x := ::y)))))
 
       (testing "code-value-concept"
-        (let [resource {:fhir/type :fhir/Observation :id "foo"}
+        (let [resource #fhir/map{:fhir/type :fhir/Observation :id "foo"}
               hash (hash/generate resource)]
 
           (testing "on main-value"

@@ -29,6 +29,6 @@
       ac/completed-future)))
 
 (defn population [code count]
-  {:fhir/type :fhir.MeasureReport.group/population
-   :count (type/integer count)
-   :code code})
+  (type/fhir-map {:fhir/type :fhir.MeasureReport.group/population
+                  :count (type/integer count)
+                  :code code}))

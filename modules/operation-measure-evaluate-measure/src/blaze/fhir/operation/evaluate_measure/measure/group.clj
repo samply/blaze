@@ -3,9 +3,17 @@
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
+   [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]))
 
-(defn- report-stratifier [{:keys [code component]}]
+(defn- report-stratifier
+  "Returns the intermediate stratifier the strata are accumulated in.
+
+  A plain map, because neither `component-codes` nor the map the strata are
+  accumulated in under `stratum` are part of
+  `MeasureReport.group.stratifier`. `post-process-count-stratifier` and
+  `post-process-subject-list-stratifier` turn it into a FHIR value."
+  [{:keys [code component]}]
   (cond-> {:fhir/type :fhir.MeasureReport.group/stratifier}
     code
     (assoc :code [code])
@@ -14,8 +22,8 @@
 
 (defn- initial-group
   ([code]
-   (cond-> {:fhir/type :fhir.MeasureReport/group
-            :population []}
+   (cond-> #fhir/map{:fhir/type :fhir.MeasureReport/group
+                     :population []}
      code
      (assoc :code code)))
   ([code stratifiers]
@@ -48,10 +56,11 @@
   (mapv (partial strat/multi-component-stratum-count component-codes) strata))
 
 (defn- post-process-count-stratifier [{:keys [component-codes] :as stratifier}]
-  (if (seq component-codes)
-    (-> (update stratifier :stratum post-process-multi-component-strata component-codes)
-        (dissoc :component-codes))
-    (update stratifier :stratum post-process-strata)))
+  (type/fhir-map
+   (if (seq component-codes)
+     (-> (update stratifier :stratum post-process-multi-component-strata component-codes)
+         (dissoc :component-codes))
+     (update stratifier :stratum post-process-strata))))
 
 (defn- post-process-count-stratifiers [stratifiers]
   (mapv post-process-count-stratifier stratifiers))
@@ -121,7 +130,7 @@
      append
      (fn
        ([ret]
-        (update ret :result (partial assoc stratifier :stratum)))
+        (update ret :result #(type/fhir-map (assoc stratifier :stratum %))))
        ([ret [value populations]]
         (stratum-fn ret value populations)))
      (assoc context :result [])

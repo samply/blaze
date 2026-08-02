@@ -4,7 +4,6 @@
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.job-scheduler]
    [blaze.middleware.fhir.output-spec]
    [blaze.middleware.fhir.resource-spec]
@@ -89,8 +88,6 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
-   {:structure-definition-repo structure-definition-repo}
-   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}))
 
 (def ^:private config
@@ -175,15 +172,13 @@
 (defn- router
   [config
    {:blaze/keys [job-scheduler]
-    :blaze.fhir/keys [writing-context]
     :blaze.test/keys [fixed-clock fixed-rng-fn]
     :as system}]
   (reitit.ring/router
    (routes/routes
     (assoc config :job-scheduler job-scheduler :context-path "/foo"
            :clock fixed-clock :rng-fn fixed-rng-fn
-           :parsing-context (get system [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default])
-           :writing-context writing-context))
+           :parsing-context (get system [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default])))
    {:path "" :syntax :bracket}))
 
 (deftest compile-observe-request-duration-middleware-test

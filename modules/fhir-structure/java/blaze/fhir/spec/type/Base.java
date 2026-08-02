@@ -110,10 +110,6 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
         return value.isEmpty() ? base : base.cons(MapEntry.create(name, value));
     }
 
-    static <T> List<T> listFrom(IPersistentMap m, Keyword key) {
-        return Lists.nullToEmpty(m.valAt(key));
-    }
-
     static <T> List<T> typedListFrom(IPersistentMap m, Keyword key, Class<T> type) {
         return Lists.typedNullToEmpty(m.valAt(key), type);
     }
@@ -271,6 +267,13 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
 
     static int memSize(Base value) {
         return value == null ? 0 : value.memSize();
+    }
+
+    /**
+     * Returns an exception for a value that is no FHIR type at all.
+     */
+    static IllegalArgumentException noFhirType(Object value) {
+        return new IllegalArgumentException("Value `%s` is no FHIR type.".formatted(value));
     }
 
     default ILookupThunk getLookupThunk(Keyword key) {

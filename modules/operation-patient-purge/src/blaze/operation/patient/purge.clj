@@ -19,11 +19,11 @@
   (fn [{{:keys [id]} :path-params}]
     (do-sync [_ (d/transact node [[:patient-purge id]])]
       (ring/response
-       {:fhir/type :fhir/OperationOutcome
-        :issue [{:fhir/type :fhir.OperationOutcome/issue
-                 :severity #fhir/code "success"
-                 :code #fhir/code "success"
-                 :diagnostics (type/string (diagnostics id))}]}))))
+       (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                       :issue [(type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                                               :severity #fhir/code "success"
+                                               :code #fhir/code "success"
+                                               :diagnostics (type/string (diagnostics id))})]})))))
 
 (defmethod m/pre-init-spec :blaze.operation.patient/purge [_]
   (s/keys :req-un [:blaze.db/node]))

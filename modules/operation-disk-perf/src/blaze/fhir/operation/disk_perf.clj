@@ -18,7 +18,7 @@
 
 (defn- parameters [{:fhir/keys [type] :as body}]
   (cond
-    (nil? body) {:fhir/type :fhir/Parameters}
+    (nil? body) #fhir/map{:fhir/type :fhir/Parameters}
     (= :fhir/Parameters type) body
     :else (ba/incorrect (format "Expected Parameters resource but was `%s` resource." (name type)))))
 

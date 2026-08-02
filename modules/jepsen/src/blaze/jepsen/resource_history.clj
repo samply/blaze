@@ -58,8 +58,8 @@
 (defn client-add-history [{:keys [base-uri] :as context} id value]
   @(-> (fhir-client/update
         base-uri
-        {:fhir/type :fhir/Patient :id id
-         :identifier [(type/identifier {:value (type/string value)})]}
+        (type/fhir-map {:fhir/type :fhir/Patient :id id
+                        :identifier [(type/identifier {:value (type/string value)})]})
         context)
        (ac/then-apply (constantly {:type :ok}))
        (ac/exceptionally (constantly {:type :fail}))))
@@ -99,8 +99,7 @@
     (update this :context assoc
             :base-uri (str "http://" node "/fhir")
             :http-client (hc/build-http-client {:connect-timeout 10000})
-            :parsing-context (:blaze.fhir/parsing-context u/system)
-            :writing-context (:blaze.fhir/writing-context u/system)))
+            :parsing-context (:blaze.fhir/parsing-context u/system)))
 
   (setup! [this _test]
     (warm-up! context)

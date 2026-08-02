@@ -14,6 +14,7 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -30,7 +31,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def patient-0 {:fhir/type :fhir/Patient :id "0"})
+(def patient-0 #fhir/map{:fhir/type :fhir/Patient :id "0"})
 
 (defn- expand-tx-cmds [node tx-cmds]
   (let [db (d/new-batch-db (d/db node))]
@@ -40,10 +41,10 @@
 (deftest expand-tx-cmds-conditional-create-test
   (testing "conflict"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :birthDate #fhir/date #system/date "2020"}]
-        [:put {:fhir/type :fhir/Patient :id "1"
-               :birthDate #fhir/date #system/date "2020"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :birthDate #fhir/date #system/date "2020"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                        :birthDate #fhir/date #system/date "2020"}]]]
 
       (given-failed-future
        (expand-tx-cmds
@@ -56,8 +57,8 @@
         :http/status := 412)))
   (testing "match"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "2"
-               :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "2"
+                        :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
       (given @(expand-tx-cmds
                node
@@ -74,8 +75,8 @@
   (testing "success"
     (testing "no match"
       (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                          :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
         (is (empty? @(expand-tx-cmds
                       node
@@ -84,8 +85,8 @@
 
     (testing "one patient match"
       (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                          :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]]]
 
         (given @(expand-tx-cmds
                  node
@@ -100,8 +101,8 @@
       (testing "is forbidden by default"
         (with-system-data [{:blaze.db/keys [node]} config]
           [(vec (for [id ["0" "1"]]
-                  [:create {:fhir/type :fhir/Patient :id id
-                            :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]))]
+                  [:create (type/fhir-map {:fhir/type :fhir/Patient :id id
+                                           :identifier [#fhir/Identifier{:value #fhir/string "120426"}]})]))]
 
           (given-failed-future
            (expand-tx-cmds node
@@ -114,8 +115,8 @@
       (testing "fails on more then 10,000 matches"
         (with-system-data [{:blaze.db/keys [node]} config]
           [(vec (for [id (range 10001)]
-                  [:create {:fhir/type :fhir/Patient :id (str id)
-                            :identifier [#fhir/Identifier{:value #fhir/string "120426"}]}]))]
+                  [:create (type/fhir-map {:fhir/type :fhir/Patient :id (str id)
+                                           :identifier [#fhir/Identifier{:value #fhir/string "120426"}]})]))]
 
           (given-failed-future
            (expand-tx-cmds node
@@ -129,8 +130,8 @@
       (testing "works if allowed"
         (with-system-data [{:blaze.db/keys [node]} config]
           [(vec (for [id ["0" "1"]]
-                  [:create {:fhir/type :fhir/Patient :id id
-                            :identifier [#fhir/Identifier{:value #fhir/string  "120426"}]}]))]
+                  [:create (type/fhir-map {:fhir/type :fhir/Patient :id id
+                                           :identifier [#fhir/Identifier{:value #fhir/string  "120426"}]})]))]
 
           (given @(expand-tx-cmds node
                                   [{:op "conditional-delete" :type "Patient"
@@ -151,7 +152,7 @@
 
   (testing "patient only"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (given @(expand-tx-cmds node [{:op "patient-purge" :id "0"}])
         count := 1
@@ -169,9 +170,9 @@
 
   (testing "patient with one observation"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]
-        [:create {:fhir/type :fhir/Observation :id "0"
-                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:create #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:create #fhir/map{:fhir/type :fhir/Observation :id "0"
+                           :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (given @(expand-tx-cmds node [{:op "patient-purge" :id "0"}])
         count := 2

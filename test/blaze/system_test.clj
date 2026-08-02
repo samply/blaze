@@ -5,7 +5,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type.system :refer [parse-date-time]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.delete]
    [blaze.interaction.delete-history]
@@ -143,7 +142,6 @@
    :blaze/rest-api
    {:base-url "http://localhost:8080"
     :parsing-context (ig/ref :blaze.fhir.parsing-context/default)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :structure-definition-repo structure-definition-repo
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
@@ -256,11 +254,8 @@
    :blaze.test/page-id-cipher {}
    :blaze.test/json-parser
    {:parsing-context (ig/ref :blaze.fhir.parsing-context/default)}
-   :blaze.test/json-writer
-   {:writing-context (ig/ref :blaze.fhir/writing-context)}
+   :blaze.test/json-writer {}
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/default]
-   {:structure-definition-repo structure-definition-repo}
-   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}))
 
 (defmethod ig/init-key ::auth-backend
@@ -292,14 +287,14 @@
   (ByteArrayInputStream. bs))
 
 (def search-bundle
-  {:fhir/type :fhir/Bundle
-   :type #fhir/code "batch"
-   :entry
-   [{:fhir/type :fhir.Bundle/entry
-     :request
-     {:fhir/type :fhir.Bundle.entry/request
-      :method #fhir/code "GET"
-      :url #fhir/uri "/Patient"}}]})
+  #fhir/map{:fhir/type :fhir/Bundle
+            :type #fhir/code "batch"
+            :entry
+            [#fhir/map{:fhir/type :fhir.Bundle/entry
+                       :request
+                       #fhir/map{:fhir/type :fhir.Bundle.entry/request
+                                 :method #fhir/code "GET"
+                                 :url #fhir/uri "/Patient"}}]})
 
 (deftest auth-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
@@ -329,7 +324,7 @@
 
 (deftest read-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
     (testing "success"
       (given (call rest-api {:request-method :get :uri "/Patient/0"})
@@ -343,8 +338,8 @@
 
 (deftest vread-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
-     [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+     [[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
     (testing "current version"
       (given (call rest-api {:request-method :get :uri "/Patient/0/_history/3"})
@@ -364,8 +359,8 @@
 
   (testing "with deleted history"
     (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
        [[:delete-history "Patient" "0"]]]
 
       (testing "current version"
@@ -380,14 +375,14 @@
             [:body json-parser :fhir/type] := :fhir/OperationOutcome))))))
 
 (def read-bundle
-  {:fhir/type :fhir/Bundle
-   :type #fhir/code "batch"
-   :entry
-   [{:fhir/type :fhir.Bundle/entry
-     :request
-     {:fhir/type :fhir.Bundle.entry/request
-      :method #fhir/code "GET"
-      :url #fhir/uri "/Patient/0"}}]})
+  #fhir/map{:fhir/type :fhir/Bundle
+            :type #fhir/code "batch"
+            :entry
+            [#fhir/map{:fhir/type :fhir.Bundle/entry
+                       :request
+                       #fhir/map{:fhir/type :fhir.Bundle.entry/request
+                                 :method #fhir/code "GET"
+                                 :url #fhir/uri "/Patient/0"}}]})
 
 (deftest batch-read-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
@@ -406,14 +401,14 @@
       [:body json-parser :fhir/type] := :fhir/OperationOutcome)))
 
 (def metadata-bundle
-  {:fhir/type :fhir/Bundle
-   :type #fhir/code "batch"
-   :entry
-   [{:fhir/type :fhir.Bundle/entry
-     :request
-     {:fhir/type :fhir.Bundle.entry/request
-      :method #fhir/code "GET"
-      :url #fhir/uri "metadata"}}]})
+  #fhir/map{:fhir/type :fhir/Bundle
+            :type #fhir/code "batch"
+            :entry
+            [#fhir/map{:fhir/type :fhir.Bundle/entry
+                       :request
+                       #fhir/map{:fhir/type :fhir.Bundle.entry/request
+                                 :method #fhir/code "GET"
+                                 :url #fhir/uri "metadata"}}]})
 
 (deftest batch-metadata-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser json-writer]} config]
@@ -436,8 +431,8 @@
 
 (deftest delete-history-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
-     [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+     [[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
     (given (call rest-api {:request-method :delete :uri "/Patient/0/_history"})
       :status := 204
@@ -470,8 +465,8 @@
 
     (testing "with two patients"
       (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
         (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1"})
           :status := 200
@@ -513,8 +508,8 @@
 
     (testing "with two patients"
       (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]]]
 
         (given (call rest-api {:request-method :post :uri "/Patient/_search"
                                :query-string "_count=1"
@@ -542,7 +537,7 @@
 
 (deftest search-compartment-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
     (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"})
       :status := 200
@@ -550,7 +545,7 @@
 
 (deftest history-type-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
     (given (call rest-api {:request-method :get :uri "/Patient/_history"})
       :status := 200

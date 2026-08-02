@@ -175,8 +175,8 @@
      (some->> value (parameter "element")))))
 
 (defn- parameter [name value]
-  (let [stub {:fhir/type :fhir.Parameters/parameter
-              :name (type/string name)}]
+  (let [stub (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                             :name (type/string name)})]
     (if (:fhir/type value)
       (if (instance? Resource value)
         (assoc stub :resource @(cr/pull value))
@@ -190,8 +190,8 @@
   (map (partial parameter "return")))
 
 (defn- create-parameters [values]
-  {:fhir/type :fhir/Parameters
-   :parameter (into [] parameter-xf values)})
+  (type/fhir-map {:fhir/type :fhir/Parameters
+                  :parameter (into [] parameter-xf values)}))
 
 (defn- eval-context [{:keys [clock] :as context}]
   (assoc context :now (bt/offset-date-time clock)))

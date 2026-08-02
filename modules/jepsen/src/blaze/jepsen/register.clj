@@ -36,20 +36,20 @@
   @(-> (if (even? value)
          (fhir-client/update
           base-uri
-          {:fhir/type :fhir/Patient :id id :multipleBirth (type/integer value)}
+          (type/fhir-map {:fhir/type :fhir/Patient :id id :multipleBirth (type/integer value)})
           context)
          (fhir-client/transact
           base-uri
-          {:fhir/type :fhir/Bundle
-           :type #fhir/code "transaction"
-           :entry
-           [{:fhir/type :fhir.Bundle/entry
-             :resource
-             {:fhir/type :fhir/Patient :id id :multipleBirth (type/integer value)}
-             :request
-             {:fhir/type :fhir.Bundle.entry/request
-              :method #fhir/code "PUT"
-              :url (type/uri (str "Patient/" id))}}]}
+          (type/fhir-map {:fhir/type :fhir/Bundle
+                          :type #fhir/code "transaction"
+                          :entry
+                          [(type/fhir-map {:fhir/type :fhir.Bundle/entry
+                                           :resource
+                                           (type/fhir-map {:fhir/type :fhir/Patient :id id :multipleBirth (type/integer value)})
+                                           :request
+                                           (type/fhir-map {:fhir/type :fhir.Bundle.entry/request
+                                                           :method #fhir/code "PUT"
+                                                           :url (type/uri (str "Patient/" id))})})]})
           context))
        (ac/then-apply (constantly {:type :ok}))
        (ac/exceptionally (constantly {:type :fail}))))
@@ -57,8 +57,8 @@
 (defn failing-write! [{:keys [base-uri] :as context}]
   @(-> (fhir-client/update
         base-uri
-        {:fhir/type :fhir/Observation :id "0"
-         :subject (type/reference {:reference (type/string (str "Patient/" (random-uuid)))})}
+        (type/fhir-map {:fhir/type :fhir/Observation :id "0"
+                        :subject (type/reference {:reference (type/string (str "Patient/" (random-uuid)))})})
         context)
        (ac/exceptionally (constantly nil))))
 
@@ -69,8 +69,7 @@
     (update this :context assoc
             :base-uri (str "http://" node "/fhir")
             :http-client (hc/build-http-client {:connect-timeout 10000})
-            :parsing-context (:blaze.fhir/parsing-context u/system)
-            :writing-context (:blaze.fhir/writing-context u/system)))
+            :parsing-context (:blaze.fhir/parsing-context u/system)))
 
   (setup! [this _test]
     this)
@@ -89,8 +88,7 @@
   "Sends trash requests."
   [node]
   (let [context {:base-uri (str "http://" node "/fhir")
-                 :parsing-context (:blaze.fhir/parsing-context u/system)
-                 :writing-context (:blaze.fhir/writing-context u/system)}]
+                 :parsing-context (:blaze.fhir/parsing-context u/system)}]
     (reify nemesis/Nemesis
       (setup! [this _] this)
 

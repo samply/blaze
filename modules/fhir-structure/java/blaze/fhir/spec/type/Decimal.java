@@ -68,7 +68,7 @@ public final class Decimal extends PrimitiveElement {
 
     @Override
     public Decimal empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

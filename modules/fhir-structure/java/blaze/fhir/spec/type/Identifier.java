@@ -186,7 +186,7 @@ public final class Identifier extends AbstractElement implements Complex, Extens
 
     @Override
     public Identifier empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

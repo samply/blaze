@@ -94,7 +94,7 @@ public final class PositiveInt extends PrimitiveElement {
 
     @Override
     public PositiveInt empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

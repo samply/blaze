@@ -364,21 +364,21 @@
   [{:keys [now report-type subject-handle bloom-filters] :as context} measure
    {[start end] :period} [{:keys [result]} duration]]
   (cond->
-   {:fhir/type :fhir/MeasureReport
-    :extension
-    (into (eval-duration duration) (bloom-filter-ratio bloom-filters))
-    :status #fhir/code "complete"
-    :type
-    (case report-type
-      "population" #fhir/code "summary"
-      "subject-list" #fhir/code "subject-list"
-      "subject" #fhir/code "individual")
-    :measure (type/canonical (canonical context measure))
-    :date (type/dateTime now)
-    :period
-    (type/period
-     {:start (type/dateTime (system/parse-date-time (str start)))
-      :end (type/dateTime (system/parse-date-time (str end)))})}
+   (type/fhir-map {:fhir/type :fhir/MeasureReport
+                   :extension
+                   (into (eval-duration duration) (bloom-filter-ratio bloom-filters))
+                   :status #fhir/code "complete"
+                   :type
+                   (case report-type
+                     "population" #fhir/code "summary"
+                     "subject-list" #fhir/code "subject-list"
+                     "subject" #fhir/code "individual")
+                   :measure (type/canonical (canonical context measure))
+                   :date (type/dateTime now)
+                   :period
+                   (type/period
+                    {:start (type/dateTime (system/parse-date-time (str start)))
+                     :end (type/dateTime (system/parse-date-time (str end)))})})
 
     subject-handle
     (assoc :subject (type/reference {:reference (type/string (local-ref subject-handle))}))

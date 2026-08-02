@@ -32,25 +32,16 @@ public final class Lists {
      * <p>
      * Rejects lists containing {@code null} elements: FHIR has no representation for a {@code null}
      * inside a repeating element, so any such list is invalid and would fail later (e.g. during
-     * hashing or serialization) with a less informative error.
+     * hashing or serialization) with a less informative error. Rejects elements that are not a
+     * {@code type} for the same reason.
      *
      * @param list the list to check, may be {@code null}
+     * @param type the type all elements have to be an instance of
      * @return an empty {@link PersistentVector} if {@code list} is {@code null}, otherwise
      * {@code list}
-     * @throws IllegalArgumentException if {@code list} contains a {@code null} element
+     * @throws IllegalArgumentException if {@code list} contains a {@code null} element or an
+     *                                  element that is no {@code type}
      */
-    @SuppressWarnings("unchecked")
-    public static <T> List<T> nullToEmpty(Object list) {
-        if (list == null) return PersistentVector.EMPTY;
-        List<T> typed = (List<T>) list;
-        for (T e : typed) {
-            if (e == null) {
-                throw new IllegalArgumentException("null element in list");
-            }
-        }
-        return typed;
-    }
-
     @SuppressWarnings("unchecked")
     public static <T> List<T> typedNullToEmpty(Object list, Class<T> type) {
         if (list == null) return PersistentVector.EMPTY;
@@ -60,7 +51,7 @@ public final class Lists {
                 throw new IllegalArgumentException("null element in list");
             }
             if (!type.isInstance(e)) {
-                throw new IllegalArgumentException("wrong type in list");
+                throw Base.noFhirType(e);
             }
         }
         return typed;

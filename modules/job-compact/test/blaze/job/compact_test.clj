@@ -15,7 +15,6 @@
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
    [blaze.job.compact :as job-compact]
    [blaze.job.compact-spec]
@@ -123,7 +122,6 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -142,9 +140,6 @@
     :fail-on-unknown-property false
     :include-summary-only true
     :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}
 
    :blaze/scheduler {}
 
@@ -193,29 +188,29 @@
 (derive :blaze.db.admin/node :blaze.db/node)
 
 (def job-missing-database
-  {:fhir/type :fhir/Task
-   :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
-   :status #fhir/code "ready"
-   :intent #fhir/code "order"
-   :code
-   #fhir/CodeableConcept
-    {:coding
-     [#fhir/Coding
-       {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
-        :code #fhir/code "compact"
-        :display #fhir/string "Compact a Database Column Family"}]}})
+  #fhir/map{:fhir/type :fhir/Task
+            :meta #fhir/Meta{:profile [#fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
+            :status #fhir/code "ready"
+            :intent #fhir/code "order"
+            :code
+            #fhir/CodeableConcept
+             {:coding
+              [#fhir/Coding
+                {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+                 :code #fhir/code "compact"
+                 :display #fhir/string "Compact a Database Column Family"}]}})
 
 (def job-missing-column-family
   (assoc
    job-missing-database
    :input
-   [{:fhir/type :fhir.Task/input
-     :type #fhir/CodeableConcept
-            {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
-                :code #fhir/code "database"}]}
-     :value #fhir/code "index"}]))
+   [#fhir/map{:fhir/type :fhir.Task/input
+              :type #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                        {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
+                         :code #fhir/code "database"}]}
+              :value #fhir/code "index"}]))
 
 (deftest job-emits-both-canonicals-test
   (let [job (job-compact/job (bt/offset-date-time) {:database "index" :column-family "resource-as-of-index"})]

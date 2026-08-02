@@ -121,9 +121,9 @@
 (deftest evaluate-expression-test
   (testing "finds the male patient"
     (with-system-data [system config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
-        [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]]]
 
       (let [context (context system library-gender)]
         (testing "returning handles"
@@ -141,12 +141,12 @@
 
   (testing "returns all encounters"
     (with-system-data [system config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]
-        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
-        [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
-        [:put {:fhir/type :fhir/Patient :id "2"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "2"}]]]
 
       (let [context (context system library-encounter)]
         (testing "returning handles"
@@ -215,7 +215,7 @@
 
   (testing "finds the specimen"
     (with-system-data [system config]
-      [[[:put {:fhir/type :fhir/Specimen :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Specimen :id "0"}]]]
 
       (let [context (context system library-specimen)]
         (testing "returning handles"
@@ -231,7 +231,7 @@
 
   (testing "failing eval"
     (with-system-data [system config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "subject-based"
         (let [context (with-ops (context system library-gender) conj-reduce-op into)]
@@ -251,7 +251,7 @@
 
   (testing "interrupted"
     (with-system-data [system config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [context (-> (context system library-gender)
                         (with-ops conj-reduce-op into)
@@ -265,7 +265,7 @@
   (testing "counting"
     (testing "match"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
         (let [{:keys [db] :as context} (-> (context system library-gender)
                                            (with-ops count-reduce-op +))
               patient (em-tu/resource db "Patient" "0")]
@@ -273,7 +273,7 @@
 
     (testing "no match"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
         (let [{:keys [db] :as context} (-> (context system library-gender)
                                            (with-ops count-reduce-op +))
               patient (em-tu/resource db "Patient" "0")]
@@ -282,7 +282,7 @@
   (testing "returning handles"
     (testing "match"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
         (let [{:keys [db] :as context} (-> (context system library-gender)
                                            (with-ops conj-reduce-op into))
               patient (em-tu/resource db "Patient" "0")]
@@ -296,7 +296,7 @@
 
     (testing "no match"
       (with-system-data [system config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
         (let [{:keys [db] :as context} (-> (context system library-gender)
                                            (with-ops conj-reduce-op into))
               patient (em-tu/resource db "Patient" "0")]
@@ -304,7 +304,7 @@
 
   (testing "missing expression"
     (with-system-data [system config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (-> (context system library-empty)
                                          (with-ops conj-reduce-op into))
             patient (em-tu/resource db "Patient" "0")]
@@ -316,7 +316,7 @@
 
   (testing "error"
     (with-system-data [system config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (-> (context system library-error)
                                          (with-ops conj-reduce-op into)
                                          (assoc :parameters {"Numbers" [1 2]}))

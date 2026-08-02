@@ -17,7 +17,6 @@
    [blaze.fhir.parsing-context.spec]
    [blaze.fhir.response.create :as create-response]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.writing-context.spec]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
@@ -156,17 +155,16 @@
 
 (defn- wrap-fhir-output
   "Middleware to output FHIR resources in JSON or XML."
-  [handler writing-context]
+  [handler]
   (fn [request]
     (do-sync [response (handler request)]
-      (fhir-output/handle-response writing-context {} request response))))
+      (fhir-output/handle-response {} request response))))
 
 (def ^:private wrap-output
   {:name :output
    :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
               (condp = response-type
-                :json (fn [handler _writing-context]
-                        ((wrap-json-output opts) handler))
+                :json (wrap-json-output opts)
                 :fhir wrap-fhir-output))})
 
 (def ^:private wrap-db
@@ -192,16 +190,16 @@
     (ba/incorrect
      "No allowed profile found."
      :outcome
-     {:fhir/type :fhir/OperationOutcome
-      :issue
-      [{:fhir/type :fhir.OperationOutcome/issue
-        :severity #fhir/code "error"
-        :code #fhir/code "value"
-        :details #fhir/CodeableConcept
-                  {:text #fhir/string "No allowed profile found."}}]})))
+     #fhir/map{:fhir/type :fhir/OperationOutcome
+               :issue
+               [#fhir/map{:fhir/type :fhir.OperationOutcome/issue
+                          :severity #fhir/code "error"
+                          :code #fhir/code "value"
+                          :details #fhir/CodeableConcept
+                                    {:text #fhir/string "No allowed profile found."}}]})))
 
-(defn- validate [validator writing-context resource]
-  (->> (fhir-spec/write-json-as-string writing-context resource)
+(defn- validate [validator resource]
+  (->> (fhir-spec/write-json-as-string resource)
        (validator/validate validator)))
 
 (defn- error-issues [outcome]
@@ -209,10 +207,10 @@
 
 (def ^:private wrap-validate-job
   {:name :wrap-validate-job
-   :wrap (fn [handler validator writing-context]
+   :wrap (fn [handler validator]
            (fn [{:keys [body] :as request}]
              (if-ok [body (check-profile body)]
-               (let [outcome (error-issues (validate validator writing-context body))]
+               (let [outcome (error-issues (validate validator body))]
                  (if (seq (:issue outcome))
                    (ac/completed-future (ring/bad-request outcome))
                    (handler request)))
@@ -231,7 +229,7 @@
   (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
 
 (defn- router
-  [{:keys [context-path admin-node validator parsing-context writing-context
+  [{:keys [context-path admin-node validator parsing-context
            db-sync-timeout dbs create-job-handler read-job-handler
            history-job-handler search-type-job-handler pause-job-handler
            resume-job-handler cancel-job-handler cql-cache-stats-handler
@@ -242,7 +240,7 @@
   (reitit.ring/router
    [""
     {:openapi {:id :admin-api}
-     :middleware [[wrap-output writing-context] openapi/openapi-feature]
+     :middleware [wrap-output openapi/openapi-feature]
      :response-type :json
      :response-type.json/opts {:encode-key-fn (comp camel name)}}
     [""
@@ -394,7 +392,7 @@
         :handler search-type-job-handler}
        :post
        {:middleware [[wrap-resource parsing-context "Task"]
-                     [wrap-validate-job validator writing-context]]
+                     [wrap-validate-job validator]]
         :handler create-job-handler}}]
      ["/{id}"
       [""
@@ -494,10 +492,9 @@
 
 (defmethod m/pre-init-spec :blaze/admin-api [_]
   (s/keys :req-un [:blaze/context-path ::admin-node :blaze.admin-api/validator
-                   :blaze.fhir/parsing-context :blaze.fhir/writing-context
-                   :blaze/job-scheduler ::read-job-handler
-                   ::history-job-handler ::search-type-job-handler ::settings
-                   ::features]
+                   :blaze.fhir/parsing-context :blaze/job-scheduler
+                   ::read-job-handler ::history-job-handler
+                   ::search-type-job-handler ::settings ::features]
           :opt [::dbs ::expr/cache ::db-sync-timeout]))
 
 (defmethod ig/init-key :blaze/admin-api

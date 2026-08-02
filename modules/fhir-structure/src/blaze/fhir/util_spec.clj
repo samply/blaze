@@ -4,6 +4,10 @@
    [blaze.fhir.util :as fu]
    [clojure.spec.alpha :as s]))
 
+(s/fdef fu/select-keys
+  :args (s/cat :m map? :ks (s/nilable (s/coll-of keyword?)))
+  :ret map?)
+
 (s/fdef fu/subsetted?
   :args (s/cat :coding map?)
   :ret boolean?)

@@ -134,11 +134,11 @@
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "RiskAssessment probability"
       (let [risk-assessment
-            {:fhir/type :fhir/RiskAssessment
-             :id "id-163630"
-             :prediction
-             [{:fhir/type :fhir.RiskAssessment/prediction
-               :probability #fhir/decimal 0.9M}]}
+            #fhir/map{:fhir/type :fhir/RiskAssessment
+                      :id "id-163630"
+                      :prediction
+                      [#fhir/map{:fhir/type :fhir.RiskAssessment/prediction
+                                 :probability #fhir/decimal 0.9M}]}
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
             (index-entries
@@ -163,11 +163,11 @@
 
     (testing "MolecularSequence variant-start"
       (let [risk-assessment
-            {:fhir/type :fhir/MolecularSequence
-             :id "id-170736"
-             :variant
-             [{:fhir/type :fhir.MolecularSequence/variant
-               :start #fhir/integer 1}]}
+            #fhir/map{:fhir/type :fhir/MolecularSequence
+                      :id "id-170736"
+                      :variant
+                      [#fhir/map{:fhir/type :fhir.MolecularSequence/variant
+                                 :start #fhir/integer 1}]}
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
             (index-entries
@@ -191,7 +191,7 @@
             :v-hash := (codec/number 1M)))))
 
     (testing "FHIRPath evaluation problem"
-      (let [resource {:fhir/type :fhir/RiskAssessment :id "foo"}
+      (let [resource #fhir/map{:fhir/type :fhir/RiskAssessment :id "foo"}
             hash (hash/generate resource)]
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]

@@ -107,7 +107,7 @@ public final class Narrative extends AbstractElement implements Complex, Extensi
 
     @Override
     public Narrative empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

@@ -125,7 +125,7 @@ public final class Expression extends AbstractElement implements Complex, Extens
 
     @Override
     public Expression empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

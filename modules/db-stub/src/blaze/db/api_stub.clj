@@ -15,7 +15,6 @@
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.module.test-util :as mtu]
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
@@ -30,9 +29,7 @@
     {:structure-definition-repo structure-definition-repo
      :fail-on-unknown-property false
      :include-summary-only true
-     :use-regex false}
-    :blaze.fhir/writing-context
-    {:structure-definition-repo structure-definition-repo}}))
+     :use-regex false}}))
 
 (def mem-node-config
   {:blaze.db/node
@@ -86,7 +83,6 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :parsing-context (:blaze.fhir/parsing-context root-system)
-    :writing-context (:blaze.fhir/writing-context root-system)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]

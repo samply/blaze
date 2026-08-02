@@ -18,6 +18,35 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(deftest select-keys-test
+  (testing "preserves the type of a resource"
+    (let [patient #fhir/map{:fhir/type :fhir/Patient :id "0"
+                            :active #fhir/boolean true
+                            :gender #fhir/code "male"}]
+      (is (= #fhir/map{:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}
+             (fu/select-keys patient [:fhir/type :id :gender])))))
+
+  (testing "preserves the type of a backbone element"
+    (let [entry #fhir/map{:fhir/type :fhir.Bundle/entry
+                          :fullUrl #fhir/uri "url-134152"
+                          :resource #fhir/map{:fhir/type :fhir/Patient :id "0"}}]
+      (is (= #fhir/map{:fhir/type :fhir.Bundle/entry :fullUrl #fhir/uri "url-134152"}
+             (fu/select-keys entry [:fullUrl])))))
+
+  (testing "keeps the Clojure metadata, which carries `_score` and the
+            transaction info"
+    (is (= {:blaze.db/t 1}
+           (meta (fu/select-keys (with-meta #fhir/map{:fhir/type :fhir/Patient :id "0"}
+                                   {:blaze.db/t 1})
+                                 [:id])))))
+
+  (testing "works for plain maps too"
+    (is (= {:a 1} (fu/select-keys {:a 1 :b 2} [:a]))))
+
+  (testing "keys without a value are skipped"
+    (is (= #fhir/map{:fhir/type :fhir/Patient}
+           (fu/select-keys #fhir/map{:fhir/type :fhir/Patient} [:id :gender])))))
+
 (deftest parameters-test
   (given (fu/parameters)
     :fhir/type := :fhir/Parameters
@@ -32,10 +61,10 @@
     :fhir/type := :fhir/Parameters
     :parameter :? empty?)
 
-  (given (fu/parameters "foo" {:fhir/type :fhir/ValueSet})
+  (given (fu/parameters "foo" #fhir/map{:fhir/type :fhir/ValueSet})
     :fhir/type := :fhir/Parameters
     [:parameter 0 :name] := #fhir/string "foo"
-    [:parameter 0 :resource] := {:fhir/type :fhir/ValueSet})
+    [:parameter 0 :resource] := #fhir/map{:fhir/type :fhir/ValueSet})
 
   (given (fu/parameters "foo" [#fhir/string "bar"])
     :fhir/type := :fhir/Parameters
@@ -127,65 +156,65 @@
     (is (empty? (fu/sort-by-priority []))))
 
   (testing "one code-system"
-    (is (= (fu/sort-by-priority [{:fhir/type :fhir/CodeSystem}])
-           [{:fhir/type :fhir/CodeSystem}])))
+    (is (= (fu/sort-by-priority [#fhir/map{:fhir/type :fhir/CodeSystem}])
+           [#fhir/map{:fhir/type :fhir/CodeSystem}])))
 
   (testing "two code-systems"
     (testing "active comes first"
       (is (= (fu/sort-by-priority
-              [{:fhir/type :fhir/CodeSystem
-                :status #fhir/code "draft"}
-               {:fhir/type :fhir/CodeSystem
-                :status #fhir/code "active"}])
-             [{:fhir/type :fhir/CodeSystem
-               :status #fhir/code "active"}
-              {:fhir/type :fhir/CodeSystem
-               :status #fhir/code "draft"}])))
+              [#fhir/map{:fhir/type :fhir/CodeSystem
+                         :status #fhir/code "draft"}
+               #fhir/map{:fhir/type :fhir/CodeSystem
+                         :status #fhir/code "active"}])
+             [#fhir/map{:fhir/type :fhir/CodeSystem
+                        :status #fhir/code "active"}
+              #fhir/map{:fhir/type :fhir/CodeSystem
+                        :status #fhir/code "draft"}])))
 
     (testing "without status comes last"
       (is (= (fu/sort-by-priority
-              [{:fhir/type :fhir/CodeSystem}
-               {:fhir/type :fhir/CodeSystem
-                :status #fhir/code "draft"}])
-             [{:fhir/type :fhir/CodeSystem
-               :status #fhir/code "draft"}
-              {:fhir/type :fhir/CodeSystem}])))
+              [#fhir/map{:fhir/type :fhir/CodeSystem}
+               #fhir/map{:fhir/type :fhir/CodeSystem
+                         :status #fhir/code "draft"}])
+             [#fhir/map{:fhir/type :fhir/CodeSystem
+                        :status #fhir/code "draft"}
+              #fhir/map{:fhir/type :fhir/CodeSystem}])))
 
     (testing "active 1.0.0 comes before draft 2.0.0-alpha.1"
       (is (= (fu/sort-by-priority
-              [{:fhir/type :fhir/CodeSystem
-                :version #fhir/string "2.0.0-alpha.1"
-                :status #fhir/code "draft"}
-               {:fhir/type :fhir/CodeSystem
-                :version #fhir/string "1.0.0"
-                :status #fhir/code "active"}])
-             [{:fhir/type :fhir/CodeSystem
-               :version #fhir/string "1.0.0"
-               :status #fhir/code "active"}
-              {:fhir/type :fhir/CodeSystem
-               :version #fhir/string "2.0.0-alpha.1"
-               :status #fhir/code "draft"}])))
+              [#fhir/map{:fhir/type :fhir/CodeSystem
+                         :version #fhir/string "2.0.0-alpha.1"
+                         :status #fhir/code "draft"}
+               #fhir/map{:fhir/type :fhir/CodeSystem
+                         :version #fhir/string "1.0.0"
+                         :status #fhir/code "active"}])
+             [#fhir/map{:fhir/type :fhir/CodeSystem
+                        :version #fhir/string "1.0.0"
+                        :status #fhir/code "active"}
+              #fhir/map{:fhir/type :fhir/CodeSystem
+                        :version #fhir/string "2.0.0-alpha.1"
+                        :status #fhir/code "draft"}])))
 
     (testing "newest comes first"
       (is (= (fu/sort-by-priority
-              [(with-meta {:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})
-               (with-meta {:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 2}})])
-             [(with-meta {:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 2}})
-              (with-meta {:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})])))
+              [(with-meta #fhir/map{:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})
+               (with-meta #fhir/map{:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 2}})])
+             [(with-meta #fhir/map{:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 2}})
+              (with-meta #fhir/map{:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})])))
 
     (testing "resource without t (external resource) comes first"
       (is (= (fu/sort-by-priority
-              [(with-meta {:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})
-               {:fhir/type :fhir/CodeSystem}])
-             [{:fhir/type :fhir/CodeSystem}
-              (with-meta {:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})])))
+              [(with-meta #fhir/map{:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})
+               #fhir/map{:fhir/type :fhir/CodeSystem}])
+             [#fhir/map{:fhir/type :fhir/CodeSystem}
+              (with-meta #fhir/map{:fhir/type :fhir/CodeSystem} {:blaze.db/tx {:blaze.db/t 1}})])))
 
     (testing "largest id comes first"
       (is (= (fu/sort-by-priority
-              [{:fhir/type :fhir/CodeSystem :id "1"}
-               {:fhir/type :fhir/CodeSystem :id "2"}])
-             [{:fhir/type :fhir/CodeSystem :id "2"}
-              {:fhir/type :fhir/CodeSystem :id "1"}])))))
+              [#fhir/map{:fhir/type :fhir/CodeSystem :id "1"}
+               #fhir/map{:fhir/type :fhir/CodeSystem :id "2"}])
+             [#fhir/map{:fhir/type :fhir/CodeSystem :id "2"}
+              #fhir/map{:fhir/type :fhir/CodeSystem :id "1"}])))))
 
 (deftest coerce-params-test
   (testing "simple copy"
@@ -243,8 +272,8 @@
   (testing "resource copy"
     (given (fu/coerce-params
             {"a" {:action :copy-resource}}
-            (fu/parameters "a" {:fhir/type :fhir/Patient :id "0"}))
-      :a := {:fhir/type :fhir/Patient :id "0"}))
+            (fu/parameters "a" #fhir/map{:fhir/type :fhir/Patient :id "0"}))
+      :a := #fhir/map{:fhir/type :fhir/Patient :id "0"}))
 
   (testing "unsupported param"
     (given (fu/coerce-params

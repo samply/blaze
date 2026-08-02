@@ -215,19 +215,19 @@
 
   (testing "successful expansion by id"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "id-152952"
-               :url #fhir/uri "value-set-164038"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-115910"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "id-152952"
+                        :url #fhir/uri "value-set-164038"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-115910"}]}}]]]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "id-152952"}})]
@@ -257,20 +257,20 @@
 
   (testing "successful expansion by url"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "version-170327"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri "value-set-154043"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-115910"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "version-170327"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                        :url #fhir/uri "value-set-154043"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-115910"}]}}]]]
 
       (doseq [include-designations [nil "true" "false"]
               lang [nil "en" "de"]
@@ -309,30 +309,30 @@
           (let [{:keys [status body]}
                 @(handler
                   {:request-method :post
-                   :body {:fhir/type :fhir/Parameters
-                          :parameter
-                          (cond->
-                           [{:fhir/type :fhir.Parameters/parameter
-                             :name #fhir/string "url"
-                             :value #fhir/uri "value-set-154043"}]
-                            include-designations
-                            (conj
-                             {:fhir/type :fhir.Parameters/parameter
-                              :name #fhir/string "includeDesignations"
-                              :value (type/boolean include-designations)})
-                            lang
-                            (conj
-                             {:fhir/type :fhir.Parameters/parameter
-                              :name #fhir/string "displayLanguage"
-                              :value (type/code lang)})
-                            property
-                            (into
-                             (map
-                              (fn [property]
-                                {:fhir/type :fhir.Parameters/parameter
-                                 :name #fhir/string "property"
-                                 :value (type/string property)}))
-                             property))}})]
+                   :body (type/fhir-map {:fhir/type :fhir/Parameters
+                                         :parameter
+                                         (cond->
+                                          [#fhir/map{:fhir/type :fhir.Parameters/parameter
+                                                     :name #fhir/string "url"
+                                                     :value #fhir/uri "value-set-154043"}]
+                                           include-designations
+                                           (conj
+                                            (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                                                            :name #fhir/string "includeDesignations"
+                                                            :value (type/boolean include-designations)}))
+                                           lang
+                                           (conj
+                                            (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                                                            :name #fhir/string "displayLanguage"
+                                                            :value (type/code lang)}))
+                                           property
+                                           (into
+                                            (map
+                                             (fn [property]
+                                               (type/fhir-map {:fhir/type :fhir.Parameters/parameter
+                                                               :name #fhir/string "property"
+                                                               :value (type/string property)})))
+                                            property))})})]
 
             (is (= 200 status))
 
@@ -359,24 +359,24 @@
 
     (testing "successful expansion by valueSet"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :version #fhir/string "version-170327"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :version #fhir/string "version-170327"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}]}]]]
 
         (let [{:keys [status body]}
               @(handler {:request-method :post
                          :body (fu/parameters
                                 "valueSet"
-                                {:fhir/type :fhir/ValueSet
-                                 :compose
-                                 {:fhir/type :fhir.ValueSet/compose
-                                  :include
-                                  [{:fhir/type :fhir.ValueSet.compose/include
-                                    :system #fhir/uri "system-115910"}]}})})]
+                                #fhir/map{:fhir/type :fhir/ValueSet
+                                          :compose
+                                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                    :include
+                                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                               :system #fhir/uri "system-115910"}]}})})]
 
           (is (= 200 status))
 
@@ -392,12 +392,12 @@
                 @(handler {:request-method :post
                            :body (fu/parameters
                                   "valueSet"
-                                  {:fhir/type :fhir/ValueSet
-                                   :compose
-                                   {:fhir/type :fhir.ValueSet/compose
-                                    :include
-                                    [{:fhir/type :fhir.ValueSet.compose/include
-                                      :system #fhir/uri "system-115910"}]}}
+                                  #fhir/map{:fhir/type :fhir/ValueSet
+                                            :compose
+                                            #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                      :include
+                                                      [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                                 :system #fhir/uri "system-115910"}]}}
                                   "count" #fhir/integer 0)})]
 
             (is (= 200 status))
@@ -413,12 +413,12 @@
                 @(handler {:request-method :post
                            :body (fu/parameters
                                   "valueSet"
-                                  {:fhir/type :fhir/ValueSet
-                                   :compose
-                                   {:fhir/type :fhir.ValueSet/compose
-                                    :include
-                                    [{:fhir/type :fhir.ValueSet.compose/include
-                                      :system #fhir/uri "system-115910"}]}}
+                                  #fhir/map{:fhir/type :fhir/ValueSet
+                                            :compose
+                                            #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                      :include
+                                                      [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                                 :system #fhir/uri "system-115910"}]}}
                                   "offset" #fhir/integer 0)})]
 
             (is (= 200 status))
@@ -434,12 +434,12 @@
                 @(handler {:request-method :post
                            :body (fu/parameters
                                   "valueSet"
-                                  {:fhir/type :fhir/ValueSet
-                                   :compose
-                                   {:fhir/type :fhir.ValueSet/compose
-                                    :include
-                                    [{:fhir/type :fhir.ValueSet.compose/include
-                                      :system #fhir/uri "system-115910"}]}}
+                                  #fhir/map{:fhir/type :fhir/ValueSet
+                                            :compose
+                                            #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                      :include
+                                                      [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                                 :system #fhir/uri "system-115910"}]}}
                                   "includeDefinition" #fhir/boolean true)})]
 
             (is (= 200 status))
@@ -457,12 +457,12 @@
                 @(handler {:request-method :post
                            :body (fu/parameters
                                   "valueSet"
-                                  {:fhir/type :fhir/ValueSet
-                                   :compose
-                                   {:fhir/type :fhir.ValueSet/compose
-                                    :include
-                                    [{:fhir/type :fhir.ValueSet.compose/include
-                                      :system #fhir/uri "system-115910"}]}}
+                                  #fhir/map{:fhir/type :fhir/ValueSet
+                                            :compose
+                                            #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                      :include
+                                                      [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                                 :system #fhir/uri "system-115910"}]}}
                                   "system-version"
                                   #fhir/canonical "system-115910|version-170327")})]
 
@@ -477,19 +477,19 @@
 
     (testing "including the definition"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "value-set-154043"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}]}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                          :url #fhir/uri "value-set-154043"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"}]}}]]]
 
         (let [{:keys [status body]}
               @(handler {:query-params {"url" "value-set-154043"
@@ -507,19 +507,19 @@
 
     (testing "and count = 0"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "value-set-154043"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}]}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                          :url #fhir/uri "value-set-154043"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"}]}}]]]
 
         (let [{:keys [status body]}
               @(handler {:query-params {"url" "value-set-154043" "count" "0"}})]
@@ -534,21 +534,21 @@
 
     (testing "and count = 1"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}
-                  {:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-155741"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "0"
-                 :url #fhir/uri "value-set-154043"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}
+                           #fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-155741"}]}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                          :url #fhir/uri "value-set-154043"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"}]}}]]]
 
         (let [{:keys [status body]}
               @(handler {:query-params {"url" "value-set-154043" "count" "1"}})]
@@ -565,33 +565,33 @@
 
   (testing "successful expansion by url and valueSetVersion"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]
-        [:put {:fhir/type :fhir/CodeSystem :id "1"
-               :url #fhir/uri "system-135810"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-135827"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri "value-set-154043"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-115910"}]}}]
-        [:put {:fhir/type :fhir/ValueSet :id "1"
-               :url #fhir/uri "value-set-154043"
-               :version #fhir/string "version-135747"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-135810"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]
+        [:put #fhir/map{:fhir/type :fhir/CodeSystem :id "1"
+                        :url #fhir/uri "system-135810"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-135827"}]}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                        :url #fhir/uri "value-set-154043"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-115910"}]}}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "1"
+                        :url #fhir/uri "value-set-154043"
+                        :version #fhir/string "version-135747"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-135810"}]}}]]]
 
       (let [{:keys [status body]}
             @(handler {:query-params {"url" "value-set-154043"
@@ -607,23 +607,23 @@
 
   (testing "successful expansion with inactive concept"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-170110"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-170118"
-                 :property
-                 [{:fhir/type :fhir.CodeSystem.concept/property
-                   :code #fhir/code "inactive"
-                   :value #fhir/boolean true}]}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri "value-set-170056"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-170110"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-170110"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-170118"
+                                   :property
+                                   [#fhir/map{:fhir/type :fhir.CodeSystem.concept/property
+                                              :code #fhir/code "inactive"
+                                              :value #fhir/boolean true}]}]}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "0"
+                        :url #fhir/uri "value-set-170056"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-170110"}]}}]]]
 
       (let [{:keys [status body]}
             @(handler {:query-params {"url" "value-set-170056"}})]
@@ -655,20 +655,20 @@
                        :body (fu/parameters
                               "url" #fhir/uri "value-set-110445"
                               "tx-resource"
-                              {:fhir/type :fhir/CodeSystem
-                               :url #fhir/uri "system-115910"
-                               :content #fhir/code "complete"
-                               :concept
-                               [{:fhir/type :fhir.CodeSystem/concept
-                                 :code #fhir/code "code-115927"}]}
+                              #fhir/map{:fhir/type :fhir/CodeSystem
+                                        :url #fhir/uri "system-115910"
+                                        :content #fhir/code "complete"
+                                        :concept
+                                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                                   :code #fhir/code "code-115927"}]}
                               "tx-resource"
-                              {:fhir/type :fhir/ValueSet
-                               :url #fhir/uri "value-set-110445"
-                               :compose
-                               {:fhir/type :fhir.ValueSet/compose
-                                :include
-                                [{:fhir/type :fhir.ValueSet.compose/include
-                                  :system #fhir/uri "system-115910"}]}})})]
+                              #fhir/map{:fhir/type :fhir/ValueSet
+                                        :url #fhir/uri "value-set-110445"
+                                        :compose
+                                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                  :include
+                                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                             :system #fhir/uri "system-115910"}]}})})]
 
         (is (= 200 status))
 

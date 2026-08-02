@@ -201,7 +201,7 @@
   (into [] (comp (remove rh/deleted?) (map #(node-util/rs-key % variant))) resource-handles))
 
 (defn- deleted-resource [{:fhir/keys [type] :keys [id]}]
-  {:fhir/type type :id id})
+  (type/fhir-map {:fhir/type type :id id}))
 
 (defn- resource-content-not-found-msg [resource-handle]
   (format "The resource content of `%s/%s` with hash `%s` was not found."
@@ -334,7 +334,7 @@
 (defn- subset-resource-fn [elements]
   (let [keys (conj (seq elements) :fhir/type :id :meta)]
     (fn [resource]
-      (-> (select-keys resource keys)
+      (-> (fu/select-keys resource keys)
           (update :meta update :tag conj-vec fu/subsetted)))))
 
 (defn- subset-xf [elements]

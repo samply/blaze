@@ -89,6 +89,9 @@
       #fhir/boolean true
       #fhir/boolean{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/boolean true {:foo "bar"}))))))
+
   (testing "invalid"
     (given (st/with-instrument-disabled (type/boolean "a"))
       ::anom/category := ::anom/incorrect
@@ -219,6 +222,9 @@
       #fhir/integer 1
       #fhir/integer{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/integer 1 {:foo "bar"}))))))
+
   (testing "invalid"
     (given (st/with-instrument-disabled (type/integer "a"))
       ::anom/category := ::anom/incorrect
@@ -325,6 +331,9 @@
     (are [x] (type/string? x)
       #fhir/string ""
       #fhir/string{:id "foo"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/string "string-155411" {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/string (:fhir/type x))
@@ -441,6 +450,9 @@
       #fhir/decimal 1M
       #fhir/decimal{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/decimal 1M {:foo "bar"}))))))
+
   (testing "type"
     (are [x] (= :fhir/decimal (:fhir/type x))
       #fhir/decimal 1M
@@ -529,6 +541,9 @@
     (are [x] (type/uri? x)
       #fhir/uri ""
       #fhir/uri{:id "foo"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/uri "uri-155428" {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/uri (:fhir/type x))
@@ -644,6 +659,9 @@
       #fhir/url ""
       #fhir/url{}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/url "url-155438" {:foo "bar"}))))))
+
   (testing "type"
     (are [x] (= :fhir/url (:fhir/type x))
       #fhir/url ""
@@ -752,6 +770,9 @@
     (are [x] (type/canonical? x)
       #fhir/canonical ""
       #fhir/canonical{:id "foo"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/canonical "canonical-155443" {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/canonical (:fhir/type x))
@@ -866,6 +887,9 @@
       #fhir/base64Binary ""
       #fhir/base64Binary{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/base64Binary "" {:foo "bar"}))))))
+
   (testing "type"
     (are [x] (= :fhir/base64Binary (:fhir/type x))
       #fhir/base64Binary ""
@@ -971,6 +995,9 @@
       #fhir/instant{:id "foo"}
       #fhir/instant{:value #system/date-time "1970-01-02T00:00:00Z"}
       #fhir/instant{:value #system/date-time "1970-01-02T00:00:00+01:00"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/instant #system/date-time "1970-01-02T00:00:00Z" {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/instant (:fhir/type x))
@@ -1220,6 +1247,9 @@
       (are [x s] (= (pr-str x) s)
         #fhir/date #system/date "2020" "#fhir/date #system/date \"2020\""
         #fhir/date{:id "foo"} "#fhir/date{:id \"foo\"}")))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/date #system/date "2020" {:foo "bar"}))))))
 
   (testing "with year-month precision"
     (testing "date?"
@@ -1492,6 +1522,9 @@
       (are [x s] (= (pr-str x) s)
         #fhir/dateTime #system/date-time "2020" "#fhir/dateTime #system/date-time \"2020\""
         #fhir/dateTime{:id "foo"} "#fhir/dateTime{:id \"foo\"}")))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/dateTime #system/date-time "2020" {:foo "bar"}))))))
 
   (testing "with year-month precision"
     (testing "dateTime?"
@@ -1945,6 +1978,9 @@
       #fhir/time #system/time "15:27:45"
       #fhir/time{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/time #system/time "15:27:45" {:foo "bar"}))))))
+
   (testing "type"
     (are [x] (= :fhir/time (:fhir/type x))
       #fhir/time #system/time "15:27:45"
@@ -2058,6 +2094,9 @@
     (are [x] (type/code? x)
       #fhir/code ""
       #fhir/code{:id "foo"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/code "code-155500" {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/code (:fhir/type x))
@@ -2204,6 +2243,9 @@
       #fhir/oid ""
       #fhir/oid{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/oid "" {:foo "bar"}))))))
+
   (testing "type"
     (are [x] (= :fhir/oid (:fhir/type x))
       #fhir/oid ""
@@ -2303,6 +2345,9 @@
       #fhir/id ""
       #fhir/id{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/id "id-155507" {:foo "bar"}))))))
+
   (testing "type"
     (are [x] (= :fhir/id (:fhir/type x))
       #fhir/id ""
@@ -2401,6 +2446,9 @@
     (are [x] (type/markdown? x)
       #fhir/markdown ""
       #fhir/markdown{:id "foo"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/markdown "markdown-155512" {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/markdown (:fhir/type x))
@@ -2502,6 +2550,9 @@
       #fhir/unsignedInt 0
       (type/unsignedInt (dec (bit-shift-left 1 31)))
       #fhir/unsignedInt{:id "foo"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/unsignedInt 1 {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/unsignedInt (:fhir/type x))
@@ -2623,6 +2674,9 @@
       (type/positiveInt (dec (bit-shift-left 1 31)))
       #fhir/positiveInt{:id "foo"}))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/positiveInt 1 {:foo "bar"}))))))
+
   (testing "type"
     (are [x] (= :fhir/positiveInt (:fhir/type x))
       #fhir/positiveInt 1
@@ -2737,6 +2791,9 @@
     (are [x] (type/uuid? x)
       #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
       #fhir/uuid{:id "foo"}))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" {:foo "bar"}))))))
 
   (testing "type"
     (are [x] (= :fhir/uuid (:fhir/type x))
@@ -2855,6 +2912,9 @@
   (testing "xhtml?"
     (is (type/xhtml? #fhir/xhtml "xhtml-123745")))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/xhtml "xhtml-155523" {:foo "bar"}))))))
+
   (testing "from XML"
     (is (= #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"
            (type/xml->Xhtml xhtml-element))))
@@ -2944,6 +3004,9 @@
 (deftest address-test
   (testing "type"
     (is (= :fhir/Address (:fhir/type #fhir/Address{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Address{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3041,6 +3104,9 @@
   (testing "type"
     (is (= :fhir/Age (:fhir/type #fhir/Age{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Age{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Age{:id "foo"}
@@ -3079,6 +3145,9 @@
   (testing "type"
     (is (= :fhir/Annotation (:fhir/type #fhir/Annotation{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Annotation{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Annotation{:id "foo"}
@@ -3116,6 +3185,9 @@
 (deftest attachment-test
   (testing "type"
     (is (= :fhir/Attachment (:fhir/type #fhir/Attachment{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Attachment{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3185,6 +3257,9 @@
   (testing "type"
     (is (= :fhir.Bundle.entry/search (:fhir/type #fhir.Bundle.entry/search{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir.Bundle.entry/search{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.Bundle.entry/search{:id "foo"}
@@ -3240,6 +3315,9 @@
 (deftest codeable-concept-test
   (testing "type"
     (is (= :fhir/CodeableConcept (:fhir/type #fhir/CodeableConcept{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/CodeableConcept{} {:foo "bar"}))))))
 
   (testing "interning"
     (testing "instances with ids are not interned"
@@ -3312,6 +3390,9 @@
   (testing "type"
     (is (= :fhir/Coding (:fhir/type #fhir/Coding{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Coding{} {:foo "bar"}))))))
+
   (testing "interning"
     (testing "instances with ids are not interned"
       (satisfies-prop 100
@@ -3377,6 +3458,9 @@
   (testing "type"
     (is (= :fhir/ContactDetail (:fhir/type #fhir/ContactDetail{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/ContactDetail{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/ContactDetail{:id "foo"}
@@ -3419,6 +3503,9 @@
   (testing "type"
     (is (= :fhir/ContactPoint (:fhir/type #fhir/ContactPoint{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/ContactPoint{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/ContactPoint{:id "foo"}
@@ -3456,6 +3543,9 @@
 (deftest contributor-test
   (testing "type"
     (is (= :fhir/Contributor (:fhir/type #fhir/Contributor{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Contributor{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3499,6 +3589,9 @@
   (testing "type"
     (is (= :fhir/Count (:fhir/type #fhir/Count{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Count{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Count{:id "foo"}
@@ -3536,6 +3629,9 @@
 (deftest data-requirement-test
   (testing "type"
     (is (= :fhir/DataRequirement (:fhir/type #fhir/DataRequirement{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/DataRequirement{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3588,6 +3684,9 @@
   (testing "type"
     (is (= :fhir.DataRequirement/codeFilter (:fhir/type #fhir.DataRequirement/codeFilter{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir.DataRequirement/codeFilter{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.DataRequirement/codeFilter{:id "foo"}
@@ -3636,6 +3735,9 @@
   (testing "type"
     (is (= :fhir.DataRequirement/dateFilter (:fhir/type #fhir.DataRequirement/dateFilter{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir.DataRequirement/dateFilter{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.DataRequirement/dateFilter{:id "foo"}
@@ -3679,6 +3781,9 @@
 (deftest data-requirement-sort-test
   (testing "type"
     (is (= :fhir.DataRequirement/sort (:fhir/type #fhir.DataRequirement/sort{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir.DataRequirement/sort{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3724,6 +3829,9 @@
   (testing "type"
     (is (= :fhir/Distance (:fhir/type #fhir/Distance{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Distance{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Distance{:id "foo"}
@@ -3761,6 +3869,9 @@
 (deftest duration-test
   (testing "type"
     (is (= :fhir/Duration (:fhir/type #fhir/Duration{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Duration{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3800,6 +3911,9 @@
   (testing "type"
     (is (= :fhir/Expression (:fhir/type #fhir/Expression{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Expression{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Expression{:id "foo"}
@@ -3837,6 +3951,9 @@
 (deftest dosage-test
   (testing "type"
     (is (= :fhir/Dosage (:fhir/type #fhir/Dosage{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Dosage{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3880,6 +3997,9 @@
   (testing "type"
     (is (= :fhir.Dosage/doseAndRate (:fhir/type #fhir.Dosage/doseAndRate{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir.Dosage/doseAndRate{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.Dosage/doseAndRate{:id "foo"}
@@ -3914,6 +4034,9 @@
 (deftest extension-test
   (testing "type"
     (is (= :fhir/Extension (:fhir/type #fhir/Extension{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Extension{:url "url-155612"} {:foo "bar"}))))))
 
   (testing "interning"
     (testing "instances with code values are interned"
@@ -3994,6 +4117,9 @@
 (deftest human-name-test
   (testing "type"
     (is (= :fhir/HumanName (:fhir/type #fhir/HumanName{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/HumanName{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4090,6 +4216,9 @@
   (testing "type"
     (is (= :fhir/Identifier (:fhir/type #fhir/Identifier{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Identifier{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Identifier{:id "foo"}
@@ -4161,6 +4290,9 @@
 (deftest meta-test
   (testing "type"
     (is (= :fhir/Meta (:fhir/type #fhir/Meta{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Meta{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4267,6 +4399,9 @@
   (testing "type"
     (is (= :fhir/Money (:fhir/type #fhir/Money{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Money{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Money{:id "foo"}
@@ -4318,6 +4453,9 @@
 (deftest narrative-test
   (testing "type"
     (is (= :fhir/Narrative (:fhir/type #fhir/Narrative{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Narrative{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4375,6 +4513,9 @@
   (testing "type"
     (is (= :fhir/ParameterDefinition (:fhir/type #fhir/ParameterDefinition{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/ParameterDefinition{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/ParameterDefinition{:id "foo"}
@@ -4426,6 +4567,9 @@
 (deftest period-test
   (testing "type"
     (is (= :fhir/Period (:fhir/type #fhir/Period{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Period{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4487,6 +4631,9 @@
 (deftest quantity-test
   (testing "type"
     (is (= :fhir/Quantity (:fhir/type #fhir/Quantity{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Quantity{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4573,6 +4720,9 @@
   (testing "type"
     (is (= :fhir/Range (:fhir/type #fhir/Range{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Range{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Range{:id "foo"}
@@ -4637,6 +4787,9 @@
   (testing "type"
     (is (= :fhir/Ratio (:fhir/type #fhir/Ratio{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Ratio{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Ratio{:id "foo"}
@@ -4699,6 +4852,9 @@
 (deftest reference-test
   (testing "type"
     (is (= :fhir/Reference (:fhir/type #fhir/Reference{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Reference{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4808,6 +4964,9 @@
   (testing "type"
     (is (= :fhir/RelatedArtifact (:fhir/type #fhir/RelatedArtifact{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/RelatedArtifact{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/RelatedArtifact{:id "foo"}
@@ -4845,6 +5004,9 @@
 (deftest sampled-data-test
   (testing "type"
     (is (= :fhir/SampledData (:fhir/type #fhir/SampledData{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/SampledData{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4895,6 +5057,9 @@
 (deftest signature-test
   (testing "type"
     (is (= :fhir/Signature (:fhir/type #fhir/Signature{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Signature{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4950,6 +5115,9 @@
   (testing "type"
     (is (= :fhir/Timing (:fhir/type #fhir/Timing{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/Timing{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Timing{:id "foo"}
@@ -4989,6 +5157,9 @@
   (testing "type"
     (is (= :fhir.Timing/repeat (:fhir/type #fhir.Timing/repeat{}))))
 
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir.Timing/repeat{} {:foo "bar"}))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.Timing/repeat{:id "foo"}
@@ -5027,6 +5198,9 @@
 (deftest trigger-definition-test
   (testing "type"
     (is (= :fhir/TriggerDefinition (:fhir/type #fhir/TriggerDefinition{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/TriggerDefinition{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -5069,6 +5243,9 @@
 (deftest usage-context-test
   (testing "type"
     (is (= :fhir/UsageContext (:fhir/type #fhir/UsageContext{}))))
+
+  (testing "empty preserves the metadata"
+    (is (= {:foo "bar"} (meta (empty (with-meta #fhir/UsageContext{} {:foo "bar"}))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)

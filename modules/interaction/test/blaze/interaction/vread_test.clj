@@ -48,7 +48,7 @@
 
 (deftest handler-test
   (with-handler [handler]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]]
      [[:delete "Patient" "0"]]]
 
     (testing "initial version"
@@ -133,8 +133,8 @@
 
   (testing "with deleted history"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+       [[:put #fhir/map{:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
        [[:delete-history "Patient" "0"]]]
 
       (testing "initial version doesn't exist anymore"

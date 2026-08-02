@@ -164,7 +164,13 @@
   (log/trace "Register resources")
   (si/register (mapcat si/struct-def->spec-def (resources repo))))
 
-(def ^:private repo
+(def repo
+  "The one FHIR R4 structure definition repository.
+
+  There is no deployment variance in the set of FHIR types, so this is a plain
+  singleton. `ig/init-key` returns it, ignoring its config, and
+  `blaze.fhir.type-metadata` uses it to build the global type metadata
+  registry."
   (reify p/StructureDefinitionRepo
     (-primitive-types [_]
       (into

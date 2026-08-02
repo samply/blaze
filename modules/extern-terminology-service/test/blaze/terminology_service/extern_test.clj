@@ -6,7 +6,6 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
-   [blaze.fhir.writing-context]
    [blaze.http-client.spec]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
@@ -49,12 +48,9 @@
   {::ts/extern
    {:base-uri "http://localhost:8080/fhir"
     :http-client (ig/ref ::http-client)
-    :parsing-context (ig/ref :blaze.fhir/parsing-context)
-    :writing-context (ig/ref :blaze.fhir/writing-context)}
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)}
    ::http-client {}
    :blaze.fhir/parsing-context
-   {:structure-definition-repo structure-definition-repo}
-   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}})
 
 (def ^:private config-with-token-provider
@@ -62,13 +58,10 @@
    {:base-uri "http://localhost:8080/fhir"
     :http-client (ig/ref ::http-client)
     :token-provider (ig/ref ::token-provider)
-    :parsing-context (ig/ref :blaze.fhir/parsing-context)
-    :writing-context (ig/ref :blaze.fhir/writing-context)}
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)}
    ::http-client {}
    ::token-provider {}
    :blaze.fhir/parsing-context
-   {:structure-definition-repo structure-definition-repo}
-   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}})
 
 (def ^:private config-with-token-provider-unavailable
@@ -76,13 +69,10 @@
    {:base-uri "http://localhost:8080/fhir"
     :http-client (ig/ref ::http-client)
     :token-provider (ig/ref ::token-provider-unavailable)
-    :parsing-context (ig/ref :blaze.fhir/parsing-context)
-    :writing-context (ig/ref :blaze.fhir/writing-context)}
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)}
    ::http-client {}
    ::token-provider-unavailable {}
    :blaze.fhir/parsing-context
-   {:structure-definition-repo structure-definition-repo}
-   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}})
 
 (deftest init-test
@@ -98,8 +88,7 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
 
   (testing "missing http-client"
     (given-failed-system (update config ::ts/extern dissoc :http-client)
@@ -112,12 +101,6 @@
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
-
-  (testing "missing writing-context"
-    (given-failed-system (update config ::ts/extern dissoc :writing-context)
-      :key := ::ts/extern
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
   (testing "invalid base-uri"
     (given-failed-system (assoc-in config [::ts/extern :base-uri] ::invalid)
@@ -140,13 +123,6 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.fhir/parsing-context]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
-  (testing "invalid writing-context"
-    (given-failed-system (assoc-in config [::ts/extern :writing-context] ::invalid)
-      :key := ::ts/extern
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/writing-context]
-      [:cause-data ::s/problems 0 :val] := ::invalid))
-
   (testing "invalid token-provider"
     (given-failed-system (assoc-in config [::ts/extern :token-provider] ::invalid)
       :key := ::ts/extern
@@ -158,47 +134,48 @@
   (with-system [{collector ::extern/request-duration-seconds} {::extern/request-duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-(defn- params-matcher [{:blaze.fhir/keys [writing-context]} params]
-  (Matchers/is (fhir-spec/write-json-as-string writing-context params)))
+(defn- params-matcher [params]
+  (Matchers/is (fhir-spec/write-json-as-string params)))
 
 (defn- stub-post
   "Stubs `http-client` to expect a POST to `url` with `params` as request body
   and to respond with `status` (default 200) and `body` written as FHIR JSON.
   With a non-nil `:token` it also expects an `Authorization` bearer header."
-  [^HttpClientMock http-client system url params
+  [^HttpClientMock http-client url params
    {:keys [status token body] :or {status 200}}]
   (-> (cond-> (.onPost http-client ^String url)
         token (.withHeader "Authorization" (str "Bearer " token)))
-      (.withBody (params-matcher system params))
+      (.withBody (params-matcher params))
       (.doReturn (int status) (j/write-value-as-string body))
       (.withHeader "content-type" "application/fhir+json")))
 
-(defn- stub-code-system-validate-code [http-client system params opts]
-  (stub-post http-client system "http://localhost:8080/fhir/CodeSystem/$validate-code" params opts))
+(defn- stub-code-system-validate-code [http-client params opts]
+  (stub-post http-client "http://localhost:8080/fhir/CodeSystem/$validate-code" params opts))
 
-(defn- stub-expand-value-set [http-client system params opts]
-  (stub-post http-client system "http://localhost:8080/fhir/ValueSet/$expand" params opts))
+(defn- stub-expand-value-set [http-client params opts]
+  (stub-post http-client "http://localhost:8080/fhir/ValueSet/$expand" params opts))
 
-(defn- stub-value-set-validate-code [http-client system params opts]
-  (stub-post http-client system "http://localhost:8080/fhir/ValueSet/$validate-code" params opts))
+(defn- stub-value-set-validate-code [http-client params opts]
+  (stub-post http-client "http://localhost:8080/fhir/ValueSet/$validate-code" params opts))
 
 (deftest code-system-validate-code-test
   (testing "success"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
-        (stub-code-system-validate-code http-client system params
-                                        {:body {:resourceType "Parameters"}})
+        (stub-code-system-validate-code
+         http-client params
+         {:body {:resourceType "Parameters"}})
 
         (given @(ts/code-system-validate-code ts params)
           :fhir/type := :fhir/Parameters))))
 
   (testing "code-system not-found"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
         (stub-code-system-validate-code
-         http-client system params
+         http-client params
          {:status 400
           :body {:resourceType "OperationOutcome"
                  :issue
@@ -215,12 +192,13 @@
           [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/CodeSystem/administrative-gender` was not found."))))
 
   (testing "success with token"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config-with-token-provider]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/CodeSystem/administrative-gender")]
-        (stub-code-system-validate-code http-client system params
-                                        {:token "my-token"
-                                         :body {:resourceType "Parameters"}})
+        (stub-code-system-validate-code
+         http-client params
+         {:token "my-token"
+          :body {:resourceType "Parameters"}})
 
         (given @(ts/code-system-validate-code ts params)
           :fhir/type := :fhir/Parameters))))
@@ -236,23 +214,25 @@
 
 (deftest expand-value-set-test
   (testing "success"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (stub-expand-value-set http-client system params
-                               {:body {:resourceType "ValueSet" :id "0"}})
+        (stub-expand-value-set
+         http-client params
+         {:body {:resourceType "ValueSet" :id "0"}})
 
         (given @(ts/expand-value-set ts params)
           :fhir/type := :fhir/ValueSet
           :id := "0"))))
 
   (testing "success with token"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config-with-token-provider]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (stub-expand-value-set http-client system params
-                               {:token "my-token"
-                                :body {:resourceType "ValueSet" :id "0"}})
+        (stub-expand-value-set
+         http-client params
+         {:token "my-token"
+          :body {:resourceType "ValueSet" :id "0"}})
 
         (given @(ts/expand-value-set ts params)
           :fhir/type := :fhir/ValueSet
@@ -269,21 +249,22 @@
 
 (deftest value-set-validate-code-test
   (testing "success"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (stub-value-set-validate-code http-client system params
-                                      {:body {:resourceType "Parameters"}})
+        (stub-value-set-validate-code
+         http-client params
+         {:body {:resourceType "Parameters"}})
 
         (given @(ts/value-set-validate-code ts params)
           :fhir/type := :fhir/Parameters))))
 
   (testing "value-set not-found"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
         (stub-value-set-validate-code
-         http-client system params
+         http-client params
          {:status 400
           :body {:resourceType "OperationOutcome"
                  :issue
@@ -300,12 +281,13 @@
           [:fhir/issues 0 :diagnostics] := #fhir/string "The value set `http://hl7.org/fhir/ValueSet/administrative-gender` was not found."))))
 
   (testing "success with token"
-    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client] :as system} config-with-token-provider]
+    (with-system [{ts ::ts/extern ::keys [^HttpClientMock http-client]} config-with-token-provider]
 
       (let [params (fu/parameters "url" #fhir/uri "http://hl7.org/fhir/ValueSet/administrative-gender")]
-        (stub-value-set-validate-code http-client system params
-                                      {:token "my-token"
-                                       :body {:resourceType "Parameters"}})
+        (stub-value-set-validate-code
+         http-client params
+         {:token "my-token"
+          :body {:resourceType "Parameters"}})
 
         (given @(ts/value-set-validate-code ts params)
           :fhir/type := :fhir/Parameters))))

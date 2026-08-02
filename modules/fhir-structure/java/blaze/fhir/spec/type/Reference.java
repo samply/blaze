@@ -127,7 +127,7 @@ public final class Reference extends AbstractElement implements Complex, Extensi
 
     @Override
     public Reference empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

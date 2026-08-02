@@ -16,14 +16,14 @@
   (log/warn (format-request request) "- 401 - Unauthorized")
   (ac/completed-future
    (-> (ring/response
-        {:fhir/type :fhir/OperationOutcome
-         :issue
-         [{:fhir/type :fhir.OperationOutcome/issue
-           :severity #fhir/code "error"
-           :code #fhir/code "login"
-           :details
-           (type/codeable-concept
-            {:coding [msg-auth-required]})}]})
+        (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                        :issue
+                        [(type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                                         :severity #fhir/code "error"
+                                         :code #fhir/code "login"
+                                         :details
+                                         (type/codeable-concept
+                                          {:coding [msg-auth-required]})})]}))
        (ring/status 401))))
 
 (defn wrap-auth-guard

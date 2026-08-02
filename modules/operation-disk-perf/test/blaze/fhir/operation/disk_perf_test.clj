@@ -84,7 +84,7 @@
 (deftest handler-test
   (testing "wrong resource type"
     (with-handler [handler]
-      (let [{:keys [status body]} @(handler {:body {:fhir/type :fhir/Patient}})]
+      (let [{:keys [status body]} @(handler {:body #fhir/map{:fhir/type :fhir/Patient}})]
 
         (is (= 400 status))
 
@@ -151,7 +151,7 @@
 
   (testing "success"
     (testing "without parameters"
-      (doseq [body [nil {:fhir/type :fhir/Parameters}]]
+      (doseq [body [nil #fhir/map{:fhir/type :fhir/Parameters}]]
         (with-handler [handler]
           (let [{:keys [status headers]}
                 @(handler {:body body})]

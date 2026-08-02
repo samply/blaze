@@ -26,27 +26,27 @@
 
 (defn create-code-system [module-id version title]
   (cond->
-   {:fhir/type :fhir/CodeSystem
-    :meta cs-u/read-only-meta
-    :url (type/uri-interned url)
-    :version (type/string (version-url module-id version))
-    :status #fhir/code "active"
-    :experimental #fhir/boolean false
-    :date (type/dateTime (system/parse-date-time (str (LocalDate/parse (str version) DateTimeFormatter/BASIC_ISO_DATE))))
-    :caseSensitive #fhir/boolean true
-    :hierarchyMeaning #fhir/code "is-a"
-    :versionNeeded #fhir/boolean false
-    :content #fhir/code "not-present"
-    :filter
-    [{:fhir/type :fhir.CodeSystem/filter
-      :code #fhir/code "concept"
-      :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value."
-      :operator [#fhir/code "is-a"]
-      :value #fhir/string "A SNOMED CT code"}
-     {:fhir/type :fhir.CodeSystem/filter
-      :code #fhir/code "concept"
-      :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value, excluding the code itself."
-      :operator [#fhir/code "descendent-of"]
-      :value #fhir/string "A SNOMED CT code"}]}
+   (type/fhir-map {:fhir/type :fhir/CodeSystem
+                   :meta cs-u/read-only-meta
+                   :url (type/uri-interned url)
+                   :version (type/string (version-url module-id version))
+                   :status #fhir/code "active"
+                   :experimental #fhir/boolean false
+                   :date (type/dateTime (system/parse-date-time (str (LocalDate/parse (str version) DateTimeFormatter/BASIC_ISO_DATE))))
+                   :caseSensitive #fhir/boolean true
+                   :hierarchyMeaning #fhir/code "is-a"
+                   :versionNeeded #fhir/boolean false
+                   :content #fhir/code "not-present"
+                   :filter
+                   [#fhir/map{:fhir/type :fhir.CodeSystem/filter
+                              :code #fhir/code "concept"
+                              :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value."
+                              :operator [#fhir/code "is-a"]
+                              :value #fhir/string "A SNOMED CT code"}
+                    #fhir/map{:fhir/type :fhir.CodeSystem/filter
+                              :code #fhir/code "concept"
+                              :description #fhir/string "Includes all concept ids that have a transitive is-a relationship with the code provided as the value, excluding the code itself."
+                              :operator [#fhir/code "descendent-of"]
+                              :value #fhir/string "A SNOMED CT code"}]})
     title
     (assoc :title (type/string title))))

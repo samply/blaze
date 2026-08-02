@@ -25,13 +25,13 @@
       (criterium/quick-bench
        (sr/linked-compartments
         search-param-registry
-        {:fhir/type :fhir/Condition :id "0"
-         :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}))
+        #fhir/map{:fhir/type :fhir/Condition :id "0"
+                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}))
 
       ;; 700 ns - Mac mini M1
       (testing "Observation subject"
         (criterium/quick-bench
          (sr/linked-compartments
           search-param-registry
-          {:fhir/type :fhir/Observation :id "0"
-           :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}))))))
+          #fhir/map{:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}))))))

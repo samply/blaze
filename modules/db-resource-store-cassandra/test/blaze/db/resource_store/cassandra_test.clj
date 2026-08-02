@@ -13,7 +13,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.module.test-util :as mtu :refer [given-failed-future given-failed-system with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
@@ -70,26 +69,17 @@
   []
   (byte-array [0xA1]))
 
-(def ^:private writing-context
-  (:blaze.fhir/writing-context
-   (ig/init
-    {:blaze.fhir/writing-context
-     {:structure-definition-repo structure-definition-repo}})))
-
 (defn- write-cbor [value]
-  (fhir-spec/write-cbor writing-context value))
+  (fhir-spec/write-cbor value))
 
 (def ^:private config
   {::rs/cassandra
-   {:parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)}
+   {:parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)}
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
    {:structure-definition-repo structure-definition-repo
     :fail-on-unknown-property false
     :include-summary-only true
-    :use-regex false}
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}})
+    :use-regex false}})
 
 (deftest init-test
   (testing "nil config"
@@ -102,14 +92,7 @@
     (given-failed-system {::rs/cassandra {}}
       :key := ::rs/cassandra
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
-
-  (testing "missing writing-context"
-    (given-failed-system (update config ::rs/cassandra dissoc :writing-context)
-      :key := ::rs/cassandra
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
 
   (testing "invalid contact-points"
     (given-failed-system (assoc-in config [::rs/cassandra :contact-points] ::invalid)
@@ -169,7 +152,7 @@
           (is (nil? @(rs/get store [:fhir/Patient hash :complete])))))))
 
   (testing "success after not-found escalation to QUORUM"
-    (let [content {:fhir/type :fhir/Patient :id "0"}
+    (let [content #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           row (row-with 0 (write-cbor content))
           session
@@ -248,7 +231,7 @@
             :blaze.resource/hash := hash)))))
 
   (testing "success"
-    (let [content {:fhir/type :fhir/Patient :id "0"}
+    (let [content #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           row (row-with 0 (write-cbor content))
           session
@@ -276,7 +259,7 @@
             :id := "0")))))
 
   (testing "success after one retry due to timeout"
-    (let [content {:fhir/type :fhir/Patient :id "0"}
+    (let [content #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           row (row-with 0 (write-cbor content))
           throw-timeout? (volatile! true)
@@ -333,7 +316,7 @@
               identity :? empty?))))))
 
   (testing "success"
-    (let [content {:fhir/type :fhir/Patient :id "0"}
+    (let [content #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           row (row-with 0 (write-cbor content))
           session
@@ -373,7 +356,7 @@
 
 (deftest put-test
   (testing "execute error"
-    (let [resource {:fhir/type :fhir/Patient :id "0"}
+    (let [resource #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
           encoded-resource (bb/wrap (write-cbor resource))
           session
@@ -400,7 +383,7 @@
             ::anom/message := "error-150216")))))
 
   (testing "DriverTimeoutException"
-    (let [resource {:fhir/type :fhir/Patient :id "0"}
+    (let [resource #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
           encoded-resource (bb/wrap (write-cbor resource))
           session
@@ -431,7 +414,7 @@
             :blaze.resource/id := "0")))))
 
   (testing "WriteTimeoutException"
-    (let [resource {:fhir/type :fhir/Patient :id "0"}
+    (let [resource #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
           encoded-resource (bb/wrap (write-cbor resource))
           session
@@ -462,7 +445,7 @@
             :blaze.resource/id := "0")))))
 
   (testing "success"
-    (let [resource {:fhir/type :fhir/Patient :id "0"}
+    (let [resource #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
           encoded-resource (bb/wrap (write-cbor resource))
           session

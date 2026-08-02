@@ -125,7 +125,7 @@ public final class Range extends AbstractElement implements Complex, ExtensionVa
 
     @Override
     public Range empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

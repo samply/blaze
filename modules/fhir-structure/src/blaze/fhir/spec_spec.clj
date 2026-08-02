@@ -4,7 +4,6 @@
    [blaze.fhir.parsing-context.spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.spec]
-   [blaze.fhir.writing-context.spec]
    [blaze.util-spec]
    [clojure.alpha.spec :as s2]
    [clojure.spec.alpha :as s]
@@ -35,19 +34,18 @@
   :ret (s/or :resource :fhir/Resource :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/write-json
-  :args (s/cat :context :blaze.fhir/writing-context
-               :out #(instance? OutputStream %) :value :fhir/value))
+  :args (s/cat :out #(instance? OutputStream %) :value :fhir/value))
 
 (s/fdef fhir-spec/write-json-as-bytes
-  :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
+  :args (s/cat :value :fhir/value)
   :ret (s/or :result bytes? :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/write-json-as-string
-  :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
+  :args (s/cat :value :fhir/value)
   :ret (s/or :result string? :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/write-cbor
-  :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
+  :args (s/cat :value :fhir/value)
   :ret (s/or :result bytes? :anomaly ::anom/anomaly))
 
 (s/fdef fhir-spec/conform-xml

@@ -153,20 +153,20 @@
 
   (testing "successful validation by id"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "version-181230"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "id-152952"
-               :url #fhir/uri "value-set-171446"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-115910"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "version-181230"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "id-152952"
+                        :url #fhir/uri "value-set-171446"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-115910"}]}}]]]
 
       (testing "and system and code"
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
@@ -253,23 +253,23 @@
 
   (testing "successful validation by url"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"
-                 :designation
-                 [{:fhir/type :fhir.CodeSystem.concept/designation
-                   :language #fhir/code "de"
-                   :value #fhir/string "display-125412"}]}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "152952"
-               :url #fhir/uri "value-set-163309"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-115910"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"
+                                   :designation
+                                   [#fhir/map{:fhir/type :fhir.CodeSystem.concept/designation
+                                              :language #fhir/code "de"
+                                              :value #fhir/string "display-125412"}]}]}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "152952"
+                        :url #fhir/uri "value-set-163309"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-115910"}]}}]]]
 
       (testing "and system and code"
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
@@ -420,27 +420,27 @@
                 [(parameter "display") 0 :value] := #fhir/string "display-125412"))))))
 
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "1.0"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-115927"}]}]
-        [:put {:fhir/type :fhir/CodeSystem :id "1"
-               :url #fhir/uri "system-115910"
-               :version #fhir/string "1.2"
-               :content #fhir/code "complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code "code-155335"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "152952"
-               :url #fhir/uri "value-set-163309"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri "system-115910"}]}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "1.0"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-115927"}]}]
+        [:put #fhir/map{:fhir/type :fhir/CodeSystem :id "1"
+                        :url #fhir/uri "system-115910"
+                        :version #fhir/string "1.2"
+                        :content #fhir/code "complete"
+                        :concept
+                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code "code-155335"}]}]
+        [:put #fhir/map{:fhir/type :fhir/ValueSet :id "152952"
+                        :url #fhir/uri "value-set-163309"
+                        :compose
+                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                             :system #fhir/uri "system-115910"}]}}]]]
 
       (let [{:keys [status body]}
             @(handler {:query-params {"url" "value-set-163309"
@@ -470,38 +470,38 @@
 
     (testing "optional parameters"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :version #fhir/string "1.0"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]
-          [:put {:fhir/type :fhir/CodeSystem :id "1"
-                 :url #fhir/uri "system-115910"
-                 :version #fhir/string "1.2"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-155335"}]}]
-          [:put {:fhir/type :fhir/ValueSet :id "152952"
-                 :url #fhir/uri "value-set-163309"
-                 :version #fhir/string "1.0"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"
-                    :version #fhir/string "1.0"}]}}]
-          [:put {:fhir/type :fhir/ValueSet :id "154000"
-                 :url #fhir/uri "value-set-163309"
-                 :version #fhir/string "1.2"
-                 :compose
-                 {:fhir/type :fhir.ValueSet/compose
-                  :include
-                  [{:fhir/type :fhir.ValueSet.compose/include
-                    :system #fhir/uri "system-115910"
-                    :version #fhir/string "1.2"}]}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :version #fhir/string "1.0"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}]}]
+          [:put #fhir/map{:fhir/type :fhir/CodeSystem :id "1"
+                          :url #fhir/uri "system-115910"
+                          :version #fhir/string "1.2"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-155335"}]}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "152952"
+                          :url #fhir/uri "value-set-163309"
+                          :version #fhir/string "1.0"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"
+                                               :version #fhir/string "1.0"}]}}]
+          [:put #fhir/map{:fhir/type :fhir/ValueSet :id "154000"
+                          :url #fhir/uri "value-set-163309"
+                          :version #fhir/string "1.2"
+                          :compose
+                          #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                               :system #fhir/uri "system-115910"
+                                               :version #fhir/string "1.2"}]}}]]]
 
         (testing "valueSetVersion"
           (let [{:keys [status body]}
@@ -520,24 +520,24 @@
   (testing "successful validation by valueSet"
     (testing "code only"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}]}]]]
 
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
           (let [{:keys [status body]}
                 @(handler {:request-method :post
                            :body (fu/parameters
                                   "valueSet"
-                                  {:fhir/type :fhir/ValueSet
-                                   :compose
-                                   {:fhir/type :fhir.ValueSet/compose
-                                    :include
-                                    [{:fhir/type :fhir.ValueSet.compose/include
-                                      :system #fhir/uri "system-115910"}]}}
+                                  #fhir/map{:fhir/type :fhir/ValueSet
+                                            :compose
+                                            #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                      :include
+                                                      [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                                 :system #fhir/uri "system-115910"}]}}
                                   "code" (type/code code)
                                   "inferSystem" #fhir/boolean true)})]
 
@@ -550,24 +550,24 @@
 
     (testing "code and system"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri "system-115910"
-                 :content #fhir/code "complete"
-                 :concept
-                 [{:fhir/type :fhir.CodeSystem/concept
-                   :code #fhir/code "code-115927"}]}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/CodeSystem :id "0"
+                          :url #fhir/uri "system-115910"
+                          :content #fhir/code "complete"
+                          :concept
+                          [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                     :code #fhir/code "code-115927"}]}]]]
 
         (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
           (let [{:keys [status body]}
                 @(handler {:request-method :post
                            :body (fu/parameters
                                   "valueSet"
-                                  {:fhir/type :fhir/ValueSet
-                                   :compose
-                                   {:fhir/type :fhir.ValueSet/compose
-                                    :include
-                                    [{:fhir/type :fhir.ValueSet.compose/include
-                                      :system #fhir/uri "system-115910"}]}}
+                                  #fhir/map{:fhir/type :fhir/ValueSet
+                                            :compose
+                                            #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                      :include
+                                                      [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                                 :system #fhir/uri "system-115910"}]}}
                                   "system" #fhir/uri "system-115910"
                                   "code" (type/code code))})]
 
@@ -587,20 +587,20 @@
                               "system" #fhir/uri "system-115910"
                               "code" #fhir/uri "code-115927"
                               "tx-resource"
-                              {:fhir/type :fhir/CodeSystem
-                               :url #fhir/uri "system-115910"
-                               :content #fhir/code "complete"
-                               :concept
-                               [{:fhir/type :fhir.CodeSystem/concept
-                                 :code #fhir/code "code-115927"}]}
+                              #fhir/map{:fhir/type :fhir/CodeSystem
+                                        :url #fhir/uri "system-115910"
+                                        :content #fhir/code "complete"
+                                        :concept
+                                        [#fhir/map{:fhir/type :fhir.CodeSystem/concept
+                                                   :code #fhir/code "code-115927"}]}
                               "tx-resource"
-                              {:fhir/type :fhir/ValueSet
-                               :url #fhir/uri "value-set-110445"
-                               :compose
-                               {:fhir/type :fhir.ValueSet/compose
-                                :include
-                                [{:fhir/type :fhir.ValueSet.compose/include
-                                  :system #fhir/uri "system-115910"}]}})})]
+                              #fhir/map{:fhir/type :fhir/ValueSet
+                                        :url #fhir/uri "value-set-110445"
+                                        :compose
+                                        #fhir/map{:fhir/type :fhir.ValueSet/compose
+                                                  :include
+                                                  [#fhir/map{:fhir/type :fhir.ValueSet.compose/include
+                                                             :system #fhir/uri "system-115910"}]}})})]
 
         (is (= 200 status))
 

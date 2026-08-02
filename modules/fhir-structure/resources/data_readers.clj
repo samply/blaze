@@ -63,6 +63,7 @@
  fhir/TriggerDefinition blaze.fhir.spec.type/trigger-definition
  fhir/UsageContext blaze.fhir.spec.type/usage-context
  fhir.Bundle.entry/search blaze.fhir.spec.type/bundle-entry-search
+ fhir/map blaze.fhir.spec.type/fhir-map
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time
  system/time blaze.fhir.spec.type.system/parse-time}

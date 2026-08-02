@@ -77,7 +77,7 @@ public final class Boolean extends PrimitiveElement {
 
     @Override
     public Boolean empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

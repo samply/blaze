@@ -165,41 +165,41 @@
     (testing "Condition subject"
       (given (sr/linked-compartments
               search-param-registry
-              {:fhir/type :fhir/Condition :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
+              #fhir/map{:fhir/type :fhir/Condition :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"]))
 
     (testing "Observation subject"
       (given (sr/linked-compartments
               search-param-registry
-              {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
+              #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"])
 
       (testing "Group is no compartment"
         (is (empty? (sr/linked-compartments
                      search-param-registry
-                     {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference #fhir/string "Group/1"}})))))
+                     #fhir/map{:fhir/type :fhir/Observation :id "0"
+                               :subject #fhir/Reference{:reference #fhir/string "Group/1"}})))))
 
     (testing "MedicationAdministration subject"
       (given (sr/linked-compartments
               search-param-registry
-              {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
+              #fhir/map{:fhir/type :fhir/MedicationAdministration :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"]))
 
     (testing "MedicationAdministration subject and performer"
       (given (sr/linked-compartments
               search-param-registry
-              {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
-               :performer
-               [{:fhir/type :fhir.MedicationAdministration/performer
-                 :actor #fhir/Reference{:reference #fhir/string "Patient/2"}}]})
+              #fhir/map{:fhir/type :fhir/MedicationAdministration :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                        :performer
+                        [#fhir/map{:fhir/type :fhir.MedicationAdministration/performer
+                                   :actor #fhir/Reference{:reference #fhir/string "Patient/2"}}]})
         count := 2
         [0] := ["Patient" "2"]
         [1] := ["Patient" "1"]))
@@ -207,23 +207,23 @@
     (testing "MedicationAdministration identical subject and performer"
       (given (sr/linked-compartments
               search-param-registry
-              {:fhir/type :fhir/MedicationAdministration :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
-               :performer
-               [{:fhir/type :fhir.MedicationAdministration/performer
-                 :actor #fhir/Reference{:reference #fhir/string "Patient/1"}}]})
+              #fhir/map{:fhir/type :fhir/MedicationAdministration :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                        :performer
+                        [#fhir/map{:fhir/type :fhir.MedicationAdministration/performer
+                                   :actor #fhir/Reference{:reference #fhir/string "Patient/1"}}]})
         count := 1
         [0] := ["Patient" "1"]))
 
     (testing "a simple Patient has no compartments"
       (is (empty? (sr/linked-compartments
                    search-param-registry
-                   {:fhir/type :fhir/Patient :id "0"}))))
+                   #fhir/map{:fhir/type :fhir/Patient :id "0"}))))
 
     (testing "a simple Medication has no compartments"
       (is (empty? (sr/linked-compartments
                    search-param-registry
-                   {:fhir/type :fhir/Medication :id "0"}))))
+                   #fhir/map{:fhir/type :fhir/Medication :id "0"}))))
 
     (testing "with FHIRPath eval error"
       (with-redefs [fhir-path/eval
@@ -233,8 +233,8 @@
                        ::x ::y})]
         (given (sr/linked-compartments
                 search-param-registry
-                {:fhir/type :fhir/Condition :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
+                #fhir/map{:fhir/type :fhir/Condition :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/1"}})
           ::anom/category := ::anom/fault
           ::anom/message := "msg-121005"
           ::x := ::y)))))

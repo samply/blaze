@@ -16,15 +16,15 @@
 (test/use-fixtures :each tu/fixture)
 
 (defn- operation-outcome [& severities]
-  {:fhir/type :fhir/OperationOutcome
-   :issue
-   (mapv
-    (fn [severity]
-      {:fhir/type :fhir.OperationOutcome/issue
-       :severity (type/code severity)
-       :code #fhir/code "processing"
-       :diagnostics (type/string (str severity " issue"))})
-    severities)})
+  (type/fhir-map {:fhir/type :fhir/OperationOutcome
+                  :issue
+                  (mapv
+                   (fn [severity]
+                     (type/fhir-map {:fhir/type :fhir.OperationOutcome/issue
+                                     :severity (type/code severity)
+                                     :code #fhir/code "processing"
+                                     :diagnostics (type/string (str severity " issue"))}))
+                   severities)}))
 
 (deftest invalid?-test
   (testing "an error issue is invalid"
@@ -39,7 +39,7 @@
 (deftest tag-invalid-test
   (testing "tag-only adds the invalid tag without contained outcome"
     (given (impl/tag-invalid
-            {:fhir/type :fhir/Patient :id "0"}
+            #fhir/map{:fhir/type :fhir/Patient :id "0"}
             (operation-outcome "error") false)
       [:meta :tag count] := 1
       [:meta :tag 0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/ValidationStatus"
@@ -49,8 +49,8 @@
 
   (testing "existing tags are preserved"
     (given (impl/tag-invalid
-            {:fhir/type :fhir/Patient :id "0"
-             :meta (type/meta {:tag [(type/coding {:code #fhir/code "foo"})]})}
+            (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                            :meta (type/meta {:tag [(type/coding {:code #fhir/code "foo"})]})})
             (operation-outcome "error") false)
       [:meta :tag count] := 2
       [:meta :tag 0 :code] := #fhir/code "foo"
@@ -58,12 +58,12 @@
 
   (testing "all other meta fields are preserved"
     (given (impl/tag-invalid
-            {:fhir/type :fhir/Patient :id "0"
-             :meta (type/meta {:id "m-1"
-                               :source #fhir/uri "source-161513"
-                               :profile [#fhir/canonical "profile-161513"]
-                               :security [(type/coding {:code #fhir/code "sec"})]
-                               :extension [#fhir/Extension{:url "ext-161513"}]})}
+            (type/fhir-map {:fhir/type :fhir/Patient :id "0"
+                            :meta (type/meta {:id "m-1"
+                                              :source #fhir/uri "source-161513"
+                                              :profile [#fhir/canonical "profile-161513"]
+                                              :security [(type/coding {:code #fhir/code "sec"})]
+                                              :extension [#fhir/Extension{:url "ext-161513"}]})})
             (operation-outcome "error") false)
       [:meta :id] := "m-1"
       [:meta :source] := #fhir/uri "source-161513"
@@ -75,7 +75,7 @@
   (testing "tag-outcome adds the tag, the contained outcome and the meta extension"
     (let [outcome (operation-outcome "error")
           id (subs (str (hash/generate outcome)) 0 32)]
-      (given (impl/tag-invalid {:fhir/type :fhir/Patient :id "0"} outcome true)
+      (given (impl/tag-invalid #fhir/map{:fhir/type :fhir/Patient :id "0"} outcome true)
         [:meta :tag 0 :code] := #fhir/code "invalid"
         [:meta :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/validation-outcome"
         ;; the extension references the contained outcome by its derived id
@@ -89,8 +89,8 @@
   (testing "existing contained resources are preserved"
     (let [outcome (operation-outcome "error")
           id (subs (str (hash/generate outcome)) 0 32)]
-      (given (impl/tag-invalid {:fhir/type :fhir/Patient :id "0"
-                                :contained [{:fhir/type :fhir/Patient :id "1"}]}
+      (given (impl/tag-invalid #fhir/map{:fhir/type :fhir/Patient :id "0"
+                                         :contained [#fhir/map{:fhir/type :fhir/Patient :id "1"}]}
                                outcome true)
         [:meta :tag 0 :code] := #fhir/code "invalid"
         [:meta :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/validation-outcome"
@@ -101,13 +101,13 @@
         [:contained (partial some #(when (= id (:id %)) %)) :fhir/type] := :fhir/OperationOutcome)))
 
   (testing "different outcomes get different contained ids"
-    (let [id-fn #(-> (impl/tag-invalid {:fhir/type :fhir/Patient :id "0"} % true)
+    (let [id-fn #(-> (impl/tag-invalid #fhir/map{:fhir/type :fhir/Patient :id "0"} % true)
                      (get-in [:contained 0 :id]))]
       (is (not= (id-fn (operation-outcome "error"))
                 (id-fn (operation-outcome "error" "error"))))))
 
   (testing "equal outcomes get equal contained ids (idempotency)"
-    (let [id-fn #(-> (impl/tag-invalid {:fhir/type :fhir/Patient :id "0"} % true)
+    (let [id-fn #(-> (impl/tag-invalid #fhir/map{:fhir/type :fhir/Patient :id "0"} % true)
                      (get-in [:contained 0 :id]))]
       (is (= (id-fn (operation-outcome "error"))
              (id-fn (operation-outcome "error")))))))
@@ -124,17 +124,17 @@
 
   (testing "carries the expression"
     (given (impl/reject-anomaly
-            {:fhir/type :fhir/OperationOutcome
-             :issue
-             [{:fhir/type :fhir.OperationOutcome/issue
-               :severity #fhir/code "error"
-               :code #fhir/code "processing"
-               :expression [#fhir/string "Patient.gender"]}]})
+            #fhir/map{:fhir/type :fhir/OperationOutcome
+                      :issue
+                      [#fhir/map{:fhir/type :fhir.OperationOutcome/issue
+                                 :severity #fhir/code "error"
+                                 :code #fhir/code "processing"
+                                 :expression [#fhir/string "Patient.gender"]}]})
       [:fhir/issues 0 :fhir.issues/expression 0] := "Patient.gender"))
 
   (testing "handles an issue without any fields"
     (given (impl/reject-anomaly
-            {:fhir/type :fhir/OperationOutcome
-             :issue [{:fhir/type :fhir.OperationOutcome/issue}]})
+            #fhir/map{:fhir/type :fhir/OperationOutcome
+                      :issue [#fhir/map{:fhir/type :fhir.OperationOutcome/issue}]})
       ::anom/category := ::anom/incorrect
       [:fhir/issues 0] := {})))

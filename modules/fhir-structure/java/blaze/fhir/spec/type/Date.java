@@ -66,7 +66,7 @@ public final class Date extends PrimitiveElement {
 
     @Override
     public Date empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

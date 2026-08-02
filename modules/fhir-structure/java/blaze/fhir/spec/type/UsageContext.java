@@ -106,7 +106,7 @@ public final class UsageContext extends AbstractElement implements Complex, Exte
 
     @Override
     public UsageContext empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override

@@ -25,7 +25,6 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system with-system]]
    [blaze.terminology-service :as-alias ts]
@@ -59,7 +58,6 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -77,10 +75,7 @@
    {:structure-definition-repo structure-definition-repo
     :fail-on-unknown-property false
     :include-summary-only true
-    :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}})
+    :use-regex false}})
 
 (def config
   (assoc
@@ -196,7 +191,7 @@
 
 (deftest fails-on-kv-put-test
   (with-system [{::node/keys [resource-indexer]} config]
-    (let [patient {:fhir/type :fhir/Patient :id "0"}
+    (let [patient #fhir/map{:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate patient)]
       (with-redefs [kv/put! (fn [_ _] (throw (Exception. "msg-200802")))]
         (given-failed-future
@@ -218,8 +213,8 @@
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  ::node/keys [resource-indexer]} config]
 
-    (let [observation {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference #fhir/string "foo"}}
+    (let [observation #fhir/map{:fhir/type :fhir/Observation :id "0"
+                                :subject #fhir/Reference{:reference #fhir/string "foo"}}
           hash (hash/generate observation)]
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault ::x ::y})]
         @(resource-indexer/index-resources
@@ -241,8 +236,8 @@
                  resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
     (let [resource
-          {:fhir/type :fhir/Patient :id "id-104313"
-           :active #fhir/boolean true}
+          #fhir/map{:fhir/type :fhir/Patient :id "id-104313"
+                    :active #fhir/boolean true}
           hash (hash/generate resource)]
       @(rs/put! resource-store {hash resource})
       @(resource-indexer/index-resources
@@ -284,19 +279,19 @@
                  resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
     (let [resource
-          {:fhir/type :fhir/Condition :id "id-204446"
-           :code
-           #fhir/CodeableConcept
-            {:coding
-             [#fhir/Coding
-               {:system #fhir/uri "system-204435"
-                :code #fhir/code "code-204441"}]}
-           :onset #fhir/dateTime #system/date-time "2020-01-30"
-           :subject #fhir/Reference{:reference #fhir/string "Patient/id-145552"}
-           :meta
-           #fhir/Meta
-            {:versionId #fhir/id "1"
-             :profile [#fhir/canonical "url-164445"]}}
+          #fhir/map{:fhir/type :fhir/Condition :id "id-204446"
+                    :code
+                    #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                        {:system #fhir/uri "system-204435"
+                         :code #fhir/code "code-204441"}]}
+                    :onset #fhir/dateTime #system/date-time "2020-01-30"
+                    :subject #fhir/Reference{:reference #fhir/string "Patient/id-145552"}
+                    :meta
+                    #fhir/Meta
+                     {:versionId #fhir/id "1"
+                      :profile [#fhir/canonical "url-164445"]}}
           hash (hash/generate resource)]
       @(rs/put! resource-store {hash resource})
       @(resource-indexer/index-resources
@@ -371,27 +366,27 @@
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
-    (let [resource {:fhir/type :fhir/Observation :id "id-192702"
-                    :status #fhir/code "status-193613"
-                    :category
-                    [#fhir/CodeableConcept
-                      {:coding
-                       [#fhir/Coding
-                         {:system #fhir/uri "system-193558"
-                          :code #fhir/code "code-193603"}]}]
-                    :code
-                    #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                        {:system #fhir/uri "system-193821"
-                         :code #fhir/code "code-193824"}]}
-                    :subject #fhir/Reference{:reference #fhir/string "Patient/id-180857"}
-                    :effective #fhir/dateTime #system/date-time "2005-06-17"
-                    :value
-                    #fhir/Quantity
-                     {:code #fhir/code "kg/m2"
-                      :system #fhir/uri "http://unitsofmeasure.org"
-                      :value #fhir/decimal 23.42M}}
+    (let [resource #fhir/map{:fhir/type :fhir/Observation :id "id-192702"
+                             :status #fhir/code "status-193613"
+                             :category
+                             [#fhir/CodeableConcept
+                               {:coding
+                                [#fhir/Coding
+                                  {:system #fhir/uri "system-193558"
+                                   :code #fhir/code "code-193603"}]}]
+                             :code
+                             #fhir/CodeableConcept
+                              {:coding
+                               [#fhir/Coding
+                                 {:system #fhir/uri "system-193821"
+                                  :code #fhir/code "code-193824"}]}
+                             :subject #fhir/Reference{:reference #fhir/string "Patient/id-180857"}
+                             :effective #fhir/dateTime #system/date-time "2005-06-17"
+                             :value
+                             #fhir/Quantity
+                              {:code #fhir/code "kg/m2"
+                               :system #fhir/uri "http://unitsofmeasure.org"
+                               :value #fhir/decimal 23.42M}}
           hash (hash/generate resource)]
       @(rs/put! resource-store {hash resource})
       @(resource-indexer/index-resources
@@ -502,11 +497,11 @@
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
-    (let [resource {:fhir/type :fhir/Appointment :id "id-151125"
-                    :status #fhir/code "status-151938"
-                    :participant
-                    [{:fhir/type :fhir.Appointment/participant
-                      :actor #fhir/Reference{:reference #fhir/string "Patient/id-151354"}}]}
+    (let [resource #fhir/map{:fhir/type :fhir/Appointment :id "id-151125"
+                             :status #fhir/code "status-151938"
+                             :participant
+                             [#fhir/map{:fhir/type :fhir.Appointment/participant
+                                        :actor #fhir/Reference{:reference #fhir/string "Patient/id-151354"}}]}
           hash (hash/generate resource)]
       @(rs/put! resource-store {hash resource})
       @(resource-indexer/index-resources

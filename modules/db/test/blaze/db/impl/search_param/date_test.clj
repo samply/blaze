@@ -126,9 +126,9 @@
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient"
       (testing "birthDate"
-        (let [patient {:fhir/type :fhir/Patient
-                       :id "id-142629"
-                       :birthDate #fhir/date #system/date "2020-02-04"}
+        (let [patient #fhir/map{:fhir/type :fhir/Patient
+                                :id "id-142629"
+                                :birthDate #fhir/date #system/date "2020-02-04"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries
@@ -145,9 +145,9 @@
 
       (testing "death-date"
         (let [patient
-              {:fhir/type :fhir/Patient
-               :id "id-142629"
-               :deceased #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"}
+              #fhir/map{:fhir/type :fhir/Patient
+                        :id "id-142629"
+                        :deceased #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries
@@ -166,11 +166,11 @@
     (testing "Encounter"
       (testing "date"
         (let [encounter
-              {:fhir/type :fhir/Encounter :id "id-160224"
-               :period
-               #fhir/Period
-                {:start #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"
-                 :end #fhir/dateTime #system/date-time "2019-11-17T00:44:29+01:00"}}
+              #fhir/map{:fhir/type :fhir/Encounter :id "id-160224"
+                        :period
+                        #fhir/Period
+                         {:start #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"
+                          :end #fhir/dateTime #system/date-time "2019-11-17T00:44:29+01:00"}}
               hash (hash/generate encounter)
               [[_ k0]]
               (index-entries
@@ -189,10 +189,10 @@
 
         (testing "without start"
           (let [encounter
-                {:fhir/type :fhir/Encounter :id "id-160224"
-                 :period
-                 #fhir/Period
-                  {:end #fhir/dateTime #system/date-time "2019-11-17"}}
+                #fhir/map{:fhir/type :fhir/Encounter :id "id-160224"
+                          :period
+                          #fhir/Period
+                           {:end #fhir/dateTime #system/date-time "2019-11-17"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
                 (index-entries
@@ -210,10 +210,10 @@
 
         (testing "without end"
           (let [encounter
-                {:fhir/type :fhir/Encounter :id "id-160224"
-                 :period
-                 #fhir/Period
-                  {:start #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"}}
+                #fhir/map{:fhir/type :fhir/Encounter :id "id-160224"
+                          :period
+                          #fhir/Period
+                           {:start #fhir/dateTime #system/date-time "2019-11-17T00:14:29+01:00"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
                 (index-entries
@@ -231,8 +231,8 @@
 
         (testing "without start and end"
           (let [encounter
-                {:fhir/type :fhir/Encounter :id "id-160224"
-                 :period #fhir/Period{}}
+                #fhir/map{:fhir/type :fhir/Encounter :id "id-160224"
+                          :period #fhir/Period{}}
                 hash (hash/generate encounter)
                 [[_ k0]]
                 (index-entries
@@ -250,9 +250,9 @@
 
     (testing "DiagnosticReport"
       (testing "issued"
-        (let [patient {:fhir/type :fhir/DiagnosticReport
-                       :id "id-155607"
-                       :issued #fhir/instant #system/date-time "2019-11-17T00:14:29.917+01:00"}
+        (let [patient #fhir/map{:fhir/type :fhir/DiagnosticReport
+                                :id "id-155607"
+                                :issued #fhir/instant #system/date-time "2019-11-17T00:14:29.917+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
               (index-entries
@@ -269,7 +269,7 @@
               :hash-prefix := (hash/prefix hash))))))
 
     (testing "FHIRPath evaluation problem"
-      (let [resource {:fhir/type :fhir/DiagnosticReport :id "foo"}
+      (let [resource #fhir/map{:fhir/type :fhir/DiagnosticReport :id "foo"}
             hash (hash/generate resource)]
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]

@@ -3,7 +3,6 @@
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.http-client.spec]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future given-failed-system
@@ -37,16 +36,13 @@
   {:blaze.validator/extern
    {:base-uri "http://localhost:8080"
     :http-client (ig/ref ::http-client)
-    :parsing-context (ig/ref :blaze.fhir/parsing-context)
-    :writing-context (ig/ref :blaze.fhir/writing-context)}
+    :parsing-context (ig/ref :blaze.fhir/parsing-context)}
    ::http-client {}
    :blaze.fhir/parsing-context
-   {:structure-definition-repo structure-definition-repo}
-   :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}})
 
 (def ^:private patient
-  {:fhir/type :fhir/Patient :id "0"})
+  #fhir/map{:fhir/type :fhir/Patient :id "0"})
 
 (defn- outcome-json [& issues]
   (j/write-value-as-string {:resourceType "OperationOutcome" :issue (vec issues)}))
@@ -81,8 +77,7 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
 
   (testing "missing http-client"
     (given-failed-system (update config :blaze.validator/extern dissoc :http-client)
@@ -95,12 +90,6 @@
       :key := :blaze.validator/extern
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :parsing-context))))
-
-  (testing "missing writing-context"
-    (given-failed-system (update config :blaze.validator/extern dissoc :writing-context)
-      :key := :blaze.validator/extern
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :writing-context))))
 
   (testing "invalid base-uri"
     (given-failed-system (assoc-in config [:blaze.validator/extern :base-uri] ::invalid)

@@ -1,5 +1,6 @@
 package blaze.fhir.writing;
 
+import blaze.fhir.spec.type.Base;
 import blaze.fhir.spec.type.Complex;
 import clojure.lang.Keyword;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -11,11 +12,11 @@ import java.util.List;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Property handler for a repeating complex type with a Java implementation,
- * which is able to write itself.
+ * Property handler for a repeating value that is able to write itself, namely a
+ * complex type with a Java implementation, a backbone element or a resource.
  * <p>
- * The cardinality is taken from the element definition, so no check of the
- * shape of the value is needed here. See {@link ComplexPropertyHandler} for the
+ * The cardinality is taken from the element definition, so only the shape of
+ * the value has to be checked here. See {@link ComplexPropertyHandler} for the
  * single-valued variant.
  */
 public final class ComplexListPropertyHandler extends PropertyHandler {
@@ -28,12 +29,21 @@ public final class ComplexListPropertyHandler extends PropertyHandler {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    void writeValue(JsonGenerator generator, Object value) throws IOException {
+    public void writeValue(JsonGenerator generator, Object value) throws IOException {
         if (!(value instanceof List<?> list)) {
             throw invalidValue(value);
         }
-        Complex.serializeJsonComplexList((List<? extends Complex>) list, generator, fieldName);
+        generator.writeFieldName(fieldName);
+        generator.writeStartArray();
+        for (Object element : list) {
+            // checked explicitly, because the implicit cast of an enhanced for
+            // loop would report a class cast instead of the offending value
+            if (!(element instanceof Complex complex)) {
+                throw Base.noFhirType(element);
+            }
+            complex.serializeAsJsonValue(generator);
+        }
+        generator.writeEndArray();
     }
 
     /**
@@ -43,6 +53,6 @@ public final class ComplexListPropertyHandler extends PropertyHandler {
      * check it has to do anyway for the cast.
      */
     private IllegalArgumentException invalidValue(Object value) {
-        return value instanceof Complex ? listExpected() : noFhirType(value);
+        return value instanceof Complex ? listExpected() : Base.noFhirType(value);
     }
 }

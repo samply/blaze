@@ -114,9 +114,9 @@
     (fhir-spec/parse-json parsing-context source)))
 
 (defmethod ig/init-key :blaze.test/json-writer
-  [_ {:keys [writing-context]}]
+  [_ _]
   (fn [value]
-    (fhir-spec/write-json-as-bytes writing-context value)))
+    (fhir-spec/write-json-as-bytes value)))
 
 (defn parameter [name]
   (fn [{:keys [parameter]}]

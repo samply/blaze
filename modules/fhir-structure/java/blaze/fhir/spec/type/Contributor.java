@@ -63,7 +63,7 @@ public final class Contributor extends AbstractElement implements Complex, Exten
 
     public static Contributor create(IPersistentMap m) {
         return new Contributor(ExtensionData.fromMap(m), (Code) m.valAt(TYPE), (String) m.valAt(NAME),
-                Base.listFrom(m, CONTACT));
+                Base.typedListFrom(m, CONTACT, ContactDetail.class));
     }
 
     public Code type() {
@@ -103,7 +103,7 @@ public final class Contributor extends AbstractElement implements Complex, Exten
 
     @Override
     public Contributor empty() {
-        return EMPTY;
+        return meta() == null ? EMPTY : EMPTY.withMeta(meta());
     }
 
     @Override
@@ -115,7 +115,7 @@ public final class Contributor extends AbstractElement implements Complex, Exten
     public Contributor assoc(Object key, Object val) {
         if (key == TYPE) return new Contributor(extensionData, (Code) val, name, contact);
         if (key == NAME) return new Contributor(extensionData, type, (String) val, contact);
-        if (key == CONTACT) return new Contributor(extensionData, type, name, Lists.nullToEmpty(val));
+        if (key == CONTACT) return new Contributor(extensionData, type, name, Lists.typedNullToEmpty(val, ContactDetail.class));
         if (key == EXTENSION)
             return new Contributor(extensionData.withExtension(val), type, name, contact);
         if (key == ID) return new Contributor(extensionData.withId(val), type, name, contact);

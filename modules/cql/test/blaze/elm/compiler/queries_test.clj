@@ -157,10 +157,10 @@
 
   (testing "Retrieve queries"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code "female"}]
-        [:put {:fhir/type :fhir/Patient :id "1"
-               :gender #fhir/code "male"}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"
+                        :gender #fhir/code "female"}]
+        [:put #fhir/map{:fhir/type :fhir/Patient :id "1"
+                        :gender #fhir/code "male"}]]]
 
       (let [db (d/db node)
             retrieve #elm/retrieve{:type "Patient"}
@@ -357,17 +357,17 @@
 
   (testing "With clause"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Specimen :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}
-               :specimen #fhir/Reference{:reference #fhir/string "Specimen/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Specimen :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                        :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}
+                        :specimen #fhir/Reference{:reference #fhir/string "Specimen/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [db (d/db node)
             patient (ctu/resource db "Patient" "0")]
@@ -653,14 +653,14 @@
 
   (testing "Without clause"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Encounter :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-               :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]
-        [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+      [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+        [:put #fhir/map{:fhir/type :fhir/Encounter :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                        :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]
+        [:put #fhir/map{:fhir/type :fhir/Observation :id "1"
+                        :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [elm {:type "Query"
                  :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
@@ -698,13 +698,13 @@
   (testing "Sort"
     (testing "ByExpression"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Encounter :id "0"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-15"}}]
-          [:put {:fhir/type :fhir/Encounter :id "1"
-                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
-                 :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-16"}}]]]
+        [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "0"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-15"}}]
+          [:put #fhir/map{:fhir/type :fhir/Encounter :id "1"
+                          :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                          :period #fhir/Period{:start #fhir/dateTime #system/date-time "2025-05-16"}}]]]
 
         (let [elm {:type "Query"
                    :source
@@ -732,21 +732,21 @@
 
 (deftest compile-query-medication-reference-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-             :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-      [:put {:fhir/type :fhir/MedicationAdministration :id "1"
-             :medication #fhir/Reference{:reference #fhir/string "Medication/1"}
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-      [:put {:fhir/type :fhir/MedicationStatement :id "0"
-             :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-      [:put {:fhir/type :fhir/MedicationStatement :id "1"
-             :medication #fhir/Reference{:reference #fhir/string "Medication/1"}
-             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-      [:put {:fhir/type :fhir/Medication :id "0"}]
-      [:put {:fhir/type :fhir/Medication :id "1"}]]]
+    [[[:put #fhir/map{:fhir/type :fhir/Patient :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/MedicationAdministration :id "0"
+                      :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put #fhir/map{:fhir/type :fhir/MedicationAdministration :id "1"
+                      :medication #fhir/Reference{:reference #fhir/string "Medication/1"}
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put #fhir/map{:fhir/type :fhir/MedicationStatement :id "0"
+                      :medication #fhir/Reference{:reference #fhir/string "Medication/0"}
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put #fhir/map{:fhir/type :fhir/MedicationStatement :id "1"
+                      :medication #fhir/Reference{:reference #fhir/string "Medication/1"}
+                      :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+      [:put #fhir/map{:fhir/type :fhir/Medication :id "0"}]
+      [:put #fhir/map{:fhir/type :fhir/Medication :id "1"}]]]
 
     (doseq [medication-type ["MedicationAdministration"
                              "MedicationStatement"]]

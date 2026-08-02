@@ -5,6 +5,7 @@
    [blaze.fhir.spec.resource :as res]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.structure-definition-repo.spec]
+   [blaze.fhir.type-metadata :as tm]
    [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -35,4 +36,7 @@
                   (sdr/resources structure-definition-repo)
                   {:fail-on-unknown-property fail-on-unknown-property
                    :include-summary-only include-summary-only
-                   :use-regex use-regex})))
+                   :use-regex use-regex
+                   ;; the metadata instances have to be the very ones the
+                   ;; `#fhir/map` data reader uses
+                   :type-metadata (tm/registry)})))

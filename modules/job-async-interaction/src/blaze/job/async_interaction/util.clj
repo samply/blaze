@@ -13,10 +13,10 @@
 (def parameter-uri (canonical/url "CodeSystem/AsyncInteractionJobParameter"))
 
 (defn request-bundle-input [reference]
-  {:fhir/type :fhir.Task/input
-   :type (type/codeable-concept
-          {:coding (canonical/codings "CodeSystem/AsyncInteractionJobParameter" "bundle")})
-   :value (type/reference {:reference (type/string reference)})})
+  (type/fhir-map {:fhir/type :fhir.Task/input
+                  :type (type/codeable-concept
+                         {:coding (canonical/codings "CodeSystem/AsyncInteractionJobParameter" "bundle")})
+                  :value (type/reference {:reference (type/string reference)})}))
 
 (defn processing-duration [start]
   (type/quantity
