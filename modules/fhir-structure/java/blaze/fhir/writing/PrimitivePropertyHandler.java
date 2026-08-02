@@ -30,7 +30,7 @@ public final class PrimitivePropertyHandler extends PropertyHandler {
         } else if (value instanceof Primitive primitive) {
             primitive.serializeJsonField(generator, fieldName);
         } else {
-            throw new IllegalArgumentException("Value `%s` is no FHIR type.".formatted(value));
+            throw noFhirType(value);
         }
     }
 }

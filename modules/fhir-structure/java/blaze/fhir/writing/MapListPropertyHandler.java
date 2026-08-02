@@ -2,33 +2,37 @@ package blaze.fhir.writing;
 
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
-import clojure.lang.Sequential;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.SerializableString;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
- * Property handler for a single-valued type that is represented as map, namely
- * a backbone element or a complex type without a Java implementation.
+ * Property handler for a repeating type that is represented as map, namely a
+ * backbone element or a complex type without a Java implementation.
  * <p>
  * The cardinality is taken from the element definition, so the shape of the
  * value doesn't have to be checked at write time. See
- * {@link MapListPropertyHandler} for the repeating variant.
+ * {@link MapPropertyHandler} for the single-valued variant.
  */
-public final class MapPropertyHandler extends AbstractMapPropertyHandler {
+public final class MapListPropertyHandler extends AbstractMapPropertyHandler {
 
-    public MapPropertyHandler(Keyword key, Keyword type, SerializableString fieldName) {
+    public MapListPropertyHandler(Keyword key, Keyword type, SerializableString fieldName) {
         super(key, type, fieldName);
     }
 
     @Override
     void writeValue(JsonGenerator generator, Object value) throws IOException {
-        if (!(value instanceof IPersistentMap)) {
+        if (!(value instanceof List<?> list)) {
             throw invalidValue(value);
         }
         generator.writeFieldName(fieldName);
-        typeHandler.write(generator, value);
+        generator.writeStartArray();
+        for (Object element : list) {
+            typeHandler.write(generator, element);
+        }
+        generator.writeEndArray();
     }
 
     /**
@@ -38,6 +42,6 @@ public final class MapPropertyHandler extends AbstractMapPropertyHandler {
      * check.
      */
     private IllegalArgumentException invalidValue(Object value) {
-        return value instanceof Sequential ? singleValueExpected() : noFhirType(value);
+        return value instanceof IPersistentMap ? listExpected() : noFhirType(value);
     }
 }

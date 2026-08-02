@@ -49,7 +49,7 @@ public final class ResourcePropertyHandler extends PropertyHandler {
     private void writeResource(JsonGenerator generator, Object value) throws IOException {
         var type = value instanceof ILookup lookup ? lookup.valAt(Base.FHIR_TYPE_KEY) : null;
         if (type == null) {
-            throw new IllegalArgumentException("Value `%s` is no FHIR type.".formatted(value));
+            throw noFhirType(value);
         }
         var typeHandler = (TypeHandler) typeHandlers.valAt(type);
         if (typeHandler == null) {

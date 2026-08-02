@@ -812,6 +812,64 @@
       ::anom/category := ::anom/fault
       ::anom/message := "Value `Patient.gender` is no FHIR type."))
 
+  (testing "a complex property with the wrong cardinality"
+    (testing "a list in a single-valued property"
+      (given (ba/try-anomaly
+              (write-json
+               {:fhir/type :fhir/Patient :id "0"
+                :maritalStatus [#fhir/CodeableConcept{:text #fhir/string "text-125230"}]}))
+        ::anom/category := ::anom/fault
+        ::anom/message := "Expected a single value in property `maritalStatus` but got a list."))
+
+    (testing "a single value in a repeating property"
+      (given (ba/try-anomaly
+              (write-json
+               {:fhir/type :fhir/Patient :id "0"
+                :name #fhir/HumanName{:family #fhir/string "family-125314"}}))
+        ::anom/category := ::anom/fault
+        ::anom/message := "Expected a list of values in property `name` but got a single value."))
+
+    (testing "a value that is no FHIR type at all"
+      (testing "in a single-valued property"
+        (given (ba/try-anomaly
+                (write-json {:fhir/type :fhir/Patient :id "0" :maritalStatus "foo"}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Value `foo` is no FHIR type."))
+
+      (testing "in a repeating property"
+        (given (ba/try-anomaly
+                (write-json {:fhir/type :fhir/Patient :id "0" :name "foo"}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Value `foo` is no FHIR type."))))
+
+  (testing "a map property with the wrong cardinality"
+    (testing "a list in a single-valued property"
+      (given (ba/try-anomaly
+              (write-json {:fhir/type :fhir.Bundle/entry :response [{}]}))
+        ::anom/category := ::anom/fault
+        ::anom/message := "Expected a single value in property `response` but got a list."))
+
+    (testing "a single value in a repeating property"
+      (given (ba/try-anomaly
+              (write-json
+               {:fhir/type :fhir/Bundle
+                :entry {:fhir/type :fhir.Bundle/entry :response {}}}))
+        ::anom/category := ::anom/fault
+        ::anom/message := "Expected a list of values in property `entry` but got a single value."))
+
+    (testing "a value that is no FHIR type at all"
+      (testing "in a single-valued property"
+        (given (ba/try-anomaly
+                (write-json {:fhir/type :fhir.Bundle/entry :response "foo"}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Value `foo` is no FHIR type."))
+
+      (testing "in a repeating property"
+        (given (ba/try-anomaly
+                (write-json {:fhir/type :fhir/Bundle :entry "foo"}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Value `foo` is no FHIR type."))))
+
   (testing "Observation with code"
     (are [resource json] (= json (write-read-json resource))
       {:fhir/type :fhir/Observation

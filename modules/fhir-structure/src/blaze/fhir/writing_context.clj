@@ -15,8 +15,10 @@
    [taoensso.timbre :as log])
   (:import
    [blaze.fhir.spec.type FieldName]
-   [blaze.fhir.writing ComplexPropertyHandler ComplexTypeHandler
-    MapPropertyHandler MapTypeHandler PolymorphicPropertyHandler
+   [blaze.fhir.writing ComplexListPropertyHandler ComplexPropertyHandler
+    ComplexTypeHandler
+    MapListPropertyHandler MapPropertyHandler MapTypeHandler
+    PolymorphicPropertyHandler
     PrimitivePropertyHandler PropertyHandler ResourcePropertyHandler
     ResourceTypeHandler StringPropertyHandler TypeHandler]
    [clojure.lang Keyword]))
@@ -42,12 +44,21 @@
     "Signature" "Timing" "Timing.repeat" "TriggerDefinition" "UsageContext"})
 
 (defn- complex-property-handler
-  "Creates a property handler for the complex type with name `type-name`."
-  [key type-name base-field-name]
+  "Creates a property handler for the complex type with name `type-name`.
+
+  The handler is specialized on the cardinality, so many-valued properties are
+  always output as a list, were single-valued properties are output as a single
+  value."
+  [key type-name base-field-name many]
   (let [field-name (.normal (FieldName/of base-field-name))]
     (if (complex-types type-name)
-      (ComplexPropertyHandler. key field-name)
-      (MapPropertyHandler. key (fhir-type-keyword type-name) field-name))))
+      (if many
+        (ComplexListPropertyHandler. key field-name)
+        (ComplexPropertyHandler. key field-name))
+      (let [type (fhir-type-keyword type-name)]
+        (if many
+          (MapListPropertyHandler. key type field-name)
+          (MapPropertyHandler. key type field-name))))))
 
 (defn- polymorphic-property-handler [key base-field-name element-types]
   (PolymorphicPropertyHandler.
@@ -59,13 +70,14 @@
   "Takes `element-definition` and returns a property handler."
   {:arglists '([parent-type element-definition])}
   [parent-type
-   {:keys [path] content-reference :contentReference element-types :type}]
+   {:keys [path max] content-reference :contentReference element-types :type}]
   (if content-reference
     (let [base-field-name (res/base-field-name parent-type path false)]
       (complex-property-handler
        (keyword base-field-name)
        (subs content-reference 1)
-       base-field-name))
+       base-field-name
+       (= "*" max)))
     (let [polymorphic (< 1 (count element-types))
           first-type-code (:code (first element-types))
           element-type (and (= 1 (count element-types))
@@ -86,7 +98,8 @@
             (complex-property-handler
              key
              (if element-type path first-type-code)
-             base-field-name)
+             base-field-name
+             (= "*" max))
             (PrimitivePropertyHandler.
              key
              (FieldName/of base-field-name))))))))

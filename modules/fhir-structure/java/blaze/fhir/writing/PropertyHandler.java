@@ -42,4 +42,29 @@ public abstract class PropertyHandler {
      * name.
      */
     abstract void writeValue(JsonGenerator generator, Object value) throws IOException;
+
+    /**
+     * Returns an exception for a list in a property that the element definition
+     * declares single-valued.
+     */
+    final IllegalArgumentException singleValueExpected() {
+        return new IllegalArgumentException(
+                "Expected a single value in property `%s` but got a list.".formatted(key.getName()));
+    }
+
+    /**
+     * Returns an exception for a single value in a property that the element
+     * definition declares repeating.
+     */
+    final IllegalArgumentException listExpected() {
+        return new IllegalArgumentException(
+                "Expected a list of values in property `%s` but got a single value.".formatted(key.getName()));
+    }
+
+    /**
+     * Returns an exception for a value that is no FHIR type at all.
+     */
+    static IllegalArgumentException noFhirType(Object value) {
+        return new IllegalArgumentException("Value `%s` is no FHIR type.".formatted(value));
+    }
 }

@@ -48,7 +48,7 @@ public final class PolymorphicPropertyHandler extends PropertyHandler {
     void writeValue(JsonGenerator generator, Object value) throws IOException {
         var type = value instanceof ILookup lookup ? lookup.valAt(Base.FHIR_TYPE_KEY) : null;
         if (type == null) {
-            throw new IllegalArgumentException("Value `%s` is no FHIR type.".formatted(value));
+            throw noFhirType(value);
         }
         for (int i = 0; i < types.length; i++) {
             if (types[i] == type) {
