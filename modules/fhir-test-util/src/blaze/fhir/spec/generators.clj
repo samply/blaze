@@ -88,8 +88,13 @@
   (gen/choose 0 59))
 
 (def zone-offset
-  (gen/fmap (partial apply format "%s%02d:00")
-            (gen/tuple (gen/elements ["+" "-"]) (gen/choose 1 14))))
+  "FHIR only allows a non-zero minute part for the hours 00-13, while 14 is
+  restricted to 14:00."
+  (gen/one-of
+   [(gen/fmap (partial apply format "%s%02d:%02d")
+              (gen/tuple (gen/elements ["+" "-"]) (gen/choose 0 13)
+                         (gen/elements [0 15 30 45])))
+    (gen/elements ["+14:00" "-14:00"])]))
 
 (def zone
   (gen/one-of [(gen/return "Z") zone-offset]))
