@@ -9,6 +9,7 @@ test_data_dir="$script_dir/../test-data/kds-testdata-2024.0.1/resources"
 java -Xmx8g -jar validator_cli.jar -version 4.0.1 -level error \
   -output-style csv -output result.csv \
   -tx http://localhost:8080/fhir -authorise-non-conformant-tx-servers \
+  -ssrf-protection-enabled=false \
   -clear-tx-cache \
   -ig de.basisprofil.r4#1.5.4 \
   -ig de.medizininformatikinitiative.kerndatensatz.person#2025.0.0 \
