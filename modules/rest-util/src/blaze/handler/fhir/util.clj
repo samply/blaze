@@ -381,7 +381,9 @@
          (update :outcome with-entry-location idx)))))
 
 (def ^:private type-part "[A-Z](?:[A-Za-z0-9_]){0,254}")
-(def ^:private id-part "[A-Za-z0-9-.]{1,64}")
+(def ^:private id-chars "A-Za-z0-9-.")
+(def ^:private id-max-length 64)
+(def ^:private id-part (format "[%s]{1,%d}" id-chars id-max-length))
 
 (def ^:private type-pattern
   (re-pattern (format "(%s)" type-part)))
@@ -397,6 +399,9 @@
 
 (def ^:private type-query-params-pattern
   (re-pattern (format "(%s)(?:\\?(.*))?" type-part)))
+
+(def ^:private id-chars-pattern
+  (re-pattern (format "[%s]+" id-chars)))
 
 (defn match-type-id
   "Tries to parse a `type` and `id` from `url`. Returns a tuple with `type` and
@@ -489,6 +494,34 @@
    :fhir/issue "value"
    :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
 
+(defn- too-long-request-url-id-anom [id url idx]
+  (ba/incorrect
+   (format "The id `%s` in URL `%s` is too long. A FHIR id has to be %d characters at most but is %d characters long."
+           id url id-max-length (count id))
+   :fhir/issue "value"
+   :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)
+   :fhir/operation-outcome "MSG_ID_TOO_LONG"))
+
+(defn- invalid-request-url-id-anom [id url idx]
+  (ba/incorrect
+   (format "The id `%s` in URL `%s` is invalid. A FHIR id has to match the regular expression `%s`."
+           id url id-part)
+   :fhir/issue "value"
+   :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)
+   :fhir/operation-outcome "MSG_ID_INVALID"))
+
+(defn- request-url-id-anom
+  "Returns an anomaly for a PUT request `url` from which no id could be parsed.
+
+  Distinguishes between a URL without any id part, a URL with an id that is too
+  long and a URL with an id containing invalid characters."
+  [url idx]
+  (if-let [id (second (str/split url #"/" 2))]
+    (if (re-matches id-chars-pattern id)
+      (too-long-request-url-id-anom id url idx)
+      (invalid-request-url-id-anom id url idx))
+    (missing-request-url-id-anom url idx)))
+
 (defn- missing-resource-id-anom [idx]
   (ba/incorrect
    "Resource id is missing."
@@ -560,7 +593,7 @@
       (subsetted-anom idx)
 
       (and (= "PUT" method) (nil? id))
-      (missing-request-url-id-anom url idx)
+      (request-url-id-anom url idx)
 
       (and (= "PUT" method) (not (contains? resource :id)))
       (missing-resource-id-anom idx)
