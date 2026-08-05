@@ -89,6 +89,9 @@ jobs:
       with:
         node-version-file: .nvmrc
 
+    - name: Install Validator
+      run: .github/scripts/install-validator.sh
+
     - name: Build
       working-directory: modules/ig
       run: make build

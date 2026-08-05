@@ -6,18 +6,15 @@ update:
 
 build: install
 	node_modules/.bin/sushi build -s .
+	rm fsh-generated/resources/ImplementationGuide-blaze.json
 
-validator_cli.jar:
-	wget -q https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
-
-validate: validator_cli.jar
-	java -jar validator_cli.jar -version 4.0.1 -level error -tx n/a -ig fsh-generated/resources fsh-generated/resources/Task-*.json fsh-generated/resources/Bundle-*.json
+validate:
+	java -jar ../../validator_cli.jar -version 4.0.1 -level error -tx n/a -allow-example-urls -ig fsh-generated/resources fsh-generated/resources/*.json
 
 # Build and validate the IG. Invoked by the root module fan-out (e.g. `make test`).
 test: build validate
 
 clean:
 	rm -rf fsh-generated
-	rm -f validator_cli.jar
 
 .PHONY: install update build validate fmt lint test test-coverage cloc-prod cloc-test clean
