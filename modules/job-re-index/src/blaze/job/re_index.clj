@@ -13,7 +13,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [taoensso.timbre :as log])
   (:import
    [java.time ZoneOffset]))
@@ -87,8 +86,8 @@
   (.atOffset (bt/instant clock) ZoneOffset/UTC))
 
 (defn- elapsed [clock job]
-  (-> (time/duration (-> job :meta :lastUpdated :value) (instant clock))
-      (time/as :seconds)))
+  (-> (bt/duration (-> job :meta :lastUpdated :value) (instant clock))
+      (bt/as-seconds)))
 
 (defn- update-job [{:keys [admin-node clock]} job {:keys [next] :as result}]
   (if next

@@ -22,7 +22,6 @@
    [blaze.util :as u :refer [conj-vec]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
-   [java-time.api :as time]
    [taoensso.timbre :as log])
   (:import
    [java.math RoundingMode]
@@ -160,8 +159,8 @@
   (.atOffset (bt/instant clock) ZoneOffset/UTC))
 
 (defn- elapsed [clock job]
-  (-> (time/duration (-> job :meta :lastUpdated :value) (instant clock))
-      (time/as :seconds)))
+  (-> (bt/duration (-> job :meta :lastUpdated :value) (instant clock))
+      (bt/as-seconds)))
 
 (defn- progress-fn
   "Returns the progress function given to the engine.
