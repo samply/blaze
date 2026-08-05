@@ -564,6 +564,40 @@
             :fhir/issue "value"
             :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}))))
 
+  (testing "too long request URL id"
+    (satisfies-prop 10
+      (prop/for-all [type (gen/elements ["Patient" "Observation"])
+                     id (gen/fmap #(str/join (repeat % "a")) (gen/choose 65 100))
+                     idx gen/nat]
+        (let [url (str type "/" id)]
+          (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
+                                            :request {:fhir/type :fhir.Bundle.entry/request
+                                                      :method #fhir/code "PUT"
+                                                      :url (type/uri url)}
+                                            :resource {:fhir/type (keyword "fhir" type)}})
+             {::anom/category ::anom/incorrect
+              ::anom/message (format "The id `%s` in URL `%s` is too long. A FHIR id has to be 64 characters at most but is %d characters long." id url (count id))
+              :fhir/issue "value"
+              :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)
+              :fhir/operation-outcome "MSG_ID_TOO_LONG"})))))
+
+  (testing "invalid request URL id"
+    (satisfies-prop 10
+      (prop/for-all [type (gen/elements ["Patient" "Observation"])
+                     id (gen/elements ["A_B" "a b" "a$b" "föö"])
+                     idx gen/nat]
+        (let [url (str type "/" id)]
+          (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
+                                            :request {:fhir/type :fhir.Bundle.entry/request
+                                                      :method #fhir/code "PUT"
+                                                      :url (type/uri url)}
+                                            :resource {:fhir/type (keyword "fhir" type)}})
+             {::anom/category ::anom/incorrect
+              ::anom/message (format "The id `%s` in URL `%s` is invalid. A FHIR id has to match the regular expression `[A-Za-z0-9-.]{1,64}`." id url)
+              :fhir/issue "value"
+              :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)
+              :fhir/operation-outcome "MSG_ID_INVALID"})))))
+
   (testing "missing resource id"
     (satisfies-prop 10
       (prop/for-all [type (gen/elements ["Patient" "Observation"])
