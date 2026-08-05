@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.anomaly-spec]
    [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -314,6 +315,45 @@
 
     (testing "without message"
       (is (= ::none ((ba/anomaly (ex-info nil {})) ::anom/message ::none))))
+
+    (testing "with an invalid message in data"
+      (testing "the message of the exception is used"
+        (given (ba/anomaly (ex-info "msg-072649" {::anom/message ::msg-072702
+                                                  ::foo ::bar}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-072649"
+          ::foo := ::bar))
+
+      (testing "the message is left out if the exception has none"
+        (is (= {::anom/category ::anom/fault}
+               (ba/anomaly (ex-info nil {::anom/message ::msg-072702}))))))
+
+    (testing "with a nil message in data"
+      (testing "the message of the exception is used"
+        (given (ba/anomaly (ex-info "msg-073216" {::anom/message nil}))
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-073216"))
+
+      (testing "the message is left out if the exception has none"
+        (is (= {::anom/category ::anom/fault}
+               (ba/anomaly (ex-info nil {::anom/message nil}))))))
+
+    (testing "with an invalid category in data"
+      (given (ba/anomaly (ex-info "msg-073602" {::anom/category ::category-073616
+                                                ::foo ::bar}))
+        ::anom/category := ::anom/fault
+        ::anom/message := "msg-073602"
+        ::foo := ::bar))
+
+    (testing "the data can't invalidate the anomaly"
+      (doseq [data [{::anom/message ::msg-074425}
+                    {::anom/message nil}
+                    {::anom/category ::category-074449}
+                    {::anom/category nil}
+                    {::anom/category ::category-074449
+                     ::anom/message ::msg-074425}]
+              msg ["msg-074329" nil]]
+        (is (s/valid? ::anom/anomaly (ba/anomaly (ex-info msg data))))))
 
     (testing "with cause"
       (given (ba/anomaly (ex-info "msg-181247" {} (Exception. "msg-181120")))
