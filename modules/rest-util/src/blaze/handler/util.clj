@@ -40,6 +40,7 @@
 (defn- issue-code [category]
   (case category
     ::anom/busy #fhir/code "timeout"
+    ::anom/unavailable #fhir/code "transient"
     ::anom/incorrect #fhir/code "invalid"
     ::anom/not-found #fhir/code "not-found"
     ::anom/unsupported #fhir/code "not-supported"
@@ -110,6 +111,7 @@
     ::anom/unsupported 422
     ::anom/conflict 409
     ::anom/busy 503
+    ::anom/unavailable 503
     500))
 
 (defn- format-exception

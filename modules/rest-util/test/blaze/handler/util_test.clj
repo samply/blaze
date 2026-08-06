@@ -62,6 +62,23 @@
       [:issue 0 :severity] := #fhir/code "error"
       [:issue 0 :code] := #fhir/code "exception"))
 
+  (testing "unavailable anomaly"
+    (given (handler-util/operation-outcome {::anom/category ::anom/unavailable})
+      :fhir/type := :fhir/OperationOutcome
+      [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+      [:issue 0 :severity] := #fhir/code "error"
+      [:issue 0 :code] := #fhir/code "transient")
+
+    (testing "with multiple issues"
+      (given (handler-util/operation-outcome
+              {::anom/category ::anom/unavailable
+               :fhir/issues [{:fhir.issues/diagnostics "diagnostics-133454"}]})
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+        [:issue 0 :severity] := #fhir/code "error"
+        [:issue 0 :code] := #fhir/code "transient"
+        [:issue 0 :diagnostics] := #fhir/string "diagnostics-133454")))
+
   (testing "single issue"
     (given (handler-util/operation-outcome
             {::anom/category ::anom/fault
@@ -136,6 +153,14 @@
       [:body :issue 0 :fhir/type] := :fhir.OperationOutcome/issue
       [:body :issue 0 :severity] := #fhir/code "error"
       [:body :issue 0 :code] := #fhir/code "exception"))
+
+  (testing "unavailable anomaly"
+    (given (handler-util/error-response {::anom/category ::anom/unavailable})
+      :status := 503
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :fhir/type] := :fhir.OperationOutcome/issue
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "transient"))
 
   (testing "exception"
     (given (handler-util/error-response (Exception.))
