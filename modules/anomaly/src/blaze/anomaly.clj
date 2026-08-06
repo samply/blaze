@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [map update])
   (:require
    [clj-commons.format.exceptions :as e]
+   [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom])
   (:import
    [clojure.lang APersistentMap ExceptionInfo]
@@ -144,6 +145,26 @@
   (binding [e/*fonts* nil]
     (e/format-exception e)))
 
+(def ^:private categories
+  "All valid anomaly categories.
+
+  The spec of `::anom/category` is a set of all categories."
+  (s/form ::anom/category))
+
+(defn- ex-info-anomaly
+  "Builds an anomaly out of the message `msg` and the data `data` of an
+  `ExceptionInfo`.
+
+  The category and message of `data` are only used if they are valid. Otherwise
+  the data of an arbitrary exception could turn the result into something that
+  isn't an anomaly anymore."
+  [msg data]
+  (let [{::anom/keys [category message]} data
+        message (if (string? message) message msg)]
+    (cond-> (assoc data ::anom/category (if (categories category) category ::anom/fault))
+      (nil? message) (dissoc ::anom/message)
+      message (assoc ::anom/message message))))
+
 (defprotocol ToAnomaly
   (-anomaly [x]))
 
@@ -162,12 +183,7 @@
     (interrupted (.getMessage e)))
   ExceptionInfo
   (-anomaly [e]
-    (cond->
-     (merge
-      (cond-> {::anom/category ::anom/fault}
-        (.getMessage e)
-        (assoc ::anom/message (.getMessage e)))
-      (.getData e))
+    (cond-> (ex-info-anomaly (.getMessage e) (.getData e))
       (.getCause e)
       (assoc :blaze.anomaly/cause (-anomaly (.getCause e)))))
   Throwable
