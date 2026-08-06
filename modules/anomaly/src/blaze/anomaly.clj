@@ -151,6 +151,17 @@
   The spec of `::anom/category` is a set of all categories."
   (s/form ::anom/category))
 
+(defn- sanitize
+  "Replaces an invalid category of `m` with `::anom/fault` and removes an
+  invalid message.
+
+  Without that coercion, a map with an arbitrary category or a non-string
+  message would pass as an anomaly without satisfying `::anom/anomaly`."
+  [{::anom/keys [category message] :as m}]
+  (cond-> m
+    (not (categories category)) (assoc ::anom/category ::anom/fault)
+    (not (string? message)) (dissoc ::anom/message)))
+
 (defn- ex-info-anomaly
   "Builds an anomaly out of the message `msg` and the data `data` of an
   `ExceptionInfo`.
@@ -158,12 +169,9 @@
   The category and message of `data` are only used if they are valid. Otherwise
   the data of an arbitrary exception could turn the result into something that
   isn't an anomaly anymore."
-  [msg data]
-  (let [{::anom/keys [category message]} data
-        message (if (string? message) message msg)]
-    (cond-> (assoc data ::anom/category (if (categories category) category ::anom/fault))
-      (nil? message) (dissoc ::anom/message)
-      message (assoc ::anom/message message))))
+  [msg {::anom/keys [message] :as data}]
+  (cond-> (sanitize data)
+    (and (some? msg) (not (string? message))) (assoc ::anom/message msg)))
 
 (defprotocol ToAnomaly
   (-anomaly [x]))
@@ -192,7 +200,7 @@
   Map
   (-anomaly [m]
     (when (anomaly? m)
-      m))
+      (sanitize m)))
   Object
   (-anomaly [_])
   nil
