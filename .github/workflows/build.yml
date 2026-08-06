@@ -128,14 +128,14 @@ jobs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Prepare Dependencies
@@ -238,14 +238,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
@@ -323,14 +323,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
@@ -391,14 +391,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
@@ -445,14 +445,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
@@ -525,14 +525,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
@@ -611,14 +611,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
@@ -695,14 +695,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
@@ -2923,14 +2923,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
@@ -3373,14 +3373,14 @@ jobs:
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.m2/repository
-        key: maven-${{ hashFiles('**/deps.edn') }}
+        key: maven-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: maven
 
     - name: Cache Clojure GitLibs
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
       with:
         path: ~/.gitlibs
-        key: gitlibs-${{ hashFiles('**/deps.edn') }}
+        key: gitlibs-${{ env.CLOJURE_CLI_VERSION }}-${{ hashFiles('**/deps.edn') }}
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
