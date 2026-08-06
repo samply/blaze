@@ -53,6 +53,7 @@ The latest LTS/stable releases of:
 * clj-kondo
 * cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "`[`<latest-stable-release>`](https://github.com/weavejester/cljfmt/releases/latest)`"}' :as cljfmt`
 * [actionlint](https://github.com/rhysd/actionlint)
+* [dashboard-linter](https://github.com/grafana/dashboard-linter), only needed to run `make -C modules/monitoring lint-dashboard`
 
 ## Building Blaze
 

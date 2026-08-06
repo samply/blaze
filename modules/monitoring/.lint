@@ -1,0 +1,30 @@
+# Configuration of the Grafana dashboard linter.
+#
+# See https://github.com/grafana/dashboard-linter. Run via
+# `make -C modules/monitoring lint-dashboard`.
+#
+# The linter encodes the conventions of the Grafana mixins. The rules below are
+# the ones Blaze deliberately doesn't follow. Everything else is enabled and has
+# to pass.
+exclusions:
+  panel-title-description-rule:
+    reason: >-
+      Most panels only have a title. Descriptions are added as the panels get
+      documented, not as a precondition for linting.
+
+  template-job-rule:
+    reason: >-
+      The job variable is single select on purpose. The dashboard shows one
+      Blaze instance at a time, so panels like the RocksDB ones would mix
+      unrelated series if several jobs could be selected at once.
+
+  template-instance-rule:
+    reason: >-
+      Same as template-job-rule. The instance variable is single select because
+      the dashboard shows one instance at a time.
+
+  uneditable-dashboard:
+    reason: >-
+      The dashboard is published as a release asset and imported by users. It
+      has to stay editable so that they can adapt it. The source of truth is
+      dashboard.edn, not the imported copy.
