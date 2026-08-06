@@ -67,8 +67,13 @@ deps-tree:
 deps-list:
 	clojure -X:deps list
 
+# The second command downloads org.clojure/tools.deps.cli, the tooling pinned by
+# the installed Clojure CLI itself. Every module prep target uses it via
+# `clojure -X:deps prep`, but the in-process basis resolution of :deps-prep
+# never resolves it.
 deps-prep:
 	clojure -T:deps-prep run
+	clojure -X:deps list > /dev/null
 
 emacs-repl: prep
 	clj -M:test:emacs-repl
