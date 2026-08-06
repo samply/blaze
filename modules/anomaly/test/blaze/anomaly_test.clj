@@ -373,7 +373,40 @@
   (testing "anomaly"
     (given (ba/anomaly (ba/busy "msg-121702"))
       ::anom/category := ::anom/busy
-      ::anom/message := "msg-121702")))
+      ::anom/message := "msg-121702")
+
+    (testing "with an invalid category"
+      (given (ba/anomaly {::anom/category ::category-141516 ::foo ::bar})
+        ::anom/category := ::anom/fault
+        ::foo := ::bar))
+
+    (testing "with a nil category"
+      (given (ba/anomaly {::anom/category nil ::foo ::bar})
+        ::anom/category := ::anom/fault
+        ::foo := ::bar))
+
+    (testing "with an invalid message"
+      (is (= {::anom/category ::anom/busy}
+             (ba/anomaly {::anom/category ::anom/busy
+                          ::anom/message ::msg-141810}))))
+
+    (testing "with a nil message"
+      (is (= {::anom/category ::anom/busy}
+             (ba/anomaly {::anom/category ::anom/busy
+                          ::anom/message nil}))))
+
+    (testing "the map can't be an invalid anomaly"
+      (doseq [m [{::anom/category ::category-142344}
+                 {::anom/category nil}
+                 {::anom/category ::anom/busy ::anom/message ::msg-142401}
+                 {::anom/category ::anom/busy ::anom/message nil}
+                 {::anom/category ::category-142344
+                  ::anom/message ::msg-142401}]]
+        (is (s/valid? ::anom/anomaly (ba/anomaly m)))))
+
+    (testing "a valid anomaly is returned unchanged"
+      (let [m {::anom/category ::anom/busy ::anom/message "msg-142523"}]
+        (is (identical? m (ba/anomaly m)))))))
 
 (deftest try-one-test
   (testing "without message"
