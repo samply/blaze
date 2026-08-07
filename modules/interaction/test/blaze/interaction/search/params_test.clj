@@ -112,6 +112,12 @@
           :summary? := true
           :summary := "count")))
 
+    (testing "false"
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling {"_summary" "false"})
+          :summary? := false
+          :summary := nil)))
+
     (testing "invalid counts"
       (doseq [handling [::handling/lenient nil]]
         (given @(params/decode page-store handling {"_summary" "counts"})
@@ -127,6 +133,13 @@
         (given @(params/decode page-store handling {"_summary" ["count" "counts"]})
           :summary? := true
           :summary := "count")))
+
+    (testing "false and unsupported text"
+      (testing "is tolerated, because at least one value is supported"
+        (doseq [handling [::handling/strict ::handling/lenient nil]]
+          (given @(params/decode page-store handling {"_summary" ["false" "text"]})
+            :summary? := false
+            :summary := nil))))
 
     (testing "unsupported text"
       (doseq [handling [::handling/lenient nil]]

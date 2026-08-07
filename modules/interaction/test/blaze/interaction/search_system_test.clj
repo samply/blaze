@@ -234,9 +234,11 @@
                :multipleBirth #fhir/boolean true}]]]
 
       (testing "Returns all existing resources"
-        (doseq [params [{} {"_summary" "false"}]]
+        (doseq [[params headers] [[{} {}]
+                                  [{"_summary" "false"} {}]
+                                  [{"_summary" "false"} {"prefer" "handling=strict"}]]]
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
-                @(handler {:params params})]
+                @(handler {:headers headers :params params})]
 
             (is (= 200 status))
 
