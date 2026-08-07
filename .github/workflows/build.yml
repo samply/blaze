@@ -28,8 +28,8 @@ env:
   CLOJURE_CLI_VERSION: 1.12.5.1664
 
   # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
-  VALIDATOR_VERSION: 6.10.0
-  VALIDATOR_CHECKSUM: fc663ae55dd31bbfde19788dddfb49cacbeebc3c64498fa7b7779df90000434b
+  VALIDATOR_VERSION: 6.10.1
+  VALIDATOR_CHECKSUM: e1b75e86c32d6ea02708027d4bd462e4f853f842579e217bf1b4f5c26b733738
 
 jobs:
   fmt:
