@@ -153,11 +153,7 @@
   (-> (assoc job :id id)
       (update :identifier (fnil into []) (job-number-identifiers job-number))))
 
-(defn create-job
-  "Returns a CompletableFuture that will complete with `job` created or will
-  complete exceptionally with an anomaly in case of errors."
-  {:arglists '([job-scheduler job & other-resources])}
-  [{{:keys [node] :as context} :context} job & other-resources]
+(defn- create-job* [{:keys [node] :as context} job other-resources]
   (-> (current-job-number-observation context (d/db node))
       (ac/then-compose
        (fn [{job-number :value :as obs}]
@@ -173,6 +169,24 @@
                 (fn [db]
                   (log/debug "Created new job with id =" id)
                   (d/pull db (d/resource-handle db "Task" id))))))))))
+
+(defn- concurrent-inc?
+  "Tests whether `anomaly` is the result of a concurrent increment of the job
+  number."
+  {:arglists '([anomaly])}
+  [{:blaze.db/keys [tx-cmd] :as anomaly}]
+  (and (ba/conflict? anomaly) (= "put" (:op tx-cmd))
+       (some? (:if-match tx-cmd))))
+
+(defn create-job
+  "Returns a CompletableFuture that will complete with `job` created or will
+  complete exceptionally with an anomaly in case of errors.
+
+  Retries as long as the job number, used as atomic counter, is incremented
+  concurrently."
+  {:arglists '([job-scheduler job & other-resources])}
+  [{:keys [context]} job & other-resources]
+  (ac/retry2 #(create-job* context job other-resources) concurrent-inc?))
 
 (defn- cancel-conflict-msg [{:keys [id status]}]
   (format "Can't cancel job `%s` because it's status is `%s`." id (:value status)))
