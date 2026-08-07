@@ -619,6 +619,30 @@
             (testing "the bundle contains no entry"
               (is (empty? (:entry body))))))
 
+        (testing "with _summary=false"
+          (doseq [handling ["strict" "lenient"]]
+            (let [{:keys [status body]}
+                  @(handler (-> (assoc-in request [:params "_summary"] "false")
+                                (assoc-in [:headers "prefer"] (str "handling=" handling))))]
+
+              (is (= 200 status))
+
+              (testing "the body contains a bundle"
+                (is (= :fhir/Bundle (:fhir/type body))))
+
+              (testing "the bundle type is searchset"
+                (is (= #fhir/code "searchset" (:type body))))
+
+              (testing "the total count is 2"
+                (is (= #fhir/unsignedInt 2 (:total body))))
+
+              (testing "has a self link lacking _summary"
+                (is (= (str base-url context-path "/Patient/0/Observation?_count=50")
+                       (link-url body "self"))))
+
+              (testing "the bundle contains two entries"
+                (is (= 2 (count (:entry body))))))))
+
         (testing "with status=final"
           (doseq [handling ["strict" "lenient"]]
             (let [{:keys [status body]}

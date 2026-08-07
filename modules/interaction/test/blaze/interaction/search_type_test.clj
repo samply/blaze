@@ -613,6 +613,24 @@
             [:issue 0 :code] := #fhir/code "not-supported"
             [:issue 0 :diagnostics] := #fhir/string "More than one sort parameter is unsupported."))))))
 
+(deftest handler-unsupported-summary-parameter-test
+  (testing "with strict handling"
+    (testing "returns error"
+      (with-handler [handler]
+        (doseq [summary ["text" "data" "counts"]]
+          (let [{:keys [status body]}
+                @(handler
+                  {:headers {"prefer" "handling=strict"}
+                   :params {"_summary" summary}})]
+
+            (is (= 422 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "not-supported"
+              [:issue 0 :diagnostics] := (type/string (str "Unsupported _summary search param with value(s): " summary)))))))))
+
 (deftest handler-invalid-date-time-test
   (testing "returns error"
     (with-handler [handler]
@@ -694,9 +712,12 @@
               :longitude #fhir/decimal 12.3731M}}]]]
 
     (testing "Returns all existing resources of type"
-      (doseq [params [{} {"_summary" "false"}]]
+      (doseq [[params headers] [[{} {}]
+                                [{"_summary" "false"} {}]
+                                [{"_summary" "false"} {"prefer" "handling=strict"}]]]
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
               @(handler {::reitit/match (match-of "Location")
+                         :headers headers
                          :params params})]
 
           (is (= 200 status))
@@ -788,9 +809,11 @@
              :multipleBirth #fhir/boolean true}]]]
 
     (testing "Returns all existing resources of type"
-      (doseq [params [{} {"_summary" "false"}]]
+      (doseq [[params headers] [[{} {}]
+                                [{"_summary" "false"} {}]
+                                [{"_summary" "false"} {"prefer" "handling=strict"}]]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
-              @(handler {:params params})]
+              @(handler {:headers headers :params params})]
 
           (is (= 200 status))
 

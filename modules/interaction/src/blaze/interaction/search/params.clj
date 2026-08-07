@@ -30,19 +30,37 @@
      (when-ok [clauses (uc/clauses query-params)]
        {:clauses clauses}))))
 
-(def ^:private allowed-summary-values
+(def ^:private summary-mode-values
+  "The `_summary` values that select a summary mode."
   #{"true" "count"})
 
-(defn- summary [handling {summary "_summary"}]
-  (let [value (some allowed-summary-values (u/to-seq summary))]
-    (if (and (nil? value)
-             (identical? :blaze.preference.handling/strict handling)
-             (seq (u/to-seq summary)))
-      (ba/unsupported (str "Unsupported _summary search param with value(s): " (str/join ", " (u/to-seq summary))))
-      value)))
+(def ^:private supported-summary-values
+  "The `_summary` values Blaze honors.
 
-(defn- summary?
-  "Returns true if a summary result is requested."
+  Besides the modes, this includes `false`, which asks for the complete
+  resource. That's what Blaze returns anyway if no mode is selected, so `false`
+  is honored without selecting one."
+  (conj summary-mode-values "false"))
+
+(defn- summary-mode
+  "Returns the summary mode requested by the `_summary` query param or nil if
+  none is requested.
+
+  Returns nil for `false` as well, because it asks for the complete resource,
+  which is what a missing summary mode already means.
+
+  Returns an unsupported anomaly if `handling` is strict and none of the given
+  values is supported."
+  [handling {summary "_summary"}]
+  (let [values (u/to-seq summary)]
+    (if (and (identical? :blaze.preference.handling/strict handling)
+             (seq values)
+             (not-any? supported-summary-values values))
+      (ba/unsupported (str "Unsupported _summary search param with value(s): " (str/join ", " values)))
+      (some summary-mode-values values))))
+
+(defn- count?
+  "Returns true if a summary=count result is requested."
   [summary query-params]
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
@@ -65,12 +83,12 @@
   [page-store handling query-params]
   (do-sync [{:keys [clauses token]} (clauses page-store query-params)]
     (when-ok [include-defs (include/include-defs handling query-params)
-              summary (summary handling query-params)]
+              summary (summary-mode handling query-params)]
       (let [total (total query-params)]
         (cond->
          {:clauses clauses
           :include-defs include-defs
-          :summary? (summary? summary query-params)
+          :summary? (count? summary query-params)
           :summary summary
           :elements (fhir-util/elements query-params)
           :explain? (explain? query-params)
