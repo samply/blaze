@@ -28,7 +28,7 @@
   </Breadcrumb>
 </header>
 
-<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+<main class="mx-auto flex max-w-7xl flex-col gap-4 py-4 sm:px-6 lg:px-8">
   <Form class="mt-4">
     <Section name="Parameters">
       <TextField id="url" label="URL" value={form?.url} />

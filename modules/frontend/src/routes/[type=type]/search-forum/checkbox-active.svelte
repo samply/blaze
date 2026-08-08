@@ -18,15 +18,15 @@
 <div class="flex h-6 shrink-0 items-center">
   <label
     for="search-param-{index}-active"
-    class="hidden text-sm font-medium leading-6 text-gray-900 dark:text-gray-100">Active</label
+    class="hidden text-sm leading-6 font-medium text-gray-900 dark:text-gray-100">Active</label
   >
-  <div class="group grid size-4 grid-cols-1 m-2">
+  <div class="group m-2 grid size-4 grid-cols-1">
     <input
       id="search-param-{index}-active"
       name="active"
       type="checkbox"
       checked={active}
-      class="h-5 w-5 my-1 col-start-1 row-start-1 appearance-none rounded-sm border border-gray-300 bg-white dark:bg-gray-800 checked:border-indigo-600 checked:bg-indigo-600 indeterminate:border-indigo-600 indeterminate:bg-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:border-gray-300 disabled:bg-gray-100 disabled:checked:bg-gray-100 forced-colors:appearance-auto"
+      class="col-start-1 row-start-1 my-1 h-5 w-5 appearance-none rounded-sm border border-gray-300 bg-white checked:border-indigo-600 checked:bg-indigo-600 indeterminate:border-indigo-600 indeterminate:bg-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:border-gray-300 disabled:bg-gray-100 disabled:checked:bg-gray-100 dark:bg-gray-800 forced-colors:appearance-auto"
       onchange={change}
     />
     <svg

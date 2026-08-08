@@ -12,7 +12,7 @@
   <title>History - Blaze</title>
 </svelte:head>
 
-<main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
+<main class="mx-auto flex max-w-7xl flex-col sm:px-6 lg:px-8">
   <TotalCard bundle={data.bundle}>
     <p class="grow py-1.5">
       {#if data.bundle.total !== undefined}
@@ -29,7 +29,7 @@
       <p class="grow"></p>
     </TotalCard>
   {:else}
-    <div class="overflow-hidden text-center py-10 text-3xl text-gray-700 dark:text-gray-300">
+    <div class="overflow-hidden py-10 text-center text-3xl text-gray-700 dark:text-gray-300">
       The history is empty
     </div>
   {/if}

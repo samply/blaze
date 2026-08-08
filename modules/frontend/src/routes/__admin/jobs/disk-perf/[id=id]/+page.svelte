@@ -84,7 +84,7 @@
   </DescriptionList>
 
   {#if data.job.score !== undefined}
-    <h2 class="mt-8 text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">Results</h2>
+    <h2 class="mt-8 text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">Results</h2>
     <Results job={data.job} />
 
     <DescriptionList>

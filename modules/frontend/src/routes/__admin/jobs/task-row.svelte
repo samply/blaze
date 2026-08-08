@@ -23,7 +23,7 @@
   <div class="flex min-w-0 gap-x-4">
     <Status {job} />
     <div class="min-w-0 flex-auto">
-      <p class="text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100">
+      <p class="text-sm leading-6 font-semibold text-gray-900 dark:text-gray-100">
         <a
           href={resolve('/__admin/jobs/[type]/[id=id]', { type: job.type.code, id: job.id })}
           class="hover:underline">{job.type.display}</a
@@ -51,7 +51,7 @@
     <div class="relative flex-none">
       <button
         type="button"
-        class="-m-2.5 block p-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 hover:dark:text-gray-100 enabled:cursor-pointer"
+        class="-m-2.5 block p-2.5 text-gray-500 hover:text-gray-900 enabled:cursor-pointer dark:text-gray-400 hover:dark:text-gray-100"
         id="options-menu-0-button"
         aria-expanded="false"
         aria-haspopup="true"
@@ -73,7 +73,7 @@
 					To: "transform opacity-0 scale-95"
 			-->
       <div
-        class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-32 origin-top-right rounded-md bg-white dark:bg-gray-800 py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none"
+        class="absolute right-0 z-10 mt-2 flex w-32 origin-top-right flex-col items-stretch rounded-md bg-white py-2 shadow-lg ring-1 ring-gray-900/5 focus:outline-none dark:bg-gray-800"
         class:hidden={!actionMenuOpen}
         role="menu"
         aria-orientation="vertical"
@@ -86,7 +86,7 @@
               <input type="hidden" name="job-id" value={job.id} />
               <button
                 type="submit"
-                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 dark:text-gray-100 hover:bg-gray-50 hover:dark:bg-gray-700 enabled:cursor-pointer"
+                class="block px-3 py-1 text-left text-sm leading-6 text-gray-900 hover:bg-gray-50 enabled:cursor-pointer dark:text-gray-100 hover:dark:bg-gray-700"
                 role="menuitem"
                 tabindex="-1"
                 id="options-menu-0-item-0"
@@ -98,7 +98,7 @@
               <input type="hidden" name="job-id" value={job.id} />
               <button
                 type="submit"
-                class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 dark:text-gray-100 hover:bg-gray-50 hover:dark:bg-gray-700 enabled:cursor-pointer"
+                class="block px-3 py-1 text-left text-sm leading-6 text-gray-900 hover:bg-gray-50 enabled:cursor-pointer dark:text-gray-100 hover:dark:bg-gray-700"
                 role="menuitem"
                 tabindex="-1"
                 id="options-menu-0-item-0"
@@ -112,7 +112,7 @@
             <input type="hidden" name="job-id" value={job.id} />
             <button
               type="submit"
-              class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 dark:text-gray-100 hover:bg-gray-50 hover:dark:bg-gray-700 enabled:cursor-pointer"
+              class="block px-3 py-1 text-left text-sm leading-6 text-gray-900 hover:bg-gray-50 enabled:cursor-pointer dark:text-gray-100 hover:dark:bg-gray-700"
               role="menuitem"
               tabindex="-1"
               id="options-menu-0-item-0"

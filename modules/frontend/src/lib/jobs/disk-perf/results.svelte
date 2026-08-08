@@ -23,7 +23,7 @@
 </script>
 
 <dl
-  class="mx-auto mt-4 grid grid-cols-1 gap-px bg-gray-900/5 sm:grid-cols-2 lg:grid-cols-4 border-y border-gray-200 dark:border-gray-600"
+  class="mx-auto mt-4 grid grid-cols-1 gap-px border-y border-gray-200 bg-gray-900/5 sm:grid-cols-2 lg:grid-cols-4 dark:border-gray-600"
 >
   {#if job.score !== undefined}
     <ScoreGauge score={job.score} rating={job.rating} />
@@ -49,7 +49,7 @@
 </dl>
 
 {#if job.readRuns}
-  <h2 class="mt-8 text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+  <h2 class="mt-8 text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">
     Random Reads
   </h2>
   <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">

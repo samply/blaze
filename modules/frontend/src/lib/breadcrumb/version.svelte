@@ -9,13 +9,13 @@
     vid: string;
   }
 
-  let props: Props = $props();
+  let { type, id, vid }: Props = $props();
 </script>
 
 <Entry>
   <a
-    href={resolve('/[type=type]/[id=id]/_history/[vid=vid]', props)}
-    class="ml-4 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:dark:text-gray-300"
-    >Version-{props.vid}</a
+    href={resolve('/[type=type]/[id=id]/_history/[vid=vid]', { type: type, id: id, vid: vid })}
+    class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 hover:dark:text-gray-300"
+    >Version-{vid}</a
   >
 </Entry>

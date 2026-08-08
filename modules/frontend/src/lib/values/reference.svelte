@@ -26,7 +26,7 @@
       {#if /[A-Z]([A-Za-z0-9_]){0,254}\/[A-Za-z0-9\-.]{1,64}/.test(reference.reference)}
         <a
           href={resolve('/[type=type]/[id=id]', toRouteParams(reference.reference))}
-          class="font-medium text-indigo-600 dark:text-indigo-300 hover:text-indigo-500 hover:dark:text-indigo-400"
+          class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 hover:dark:text-indigo-400"
           >{#if reference.display}{reference.display}{:else}{reference.reference}{/if}</a
         >
       {:else if reference.display}

@@ -16,10 +16,10 @@
   {href}
   {title}
   rel="external"
-  class="font-medium text-indigo-600 dark:text-indigo-300 hover:text-indigo-500 hover:dark:text-indigo-400"
+  class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 hover:dark:text-indigo-400"
   >{@render children?.()}
   <ArrowTopRightOnSquare
     variation="mini"
-    class="inline align-text-bottom w-4 h-4 text-gray-500 dark:text-gray-400"
+    class="inline h-4 w-4 align-text-bottom text-gray-500 dark:text-gray-400"
   /></a
 >

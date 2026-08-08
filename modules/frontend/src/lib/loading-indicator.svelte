@@ -29,7 +29,7 @@
   <div
     in:fade|global={{ duration: 200 }}
     out:slide|global={{ duration: 200 }}
-    class="text-center px-4 py-5 sm:px-6 text-gray-700 dark:text-gray-300"
+    class="px-4 py-5 text-center text-gray-700 sm:px-6 dark:text-gray-300"
   >
     <code>
       loading...

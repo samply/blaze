@@ -10,21 +10,21 @@
 </script>
 
 {#if job.status === 'completed'}
-  <CheckCircle variation="mini" class="w-6 h-12 text-center text-green-600 dark:text-green-600" />
+  <CheckCircle variation="mini" class="h-12 w-6 text-center text-green-600 dark:text-green-600" />
 {:else if job.status === 'failed'}
-  <XMark variation="mini" class="w-6 h-12 text-center text-red-600 dark:text-red-400" />
+  <XMark variation="mini" class="h-12 w-6 text-center text-red-600 dark:text-red-400" />
 {:else if job.status === 'cancelled'}
-  <XMark variation="mini" class="w-6 h-12 text-center text-orange-600" />
+  <XMark variation="mini" class="h-12 w-6 text-center text-orange-600" />
 {:else if job.status === 'in-progress'}
-  <ChartPie variation="mini" class="animate-spin w-6 h-12 text-center text-yellow-400" />
+  <ChartPie variation="mini" class="h-12 w-6 animate-spin text-center text-yellow-400" />
 {:else if job.status === 'on-hold'}
   <span
     class:text-blue-600={job.statusReason === 'paused'}
     class:dark:text-blue-200={job.statusReason === 'paused'}
     class:text-yellow-400={job.statusReason === 'orderly-shutdown'}
   >
-    <Pause variation="mini" class="w-6 h-12 text-center" />
+    <Pause variation="mini" class="h-12 w-6 text-center" />
   </span>
 {:else}
-  <QuestionMarkCircle variation="mini" class="w-6 h-12 text-center text-gray-600" />
+  <QuestionMarkCircle variation="mini" class="h-12 w-6 text-center text-gray-600" />
 {/if}

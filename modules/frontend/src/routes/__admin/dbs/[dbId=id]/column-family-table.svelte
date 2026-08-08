@@ -13,7 +13,7 @@
 
 <Table clazz="mt-4">
   {#snippet caption()}
-    <h4 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+    <h4 class="text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">
       Column Families
     </h4>
   {/snippet}
@@ -21,12 +21,12 @@
     <tr>
       <th
         scope="col"
-        class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+        class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
         >Name</th
       >
       <th
         scope="col"
-        class="hidden px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-gray-100 sm:table-cell"
+        class="hidden px-3 py-3.5 text-right text-sm font-semibold text-gray-900 sm:table-cell dark:text-gray-100"
         ># Keys</th
       >
       <th
@@ -36,7 +36,7 @@
       >
       <th
         scope="col"
-        class="hidden px-3 py-3.5 text-right text-sm font-semibold text-gray-900 dark:text-gray-100 lg:table-cell"
+        class="hidden px-3 py-3.5 text-right text-sm font-semibold text-gray-900 lg:table-cell dark:text-gray-100"
         >Memtable Size</th
       >
     </tr>

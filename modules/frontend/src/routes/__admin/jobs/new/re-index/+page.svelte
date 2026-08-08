@@ -22,7 +22,7 @@
       <div class="col-span-full">
         <label
           for="search-param-url"
-          class="block text-sm/6 font-medium leading-6 text-gray-900 dark:text-gray-100"
+          class="block text-sm/6 leading-6 font-medium text-gray-900 dark:text-gray-100"
           >Search Param URL</label
         >
         {#if form?.incorrect}

@@ -70,7 +70,7 @@
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 
 <div in:fade|global={fadeParams} class="overflow-hidden">
-  <div class="border-b border-gray-200 dark:border-gray-600 px-8">
+  <div class="border-b border-gray-200 px-8 dark:border-gray-600">
     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
       {#if embedded}
         <TabItemEmbedded name="default" label="Normal" bind:selected={selectedTab} />
@@ -84,7 +84,7 @@
   {#if embedded ? selectedTab === 'default' : isTabActive(page.url, 'default')}
     <div in:fade|global={fadeParams} class="px-4 py-5 sm:px-6">
       <div class="flex">
-        <h3 class="grow text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+        <h3 class="grow text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">
           <a href={href(resource)}>{title1(resource)}</a>
         </h3>
         {@render header?.()}
@@ -97,7 +97,7 @@
     </div>
     <div
       in:fade|global={fadeParams}
-      class="border-t border-gray-200 dark:border-gray-600 px-4 py-5 sm:p-0"
+      class="border-t border-gray-200 px-4 py-5 sm:p-0 dark:border-gray-600"
     >
       <dl class="sm:divide-y sm:divide-gray-200 dark:divide-gray-600" role="list">
         {#each properties as property (property.name)}

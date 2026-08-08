@@ -87,7 +87,7 @@
   <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
     {toTitleCase(property.humanName ?? property.name)}
   </dt>
-  <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:col-span-3 sm:mt-0">
+  <dd class="mt-1 text-sm text-gray-900 sm:col-span-3 sm:mt-0 dark:text-gray-100">
     {#if singlePrimitiveValue}
       <PrimitiveValue value={singlePrimitiveValue} />
     {:else if multiplePrimitiveValues}

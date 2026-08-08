@@ -37,7 +37,7 @@
   role="note"
   {title}
   {style}
-  class="rounded-full ml-1 {chooseColor(color)} px-2 py-1 text-xs font-medium {clss}"
+  class="ml-1 rounded-full {chooseColor(color)} px-2 py-1 text-xs font-medium {clss}"
 >
   {value}
 </span>

@@ -5,14 +5,14 @@
 </script>
 
 <tr>
-  <td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 dark:text-gray-400 sm:pl-0"
+  <td class="py-2 pr-3 pl-4 text-sm whitespace-nowrap text-gray-500 sm:pl-0 dark:text-gray-400"
     >{feature.name}</td
   >
-  <td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 dark:text-gray-400 sm:pl-0"
+  <td class="py-2 pr-3 pl-4 text-sm whitespace-nowrap text-gray-500 sm:pl-0 dark:text-gray-400"
     >{feature.toggle}</td
   >
   <td
-    class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 dark:text-gray-400 sm:pl-0"
+    class="py-2 pr-3 pl-4 text-sm whitespace-nowrap text-gray-500 sm:pl-0 dark:text-gray-400"
     class:font-medium={feature.enabled}
     class:text-gray-900={feature.enabled}
     class:dark:text-gray-100={feature.enabled}>{feature.enabled}</td
