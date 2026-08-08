@@ -1,6 +1,6 @@
 {
   "name": "blaze",
   "dependencies": {
-    "fsh-sushi": "3.19.0"
+    "fsh-sushi": "3.20.0"
   }
 }
