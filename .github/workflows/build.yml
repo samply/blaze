@@ -1625,6 +1625,9 @@ jobs:
     - name: Count Async 8310-5
       run: .github/scripts/count-async.sh "8310-5" "512"
 
+    - name: Count Async 8310-5 - 10 Concurrent Requests
+      run: .github/scripts/count-async-concurrent.sh "8310-5" "512" 10
+
     - name: Cancel Async Query
       run: .github/scripts/cancel-async.sh
 

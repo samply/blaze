@@ -456,6 +456,16 @@
             :fhir/type := :fhir/Bundle
             :type := #fhir/code "batch"))))))
 
+(deftest create-job-concurrently-test
+  (testing "all jobs are created with unique job numbers"
+    (with-system [{:blaze/keys [job-scheduler]} config]
+
+      (let [futures (mapv (fn [_] (js/create-job job-scheduler (ready-job "test")))
+                          (range 10))]
+
+        (is (= (range 1 11)
+               (sort (map (comp parse-long job-util/job-number deref) futures))))))))
+
 (defn- in-progress-job [type]
   {:fhir/type :fhir/Task
    :status #fhir/code "in-progress"
