@@ -27,7 +27,7 @@
   </Breadcrumb>
 </header>
 
-<main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
+<main class="mx-auto flex max-w-7xl flex-col sm:px-6 lg:px-8">
   <TotalCard bundle={data.bundle}>
     <p class="grow py-1.5">
       {#if data.bundle.total !== undefined}

@@ -44,15 +44,15 @@
 </script>
 
 {#if humanNames.length > 1}
-  <div class="ring-1 ring-gray-300 dark:ring-gray-500 rounded-lg">
-    <table class="table-fixed w-full">
+  <div class="rounded-lg ring-1 ring-gray-300 dark:ring-gray-500">
+    <table class="w-full table-fixed">
       <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
         {#each humanNames as value}
           <tr>
-            <td class="px-5 py-3 text-sm text-gray-500 dark:text-gray-400 table-cell w-1/3"
+            <td class="table-cell w-1/3 px-5 py-3 text-sm text-gray-500 dark:text-gray-400"
               >{value.use ?? '<not-available>'}</td
             >
-            <td class="px-5 py-3 text-sm text-gray-500 dark:text-gray-400 table-cell"
+            <td class="table-cell px-5 py-3 text-sm text-gray-500 dark:text-gray-400"
               >{display(value)}</td
             >
           </tr>

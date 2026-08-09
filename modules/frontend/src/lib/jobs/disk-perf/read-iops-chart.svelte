@@ -117,7 +117,7 @@
           y={y(tick)}
           text-anchor="end"
           dominant-baseline="middle"
-          class="fill-gray-500 dark:fill-gray-400 text-[11px]">{prettyNum(tick)}</text
+          class="fill-gray-500 text-[11px] dark:fill-gray-400">{prettyNum(tick)}</text
         >
       {/each}
       {#each points as run, i (run.concurrency)}
@@ -125,14 +125,14 @@
           x={x(i)}
           y={height - margin.bottom + 16}
           text-anchor="middle"
-          class="fill-gray-500 dark:fill-gray-400 text-[11px]">{run.concurrency}</text
+          class="fill-gray-500 text-[11px] dark:fill-gray-400">{run.concurrency}</text
         >
       {/each}
       <text
         x={margin.left + plotWidth / 2}
         y={height - 4}
         text-anchor="middle"
-        class="fill-gray-500 dark:fill-gray-400 text-[11px]">Concurrency</text
+        class="fill-gray-500 text-[11px] dark:fill-gray-400">Concurrency</text
       >
       <polyline
         points={referencePoints}

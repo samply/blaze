@@ -29,7 +29,7 @@
   let { type, scanType, scans, seeks } = $derived(parsePlan(diagnostics));
 </script>
 
-<div class="my-2 py-2 px-4 sm:px-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
+<div class="my-2 rounded-lg bg-gray-50 px-4 py-2 sm:px-6 dark:bg-gray-700">
   <div class="flex items-center justify-between text-sm/6">
     <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Query Plan</h2>
   </div>
@@ -43,7 +43,7 @@
     <li>
       <CardHeading title="Query Type" subtitle={type}>
         <span
-          class="inline-flex size-10 items-center justify-center rounded-lg bg-indigo-200 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-200"
+          class="inline-flex size-10 items-center justify-center rounded-lg bg-indigo-200 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-200"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -65,7 +65,7 @@
     <li>
       <CardHeading title={scanType} subtitle={scans}>
         <span
-          class="inline-flex size-10 items-center justify-center rounded-lg bg-green-200 dark:bg-green-800/50 text-green-600 dark:text-green-100"
+          class="inline-flex size-10 items-center justify-center rounded-lg bg-green-200 text-green-600 dark:bg-green-800/50 dark:text-green-100"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -87,7 +87,7 @@
     <li>
       <CardHeading title="Seeks" subtitle={seeks}>
         <span
-          class="inline-flex size-10 items-center justify-center rounded-lg bg-purple-200 dark:bg-purple-800/50 text-purple-600 dark:text-purple-100"
+          class="inline-flex size-10 items-center justify-center rounded-lg bg-purple-200 text-purple-600 dark:bg-purple-800/50 dark:text-purple-100"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

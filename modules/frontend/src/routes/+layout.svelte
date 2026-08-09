@@ -43,14 +43,14 @@
 </script>
 
 <div class="min-h-full">
-  <nav class="border-b border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800">
+  <nav class="border-b border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-16 justify-between">
         <div class="flex">
           <div class="flex shrink-0 items-center">
-            <img class="inline dark:hidden h-8 w-auto" src={asset('/blaze-logo.svg')} alt="Blaze" />
+            <img class="inline h-8 w-auto dark:hidden" src={asset('/blaze-logo.svg')} alt="Blaze" />
             <img
-              class="dark:inline hidden h-8 w-auto"
+              class="hidden h-8 w-auto dark:inline"
               src={asset('/blaze-logo-bright.svg')}
               alt="Blaze"
             />
@@ -74,12 +74,12 @@
         </div>
 
         <!-- User Profile -->
-        <div class="flex ml-6 items-center">
+        <div class="ml-6 flex items-center">
           <div class="relative ml-3">
             <div>
               <button
                 type="button"
-                class="relative flex max-w-xs items-center rounded-full bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 enabled:cursor-pointer"
+                class="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none enabled:cursor-pointer dark:bg-gray-800"
                 id="user-menu-button"
                 aria-expanded="false"
                 aria-haspopup="true"
@@ -110,7 +110,7 @@
                         -->
             {#if userProfileOpen}
               <div
-                class="absolute flex flex-col items-stretch right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+                class="absolute right-0 z-10 mt-2 flex w-48 origin-top-right flex-col items-stretch rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none dark:bg-gray-800"
                 role="menu"
                 aria-orientation="vertical"
                 aria-labelledby="user-menu-button"
@@ -122,7 +122,7 @@
                 </p>
                 <button
                   onclick={() => signOut()}
-                  class="block px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 hover:dark:bg-gray-600 enabled:cursor-pointer"
+                  class="block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 enabled:cursor-pointer dark:text-gray-300 hover:dark:bg-gray-600"
                   role="menuitem"
                   tabindex="-1"
                   id="user-menu-item-sign-out"

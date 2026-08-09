@@ -25,9 +25,9 @@
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-  <div class="flex gap-2 pl-8 pr-4 sm:pr-6 py-3.5 border-b border-gray-200 dark:border-gray-600">
+  <div class="flex gap-2 border-b border-gray-200 py-3.5 pr-4 pl-8 sm:pr-6 dark:border-gray-600">
     <nav class="flex flex-auto" aria-label="Breadcrumb">
-      <ol class="flex items-center py-0.5 space-x-4">
+      <ol class="flex items-center space-x-4 py-0.5">
         <BreadcrumbEntryHome />
         <BreadcrumbEntryType {...params} last />
       </ol>
@@ -42,7 +42,7 @@
   </div>
 </header>
 
-<main class="mx-auto max-w-7xl sm:px-6 lg:px-8 flex flex-col">
+<main class="mx-auto flex max-w-7xl flex-col sm:px-6 lg:px-8">
   <SearchForm searchParams={data.searchParams} type={params.type} />
   {#await data.streamed.bundle}
     <LoadingIndicator start={data.streamed.start} />

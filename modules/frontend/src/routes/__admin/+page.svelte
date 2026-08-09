@@ -16,7 +16,7 @@
   <Table>
     {#snippet caption()}
       <div>
-        <h1 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">Settings</h1>
+        <h1 class="text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">Settings</h1>
         <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
           A list of all environment variables used by Blaze
         </p>
@@ -27,17 +27,17 @@
       <tr>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+          class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
           >Name
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+          class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
           >Value
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+          class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
           >Default
         </th>
       </tr>
@@ -50,7 +50,7 @@
   <Table clazz="mt-8">
     {#snippet caption()}
       <div>
-        <h1 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">Features</h1>
+        <h1 class="text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">Features</h1>
         <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Status of optional features</p>
       </div>
     {/snippet}
@@ -59,17 +59,17 @@
       <tr>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+          class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
           >Name
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+          class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
           >Toggle
         </th>
         <th
           scope="col"
-          class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+          class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
           >Enabled
         </th>
       </tr>

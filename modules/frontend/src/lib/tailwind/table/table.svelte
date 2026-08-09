@@ -18,7 +18,7 @@
       <thead>
         {@render head?.()}
       </thead>
-      <tbody class="divide-y divide-gray-200 dark:divide-gray-600 bg-white dark:bg-gray-800">
+      <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-600 dark:bg-gray-800">
         {@render children?.()}
       </tbody>
     </table>

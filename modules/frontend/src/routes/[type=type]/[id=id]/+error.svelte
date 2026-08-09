@@ -1,6 +1,4 @@
 <script lang="ts">
-  import type { PageProps } from './$types';
-
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
@@ -11,7 +9,8 @@
   import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
   import ErrorCard from '$lib/error-card.svelte';
 
-  let { params }: PageProps = $props();
+  // Error components are not passed the route props, so read the params off the page state.
+  let params = $derived(page.params as { type: string; id: string });
 </script>
 
 <svelte:head>

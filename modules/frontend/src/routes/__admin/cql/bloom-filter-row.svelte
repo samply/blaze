@@ -11,19 +11,19 @@
 
 <tr>
   <td
-    class="whitespace-nowrap py-2 pl-4 pr-3 text-right text-sm text-gray-500 dark:text-gray-400 sm:pl-0"
+    class="py-2 pr-3 pl-4 text-right text-sm whitespace-nowrap text-gray-500 sm:pl-0 dark:text-gray-400"
     >{bloomFilter.t}</td
   >
   <td
-    class="whitespace-nowrap py-2 pl-4 pr-3 font-mono text-sm text-gray-500 dark:text-gray-400 sm:pl-0"
+    class="py-2 pr-3 pl-4 font-mono text-sm whitespace-nowrap text-gray-500 sm:pl-0 dark:text-gray-400"
     >{bloomFilter.hash.substring(0, 8)}</td
   >
   <td
-    class="whitespace-nowrap py-2 pl-4 pr-3 text-right text-sm text-gray-500 dark:text-gray-400 sm:pl-0"
+    class="py-2 pr-3 pl-4 text-right text-sm whitespace-nowrap text-gray-500 sm:pl-0 dark:text-gray-400"
     >{bloomFilter.patientCount}</td
   >
   <td
-    class="whitespace-nowrap py-2 pl-4 pr-3 text-right text-sm text-gray-500 dark:text-gray-400 sm:pl-0"
+    class="py-2 pr-3 pl-4 text-right text-sm whitespace-nowrap text-gray-500 sm:pl-0 dark:text-gray-400"
     >{prettyBytes(bloomFilter.memSize, { binary: true, maximumFractionDigits: 1 })}</td
   >
 </tr>

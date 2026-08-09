@@ -33,7 +33,7 @@
 
 <div class="mt-8 sm:flex sm:items-end">
   <div class="sm:flex-auto">
-    <h4 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
+    <h4 class="text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">
       Disk Performance
     </h4>
     <p class="mt-1 text-sm leading-6 text-gray-500 dark:text-gray-400">
@@ -52,7 +52,7 @@
       <p class="mt-1 text-sm leading-6 text-red-600 dark:text-red-400">{error}</p>
     {/if}
   </div>
-  <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+  <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
     {#if running}
       <Status job={running} />
     {:else}

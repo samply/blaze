@@ -25,7 +25,7 @@
   </Breadcrumb>
 </header>
 
-<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
+<main class="mx-auto flex max-w-7xl flex-col gap-4 py-4 sm:px-6 lg:px-8">
   {#if data.bundle.fhirObjectEntry}
     {#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
       <EntryCard {entry} />

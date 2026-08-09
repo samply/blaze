@@ -15,7 +15,7 @@
     id={name}
     {name}
     {value}
-    class="col-start-1 row-start-1 block w-full rounded-md bg-white dark:bg-gray-800 py-1.5 pr-10 pl-3 text-red-900 dark:text-red-300 outline-1 -outline-offset-1 outline-red-300 placeholder:text-red-300 focus:outline-2 focus:-outline-offset-2 focus:outline-red-600 focus:dark:outline-red-200 sm:pr-9 sm:text-sm/6 sm:leading-6"
+    class="col-start-1 row-start-1 block w-full rounded-md bg-white py-1.5 pr-10 pl-3 text-red-900 outline-1 -outline-offset-1 outline-red-300 placeholder:text-red-300 focus:outline-2 focus:-outline-offset-2 focus:outline-red-600 sm:pr-9 sm:text-sm/6 sm:leading-6 dark:bg-gray-800 dark:text-red-300 focus:dark:outline-red-200"
   />
   <ExclamationCircle
     variation="mini"

@@ -12,13 +12,13 @@
 
 <Table clazz="mt-4">
   {#snippet caption()}
-    <h4 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">Levels</h4>
+    <h4 class="text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">Levels</h4>
   {/snippet}
   {#snippet head()}
     <tr>
       <th
         scope="col"
-        class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 sm:pl-0"
+        class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold text-gray-900 sm:pl-0 dark:text-gray-100"
         >Level</th
       >
       <th
