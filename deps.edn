@@ -211,6 +211,7 @@
     "-d" "modules/metrics"
     "-d" "modules/module-base"
     "-d" "modules/module-test-util"
+    "-d" "modules/monitoring"
     "-d" "modules/openid-auth"
     "-d" "modules/openid-client"
     "-d" "modules/operation-code-system-lookup"

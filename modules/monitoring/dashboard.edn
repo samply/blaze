@@ -1,0 +1,777 @@
+;; Source of the Blaze Grafana dashboard.
+;;
+;; Generated into target/blaze-dashboard.json by `make -C modules/monitoring build`.
+{:title "Blaze"
+ :variables
+ [{:type :datasource
+   :name "datasource"
+   :label "Data source"
+   :plugin-id "prometheus"}
+  {:type :query
+   :name "job"
+   :label "Job"
+   :query "label_values(blaze_cache_hits_total,job)"
+   :sort :alphabetical-asc}
+  {:type :query
+   :name "instance"
+   :query "label_values(blaze_cache_hits_total{job=~\"$job\"},instance)"}
+  {:type :custom
+   :name "database"
+   :label "Database"
+   :description "RocksDB database kind."
+   :multi true
+   :values ["index" "transaction" "resource"]
+   :selected ["index" "resource"]}
+  {:type :custom
+   :name "quantile"
+   :multi true
+   :hide true
+   :values ["0.5" "0.9" "0.99"]
+   :selected ["0.5" "0.9" "0.99"]}]
+ :rows
+ [{:title "CPU & Memory"
+   :panels
+   [{:title "CPU Seconds"
+     :unit "short"
+     :span-nulls true
+     :legend false
+     :queries
+     [{:expr "sum(rate(process_cpu_seconds_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))"
+       :legend " "}]}
+    {:title "Memory Usage"
+     :unit "bytes"
+     :stacking true
+     :overrides
+     [{"matcher" {"id" "byName" "options" "Total"}
+       "properties" [{"id" "custom.stacking" "value" {"group" "A" "mode" "none"}}
+                     {"id" "color" "value" {"fixedColor" "red" "mode" "fixed"}}]}]
+     :queries
+     [{:expr "sum(jvm_memory_bytes_committed{job=~\"$job\",instance=~\"$instance\"})"
+       :legend "JVM"}
+      {:expr "blaze_rocksdb_block_cache_usage_bytes{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "RocksDB Block Cache"}
+      {:expr "sum(blaze_rocksdb_table_reader_usage_bytes{job=~\"$job\",instance=~\"$instance\"})"
+       :legend "RocksDB Table Reader"}
+      {:expr "process_resident_memory_bytes{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "Total"}]}]}
+
+  {:title "Resource Cache"
+   :panels
+   [{:title "Estimated Size"
+     :unit "short"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "blaze_cache_estimated_size{job=~\"$job\",instance=~\"$instance\",name=\"resource-cache\"}"
+       :legend ""}]}
+    {:title "Hit Ratio"
+     :unit "percentunit"
+     :width 6
+     :max 1
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\", name=\"resource-cache\"}[$__rate_interval]) / (rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\", name=\"resource-cache\"}[$__rate_interval]) + rate(blaze_cache_misses_total{job=~\"$job\",instance=~\"$instance\", name=\"resource-cache\"}[$__rate_interval]))"
+       :legend ""}]}
+    {:title "Loads"
+     :unit "ops"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_load_successes_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-cache\"}[$__rate_interval])"
+       :legend ""}]}
+    {:title "Evictions"
+     :unit "ops"
+     :width 6
+     :span-nulls true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_evictions_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-cache\"}[$__rate_interval])"
+       :legend ""}]}]}
+
+  {:title "RocksDB Block Cache"
+   :panels
+   [{:title "Usage Bytes"
+     :unit "bytes"
+     :queries
+     [{:expr "blaze_rocksdb_block_cache_usage_bytes{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "normal"}
+      {:expr "blaze_rocksdb_block_cache_pinned_usage_bytes{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "pinned"}]}]}
+
+  {:title "RocksDB $database Database"
+   :repeat "database"
+   :panels
+   [{:title "Block Cache Data Hit Ratio"
+     :unit "percentunit"
+     :max 1
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_block_cache_data_hit_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval]) / (rate(blaze_rocksdb_block_cache_data_hit_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval]) + rate(blaze_rocksdb_block_cache_data_miss_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval]))"
+       :legend "{{name}}"}]}
+    {:title "Block Cache Data Additions"
+     :description "Added blocks per second."
+     :unit "ops"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_block_cache_data_add_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Block Cache Data Insert Bytes"
+     :unit "binBps"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_block_cache_data_insert_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Block Cache Index Hit Ratio"
+     :unit "percentunit"
+     :max 1
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_block_cache_index_hit_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval]) / (rate(blaze_rocksdb_block_cache_index_hit_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval]) + rate(blaze_rocksdb_block_cache_index_miss_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval]))"
+       :legend "{{name}}"}]}
+    {:title "Block Cache Index Additions"
+     :description "Added blocks per second."
+     :unit "ops"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_block_cache_index_add_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Block Cache Index Insert Bytes"
+     :unit "binBps"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_block_cache_index_insert_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Key Operations"
+     :unit "ops"
+     :queries
+     [{:expr "rate(blaze_rocksdb_keys_read_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "read"}
+      {:expr "rate(blaze_rocksdb_keys_written_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "written"}
+      {:expr "rate(blaze_rocksdb_keys_updated_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "updated"}]}
+    {:title "Iterator Operations"
+     :unit "ops"
+     :queries
+     [{:expr "rate(blaze_rocksdb_seek_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "seek"}
+      {:expr "rate(blaze_rocksdb_next_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "next"}
+      {:expr "rate(blaze_rocksdb_prev_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "prev"}]}
+    {:title "Iterators Created/Deleted"
+     :unit "ops"
+     :queries
+     [{:expr "rate(blaze_rocksdb_iterators_created_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "created"}
+      {:expr "rate(blaze_rocksdb_iterators_deleted_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "deleted"}]}
+    {:title "Iterators Open"
+     :description "Open Iterators. Should be zero. If not please file an issue."
+     :unit "short"
+     :legend false
+     :queries
+     [{:expr "blaze_rocksdb_iterators_created_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"} - blaze_rocksdb_iterators_deleted_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}"
+       :legend "created"}]}
+    {:title "WAL Sync"
+     :unit "ops"
+     :width 4
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_wal_syncs_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "WAL Bytes Written"
+     :unit "binBps"
+     :width 4
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_wal_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "File Opens"
+     :unit "ops"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_file_opens_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Compaction Seconds"
+     :unit "short"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "rate(blaze_rocksdb_compaction_seconds_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend " {{name}}"}]}
+    {:title "Memtable Flush Seconds"
+     :unit "percentunit"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "rate(blaze_rocksdb_flush_seconds_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend " {{name}}"}]}
+    {:title "Stall Seconds"
+     :unit "percentunit"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_stall_seconds_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Compression Seconds"
+     :unit "short"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "rate(blaze_rocksdb_compression_seconds_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend " {{name}}"}]}
+    {:title "Blocks Compressed"
+     :unit "ops"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_blocks_compressed_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Blocks Compression Bypassed"
+     :unit "ops"
+     :width 4
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_blocks_compression_bypassed_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Blocks Compression Rejected"
+     :unit "ops"
+     :width 4
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_blocks_compression_rejected_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Compression Input Bytes"
+     :unit "binBps"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_compression_input_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Compression Output Bytes"
+     :unit "binBps"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_compression_output_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Compression Bypassed Bytes"
+     :unit "binBps"
+     :width 4
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_compression_bypassed_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Compression Rejected Bytes"
+     :unit "binBps"
+     :width 4
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_compression_rejected_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Decompression Seconds"
+     :unit "short"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "rate(blaze_rocksdb_decompression_seconds_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "__auto"}]}
+    {:title "Blocks Decompressed"
+     :unit "ops"
+     :stacking true
+     :queries
+     [{:expr "rate(blaze_rocksdb_blocks_decompressed_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Bloom Filter"
+     :unit "ops"
+     :queries
+     [{:expr "rate(blaze_rocksdb_bloom_filter_useful_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "useful"}
+      {:expr "rate(blaze_rocksdb_bloom_filter_full_positive_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "FullFilter not avoided"}
+      {:expr "rate(blaze_rocksdb_bloom_filter_full_true_positive_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "FullFilter not avoided but exists"}]}
+    {:title "Decompression Input Bytes"
+     :unit "binBps"
+     :stacking true
+     :queries
+     [{:expr "rate(blaze_rocksdb_decompression_input_bytes_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Decompression Output Bytes"
+     :unit "binBps"
+     :stacking true
+     :queries
+     [{:expr "rate(blaze_rocksdb_decompression_output_bytes_total{job=~\"$job\",instance=~\"$instance\",name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Write Timeouts"
+     :description "The total number of writes ending up with a timeout."
+     :unit "ops"
+     :stacking true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_rocksdb_write_timeout_total{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}[$__rate_interval])"
+       :legend "{{name}}"}]}
+    {:title "Table Reader Memory Usage"
+     :description "Values are per Column Family and stacked."
+     :unit "bytes"
+     :width 24
+     :stacking true
+     :span-nulls true
+     :legend-placement "right"
+     :queries
+     [{:expr "blaze_rocksdb_table_reader_usage_bytes{job=~\"$job\",instance=~\"$instance\", name=~\"$database\"}"
+       :legend "{{column_family}}"}]}]}
+
+  {:title "FHIR RESTful API Requests"
+   :panels
+   [{:title "Total"
+     :unit "ops"
+     :width 24
+     :queries
+     [{:expr "sum(rate(http_fhir_requests_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (interaction, code)"
+       :legend "{{interaction}} {{code}}"}]}
+    {:title "Durations $quantile Quantile"
+     :unit "s"
+     :width 24
+     :repeat "quantile"
+     :queries
+     [{:expr "histogram_quantile(${quantile:raw}, sum(rate(http_fhir_request_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (interaction, method, le))"
+       :legend "{{interaction}} ({{method}})"}]}]}
+
+  {:title "HTTP Response Generation"
+   :panels
+   [{:title "Durations $quantile Quantile"
+     :unit "s"
+     :width 24
+     :repeat "quantile"
+     :max-per-row 3
+     :queries
+     [{:expr "histogram_quantile(${quantile:raw}, sum(rate(fhir_generate_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (format, le))"
+       :legend "{{format}}"}]}]}
+
+  {:title "Interaction Search Type"
+   :panels
+   [{:title "Durations $quantile Quantile"
+     :unit "s"
+     :width 24
+     :min nil
+     :fill-opacity 0
+     :show-points "auto"
+     :tooltip-mode "single"
+     :repeat "quantile"
+     :queries
+     [{:expr "histogram_quantile(${quantile:raw}, sum by (le, phase) (rate(fhir_interaction_search_type_search_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])))"
+       :legend "__auto"}]}]}
+
+  {:title "Evaluate Measure"
+   :panels
+   [{:title "Evaluation Durations 0.5 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(fhir_evaluate_measure_evaluate_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (subject_type, le))"
+       :legend "{{subject_type}}"}]}
+    {:title "Evaluation Durations 0.9 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(fhir_evaluate_measure_evaluate_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (subject_type, le))"
+       :legend "{{subject_type}}"}]}
+    {:title "Evaluation Durations 0.99 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(fhir_evaluate_measure_evaluate_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (subject_type, le))"
+       :legend "{{subject_type}}"}]}
+    {:title "Estimated Number of Bloom Filters"
+     :description "Estimated number of CQL expressions covered by a Bloom filter."
+     :unit "short"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "blaze_cache_estimated_size{job=~\"$job\",instance=~\"$instance\",name=\"cql-expr-cache\"}"
+       :legend ""}]}
+    {:title "Hit Ratio"
+     :unit "percentunit"
+     :width 6
+     :max 1
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\", name=\"cql-expr-cache\"}[$__rate_interval]) / (rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\", name=\"cql-expr-cache\"}[$__rate_interval]) + rate(blaze_cache_misses_total{job=~\"$job\",instance=~\"$instance\", name=\"cql-expr-cache\"}[$__rate_interval]))"
+       :legend ""}]}
+    {:title "Loads"
+     :unit "ops"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_load_successes_total{job=~\"$job\",instance=~\"$instance\",name=\"cql-expr-cache\"}[$__rate_interval])"
+       :legend ""}]}
+    {:title "Evictions"
+     :unit "ops"
+     :width 6
+     :span-nulls true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_evictions_total{job=~\"$job\",instance=~\"$instance\",name=\"cql-expr-cache\"}[$__rate_interval])"
+       :legend ""}]}
+    {:title "Bloom Filter Useful Ratio"
+     :unit "percentunit"
+     :max 1
+     :queries
+     [{:expr "rate(blaze_cql_expr_cache_bloom_filter_useful_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]) / (rate(blaze_cql_expr_cache_bloom_filter_useful_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]) + rate(blaze_cql_expr_cache_bloom_filter_not_useful_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))"
+       :legend "{{name}}"}]}
+    {:title "Bloom Filter False Positive Rate"
+     :description "Should be always 1%."
+     :unit "percentunit"
+     :max 0.02
+     :queries
+     [{:expr "rate(blaze_cql_expr_cache_bloom_filter_false_positive_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]) / (rate(blaze_cql_expr_cache_bloom_filter_useful_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]))"
+       :legend "{{name}}"}]}
+    {:title "Bloom Filter Creation Durations 0.5 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_cql_expr_cache_bloom_filter_creation_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend "{{subject_type}}"}]}
+    {:title "Bloom Filter Creation Durations 0.9 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_cql_expr_cache_bloom_filter_creation_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend "{{subject_type}}"}]}
+    {:title "Bloom Filter Creation Durations 0.99 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_cql_expr_cache_bloom_filter_creation_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend "{{subject_type}}"}]}
+    {:title "Bloom Filter Bytes 0.5 Quantile"
+     :unit "bytes"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_cql_expr_cache_bloom_filter_bytes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend "{{op}}"}]}
+    {:title "Bloom Filter Bytes 0.9 Quantile"
+     :unit "bytes"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_cql_expr_cache_bloom_filter_bytes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend "{{op}}"}]}
+    {:title "Bloom Filter Bytes 0.99 Quantile"
+     :unit "bytes"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_cql_expr_cache_bloom_filter_bytes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend "{{op}}"}]}]}
+
+  {:title "Terminology Service Graph Cache"
+   :panels
+   [{:title "Estimated Number of  Code Systems"
+     :description "Estimated number of CQL expressions covered by a Bloom filter."
+     :unit "short"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "blaze_cache_estimated_size{job=~\"$job\",instance=~\"$instance\",name=\"terminology-service-graph-cache\"}"
+       :legend ""}]}
+    {:title "Hit Ratio"
+     :unit "percentunit"
+     :width 6
+     :max 1
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\", name=\"terminology-service-graph-cache\"}[$__rate_interval]) / (rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\", name=\"terminology-service-graph-cache\"}[$__rate_interval]) + rate(blaze_cache_misses_total{job=~\"$job\",instance=~\"$instance\", name=\"terminology-service-graph-cache\"}[$__rate_interval]))"
+       :legend ""}]}
+    {:title "Loads"
+     :unit "ops"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_load_successes_total{job=~\"$job\",instance=~\"$instance\",name=\"terminology-service-graph-cache\"}[$__rate_interval])"
+       :legend ""}]}
+    {:title "Evictions"
+     :unit "ops"
+     :width 6
+     :span-nulls true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_evictions_total{job=~\"$job\",instance=~\"$instance\",name=\"terminology-service-graph-cache\"}[$__rate_interval])"
+       :legend ""}]}]}
+
+  {:title "Node"
+   :panels
+   [{:title "Indexer Utilization"
+     :description "At 100 % the indexer is fully utilized."
+     :unit "percentunit"
+     :max 1
+     :legend false
+     :queries
+     [{:expr "1 - rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"poll-tx-log\"}[$__rate_interval])"
+       :legend ""}]}
+    {:title "Durations 0.5 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Durations 0.99 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Transaction Size 0.5 Quantile"
+     :description "Mean number of commands per transaction."
+     :unit "none"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend ""}]}
+    {:title "Transaction Size 0.9 Quantile"
+     :description "90% quantile of number of commands per transaction."
+     :unit "none"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend ""}]}
+    {:title "Transaction Size 0.99 Quantile"
+     :description "99% quantile of number of commands per transaction."
+     :unit "none"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend ""}]}
+    {:title "Transaction Size 0.01 Quantile"
+     :description "1% quantile of number of commands per transaction."
+     :unit "none"
+     :legend false
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "histogram_quantile(0.01, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
+       :legend ""}]}]}
+
+  {:title "Resource Store"
+   :panels
+   [{:title "Resource Store Durations 0.5 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_store_kv_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Store Durations 0.9 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_store_kv_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Store Durations 0.99 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_store_kv_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Bytes 0.5 Quantile"
+     :unit "bytes"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_store_kv_resource_bytes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Bytes 0.9 Quantile"
+     :unit "bytes"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_store_kv_resource_bytes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Bytes 0.99 Quantile"
+     :unit "bytes"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_store_kv_resource_bytes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Loads per Second"
+     :unit "ops"
+     :legend false
+     :queries
+     [{:expr "rate(blaze_db_resource_store_kv_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",op=\"get-resource\"}[$__rate_interval])"
+       :legend "{{op}}"}]}]}
+
+  {:title "Page Store"
+   :panels
+   [{:title "Estimated Size"
+     :unit "short"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "blaze_page_store_estimated_size{job=~\"$job\",instance=~\"$instance\"}"
+       :legend ""}]}]}
+
+  {:title "Resource Indexer"
+   :panels
+   [{:title "Resource Indexer Durations 0.5 Quantile"
+     :unit "s"
+     :stacking true
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Indexer Durations 0.9 Quantile"
+     :unit "s"
+     :stacking true
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Resource Indexer Durations 0.99 Quantile"
+     :unit "s"
+     :stacking true
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Number of Index Entries 0.5 Quantile"
+     :description "Mean number of index entries of one resource by resource type."
+     :unit "none"
+     :min nil
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (type, le))"
+       :legend "{{type}}"}]}
+    {:title "Number of Index Entries 0.9 Quantile"
+     :description "Number of index entries of one resource by resource type."
+     :unit "none"
+     :min nil
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (type, le))"
+       :legend "{{type}}"}]}
+    {:title "Number of Index Entries 0.99 Quantile"
+     :description "Number of index entries of one resource by resource type."
+     :unit "none"
+     :min nil
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (type, le))"
+       :legend "{{type}}"}]}
+    {:title "Ops per Second"
+     :unit "ops"
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "sum(rate(blaze_db_resource_indexer_duration_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
+       :legend "{{op}}"}]}
+    {:title "Utilization"
+     :description "Percentual amount of time, the resource indexer takes for certain actions. Values over 100 % indicate parallel processing."
+     :unit "percentunit"
+     :stacking true
+     :queries
+     [{:expr "sum(rate(blaze_db_resource_indexer_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
+       :legend "{{op}}"}]}]}
+
+  {:title "Transaction Indexer"
+   :panels
+   [{:title "Durations 0.5 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Durations 0.9 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Durations 0.99 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Ops per Second"
+     :unit "ops"
+     :queries
+     [{:expr "sum(rate(blaze_db_tx_indexer_duration_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
+       :legend "{{op}}"}]}]}
+
+  {:title "Transaction Log"
+   :panels
+   [{:title "Durations 0.5 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Durations 0.9 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Durations 0.99 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+       :legend "{{op}}"}]}
+    {:title "Ops per Second"
+     :unit "ops"
+     :legend-calcs ["mean"]
+     :queries
+     [{:expr "sum(rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
+       :legend "{{op}}"}]}
+    {:title "Submit Utilization"
+     :description "Percentual amount of time needed to submit transaction data. Values above 100% indicate an overload."
+     :unit "percentunit"
+     :legend false
+     :queries
+     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"submit\"}[$__rate_interval])"
+       :legend ""}]}]}
+
+  {:title "JVM"
+   :panels
+   [{:title "Thread Pool Active"
+     :unit "short"
+     :height 7
+     :queries
+     [{:expr "thread_pool_executor_active_count{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{name}}"}]}
+    {:title "Thread Pool Queue Size Used"
+     :unit "short"
+     :height 7
+     :queries
+     [{:expr "thread_pool_executor_queue_size{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{name}}"}]}
+    {:title "Threads"
+     :description "Current number of Threads."
+     :unit "none"
+     :height 7
+     :stacking true
+     :queries
+     [{:expr "jvm_threads_state{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{state}}"}]}
+    {:title "JVM Memory Used by Pool"
+     :unit "bytes"
+     :height 7
+     :min nil
+     :stacking true
+     :queries
+     [{:expr "jvm_memory_pool_bytes_used{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{pool}}"}]}
+    {:title "GC Duration"
+     :unit "s"
+     :height 7
+     :queries
+     [{:expr "sum(rate(jvm_gc_collection_seconds_sum{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (gc) / sum(rate(jvm_gc_collection_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (gc)"
+       :legend "{{gc}}"}]}
+    {:title "Garbage Collections"
+     :unit "ops"
+     :height 7
+     :queries
+     [{:expr "rate(jvm_gc_collection_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])"
+       :legend "{{gc}}"}]}
+    {:title "JVM Memory Committed by Pool"
+     :unit "bytes"
+     :height 7
+     :min nil
+     :stacking true
+     :queries
+     [{:expr "jvm_memory_pool_bytes_committed{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{pool}}"}]}
+    {:title "JVM Memory Committed by Area"
+     :unit "bytes"
+     :height 7
+     :stacking true
+     :queries
+     [{:expr "jvm_memory_bytes_committed{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{area}}"}]}
+    {:title "Number of Loaded Classes"
+     :unit "short"
+     :height 7
+     :stacking true
+     :queries
+     [{:expr "jvm_classes_loaded_total{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{area}}"}]}]}]}
