@@ -1,8 +1,12 @@
+<script setup>
+import { data } from "./double-code-search.data";
+</script>
+
 ## Double Code Search
 
 In this section, CQL Queries for selecting patients which have Condition resources with one of two codes used.
 
-<BarChart src="cql/double-code-search-100k.txt"
+<BarChart :data="data['double-code-search-100k.txt']"
   title="Double Code Search - Dataset 100k"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7"

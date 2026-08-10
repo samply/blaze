@@ -1,3 +1,7 @@
+<script setup>
+import { data } from "./load-testing.data";
+</script>
+
 # Load Testing
 
 ## Systems
@@ -100,19 +104,19 @@ At high concurrency LEA47 plateaus around 450 transactions/s — close to its me
 
 LEA47:
 
-<LineChart src="load-testing/data/transaction-LEA47.csv"
+<LineChart :data="data['transaction-LEA47.csv']"
   title="Transaction (LEA47)"
   x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
 
 LEA79:
 
-<LineChart src="load-testing/data/transaction-LEA79.csv"
+<LineChart :data="data['transaction-LEA79.csv']"
   title="Transaction (LEA79)"
   x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
 
 A5N46:
 
-<LineChart src="load-testing/data/transaction-A5N46.csv"
+<LineChart :data="data['transaction-A5N46.csv']"
   title="Transaction (A5N46)"
   x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
 

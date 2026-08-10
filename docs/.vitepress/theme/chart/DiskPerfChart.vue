@@ -2,8 +2,9 @@
 import { computed } from "vue";
 import ChartFrame from "./ChartFrame.vue";
 import LineSeries from "./LineSeries.vue";
+import { required } from "./data";
 import {
-  diskPerf,
+  type DiskPerf,
   formatMicros,
   formatRate,
   referenceIops,
@@ -24,8 +25,8 @@ import {
 
 const props = withDefaults(
   defineProps<{
-    /** Measurement result file, relative to `docs/performance`. */
-    src: string;
+    /** Measurement result, read by the page's data loader. */
+    data: DiskPerf;
     title: string;
     /** The plotted metric of the random read sweep. */
     metric?: "iops" | "latency";
@@ -80,7 +81,7 @@ const SERIES: Record<"iops" | "latency", Series[]> = {
 const X_LABEL = "Concurrent Readers";
 
 const series = computed(() => SERIES[props.metric]);
-const runs = computed(() => diskPerf(props.src).readRuns);
+const runs = computed(() => required(props.data, props.title).readRuns);
 const yLabel = computed(() =>
   props.metric === "iops" ? "IOPS" : "Latency (µs)",
 );

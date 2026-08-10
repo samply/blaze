@@ -1,3 +1,7 @@
+<script setup>
+import { data } from "./terminology-service.data";
+</script>
+
 # Terminology Service
 
 ## System
@@ -26,7 +30,7 @@ The codes were taken from an expansion of the value set. In order to limit the a
 
 The value set http://hl7.org/fhir/ValueSet/body-site contains one `is-a` filter with concept `442083009` (Anatomical or acquired body structure).
 
-<LineChart src="terminology-service/data/value-set-validate-code-snomed-ct-body-site.csv"
+<LineChart :data="data['value-set-validate-code-snomed-ct-body-site.csv']"
   title="SNOMED CT – ValueSet – http://hl7.org/fhir/ValueSet/body-site"
   :x-min="0" :x-max="85" :y-max="70000" :y2-max="7" />
 
@@ -38,7 +42,7 @@ The three orange curves show the processing time, without network effects, as me
 
 The value set http://hl7.org/fhir/uv/ips/ValueSet/results-laboratory-observations-uv-ips contains two inclusion filter one with `STATUS = ACTIVE`, one with `CLASSTYPE = 1` and one exclusion filter with `CLASS =~ CYTO|HL7\.CYTOGEN|HL7\.GENETICS|^PATH(\..*)?|^MOLPATH(\..*)?|NR STATS|H&P\.HX\.LAB|CHALSKIN|LABORDERS`.
 
-<LineChart src="terminology-service/data/value-set-validate-code-laboratory-observation.csv"
+<LineChart :data="data['value-set-validate-code-laboratory-observation.csv']"
   title="LOINC – Value Set – ../results-laboratory-observations-uv-ips"
   :x-min="0" :x-max="85" :y-max="70000" :y2-max="7" />
 
@@ -48,7 +52,7 @@ The performance is a better than with the SNOMED CT value set but overall compar
 
 The value set http://fhir.de/ValueSet/bfarm/alpha-id just includes all concepts from the code system http://fhir.de/CodeSystem/bfarm/alpha-id. The Alpha-ID code system, with its 90399 concepts, is chosen as a representative of a large non-built-in code system.
 
-<LineChart src="terminology-service/data/value-set-validate-code-alpha-id.csv"
+<LineChart :data="data['value-set-validate-code-alpha-id.csv']"
   title="Alpha-ID – Value Set – http://fhir.de/ValueSet/bfarm/alpha-id"
   :x-min="0" :x-max="85" :y-max="70000" :y2-max="7" />
 

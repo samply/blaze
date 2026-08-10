@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { required } from "./data";
 import {
   bestReadRun,
-  diskPerf,
+  type DiskPerf,
   formatMicros,
   formatRate,
   formatThroughput,
 } from "./disk-perf";
 
 const props = defineProps<{
-  /** Measurement result file, relative to `docs/performance`. */
-  src: string;
+  /** Measurement result, read by the page's data loader. */
+  data: DiskPerf;
 }>();
 
 const stats = computed(() => {
-  const result = diskPerf(props.src);
+  const result = required(props.data, "Disk Performance Stats");
   const best = bestReadRun(result);
   return [
     {

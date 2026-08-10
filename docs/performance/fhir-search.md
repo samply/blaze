@@ -1,3 +1,7 @@
+<script setup>
+import { data } from "./fhir-search.data";
+</script>
+
 # FHIR Search Performance
 
 ## TL;DR
@@ -72,7 +76,7 @@ The script `simple-code-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/simple-code-search-download-1M.txt"
+<BarChart :data="data['simple-code-search-download-1M.txt']"
   title="Simple Code Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="150"
@@ -162,7 +166,7 @@ The script `multiple-codes-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/multiple-codes-search-download-1M.txt"
+<BarChart :data="data['multiple-codes-search-download-1M.txt']"
   title="Multiple Codes Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="110"
@@ -203,7 +207,7 @@ The script `multiple-codes-search-vs.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/multiple-codes-search-vs-download-1M.txt"
+<BarChart :data="data['multiple-codes-search-vs-download-1M.txt']"
   title="Multiple Codes Search – ValueSet - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="140"
@@ -248,7 +252,7 @@ The script `observation-final-category-multiple-codes-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/multiple-search-param-search-download-1M.txt"
+<BarChart :data="data['multiple-search-param-search-download-1M.txt']"
   title="Multiple Search Param Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="110"
@@ -328,7 +332,7 @@ The script `token-forward-chaining-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/token-forward-chaining-search-download-1M.txt"
+<BarChart :data="data['token-forward-chaining-search-download-1M.txt']"
   title="Token and Forward Chaining Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="30"
@@ -365,7 +369,7 @@ The script `code-value-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/code-value-search-download-1M.txt"
+<BarChart :data="data['code-value-search-download-1M.txt']"
   title="Code and Value Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="50"
@@ -557,7 +561,7 @@ The script `code-patient-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/code-patient-search-download-1M.txt"
+<BarChart :data="data['code-patient-search-download-1M.txt']"
   title="Code and Patient Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="140"
@@ -641,7 +645,7 @@ The script `multiple-codes-patient-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/multiple-codes-patient-search-download-1M.txt"
+<BarChart :data="data['multiple-codes-patient-search-download-1M.txt']"
   title="Multiple Codes and Patient Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="130"
@@ -694,7 +698,7 @@ The script `code-date-patient-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/code-date-patient-search-download-1M.txt"
+<BarChart :data="data['code-date-patient-search-download-1M.txt']"
   title="Code, Date, and Patient Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="40"
@@ -763,7 +767,7 @@ The script `simple-date-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/simple-date-search-download-1M.txt"
+<BarChart :data="data['simple-date-search-download-1M.txt']"
   title="Simple Date Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="130"
@@ -840,7 +844,7 @@ The script `patient-date-search.sh` is used.
 
 ### Downloading Resources
 
-<BarChart src="fhir-search/chart-data/patient-date-search-download-1M.txt"
+<BarChart :data="data['patient-date-search-download-1M.txt']"
   title="Patient Date Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
   y-label="Resources/s" :y-col="4" :y-max="70"

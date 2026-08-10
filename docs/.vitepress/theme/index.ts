@@ -6,9 +6,9 @@ import DiskPerfStats from "./chart/DiskPerfStats.vue";
 import LineChart from "./chart/LineChart.vue";
 import "./custom.css";
 
-// The chart components are registered globally so that a chart's `src` is
-// depth-independent: `cql/simple-code-search-100k.txt` is written the same way
-// in `performance.md` and in `performance/cql.md`.
+// The chart components are registered globally, so a page can place a chart
+// without importing the component. A page imports only its own data loader,
+// which is what carries the paths of the data files.
 export default {
   extends: DefaultTheme,
   enhanceApp({ app }) {

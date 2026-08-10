@@ -1,3 +1,7 @@
+<script setup>
+import { data } from "./cql.data";
+</script>
+
 # CQL Performance
 
 ## TL;DR
@@ -57,7 +61,7 @@ All measurements are taken on the same VM that has the size of LEA58. The OS is 
 
 In this section, CQL queries for selecting patients which have observations with a certain code are analyzed. The codes were chosen to produce a wide range of hits (number of matching patients). For the 100k dataset the hits are 2 %, 60 % and 100 % of the total number of patients, for the 100k-fh dataset the hits are 2 %, 57 % and 100 % and for the 1M dataset the hits are 2.5 %, 60 % and 100 %.
 
-<BarChart src="cql/simple-code-search-100k.txt"
+<BarChart :data="data['simple-code-search-100k.txt']"
   title="Simple Code Search - Dataset 100k"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="8" :y-max="2200"
@@ -65,7 +69,7 @@ In this section, CQL queries for selecting patients which have observations with
 
 The first chart shows the results for the 100k dataset. It shows that the performance raises with the system size and declines a lot with the number of patients found (hits). This decline can be explained because the Bloom filters are most effective for small number of hits.
 
-<BarChart src="cql/simple-code-search-100k-fh.txt"
+<BarChart :data="data['simple-code-search-100k-fh.txt']"
   title="Simple Code Search - Dataset 100k-fh"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="8" :y-max="2200"
@@ -73,7 +77,7 @@ The first chart shows the results for the 100k dataset. It shows that the perfor
 
 The second bar chart shows the results for the 100k-fh dataset which differs by the 100 k dataset in that it contains a full history of patient data instead of a history capped at 10 years. Especially the number of observations is 191 M compared to only 59 M in the 100k dataset. Comparing the two bar charts, the performance is nearly identical. So for simple code search, the performance doesn't depend on the amount of patient history. 
 
-<BarChart src="cql/simple-code-search-1M.txt"
+<BarChart :data="data['simple-code-search-1M.txt']"
   title="Simple Code Search - Dataset 1M"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="8" :y-max="4800"
@@ -157,7 +161,7 @@ cql/search.sh observation-44261-6
 
 In this section, CQL Queries for selecting patients which have observations with a certain code and value are analyzed. The values were chosen to produce a wide range of hits (number of matching patients). The hits are 10 %, 50 % and 100 %.
 
-<BarChart src="cql/code-value-search-100k.txt"
+<BarChart :data="data['code-value-search-100k.txt']"
   title="Code Value Search - Dataset 100k"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="9" :y-max="1800"
@@ -165,7 +169,7 @@ In this section, CQL Queries for selecting patients which have observations with
 
 The first chart shows the results for the 100k dataset. It shows the number of patients a system can process per second as described above. The performance raises with system size. As with Simple Code Search, queries with a small number of hits are much faster as queries with a large number of hits due to Bloom filter optimizations. 
 
-<BarChart src="cql/code-value-search-1M.txt"
+<BarChart :data="data['code-value-search-1M.txt']"
   title="Code Value Search - Dataset 1M"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="9" :y-max="4500"
@@ -236,7 +240,7 @@ cql/search.sh observation-body-weight-100
 
 In this section, CQL queries for selecting patients which have conditions with one of 10 codes are analyzed. The codes were chosen to produce both a low number and a high number of hits. For the 100k dataset the hits are 0.4 % and 95 %, for the 100k-fh dataset the hits are 2 % and 98 % and for the 1M dataset the hits are 0.4 % and 95 %.
 
-<BarChart src="cql/ten-code-search-100k.txt"
+<BarChart :data="data['ten-code-search-100k.txt']"
   title="Ten Code Search - Dataset 100k"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="1900"
@@ -244,7 +248,7 @@ In this section, CQL queries for selecting patients which have conditions with o
 
 The first chart shows the results for the 100k dataset. The performance raises with system size. As with Simple Code Search and Code Value Search, queries with a small number of hits are much faster as queries with a large number of hits due to Bloom filter optimizations.
 
-<BarChart src="cql/ten-code-search-100k-fh.txt"
+<BarChart :data="data['ten-code-search-100k-fh.txt']"
   title="Ten Code Search - Dataset 100k-fh"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="1900"
@@ -252,7 +256,7 @@ The first chart shows the results for the 100k dataset. The performance raises w
 
 The second chart shows the results for the 100k-fh dataset. For the 100k-fh dataset the performance of the query with small number of hits is lower because the number of hits if actually larger (2 %) as that of the 100k dataset with 0.4 %.
 
-<BarChart src="cql/ten-code-search-1M.txt"
+<BarChart :data="data['ten-code-search-1M.txt']"
   title="Ten Code Search - Dataset 1M"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="5100"
@@ -400,7 +404,7 @@ cql/search.sh condition-ten-rare-vs
 
 ## All Code Search
 
-<BarChart src="cql/all-code-search-1M.txt"
+<BarChart :data="data['all-code-search-1M.txt']"
   title="All Code Search - Dataset 1M"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="2800"
@@ -447,7 +451,7 @@ cql/search.sh condition-all
 
 ## Inpatient Stress Search
 
-<BarChart src="cql/inpatient-stress-search-1M.txt"
+<BarChart :data="data['inpatient-stress-search-1M.txt']"
   title="Inpatient Stress Search - Dataset 1M"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="2400"
@@ -480,13 +484,13 @@ cql/search.sh inpatient-stress
 
 ## Medication
 
-<BarChart src="cql/medication-search-100k.txt"
+<BarChart :data="data['medication-search-100k.txt']"
   title="Medication Search - Dataset 100k"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="2300"
   :series="['1 % hits', '7 % hits']" />
 
-<BarChart src="cql/medication-search-1M.txt"
+<BarChart :data="data['medication-search-1M.txt']"
   title="Medication Search - Dataset 1M"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="2300"
@@ -520,13 +524,13 @@ cql/search.sh medication-7
 
 ## Medication Ten
 
-<BarChart src="cql/medication-ten-search-100k.txt"
+<BarChart :data="data['medication-ten-search-100k.txt']"
   title="Medication Ten Search - Dataset 100k"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="1700"
   :series="['15 % hits']" />
 
-<BarChart src="cql/medication-ten-search-1M.txt"
+<BarChart :data="data['medication-ten-search-1M.txt']"
   title="Medication Ten Search - Dataset 1M"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="7" :y-max="1700"
