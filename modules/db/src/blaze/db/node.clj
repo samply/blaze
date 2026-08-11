@@ -70,11 +70,13 @@
   (np/-tx-result node t))
 
 (defhistogram duration-seconds
-  "Node durations."
+  "Node durations.
+
+  The `node` label distinguishes the individual nodes like main and admin."
   {:namespace "blaze"
    :subsystem "db_node"}
   (take 16 (iterate #(* 2 %) 0.0001))
-  "op")
+  "node" "op")
 
 (defn- db-future
   "Adds a watcher to `node` and returns a CompletableFuture that will complete
@@ -102,8 +104,8 @@
          (remove-watch state future))))
     future))
 
-(defn- index-tx [context tx-data]
-  (with-open [_ (prom/timer duration-seconds "index-transactions")]
+(defn- index-tx [node-name context tx-data]
+  (with-open [_ (prom/timer duration-seconds node-name "index-transactions")]
     (ba/try-anomaly (ac/join (tx-indexer/index-tx context tx-data)))))
 
 (defn- advance-t! [state t]
@@ -119,9 +121,9 @@
   (kv/put! kv-store [(tx-error/index-entry t anomaly)])
   (advance-error-t! state t))
 
-(defn- store-tx-entries! [kv-store entries]
+(defn- store-tx-entries! [node-name kv-store entries]
   (log/trace "store" (count entries) "transaction index entries")
-  (with-open [_ (prom/timer duration-seconds "store-tx-entries")]
+  (with-open [_ (prom/timer duration-seconds node-name "store-tx-entries")]
     (kv/put! kv-store entries)))
 
 (defn- wait-for-resources [future timer]
@@ -140,9 +142,9 @@
   [(tx-success/index-entry t instant)
    (t-by-instant/index-entry instant t)])
 
-(defn- commit-success! [{:keys [kv-store state]} t instant]
+(defn- commit-success! [{:keys [node-name kv-store state]} t instant]
   (log/trace "commit transaction success with t =" t)
-  (with-open [_ (prom/timer duration-seconds "store-tx-success-entries")]
+  (with-open [_ (prom/timer duration-seconds node-name "store-tx-success-entries")]
     (kv/put! kv-store (tx-success-entries t instant)))
   (advance-t! state t))
 
@@ -150,21 +152,21 @@
   "This is the main transaction handling function.
 
   It indexes resources and transaction data and commits either success or error."
-  [{:keys [resource-indexer kv-store read-only-matcher] :as node}
+  [{:keys [node-name resource-indexer kv-store read-only-matcher] :as node}
    {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
-  (let [timer (prom/timer duration-seconds "index-resources")
+  (let [timer (prom/timer duration-seconds node-name "index-resources")
         future (resource-indexer/index-resources resource-indexer tx-data)
-        result (index-tx {:db-before (np/-db node) :read-only-matcher read-only-matcher} tx-data)]
+        result (index-tx node-name {:db-before (np/-db node) :read-only-matcher read-only-matcher} tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
       (do
-        (store-tx-entries! kv-store result)
+        (store-tx-entries! node-name kv-store result)
         (wait-for-resources future timer)
         (commit-success! node t instant)))))
 
-(defn- poll-tx-log! [tx-log offset poll-timeout]
-  (with-open [_ (prom/timer duration-seconds "poll-tx-log")]
+(defn- poll-tx-log! [node-name tx-log offset poll-timeout]
+  (with-open [_ (prom/timer duration-seconds node-name "poll-tx-log")]
     (tx-log/poll! tx-log offset poll-timeout)))
 
 (defn- poll-and-index!
@@ -172,12 +174,12 @@
 
   Takes the offset of the next transaction data to index from `state`. Waits
   up to `poll-timeout` for the transaction data to become available."
-  [node tx-log state poll-timeout]
+  [{:keys [node-name] :as node} tx-log state poll-timeout]
   (let [{:keys [t error-t]} @state
         offset (inc (max t error-t))]
     (log/trace "poll transaction data with offset =" offset)
     (run! (partial index-tx-data! node)
-          (poll-tx-log! tx-log offset poll-timeout))))
+          (poll-tx-log! node-name tx-log offset poll-timeout))))
 
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta #fhir/Meta{})
@@ -348,9 +350,9 @@
   (-> (index/resolve-search-params search-param-registry "Resource" clauses false)
       (ac/then-apply (fn [clauses] (batch-db/->Matcher (:search-clauses clauses))))))
 
-(defrecord Node [context tx-log tx-cache kv-store resource-cache resource-store
-                 sync-fn search-param-registry resource-indexer read-only-matcher
-                 state run? poll-timeout finished]
+(defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
+                 resource-store sync-fn search-param-registry resource-indexer
+                 read-only-matcher state run? poll-timeout finished]
   np/Node
   (-db [node]
     (db/db node (:t @state)))
@@ -561,11 +563,11 @@
    (d/type-list (d/db node) "Patient")))
 
 (defn build-patient-last-change-index
-  [key {:keys [kv-store] :as node}]
+  [key {:keys [node-name kv-store] :as node}]
   (let [{:keys [type]} (plc/state kv-store)]
     (when (identical? :building type)
       (log/info "Building PatientLastChange index of" (node-util/component-name key "node"))
-      (store-tx-entries! kv-store (initial-plc-index-entries node))
+      (store-tx-entries! node-name kv-store (initial-plc-index-entries node))
       (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))))
 
 (defn- compile-read-only-matcher [search-param-registry]
@@ -598,9 +600,9 @@
         :as config}]
   (init-msg key config)
   (check-version! kv-store)
-  (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-cache
-                     resource-store (sync-fn storage) search-param-registry
-                     resource-indexer
+  (let [node (->Node (node-util/node-name key) (ctx config) tx-log tx-cache
+                     kv-store resource-cache resource-store (sync-fn storage)
+                     search-param-registry resource-indexer
                      (compile-read-only-matcher search-param-registry)
                      (atom (initial-state kv-store))
                      (volatile! true)

@@ -506,20 +506,19 @@
      :description "At 100 % the indexer is fully utilized."
      :unit "percentunit"
      :max 1
-     :legend false
      :queries
      [{:expr "1 - rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"poll-tx-log\"}[$__rate_interval])"
-       :legend ""}]}
+       :legend "{{node}}"}]}
     {:title "Durations 0.5 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
-       :legend "{{op}}"}]}
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{node}} {{op}}"}]}
     {:title "Durations 0.99 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
-       :legend "{{op}}"}]}
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{node}} {{op}}"}]}
     {:title "Transaction Size 0.5 Quantile"
      :description "Mean number of commands per transaction."
      :unit "none"
