@@ -1,11 +1,11 @@
 (ns blaze.terminology-service.not-available-test
   (:require
    [blaze.fhir.test-util]
-   [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest]]
    [cognitect.anomalies :as anom]

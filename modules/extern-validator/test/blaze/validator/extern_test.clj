@@ -6,9 +6,8 @@
    [blaze.fhir.writing-context]
    [blaze.http-client.spec]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [given-failed-future given-failed-system
-                                   with-system]]
-   [blaze.test-util :as tu]
+   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.test-util :as tu :refer [given-failed-future]]
    [blaze.validator :as validator]
    [blaze.validator-spec]
    [blaze.validator.extern :as extern]

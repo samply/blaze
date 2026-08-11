@@ -1,7 +1,6 @@
 (ns blaze.module.test-util
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :refer [do-sync]]
    [blaze.test-util :as tu]
    [clojure.string :as str]
    [clojure.test :refer [is]]
@@ -32,10 +31,6 @@
 (defn common-pool-thread? [thread-name]
   (or (str/starts-with? thread-name "ForkJoinPool.commonPool")
       (= (.getName (Thread/currentThread)) thread-name)))
-
-(defmacro given-failed-future [future & body]
-  `(given (ba/try-anomaly (ac/join ~future) (is false))
-     ~@body))
 
 (defmacro given-failed-system
   "Starts a system from `config`. Assumes that the startup fails. Stops the

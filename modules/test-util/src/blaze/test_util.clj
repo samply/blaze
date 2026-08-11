@@ -1,5 +1,7 @@
 (ns blaze.test-util
   (:require
+   [blaze.anomaly :refer [try-anomaly]]
+   [blaze.async.comp :as ac]
    [clojure.pprint :as pprint]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -23,6 +25,13 @@
 
 (defmacro given-thrown [v & body]
   `(given (try ~v (is false) (catch Exception e# (all-ex-data e#)))
+     ~@body))
+
+(defmacro given-failed-future
+  "Asserts that `future` completes exceptionally, running a given macro with
+  `body` on the anomaly of its error."
+  [future & body]
+  `(given (try-anomaly (ac/join ~future) (is false))
      ~@body))
 
 (defmacro satisfies-prop [num-tests prop]
