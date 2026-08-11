@@ -56,7 +56,7 @@ Rigorous adherence to these patterns is required:
     * Example: `(given (my-fn ...) ::anom/category := ::anom/fault ::anom/message := "...")`
     * Use `is` only for simple scalar equality checks that don't involve maps.
   * **Async Testing:**
-    * To assert that a `CompletableFuture` completes *exceptionally* with an anomaly, use `given-failed-future` from `blaze.module.test-util` — **not** the `(given (ba/try-anomaly (ac/join ...)))` pattern.
+    * To assert that a `CompletableFuture` completes *exceptionally* with an anomaly, use `given-failed-future` from `blaze.test-util` — **not** the `(given (ba/try-anomaly (ac/join ...)))` pattern.
     * To obtain the value of a successfully-completed future inside a test, use `@future` (Clojure's `deref`).
   * **Private Functions:** Do **not** call private functions (via `#'`) from tests. If a function needs to be tested, move it to an `impl` namespace where it becomes part of the public API of that namespace.
 

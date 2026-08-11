@@ -1,10 +1,14 @@
 (ns blaze.test-util-test
   (:require
-   [blaze.test-util :as tu :refer [given-thrown satisfies-prop]]
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.test-util :as tu :refer [given-failed-future given-thrown
+                                   satisfies-prop]]
    [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log :refer [with-merged-config]])
   (:import
@@ -44,6 +48,12 @@
     (binding [test/report (partial swap! reports conj)]
       (f))
     @reports))
+
+(deftest given-failed-future-test
+  (testing "with an exceptionally completed future"
+    (given-failed-future (ac/completed-future (ba/fault "msg-155234"))
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-155234")))
 
 (deftest satisfies-prop-test
   (testing "a passing property reports a pass"
