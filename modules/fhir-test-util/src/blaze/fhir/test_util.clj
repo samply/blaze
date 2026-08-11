@@ -25,9 +25,24 @@
   [_ {:keys [clock offset-seconds]}]
   (time/offset-clock clock (time/seconds offset-seconds)))
 
-(defmethod ig/init-key :blaze.test/system-clock
+(def ^:private mock-clock-start
+  "Instant a mock clock starts at.
+
+  Deliberately later than `Instant/EPOCH` so that tests can still use the epoch
+  to denote a point in time before anything happened."
+  (time/instant "2024-01-01T00:00:00Z"))
+
+(defmethod ig/init-key :blaze.test/mock-clock
   [_ _]
-  (time/system-clock))
+  (time/mock-clock mock-clock-start "UTC"))
+
+(defn advance-clock!
+  "Advances the mock `clock` by one second and returns the new instant.
+
+  Used instead of sleeping to obtain distinguishable instants in tests."
+  [clock]
+  (time/advance-clock! clock (time/seconds 1))
+  (time/instant clock))
 
 (defmethod ig/init-key :blaze.test/step-clock
   [_ _]
