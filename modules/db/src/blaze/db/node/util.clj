@@ -12,6 +12,14 @@
 (defn name-part [[_ key]]
   (-> key namespace (str/split #"\.") last))
 
+(defn node-name
+  "Returns the name of the node component with Integrant `key`.
+
+  Defaults to `main` for a non-composite key, because such a key denotes the
+  only node of a system."
+  [key]
+  (if (vector? key) (name-part key) "main"))
+
 (defn component-name [key suffix]
   (cond->> suffix
     (vector? key)

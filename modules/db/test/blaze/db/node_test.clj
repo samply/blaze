@@ -29,6 +29,7 @@
    [blaze.db.tx-log.local-spec]
    [blaze.db.tx-log.spec]
    [blaze.executors :as ex]
+   [blaze.metrics.core :as metrics]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.scheduler.spec]
@@ -277,6 +278,42 @@
   [node t]
   (-> (d/sync node t)
       (ac/then-compose (fn [_] (node/tx-result node t)))))
+
+(defn- named-node-config [name]
+  (-> (assoc config [:blaze.db/node (keyword (str "blaze.db." name) "node")]
+             (:blaze.db/node config))
+      (dissoc :blaze.db/node)))
+
+(defn- duration-seconds-ops
+  "Returns the set of ops observed for the node with `node-name`."
+  [node-name]
+  (into
+   #{}
+   (comp (mapcat :samples)
+         (filter (comp #{"blaze_db_node_duration_seconds_count"} :name))
+         (filter (comp #{node-name} first :label-values))
+         (map (comp second :label-values)))
+   (metrics/collect node/duration-seconds)))
+
+(deftest duration-seconds-node-label-test
+  (testing "durations are labeled with the name of the node"
+    (with-system [{:blaze.db/keys [node]} config]
+      @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+           (ac/then-compose (partial tx-result-after-indexing node)))
+
+      (is (= #{"poll-tx-log" "index-transactions" "index-resources"
+               "store-tx-entries" "store-tx-success-entries"}
+             (duration-seconds-ops "main"))))
+
+    (doseq [name ["main" "admin" "name-153446"]]
+      (with-system [{node [:blaze.db/node (keyword (str "blaze.db." name) "node")]}
+                    (named-node-config name)]
+        @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+             (ac/then-compose (partial tx-result-after-indexing node)))
+
+        (is (= #{"poll-tx-log" "index-transactions" "index-resources"
+                 "store-tx-entries" "store-tx-success-entries"}
+               (duration-seconds-ops name)))))))
 
 (deftest transact-test
   (testing "with transaction result fetching after indexing has completed"
