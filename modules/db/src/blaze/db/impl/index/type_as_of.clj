@@ -59,8 +59,8 @@
 
 (defn type-history
   "Returns a reducible collection of all historic resource handles with type
-  `tid` of the database with the point in time `t` between `start-t` (inclusive)
-  and `start-id` (optional, inclusive)."
+  `tid` of the database with the point in time `t`, between `start-t`
+  (inclusive) and `since-t` (exclusive), optionally starting at `start-id`."
   [snapshot t since-t tid start-t start-id]
   (i/prefix-entries
    snapshot :type-as-of-index
