@@ -55,7 +55,7 @@
   });
 
   async function loadSearchIncludes(type: string): Promise<string[]> {
-    const res = await fetch(resolve('/[type=type]/__search-rev-includes', { type: type }), {
+    const res = await fetch(resolve('/[type=type]/__search-includes', { type: type }), {
       headers: { Accept: 'application/json' }
     });
 
