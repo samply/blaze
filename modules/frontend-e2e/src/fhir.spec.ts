@@ -298,6 +298,43 @@ test('Patient Page', async ({ page }) => {
   await expectBadge(page.getByRole('note').filter({ hasText: 'home' }));
 });
 
+/**
+ * Selecting `_include` or `_revinclude` as the search param swaps the plain
+ * value input for a dropdown populated from the server's CapabilityStatement
+ * (`searchInclude` / `searchRevInclude` for the resource type). Each dropdown
+ * must be wired to its own endpoint and its own response field — mixing them
+ * up leaves the dropdown silently empty instead of failing loudly, which is
+ * exactly what happened to `_include` before this test existed.
+ *
+ * Asserting via `selectOption` rather than counting matching `<option>`s
+ * proves, that a value can be picked at all — and avoids ambiguity from includes
+ * that share a prefix (e.g. `Patient:general-practitioner` and
+ * `Patient:general-practitioner:Practitioner`).
+ */
+test('Patient Page _include value dropdown offers the searchInclude values', async ({ page }) => {
+  await page.getByRole('link', { name: 'Patient' }).click();
+  await expect(page).toHaveTitle('Patient - Blaze');
+
+  await page.getByLabel('Search Param', { exact: true }).selectOption('_include');
+
+  const searchValue = page.getByLabel('Search Value');
+  await searchValue.selectOption('Patient:general-practitioner');
+  await expect(searchValue).toHaveValue('Patient:general-practitioner');
+});
+
+test('Patient Page _revinclude value dropdown offers the searchRevInclude values', async ({
+  page
+}) => {
+  await page.getByRole('link', { name: 'Patient' }).click();
+  await expect(page).toHaveTitle('Patient - Blaze');
+
+  await page.getByLabel('Search Param', { exact: true }).selectOption('_revinclude');
+
+  const searchValue = page.getByLabel('Search Value');
+  await searchValue.selectOption('Encounter:patient');
+  await expect(searchValue).toHaveValue('Encounter:patient');
+});
+
 test('Patients History Page', async ({ page }) => {
   await page.getByRole('link', { name: 'Patient' }).click();
   await expect(page).toHaveTitle('Patient - Blaze');
