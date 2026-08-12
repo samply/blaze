@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
+  import { page } from '$app/state';
+
   import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
   import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 
@@ -11,6 +13,8 @@
   import EntryCard from '$lib/resource/entry-card.svelte';
   import NoResultsCard from './no-results-card.svelte';
   import ErrorCard from '$lib/error-card.svelte';
+  import SummaryControl from '$lib/summary-control.svelte';
+  import SummaryBanner from '$lib/summary-banner.svelte';
   import HistoryButton from './history-button.svelte';
   import MetadataButton from './metadata-button.svelte';
   import CodeSystemOperationDropdown from '../CodeSystem/operation-dropdown.svelte';
@@ -58,7 +62,10 @@
       <p class="grow py-1.5">
         <DurationBadge duration={bundleWithDuration.duration} />
       </p>
+      <SummaryControl {...data.summaryState} kind="search" url={page.url} />
     </TotalCard>
+
+    <SummaryBanner {...data.summaryState} url={page.url} />
 
     {#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
       {#each bundle.fhirObjectEntry as entry (entry.fullUrl)}

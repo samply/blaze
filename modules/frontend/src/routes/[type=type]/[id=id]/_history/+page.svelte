@@ -1,19 +1,25 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
+  import { page } from '$app/state';
+
   import Breadcrumb from '$lib/breadcrumb.svelte';
   import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
   import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
   import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
   import BreadcrumbEntryHistory from '$lib/breadcrumb/resource-history.svelte';
 
+  import TotalCard from '$lib/total-card.svelte';
+  import TotalBadge from '$lib/total-badge.svelte';
   import EntryCard from '$lib/resource/entry-card.svelte';
+  import SummaryControl from '$lib/summary-control.svelte';
+  import SummaryBanner from '$lib/summary-banner.svelte';
 
   let { data, params }: PageProps = $props();
 </script>
 
 <svelte:head>
-  <title>History - {params.type}/params.id} - Blaze</title>
+  <title>History - {params.type}/{params.id} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -25,7 +31,18 @@
   </Breadcrumb>
 </header>
 
-<main class="mx-auto flex max-w-7xl flex-col gap-4 py-4 sm:px-6 lg:px-8">
+<main class="mx-auto flex max-w-7xl flex-col sm:px-6 lg:px-8">
+  <TotalCard bundle={data.bundle}>
+    <p class="grow py-1.5">
+      {#if data.bundle.total !== undefined}
+        <TotalBadge total={data.bundle.total} />
+      {/if}
+    </p>
+    <SummaryControl {...data.summaryState} kind="history" url={page.url} />
+  </TotalCard>
+
+  <SummaryBanner {...data.summaryState} url={page.url} />
+
   {#if data.bundle.fhirObjectEntry}
     {#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
       <EntryCard {entry} />

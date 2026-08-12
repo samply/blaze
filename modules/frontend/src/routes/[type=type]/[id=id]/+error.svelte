@@ -29,13 +29,13 @@
   <ErrorCard>
     {#if page.status === 404}
       <a
-        href={resolve('/[type=type]', params)}
+        href={resolve('/[type=type]?_summary=true', { type: params.type })}
         class="text-sm font-semibold text-gray-900 dark:text-gray-100"
         >Go to {params.type}s <span aria-hidden="true">&rarr;</span></a
       >
     {:else if page.status === 410}
       <a
-        href={resolve('/[type=type]/[id=id]/_history', params)}
+        href={resolve('/[type=type]/[id=id]/_history?_summary=true', params)}
         class="text-sm font-semibold text-gray-900 dark:text-gray-100"
         >Go to History <span aria-hidden="true">&rarr;</span></a
       >

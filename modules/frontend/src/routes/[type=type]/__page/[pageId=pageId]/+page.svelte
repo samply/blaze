@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
+  import { page } from '$app/state';
+
   import Breadcrumb from '$lib/breadcrumb.svelte';
   import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
   import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
@@ -14,6 +16,9 @@
   import NoResultsCard from '../../no-results-card.svelte';
   import ErrorCard from '$lib/error-card.svelte';
   import LoadingIndicator from '$lib/loading-indicator.svelte';
+  import SummaryControl from '$lib/summary-control.svelte';
+  import SummaryBanner from '$lib/summary-banner.svelte';
+  import { bundleSummaryMode } from '$lib/resource/subsetted.js';
 
   let { data, params }: PageProps = $props();
 </script>
@@ -36,6 +41,7 @@
     <LoadingIndicator start={data.streamed.start} />
   {:then bundleWithDuration}
     {@const bundle = bundleWithDuration.bundle}
+    {@const summaryMode = bundleSummaryMode(bundle)}
 
     <TotalCard {bundle}>
       <p class="py-1.5">
@@ -46,7 +52,11 @@
       <p class="grow py-1.5">
         <DurationBadge duration={bundleWithDuration.duration} />
       </p>
+      <!-- a paged result set is fixed to the summary mode of the search it belongs to -->
+      <SummaryControl mode={summaryMode} fixed kind="search" url={page.url} />
     </TotalCard>
+
+    <SummaryBanner mode={summaryMode} fixed url={page.url} />
 
     {#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
       {#each bundle.fhirObjectEntry as entry (entry.fullUrl)}

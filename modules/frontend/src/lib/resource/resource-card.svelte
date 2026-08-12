@@ -38,7 +38,7 @@
     const vid = (resource.object as Resource).meta?.versionId;
 
     if (id === undefined) {
-      return resolve('/[type=type]', { type: type });
+      return resolve('/[type=type]?_summary=true', { type });
     }
 
     if (!versionLink || vid === undefined) {
@@ -66,8 +66,6 @@
 
   const fadeParams = { duration: 300, easing: quintIn };
 </script>
-
-<!-- eslint-disable svelte/no-navigation-without-resolve -->
 
 <div in:fade|global={fadeParams} class="overflow-hidden">
   <div class="border-b border-gray-200 px-8 dark:border-gray-600">

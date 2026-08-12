@@ -70,6 +70,11 @@ export function moveDownAtIndex<T>(array: T[], i: number): T[] {
 
 export const defaultCount = '20';
 
+/**
+ * Applies the shared default-count handling and forwards every other param
+ * (including `_summary`) unchanged, so the request sent to the server matches
+ * the URL shown in the browser.
+ */
 export function processParams(params: URLSearchParams): string {
   const newParams = new URLSearchParams();
   for (const [name, value] of params) {
@@ -77,13 +82,8 @@ export function processParams(params: URLSearchParams): string {
       newParams.append(name, value);
     }
   }
-  // a default count of 20 is sufficient for the UI
   if (!newParams.has('_count')) {
     newParams.append('_count', defaultCount);
-  }
-  // we like to have summary representations by default
-  if (!newParams.has('_summary')) {
-    newParams.append('_summary', 'true');
   }
   return newParams.toString();
 }
