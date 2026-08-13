@@ -1,6 +1,6 @@
 import type { Parameters } from 'fhir/r4';
 import { resolve } from '$app/paths';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { fetchJson } from '$lib/fetch.js';
 import type { PageLoad } from './$types';
 
 interface ResourceTypeTotal {
@@ -22,11 +22,11 @@ export interface Data {
 }
 
 export const load: PageLoad = async ({ fetch }) => {
-  const res = await fetch(resolve('/$totals'), { headers: { Accept: 'application/fhir+json' } });
+  const parameters = await fetchJson<Parameters>(
+    fetch,
+    resolve('/$totals'),
+    'error while executing the $totals operation'
+  );
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, 'error while executing the $totals operation');
-  }
-
-  return { resourceTypeTotals: resourceTypeTotals(await res.json()) };
+  return { resourceTypeTotals: resourceTypeTotals(parameters) };
 };

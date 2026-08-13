@@ -25,7 +25,7 @@
 
   import { fade } from 'svelte/transition';
   import { quintIn } from 'svelte/easing';
-  import { error, type NumericRange } from '@sveltejs/kit';
+  import { fetchJsonStreamed } from '$lib/fetch.js';
   import Dropdown from '$lib/tailwind/dropdown.svelte';
   import Toggle from '$lib/tailwind/toggle.svelte';
 
@@ -55,30 +55,25 @@
   });
 
   async function loadSearchIncludes(type: string): Promise<string[]> {
-    const res = await fetch(resolve('/[type=type]/__search-includes', { type: type }), {
-      headers: { Accept: 'application/json' }
-    });
+    const { searchIncludes } = await fetchJsonStreamed<{ searchIncludes: string[] }>(
+      fetch,
+      resolve('/[type=type]/__search-includes', { type: type }),
+      'error while fetching the search includes',
+      { Accept: 'application/json' }
+    );
 
-    if (!res.ok) {
-      error(res.status as NumericRange<400, 599>, 'error while fetching the search includes');
-    }
-
-    return (await res.json()).searchIncludes;
+    return searchIncludes;
   }
 
   async function loadSearchRevIncludes(type: string): Promise<string[]> {
-    const res = await fetch(resolve('/[type=type]/__search-rev-includes', { type: type }), {
-      headers: { Accept: 'application/json' }
-    });
+    const { searchRevIncludes } = await fetchJsonStreamed<{ searchRevIncludes: string[] }>(
+      fetch,
+      resolve('/[type=type]/__search-rev-includes', { type: type }),
+      'error while fetching the search reverse includes',
+      { Accept: 'application/json' }
+    );
 
-    if (!res.ok) {
-      error(
-        res.status as NumericRange<400, 599>,
-        'error while fetching the search reverse includes'
-      );
-    }
-
-    return (await res.json()).searchRevIncludes;
+    return searchRevIncludes;
   }
 
   function send() {
