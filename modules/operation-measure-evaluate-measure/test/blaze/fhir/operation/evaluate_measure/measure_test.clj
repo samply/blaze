@@ -156,6 +156,19 @@
   (type/expression {:language #fhir/code "text/cql-identifier"
                     :expression (type/string expr)}))
 
+(defn- initial-population-measure
+  "Measure with one group with an initial population, using the Library
+  `library-ref`."
+  [library-ref]
+  {:fhir/type :fhir/Measure :id "0"
+   :library [(type/canonical library-ref)]
+   :group
+   [{:fhir/type :fhir.Measure/group
+     :population
+     [{:fhir/type :fhir.Measure.group/population
+       :code (population-concept "initial-population")
+       :criteria (cql-expression "InInitialPopulation")}]}]})
+
 (defn encode-base64 [^String s]
   (-> (Base64/getEncoder)
       (.encode (.getBytes s StandardCharsets/UTF_8))
@@ -459,6 +472,51 @@
           :measure-id := measure-id
           :fhir/issue := "value"
           :fhir.issue/expression := "Measure.library"))))
+
+  (testing "canonical library reference with version"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+        [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
+        [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]]
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+               :version #fhir/string "9.0.0"
+               :content [(library-content (library "Patient.gender = 'male'"))]}]
+        [:put {:fhir/type :fhir/Library :id "1" :url #fhir/uri "0"
+               :version #fhir/string "10.0.0"
+               :content [(library-content (library "Patient.gender = 'female'"))]}]]]
+
+      (let [db (d/db node)
+            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                     :executor executor :terminology-service local
+                     :blaze/base-url "" ::reitit/router router}
+            params {:period [#system/date "2000" #system/date "2020"]
+                    :report-type "population"}]
+
+        (testing "without a version, the numerically highest version `10.0.0` is used"
+          (let [measure (initial-population-measure "0")]
+            (given (:resource @(measure/evaluate-measure context measure params))
+              [:group 0 :population 0 :count] := #fhir/integer 2)))
+
+        (testing "with a version, that exact version is used"
+          (let [measure (initial-population-measure "0|9.0.0")]
+            (given (:resource @(measure/evaluate-measure context measure params))
+              [:group 0 :population 0 :count] := #fhir/integer 1)))
+
+        (testing "with an unknown version, the Library is not found"
+          (let [measure (initial-population-measure "0|8.0.0")]
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "The Library resource with canonical URI `0|8.0.0` was not found."
+              :fhir/issue := "value"
+              :fhir.issue/expression := "Measure.library")))
+
+        (testing "with a blank version, the version is ignored"
+          (doseq [library-ref ["0|" "0| "]]
+            (let [measure (initial-population-measure library-ref)]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                [:group 0 :population 0 :count] := #fhir/integer 2)))))))
 
   (testing "missing criteria"
     (with-system-data

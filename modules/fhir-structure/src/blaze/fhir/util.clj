@@ -128,6 +128,20 @@
   [resources]
   (sort priority-cmp resources))
 
+(defn split-canonical
+  "Splits `canonical` at the first `|` into a vector of the URL and the version,
+  following the `url|version` canonical reference syntax (FHIR R4 §2.3.0.5).
+
+  The version is omitted if `canonical` doesn't contain a `|` or the part after
+  it is blank, because a blank version is equivalent to omitting it (FHIR R4
+  §3.1.1.3).
+
+  Example: \"url|1.2.3\" -> [\"url\" \"1.2.3\"]
+           \"url\"       -> [\"url\"]"
+  [canonical]
+  (let [[url version] (str/split canonical #"\|" 2)]
+    (cond-> [url] (not (str/blank? version)) (conj version))))
+
 (defn- camel->kebab [s]
   (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
 

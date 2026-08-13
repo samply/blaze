@@ -11,6 +11,7 @@
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
+   [blaze.fhir.util :as fu]
    [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
@@ -152,8 +153,8 @@
 
   Example: \"url|1.2.3\" -> [\"url\" [\"1\" \"1.2\"]]"
   [canonical]
-  (let [[url version] (str/split canonical #"\|")]
-    [(or url "") (some-> version version-parts)]))
+  (let [[url version] (fu/split-canonical canonical)]
+    [url (some-> version version-parts)]))
 
 (defn intersection-index-handles
   "Returns a reducible and iterable collection of the intersection of `index-handles`."

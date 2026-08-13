@@ -16,6 +16,10 @@
   :args (s/cat :resources (s/coll-of :fhir/Resource))
   :ret (s/coll-of :fhir/Resource))
 
+(s/fdef fu/split-canonical
+  :args (s/cat :canonical string?)
+  :ret (s/coll-of string? :kind vector? :min-count 1 :max-count 2))
+
 (s/fdef fu/coerce-params
   :args (s/cat :specs map? :parameters :fhir/Parameters)
   :ret map?)
