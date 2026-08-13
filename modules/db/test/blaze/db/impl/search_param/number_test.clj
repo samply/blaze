@@ -14,19 +14,15 @@
    [blaze.db.impl.search-param.util-spec]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
+   [blaze.db.test-util :as dtu]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -43,14 +39,8 @@
       (search-param/compile-values nil [value])
       (ac/then-apply first)))
 
-(def ^:private config
-  {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-   ::ts/not-available {}})
-
 (deftest validate-modifier-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "unknown modifier"
       (given (search-param/validate-modifier
               (probability-param search-param-registry) "unknown")
@@ -64,7 +54,7 @@
         ::anom/message := "Unsupported modifier `missing` on search parameter `probability`."))))
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "eq"
       (given @(compile-number-value search-param-registry "23.4")
         :op := :eq
@@ -109,19 +99,19 @@
         ::anom/message := "Unsupported prefix `ne` in search parameter `probability`."))))
 
 (deftest estimated-scan-size-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (let [search-param (probability-param search-param-registry)]
       (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil))))))
 
 (deftest ordered-index-handles-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (let [search-param (probability-param search-param-registry)]
       (is (false? (p/-supports-ordered-index-handles search-param nil nil nil nil)))
       (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil)))
       (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil))))))
 
 (deftest ordered-compartment-index-handles-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (let [search-param (probability-param search-param-registry)]
       (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
       (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
@@ -131,7 +121,7 @@
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "RiskAssessment probability"
       (let [risk-assessment
             {:fhir/type :fhir/RiskAssessment

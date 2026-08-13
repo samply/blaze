@@ -8,13 +8,11 @@
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store-spec]
    [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.test-util :as dtu]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
-   [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.util :as fu]
-   [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
@@ -52,18 +50,13 @@
    {:resource-store (ig/ref ::rs/kv)}
    ::rs/kv
    {:kv-store (ig/ref ::kv/mem)
-    :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
+    :parsing-context (ig/ref ::dtu/parsing-context)
+    :writing-context (ig/ref ::dtu/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
    ::rs-kv/executor {}
    ::kv/mem {:column-families {}}
-   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
-   {:structure-definition-repo structure-definition-repo
-    :fail-on-unknown-property false
-    :include-summary-only true
-    :use-regex false}
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}})
+   ::dtu/parsing-context {}
+   ::dtu/writing-context {}})
 
 (def ^:private zero-config
   "Creates a special version of a no-op cache."

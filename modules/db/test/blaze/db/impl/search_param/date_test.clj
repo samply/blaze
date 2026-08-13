@@ -14,19 +14,15 @@
    [blaze.db.impl.search-param.date-spec]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
+   [blaze.db.test-util :as dtu]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -44,21 +40,15 @@
 (defn last-updated-param [search-param-registry]
   (sr/get search-param-registry "_lastUpdated" "Patient"))
 
-(def ^:private config
-  {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-   ::ts/not-available {}})
-
 (deftest birth-date-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (given (birth-date-param search-param-registry)
       :name := "birthdate"
       :code := "birthdate"
       :c-hash := (codec/c-hash "birthdate"))))
 
 (deftest validate-modifier-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "unknown modifier"
       (given (search-param/validate-modifier
               (birth-date-param search-param-registry) "unknown")
@@ -72,7 +62,7 @@
         ::anom/message := "Unsupported modifier `missing` on search parameter `birthdate`."))))
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "invalid date value"
       (given-failed-future (search-param/compile-values
                             (birth-date-param search-param-registry) nil ["a"])
@@ -86,13 +76,13 @@
         [0 :lower-bound] := (codec-date/encode-lower-bound #system/date"2020")))))
 
 (deftest estimated-scan-size-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (doseq [search-param-fn [birth-date-param last-updated-param]]
       (let [search-param (search-param-fn search-param-registry)]
         (is (ba/unsupported? (p/-estimated-scan-size search-param nil nil nil nil)))))))
 
 (deftest ordered-index-handles-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (doseq [search-param-fn [birth-date-param last-updated-param]]
       (let [search-param (search-param-fn search-param-registry)]
         (is (false? (p/-supports-ordered-index-handles search-param nil nil nil nil)))
@@ -100,7 +90,7 @@
         (is (ba/unsupported? (p/-ordered-index-handles search-param nil nil nil nil nil)))))))
 
 (deftest ordered-compartment-index-handles-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (doseq [search-param-fn [birth-date-param last-updated-param]]
       (let [search-param (search-param-fn search-param-registry)]
         (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
@@ -123,7 +113,7 @@
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "Patient"
       (testing "birthDate"
         (let [patient {:fhir/type :fhir/Patient

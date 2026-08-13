@@ -13,19 +13,15 @@
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
+   [blaze.db.test-util :as dtu]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
@@ -94,14 +90,8 @@
   (-> (search-param/compile-values (birthdate search-param-registry) nil [value])
       (ac/then-apply first)))
 
-(def ^:private config
-  {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-   ::ts/not-available {}})
-
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "Date"
       (given @(compile-birthdate search-param-registry "2020-10-30")
         :op := :eq
@@ -112,7 +102,7 @@
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "Patient _profile"
       (let [patient
             {:fhir/type :fhir/Patient :id "id-140855"
