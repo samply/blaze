@@ -113,6 +113,9 @@
   "Returns the resource handle with `type` and `id` or nil if its resource never
   existed.
 
+  On a since-db, returns nil as well if the resource wasn't changed after its
+  `since-t`.
+
   Handles of deleted resources have an :op of :delete.
 
   Please use `pull` to obtain the full resource."
@@ -135,6 +138,9 @@
 (defn type-list
   "Returns a reducible collection of all resource handles of `type` in `db`.
 
+  On a since-db, only the resource handles of resources changed after its
+  `since-t` are returned.
+
   An optional `start-id` (inclusive) can be supplied.
 
   Please use `pull-many` to obtain the full resources."
@@ -147,7 +153,9 @@
   "Returns the number of all resources of `type` in `db`.
 
   This is O(1) instead of O(n) when counting the number of resources returned by
-  `type-list`."
+  `type-list`.
+
+  Returns an unsupported anomaly on a since-db."
   [db type]
   (p/-type-total db (codec/tid type)))
 
@@ -204,6 +212,9 @@
 (defn system-list
   "Returns a reducible collection of all resource handles in `db`.
 
+  On a since-db, only the resource handles of resources changed after its
+  `since-t` are returned.
+
   An optional `start-type` (inclusive) and `start-id` (inclusive) can be
   supplied.
 
@@ -214,7 +225,9 @@
    (p/-system-list db (codec/tid start-type) (codec/id-byte-string start-id))))
 
 (defn system-total
-  "Returns the number of all resources in `db`."
+  "Returns the number of all resources in `db`.
+
+  Returns an unsupported anomaly on a since-db."
   [db]
   (p/-system-total db))
 
@@ -402,7 +415,8 @@
   "Returns a reducible collection of the history of the resource with the given
   `type` and `id` starting as-of `db` in reverse chronological order.
 
-  The history optionally starts at `start-t` which defaults to the `t` of `db`.
+  The history optionally starts at `start-t` which defaults to the `t` of `db`
+  and ends at the `since-t` of `db` (exclusive).
 
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
@@ -413,7 +427,9 @@
 
 (defn total-num-of-instance-changes
   "Returns the total number of changes (versions) of the resource with the given
-  `type` and `id` starting as-of `db`."
+  `type` and `id` starting as-of `db`.
+
+  Only changes after the `since-t` of `db` are counted."
   [db type id]
   (p/-total-num-of-instance-changes db (codec/tid type) (codec/id-byte-string id)))
 
@@ -423,7 +439,8 @@
   "Returns a reducible collection of the history of resources with the given
   `type` starting as-of `db` in reverse chronological order.
 
-  The history optionally starts at `start-t` which defaults to the `t` of `db`.
+  The history optionally starts at `start-t` which defaults to the `t` of `db`
+  and ends at the `since-t` of `db` (exclusive).
 
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
@@ -437,7 +454,9 @@
 
 (defn total-num-of-type-changes
   "Returns the total number of changes (versions) of resources with the given
-  `type` starting as-of `db`."
+  `type` starting as-of `db`.
+
+  Only changes after the `since-t` of `db` are counted."
   [db type]
   (p/-total-num-of-type-changes db (codec/tid type)))
 
@@ -447,7 +466,8 @@
   "Returns a reducible collection of the history of all resources starting as-of
   `db` in reverse chronological order.
 
-  The history optionally starts at `start-t` which defaults to the `t` of `db`.
+  The history optionally starts at `start-t` which defaults to the `t` of `db`
+  and ends at the `since-t` of `db` (exclusive).
 
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
@@ -463,7 +483,9 @@
 
 (defn total-num-of-system-changes
   "Returns the total number of changes (versions) of resources starting as-of
-  `db`."
+  `db`.
+
+  Only changes after the `since-t` of `db` are counted."
   [db]
   (p/-total-num-of-system-changes db))
 

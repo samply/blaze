@@ -188,7 +188,8 @@
   "Returns a reducible collection of all resource handles of type with `tid`
   ordered by resource id.
 
-  The list starts at the optional `start-id`.
+  The list starts at the optional `start-id`. Resources not changed after the
+  `since-t` of `batch-db` are skipped.
 
   The ResourceAsOf index consists of keys with three parts: `tid`, `id` and
   `t`. The `tid` is a 4-byte hash of the resource type, the `id` a variable
@@ -282,7 +283,8 @@
   "Returns a reducible collection of all resource handles ordered by resource
   tid and resource id.
 
-  The list starts at the optional `start-tid` and `start-id`."
+  The list starts at the optional `start-tid` and `start-id`. Resources not
+  changed after the `since-t` of the database are skipped."
   ([{:keys [snapshot t since-t]}]
    (i/entries snapshot :resource-as-of-index (system-list-xf t since-t nil)))
   ([{:keys [snapshot t since-t]} start-tid start-id]
@@ -311,8 +313,8 @@
 
 (defn instance-history
   "Returns a reducible collection of all historic resource handles of the
-  resource with `tid` and `id` of the database with the point in time `t`
-  starting at `start-t`."
+  resource with `tid` and `id` of the database with the point in time `t`,
+  between `start-t` (inclusive) and `since-t` (exclusive)."
   [snapshot t since-t tid id start-t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))]
     (i/prefix-entries
@@ -361,7 +363,7 @@
 
 (defn resource-handle
   "Returns the resource handle with `tid` and `id` at `t` in `snapshot` when
-  found."
+  found and changed after `since-t`."
   [snapshot t since-t tid id]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
@@ -371,7 +373,7 @@
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives `[tid id]` tuples and emits
-  resource handles when found in `snapshot` at `t`.
+  resource handles when found in `batch-db` and changed after its `since-t`.
 
   Can only be used by a single thread."
   {:arglists '([batch-db])}
@@ -393,7 +395,7 @@
 
 (defn resource-handle-type-xf
   "Returns a stateful transducer that receives input and emits resource handles
-  when found.
+  when found in `batch-db` and changed after its `since-t`.
 
   The `id-extractor` is used to extract the resource id as byte-string from the
   input. The `matcher` is given the input and the resource handle to decide
