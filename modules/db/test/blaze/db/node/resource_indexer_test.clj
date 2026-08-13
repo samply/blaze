@@ -20,17 +20,12 @@
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.resource-store.spec]
    [blaze.db.search-param-registry.spec]
+   [blaze.db.test-util :as dtu]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
-   [blaze.fhir.parsing-context]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.fhir.writing-context]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -58,8 +53,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :parsing-context (ig/ref :blaze.fhir.parsing-context/resource-store)
-    :writing-context (ig/ref :blaze.fhir/writing-context)
+    :parsing-context (ig/ref ::dtu/parsing-context)
+    :writing-context (ig/ref ::dtu/writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -67,20 +62,11 @@
 
    ::rs-kv/executor {}
 
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
+   ::dtu/search-param-registry {}
 
-   ::ts/not-available {}
+   ::dtu/parsing-context {}
 
-   [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
-   {:structure-definition-repo structure-definition-repo
-    :fail-on-unknown-property false
-    :include-summary-only true
-    :use-regex false}
-
-   :blaze.fhir/writing-context
-   {:structure-definition-repo structure-definition-repo}})
+   ::dtu/writing-context {}})
 
 (def config
   (assoc
@@ -88,7 +74,7 @@
    ::node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :search-param-registry (ig/ref ::dtu/search-param-registry)
     :executor (ig/ref ::resource-indexer/executor)}
 
    ::resource-indexer/executor {}))
@@ -99,7 +85,7 @@
    [::node/resource-indexer :blaze.db.node.main/resource-indexer]
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :search-param-registry (ig/ref ::dtu/search-param-registry)
     :executor (ig/ref ::resource-indexer/executor)}
 
    [::resource-indexer/executor :blaze.db.node.resource-indexer.main/executor]

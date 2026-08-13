@@ -38,6 +38,29 @@
     :blaze.fhir/writing-context
     {:structure-definition-repo structure-definition-repo}}))
 
+;; The components of `root-system` are handed out by the following components
+;; instead of putting their values into configs directly, because Integrant
+;; resolves refs by walking each config value with `clojure.walk/postwalk`,
+;; calling the rather expensive `integrant.core/reflike?` on every node. The
+;; parsing and writing contexts are large maps, so walking them dominates the
+;; runtime of `ig/init`.
+
+(defmethod ig/init-key ::search-param-registry
+  [_ _]
+  (:blaze.db/search-param-registry root-system))
+
+(defmethod ig/init-key ::parsing-context
+  [_ _]
+  (:blaze.fhir/parsing-context root-system))
+
+(defmethod ig/init-key ::writing-context
+  [_ _]
+  (:blaze.fhir/writing-context root-system))
+
+(def search-param-registry-config
+  "Config of a system that only provides the search param registry."
+  {::search-param-registry {}})
+
 (def config
   {:blaze.db/node
    {:tx-log (ig/ref ::tx-log/local)
@@ -47,7 +70,7 @@
     :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-indexer (ig/ref ::node/resource-indexer)
-    :search-param-registry (:blaze.db/search-param-registry root-system)
+    :search-param-registry (ig/ref ::search-param-registry)
     :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
@@ -89,8 +112,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :parsing-context (:blaze.fhir/parsing-context root-system)
-    :writing-context (:blaze.fhir/writing-context root-system)
+    :parsing-context (ig/ref ::parsing-context)
+    :writing-context (ig/ref ::writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -101,12 +124,18 @@
    ::node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry (:blaze.db/search-param-registry root-system)
+    :search-param-registry (ig/ref ::search-param-registry)
     :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
 
    :blaze.db.node.resource-indexer/executor {}
 
-   :blaze/scheduler {}})
+   :blaze/scheduler {}
+
+   ::search-param-registry {}
+
+   ::parsing-context {}
+
+   ::writing-context {}})
 
 (def non-referential-integrity-config
   (assoc-in config [:blaze.db/node :enforce-referential-integrity] false))

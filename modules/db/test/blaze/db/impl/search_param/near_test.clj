@@ -10,14 +10,11 @@
    [blaze.db.impl.search-param.near.spec]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
+   [blaze.db.test-util :as dtu]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.type]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [given-failed-future satisfies-prop]]
    [clojure.alpha.spec :as s]
    [clojure.spec.test.alpha :as st]
@@ -25,7 +22,6 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
-   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -34,24 +30,18 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def ^:private config
-  {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-   ::ts/not-available {}})
-
 (defn- near-param [search-param-registry]
   (sr/get search-param-registry "near" "Location"))
 
 (deftest near-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
 
     (given (near-param search-param-registry)
       :name := "near"
       :code := "near")))
 
 (deftest validate-modifier-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "unknown modifier"
       (given (search-param/validate-modifier
               (near-param search-param-registry) "unknown")
@@ -63,7 +53,7 @@
       (ac/then-apply first)))
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "With unit km"
       (given @(compile-near-value search-param-registry "-83.694810|42.256500|11.20|km")
         :latitude := -83.69481M
@@ -142,7 +132,7 @@
         ::anom/message := "Unsupported unit `mi_us` in search parameter `near`. Supported are 'km', 'm'."))))
 
 (deftest ordered-compartment-index-handles-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (let [search-param (near-param search-param-registry)]
       (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
       (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
@@ -152,7 +142,7 @@
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} config]
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (let [location {:fhir/type :fhir/Location :id "id-140855"}
           hash (hash/generate location)]
       (is (empty? (index-entries
