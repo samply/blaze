@@ -19,12 +19,14 @@
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.util :as fu]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
    [blaze.module :as m]
    [blaze.time :as bt]
    [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [java-time.api :as time]
    [prometheus.alpha :as prom]
    [taoensso.timbre :as log])
@@ -106,35 +108,60 @@
            (format "Compiled Library with ID `%s` in %.0f ms."
                    id (* duration 1e3))))))))
 
-(defn- first-library-by-url [db url]
-  (do-sync [handles (d/type-query db "Library" [["url" url]])]
-    (coll/first handles)))
+(defn- canonical-clauses
+  "Splits `library-ref` at the first `|` into a `url` search clause and,
+  when present, a `version` search clause, following the `url|version`
+  canonical reference syntax (FHIR R4 §2.3.0.5)."
+  [library-ref]
+  (let [[url version] (str/split library-ref #"\|" 2)]
+    (cond-> [["url" url]] version (conj ["version" version]))))
+
+(defn- find-library-by-canonical
+  "Searches for Library resources whose `.url` (and, if `library-ref`
+  contains a `|version` suffix, `.version`) matches `library-ref`.
+
+  Returns a CompletableFuture that will complete with the highest-priority
+  match (by status, version, then recency, per `fu/sort-by-priority`) or nil
+  if none was found."
+  [db library-ref]
+  (-> (d/type-query db "Library" (canonical-clauses library-ref))
+      (ac/then-compose (fn [handles] (d/pull-many db (vec handles))))
+      (ac/then-apply (comp first fu/sort-by-priority))))
 
 (defn- non-deleted-library-handle [db id]
   (when-let [handle (d/resource-handle db "Library" id)]
     (when-not (d/deleted? handle)
       handle)))
 
-(defn- find-library-handle [db library-ref]
-  (do-sync [handle (first-library-by-url db library-ref)]
-    (or handle
-        (let [literal-ref (s/conform :blaze.fhir/literal-ref library-ref)]
-          (when-not (s/invalid? literal-ref)
-            (let [[type id] literal-ref]
-              (when (= "Library" type)
-                (non-deleted-library-handle db id))))))))
+(defn- find-library-by-literal-ref
+  "Returns the Library resource `library-ref` points to when it is a literal
+  reference (e.g. `Library/123`), or nil otherwise."
+  [db library-ref]
+  (let [literal-ref (s/conform :blaze.fhir/literal-ref library-ref)]
+    (when-not (s/invalid? literal-ref)
+      (let [[type id] literal-ref]
+        (when (= "Library" type)
+          (some->> (non-deleted-library-handle db id) (d/pull db)))))))
 
-(defn- find-library [db library-ref]
-  (-> (find-library-handle db library-ref)
+(defn- library-not-found-anom [library-ref]
+  (ba/incorrect
+   (format "The Library resource with canonical URI `%s` was not found." library-ref)
+   :fhir/issue "value"
+   :fhir.issue/expression "Measure.library"))
+
+(defn- find-library
+  "Resolves `library-ref`, which is either a canonical reference (optionally
+  with a `|version`) or a literal reference, to a Library resource.
+
+  Canonical references are tried first, falling back to a literal reference
+  resolution, per FHIR R4 §2.3.0.5."
+  [db library-ref]
+  (-> (find-library-by-canonical db library-ref)
       (ac/then-compose
-       (fn [handle]
-         (if handle
-           (d/pull db handle)
-           (ac/completed-future
-            (ba/incorrect
-             (format "The Library resource with canonical URI `%s` was not found." library-ref)
-             :fhir/issue "value"
-             :fhir.issue/expression "Measure.library")))))))
+       (fn [library]
+         (or (some-> library ac/completed-future)
+             (find-library-by-literal-ref db library-ref)
+             (ac/completed-future (library-not-found-anom library-ref)))))))
 
 (defn- remove-unused-defs
   "Removes all expression definitions from `expression-defs` that are not

@@ -32,6 +32,14 @@ Blaze doesn't support the `practitioner` and `lastReceivedOn` input parameters d
 * a detailed documentation how to use the \$evaluate-measure API can be found [here](../../cql-queries/api.md)
 * a documentation how to use \$evaluate-measure via blazectl can be found [here](../../cql-queries/blazectl.md)
 
+## Primary Library Resolution
+
+`Measure.library` references the [Library][7] resource holding the CQL used for evaluation. Blaze resolves it as a canonical reference, per [FHIR R4 §2.3.0.5][8]:
+
+* `Measure.library` may carry a version, appended with `|`, e.g. `http://example.com/library-x|1.2.0`. Blaze then searches for a `Library` with matching `.url` **and** `.version`.
+* Without a version, Blaze picks the Library with the highest priority among all matching `.url`, ranked by `status` (`active` first), then `version` (highest first, compared numerically per dot-separated part), then recency.
+* If no canonical match is found, Blaze falls back to resolving `Measure.library` as a literal reference (e.g. `Library/123`).
+
 ## Persistence
 
 When invoked with `POST`, the `$evaluate-measure` operation persists the generated `MeasureReport` by default and returns `201 Created` with a `Location` header pointing at the stored resource. When invoked with `GET`, the report is returned inline with `200 OK` and nothing is persisted.
@@ -76,3 +84,5 @@ The official documentation can be found [here][1].
 [4]: <https://hl7.org/fhir/R5/measure-operation-evaluate-measure.html>
 [5]: <https://hl7.org/fhir/R4/measure.html>
 [6]: <https://hl7.org/fhir/R4/measurereport.html>
+[7]: <https://hl7.org/fhir/R4/library.html>
+[8]: <https://hl7.org/fhir/R4/references.html#canonical>
