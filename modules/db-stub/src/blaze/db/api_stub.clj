@@ -34,6 +34,21 @@
     :blaze.fhir/writing-context
     {:structure-definition-repo structure-definition-repo}}))
 
+;; The components of `root-system` are handed out by the following components
+;; instead of putting their values into configs directly, because Integrant
+;; resolves refs by walking each config value with `clojure.walk/postwalk`,
+;; calling the rather expensive `integrant.core/reflike?` on every node. The
+;; parsing and writing contexts are large maps, so walking them dominates the
+;; runtime of `ig/init`.
+
+(defmethod ig/init-key ::parsing-context
+  [_ _]
+  (:blaze.fhir/parsing-context root-system))
+
+(defmethod ig/init-key ::writing-context
+  [_ _]
+  (:blaze.fhir/writing-context root-system))
+
 (def mem-node-config
   {:blaze.db/node
    {:tx-log (ig/ref ::tx-log/local)
@@ -85,8 +100,8 @@
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :parsing-context (:blaze.fhir/parsing-context root-system)
-    :writing-context (:blaze.fhir/writing-context root-system)
+    :parsing-context (ig/ref ::parsing-context)
+    :writing-context (ig/ref ::writing-context)
     :executor (ig/ref ::rs-kv/executor)}
 
    [::kv/mem :blaze.db/resource-kv-store]
@@ -114,7 +129,11 @@
    :blaze.test/fixed-rng-fn {}
    ::local/graph-cache {}
 
-   :blaze/scheduler {}})
+   :blaze/scheduler {}
+
+   ::parsing-context {}
+
+   ::writing-context {}})
 
 (defmacro with-system [[binding-form config] & body]
   `(mtu/with-system [system# ~config]
