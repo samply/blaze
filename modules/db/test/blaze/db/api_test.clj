@@ -1149,7 +1149,7 @@
             count := 1
             [0 :active] := #fhir/boolean true))))))
 
-(deftest transact-delete-history-too-many-test
+(deftest ^:slow transact-delete-history-too-many-test
   (log/set-min-level! :info)
   (st/unstrument)
   (testing "works with up to 100,000 history entries"
@@ -1474,7 +1474,7 @@
         ::anom/category := ::anom/conflict
         ::anom/message := "Duplicate transaction commands `create Patient/0` and `purge Patient/0`."))))
 
-(deftest transact-patient-purge-too-many-test
+(deftest ^:slow transact-patient-purge-too-many-test
   (log/set-min-level! :info)
   (st/unstrument)
   (testing "works with up to 100,000 history entries"
@@ -8125,7 +8125,7 @@
   {:fhir/type :fhir/Patient :id (str i)
    :identifier [(type/identifier {:value (type/string (str i))})]})
 
-(deftest type-query-identifier-non-matching-test
+(deftest ^:slow type-query-identifier-non-matching-test
   (log/set-min-level! :info)
   (st/unstrument)
   (testing "doesn't return non-matching resources"
