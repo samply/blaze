@@ -54,7 +54,7 @@
     (is (empty? (remove dashboard/units (map :unit (source-panels source))))))
 
   (testing "panel count"
-    (is (= 102 (count (source-panels source))))))
+    (is (= 104 (count (source-panels source))))))
 
 (deftest dashboard-test
   (testing "of the real source"
@@ -70,13 +70,13 @@
         (is (every? #(= "row" (get % "type")) (get dashboard "panels"))))
 
       (testing "has all panels nested in the row panels"
-        (is (= 102 (count (panels dashboard)))))
+        (is (= 104 (count (panels dashboard)))))
 
       (testing "every panel is a timeseries panel"
         (is (every? #(= "timeseries" (get % "type")) (panels dashboard))))
 
       (testing "all ids are distinct"
-        (is (= 118 (count (distinct (map #(get % "id")
+        (is (= 120 (count (distinct (map #(get % "id")
                                          (concat (get dashboard "panels")
                                                  (panels dashboard))))))))
 

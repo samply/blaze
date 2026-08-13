@@ -26,7 +26,7 @@
   [coll]
   (identical? ::empty (reduce #(reduced %2) ::empty coll)))
 
-(defn inc-rf [sum _] (inc ^long sum))
+(defn inc-rf [sum _] (inc (long sum)))
 
 (deftype TransformerIterator [rf ^Iterator iter ^Queue buffer ^:volatile-mutable completed]
   Iterator

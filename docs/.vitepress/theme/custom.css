@@ -186,6 +186,20 @@
   font-weight: 400;
 }
 
+/*
+ * Mermaid diagrams.
+ *
+ * The labels of a diagram are HTML inside a foreignObject, so the paragraph
+ * style of the prose applies to them. Mermaid lays every box out for a
+ * line-height of 1.5 and a paragraph without margins, so the taller lines of
+ * the prose overflow the box that was measured for them. Resetting both to what
+ * mermaid measured with keeps the labels inside their boxes.
+ */
+.vp-doc .mermaid p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 @media print {
   .blaze-chart {
     break-inside: avoid;

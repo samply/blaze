@@ -26,11 +26,24 @@
 (s/fdef flow/on-subscribe!
   :args (s/cat :subscriber flow/subscriber? :subscription flow/subscription?))
 
+(s/fdef flow/on-next!
+  :args (s/cat :subscriber flow/subscriber? :x any?))
+
+(s/fdef flow/on-error!
+  :args (s/cat :subscriber flow/subscriber? :e #(instance? Throwable %)))
+
+(s/fdef flow/on-complete!
+  :args (s/cat :subscriber flow/subscriber?))
+
 (s/fdef flow/request!
   :args (s/cat :subscription flow/subscription? :n pos-int?))
 
 (s/fdef flow/cancel!
   :args (s/cat :subscriber flow/subscription?))
+
+(s/fdef flow/collector
+  :args (s/cat :future ac/completable-future?)
+  :ret flow/subscriber?)
 
 (s/fdef flow/collect
   :args (s/cat :publisher flow/publisher?)

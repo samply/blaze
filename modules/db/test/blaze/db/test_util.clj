@@ -65,7 +65,6 @@
   {:blaze.db/node
    {:tx-log (ig/ref ::tx-log/local)
     :tx-cache (ig/ref :blaze.db/tx-cache)
-    :indexer-executor (ig/ref ::node/indexer-executor)
     :resource-cache (ig/ref :blaze.db/resource-cache)
     :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
@@ -90,8 +89,6 @@
 
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}
-
-   ::node/indexer-executor {}
 
    [::kv/mem :blaze.db/index-kv-store]
    {:column-families
@@ -139,6 +136,24 @@
 
 (def non-referential-integrity-config
   (assoc-in config [:blaze.db/node :enforce-referential-integrity] false))
+
+(defn wait-for
+  "Waits up to 10 seconds for the value of the atom `state` to satisfy `pred`,
+  returning true if it does and false otherwise.
+
+  Watches `state` instead of polling it, so that the wait ends the moment it
+  changes. Examines the current value only after adding the watch, because a
+  watch sees changes but not the value it was added at, and adding it first is
+  what keeps a change happening in between from being missed."
+  [state pred]
+  (let [result (promise)
+        key (gensym "wait-for-")]
+    (try
+      (add-watch state key (fn [_ _ _ value] (when (pred value) (deliver result true))))
+      (when (pred @state) (deliver result true))
+      (deref result 10000 false)
+      (finally
+        (remove-watch state key)))))
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to

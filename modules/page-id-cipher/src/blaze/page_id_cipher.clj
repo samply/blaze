@@ -269,10 +269,9 @@
 (defmethod ig/init-key :blaze/page-id-cipher
   [_ {:keys [node] :as context}]
   (log/info "Init page ID cipher")
-  (let [state (atom (decode-state @(find-or-create-key-set-resource context)))
-        publisher (d/changed-resources-publisher node "DocumentReference")
-        subscriber (->DocumentReferenceSubscriber node state nil)]
-    (flow/subscribe! publisher subscriber)
+  (let [state (atom (decode-state @(find-or-create-key-set-resource context)))]
+    (d/subscribe-changes! node "DocumentReference" "page-id-cipher"
+                          (->DocumentReferenceSubscriber node state nil))
     (->Cipher state (schedule-key-rotation context))))
 
 (defmethod ig/halt-key! :blaze/page-id-cipher

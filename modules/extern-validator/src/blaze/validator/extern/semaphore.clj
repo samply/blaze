@@ -27,7 +27,7 @@
   available. Every acquired permit has to be returned with `release!`."
   [semaphore]
   (let [future (ac/future)
-        [{:keys [permits]} _]
+        [{:keys [permits]}]
         (swap-vals! semaphore
                     (fn [s]
                       (if (pos? (:permits s))
@@ -47,7 +47,7 @@
   acquired that permit by calling `acquire!`. Correct usage of a semaphore is
   established by programming convention in the application."
   [semaphore]
-  (let [[{:keys [waiters]} _]
+  (let [[{:keys [waiters]}]
         (swap-vals! semaphore
                     (fn [s]
                       (if (seq (:waiters s))

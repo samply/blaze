@@ -5,4 +5,4 @@
   (-sync [node] [node t])
   (-submit-tx [node tx-ops])
   (-tx-result [node t])
-  (-changed-resources-publisher [node type]))
+  (-subscribe-changes! [node type name subscriber]))

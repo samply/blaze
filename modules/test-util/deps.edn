@@ -2,9 +2,6 @@
  {blaze/anomaly
   {:local/root "../anomaly"}
 
-  blaze/async
-  {:local/root "../async"}
-
   com.taoensso/timbre
   {:mvn/version "6.8.0"}
 

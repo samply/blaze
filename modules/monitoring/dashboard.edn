@@ -509,6 +509,18 @@
      :queries
      [{:expr "1 - rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"poll-tx-log\"}[$__rate_interval])"
        :legend "{{node}}"}]}
+    {:title "Publishing Lag"
+     :description "Distance in t between the last transaction indexed by a node and the point in time up to which transactions were examined for a changed resources subscriber. A lag that keeps growing means either the publishing doesn't keep up with the transaction rate or that subscriber doesn't consume fast enough."
+     :unit "none"
+     :queries
+     [{:expr "blaze_db_node_publishing_lag_t{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{node}} {{type}} {{subscriber}}"}]}
+    {:title "Queued Transactions"
+     :description "Number of transactions whose changed resources were queued for but not yet delivered to a changed resources subscriber. Bounded by the queue capacity, so a value sitting at that capacity means the subscriber itself doesn't consume fast enough, while a publishing lag growing with an empty queue points at the publishing instead."
+     :unit "none"
+     :queries
+     [{:expr "blaze_db_node_publishing_lag_transactions{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{node}} {{type}} {{subscriber}}"}]}
     {:title "Durations 0.5 Quantile"
      :unit "s"
      :queries

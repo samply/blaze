@@ -1,0 +1,2 @@
+{:lint-as
+ {blaze.test-util/with-global-log-capture clojure.core/with-open}}

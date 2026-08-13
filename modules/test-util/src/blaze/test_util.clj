@@ -1,7 +1,6 @@
 (ns blaze.test-util
   (:require
    [blaze.anomaly :refer [try-anomaly]]
-   [blaze.async.comp :as ac]
    [clojure.pprint :as pprint]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -31,7 +30,7 @@
   "Asserts that `future` completes exceptionally, running a given macro with
   `body` on the anomaly of its error."
   [future & body]
-  `(given (try-anomaly (ac/join ~future) (is false))
+  `(given (try-anomaly (deref ~future) (is false))
      ~@body))
 
 (defmacro satisfies-prop [num-tests prop]
@@ -97,6 +96,33 @@
    :locale :jvm-default
    :timezone :utc}
   :output-fn output-fn})
+
+(defmacro with-global-log-capture
+  "Evaluates `body` with a Timbre appender installed in the global config that
+  captures log entries from all threads.
+
+  Binds `captured` to a promise that is delivered with a map of :level and
+  :vargs of the first log entry whose first vararg equals `msg`. Use this
+  instead of `log/with-merged-config` when the log call happens on another
+  thread, because `log/with-merged-config` only alters the config of the
+  calling thread.
+
+  Each invocation uses its own appender key, so nested and concurrent usages
+  don't remove each other's appenders."
+  [[captured msg] & body]
+  `(let [msg# ~msg
+         ~captured (promise)
+         key# (keyword "blaze.test-util" (name (gensym "capture-")))]
+     (log/swap-config!
+      assoc-in [:appenders key#]
+      {:enabled? true
+       :fn (fn [{level# :level vargs# :vargs}]
+             (when (= msg# (first vargs#))
+               (deliver ~captured {:level level# :vargs (vec vargs#)})))})
+     (try
+       ~@body
+       (finally
+         (log/swap-config! update :appenders dissoc key#)))))
 
 (defn submit-blocking-task!
   "Submits a blocking task by calling `submit-fn` with it, returning a no-arg

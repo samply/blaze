@@ -53,7 +53,6 @@
   {:blaze.db/node
    {:tx-log (ig/ref ::tx-log/local)
     :tx-cache (ig/ref :blaze.db/tx-cache)
-    :indexer-executor (ig/ref ::node/indexer-executor)
     :resource-cache (ig/ref :blaze.db/resource-cache)
     :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
@@ -76,8 +75,6 @@
 
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}
-
-   ::node/indexer-executor {}
 
    [::kv/mem :blaze.db/index-kv-store]
    {:column-families

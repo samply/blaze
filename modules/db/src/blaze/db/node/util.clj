@@ -9,7 +9,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defn name-part [[_ key]]
+(defn name-part
+  "Returns the name of the node the component with the composite Integrant `key`
+  belongs to, taken from the last segment of the namespace of its second
+  keyword.
+
+  The key `[:blaze.db/node :blaze.db.admin/node]` results in `admin`."
+  [[_ key]]
   (-> key namespace (str/split #"\.") last))
 
 (defn node-name
@@ -20,12 +26,20 @@
   [key]
   (if (vector? key) (name-part key) "main"))
 
-(defn component-name [key suffix]
+(defn component-name
+  "Returns the name of the component with Integrant `key`, `suffix` prefixed
+  with the node name for a composite key, so that log messages of the nodes of
+  a system can be told apart."
+  [key suffix]
   (cond->> suffix
     (vector? key)
     (str (name-part key) " ")))
 
-(defn thread-name-template [key suffix]
+(defn thread-name-template
+  "Returns the thread name template of the component with Integrant `key`,
+  `suffix` prefixed with the node name for a composite key, so that the threads
+  of the nodes of a system can be told apart."
+  [key suffix]
   (cond->> suffix
     (vector? key)
     (str (name-part key) "-")))
@@ -35,5 +49,13 @@
   [resource-handle variant]
   [(:fhir/type resource-handle) (:hash resource-handle) variant])
 
-(defn instant [last-updated]
+(defn instant
+  "Returns the java.time.Instant `last-updated` as FHIR instant at the UTC
+  offset."
+  [last-updated]
   (type/instant (.atOffset ^Instant last-updated ZoneOffset/UTC)))
+
+(defn start-thread!
+  "Starts a daemon thread with `name` that runs `f`."
+  [^Runnable f ^String name]
+  (.start (doto (Thread. f name) (.setDaemon true))))
