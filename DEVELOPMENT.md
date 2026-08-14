@@ -55,6 +55,34 @@ The latest LTS/stable releases of:
 * [actionlint](https://github.com/rhysd/actionlint)
 * [dashboard-linter](https://github.com/grafana/dashboard-linter), only needed to run `make -C modules/monitoring lint-dashboard`
 
+### Dev Container
+
+Instead of installing Java and the tools listed above by hand, you can develop inside the [Dev Container](https://containers.dev) defined in `.devcontainer`. It is based on Ubuntu 24.04, the distribution the CI pipeline runs on, and contains the Eclipse Temurin JDK 25, the Clojure CLI, clj-kondo, cljfmt, Node.js, actionlint, ShellCheck and dashboard-linter, each pinned to the version CI uses. So `make fmt`, `make lint` and `make test` behave inside the container like they do in CI.
+
+The container does **not** contain Docker. Building the images (`make build-image`, `make build-frontend-image`, `make build-ingress`) and running the docker compose based integration tests under `.github/` is done on the host.
+
+After the container has been created, `make build-ig` and `make prep` run once, so that the generated IG resources several modules need for their tests are present and the dependencies of the root project are downloaded. The dependencies of the individual modules are downloaded on demand; `make deps-prep` downloads them all at once.
+
+The Maven repository `~/.m2` and the Clojure GitLibs cache `~/.gitlibs` are Docker volumes, so the downloaded dependencies survive a rebuild of the container. They can be removed with `docker volume rm blaze-maven blaze-gitlibs`.
+
+#### IntelliJ IDEA
+
+IntelliJ IDEA can create the dev container itself: open `.devcontainer/devcontainer.json` and choose **Create Dev Container and Mount Sources** from the gutter icon next to the first line. Alternatively, start from the welcome screen via **Remote Development > Dev Containers**.
+
+The Clojure support of IntelliJ IDEA comes from the [Cursive](https://cursive-ide.com/) plugin, which needs a license and is therefore not installed automatically. Install it in the IDE backend running inside the container (**Settings > Plugins**), where it stays installed as long as the container exists.
+
+#### Claude Code
+
+The container ships Node.js and a writable npm prefix in the home directory, so the [Claude Code](https://claude.com/product/claude-code) CLI can be installed inside the container without `sudo`:
+
+```sh
+npm install -g @anthropic-ai/claude-code
+```
+
+`~/.claude`, which holds its credentials and settings, is a Docker volume as well, and `CLAUDE_CONFIG_DIR` points at that volume, so that the `~/.claude.json` the CLI keeps outside `~/.claude` lands in it too. That way a rebuild of the container does not log you out. The volume can be removed with `docker volume rm blaze-claude`.
+
+The desktop app cannot attach to a dev container: it runs sessions locally, in the cloud, over SSH or in WSL. To drive the container from it, use an **SSH connection** pointing at the container, which needs an SSH daemon inside the container. Running `claude` in the terminal of the IDE that opened the container needs no extra setup.
+
 ## Building Blaze
 
 Blaze is built as a single Docker image, along with a separate frontend image.

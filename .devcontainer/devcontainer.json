@@ -1,0 +1,63 @@
+{
+  // Dev container for Blaze development. See DEVELOPMENT.md for details.
+  "name": "Blaze",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+
+  // The dependency caches are volumes, so that they survive a rebuild of the
+  // container. ~/.claude holds the state of the Claude Code CLI, including its
+  // credentials.
+  "mounts": [
+    "source=blaze-maven,target=/home/vscode/.m2,type=volume",
+    "source=blaze-gitlibs,target=/home/vscode/.gitlibs,type=volume",
+    "source=blaze-claude,target=/home/vscode/.claude,type=volume"
+  ],
+
+  // The Claude Code CLI keeps its OAuth account in ~/.claude.json, a file
+  // outside ~/.claude. CLAUDE_CONFIG_DIR moves that file into the volume, so
+  // that a rebuild of the container doesn't log you out.
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+
+  // Builds the Blaze implementation guide and downloads the dependencies of
+  // the root project. Runs once, after the container has been created.
+  "postCreateCommand": "./.devcontainer/post-create.sh",
+
+  "forwardPorts": [8080, 8081, 5173, 5555],
+  "portsAttributes": {
+    "8080": {
+      "label": "Blaze HTTP Server"
+    },
+    "8081": {
+      "label": "Prometheus Metrics Server"
+    },
+    "5173": {
+      "label": "Frontend Dev Server"
+    },
+    "5555": {
+      "label": "Remote REPL"
+    }
+  },
+
+  // Blaze is a JVM project with a large test suite. Less than this makes
+  // `make test` slow and the RocksDB based tests flaky.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+
+  "customizations": {
+    // The Clojure support of IntelliJ IDEA comes from the Cursive plugin, which
+    // needs a license and is therefore not installed automatically.
+    "jetbrains": {
+      "backend": "IntelliJ"
+    },
+    "vscode": {
+      "extensions": ["betterthantomorrow.calva"]
+    }
+  }
+}

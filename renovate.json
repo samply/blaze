@@ -101,11 +101,12 @@
     },
     {
       "description": [
-        "Keep the toolchain versions pinned in the Claude Code SessionStart hook up to date."
+        "Keep the toolchain versions pinned in the Claude Code SessionStart hook and in the dev container up to date. The checksums in the dev container are per architecture and have to be updated manually."
       ],
       "customType": "regex",
       "managerFilePatterns": [
-        "/(^|/)\\.claude/hooks/session-start\\.sh$/"
+        "/(^|/)\\.claude/hooks/session-start\\.sh$/",
+        "/(^|/)\\.devcontainer/install-tools\\.sh$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+?)(?: versioning=(?<versioning>\\S+?))?(?: extractVersion=(?<extractVersion>\\S+?))?\\s+\\w+_VERSION=\"(?<currentValue>.+?)\""
