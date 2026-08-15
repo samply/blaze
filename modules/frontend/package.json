@@ -27,7 +27,7 @@
     "change-case": "5.4.4",
     "eslint": "10.8.1",
     "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-svelte": "3.22.0",
+    "eslint-plugin-svelte": "3.23.0",
     "globals": "17.9.0",
     "humanize-duration": "3.33.2",
     "prettier": "3.9.6",
