@@ -15,6 +15,10 @@ public final class ReducibleArray implements IReduceInit {
         this.items = list.toArray();
     }
 
+    public Object[] array() {
+        return items;
+    }
+
     public Object reduce(IFn f, Object init) {
         for (Object item : items) {
             init = f.invoke(init, item);
