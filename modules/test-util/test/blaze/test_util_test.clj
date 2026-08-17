@@ -1,9 +1,8 @@
 (ns blaze.test-util-test
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
    [blaze.test-util :as tu :refer [given-failed-future given-thrown
-                                   satisfies-prop]]
+                                   satisfies-prop
+                                   with-global-log-capture]]
    [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
@@ -13,7 +12,8 @@
    [taoensso.timbre :as log :refer [with-merged-config]])
   (:import
    [java.nio ByteBuffer]
-   [java.util Locale]))
+   [java.util Locale]
+   [java.util.concurrent CompletableFuture]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,7 +51,7 @@
 
 (deftest given-failed-future-test
   (testing "with an exceptionally completed future"
-    (given-failed-future (ac/completed-future (ba/fault "msg-155234"))
+    (given-failed-future (CompletableFuture/failedFuture (Exception. "msg-155234"))
       ::anom/category := ::anom/fault
       ::anom/message := "msg-155234")))
 
@@ -109,6 +109,37 @@
       (is (str/includes? output "ERROR"))
       (is (str/includes? output "msg-171406"))
       (is (str/includes? output "msg-171432")))))
+
+(deftest with-global-log-capture-test
+  (testing "captures a matching log entry from another thread"
+    (with-global-log-capture [captured "msg-104512"]
+      (.start (Thread. ^Runnable #(log/error "msg-104512" "extra")))
+      (given (deref captured 1000 ::timeout)
+        :level := :error
+        [:vargs 0] := "msg-104512"
+        [:vargs 1] := "extra")))
+
+  (testing "doesn't capture a non-matching log entry"
+    (with-global-log-capture [captured "msg-105256"]
+      (log/error "msg-105303")
+      (is (= ::timeout (deref captured 10 ::timeout)))))
+
+  (testing "removes the appender afterwards"
+    (let [captured (with-global-log-capture [captured "msg-105542"] captured)]
+      (log/error "msg-105542")
+      (is (= ::timeout (deref captured 10 ::timeout)))))
+
+  (testing "nested usages don't interfere with each other"
+    (with-global-log-capture [outer "msg-141508"]
+      (with-global-log-capture [inner "msg-141516"]
+        (log/error "msg-141516")
+        (given (deref inner 1000 ::timeout)
+          :level := :error
+          [:vargs 0] := "msg-141516"))
+      (log/error "msg-141508")
+      (given (deref outer 1000 ::timeout)
+        :level := :error
+        [:vargs 0] := "msg-141508"))))
 
 (deftest submit-blocking-task!-test
   (let [thread (promise)

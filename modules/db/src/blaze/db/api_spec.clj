@@ -28,9 +28,10 @@
   :args (s/cat :node :blaze.db/node :tx-ops :blaze.db/tx-ops)
   :ret ac/completable-future?)
 
-(s/fdef d/changed-resources-publisher
-  :args (s/cat :node :blaze.db/node :type :fhir.resource/type)
-  :ret flow/publisher?)
+(s/fdef d/subscribe-changes!
+  :args (s/cat :node :blaze.db/node :type :fhir.resource/type :name string?
+               :subscriber flow/subscriber?)
+  :ret nil?)
 
 (s/fdef d/node
   :args (s/cat :db :blaze.db/db)

@@ -54,7 +54,9 @@
 
   Returns a CompletableFuture that will complete with the database after the
   transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors.
+  in case of a transaction error or other errors. Fails with an unavailable
+  anomaly if `node` is closed, because its indexing loop wouldn't pick the
+  transaction up anymore.
 
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
@@ -62,10 +64,43 @@
   (-> (np/-submit-tx node tx-ops)
       (ac/then-compose #(np/-tx-result node %))))
 
-(defn changed-resources-publisher
-  "Returns a publisher that publishes all changed resources of `type`."
-  [node type]
-  (np/-changed-resources-publisher node type))
+(defn subscribe-changes!
+  "Subscribes `subscriber` to the resource handles of `type` changed in each
+  transaction on `node`, one onNext per transaction, in transaction order.
+
+  The `name` identifies `subscriber` in the publishing lag metric and in log
+  messages, so it should be the name of the component subscribing, like
+  `job-scheduler`.
+
+  Transactions committed before the subscription was created are never
+  published. Because publishing can lag behind indexing, `subscriber` can still
+  receive transactions committed shortly before it was subscribed. Transactions
+  that didn't change resources of `type` are skipped.
+
+  Each subscription has its own queue and its own thread, so `subscriber`
+  receives the handles of `type` regardless of how many subscribers `type`
+  already has and regardless of how fast the other subscribers consume.
+
+  Subscribers receive onComplete after `node` was closed and onError if `node`
+  failed or if their onNext throws. A subscriber that cancels its subscription
+  is dropped, because it can't receive handles anymore.
+
+  Closing `node` doesn't wait for a subscriber that doesn't consume. Nothing is
+  delivered to `subscriber` after `node` was closed, so the transactions it
+  didn't receive yet are dropped, logged as a warning, before it receives
+  onComplete. Only a delivery already in progress still finishes.
+
+  Throws if the onSubscribe method of `subscriber` throws. Nothing is subscribed
+  then, so the caller doesn't continue with a subscription that never delivers
+  anything. Throwing is the only way left to report that failure, because the
+  reactive streams spec considers the subscription of a subscriber that throws
+  in onSubscribe as cancelled, so it can't receive onError anymore. Because
+  subscribing happens while the component owning `subscriber` is initialized,
+  such an error fails the start of the system.
+
+  Returns nil."
+  [node type name subscriber]
+  (np/-subscribe-changes! node type name subscriber))
 
 (defn node
   "Returns the node of `db`."

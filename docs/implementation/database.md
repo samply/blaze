@@ -283,7 +283,142 @@ If the tx-indexer rejects the transaction (e.g. referential integrity, version m
 
 A crash between the step 2 batch and the step 3 batch produces a similar situation at the transaction level: `ResourceAsOf` (and the other AsOf indices) carry rows at some `t > head(TxSuccess)`. Startup uses `head(TxSuccess)` as the current `t`, so those rows are invisible until — and unless — the same transaction is re-applied from the log and the step 3 batch lands.
 
-### Transaction Commands
+### Changed Resources Publishing
+
+Each node runs two threads, plus one thread per subscriber. The **indexer thread** polls the transaction log and applies the transaction data as described above. The **changed resources publisher thread** determines the resource handles changed in each transaction and queues them into the subscription of each interested subscriber. The **thread of each subscription** delivers the queued handles to its subscriber, one delivery per transaction, in transaction order.
+
+Components inside Blaze subscribe to the changed resources of a resource type in order to react to changes made on any node of a distributed cluster. The job scheduler uses it to pick up `Task` resources, and the page id cipher uses it to pick up rotated keys.
+
+```mermaid
+---
+config:
+  flowchart:
+    wrappingWidth: 300
+    rankSpacing: 60
+    subGraphTitleMargin:
+      top: 5
+      bottom: 5
+---
+flowchart TB
+    log[("Transaction Log")]
+
+    subgraph indexer ["Indexer Thread"]
+        apply["apply transaction data<br>advance t"]
+    end
+
+    subgraph publisher ["Changed Resources Publisher Thread"]
+        window["one window per subscription:<br>after its queued-t, at most<br>its free queue slots"]
+        batch["one batch database over<br>the union of all windows"]
+        handles["changed handles per type,<br>from the type history over<br>the union of its windows"]
+        window --> batch --> handles
+    end
+
+    subgraph subscription ["Subscription of one Subscriber"]
+        queue["bounded queue<br>one handle vector<br>per transaction"]
+        drain["delivery"]
+        queue --> drain
+    end
+
+    log -->|poll| apply
+    apply -.->|"wake up"| window
+    handles -->|"queue handles,<br>advance queued-t"| queue
+    handles -.->|"skipped while full,<br>retried in a later round"| queue
+    drain -->|onNext| subscriber["Subscriber"]
+    drain -.->|"wake up after half<br>the capacity was freed"| window
+```
+
+All threads run independently of each other:
+
+*   A transaction is visible in database values as soon as it is indexed, independent of whether it was already published. Publishing never slows indexing down, so it also never slows down the response time of the FHIR RESTful API requests submitting the transactions.
+*   Publishing can lag behind indexing, either because determining the changed handles takes long or because a subscriber doesn't consume fast enough. Transactions committed while a publishing round is in progress are coalesced into the next round, so that the changed handles of multiple transactions are determined with a single database value. That lag is exposed per resource type and subscriber as two metrics. `blaze_db_node_publishing_lag_transactions` is the number of transactions whose changed handles were queued but not delivered yet, so it is bounded by the queue capacity. `blaze_db_node_publishing_lag_t` is the distance in `t` between the last transaction the node indexed and the point in time up to which transactions were examined for the subscriber, which is unbounded. That distance is an upper bound on the transactions the subscriber still receives handles for, not a count of them: it spans the failed transactions, which change no resources at all, and the successful ones that changed no resource of the type of the subscriber. How many of them there are is exactly what determining the changed handles finds out, so it isn't known before a transaction was examined.
+
+Each subscription owns a bounded queue and tracks its **queued-t**, the point in time up to which all transactions were examined for its subscriber. The publisher thread never blocks: it skips a subscription whose queue is full, retrying in a later round. The thread of a subscription wakes the publisher thread up after it freed half the capacity of its queue, so a retry doesn't depend on the next transaction to happen. Waking it up at the first free slot instead would degenerate a subscription that lags behind into one round per delivered transaction. That's why a single publisher thread is sufficient, no matter how many subscribers exist.
+
+A round determines the changed handles per **window** of transactions, bounded on both ends. The window of a subscription starts after its queued-t and ends at its free queue slots at the latest, because the handles of more transactions can't be queued into it anyway. So a subscription that lags behind catches up over multiple rounds instead of every round examining all transactions it lags behind, and no round determines handles it has to drop again. Both bounds keep the work and the memory of a single round proportional to the queue capacity instead of to the lag.
+
+The following rounds of a subscription with a queue capacity of two show how both bounds play out over time:
+
+```mermaid
+---
+config:
+  sequence:
+    width: 140
+    actorMargin: 35
+---
+sequenceDiagram
+    participant idx as Indexer Thread
+    participant pub as Publisher Thread
+    participant sub as Subscription<br>queue capacity 2
+    participant s as Subscriber
+
+    idx->>idx: apply t=1
+    idx--)pub: wake up
+    pub->>pub: round (0, 1]
+    pub->>sub: handles of t=1,<br>queued-t = 1
+
+    idx->>idx: apply t=2 to t=5
+    idx--)pub: wake up
+    Note over idx,pub: transactions committed<br>during a round are coalesced<br>into the next one
+    pub->>pub: round (1, 2]
+    Note over pub,sub: the window ends at the<br>free queue slots, of which<br>one is left
+    pub->>sub: handles of t=2,<br>queued-t = 2
+
+    sub->>s: onNext, handles of t=1
+    sub--)pub: wake up after half the<br>capacity was freed
+    sub->>s: onNext, handles of t=2
+    pub->>pub: round (2, 4]
+    pub->>sub: handles of t=3 and t=4,<br>queued-t = 4
+    Note over pub,sub: t=5 follows in a later round,<br>so a subscription that lags<br>behind catches up over<br>multiple rounds
+```
+
+All windows of a round are served by a **single batch database** — one snapshot of the key-value store — spanning their union, no matter how far apart the subscriptions are. Inside it, the type history of a type is examined only over the union of the windows of its own subscriptions, so that a subscription that lags behind doesn't make the history of the types of the subscriptions that are caught up be examined from its own queued-t.
+
+This isolates the subscribers from each other in two ways. A subscriber that doesn't consume fast enough only fills up its own queue, while the other subscribers still receive their handles. And a subscriber that blocks in its delivery method only blocks the thread of its own subscription. Closing a node is never delayed by a subscriber that doesn't consume, only by a delivery already in progress.
+
+Publishing is lossless as long as the node runs. Because the subscribers are essential parts of Blaze, a subscriber that doesn't consume fast enough is never dropped and transactions are never skipped in order to catch up — the handles stay queued and the queued-t doesn't advance beyond them. A permanently growing `blaze_db_node_publishing_lag_t` means a subscriber is stuck and should be alerted on. Its `blaze_db_node_publishing_lag_transactions` sitting at the queue capacity tells that the subscriber itself is the one that doesn't consume, while a distance growing with an empty queue points at the publisher instead.
+
+Closing the node is the one point at which transactions are lost. Because closing doesn't wait for a subscriber that doesn't consume, the publisher thread stops after the last round that had space, leaving a subscription with a full queue behind at its queued-t. Closing then drops what that subscription didn't deliver yet — the queued handles and the transactions after its queued-t — before its subscriber receives onComplete. Both are logged as a warning naming the subscriber: the queued handles as the number of transactions lost, the ones after the queued-t as the range of `t` they span, because they were never examined, so how many of them changed resources of the type isn't known and can't be found out anymore. That range is also what tells the point in time the subscriber is up to date to.
+
+Delivery stops at that point instead of draining the queue, because a delivery is subscriber code: the job scheduler starts jobs from it and transacts, the page id cipher reads resources. Running that after the node was closed would race the shutdown of the components the node depends on, and a transaction submitted then would never be indexed, because the indexing loop has already stopped. For the same reason, a closed node rejects transactions with an `unavailable` anomaly, and futures waiting for a `t` that will never be indexed — from `tx-result` or `sync` — complete exceptionally instead of waiting forever. Only a delivery that is already in progress finishes, since its handles left the queue before closing. Closing waits for it, after the indexer and the publisher thread stopped, because returning while a subscriber still queries the node would let Integrant shut down the key-value and resource stores under it. Dropping the queues is what bounds that wait to a single delivery per subscription.
+
+A subscriber that cancels its subscription is dropped, because a cancelled subscriber doesn't receive any signal anymore. Continuing to publish to it would silently discard the handles of all following transactions instead of exposing them as publishing lag. The same happens to a subscriber whose delivery method throws, because a subscriber that can't process the handles of one transaction can't process the following ones either. It receives that error.
+
+A subscriber that throws while it receives its subscription is never subscribed at all. Such a subscriber can't receive that error, because the reactive streams spec considers its subscription as cancelled, so the error is thrown back at the component subscribing instead. Since the subscribers of Blaze subscribe while they are initialized, this fails the start of the system rather than leaving that component running with a subscription that never delivers anything.
+
+Determining the changed handles is not optional. If it fails, the node stops in the same way it stops on an indexing error, because continuing would leave the subscribers with a silent gap. Subscribers receive onError in that case and onComplete after the node was closed.
+
+### Closing a Node
+
+Closing a node stops its indexing loop and then waits, in this order, for the indexer thread to exit, for the publisher thread to exit and for the last delivery of each subscription. None of these waits is bounded by a timeout, and there is consequently no shutdown timeout to configure.
+
+The indexer thread finishes the transaction it is currently applying before it exits, and applying a transaction waits for the search-parameter indexing of step 1 above. With `STORAGE=distributed` that is a wait on the external resource store, so a store that doesn't answer keeps the node from closing and the container is eventually killed by its runtime.
+
+That's deliberate. Blaze doesn't optimize for a graceful shutdown in every situation, because it has to survive being killed anyway. The transaction log is the source of truth and the apply-time mechanics above are built so that a process dying at an arbitrary point comes back with a consistent local index and re-applies whatever didn't finish. A kill during shutdown is just another crash.
+
+A timeout wouldn't make such a shutdown clean, only late and then unsafe. Returning from closing while the indexer thread or a subscriber still runs lets Integrant shut down the key-value and resource stores under that code, which is exactly what the waits exist to prevent. So bounding them would trade a shutdown that hangs — and is then killed, leaving recoverable state — for one that returns and runs indexing or subscriber code against half-stopped components. Waiting without a bound is the safer of the two.
+
+### Node Failure
+
+A node fails if anything escapes the loop of its indexer thread or the loop of its publisher thread. That is about the machinery, not about a single transaction: a transaction the tx-indexer rejects is ordinary operation and is committed as a `TxError` as described above. A node fails when applying or publishing itself can't continue.
+
+Exceptions of the key-value store are part of that set. Blaze doesn't catch `RocksDBException` on the read and write path — only the property lookups of the RocksDB module convert it into an anomaly — so a store that fails while a transaction is applied or while the changed handles of a publishing round are determined propagates up to the loop and fails the node. That is intentional. A store that just threw leaves the state of the local index unknown, and there is no altitude below the node at which continuing would be safe.
+
+A failed node remembers that it failed and stops its indexing loop:
+
+*   `submit-tx` fails every transaction from then on with an `unavailable` anomaly stating that the node stopped because of an unrecoverable error.
+*   Futures waiting for a `t` — from `tx-result` or `sync` — fail with that same anomaly instead of waiting for a transaction that will never be indexed. This includes the caller of the transaction whose indexing failed. That transaction is stored durable in the transaction log and will be indexed at the next start, so there is nothing more to tell that caller either.
+*   The publisher thread exits and closes all subscriptions with that anomaly, so every subscriber receives onError.
+*   Reads keep working. Database values are still served, but at the `t` of the last indexed transaction, so the local index is frozen and silently ages from that point on.
+
+What a node does **not** keep is the error that failed it. That error is logged as `Error while indexing` or `Error while publishing changed resources`, together with its stack trace, and goes nowhere else. It can come from any depth of the node — an exception of the key-value store for example — so handing it to callers would expose internals of the server, stack trace included, to arbitrary clients, and would keep doing so for every request until the node is restarted. Nothing needs it there: the log line has the error together with its context, while a caller only has to learn that the node stopped and that retrying won't help. Ordinary transaction errors are unaffected by this, because they are committed as `TxError` and reported to their caller as described above — only a node that failed reports a general anomaly.
+
+Rejecting transactions with `unavailable` rather than a fault is deliberate. The node can't accept transactions anymore, which is the same situation a closed node is in, and the FHIR RESTful API turns it into a `503`.
+
+This state is permanent. Nothing retries, and the node is never brought back — recovery is a restart of the process. That is the same reasoning as for closing a node above: the transaction log is the source of truth and the apply-time mechanics are built so that a process dying at an arbitrary point comes back with a consistent local index and re-applies whatever didn't finish. So restarting is a path Blaze has to support anyway, while continuing on a store whose state is unknown, or after a publishing round that failed, isn't. A node that keeps accepting transactions in that situation would trade an outage that is recoverable for an index that quietly diverges, and one that keeps publishing would leave the subscribers with a gap they can't detect.
+
+That altitude is deliberate and doesn't extend downwards. An error of a single subscription — a subscriber whose delivery method throws — concerns neither the node nor the other subscribers and only ends that subscription, as described above. The indexer and publisher threads are shared by everything the node does, which is why a failure there fails the node.
+
+## Transaction Commands
 
 Blaze supports several transaction commands:
 

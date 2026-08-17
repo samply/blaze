@@ -290,10 +290,9 @@
 (defmethod ig/init-key :blaze/job-scheduler
   [_ {:keys [node] :as config}]
   (log/info "Start job scheduler")
-  (let [publisher (d/changed-resources-publisher node "Task")
-        job-scheduler {:context config :running-jobs (atom {})}
-        subscriber (->TaskSubscriber node job-scheduler nil)]
-    (flow/subscribe! publisher subscriber)
+  (let [job-scheduler {:context config :running-jobs (atom {})}]
+    (d/subscribe-changes! node "Task" "job-scheduler"
+                          (->TaskSubscriber node job-scheduler nil))
     job-scheduler))
 
 (defmethod ig/halt-key! :blaze/job-scheduler

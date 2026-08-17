@@ -66,7 +66,6 @@
     {[:blaze.db/node :blaze.db.main/node]
      {:tx-log (ig/ref :blaze.db.main/tx-log)
       :tx-cache (ig/ref :blaze.db.main/tx-cache)
-      :indexer-executor (ig/ref :blaze.db.node.main/indexer-executor)
       :resource-cache (ig/ref :blaze.db/resource-cache)
       :resource-store (ig/ref :blaze.db/resource-store)
       :kv-store (ig/ref :blaze.db.main/index-kv-store)
@@ -78,7 +77,6 @@
      [:blaze.db/node :blaze.db.admin/node]
      {:tx-log (ig/ref :blaze.db.admin/tx-log)
       :tx-cache (ig/ref :blaze.db.admin/tx-cache)
-      :indexer-executor (ig/ref :blaze.db.node.admin/indexer-executor)
       :resource-cache (ig/ref :blaze.db/resource-cache)
       :resource-store (ig/ref :blaze.db/resource-store)
       :kv-store (ig/ref :blaze.db.admin/index-kv-store)
@@ -111,9 +109,6 @@
 
      [:blaze.db/tx-cache :blaze.db.admin/tx-cache]
      {:kv-store (ig/ref :blaze.db.admin/index-kv-store)}
-
-     [::node/indexer-executor :blaze.db.node.main/indexer-executor] {}
-     [::node/indexer-executor :blaze.db.node.admin/indexer-executor] {}
 
      [::kv/rocksdb :blaze.db.main/index-kv-store]
      {:dir (str dir "/index")

@@ -337,7 +337,6 @@
   {:storage #blaze/ref :blaze.db/storage
    :tx-log #blaze/ref :blaze.db.main/tx-log
    :tx-cache #blaze/ref :blaze.db.main/tx-cache
-   :indexer-executor #blaze/ref :blaze.db.node.main/indexer-executor
    :resource-cache #blaze/ref :blaze.db/resource-cache
    :resource-store #blaze/ref :blaze.db/resource-store
    :kv-store #blaze/ref :blaze.db.main/index-kv-store
@@ -347,8 +346,6 @@
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]
    :allow-multiple-delete #blaze/cfg ["ALLOW_MULTIPLE_DELETE" boolean? false]}
 
-  [:blaze.db.node/indexer-executor :blaze.db.node.main/indexer-executor] {}
-
   ;;
   ;; Admin Database Node
   ;;
@@ -356,7 +353,6 @@
   {:storage #blaze/ref :blaze.db/storage
    :tx-log #blaze/ref :blaze.db.admin/tx-log
    :tx-cache #blaze/ref :blaze.db.admin/tx-cache
-   :indexer-executor #blaze/ref :blaze.db.node.admin/indexer-executor
    :resource-cache #blaze/ref :blaze.db/resource-cache
    :resource-store #blaze/ref :blaze.db/resource-store
    :kv-store #blaze/ref :blaze.db.admin/index-kv-store
@@ -364,9 +360,8 @@
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :scheduler #blaze/ref :blaze/scheduler}
 
-  [:blaze.db.node/indexer-executor :blaze.db.node.admin/indexer-executor] {}
-
   :blaze.db.node/duration-seconds {}
+  :blaze.db.node/publishing-lag-collector {:nodes #blaze/ref-map :blaze.db/node}
   :blaze.db.node/transaction-sizes {}
 
   ;;

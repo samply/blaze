@@ -1,10 +1,11 @@
 import { defineConfig } from "vitepress";
+import { withMermaid } from "vitepress-plugin-mermaid";
 
 const currentVersion = process.env.VITE_LATEST_RELEASE || "local";
 const currentYear = new Date().getFullYear();
 const base = process.env.DOCS_BASE || "";
 
-export default defineConfig({
+const config = defineConfig({
   title: "Blaze",
   description: "Blaze FHIR Server Documentation",
   head: [
@@ -285,3 +286,5 @@ export default defineConfig({
     ],
   },
 });
+
+export default withMermaid(config);

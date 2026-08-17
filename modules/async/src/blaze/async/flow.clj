@@ -11,16 +11,24 @@
 
 (set! *warn-on-reflection* true)
 
-(defn publisher? [x]
+(defn publisher?
+  "Returns true if `x` is a publisher."
+  [x]
   (instance? Flow$Publisher x))
 
-(defn subscriber? [x]
+(defn subscriber?
+  "Returns true if `x` is a subscriber."
+  [x]
   (instance? Flow$Subscriber x))
 
-(defn subscription? [x]
+(defn subscription?
+  "Returns true if `x` is a subscription."
+  [x]
   (instance? Flow$Subscription x))
 
-(defn processor? [x]
+(defn processor?
+  "Returns true if `x` is a processor."
+  [x]
   (instance? Flow$Processor x))
 
 (defn subscribe!
@@ -28,16 +36,43 @@
   [publisher subscriber]
   (.subscribe ^Flow$Publisher publisher subscriber))
 
-(defn on-subscribe! [subscriber subscription]
+(defn on-subscribe!
+  "Notifies `subscriber` that it was successfully subscribed, handing it
+  `subscription` to request values with."
+  [subscriber subscription]
   (.onSubscribe ^Flow$Subscriber subscriber subscription))
 
-(defn request! [subscription n]
+(defn on-next!
+  "Delivers the value `x` to `subscriber`."
+  [subscriber x]
+  (.onNext ^Flow$Subscriber subscriber x))
+
+(defn on-error!
+  "Notifies `subscriber` that it will receive no further values because of the
+  error `e`."
+  [subscriber e]
+  (.onError ^Flow$Subscriber subscriber e))
+
+(defn on-complete!
+  "Notifies `subscriber` that it will receive no further values."
+  [subscriber]
+  (.onComplete ^Flow$Subscriber subscriber))
+
+(defn request!
+  "Requests the next `n` values of `subscription`."
+  [subscription n]
   (.request ^Flow$Subscription subscription n))
 
-(defn cancel! [subscription]
+(defn cancel!
+  "Cancels `subscription`, eventually stopping the delivery of further values."
+  [subscription]
   (.cancel ^Flow$Subscription subscription))
 
-(defn submit! [submission-publisher x]
+(defn submit!
+  "Publishes the value `x` to all current subscribers of
+  `submission-publisher`, blocking uninterruptibly while any subscriber buffer
+  is full."
+  [submission-publisher x]
   (.submit ^SubmissionPublisher submission-publisher x))
 
 (deftype Collector
@@ -55,7 +90,10 @@
   (onComplete [_]
     (ac/complete! future @xs)))
 
-(defn- collector [future]
+(defn collector
+  "Returns a subscriber that collects all values it receives, completing
+  `future` with a vector of them after it received onComplete."
+  [future]
   (->Collector (atom []) future nil))
 
 (defn collect
@@ -83,7 +121,10 @@
       (onComplete []
         (.close ^SubmissionPublisher this)))))
 
-(defn take [n]
+(defn take
+  "Returns a Processor which produces at most the first `n` values received,
+  completing after the n-th one."
+  [n]
   (let [subscription (volatile! nil)
         remaining (volatile! n)]
     (proxy [SubmissionPublisher Flow$Processor] []

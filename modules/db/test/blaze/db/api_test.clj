@@ -20,7 +20,8 @@
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
-   [blaze.db.test-util :refer [config non-referential-integrity-config with-system-data]]
+   [blaze.db.test-util :refer [config non-referential-integrity-config wait-for
+                               with-system-data]]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
@@ -28,9 +29,10 @@
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.metrics.core :as metrics]
    [blaze.module.test-util :as mtu :refer [with-system]]
    [blaze.terminology-service :as ts]
-   [blaze.test-util :as tu :refer [given-failed-future satisfies-prop]]
+   [blaze.test-util :as tu :refer [given-failed-future satisfies-prop with-global-log-capture]]
    [blaze.time :as bt]
    [clojure.math.combinatorics :as combo]
    [clojure.spec.alpha :as s]
@@ -47,7 +49,7 @@
    [blaze.db.impl.query.type PatientTypeQuery]
    [com.google.common.base CaseFormat]
    [java.time Instant]
-   [java.util.concurrent TimeUnit]))
+   [java.util.concurrent Flow$Subscriber TimeUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -1649,25 +1651,609 @@
          (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/fault))))
 
+  ;; a failing resource indexer fails the node, so the caller learns that the
+  ;; node stopped, while the error itself only goes to the log
   (testing "with failing resource indexer"
     (with-redefs
      [resource-indexer/index-resources
       (fn [_ _]
-        (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
+        (ac/failed-future (ex-info "msg-121724" (ba/fault "" ::x ::y))))]
       (with-system [{:blaze.db/keys [node]} config]
-        (given-failed-future
-         (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-          ::anom/category := ::anom/fault
-          ::x ::y)))))
+        (with-global-log-capture [captured "Error while resource indexing: "]
+          (given-failed-future
+           (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+            ::anom/category := ::anom/unavailable
+            ::anom/message := "The database node `main` stopped because of an unrecoverable error."
+            ::x := nil)
 
-(deftest subscription-publisher-test
+          (given (deref captured 1000 ::timeout)
+            :level := :error
+            [:vargs 1] := "msg-121724"))))))
+
+(def ^:private publishing-lag-config
+  (assoc config ::node/publishing-lag-collector
+         {:nodes {:blaze.db/node (ig/ref :blaze.db/node)}}))
+
+(defn- publishing-lag
+  "Returns the current value of the publishing lag gauge `metric` of `collector`
+  of the subscriber with `name`."
+  [collector metric name]
+  (->> (metrics/collect collector)
+       (some #(when (= metric (:name %)) (:samples %)))
+       (some #(when (= name (last (:label-values %))) (:value %)))))
+
+(defn- queued-lag
+  "Returns the number of transactions currently queued for the subscriber with
+  `name`."
+  [collector name]
+  (publishing-lag collector "blaze_db_node_publishing_lag_transactions" name))
+
+(defn- t-lag
+  "Returns the distance in t the examination of the subscriber with `name` is
+  currently behind the t of the node."
+  [collector name]
+  (publishing-lag collector "blaze_db_node_publishing_lag_t" name))
+
+(defn- queue-capacity-config
+  "Returns a config with the queue capacity of the changed resources
+  subscriptions of the node set to `queue-capacity`, so that a subscriber that
+  doesn't consume is behind with a full queue after that many transactions."
+  [queue-capacity]
+  (assoc-in config [:blaze.db/node :queue-capacity] queue-capacity))
+
+(defn- collect-changed-resources!
+  "Subscribes a collector with `name` to the resource handles of `type` changed
+  on `node`.
+
+  Returns a CompletableFuture that will complete with a vector of all published
+  resource handle vectors after the subscriber received onComplete."
+  ([node type]
+   (collect-changed-resources! node type "test"))
+  ([node type name]
+   (let [future (ac/future)]
+     (d/subscribe-changes! node type name (flow/collector future))
+     future)))
+
+(defn- cancelling-subscriber
+  "Returns a subscriber that cancels its subscription immediately, delivering
+  `cancelled` afterwards."
+  [cancelled]
+  (reify Flow$Subscriber
+    (onSubscribe [_ subscription]
+      (flow/cancel! subscription)
+      (deliver cancelled true))
+    (onNext [_ _])
+    (onError [_ _])
+    (onComplete [_])))
+
+(defn- blocking-subscriber
+  "Returns a subscriber that blocks in onNext until `release` is delivered,
+  delivering `blocking` after it started to block."
+  [blocking release]
+  (let [subscription (volatile! nil)]
+    (reify Flow$Subscriber
+      (onSubscribe [_ s]
+        (vreset! subscription s)
+        (flow/request! s 1))
+      (onNext [_ _]
+        (deliver blocking true)
+        @release
+        (flow/request! @subscription 1))
+      (onError [_ _])
+      (onComplete [_]))))
+
+(defn- recording-type-history
+  "Returns a replacement for `d/type-history` that records the database, the
+  type, the window of transactions and the transactions actually examined of
+  each call in `calls` before delegating to the original.
+
+  The window of a call is the start-t it was called with, which defaults to the
+  t of the database used, together with its since-t. The scanned transactions
+  are recorded while the reducible collection of the call is consumed, so they
+  show how far the scan of the type history really went."
+  [calls]
+  (let [type-history d/type-history]
+    (fn [db type & more]
+      (let [scanned (atom [])]
+        (swap! calls conj {:db db :type type :since-t (d/since-t db)
+                           :start-t (or (first more) (d/t db))
+                           :scanned scanned})
+        (eduction
+         (map (fn [handle] (swap! scanned conj (:t handle)) handle))
+         (apply type-history db type more))))))
+
+(defn- gated-type-history
+  "Returns a replacement for `d/type-history` that blocks the first call made
+  after `armed` was delivered until `release` is delivered, delivering
+  `blocked` when it starts to block.
+
+  Blocking the publishing loop inside a round lets the test change the state of
+  the node while that round is in progress, so that the following round finds
+  subscriptions at different queued-t ready at the same time."
+  [armed blocked release]
+  (let [type-history d/type-history
+        gated (atom false)]
+    (fn [& args]
+      (when (and (realized? armed) (compare-and-set! gated false true))
+        (deliver blocked true)
+        @release)
+      (apply type-history args))))
+
+(defn- deliveries
+  "Returns a vector of `n` promises, one per expected delivery of a
+  `delivering-subscriber`."
+  [n]
+  (vec (repeatedly n promise)))
+
+(defn- delivering-subscriber
+  "Returns a subscriber that requests nothing on its own, delivering its
+  `subscription` in onSubscribe, so that the test controls when it consumes,
+  and the i-th resource handle vector it receives to the i-th promise of
+  `deliveries`, so that the test can wait for individual deliveries."
+  [subscription deliveries]
+  (let [n (atom -1)]
+    (reify Flow$Subscriber
+      (onSubscribe [_ s] (deliver subscription s))
+      (onNext [_ handles] (some-> (nth deliveries (swap! n inc) nil) (deliver handles)))
+      (onError [_ _])
+      (onComplete [_]))))
+
+(defn- non-requesting-subscriber
+  "Returns a subscriber that never requests anything, delivering `completed`
+  after it received onComplete."
+  ([] (non-requesting-subscriber (promise)))
+  ([completed]
+   (reify Flow$Subscriber
+     (onSubscribe [_ _])
+     (onNext [_ _])
+     (onError [_ _])
+     (onComplete [_] (deliver completed true)))))
+
+(defn- failing-subscriber
+  "Returns a subscriber that throws an exception with `msg` in onNext,
+  completing `future` exceptionally with the error it receives."
+  [msg future]
+  (reify Flow$Subscriber
+    (onSubscribe [_ s] (flow/request! s 1))
+    (onNext [_ _] (throw (Exception. ^String msg)))
+    (onError [_ e] (ac/complete-exceptionally! future e))
+    (onComplete [_])))
+
+(def ^:private cancelled-subscriber-msg
+  "Remove the changed Task resources subscriber test because it cancelled its subscription.")
+
+(def ^:private slow-subscriber-msg
+  "The changed Task resources subscriber test doesn't consume fast enough. Transactions are still indexed, but its publishing lag will grow.")
+
+(deftest subscribe-changes-test
+  (testing "a subscriber that cancels its subscription is dropped"
+    (with-system [{:blaze.db/keys [node]} config]
+      (with-global-log-capture [captured cancelled-subscriber-msg]
+        (let [cancelled (promise)
+              processor (flow/take 1)
+              future (flow/collect processor)]
+          (is (nil? (d/subscribe-changes! node "Task" "test"
+                                          (cancelling-subscriber cancelled))))
+          (d/subscribe-changes! node "Task" "other" processor)
+
+          (is (true? (deref cancelled 10000 nil)))
+
+          (testing "the cancelled subscription is removed"
+            (given (deref captured 10000 ::timeout)
+              :level := :warn))
+
+          @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+          (testing "the other subscriber still receives the handles"
+            (given (deref future 10000 ::timeout)
+              count := 1
+              [0 count] := 1
+              [0 0 :fhir/type] := :fhir/Task
+              [0 0 :id] := "0"))))))
+
+  (testing "a subscriber that cancels in onSubscribe isn't published to"
+    ;; the subscription isn't registered while its subscriber receives
+    ;; onSubscribe, so cancelling removes nothing. Registering it afterwards
+    ;; without noticing that it ended would publish to it forever
+    (with-global-log-capture [_ cancelled-subscriber-msg]
+      (with-system [{:blaze.db/keys [node]
+                     ::node/keys [publishing-lag-collector]} publishing-lag-config]
+        (let [cancelled (promise)]
+          (d/subscribe-changes! node "Task" "test" (cancelling-subscriber cancelled))
+
+          (is (true? (deref cancelled 10000 nil)))
+
+          (testing "the subscription is gone, so it has no publishing lag either"
+            (is (nil? (queued-lag publishing-lag-collector "test")))
+            (is (nil? (t-lag publishing-lag-collector "test"))))))))
+
+  (testing "with a subscriber failing in onNext, the subscription is dropped"
+    (with-system [{:blaze.db/keys [node]} config]
+      (with-global-log-capture
+        [captured "Remove the changed Task resources subscriber test because of: msg-104953"]
+        (let [future (ac/future)
+              processor (flow/take 1)
+              other-future (flow/collect processor)]
+          (d/subscribe-changes! node "Task" "test" (failing-subscriber "msg-104953" future))
+          (d/subscribe-changes! node "Task" "other" processor)
+
+          @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+          (testing "the failing subscriber receives the error"
+            (given-failed-future future
+              ::anom/message := "msg-104953"))
+
+          (testing "the failing subscription is removed"
+            (given (deref captured 10000 ::timeout)
+              :level := :warn))
+
+          (testing "the other subscriber still receives the handles"
+            (given (deref other-future 10000 ::timeout)
+              count := 1
+              [0 0 :id] := "0"))))))
+
+  (testing "an error while determining the changed handles stops the node"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (let [future (collect-changed-resources! node "Task")]
+
+        (with-redefs [d/type-history (fn [& _] (throw (Exception. "msg-121500")))]
+
+          @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+          (testing "the subscriber learns that the node stopped instead of being left with a silent gap"
+            (given-failed-future future
+              ::anom/category := ::anom/unavailable
+              ::anom/message := "The database node `main` stopped because of an unrecoverable error."))
+
+          (testing "the node doesn't complete transactions anymore"
+            (given-failed-future (node/tx-result node 100)
+              ::anom/category := ::anom/unavailable
+              ::anom/message := "The database node `main` stopped because of an unrecoverable error."))))))
+
+  (testing "an indexing error closes the subscriptions"
+    (with-redefs
+     [resource-indexer/index-resources
+      (fn [_ _]
+        (ac/failed-future (ba/ex-anom (ba/fault "msg-134851"))))]
+      (with-system [{:blaze.db/keys [node]} config]
+
+        (let [future (collect-changed-resources! node "Task")]
+
+          (given-failed-future (d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+            ::anom/category := ::anom/unavailable
+            ::anom/message := "The database node `main` stopped because of an unrecoverable error.")
+
+          (testing "the subscriber learns that the node stopped"
+            (given-failed-future future
+              ::anom/category := ::anom/unavailable
+              ::anom/message := "The database node `main` stopped because of an unrecoverable error."))))))
+
+  (testing "a subscriber that doesn't consume fast enough"
+    (let [lag-collector (promise)]
+      (with-system [{:blaze.db/keys [node]
+                     ::node/keys [publishing-lag-collector]}
+                    (assoc-in publishing-lag-config [:blaze.db/node :queue-capacity] 1)]
+        (deliver lag-collector publishing-lag-collector)
+
+        (let [blocking (promise)
+              release (promise)
+              processor (flow/take 2)
+              future (flow/collect processor)]
+          (d/subscribe-changes! node "Task" "slow" (blocking-subscriber blocking release))
+          (d/subscribe-changes! node "Patient" "fast" processor)
+
+          (try
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+            (is (true? (deref blocking 10000 nil)))
+
+            ;; fills the queue of the slow subscriber, so that the following
+            ;; transactions can't be queued for it anymore
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "2"}]])
+
+            (testing "the subscriber of the other type still receives its handles"
+              @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+              @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]])
+
+              (given (deref future 10000 ::timeout)
+                count := 2
+                [0 0 :id] := "0"
+                [1 0 :id] := "1"))
+
+            (testing "the queued transactions of the slow subscriber are exposed"
+              (is (pos? (queued-lag publishing-lag-collector "slow"))))
+
+            (testing "the distance its examination is behind the node is exposed"
+              ;; unlike the queued transactions, this doesn't saturate at the
+              ;; queue capacity, so it shows how far behind the subscriber is
+              (is (pos? (t-lag publishing-lag-collector "slow"))))
+
+            (testing "the subscriber of the other type has no lag"
+              (is (zero? (queued-lag publishing-lag-collector "fast")))
+              (is (zero? (t-lag publishing-lag-collector "fast"))))
+
+            (finally
+              ;; releases the blocking subscriber, so that closing the node
+              ;; doesn't have to wait for it
+              (deliver release nil)))))))
+
+  (testing "a subscriber that is behind with a full queue is logged as slow"
+    ;; a round queues everything it determined, so a subscription only falls
+    ;; behind when the publishing loop finds its queue full while transactions
+    ;; are left to publish
+    (with-global-log-capture [captured slow-subscriber-msg]
+      (with-system [{:blaze.db/keys [node]} (queue-capacity-config 2)]
+        (d/subscribe-changes! node "Task" "test" (non-requesting-subscriber))
+
+        ;; fills the queue of the subscriber, which doesn't demand anything
+        ;; yet, so that it lags behind by all the following transactions
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]])
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "2"}]])
+
+        (given (deref captured 10000 ::timeout)
+          :level := :warn))))
+
+  (testing "a subscriber that lags behind catches up in windows of at most its free slots"
+    (let [calls (atom [])]
+      (with-redefs [d/type-history (recording-type-history calls)]
+        (with-system [{:blaze.db/keys [node]} (queue-capacity-config 4)]
+          (let [subscription (promise)
+                deliveries (deliveries 2)]
+            (d/subscribe-changes! node "Task" "test" (delivering-subscriber subscription deliveries))
+
+            ;; fills the queue of the subscriber, which doesn't demand anything
+            ;; yet, so that it lags behind by all the following transactions
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "2"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "3"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "4"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "5"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "6"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "7"}]])
+
+            (let [rounds (count @calls)]
+
+              (testing "the subscriber receives the transactions it lags behind"
+                ;; consuming half of the queue wakes up the publishing loop, so
+                ;; that it determines the changed handles again while the
+                ;; subscription is still far behind the t of the node
+                (flow/request! (deref subscription 10000 nil) 2)
+
+                (given (deref (nth deliveries 1) 10000 ::timeout)
+                  count := 1
+                  [0 :id] := "1"))
+
+              (testing "the window of the next round covers only the space freed"
+                ;; the queue of four holds the first four transactions, of which
+                ;; two were consumed, so the round examines the two transactions
+                ;; after them instead of the four its capacity would allow
+                (is (true? (wait-for calls #(< rounds (count %)))))
+
+                (given (last @calls)
+                  :since-t := 4
+                  :start-t := 6))))))))
+
+  (testing "with a subscriber that lags behind and another one that is caught up"
+    (let [armed (promise)
+          blocked (promise)
+          release (promise)
+          calls (atom [])]
+      (with-redefs [d/type-history (recording-type-history calls)]
+        (with-redefs [d/type-history (gated-type-history armed blocked release)]
+          (with-system [{:blaze.db/keys [node]} (queue-capacity-config 1)]
+            (let [slow-subscription (promise)
+                  fast-subscription (promise)
+                  fast-deliveries (deliveries 4)]
+              (d/subscribe-changes! node "Task" "slow" (delivering-subscriber slow-subscription (deliveries 1)))
+              (d/subscribe-changes! node "Patient" "fast" (delivering-subscriber fast-subscription fast-deliveries))
+              (flow/request! (deref fast-subscription 10000 nil) 100)
+
+              (try
+                ;; fills the queue of the slow subscriber, so that its queued-t
+                ;; stays at this transaction
+                @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+                @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+                @(d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]
+                                   [:create {:fhir/type :fhir/Patient :id "1"}]])
+                @(d/transact node [[:create {:fhir/type :fhir/Patient :id "2"}]])
+
+                ;; the fast subscriber examined all transactions of the node by
+                ;; now, so that the publishing loop waits for the next one
+                (given (deref (nth fast-deliveries 2) 10000 ::timeout)
+                  [0 :id] := "2")
+
+                (deliver armed true)
+
+                ;; frees the queue of the slow subscriber, so that the
+                ;; publishing loop starts a round with only it ready and blocks
+                ;; in it
+                (flow/request! (deref slow-subscription 10000 nil) 1)
+                (is (true? (deref blocked 10000 nil)))
+
+                ;; makes the fast subscription ready again while that round is in
+                ;; progress, so that the next round finds both ready, the slow one
+                ;; far behind the fast one
+                @(d/transact node [[:create {:fhir/type :fhir/Patient :id "3"}]])
+                (deliver release nil)
+
+                (testing "the one that lags behind doesn't set the other one back"
+                  ;; a round has to end at the end of the window it was
+                  ;; determined for. Determining a single window from the
+                  ;; smallest queued-t of all ready subscriptions would end the
+                  ;; round of a subscriber that is caught up before its
+                  ;; queued-t, setting it back and delivering the transactions
+                  ;; in between a second time.
+                  (given (deref (nth fast-deliveries 3) 10000 ::timeout)
+                    count := 1
+                    [0 :id] := "3"))
+
+                ;; the round that examines both types is the last one, because
+                ;; it leaves the slow subscriber with a full queue and the fast
+                ;; one caught up
+                (is (true? (wait-for calls #(= #{"Task" "Patient"}
+                                               (into #{} (map :type) (take-last 2 %))))))
+
+                (let [{task "Task" patient "Patient"}
+                      (into {} (map (juxt :type identity)) (take-last 2 @calls))]
+
+                  (testing "the changed handles of both types are determined with a single batch database"
+                    (is (identical? (:db task) (:db patient)))
+
+                    (testing "spanning the windows of both subscriptions"
+                      (given task
+                        :since-t := 2
+                        :start-t := 3)
+
+                      (given patient
+                        :since-t := 2
+                        :start-t := 5)))
+
+                  (testing "the transactions of the type that is caught up are not re-examined"
+                    ;; the batch database reaches back to the queued-t of the
+                    ;; subscriber that lags behind, but the type history of the
+                    ;; other type stops at the first transaction it doesn't need
+                    ;; anymore, without reaching the changed Patient of the
+                    ;; transaction the subscriber that lags behind is examined
+                    ;; for
+                    (is (= [5 4] @(:scanned patient)))))
+
+                (finally
+                  ;; releases the publishing loop, so that closing the node
+                  ;; doesn't have to wait for it
+                  (deliver release nil)))))))))
+
+  (testing "closing the node doesn't wait for a subscriber that never consumes"
+    (with-global-log-capture [dropped "Dropped the changed Task resources of 1 transaction(s) for the subscriber test because the node was closed before it consumed them."]
+      (with-global-log-capture [unexamined "Never examined the transactions after t = 1 up to t = 2 for the changed Task resources subscriber test because the node was closed before they could be published to it."]
+        (let [completed (promise)]
+          ;; would block forever on a regression, because closing the node waits
+          ;; for the publishing to finish
+          (with-system [{:blaze.db/keys [node]} (queue-capacity-config 1)]
+            (d/subscribe-changes! node "Task" "test" (non-requesting-subscriber completed))
+
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+            @(d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]]))
+
+          (testing "the subscriber completes"
+            (is (true? (deref completed 10000 nil))))
+
+          (testing "the queued transaction is logged as dropped"
+            (given (deref dropped 10000 ::timeout)
+              :level := :warn))
+
+          (testing "the transaction its queue had no space for is logged as never examined"
+            (given (deref unexamined 10000 ::timeout)
+              :level := :warn))))))
+
+  (testing "closing the node waits for a delivery in progress"
+    ;; a delivery is subscriber code running against the node, so closing has to
+    ;; wait for it. Otherwise Integrant would start to shut down the components
+    ;; the node depends on while a subscriber still queries it
+    (let [blocking (promise)
+          release (promise)
+          {:blaze.db/keys [node] :as system} (ig/init config)]
+      (d/subscribe-changes! node "Task" "test" (blocking-subscriber blocking release))
+
+      @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+      (is (true? (deref blocking 10000 nil)))
+
+      ;; yields whether the delivery finished before the system was halted
+      (let [halted (future (ig/halt! system) (realized? release))]
+
+        (testing "halting doesn't finish while the delivery is in progress"
+          (is (identical? ::timeout (deref halted 100 ::timeout))))
+
+        (deliver release true)
+
+        (testing "halting finishes after the delivery finished"
+          (is (true? (deref halted 10000 ::timeout)))))))
+
+  (testing "closing the node waits for the delivery of a cancelled subscription"
+    ;; cancelling removes the subscription from the node, but its thread still
+    ;; runs subscriber code until the delivery it is in finished
+    (with-global-log-capture [_ cancelled-subscriber-msg]
+      (let [blocking (promise)
+            release (promise)
+            subscription (volatile! nil)
+            {:blaze.db/keys [node] :as system} (ig/init config)]
+        (d/subscribe-changes!
+         node "Task" "test"
+         (reify Flow$Subscriber
+           (onSubscribe [_ s] (vreset! subscription s) (flow/request! s 1))
+           (onNext [_ _]
+             (flow/cancel! @subscription)
+             (deliver blocking true)
+             @release)
+           (onError [_ _])
+           (onComplete [_])))
+
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+        (is (true? (deref blocking 10000 nil)))
+
+        ;; yields whether the delivery finished before the system was halted
+        (let [halted (future (ig/halt! system) (realized? release))]
+
+          (testing "halting doesn't finish while the delivery is in progress"
+            (is (identical? ::timeout (deref halted 100 ::timeout))))
+
+          (deliver release true)
+
+          (testing "halting finishes after the delivery finished"
+            (is (true? (deref halted 10000 ::timeout))))))))
+
+  ;; the error that stopped the node isn't reported, because it can come from
+  ;; any depth of the node. It is logged where it happens instead
+  (testing "a subscriber subscribed after the node failed receives the failure"
+    (with-redefs
+     [resource-indexer/index-resources
+      (fn [_ _]
+        (ac/failed-future (ba/ex-anom (ba/fault "msg-142136"))))]
+      (with-system [{:blaze.db/keys [node]} config]
+
+        (let [future (collect-changed-resources! node "Task")]
+
+          (given-failed-future (d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+            ::anom/category := ::anom/unavailable
+            ::anom/message := "The database node `main` stopped because of an unrecoverable error.")
+
+          ;; completes after the subscriptions were closed
+          (given-failed-future future
+            ::anom/category := ::anom/unavailable
+            ::anom/message := "The database node `main` stopped because of an unrecoverable error."))
+
+        (testing "the subscriber receives the failure instead of waiting forever"
+          (given-failed-future (collect-changed-resources! node "Task")
+            ::anom/category := ::anom/unavailable
+            ::anom/message := "The database node `main` stopped because of an unrecoverable error.")))))
+
+  (testing "a subscriber subscribed after the node was closed completes"
+    (let [node (promise)]
+      (with-system [{n :blaze.db/node} config]
+        (deliver node n))
+
+      (testing "the subscriber completes instead of waiting forever"
+        (is (= [] (deref (collect-changed-resources! @node "Task") 10000 ::timeout))))))
+
+  (testing "closing the node completes the subscribers"
+    (let [future (promise)]
+      (with-system [{:blaze.db/keys [node]} config]
+        (deliver future (collect-changed-resources! node "Task")))
+
+      (is (= [] (deref @future 10000 ::timeout)))))
+
   (testing "with one task"
     (with-system [{:blaze.db/keys [node]} config]
 
-      (let [publisher (d/changed-resources-publisher node "Task")
-            processor (flow/take 1)
+      (let [processor (flow/take 1)
             future (flow/collect processor)]
-        (flow/subscribe! publisher processor)
+        (d/subscribe-changes! node "Task" "test" processor)
 
         @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
 
@@ -1680,10 +2266,9 @@
   (testing "with two tasks in one transaction"
     (with-system [{:blaze.db/keys [node]} config]
 
-      (let [publisher (d/changed-resources-publisher node "Task")
-            processor (flow/take 1)
+      (let [processor (flow/take 1)
             future (flow/collect processor)]
-        (flow/subscribe! publisher processor)
+        (d/subscribe-changes! node "Task" "test" processor)
 
         @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]
                            [:create {:fhir/type :fhir/Task :id "1"}]])
@@ -1699,10 +2284,9 @@
   (testing "with two tasks in two transaction"
     (with-system [{:blaze.db/keys [node]} config]
 
-      (let [publisher (d/changed-resources-publisher node "Task")
-            processor (flow/take 2)
+      (let [processor (flow/take 2)
             future (flow/collect processor)]
-        (flow/subscribe! publisher processor)
+        (d/subscribe-changes! node "Task" "test" processor)
 
         @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
         @(d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]])
@@ -1716,13 +2300,29 @@
           [1 0 :fhir/type] := :fhir/Task
           [1 0 :id] := "1"))))
 
+  (testing "transactions not changing resources of the type are not published"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (let [processor (flow/take 1)
+            future (flow/collect processor)]
+        (d/subscribe-changes! node "Task" "test" processor)
+
+        ;; would be published as empty vector of resource handles on a regression
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+        (given @future
+          count := 1
+          [0 count] := 1
+          [0 0 :fhir/type] := :fhir/Task
+          [0 0 :id] := "0"))))
+
   (testing "with one task after one failing transaction"
     (with-system [{:blaze.db/keys [node]} config]
 
-      (let [publisher (d/changed-resources-publisher node "Task")
-            processor (flow/take 1)
+      (let [processor (flow/take 1)
             future (flow/collect processor)]
-        (flow/subscribe! publisher processor)
+        (d/subscribe-changes! node "Task" "test" processor)
 
         ;; failing transaction is not published
         (given-failed-future (d/transact node [[:put {:fhir/type :fhir/Task :id "0"}
@@ -1735,7 +2335,99 @@
           count := 1
           [0 count] := 1
           [0 0 :fhir/type] := :fhir/Task
-          [0 0 :id] := "0")))))
+          [0 0 :id] := "0"))))
+
+  (testing "with two subscribers of the same type"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (let [processor-1 (flow/take 1)
+            processor-2 (flow/take 1)
+            future-1 (flow/collect processor-1)
+            future-2 (flow/collect processor-2)
+            type-history d/type-history
+            num-scans (atom 0)]
+        (d/subscribe-changes! node "Task" "test-1" processor-1)
+        (d/subscribe-changes! node "Task" "test-2" processor-2)
+
+        (with-redefs [d/type-history
+                      (fn [& args]
+                        (swap! num-scans inc)
+                        (apply type-history args))]
+
+          @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+          (doseq [future [future-1 future-2]]
+            (given @future
+              count := 1
+              [0 count] := 1
+              [0 0 :fhir/type] := :fhir/Task
+              [0 0 :id] := "0"))
+
+          ;; the changed handles are determined only once for both subscriptions
+          (is (= 1 @num-scans))))))
+
+  (testing "publishing doesn't block the indexer"
+    (let [num-scans (atom 0)]
+      (with-system [{:blaze.db/keys [node]
+                     ::node/keys [publishing-lag-collector]} publishing-lag-config]
+
+        (let [processor (flow/take 3)
+              future (flow/collect processor)
+              type-history d/type-history
+              publishing-started (promise)
+              release-publishing (promise)]
+          (d/subscribe-changes! node "Task" "test" processor)
+
+          ;; blocks the first publishing round until release-publishing is
+          ;; delivered
+          (with-redefs [d/type-history
+                        (fn [& args]
+                          (swap! num-scans inc)
+                          (deliver publishing-started true)
+                          @release-publishing
+                          (apply type-history args))]
+
+            (try
+              (let [first-tx (d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])]
+
+                (is (true? (deref publishing-started 10000 nil)))
+
+                ;; the following transactions are still indexed, so the derefs
+                ;; have to be bounded because they would block forever on a
+                ;; regression
+                (is (some? (deref (d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]])
+                                  10000 nil)))
+                (is (some? (deref (d/transact node [[:create {:fhir/type :fhir/Task :id "2"}]])
+                                  10000 nil)))
+
+                (testing "the three unpublished transactions are exposed as the distance in t"
+                  ;; nothing is queued yet, because the round that determines
+                  ;; their changed handles is still blocked. So a publisher that
+                  ;; is slow is only visible in the distance
+                  (is (zero? (queued-lag publishing-lag-collector "test")))
+                  (is (= 3.0 (t-lag publishing-lag-collector "test"))))
+
+                (deliver release-publishing nil)
+
+                @first-tx
+
+                (testing "every transaction is published separately and in order"
+                  (given @future
+                    count := 3
+                    [0 count] := 1
+                    [0 0 :id] := "0"
+                    [1 count] := 1
+                    [1 0 :id] := "1"
+                    [2 count] := 1
+                    [2 0 :id] := "2")))
+              (finally
+                ;; the publishing blocks the changed resources publisher thread,
+                ;; which would never be released if a deref above throws,
+                ;; because closing the node waits for the publishing to finish
+                (deliver release-publishing nil))))))
+
+      (testing "the transactions committed while publishing are coalesced into one round"
+        (is (= 2 @num-scans))))))
 
 (deftest as-of-test
   (with-system-data [{:blaze.db/keys [node]} config]

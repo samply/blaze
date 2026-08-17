@@ -1,12 +1,17 @@
 (ns blaze.async.flow-test
   (:require
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.async.comp-spec]
    [blaze.async.flow :as flow]
    [blaze.async.flow-spec]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]])
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom])
   (:import
-   [java.util.concurrent SubmissionPublisher]))
+   [java.util.concurrent Flow$Subscriber Flow$Subscription
+    SubmissionPublisher]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -34,6 +39,62 @@
         @future
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))
+
+(deftest on-subscribe-test
+  (testing "the subscriber receives the subscription"
+    (let [subscription (reify Flow$Subscription
+                         (request [_ _])
+                         (cancel [_]))
+          subscriptions (atom [])]
+      (flow/on-subscribe!
+       (reify Flow$Subscriber
+         (onSubscribe [_ s] (swap! subscriptions conj s))
+         (onNext [_ _])
+         (onError [_ _])
+         (onComplete [_]))
+       subscription)
+
+      (is (= [subscription] @subscriptions)))))
+
+(deftest on-next-test
+  (testing "the subscriber receives the item"
+    (let [items (atom [])]
+      (flow/on-next!
+       (reify Flow$Subscriber
+         (onSubscribe [_ _])
+         (onNext [_ x] (swap! items conj x))
+         (onError [_ _])
+         (onComplete [_]))
+       1)
+
+      (is (= [1] @items)))))
+
+(deftest on-error-test
+  (testing "the subscriber receives the error"
+    (let [future (ac/future)]
+      (flow/on-error!
+       (reify Flow$Subscriber
+         (onSubscribe [_ _])
+         (onNext [_ _])
+         (onError [_ e] (ac/complete-exceptionally! future e))
+         (onComplete [_]))
+       (ba/ex-anom (ba/fault "msg-142837")))
+
+      (given-failed-future future
+        ::anom/category := ::anom/fault
+        ::anom/message := "msg-142837"))))
+
+(deftest on-complete-test
+  (testing "the subscriber completes"
+    (let [future (ac/future)]
+      (flow/on-complete!
+       (reify Flow$Subscriber
+         (onSubscribe [_ _])
+         (onNext [_ _])
+         (onError [_ _])
+         (onComplete [_] (ac/complete! future true))))
+
+      (is (true? @future)))))
 
 (deftest mapcat-test
   (testing "with publisher generating one number"
