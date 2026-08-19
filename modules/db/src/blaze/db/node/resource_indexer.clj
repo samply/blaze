@@ -110,8 +110,20 @@
   (log/trace "Index" (count entries) "resource(s)")
   (ac/all-of (mapv (partial async-index-resource context) entries)))
 
-(defn- cmd-rs-keys [tx-cmds variant]
-  (into [] (keep (fn [{:keys [type hash]}] (when hash [(keyword "fhir" type) hash variant]))) tx-cmds))
+(defn- cmd-rs-keys
+  "Returns the resource store keys of all resources of `tx-cmds` that have to be
+  indexed.
+
+  Kept resources are excluded because they didn't change and so are already
+  indexed. Commands like delete carry no :hash and are excluded that way."
+  [tx-cmds variant]
+  (into
+   []
+   (keep
+    (fn [{:keys [op type hash]}]
+      (when (and hash (not= "keep" op))
+        [(keyword "fhir" type) hash variant])))
+   tx-cmds))
 
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of
