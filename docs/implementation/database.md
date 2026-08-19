@@ -283,13 +283,115 @@ That limit is what bounds the memory of the in-memory buffer of the [local trans
 
 A transaction is applied to the local index in three layers, ordered so that the visibility-gating row (`TxSuccess`) is the last thing written:
 
-1.  **Search-parameter indexing — parallel, one WriteBatch per resource.** The resource indexer (`modules/db/src/blaze/db/node/resource_indexer.clj`) fans out across an executor pool: each resource in the transaction is indexed independently and its `SearchParamValueResource`, `ResourceSearchParamValue`, `CompartmentSearchParamValueResource`, and `CompartmentResourceType` entries are written as a per-resource `WriteBatch`. These batches commit in parallel and out of order with respect to each other.
-2.  **Transaction index entries — one WriteBatch.** Once the tx-indexer (`modules/db/src/blaze/db/node/tx_indexer.clj`) has verified the transaction against `db-before`, the resulting entries for `ResourceAsOf`, `TypeAsOf`, `SystemAsOf`, `PatientLastChange`, `TypeStats`, and `SystemStats` are written in a single `WriteBatch`. This batch is written *before* the search-param futures are joined.
+1.  **Search-parameter indexing — parallel, one WriteBatch per resource.** The resource indexer (`modules/db/src/blaze/db/node/resource_indexer.clj`) indexes one resource at a time on an executor pool: its `SearchParamValueResource`, `ResourceSearchParamValue`, `CompartmentSearchParamValueResource`, and `CompartmentResourceType` entries are written as a per-resource `WriteBatch`. These batches commit in parallel and out of order with respect to each other.
+2.  **Transaction index entries — one WriteBatch.** Once the tx-indexer (`modules/db/src/blaze/db/node/tx_indexer.clj`) has verified the transaction against `db-before`, the resulting entries for `ResourceAsOf`, `TypeAsOf`, `SystemAsOf`, `PatientLastChange`, `TypeStats`, and `SystemStats` are written in a single `WriteBatch`. This batch is written *before* the search-param futures are joined, which is why there are three steps and not two.
 3.  **Transaction success marker — one WriteBatch.** After the search-param futures complete, `TxSuccess` and `TByInstant` are written in a final `WriteBatch`. The head of `TxSuccess` is the authoritative current `t` of the local database value; rows in earlier-written CFs with a higher `t` are not yet visible to readers.
 
-If the tx-indexer rejects the transaction (e.g. referential integrity, version mismatch), a `TxError` entry is written instead and steps 2 and 3 are skipped. The parallel search-param batches kicked off in step 1 are *not* cancelled — any that have already committed leave entries behind. These entries are inert: they carry a `hash-prefix` tied to a content hash that no `ResourceAsOf` row references, and reads always start from `ResourceAsOf`. They are never reached by queries and are not garbage-collected.
+If the tx-indexer rejects the transaction (e.g. referential integrity, version mismatch), that rejection happens inside step 2, in its verification against `db-before` and before any entries are produced, so step 2 writes no batch. The final `WriteBatch` of step 3 then carries a `TxError` entry instead of `TxSuccess` and `TByInstant`, so the head of `TxSuccess` doesn't move and the transaction produces no new database value. The search-param batches of step 1 that were already dispatched committed before that, so their entries stay behind, while the rest are skipped. These entries are inert, but not unreachable. A query scans the `SearchParamValueResource` index and does see them, because that scan is what produces its index handles in the first place. What discards them is the seek into `ResourceAsOf` that turns an index handle into a resource handle: it looks up the version of that resource at the `t` of the database value and compares its content hash with the `hash-prefix` of the entry. A rejected transaction wrote no `ResourceAsOf` row, so that seek finds the version before it — or no version at all — and the `hash-prefix` doesn't match, which drops the entry from the result. The entries are never part of a result and are not garbage-collected.
+
+Step 1 of a transaction doesn't only overlap the step 2 of that same transaction. The indexing loop keeps it going across transaction boundaries, so it also overlaps the steps 2 and 3 of the transactions before it. That is described in [Resource Indexing Pipeline](#resource-indexing-pipeline).
 
 A crash between the step 2 batch and the step 3 batch produces a similar situation at the transaction level: `ResourceAsOf` (and the other AsOf indices) carry rows at some `t > head(TxSuccess)`. Startup uses `head(TxSuccess)` as the current `t`, so those rows are invisible until — and unless — the same transaction is re-applied from the log and the step 3 batch lands.
+
+### Resource Indexing Pipeline
+
+Step 1 is the only one of the three layers that isn't order dependent. An index entry of a resource is keyed by the content hash of that resource, so it says nothing about which transaction wrote it and stays inert until a `ResourceAsOf` row references it. Only step 3 of its own transaction has to wait for it, which is what splitting the apply into three steps buys: step 2 of a transaction already runs while its own resources are still being indexed.
+
+The indexing loop extends that beyond a single transaction. It dispatches the resources of a transaction and moves on instead of waiting for them, so the resource indexer executor keeps working while the loop verifies, stores and commits the transactions before it. `poll!` delivers up to 500 transactions at once, and the loop walks them in order.
+
+Two numbers bound what may be in flight, both derived from the width of the executor, so that `DB_RESOURCE_INDEXER_THREADS` governs the pipeline as a whole and no separate environment variable exists:
+
+*   The **chunk** of `2 × threads` resources is the unit in which resources are dispatched and, for a transaction this node didn't submit itself, also the unit of the resource store fetch.
+*   The **look-ahead** of `4 × chunk` resources, so `8 × threads`, is the maximum the loop may have dispatched but not awaited yet — across transaction boundaries as well as inside a single transaction. There is no escape hatch for a large transaction. Deriving it from the chunk keeps it a whole number of chunks, so a chunk always fits into it and the loop can always dispatch, and four of them fit, so the fetch of the next chunk overlaps the indexing of the current one and the pool doesn't idle between chunks.
+
+```mermaid
+---
+config:
+  flowchart:
+    wrappingWidth: 300
+    rankSpacing: 60
+    subGraphTitleMargin:
+      top: 5
+      bottom: 5
+---
+flowchart TB
+    log[("Transaction Log")]
+
+    subgraph indexer ["Indexer Thread"]
+        dispatch["dispatch the next chunk of the<br>earliest transaction that has one"]
+        verify["step 2 of the head transaction:<br>verify it and store its<br>transaction index entries"]
+        await["await the chunk<br>dispatched first"]
+        commit["step 3 of the head transaction:<br>write its success marker,<br>advance t"]
+        dispatch -->|"look-ahead full"| verify
+        verify -->|"head transaction<br>verified already"| await
+        await -->|"head transaction<br>has no chunk outstanding"| commit
+        commit -.->|"next transaction"| dispatch
+    end
+
+    subgraph pool ["Resource Indexer Executor"]
+        task["one task per resource:<br>its search param and<br>compartment index entries"]
+    end
+
+    store[("Resource Store")]
+
+    log -->|"poll, up to 500<br>transactions in order"| dispatch
+    store -.->|"one multi-get per chunk,<br>unless the transaction<br>carries a local payload"| dispatch
+    dispatch -->|"chunk of<br>2 × threads resources"| task
+    task --> await
+```
+
+One step of the loop dispatches the next chunk of the earliest transaction that still has one, as long as that chunk fits into the look-ahead. If it doesn't fit, the loop runs step 2 of the head transaction, unless it did that already — verifying it and storing its transaction index entries, both of which are independent of its own resources. If that is done as well, the loop awaits the chunk it dispatched first, which frees its place in the look-ahead. And once the head transaction has no chunk outstanding, step 3 commits it, after which the loop checks whether the node is closing before it moves on to the next transaction. That check per transaction is what makes closing responsive independently of the size of the batch.
+
+Only step 3 of a transaction needs its resources. Because step 2 of the next transaction has to run against the database value that step 3 established, the steps 2 and 3 stay strictly serialized in transaction order, while step 1 runs ahead of both.
+
+A rejected transaction stops there. Step 2 drops the chunks it hasn't dispatched yet, because a transaction that produces no version references none of the index entries they would write, and a later transaction that legitimately needs one of those resources carries its hash in its own commands and indexes it. The chunks already dispatched are still awaited, so nothing outlives the loop, and their `index-resources` duration is still observed, because they were indexed and did cost time. That bounds the work a rejected transaction wastes by the look-ahead instead of by its size: a bundle of 100.000 resources that fails referential integrity indexes at most one look-ahead worth of them instead of all.
+
+Where the resources of a chunk come from depends on who submitted the transaction. If this node did, the transaction data carries them as its local payload and no fetch is needed. Otherwise the loop fetches the chunk from the resource store with a single `multi-get`. Both paths cover the same set of resources: kept resources are excluded because they didn't change and so are already indexed, and commands like delete carry no hash and are excluded that way.
+
+The following steps of a loop with a look-ahead of two chunks, over transactions of one chunk each, show how the dispatching runs ahead of the applying:
+
+```mermaid
+---
+config:
+  sequence:
+    width: 140
+    actorMargin: 35
+---
+sequenceDiagram
+    participant idx as Indexer Thread
+    participant pool as Resource Indexer<br>Executor
+    participant kv as Index Store
+
+    idx--)pool: dispatch the chunk of t=1
+    idx--)pool: dispatch the chunk of t=2
+    Note over idx,pool: the look-ahead is full, so<br>nothing is dispatched until<br>a chunk was awaited
+
+    idx->>kv: step 2 of t=1:<br>transaction index entries
+    Note over idx,kv: step 2 doesn't wait for the<br>resources of its own transaction
+
+    pool--)idx: the chunk of t=1 is indexed
+    idx--)pool: dispatch the chunk of t=3
+    Note over idx,pool: dispatching comes before<br>committing, so the pool doesn't<br>idle while t=1 is committed
+    Note over idx,kv: t=1 can be committed because<br>the chunk of t=1 is indexed
+    idx->>kv: step 3 of t=1:<br>TxSuccess, advance t
+
+    idx->>kv: step 2 of t=2:<br>transaction index entries
+    pool--)idx: the chunk of t=2 is indexed
+    idx--)pool: dispatch the chunk of t=4
+    idx->>kv: step 3 of t=2:<br>TxSuccess, advance t
+```
+
+Chunks are awaited in dispatch order and transactions are applied in order, so the order of the observable effects is the same as if every transaction were indexed on its own. That holds for a failure as well: a resource indexing error surfaces in transaction order even if it completed earlier, and stops the node the way any indexing error does.
+
+Both bounds matter beyond keeping the pool busy, because the resource indexing of a single transaction is unbounded without them. A chunk is fetched with a single `multi-get` and is only dispatched if it fits into the look-ahead, so the look-ahead is what bounds both the number of concurrent queries against the resource store and the number of decoded resources held in memory. The chunk size is the granularity of that fetch, not the bound: several chunks may have their fetch in flight at once, up to a look-ahead worth of resources. A transaction with 100.000 resources is indexed chunk by chunk like any other, instead of issuing 100.000 concurrent queries and holding every decoded resource in memory before a single index entry is written. That matters most in a distributed setup, where every node fetches the resources of every transaction from Cassandra.
+
+Whatever is still dispatched when the loop ends is awaited before it exits — on a normal end, on closing the node and on an error alike — so no resource indexing task outlives the indexing loop and none runs against stores that are already shutting down. That drain is bounded by the look-ahead as well. A transaction whose resources were indexed but that was never applied, because the node was closed in between, leaves index entries behind. They are the same class of inert leftover as the ones of a rejected transaction, and the next start re-indexes from the committed `t` and rewrites them idempotently.
+
+`blaze_db_node_index_batch_transactions` is the number of transactions of one indexed batch, empty batches excluded. It is what the loop has to overlap across: a batch of one leaves only the overlap inside that transaction, while a batch sitting at the maximum poll size of 500 means the indexer doesn't keep up with the transaction rate.
+
+Because the ops overlap, the durations of `blaze_db_node_duration_seconds` must not be summed to obtain the time of the indexing thread. `index-resources` measures the resource indexing of one transaction, from the dispatch of its first chunk until all of its chunks completed, so it includes the resource store fetch and the time chunks spend queued behind earlier ones. It is observed even for a transaction whose verification failed, because its resources were indexed and did cost time either way. What shows that the pipeline works is the throughput together with `thread_pool_executor_active_count` of the resource indexer executor rising towards `DB_RESOURCE_INDEXER_THREADS`.
+
+`await-resources` is the counterpart of that, measured per chunk instead of per transaction: the time the loop spends blocked until the chunk it dispatched first is indexed. It is the only op during which the indexer thread does no work of its own, so `rate(blaze_db_node_duration_seconds_sum{op="await-resources"}[5m])` reads as the fraction of its time the loop waits for the resource indexing to catch up. Rising towards one second per second, it means the resource indexing is the bottleneck: the look-ahead is full, so the loop can't dispatch, and the transactions before the one it waits for are verified and stored already. A small steady value is normal, because the last transaction of a batch has to be awaited whether or not anything is behind.
 
 ### Changed Resources Publishing
 
@@ -399,7 +501,7 @@ Determining the changed handles is not optional. If it fails, the node stops in 
 
 Closing a node stops its indexing loop and then waits, in this order, for the indexer thread to exit, for the publisher thread to exit and for the last delivery of each subscription. None of these waits is bounded by a timeout, and there is consequently no shutdown timeout to configure.
 
-The indexer thread finishes the transaction it is currently applying before it exits, and applying a transaction waits for the search-parameter indexing of step 1 above. With `STORAGE=distributed` that is a wait on the external resource store, so a store that doesn't answer keeps the node from closing and the container is eventually killed by its runtime.
+The indexer thread finishes the transaction it is currently applying before it exits, and then awaits the chunks it has dispatched beyond that transaction, so that no resource indexing task outlives its loop. Both are waits on the search-parameter indexing of step 1 above. With `STORAGE=distributed` that includes a wait on the external resource store, so a store that doesn't answer keeps the node from closing and the container is eventually killed by its runtime. What the loop has to wait for is bounded by the look-ahead, not by the size of a transaction.
 
 That's deliberate. Blaze doesn't optimize for a graceful shutdown in every situation, because it has to survive being killed anyway. The transaction log is the source of truth and the apply-time mechanics above are built so that a process dying at an arbitrary point comes back with a consistent local index and re-applies whatever didn't finish. A kill during shutdown is just another crash.
 

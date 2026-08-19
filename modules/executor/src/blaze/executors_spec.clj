@@ -3,7 +3,7 @@
    [blaze.executors :as ex]
    [clojure.spec.alpha :as s])
   (:import
-   [java.util.concurrent TimeUnit]))
+   [java.util.concurrent ThreadPoolExecutor TimeUnit]))
 
 (s/fdef ex/executor?
   :args (s/cat :x any?)
@@ -31,6 +31,10 @@
   :args (s/cat :executor-service ex/executor-service? :timeout nat-int?
                :unit #(instance? TimeUnit %))
   :ret boolean?)
+
+(s/fdef ex/pool-size
+  :args (s/cat :executor #(instance? ThreadPoolExecutor %))
+  :ret nat-int?)
 
 (s/fdef ex/cpu-bound-pool
   :args (s/cat :name-template string?))

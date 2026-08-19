@@ -76,7 +76,11 @@
   (take 16 (iterate #(* 2 %) 0.00001))
   "node" "op")
 
-(def ^:private ^:const max-poll-size 50)
+(def ^:private ^:const max-poll-size
+  "The maximum number of transactions one poll returns, the same as the default
+  `max.poll.records` of the Kafka consumer, so that the indexing loop of the
+  node sees batches of the same size with both transaction logs."
+  500)
 
 (defhistogram store-batch-entries
   "Number of transaction data entries stored in one batch.

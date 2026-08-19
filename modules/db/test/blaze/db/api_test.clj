@@ -1655,8 +1655,8 @@
   ;; node stopped, while the error itself only goes to the log
   (testing "with failing resource indexer"
     (with-redefs
-     [resource-indexer/index-resources
-      (fn [_ _]
+     [resource-indexer/index-resource
+      (fn [_ _ _ _]
         (ac/failed-future (ex-info "msg-121724" (ba/fault "" ::x ::y))))]
       (with-system [{:blaze.db/keys [node]} config]
         (with-global-log-capture [captured "Error while resource indexing: "]
@@ -1913,8 +1913,8 @@
 
   (testing "an indexing error closes the subscriptions"
     (with-redefs
-     [resource-indexer/index-resources
-      (fn [_ _]
+     [resource-indexer/index-resource
+      (fn [_ _ _ _]
         (ac/failed-future (ba/ex-anom (ba/fault "msg-134851"))))]
       (with-system [{:blaze.db/keys [node]} config]
 
@@ -2212,8 +2212,8 @@
   ;; any depth of the node. It is logged where it happens instead
   (testing "a subscriber subscribed after the node failed receives the failure"
     (with-redefs
-     [resource-indexer/index-resources
-      (fn [_ _]
+     [resource-indexer/index-resource
+      (fn [_ _ _ _]
         (ac/failed-future (ba/ex-anom (ba/fault "msg-142136"))))]
       (with-system [{:blaze.db/keys [node]} config]
 

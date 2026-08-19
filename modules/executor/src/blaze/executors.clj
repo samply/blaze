@@ -1,6 +1,7 @@
 (ns blaze.executors
   (:import
-   [java.util.concurrent Executor ExecutorService Executors ThreadFactory]))
+   [java.util.concurrent Executor ExecutorService Executors ThreadFactory
+    ThreadPoolExecutor]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,6 +36,11 @@
   first."
   [executor-service timeout unit]
   (.awaitTermination ^ExecutorService executor-service timeout unit))
+
+(defn pool-size
+  "Returns the number of threads of the thread pool `executor`."
+  [executor]
+  (.getCorePoolSize ^ThreadPoolExecutor executor))
 
 (defn- thread-name!
   [thread-counter name-template]

@@ -16,6 +16,7 @@
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer-spec]
    [blaze.db.node.resource-indexer.spec]
+   [blaze.db.node.util :as node-util]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.resource-store.spec]
@@ -41,6 +42,10 @@
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
+
+(def ^:private last-updated
+  "The FHIR instant the _lastUpdated search parameter is indexed with."
+  (node-util/instant Instant/EPOCH))
 
 (def base-config
   {[::kv/mem :blaze.db/index-kv-store]
@@ -186,17 +191,8 @@
           hash (hash/generate patient)]
       (with-redefs [kv/put! (fn [_ _] (throw (Exception. "msg-200802")))]
         (given-failed-future
-         (resource-indexer/index-resources
-          resource-indexer
-          {:t 0
-           :instant Instant/EPOCH
-           :tx-cmds
-           [{:op "put"
-             :type "Patient"
-             :id "0"
-             :hash hash}]
-           :local-payload
-           {hash patient}})
+         (resource-indexer/index-resource resource-indexer last-updated hash
+                                          patient)
           ::anom/category := ::anom/fault
           ::anom/message := "msg-200802")))))
 
@@ -208,38 +204,20 @@
                        :subject #fhir/Reference{:reference #fhir/string "foo"}}
           hash (hash/generate observation)]
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault ::x ::y})]
-        @(resource-indexer/index-resources
-          resource-indexer
-          {:t 0
-           :instant Instant/EPOCH
-           :tx-cmds
-           [{:op "put"
-             :type "Observation"
-             :id "0"
-             :hash hash}]
-           :local-payload
-           {hash observation}}))
+        @(resource-indexer/index-resource resource-indexer last-updated hash
+                                          observation))
 
       (is (empty? (sp-vr-tu/decode-index-entries kv-store :id))))))
 
 (deftest index-patient-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
     (let [resource
           {:fhir/type :fhir/Patient :id "id-104313"
            :active #fhir/boolean true}
           hash (hash/generate resource)]
-      @(rs/put! resource-store {hash resource})
-      @(resource-indexer/index-resources
-        resource-indexer
-        {:t 0
-         :instant Instant/EPOCH
-         :tx-cmds
-         [{:op "put"
-           :type "Patient"
-           :id "id-104313"
-           :hash hash}]})
+      @(resource-indexer/index-resource resource-indexer last-updated hash
+                                        resource)
 
       (testing "SearchParamValueResource index"
         (is (every? #{["Patient" "id-104313" #blaze/hash-prefix"45142904"]}
@@ -267,7 +245,6 @@
 
 (deftest index-condition-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
     (let [resource
           {:fhir/type :fhir/Condition :id "id-204446"
@@ -284,16 +261,8 @@
             {:versionId #fhir/id "1"
              :profile [#fhir/canonical "url-164445"]}}
           hash (hash/generate resource)]
-      @(rs/put! resource-store {hash resource})
-      @(resource-indexer/index-resources
-        resource-indexer
-        {:t 0
-         :instant Instant/EPOCH
-         :tx-cmds
-         [{:op "put"
-           :type "Condition"
-           :id "id-204446"
-           :hash hash}]})
+      @(resource-indexer/index-resource resource-indexer last-updated hash
+                                        resource)
 
       (testing "SearchParamValueResource index"
         (is (every? #{["Condition" "id-204446" #blaze/hash-prefix"A05498A9"]}
@@ -355,7 +324,6 @@
 
 (deftest index-observation-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
     (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                     :status #fhir/code "status-193613"
@@ -379,16 +347,8 @@
                       :system #fhir/uri "http://unitsofmeasure.org"
                       :value #fhir/decimal 23.42M}}
           hash (hash/generate resource)]
-      @(rs/put! resource-store {hash resource})
-      @(resource-indexer/index-resources
-        resource-indexer
-        {:t 0
-         :instant Instant/EPOCH
-         :tx-cmds
-         [{:op "put"
-           :type "Observation"
-           :id "id-192702"
-           :hash hash}]})
+      @(resource-indexer/index-resource resource-indexer last-updated hash
+                                        resource)
 
       (testing "SearchParamValueResource index"
         (is (every? #{["Observation" "id-192702" #blaze/hash-prefix"F5DBCC59"]}
@@ -486,7 +446,6 @@
 
 (deftest index-appointment-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 resource-store ::rs/kv
                  ::node/keys [resource-indexer]} config]
     (let [resource {:fhir/type :fhir/Appointment :id "id-151125"
                     :status #fhir/code "status-151938"
@@ -494,16 +453,8 @@
                     [{:fhir/type :fhir.Appointment/participant
                       :actor #fhir/Reference{:reference #fhir/string "Patient/id-151354"}}]}
           hash (hash/generate resource)]
-      @(rs/put! resource-store {hash resource})
-      @(resource-indexer/index-resources
-        resource-indexer
-        {:t 0
-         :instant Instant/EPOCH
-         :tx-cmds
-         [{:op "put"
-           :type "Appointment"
-           :id "id-151125"
-           :hash hash}]})
+      @(resource-indexer/index-resource resource-indexer last-updated hash
+                                        resource)
 
       (testing "SearchParamValueResource index"
         (is (every? #{["Appointment" "id-151125" #blaze/hash-prefix"8351D5EB"]}
@@ -535,63 +486,11 @@
         (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["status" (codec/v-hash "status-151938")]]))))))
 
-(deftest index-delete-cmd-test
-  (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 ::node/keys [resource-indexer]} config]
-    @(resource-indexer/index-resources
-      resource-indexer
-      {:t 0
-       :instant Instant/EPOCH
-       :tx-cmds
-       [{:op "delete"
-         :type "Patient"
-         :id "0"}]})
+(defn- num-threads-config [num-threads]
+  (assoc-in config [::resource-indexer/executor :num-threads] num-threads))
 
-    (testing "doesn't index anything"
-      (is (empty? (sp-vr-tu/decode-index-entries kv-store :id))))))
-
-(defmethod ig/init-key ::recording-resource-store [_ {:keys [resource-store requested-keys]}]
-  (reify rs/ResourceStore
-    (-get [_ key]
-      (swap! requested-keys conj key)
-      (rs/get resource-store key))
-    (-multi-get [_ ks]
-      (swap! requested-keys into ks)
-      (rs/multi-get resource-store ks))
-    (-put [_ entries]
-      (rs/put! resource-store entries))))
-
-(defn- recording-config [requested-keys]
-  (-> (assoc-in config [::node/resource-indexer :resource-store]
-                (ig/ref ::recording-resource-store))
-      (assoc ::recording-resource-store
-             {:resource-store (ig/ref ::rs/kv)
-              :requested-keys requested-keys})))
-
-(deftest index-keep-cmd-test
-  (let [requested-keys (atom [])]
-    (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                   resource-store ::rs/kv
-                   ::node/keys [resource-indexer]} (recording-config requested-keys)]
-      (let [resource {:fhir/type :fhir/Patient :id "id-115939"
-                      :active #fhir/boolean true}
-            hash (hash/generate resource)]
-        @(rs/put! resource-store {hash resource})
-        @(resource-indexer/index-resources
-          resource-indexer
-          {:t 0
-           :instant Instant/EPOCH
-           :tx-cmds
-           [{:op "keep"
-             :type "Patient"
-             :id "id-115939"
-             :hash hash}]})
-
-        (testing "doesn't fetch anything from the resource store"
-          (is (empty? @requested-keys)))
-
-        (testing "doesn't index anything"
-          (is (empty? (sp-vr-tu/decode-index-entries kv-store :id)))
-          (is (empty? (r-sp-v-tu/decode-index-entries kv-store :id)))
-          (is (empty? (cr-tu/decode-index-entries kv-store)))
-          (is (empty? (c-sp-vr-tu/decode-index-entries kv-store))))))))
+(deftest pool-size-test
+  (testing "the pool size is the number of threads of the executor"
+    (doseq [num-threads [1 2 4]]
+      (with-system [{::node/keys [resource-indexer]} (num-threads-config num-threads)]
+        (is (= num-threads (resource-indexer/pool-size resource-indexer)))))))

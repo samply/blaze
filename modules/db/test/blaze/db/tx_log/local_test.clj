@@ -563,6 +563,21 @@
           :t := 1
           :local-payload := nil)))))
 
+(deftest max-poll-size-test
+  (testing "at most 500 transactions are returned in one poll"
+    (with-system [{tx-log ::tx-log/local} config]
+      (run! #(deref (tx-log/submit tx-log [(create-patient-cmd (str %))] nil))
+            (range 501))
+
+      (testing "from the buffer"
+        (is (= 500 (count (tx-log/poll! tx-log 1 (time/millis 10))))))
+
+      (testing "from storage"
+        ;; polling with an offset beyond the transaction data below releases
+        ;; that data from the buffer, so it comes from storage afterwards
+        (is (= 1 (count (tx-log/poll! tx-log 501 (time/millis 10)))))
+        (is (= 500 (count (tx-log/poll! tx-log 1 (time/millis 10)))))))))
+
 (deftest poll-retains-unstored-test
   (testing "polling with an offset ahead of the stored transaction data retains
             the unstored transaction data in the buffer"

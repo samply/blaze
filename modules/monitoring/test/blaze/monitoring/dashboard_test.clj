@@ -5,6 +5,7 @@
    [blaze.test-util :as tu]
    [clojure.edn :as edn]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]))
 
@@ -17,6 +18,9 @@
 
 (defn- source-panels [source]
   (mapcat :panels (:rows source)))
+
+(defn- source-panel-of [title]
+  (first (filter (comp #{title} :title) (source-panels source))))
 
 (defn- panels
   "Returns all panels of `dashboard`, without the row panels."
@@ -53,8 +57,28 @@
   (testing "every panel uses a known unit"
     (is (empty? (remove dashboard/units (map :unit (source-panels source))))))
 
+  (testing "every query of a panel with more than one query has its own legend,
+            so that its series can be told apart"
+    (is (every? (fn [{:keys [queries]}]
+                  (or (= 1 (count queries))
+                      (apply distinct? (map :legend queries))))
+                (source-panels source))))
+
   (testing "panel count"
-    (is (= 112 (count (source-panels source))))))
+    (is (= 115 (count (source-panels source))))))
+
+(deftest indexer-utilization-panel-test
+  (testing "the indexer utilization is shown as two series"
+    (let [[busy working] (:queries (source-panel-of "Indexer Utilization"))]
+
+      (testing "the time the indexing loop isn't waiting for transactions"
+        (is (str/includes? (:expr busy) "op=\"poll-tx-log\""))
+        (is (not (str/includes? (:expr busy) "await-resources"))))
+
+      (testing "the time it does work of its own, which subtracts the time it
+                waits for the resource indexing as well"
+        (is (str/includes? (:expr working) "poll-tx-log"))
+        (is (str/includes? (:expr working) "await-resources"))))))
 
 (deftest dashboard-test
   (testing "of the real source"
@@ -70,13 +94,13 @@
         (is (every? #(= "row" (get % "type")) (get dashboard "panels"))))
 
       (testing "has all panels nested in the row panels"
-        (is (= 112 (count (panels dashboard)))))
+        (is (= 115 (count (panels dashboard)))))
 
       (testing "every panel is a timeseries panel"
         (is (every? #(= "timeseries" (get % "type")) (panels dashboard))))
 
       (testing "all ids are distinct"
-        (is (= 128 (count (distinct (map #(get % "id")
+        (is (= 131 (count (distinct (map #(get % "id")
                                          (concat (get dashboard "panels")
                                                  (panels dashboard))))))))
 

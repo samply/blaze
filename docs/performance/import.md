@@ -37,7 +37,7 @@ blazectl --server http://localhost:8080/fhir upload -c8 <dataset>
 
 | System | Dataset | DB Scale Factor | Time (h) | Resources/s |
 |--------|---------|----------------:|---------:|------------:|
-| LEA47  | 100k    |               1 |    3.048 |        9469 |
+| LEA47  | 100k    |               1 |    2.855 |       10108 |
 | LEA47  | 100k-fh |               1 |    9.797 |        8977 |
 | LEA58  | 100k    |               1 |    2.169 |       13305 |
 | LEA58  | 100k-fh |               1 |    7.426 |       11843 |

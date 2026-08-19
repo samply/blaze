@@ -10,7 +10,7 @@ The following system was used for the performance evaluation:
 | LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 3.2 TB Intel P5600 over vSAN  |
 | LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 12.8 TB Huawei OceanDisk 300P |
 
-All systems were configured according to the [Production Configuration](../production-configuration.md) guide. Deviating from it, all runs on all systems use a `DB_RESOURCE_STORE_KV_THREADS` of 64 instead of the default of 4. That variable sizes the thread pool the resource store uses to read and write resources and so caps how many resources can be written to the resource database at the same time. RocksDB merges concurrent writers into [group commits][3]: the writers waiting at any moment are batched into a single write-ahead log write followed by a single fsync, so the cost of that fsync — which dominates a write on systems with slow syncs — is shared by the whole group. With only four threads, at most four resources can join a group, whereas 64 threads allow much larger groups and so a considerably higher write throughput.
+All systems were configured according to the [Production Configuration](../production-configuration.md) guide. Deviating from it, all runs on all systems use a `DB_RESOURCE_STORE_KV_THREADS` of 128 instead of the default of 4, matching the highest concurrency level of the sweep. That variable sizes the thread pool the resource store uses to read and write resources. Every transaction hands all its resources to that pool as one unit, so the pool size caps how many transactions can write to the resource database at the same time. RocksDB merges concurrent writers into [group commits][3]: the writers waiting at any moment are batched into a single write-ahead log write followed by a single fsync, so the cost of that fsync — which dominates a write on systems with slow syncs — is shared by the whole group. With only four threads, at most four transactions can join a group, whereas 128 threads allow much larger groups and so a considerably higher write throughput. Sizing the pool to the concurrency also keeps it from becoming a queue of its own; see [Resource Store Write Concurrency](../production-configuration.md#resource-store-write-concurrency).
 
 ## Datasets
 
@@ -82,23 +82,23 @@ Every transaction durably writes its transaction log entry and its resources bef
 
 <LineChart src="load-testing/data/transaction-LEA47.csv"
   title="Transaction (LEA47)"
-  x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
+  x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
-LEA47 plateaus at about 1390 transactions/s from 16 clients on — nearly three transactions per fsync at its 484 fsyncs/s — with a median processing time of 46 ms and a q99 of 68 ms at 64 clients.
+LEA47 scales to about 2200 transactions/s at 32 clients — more than four transactions per fsync at its 484 fsyncs/s — and gains little beyond that: 2429 at 64 and 2637 at 128 clients. The median processing time nearly doubles at each of those two levels instead, from 14 ms at 32 clients to 25 ms at 64 and 47 ms at 128, with a q99 of 79 ms at 128 clients. With the throughput staying put while the concurrency doubles, the clients added beyond 32 only queue.
 
 <LineChart src="load-testing/data/transaction-LEA79.csv"
   title="Transaction (LEA79)"
-  x-log :x-min="1" :x-max="64" :x-ticks="[1, 2, 4, 8, 16, 32, 64]" />
+  x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
-LEA79 syncs from a write cache in a few microseconds and is not disk-bound at all: it already sustains over 5000 transactions/s at 8 clients and stays there over the whole sweep, with a q99 of 13 ms at 64 clients.
+LEA79 syncs from a write cache in a few microseconds and is not disk-bound at all: throughput scales to about 11,000 transactions/s at 16 clients and flattens at about 15,000 from 64 clients on, with a median processing time of 7.8 ms and a q99 of 12 ms at 128 clients.
 
 <LineChart src="load-testing/data/transaction-A5N46.csv"
   title="Transaction (A5N46)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
-A5N46 shows the batching most clearly. Its drive syncs at only 178/s, which pins the median processing time at about 30 ms from 4 clients on — but with the batches growing along the concurrency, throughput roughly doubles with every doubling of clients: 234 transactions/s at 8 clients, 1084 at 32 and 2033 at 64 clients, more than eleven transactions per fsync. The q99 stays at about 41 ms over that range.
+A5N46 shows the batching most clearly. Its drive syncs at only 178/s, which pins the median processing time at about 29 ms from 4 clients on — but with the batches growing along the concurrency, throughput roughly doubles with every doubling of clients: 258 transactions/s at 8 clients, 1056 at 32, 1974 at 64 and 4064 at 128 clients, nearly twenty-three transactions per fsync.
 
-At 128 clients the doubling stops. Throughput still grows to 3505 transactions/s — more than nineteen transactions per fsync — but the median processing time leaves its 30 ms plateau for the first time and rises to 37 ms. It is also the first level at which the clients outnumber the 64 writer threads of the resource store. The processing times shift up as a block instead of spreading out, with a q99 of only 50 ms, which points at one additional round of waiting rather than at contention.
+The processing time never leaves that plateau: the median stays there and the q99 at about 41 ms at every level up to 128 clients, so each client waits for one fsync no matter how many others share it. That is what makes the doubling possible in the first place, and it holds only as long as the resource store has a free thread for every client — which is why these runs size its pool to the highest concurrency level of the sweep.
 
 [1]: <https://k6.io>
 [2]: <https://www.hl7.org/fhir/http.html#transaction>

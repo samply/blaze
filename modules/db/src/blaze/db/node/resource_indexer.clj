@@ -81,8 +81,8 @@
 (defn- enhance-resource [last-updated resource]
   (update resource :meta (fnil assoc #fhir/Meta{}) :lastUpdated last-updated))
 
-(defn- index-resource*
-  [{:keys [search-param-registry last-updated]} hash resource]
+(defn- resource-index-entries*
+  [search-param-registry last-updated hash resource]
   (let [resource (enhance-resource last-updated resource)
         compartments (linked-compartments search-param-registry hash resource)]
     (into
@@ -90,10 +90,13 @@
      (mapcat #(search-param-index-entries % compartments hash resource))
      (search-params search-param-registry resource))))
 
-(defn- index-resource [context [hash resource]]
+(defn- resource-index-entries
+  "Returns the index entries of `resource` with `hash`."
+  [search-param-registry last-updated hash resource]
   (log/trace "Index resource with hash" (str hash))
   (with-open [_ (prom/timer duration-seconds "index-resource")]
-    (let [entries (index-resource* context hash resource)]
+    (let [entries (resource-index-entries* search-param-registry last-updated
+                                           hash resource)]
       (prom/observe! index-entries (name (:fhir/type resource)) (count entries))
       entries)))
 
@@ -101,48 +104,30 @@
   (with-open [_ (prom/timer duration-seconds "put")]
     (kv/put! store entries)))
 
-(defn- async-index-resource [{:keys [kv-store executor] :as context} entry]
-  (ac/supply-async
-   #(put! kv-store (index-resource context entry))
-   executor))
-
-(defn- index-resources* [context entries]
-  (log/trace "Index" (count entries) "resource(s)")
-  (ac/all-of (mapv (partial async-index-resource context) entries)))
-
-(defn- cmd-rs-keys
-  "Returns the resource store keys of all resources of `tx-cmds` that have to be
+(defn index-resource
+  "Returns a CompletableFuture that completes after the `resource` with `hash` is
   indexed.
 
-  Kept resources are excluded because they didn't change and so are already
-  indexed. Commands like delete carry no :hash and are excluded that way."
-  [tx-cmds variant]
-  (into
-   []
-   (keep
-    (fn [{:keys [op type hash]}]
-      (when (and hash (not= "keep" op))
-        [(keyword "fhir" type) hash variant])))
-   tx-cmds))
+  The `last-updated` instant is used to index the _lastUpdated search parameter
+  because the property doesn't exist in the resource itself.
 
-(defn index-resources
-  "Returns a CompletableFuture that will complete after all resources of
-   `tx-data` are indexed.
+  Indexes a single resource, because the number of resources indexed at once is
+  decided by the indexing loop of the node, which bounds it across transaction
+  boundaries."
+  [{:keys [kv-store search-param-registry executor]} last-updated hash resource]
+  (ac/supply-async
+   #(put! kv-store (resource-index-entries search-param-registry last-updated
+                                           hash resource))
+   executor))
 
-   The :instant from `tx-data` is used to index the _lastUpdated search
-   parameter because the property doesn't exist in the resource itself."
-  {:arglists '([resource-indexer tx-data])}
-  [{:keys [resource-store] :as resource-indexer}
-   {:keys [tx-cmds] resources :local-payload last-updated :instant}]
-  (let [context (assoc resource-indexer :last-updated (node-util/instant last-updated))]
-    (if resources
-      (index-resources* context resources)
-      (-> (rs/multi-get resource-store (cmd-rs-keys tx-cmds :complete))
-          (ac/then-compose
-           (fn [resources]
-             (index-resources*
-              context
-              (into {} (map (fn [[[_type hash] resource]] [hash resource])) resources))))))))
+(defn pool-size
+  "Returns the number of threads of the executor of `resource-indexer`.
+
+  The indexing loop of the node derives its chunk size and its look-ahead from
+  it, so that `DB_RESOURCE_INDEXER_THREADS` governs both."
+  {:arglists '([resource-indexer])}
+  [{:keys [executor]}]
+  (ex/pool-size executor))
 
 (defn- re-index-resource [search-param [[_type hash] resource]]
   (log/trace "Re-index resource with hash" (str hash))

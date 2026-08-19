@@ -362,6 +362,7 @@
    :scheduler #blaze/ref :blaze/scheduler}
 
   :blaze.db.node/duration-seconds {}
+  :blaze.db.node/index-batch-transactions {}
   :blaze.db.node/publishing-lag-collector {:nodes #blaze/ref-map :blaze.db/node}
   :blaze.db.node/submit-rejections-total {}
   :blaze.db.node/transaction-sizes {}
