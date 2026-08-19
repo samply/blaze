@@ -1,8 +1,9 @@
-import { error, type NumericRange } from '@sveltejs/kit';
+import type { Bundle } from 'fhir/r4';
 import { processParams } from '$lib/util.js';
 import { transformBundle, type FhirObjectBundle } from '$lib/resource/resource-card.js';
 import type { SummaryState } from '$lib/summary.js';
 import { summaryFromUrl } from '$lib/summary.js';
+import { fetchJson, type ErrorBodySource } from '$lib/fetch.js';
 
 /**
  * The query string of an instance history request.
@@ -41,15 +42,9 @@ export async function fetchHistoryBundle(
   fetch: typeof window.fetch,
   url: string,
   searchParams: URLSearchParams,
-  errorBody: App.Error | string
+  errorBody: ErrorBodySource
 ): Promise<FhirObjectBundle> {
-  const res = await fetch(`${url}?${processParams(searchParams)}`, {
-    headers: { Accept: 'application/fhir+json' }
-  });
+  const bundle = await fetchJson<Bundle>(fetch, `${url}?${processParams(searchParams)}`, errorBody);
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, errorBody);
-  }
-
-  return transformBundle(fetch, await res.json());
+  return transformBundle(fetch, bundle);
 }

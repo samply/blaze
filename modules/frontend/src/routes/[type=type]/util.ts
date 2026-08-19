@@ -1,9 +1,9 @@
-import type { OperationOutcome } from 'fhir/r4';
+import type { Bundle, OperationOutcome } from 'fhir/r4';
 import type { RouteParams } from './$types.js';
 import { resolve } from '$app/paths';
-import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '$lib/util.js';
 import { transformBundle } from '$lib/resource/resource-card.js';
+import { fetchJsonStreamed } from '$lib/fetch.js';
 
 async function outcome(res: Response): Promise<OperationOutcome> {
   return (await res.json()) as OperationOutcome;
@@ -34,6 +34,11 @@ export async function appError(params: RouteParams, res: Response) {
   }
 }
 
+// `fetchBundleWithDuration` and `fetchPageBundleWithDuration` are returned
+// from `load` as an un-awaited, streamed promise (see `+page.ts`) and
+// consumed via `{#await ...}{:catch}`, so they use `fetchJsonStreamed`
+// rather than `fetchJson` — see its doc comment for why.
+
 export async function fetchBundleWithDuration(
   fetch: typeof window.fetch,
   params: RouteParams,
@@ -41,16 +46,14 @@ export async function fetchBundleWithDuration(
 ) {
   const start = Date.now();
 
-  const res = await fetch(`${resolve('/[type=type]', params)}?${processParams(url.searchParams)}`, {
-    headers: { Accept: 'application/fhir+json' }
-  });
-
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, await appError(params, res));
-  }
+  const bundle = await fetchJsonStreamed<Bundle>(
+    fetch,
+    `${resolve('/[type=type]', params)}?${processParams(url.searchParams)}`,
+    (res) => appError(params, res)
+  );
 
   return {
-    bundle: await transformBundle(fetch, await res.json()),
+    bundle: await transformBundle(fetch, bundle),
     duration: Date.now() - start
   };
 }
@@ -62,19 +65,14 @@ export async function fetchPageBundleWithDuration(
 ) {
   const start = Date.now();
 
-  const res = await fetch(
+  const bundle = await fetchJsonStreamed<Bundle>(
+    fetch,
     resolve('/[type=type]/__page/[pageId=pageId]', { type: params.type, pageId: pageId }),
-    {
-      headers: { Accept: 'application/fhir+json' }
-    }
+    (res) => appError(params, res)
   );
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, await appError(params, res));
-  }
-
   return {
-    bundle: await transformBundle(fetch, await res.json()),
+    bundle: await transformBundle(fetch, bundle),
     duration: Date.now() - start
   };
 }

@@ -3,22 +3,23 @@ import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
 
 import { fetchBundleWithDuration } from './util.js';
 import { resolve } from '$app/paths';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { fetchJson } from '$lib/fetch.js';
 import { summaryFromUrl } from '$lib/summary.js';
 
 async function loadSearchParams(
   fetch: typeof window.fetch,
   type: string
 ): Promise<CapabilityStatementRestResourceSearchParam[]> {
-  const res = await fetch(resolve('/[type=type]/__search-params', { type: type }), {
-    headers: { Accept: 'application/json' }
-  });
+  const { searchParams } = await fetchJson<{
+    searchParams: CapabilityStatementRestResourceSearchParam[];
+  }>(
+    fetch,
+    resolve('/[type=type]/__search-params', { type: type }),
+    'error while fetching the search params',
+    { Accept: 'application/json' }
+  );
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, 'error while fetching the search params');
-  }
-
-  return (await res.json()).searchParams;
+  return searchParams;
 }
 
 export const load: PageLoad = async ({ fetch, params, url }) => {
