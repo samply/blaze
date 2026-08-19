@@ -549,3 +549,49 @@
 
     (testing "doesn't index anything"
       (is (empty? (sp-vr-tu/decode-index-entries kv-store :id))))))
+
+(defmethod ig/init-key ::recording-resource-store [_ {:keys [resource-store requested-keys]}]
+  (reify rs/ResourceStore
+    (-get [_ key]
+      (swap! requested-keys conj key)
+      (rs/get resource-store key))
+    (-multi-get [_ ks]
+      (swap! requested-keys into ks)
+      (rs/multi-get resource-store ks))
+    (-put [_ entries]
+      (rs/put! resource-store entries))))
+
+(defn- recording-config [requested-keys]
+  (-> (assoc-in config [::node/resource-indexer :resource-store]
+                (ig/ref ::recording-resource-store))
+      (assoc ::recording-resource-store
+             {:resource-store (ig/ref ::rs/kv)
+              :requested-keys requested-keys})))
+
+(deftest index-keep-cmd-test
+  (let [requested-keys (atom [])]
+    (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
+                   resource-store ::rs/kv
+                   ::node/keys [resource-indexer]} (recording-config requested-keys)]
+      (let [resource {:fhir/type :fhir/Patient :id "id-115939"
+                      :active #fhir/boolean true}
+            hash (hash/generate resource)]
+        @(rs/put! resource-store {hash resource})
+        @(resource-indexer/index-resources
+          resource-indexer
+          {:t 0
+           :instant Instant/EPOCH
+           :tx-cmds
+           [{:op "keep"
+             :type "Patient"
+             :id "id-115939"
+             :hash hash}]})
+
+        (testing "doesn't fetch anything from the resource store"
+          (is (empty? @requested-keys)))
+
+        (testing "doesn't index anything"
+          (is (empty? (sp-vr-tu/decode-index-entries kv-store :id)))
+          (is (empty? (r-sp-v-tu/decode-index-entries kv-store :id)))
+          (is (empty? (cr-tu/decode-index-entries kv-store)))
+          (is (empty? (c-sp-vr-tu/decode-index-entries kv-store))))))))
