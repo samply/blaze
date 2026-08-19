@@ -57,15 +57,17 @@
   [future x]
   (.complete ^CompletableFuture future x))
 
-(defn- supplier [f]
+(defn- wrap-throw-when [f]
   (fn []
     (ba/throw-when (f))))
 
 (defn complete-async!
   "Completes `future` with the result of `f` invoked with no arguments from an
-  asynchronous task using the default executor."
+  asynchronous task using the default executor.
+
+  Completes `future` exceptionally if `f` returns an anomaly."
   [future f]
-  (.completeAsync ^CompletableFuture future (supplier f)))
+  (.completeAsync ^CompletableFuture future (wrap-throw-when f)))
 
 (defn or-timeout!
   "Exceptionally completes `future` with a TimeoutException if not otherwise
@@ -131,11 +133,14 @@
 (defn supply-async
   "Returns a CompletableFuture that is asynchronously completed by a task
   running in `executor` with the value obtained by calling the function `f`
-  with no arguments."
+  with no arguments.
+
+  The returned CompletableFuture completes exceptionally if `f` returns an
+  anomaly."
   ([f]
-   (CompletableFuture/supplyAsync (supplier f)))
+   (CompletableFuture/supplyAsync (wrap-throw-when f)))
   ([f executor]
-   (CompletableFuture/supplyAsync (supplier f) executor)))
+   (CompletableFuture/supplyAsync (wrap-throw-when f) executor)))
 
 (defn completion-stage? [x]
   (instance? CompletionStage x))

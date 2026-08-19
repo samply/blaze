@@ -56,7 +56,9 @@
   transaction in case of success or will complete exceptionally with an anomaly
   in case of a transaction error or other errors. Fails with an unavailable
   anomaly if `node` is closed, because its indexing loop wouldn't pick the
-  transaction up anymore.
+  transaction up anymore. Fails with a busy anomaly if `node` already has the
+  maximum number of transactions submitted but not yet indexed, before anything
+  of the transaction is written.
 
   Functions applied after the returned future are executed on the common
   ForkJoinPool."

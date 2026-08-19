@@ -44,7 +44,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.async.flow :as flow]
-   [blaze.db.node.util :as node-util]
+   [blaze.db.impl.thread :as thread]
    [taoensso.timbre :as log])
   (:import
    [java.util.concurrent Flow$Subscription]))
@@ -333,7 +333,7 @@
 
 (defn- start-thread!
   [{:keys [thread-name] :as subscription}]
-  (node-util/start-thread! #(drain-loop subscription) thread-name))
+  (thread/start-thread! #(drain-loop subscription) thread-name))
 
 (defn- add-demand
   "Returns `demand` increased by `n`, saturating at Long/MAX_VALUE.

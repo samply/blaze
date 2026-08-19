@@ -114,3 +114,6 @@
 
 (s/def :blaze.db/allow-multiple-delete
   boolean?)
+
+(s/def :blaze.db/max-in-flight-transactions
+  pos-int?)

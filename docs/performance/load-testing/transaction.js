@@ -8,9 +8,29 @@ const duration = __ENV.DURATION || 60;
 const system = __ENV.SYSTEM;
 const warmup = __ENV.WARMUP || 1000;
 
-if (!system) {
+// The concurrency levels of the sweep, one scenario each, run one after the
+// other.
+const sweep = [1, 2, 4, 8, 16, 32, 64, 128];
+
+// A single level can be selected via the VUS env var, so that the server can be
+// profiled at one operating point. The sweep would blur it, because the batch
+// sizes of the transaction log and the resource store grow with the number of
+// concurrent clients, so each level has its own ratio of per-batch to per-entry
+// work.
+const singleLevel = __ENV.VUS ? Number(__ENV.VUS) : null;
+
+if (singleLevel !== null && !(singleLevel > 0)) {
+	fail(`VUS has to be a positive number but was ${__ENV.VUS}`);
+}
+
+// Only a sweep writes the CSV, because a single level can't fill it. So the
+// system is only needed for a sweep and a single level run can't overwrite the
+// committed data of a sweep.
+if (singleLevel === null && !system) {
 	fail('SYSTEM env var is required, e.g. SYSTEM=LEA47');
 }
+
+const levels = singleLevel === null ? sweep : [singleLevel];
 
 function createScenario(vus, offset) {
 	return {
@@ -21,6 +41,14 @@ function createScenario(vus, offset) {
 	};
 }
 
+function createScenarios() {
+	const scenarios = {};
+	levels.forEach((vus, offset) => {
+		scenarios[`c${vus}`] = createScenario(vus, offset);
+	});
+	return scenarios;
+}
+
 export const options = {
 
 	setupTimeout: '300s',
@@ -29,15 +57,7 @@ export const options = {
 
 	summaryTrendStats: ['med', 'p(95)', 'p(99)'],
 
-	scenarios: {
-		c1: createScenario(1, 0),
-		c2: createScenario(2, 1),
-		c4: createScenario(4, 2),
-		c8: createScenario(8, 3),
-		c16: createScenario(16, 4),
-		c32: createScenario(32, 5),
-		c64: createScenario(64, 6)
-	}
+	scenarios: createScenarios()
 };
 
 const params = {
@@ -67,15 +87,11 @@ function createMetric(vus) {
   };
 }
 
-const metric = {
-	'c1': createMetric(1),
-	'c2': createMetric(2),
-	'c4': createMetric(4),
-	'c8': createMetric(8),
-	'c16': createMetric(16),
-	'c32': createMetric(32),
-	'c64': createMetric(64)
-};
+const metric = {};
+
+levels.forEach((vus) => {
+	metric[`c${vus}`] = createMetric(vus);
+});
 
 // A minimal UUID v4 generator so each transaction creates fresh resources with
 // unique bundle-internal URLs. No external module needed.
@@ -202,14 +218,11 @@ function resultLine(vus, data) {
 }
 
 export function handleSummary(data) {
-  return {
-    [`data/transaction-${system}.csv`]:
-      resultLine(1, data)
-      + resultLine(2, data)
-      + resultLine(4, data)
-      + resultLine(8, data)
-      + resultLine(16, data)
-      + resultLine(32, data)
-      + resultLine(64, data)
-  };
+  const lines = levels.map((vus) => resultLine(vus, data)).join('');
+
+  // A single level run reports on stdout instead, so that it leaves the
+  // committed CSV of the sweep alone.
+  return singleLevel === null
+    ? { [`data/transaction-${system}.csv`]: lines }
+    : { stdout: lines };
 }

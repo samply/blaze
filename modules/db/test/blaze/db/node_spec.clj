@@ -5,6 +5,7 @@
    [blaze.db.impl.index.t-by-instant-spec]
    [blaze.db.impl.index.tx-error-spec]
    [blaze.db.impl.index.tx-success-spec]
+   [blaze.db.impl.thread-spec]
    [blaze.db.kv-spec]
    [blaze.db.node]
    [blaze.db.node.resource-indexer]

@@ -344,7 +344,8 @@
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :scheduler #blaze/ref :blaze/scheduler
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]
-   :allow-multiple-delete #blaze/cfg ["ALLOW_MULTIPLE_DELETE" boolean? false]}
+   :allow-multiple-delete #blaze/cfg ["ALLOW_MULTIPLE_DELETE" boolean? false]
+   :max-in-flight-transactions #blaze/cfg ["DB_MAX_IN_FLIGHT_TRANSACTIONS" pos-int? 1024]}
 
   ;;
   ;; Admin Database Node
@@ -362,6 +363,7 @@
 
   :blaze.db.node/duration-seconds {}
   :blaze.db.node/publishing-lag-collector {:nodes #blaze/ref-map :blaze.db/node}
+  :blaze.db.node/submit-rejections-total {}
   :blaze.db.node/transaction-sizes {}
 
   ;;
@@ -590,7 +592,10 @@
    {:kv-store #blaze/ref :blaze.db.admin/transaction-kv-store
     :clock #blaze/ref :blaze/clock}
 
+   :blaze.db.tx-log.local/buffer-collector
+   {:tx-logs #blaze/ref-map :blaze.db.tx-log/local}
    :blaze.db.tx-log.local/duration-seconds {}
+   :blaze.db.tx-log.local/store-batch-entries {}
 
    ;;
    ;; Main In-Memory, Volatile Transaction Store
@@ -895,7 +900,10 @@
    {:kv-store #blaze/ref :blaze.db.admin/transaction-kv-store
     :clock #blaze/ref :blaze/clock}
 
+   :blaze.db.tx-log.local/buffer-collector
+   {:tx-logs #blaze/ref-map :blaze.db.tx-log/local}
    :blaze.db.tx-log.local/duration-seconds {}
+   :blaze.db.tx-log.local/store-batch-entries {}
 
    ;;
    ;; Main RocksDB Transaction Store

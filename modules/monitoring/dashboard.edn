@@ -509,6 +509,12 @@
      :queries
      [{:expr "1 - rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"poll-tx-log\"}[$__rate_interval])"
        :legend "{{node}}"}]}
+    {:title "Submit Rejections"
+     :description "Transaction submits per second rejected because the maximum number of in-flight transactions was already reached. Sustained rejections mean the indexing doesn't keep up with the rate of incoming transactions."
+     :unit "ops"
+     :queries
+     [{:expr "sum(rate(blaze_db_node_submit_rejections_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node)"
+       :legend "{{node}}"}]}
     {:title "Publishing Lag"
      :description "Distance in t between the last transaction indexed by a node and the point in time up to which transactions were examined for a changed resources subscriber. A lag that keeps growing means either the publishing doesn't keep up with the transaction rate or that subscriber doesn't consume fast enough."
      :unit "none"
@@ -693,34 +699,76 @@
 
   {:title "Transaction Log"
    :panels
-   [{:title "Durations 0.5 Quantile"
+   [{:title "Transactions per Second"
+     :description "Number of transactions submitted to the transaction log per second."
+     :unit "ops"
+     :queries
+     [{:expr "sum(rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",op=\"submit\"}[$__rate_interval])) by (node)"
+       :legend "{{node}}"}]}
+    {:title "Store Batches per Second"
+     :description "Number of batches of transaction data stored per second. Together with the submit rate it gives the number of submits coalesced into one batch."
+     :unit "ops"
+     :queries
+     [{:expr "sum(rate(blaze_db_tx_log_store_batch_entries_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node)"
+       :legend "{{node}}"}]}
+    {:title "Transaction Log Buffer"
+     :description "Number of transaction data entries in the buffer of the local transaction log. Unstored entries wait for the storer thread, so they grow if storing is slower than submitting. Retained entries are already stored and wait for the poller to acknowledge them, so they grow if indexing is slower than storing. Both together are the memory the buffer occupies."
+     :unit "none"
+     :queries
+     [{:expr "blaze_db_tx_log_buffer_entries{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{node}} {{state}}"}]}
+    {:title "Storer Utilization"
+     :description "Percentual amount of time the storer thread spends storing transaction data. At 100 % it stores one round after the other without ever waiting for transaction data to arrive. That doesn't mean the transaction log is at its limit: each round stores a whole batch, so the throughput still grows with the batch size. Reaching 100 % only takes a submit rate of one transaction per round."
+     :unit "percentunit"
+     :max 1
+     :queries
+     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"store-round\"}[$__rate_interval])"
+       :legend "{{node}}"}]}
+    {:title "Mean Store Round Duration"
+     :description "Mean duration of one round of the store loop. In contrast to the quantiles, it doesn't depend on the histogram buckets, and it's the duration that determines the throughput: the number of rounds per second is its reciprocal as long as the storer is fully utilized."
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
-       :legend "{{op}}"}]}
+     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"store-round\"}[$__rate_interval]) / rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",op=\"store-round\"}[$__rate_interval])"
+       :legend "{{node}}"}]}
+    {:title "Durations 0.5 Quantile"
+     :unit "s"
+     :queries
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{node}} {{op}}"}]}
     {:title "Durations 0.9 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
-       :legend "{{op}}"}]}
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{node}} {{op}}"}]}
     {:title "Durations 0.99 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
-       :legend "{{op}}"}]}
-    {:title "Ops per Second"
-     :unit "ops"
-     :legend-calcs ["mean"]
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{node}} {{op}}"}]}
+    {:title "Mean Store Batch Size"
+     :description "Mean number of transaction data entries stored in one batch. Together with the mean store round duration it gives the throughput of the transaction log, because one round stores one batch."
+     :unit "none"
      :queries
-     [{:expr "sum(rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
-       :legend "{{op}}"}]}
-    {:title "Submit Utilization"
-     :description "Percentual amount of time needed to submit transaction data. Values above 100% indicate an overload."
-     :unit "percentunit"
-     :legend false
+     [{:expr "rate(blaze_db_tx_log_store_batch_entries_sum{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]) / rate(blaze_db_tx_log_store_batch_entries_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])"
+       :legend "{{node}}"}]}
+    {:title "Store Batch Size 0.5 Quantile"
+     :description "Median number of transaction data entries stored in one batch. Shows how many submits are coalesced. Only the local transaction log stores batches."
+     :unit "none"
      :queries
-     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"submit\"}[$__rate_interval])"
-       :legend ""}]}]}
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}
+    {:title "Store Batch Size 0.9 Quantile"
+     :description "90% quantile of the number of transaction data entries stored in one batch."
+     :unit "none"
+     :queries
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}
+    {:title "Store Batch Size 0.99 Quantile"
+     :description "99% quantile of the number of transaction data entries stored in one batch."
+     :unit "none"
+     :queries
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}]}
 
   {:title "JVM"
    :panels

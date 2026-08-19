@@ -457,6 +457,12 @@ Timeout in milliseconds for all reading FHIR interactions acquiring the newest d
 
 **Default:** 10000
 
+#### `DB_MAX_IN_FLIGHT_TRANSACTIONS` <Badge type="warning" text="Since 1.11.0"/>
+
+The maximum number of transactions that were submitted but are not yet indexed. Submitting a transaction while that maximum is reached will return a 503 Service Unavailable response instead, asking the client to try again later. Because such a transaction is rejected before any of its data is written, lowering this value bounds the memory the not yet indexed transactions occupy. Please increase it if you experience such 503 responses under a write load your system can otherwise sustain.
+
+**Default:** 1024
+
 #### `DB_SEARCH_PARAM_BUNDLE` <Badge type="warning" text="Since 0.21"/>
 
 Name of a custom search parameter bundle file. Per default, Blaze supports FHIR Search on all FHIR R4 search parameters. However Blaze can be configured to support custom search parameters by specifying the file name of a search parameter bundle in the environment variable `DB_SEARCH_PARAM_BUNDLE`. If such a bundle file name is specified, Blaze will index newly written resources using the search parameters defined in that file. Existing resources can be re-indexed. More information on re-indexing can be found in the [Frontend Docs](../frontend.md).

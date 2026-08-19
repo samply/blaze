@@ -271,6 +271,14 @@ This column family is reserved for tracking the set of active search parameters 
 2.  This node submits the transaction commands to a central transaction log.
 3.  All nodes (including the submitting node) receive the transaction commands from the log and apply them to their local state.
 
+### Submit-Time Admission Control
+
+The node is the only place a transaction is turned away. The transaction log accepts whatever is submitted to it, so a transaction the node decided to go ahead with is on its way to being indexed.
+
+The node makes that decision before it writes anything, by limiting the number of *in-flight* transactions — submitted but not yet indexed — to `DB_MAX_IN_FLIGHT_TRANSACTIONS`. A submit that finds no free place returns a busy anomaly, leaving the resource store and the transaction log untouched. A submit that takes one goes on to write its resource contents into the resource store and only then its commands into the transaction log, because every node applying the transaction has to be able to read those contents. The place is freed once the transaction was indexed, or right away if the transaction never made it into the transaction log, because storing its contents or submitting its commands failed.
+
+That limit is what bounds the memory of the in-memory buffer of the [local transaction log](../architecture.md#transaction-log): the buffer only retains transaction data the poller hasn't acknowledged yet, and the poller acknowledges everything it has indexed. Because the limit is enforced per node, it applies to a Kafka transaction log as well, where it bounds how far a node's own submissions can run ahead of its indexing.
+
 ### Apply-Time Mechanics
 
 A transaction is applied to the local index in three layers, ordered so that the visibility-gating row (`TxSuccess`) is the last thing written:

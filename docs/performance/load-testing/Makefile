@@ -14,4 +14,9 @@ data/transaction-%.csv: transaction.js
 all: data/patient-everything.csv data/patient-graph.csv \
 	$(TRANSACTION_SYSTEMS:%=data/transaction-%.csv)
 
-.PHONY: all
+# Not part of `all`: this test reports through the k6 summary and its thresholds
+# rather than a CSV, and it requires an empty server.
+patient-ui: patient-ui.js
+	k6 run patient-ui.js
+
+.PHONY: all patient-ui

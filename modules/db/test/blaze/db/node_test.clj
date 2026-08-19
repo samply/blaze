@@ -13,6 +13,7 @@
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem-spec]
+   [blaze.db.kv.protocols :as p]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
    [blaze.db.node.resource-indexer :as resource-indexer]
@@ -45,6 +46,7 @@
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
+   [prometheus.alpha :as prom]
    [taoensso.timbre :as log])
   (:import
    [java.time Instant]
@@ -101,6 +103,78 @@
     ::node/resource-indexer
     {:resource-store (ig/ref ::resource-store-slow-on-put)}
     ::resource-store-slow-on-put
+    {:resource-store (ig/ref ::rs/kv)}}))
+
+(defmethod ig/init-key ::put-counting-resource-store [_ {:keys [resource-store]}]
+  (let [put-count (atom 0)]
+    (with-meta
+      (reify rs/ResourceStore
+        (-get [_ key]
+          (rs/get resource-store key))
+        (-multi-get [_ keys]
+          (rs/multi-get resource-store keys))
+        (-put [_ entries]
+          (swap! put-count inc)
+          (rs/put! resource-store entries)))
+      {:put-count put-count})))
+
+(defmethod ig/init-key ::blocking-index-kv-store [_ {:keys [kv-store]}]
+  (let [release-put (promise)]
+    (with-meta
+      (reify
+        p/KvStore
+        (-new-snapshot [_]
+          (p/-new-snapshot kv-store))
+        (-get [_ column-family key]
+          (p/-get kv-store column-family key))
+        (-put [_ entries]
+          @release-put
+          (p/-put kv-store entries)))
+      {:release-put release-put})))
+
+(def ^:private in-flight-config
+  "A config with a node that indexes no transaction before the index key-value
+  store is released and that allows only two in-flight transactions."
+  (merge-with
+   merge
+   config
+   {:blaze.db/node
+    {:kv-store (ig/ref ::blocking-index-kv-store)
+     :resource-store (ig/ref ::put-counting-resource-store)
+     :max-in-flight-transactions 2}
+    :blaze.db/tx-cache
+    {:kv-store (ig/ref ::blocking-index-kv-store)}
+    :blaze.db/resource-cache
+    {:resource-store (ig/ref ::put-counting-resource-store)}
+    ::node/resource-indexer
+    {:kv-store (ig/ref ::blocking-index-kv-store)
+     :resource-store (ig/ref ::put-counting-resource-store)}
+    ::put-counting-resource-store
+    {:resource-store (ig/ref ::rs/kv)}
+    ::blocking-index-kv-store
+    {:kv-store (ig/ref :blaze.db/index-kv-store)}}))
+
+(defmethod ig/init-key ::resource-store-failing-on-put [_ {:keys [resource-store]}]
+  (reify rs/ResourceStore
+    (-get [_ key]
+      (rs/get resource-store key))
+    (-multi-get [_ keys]
+      (rs/multi-get resource-store keys))
+    (-put [_ _]
+      (ac/failed-future (ba/ex-anom (ba/fault "put-error"))))))
+
+(def ^:private failing-resource-store-on-put-config
+  (merge-with
+   merge
+   config
+   {:blaze.db/node
+    {:resource-store (ig/ref ::resource-store-failing-on-put)
+     :max-in-flight-transactions 2}
+    :blaze.db/resource-cache
+    {:resource-store (ig/ref ::resource-store-failing-on-put)}
+    ::node/resource-indexer
+    {:resource-store (ig/ref ::resource-store-failing-on-put)}
+    ::resource-store-failing-on-put
     {:resource-store (ig/ref ::rs/kv)}}))
 
 (defn- with-index-store-version [config version]
@@ -343,6 +417,11 @@
         [1 :samples #(into #{} (map :label-values) %)] :=
         #{["main" "Task" "test"] ["main" "Observation" "test"]}))))
 
+(deftest submit-rejections-total-collector-init-test
+  (with-system [{collector ::node/submit-rejections-total}
+                {::node/submit-rejections-total {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
 (deftest transaction-sizes-collector-init-test
   (with-system [{collector ::node/transaction-sizes} {::node/transaction-sizes {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
@@ -447,6 +526,59 @@
               ::anom/category := ::anom/unavailable
               ::anom/message := "The database node `main` stopped because of an unrecoverable error."
               ::x := nil)))))))
+
+(defn- submit-patient [node id]
+  (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id id}]]))
+
+(defn- submit-rejections []
+  (prom/get node/submit-rejections-total "main"))
+
+(deftest max-in-flight-transactions-test
+  (testing "a submit is rejected while the maximum number of in-flight
+            transactions is reached"
+    (with-system [{:blaze.db/keys [node]
+                   kv-store ::blocking-index-kv-store
+                   resource-store ::put-counting-resource-store}
+                  in-flight-config]
+      (let [{:keys [release-put]} (meta kv-store)
+            {:keys [put-count]} (meta resource-store)
+            rejections (submit-rejections)
+            future-1 (submit-patient node "0")
+            future-2 (submit-patient node "1")]
+
+        (testing "both transactions are durably in the transaction log but
+                  can't be indexed while the index key-value store is blocked;
+                  they run concurrently, so it's undefined which of them gets
+                  which `t`"
+          (is (= #{1 2} #{(deref future-1 10000 ::timeout)
+                          (deref future-2 10000 ::timeout)})))
+
+        (let [puts @put-count]
+          (testing "a transaction stays in-flight until it is indexed, so a
+                    third submit is still rejected"
+            (given-failed-future (submit-patient node "2")
+              ::anom/category := ::anom/busy
+              ::anom/message := "The maximum number of 2 in-flight transactions is reached. Please try again later."))
+
+          (testing "no resource content is stored for the rejected transaction"
+            (is (= puts @put-count))))
+
+        (testing "the rejection is counted"
+          (is (= (inc rejections) (submit-rejections))))
+
+        (deliver release-put nil)
+
+        (testing "indexing the transactions frees their in-flight places"
+          @(d/sync node 2)
+          (is (= 3 (deref (submit-patient node "2") 10000 ::timeout)))))))
+
+  (testing "a transaction that never reaches the transaction log frees its
+            in-flight place as well"
+    (with-system [{:blaze.db/keys [node]} failing-resource-store-on-put-config]
+      (dotimes [_ 4]
+        (given-failed-future (submit-patient node "0")
+          ::anom/category := ::anom/fault
+          ::anom/message := "put-error")))))
 
 (deftest sync-test
   (testing "callers waiting for the same t share a single waiter"

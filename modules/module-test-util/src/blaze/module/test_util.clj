@@ -1,6 +1,6 @@
 (ns blaze.module.test-util
   (:require
-   [blaze.async.comp :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.test-util :as tu]
    [clojure.string :as str]
    [clojure.test :refer [is]]
@@ -27,6 +27,15 @@
   [future]
   (do-sync [value future]
     (vary-meta value assoc :thread-name (.getName (Thread/currentThread)))))
+
+(defn thread-name
+  "Returns a CompletableFuture that completes with the name of the thread on
+  which a function will be executed after `future` completes.
+
+  In contrast to `assoc-thread-name`, it also works with values that can't carry
+  metadata and with futures that complete exceptionally."
+  [future]
+  (ac/handle future (fn [_ _] (.getName (Thread/currentThread)))))
 
 (defn common-pool-thread? [thread-name]
   (or (str/starts-with? thread-name "ForkJoinPool.commonPool")

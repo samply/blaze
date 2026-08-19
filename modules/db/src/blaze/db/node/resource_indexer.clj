@@ -188,7 +188,7 @@
   [key {:keys [num-threads] :or {num-threads 4}}]
   (log/info "Init" (node-util/component-name key "resource indexer executor")
             "with" num-threads "threads")
-  (ex/io-pool num-threads (node-util/thread-name-template key "resource-indexer-%d")))
+  (ex/io-pool num-threads (node-util/thread-name key "resource-indexer-%d")))
 
 (defmethod ig/halt-key! ::executor
   [_ executor]
