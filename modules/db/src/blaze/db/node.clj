@@ -92,6 +92,7 @@
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer.spec]
    [blaze.db.node.spec]
+   [blaze.db.node.stats :as node-stats]
    [blaze.db.node.subscription :as sub]
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.tx-indexer :as tx-indexer]
@@ -784,12 +785,13 @@
   a transaction that produces no version references none of the index entries
   they would write. The ones already dispatched are still awaited, so that no
   task outlives the loop."
-  [{:keys [node-name kv-store read-only-matcher] :as node}
+  [{:keys [node-name kv-store read-only-matcher stats] :as node}
    {{:keys [t tx-cmds] :as tx-data} :tx-data
     :keys [chunks pending timer] :as tx-chunk-state}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (let [result (index-tx node-name {:db-before (np/-db node)
-                                    :read-only-matcher read-only-matcher} tx-data)]
+                                    :read-only-matcher read-only-matcher
+                                    :stats @stats} tx-data)]
     (if (ba/anomaly? result)
       (do
         ;; dropping the chunks left makes the ones dispatched the last ones, so
@@ -798,7 +800,11 @@
           (observe-index-resources! timer pending))
         (assoc tx-chunk-state :verified? true :anomaly result :chunks []))
       (do
-        (store-tx-entries! node-name kv-store result)
+        (store-tx-entries! node-name kv-store (:entries result))
+        ;; taking the stats over only after the entries were stored keeps them
+        ;; in sync with the indexes, so that a transaction that wasn't stored
+        ;; leaves them untouched
+        (vreset! stats (:stats result))
         (assoc tx-chunk-state :verified? true)))))
 
 (defn- commit-tx!
@@ -1225,7 +1231,7 @@
 
 (defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
                  resource-store sync-fn search-param-registry resource-indexer
-                 index-bounds read-only-matcher acquire-in-flight! state
+                 index-bounds read-only-matcher acquire-in-flight! state stats
                  poll-timeout queue-capacity index-finished publish-finished]
   np/Node
   (-db [node]
@@ -1501,6 +1507,9 @@
   (check-version! kv-store)
   (let [node-name (node-util/node-name key)
         state (atom (initial-state kv-store))
+        ;; a volatile is sufficient, because only the indexer thread ever reads
+        ;; and writes the stats, so they need visibility but no atomicity
+        stats (volatile! (node-stats/init kv-store (:t @state)))
         node (->Node node-name (ctx config) tx-log tx-cache
                      kv-store resource-cache resource-store (sync-fn storage)
                      search-param-registry resource-indexer
@@ -1510,6 +1519,7 @@
                      (acquire-in-flight-fn node-name state
                                            max-in-flight-transactions)
                      state
+                     stats
                      poll-timeout
                      queue-capacity
                      (ac/future)

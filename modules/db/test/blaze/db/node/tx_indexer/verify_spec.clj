@@ -11,4 +11,5 @@
 
 (s/fdef verify/verify-tx-cmds
   :args (s/cat :context ::verify/context :t :blaze.db/t :tx-cmds ::verify/tx-cmds)
-  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry) :anomaly ::anom/anomaly))
+  :ret (s/or :res (s/keys :req-un [::verify/entries ::verify/stats])
+             :anomaly ::anom/anomaly))

@@ -90,6 +90,6 @@ The Intel P5600 itself is a fast NVMe SSD, but LEA47 accesses it over vSAN, whic
 <DiskPerfChart src="disk-perf/LEA79.json" metric="latency"
   title="Random Read Latency (LEA79)" />
 
-LEA79 reaches the maximum score with all three dimensions above the reference values. The random reads scale linearly to 440 k IOPS at 32 readers, above the reference of 320 k, at a median latency that stays between 65 µs and 72 µs over the whole sweep. Sequential writes reach 10.7 GiB/s, and the fsync rate of 122 k/s at a median latency of 8.2 µs indicates a write cache that can acknowledge syncs almost immediately, which is why the same [transaction load test](load-testing.md#transaction) sustains about 15,000 transactions/s here.
+LEA79 reaches the maximum score with all three dimensions above the reference values. The random reads scale linearly to 440 k IOPS at 32 readers, above the reference of 320 k, at a median latency that stays between 65 µs and 72 µs over the whole sweep. Sequential writes reach 10.7 GiB/s, and the fsync rate of 122 k/s at a median latency of 8.2 µs indicates a write cache that can acknowledge syncs almost immediately, which is why the same [transaction load test](load-testing.md#transaction) sustains about 18,000 transactions/s here.
 
 All three systems support direct I/O, so the random read numbers reflect the disks themselves.

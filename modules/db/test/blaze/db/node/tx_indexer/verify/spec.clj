@@ -1,5 +1,8 @@
 (ns blaze.db.node.tx-indexer.verify.spec
   (:require
+   [blaze.db.kv.spec]
+   [blaze.db.node.stats :as-alias stats]
+   [blaze.db.node.stats.spec]
    [blaze.db.node.tx-indexer.verify :as-alias verify]
    [blaze.db.spec]
    [blaze.db.tx-log.spec]
@@ -13,8 +16,15 @@
 (s/def ::verify/read-only-matcher
   :blaze.db/matcher)
 
+(s/def ::verify/stats
+  ::stats/stats)
+
+(s/def ::verify/entries
+  (s/coll-of :blaze.db.kv/put-entry))
+
 (s/def ::verify/context
-  (s/keys :req-un [::verify/db-before ::verify/read-only-matcher]))
+  (s/keys :req-un [::verify/db-before ::verify/read-only-matcher
+                   ::verify/stats]))
 
 (s/def ::verify/op
   #{"create" "hold" "put" "keep" "delete" "delete-history" "purge"})
